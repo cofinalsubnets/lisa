@@ -12,7 +12,7 @@ v=`git rev-parse HEAD`
 # inlining and stack smash protection hurt tco
 c=cc -g -O2 -flto -DNOM=\"$n\" -DVN=\"$v\"\
 	-Wall -Wno-shift-negative-value\
-	-fno-inline -fno-stack-protector
+	-fno-stack-protector
 
 test: $n
 	@/usr/bin/env TIMEFORMAT="in %Rs" bash -c "time ./$b $t"

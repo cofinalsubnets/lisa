@@ -43,7 +43,7 @@ const char *t_nom[8] = {
 // spilling them to the stack.
 //
 // here's some macros for interpreter functions
-#define v_op(n,...) obj n(vm v,hom ip,mem fp,mem sp,mem hp,obj xp,##__VA_ARGS__)
+#define v_op(n,...) NoInline obj n(vm v,hom ip,mem fp,mem sp,mem hp,obj xp,##__VA_ARGS__)
 #define Pack() pack(v,ip,fp,sp,hp,xp)
 #define Unpack() (fp=Fp,hp=Hp,sp=Sp,ip=gethom(Ip),xp=Xp)
 #define Jump(f,...) return (f)(v,ip,fp,sp,hp,xp,##__VA_ARGS__)
@@ -72,13 +72,14 @@ static obj interpret_error(vm v, obj xp, obj ip, mem fp, const char *msg, ...) {
   va_list xs;
   va_start(xs, msg);
   vferrp(v, stderr, "interpret", xp, msg, xs);
-  va_end(xs);
   for (;fp < Pool + Len;
        ip = Retp, fp += Size(fr) + getnum(Argc) + getnum(Subd))
     fprintf(stderr, "  in %s\n", symp(ip = homnom(v, ip)) ? symnom(ip) : "\\");
   return restart(v); }
 
-// just some little helper functions for different errors
+// vm instructions for different errors. the compiler will
+// never emit these. 
+// code bloat in normal vm functions.
 static v_op(eetc) {
   return interpret_error(v, xp, puthom(ip), fp, "wrong type : %s for %s", t_nom[kind(Xp)], t_nom[Ip]); }
 static v_op(eear) {
@@ -544,18 +545,6 @@ v_op(pc_u) {
 v_op(emse) {
   emsep(v, xp, stdout, getnum(GF(ip)));
   Next(2); }
-
-// shell command
-v_op(sh) {
-  ArityCheck(1);
-  xp = Argv[0];
-  if (symp(xp)) xp = getsym(xp)->nom;
-  TypeCheck(xp, Oct);
-  obj x;
-  FILE *i = popen(chars(xp), "r");
-  if (!i) return interpret_error(v, xp, puthom(ip), fp, "popen()");
-  CallC(x = slurp(v, i));
-  Go(ret, x); }
 
 // pairs
 v_op(cons) {

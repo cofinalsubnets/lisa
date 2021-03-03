@@ -144,3 +144,5 @@ extern const char *t_nom[];
 #define Se AR(v->syn)[Seq]
 #define Va AR(v->syn)[Splat]
 #define Avail (Sp-Hp)
+#define Inline inline __attribute__((always_inline))
+#define NoInline __attribute__((noinline))

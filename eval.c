@@ -80,7 +80,6 @@ static obj compile_error(vm v, mem e, obj x, const char *msg, ...) {
   va_list xs;
   va_start(xs, msg);
   vferrp(v, stderr, "compile", x, msg, xs);
-  va_end(xs);
   for (obj f = *e; !nilp(f); f = par(f))
     fprintf(stderr, "  in %s\n", symp(name(f)) ? symnom(name(f)) : "\\");
   return restart(v); }
@@ -597,7 +596,7 @@ static void rin(vm v, mem d, const char *n, terp *u) {
   tbl_set(v, *d, y, putnum(u)); }
 
 #define prims(_)\
-  _(".", em_u, em_c),        _("sh", sh, NULL),\
+  _(".", em_u, em_c),\
   _("*:", car_u, car_c),     _(":*", cdr_u, cdr_c),\
   _("*!", setcar_u, rpla_c), _("!*", setcdr_u, rpld_c),\
   _("::", cons_u, cons_c),   _("=", eq_u, eq_c),\

@@ -70,7 +70,8 @@ the examples below are given with their equivalents in scheme.
 lambdas work on one expression, because there's usually less
 parentheses that way. use `,` for sequencing. calling a
 function without enough arguments is an error, but too many
-is allowed (they're ignored).
+is allowed (they're ignored). unlike in scheme the `.` is an
+ordinary symbol with special meaning in a lambda list.
 
 #### `,` begin
 - `(,) = '()`

@@ -55,8 +55,6 @@
   (test 'hashes (= 99 (hasht 99))))
 
 
-(test 'shell (= "lol" (sh "echo -n lol")))
-
 (test 'continuations
   ;; grow the call stack then call a continuation
   (: loop (\ m n c (? (= m n) (c m) (, (loop (+ 1 m) n c) m)))
