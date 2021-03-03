@@ -71,21 +71,11 @@ static obj str_(vm v, FILE *p, oct o, num n, num lim) {
     default: o->text[n++] = x; } out:
   return rloop(v, p, o, n, lim, str_); }
 
-static obj slurp_(vm v, FILE *i, oct o, num n, num lim) {
-  obj x;
-  while (n < lim) switch (x = fgetc(i)) {
-    case EOF: o->text[n++] = 0; goto out;
-    default: o->text[n++] = x; } out:
-  return rloop(v, i, o, n, lim, slurp_); }
-
 static obj atom(vm v, FILE *i) {
   obj o = atom_(v, i, cells(v, 2), 0, 8);
   char *st = NULL;
   num j = strtol(chars(o), &st, 0);
   return !st || *st ? intern(v, o) : putnum(j); }
-
-obj slurp(vm v, FILE *i) {
-  return slurp_(v, i, cells(v, 3), 0, 16); }
 
 static obj str(vm v, FILE *i) {
   return str_(v, i, cells(v, 2), 0, 8); }
