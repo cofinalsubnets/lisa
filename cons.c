@@ -3,7 +3,7 @@
 static const uint64_t mix = 2708237354241864315;
 static uint64_t hc(obj);
 // internal memory allocator
-void *bump(vm v, num n) {
+Inline void *bump(vm v, num n) {
   void *x = v->hp; v->hp += n; return x; }
 
 // the public interface (used in other files)
@@ -15,7 +15,7 @@ void *cells(vm v, num n) {
 /// data constructors and utility functions
 //
 
-static obj pair_gc(vm v, obj a, obj b) {
+static NoInline obj pair_gc(vm v, obj a, obj b) {
   with(a, with(b, reqsp(v, 2)));
   two t = bump(v, 2);
   return t->x = a, t->y = b, puttwo(t); }
@@ -42,13 +42,6 @@ obj intern(vm v, obj x) {
     if (0 == strcmp(chars(x), symnom(s))) return s;
   sym y; with(x, y = cells(v, Size(sym)));
   return y->nom = x, y->code = mix* hc(x), y->next = Syms, Syms = putsym(y); }
-
-obj adel(vm v, obj a, obj k) {
-  if (!twop(a)) return a;
-  if (k == XX(a)) return adel(v, Y(a), k);
-  with(a, k = adel(v, Y(a), k));
-  a = pair(v, X(a), k);
-  return a; }
 
 obj ldel(vm v, obj l, obj i) {
   return !twop(l) ? l : i == X(l) ? ldel(v, Y(l), i) :
@@ -128,13 +121,13 @@ obj tbl_set(vm v, obj t, obj k, obj val) {
   if (tbl_k(t) > 2) tbl_resize(v, t, gettbl(t)->cap * 2) ;
   return um, um, val; }
 
-static obj tbl_keys_j(vm v, tble e, obj l) {
+static NoInline obj tbl_keys_j(vm v, tble e, obj l) {
   if (!e) return l;
   obj x = e->key;
   with(x, l = tbl_keys_j(v, e->next, l));
   return pair(v, x, l); }
 
-static obj tbl_keys_i(vm v, obj t, num i) {
+static NoInline obj tbl_keys_i(vm v, obj t, num i) {
   if (i == gettbl(t)->cap) return nil;
   obj k = tbl_keys_i(v, t, i+1);
   return tbl_keys_j(v, gettbl(t)->tab[i], k); }

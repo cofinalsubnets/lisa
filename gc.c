@@ -69,7 +69,7 @@ void reqsp(vm v, num req) {
 // t values come from clock(). if t0 < t1 < t2
 // u will always be >= 1. somehow t1 is sometimes
 // equal to t2, so in that case u = 1.
-static void do_copy(vm, num, mem, num, mem);
+static Inline void do_copy(vm, num, mem, num, mem);
 static int copy(vm v, num len) {
   clock_t t1 = clock(), t2, u;
   mem b0 = v->mem_pool, b1 = malloc(w2b(len));
@@ -81,7 +81,7 @@ static int copy(vm v, num len) {
     v->t0 = t2,
     u); }
 
-static void do_copy(vm v, num l0, mem b0, num l1, mem b1) {
+static Inline void do_copy(vm v, num l0, mem b0, num l1, mem b1) {
   v->mem_len = l1;
   v->mem_pool = Hp = b1;
   mem s0 = Sp,

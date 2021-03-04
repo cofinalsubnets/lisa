@@ -20,7 +20,7 @@ typedef obj c1(vm, mem, num),
             c3(vm, mem, num, obj, obj);
 static void c_de_r(vm, mem, obj),
             scan(vm, mem, obj), pushs(vm, ...);
-static c2 *inliner(vm, mem, obj);
+static Inline c2 *inliner(vm, mem, obj);
 static c1  c_ev, produce, c_d_bind, inst, insx, c_ini;
 static c2 c_eval, c_sy, c_2, c_imm, ltu, c_ap;
 static c3 c_la_clo;
@@ -86,17 +86,19 @@ static obj compile_error(vm v, mem e, obj x, const char *msg, ...) {
 static obj arity_error(vm v, mem e, obj x, num h, num w) {
   return compile_error(v, e, x, "wrong arity : %ld of %ld", h, w); }
 static obj type_error(vm v, mem e, obj x, enum type h, enum type w) {
-  return compile_error(v, e, x, "wrong type : %s for %s", t_nom[h], t_nom[w]); }
+  return compile_error(v, e, x, "wrong type : %s for %s", tnom(h), tnom(w)); }
 
 #define toplp(x) nilp(*x)
 #define c1(nom,...) static obj nom(vm v,mem e,num m,##__VA_ARGS__)
 #define c2(nom,...) static obj nom(vm v,mem e,num m,obj x,##__VA_ARGS__)
 
-static obj em1(terp *i, obj k) {
-  return k -= Word, G(k) = i, k; }
+static Inline obj em1(terp *i, obj k) {
+  hom h = gethom(k)-1;
+  G(h) = i;
+  return puthom(h); }
 
-static obj em2(terp *i, obj j, obj k) {
-  return k -= 2*Word, G(k)=i, GF(k) = (terp*)j, k; }
+static Inline obj em2(terp *i, obj j, obj k) {
+  return em1(i, em1((terp*)j, k)); }
 
 #define None 8
 static enum type consumes(obj h) {
@@ -389,8 +391,17 @@ c2(late, obj d) {
   with(k, x = pair(v, N(t), x));
   return em2(lbind, x, k); }
 
-c2(c_sy_free) {
+c2(c_sy) {
   obj y, q;
+  if (toplp(e)) return (q = topl_lookup(v, x)) ?
+    c_imm(v, e, m, q) : late(v, e, m, x, Dict);
+  if ((q = tbl_get(v, vals(*e), x))) return c_imm(v, e, m, q);
+  if ((q = lidx(lams(*e), x)) != -1) return late(v, e, m, x, vals(*e));
+  if ((q = lidx(loc(*e), x)) != -1) return imx(v, e, m, locn, N(q));
+  if ((q = lidx(arg(*e), x)) != -1) return imx(v, e, m, argn, N(q));
+  if ((q = lidx(clo(*e), x)) != -1) return imx(v, e, m, clon, N(q));
+
+  // the symbol isn't bound locally so search the enclosing scopes
   with(x, q = look(v, par(*e), x));
   switch (Gn(X(q))) {
     case Here: return c_imm(v, e, m, Y(q));
@@ -400,17 +411,6 @@ c2(c_sy_free) {
       with(x, q = snoc(v, clo(*e), x));
       clo(*e) = q;
       return imx(v, e, m, clon, N(y)); } }
-
-c2(c_sy) {
-  obj q;
-  if (toplp(e)) return (q = topl_lookup(v, x)) ?
-    c_imm(v, e, m, q) : late(v, e, m, x, Dict);
-  if ((q = tbl_get(v, vals(*e), x))) return c_imm(v, e, m, q);
-  if ((q = lidx(lams(*e), x)) != -1) return late(v, e, m, x, vals(*e));
-  if ((q = lidx(loc(*e), x)) != -1) return imx(v, e, m, locn, N(q));
-  if ((q = lidx(arg(*e), x)) != -1) return imx(v, e, m, argn, N(q));
-  if ((q = lidx(clo(*e), x)) != -1) return imx(v, e, m, clon, N(q));
-  return c_sy_free(v, e, m, x); }
 
 c2(c_qt) { return c_imm(v, e, m, twop(x) ? X(x) : x); }
 
@@ -574,23 +574,12 @@ struct intro_rec {
   terp *addr; };
 
 
-#define bsym(i,s)(z=interns(v,s),AR(y)[i]=z)
-static obj syntax_array(vm v) {
-  tup t = cells(v, Size(tup) + NSyns);
-  t->len = NSyns, memset(t->xs, -1, w2b(NSyns));
-  obj z, y = puttup(t);
-  with(y,
-    bsym(Def, ":"), bsym(Cond, "?"), bsym(Lamb, "\\"),
-    bsym(Quote, "`"), bsym(Seq, ","), bsym(Splat, "."));
-#undef bsym
-  return y; }
-
 static void rpr(vm v, mem d, const char *n, terp *u, c2 *c) {
   obj x, y = interns(v, n);
   with(y, x = hom_ini(v, 2));
   x = em2(u, y, x);
   tbl_set(v, *d, y, x);
-  tbl_set(v, *d, N(u), N(c)); }
+  if (c) tbl_set(v, *d, N(u), N(c)); }
 static void rin(vm v, mem d, const char *n, terp *u) {
   obj y = interns(v, n);
   tbl_set(v, *d, y, putnum(u)); }
@@ -623,12 +612,24 @@ static void rin(vm v, mem d, const char *n, terp *u) {
 
 #define RPR(a,b,c) rpr(v,&d,a,b,c)
 #define RIN(x) rin(v,&d,"i-"#x,x)
-static obj code_dictionary(vm v) {
+static Inline obj code_dictionary(vm v) {
   obj d = table(v);
   with(d, prims(RPR), insts(RIN));
   return d; }
 #undef RPR
 #undef RIN
+
+#define bsym(i,s)(z=interns(v,s),AR(y)[i]=z)
+static Inline obj syntax_array(vm v) {
+  tup t = cells(v, Size(tup) + NSyns);
+  t->len = NSyns, memset(t->xs, -1, w2b(NSyns));
+  obj z, y = puttup(t);
+  with(y,
+    bsym(Def, ":"), bsym(Cond, "?"), bsym(Lamb, "\\"),
+    bsym(Quote, "`"), bsym(Seq, ","), bsym(Splat, "."));
+#undef bsym
+  return y; }
+
 
 
 vm initialize() {
@@ -650,7 +651,7 @@ vm initialize() {
 void finalize(vm v) {
   free(v->mem_pool), free(v); }
 
-static c2 *inliner(vm v, mem e, obj x) {
+static Inline c2 *inliner(vm v, mem e, obj x) {
   if (symp(x)) x = X(x = look(v, *e, x)) == N(Here) ? Y(x) : 0;
   if (x && homp(x) && (x = tbl_get(v, v->cdict, N(G(x)))))
     return (c2*) Gn(x);

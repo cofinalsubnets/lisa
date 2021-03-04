@@ -29,18 +29,13 @@ typedef struct tup { num len; obj xs[]; } *tup;
 typedef struct oct { num len; char text[]; } *oct;
 typedef struct sym { obj nom, code, next; } *sym;
 
-typedef struct tble {
-  obj key, val;
-  struct tble *next; } *tble;
-typedef struct tbl {
-  num len, cap;
-  tble *tab; } *tbl;
+typedef struct tble { obj key, val; struct tble *next; } *tble;
+typedef struct tbl { num len, cap; tble *tab; } *tbl;
 
 // the 3 ls bits of each pointer are a type tag
 enum type {
   Hom = 0, Num = 1, Two = 2, Tup = 3,
-  Oct = 4, Tbl = 5, Sym = 6, Nil = 7,
-  NTypes };
+  Oct = 4, Tbl = 5, Sym = 6, Nil = 7 };
 
 enum syn {
   Def = 0, Cond = 1, Lamb = 2, Quote = 3, Seq = 4, Splat = 5,
@@ -58,7 +53,6 @@ void finalize(rt),
      *cells(rt, num);
 
 obj assq(rt, obj, obj),
-    adel(rt, obj, obj),
     ldel(rt, obj, obj),
     err(rt, const char*, obj, const char*, ...),
     restart(rt),
@@ -77,6 +71,7 @@ obj assq(rt, obj, obj),
     string(rt, const char*);
 num llen(obj);
 
+const char *tnom(enum type);
 extern const char *t_nom[];
 
 #define kind(x) ((x)&7)

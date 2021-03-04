@@ -9,6 +9,17 @@
 #define err_eof "unexpected eof"
 #define err_rpar "unmatched right delimiter"
 
+NoInline const char *tnom(enum type t) { switch (t) {
+  case Hom: return "hom";
+  case Num: return "num";
+  case Tbl: return "table";
+  case Two: return "pair";
+  case Tup: return "tuple";
+  case Oct: return "string";
+  case Sym: return "symbol";
+  case Nil: break; } // GCC can't figure out that it will always return even if the switch exhausts an enumeration???
+  return "nil"; }
+
 typedef obj P(vm, FILE*);
 static P atom, reads, quote, str;
 
@@ -59,7 +70,8 @@ static obj atom_(vm v, FILE *p, oct o, num n, num lim) {
     case ' ': case '\n': case '\t': case ';':
     case '(': case ')': case '\'': case '"':
       ungetc(x, p); case EOF:
-      o->text[n++] = 0; goto out;
+      o->text[n++] = 0;
+      goto out;
     default: o->text[n++] = x; } out:
   return rloop(v, p, o, n, lim, atom_); }
 

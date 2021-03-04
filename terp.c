@@ -1,16 +1,6 @@
 #include "lips.h"
 #include "terp.h"
 
-const char *t_nom[8] = {
-  [Hom] = "hom",
-  [Num] = "num",
-  [Tbl] = "table",
-  [Two] = "pair",
-  [Tup] = "tuple",
-  [Oct] = "string",
-  [Sym] = "symbol",
-  [Nil] = "nil" };
-
 // "the interpreter"
 // it's a stack machine with one free register (xp)
 // that's implemented on top of the C compiler's calling
@@ -78,7 +68,7 @@ static obj interpret_error(vm v, obj xp, obj ip, mem fp, const char *msg, ...) {
 // vm instructions for different errors. the compiler will
 // never emit these. 
 static v_op(eetc) {
-  return interpret_error(v, xp, puthom(ip), fp, "wrong type : %s for %s", t_nom[kind(xp)], t_nom[Xp]); }
+  return interpret_error(v, xp, puthom(ip), fp, "wrong type : %s for %s", tnom(kind(xp)), tnom(Xp)); }
 static v_op(eear) {
   return interpret_error(v, 0, puthom(ip), fp, "wrong arity : %ld of %ld", Xp, Ip); }
 static v_op(ee_0) {

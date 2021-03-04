@@ -7,12 +7,14 @@ s=$(wildcard *.c)
 o=$(s:.c=.o)
 v=`git rev-parse HEAD`
 
-
-# fixnums need sign-extended bit shifting
-# inlining and stack smash protection hurt tco
+# why these compiler flags :
+# - fixnums need sign-extended bit shifting.
+# - inlining bloats code and GCC even does it for tail calls,
+#   which is silly. don't do it at all by default.
+# - stack smash protection also hurts tco.
 c=cc -g -O2 -flto -DNOM=\"$n\" -DVN=\"$v\"\
 	-Wall -Wno-shift-negative-value\
-	-fno-stack-protector
+	-fno-inline -fno-stack-protector
 
 test: $n
 	@/usr/bin/env TIMEFORMAT="in %Rs" bash -c "time ./$b $t"

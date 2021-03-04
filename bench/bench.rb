@@ -66,21 +66,21 @@ bash = Lang.new "bash", "bash"
 
 # startup time benchmark. perl does well on this
 # one. ruby is near the bottom of the pack here.
-#Bench.mark("startup time", 16, 4) do |bye|
-#  bye.add perl5, "bye.pl"
-#  bye.add lips, "bye.lips"
+Bench.mark("startup time", 16, 4) do |bye|
+  bye.add lips, "bye.lips"
+  bye.add perl5, "bye.pl"
 #  bye.add ruby, "bye.rb"
 #  bye.add cpy, "bye.py"
 #  bye.add pypy, "bye.py"
-#  bye.add pico, "bye.l"
+  bye.add pico, "bye.l"
 #  bye.add chez, "bye.scm"
-#  bye.add bash, "bye.sh"
-#  bye.add luajit, "bye.lua"
-#  bye.add lua, "bye.lua"
-#end
+  bye.add bash, "bye.sh"
+  bye.add luajit, "bye.lua"
+  bye.add lua, "bye.lua"
+end
 
-Bench.mark("fib(32)", 32, 4) do |fib|
-  fib.add lips, "fib.lips"
+#Bench.mark("fib(32)", 32, 4) do |fib|
+#  fib.add lips, "fib.lips"
 #  fib.add chez, "fib.scm"
 #  fib.add sbcl, "fib.lisp"
 #  fib.add guile, "fib.scm"
@@ -99,7 +99,7 @@ Bench.mark("fib(32)", 32, 4) do |fib|
 #  fib.add perl5, "fib.pl"
 #  fib.add ghc, "fib.hs"
 #  fib.add hugs, "fib.hs"
-end
+#end
 
 #Bench.mark("ack(3,9)") do |ack|
 #  ack.add chez, "ack.scm"
