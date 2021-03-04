@@ -44,7 +44,7 @@ const char *t_nom[8] = {
 //
 // here's some macros for interpreter functions
 #define v_op(n,...) NoInline obj n(vm v,hom ip,mem fp,mem sp,mem hp,obj xp,##__VA_ARGS__)
-#define Pack() pack(v,ip,fp,sp,hp,xp)
+#define Pack() (Ip=puthom(ip),Sp=sp,Hp=hp,Fp=fp,Xp=xp)
 #define Unpack() (fp=Fp,hp=Hp,sp=Sp,ip=gethom(Ip),xp=Xp)
 #define Jump(f,...) return (f)(v,ip,fp,sp,hp,xp,##__VA_ARGS__)
 #define Have(n) if (avail < n) Jump((Xp=n,gc))
@@ -53,8 +53,6 @@ const char *t_nom[8] = {
 #define Ap(f,x) return G(f)(v,f,fp,sp,hp,x)
 #define Go(f,x) return f(v,ip,fp,sp,hp,x)
 #define Next(n) Ap(ip+n,xp)
-static void pack(vm v, hom ip, mem fp, mem sp, mem hp, obj xp) {
- Ip=puthom(ip), Sp=sp, Hp=hp, Fp=fp, Xp=xp; }
 
 // these are for accessing the current stack frame
 typedef struct fr { obj clos, retp, subd, argc, argv[]; } *fr;
@@ -79,7 +77,6 @@ static obj interpret_error(vm v, obj xp, obj ip, mem fp, const char *msg, ...) {
 
 // vm instructions for different errors. the compiler will
 // never emit these. 
-// code bloat in normal vm functions.
 static v_op(eetc) {
   return interpret_error(v, xp, puthom(ip), fp, "wrong type : %s for %s", t_nom[kind(Xp)], t_nom[Ip]); }
 static v_op(eear) {

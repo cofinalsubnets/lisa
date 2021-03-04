@@ -52,7 +52,7 @@ sloc:
 	@which cloc && cloc --force-lang=Lisp,l --force-lang=Lisp,$n . || cat $s $h $m | grep -v ' *//.*' | grep -v '^$$' | wc -l
 bins: $o $n $b
 	@stat -c "%n %sB" $^
-bench:
+bench: $b
 	@make -sC bench
 
 .PHONY: test clean perf valg sloc bins install vim bench
