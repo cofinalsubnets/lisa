@@ -78,20 +78,17 @@ static obj interpret_error(vm v, obj xp, obj ip, mem fp, const char *msg, ...) {
 // vm instructions for different errors. the compiler will
 // never emit these. 
 static v_op(eetc) {
-  return interpret_error(v, xp, puthom(ip), fp, "wrong type : %s for %s", t_nom[kind(Xp)], t_nom[Ip]); }
+  return interpret_error(v, xp, puthom(ip), fp, "wrong type : %s for %s", t_nom[kind(xp)], t_nom[Xp]); }
 static v_op(eear) {
-  return interpret_error(v, xp, puthom(ip), fp, "wrong arity : %ld of %ld", Xp, Ip); }
+  return interpret_error(v, 0, puthom(ip), fp, "wrong arity : %ld of %ld", Xp, Ip); }
 static v_op(ee_0) {
-  return interpret_error(v, xp, puthom(ip), fp, "%ld/0", getnum(Xp)); }
-#define type_error(x,t){Xp=x,Ip=t;Jump(eetc);}
+  return interpret_error(v, 0, puthom(ip), fp, "%ld/0", getnum(xp)); }
+#define type_error(x,t){xp=x,Xp=t;Jump(eetc);}
 #define arity_error(h,w){Xp=h,Ip=w;Jump(eear);}
-#define zero_error(x){Xp=x;Jump(ee_0);}
-
-
+#define zero_error(x){xp=x;Jump(ee_0);}
 #define TypeCheck(x, t) if(kind(x)!=t)type_error(x,t)
 #define Arity(n) if(n>Argc)arity_error(getnum(Argc),getnum(n))
 #define ArityCheck(n) Arity(putnum(n))
-
 
 // this is the garbage collector interface used
 // by the interpreter. interpreter functions that
@@ -584,11 +581,11 @@ v_op(mul) {
   xp = putnum(getnum(xp) * getnum(*sp++));
   Next(1); }
 v_op(dqv) {
-  if (xp == putnum(0)) {Xp=*sp; Jump(ee_0);}
+  if (xp == putnum(0)) zero_error(*sp);
   xp = putnum(getnum(*sp++) / getnum(xp));
   Next(1); }
 v_op(mod) {
-  if (xp == putnum(0)) {Xp=*sp; Jump(ee_0);}
+  if (xp == putnum(0)) zero_error(*sp);
   xp = putnum(getnum(*sp++) % getnum(xp));
   Next(1); }
 
