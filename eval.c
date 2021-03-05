@@ -74,20 +74,10 @@ enum location { Here, Loc, Arg, Clo, Wait };
   num i = llen(Y(x));\
   if (i<n) return arity_error(v, e, x, i, n); }
 
-// for errors from the compiler, with a backtrace showing
-// the lexical scope
-static obj compile_error(vm v, mem e, obj x, const char *msg, ...) {
-  va_list xs;
-  va_start(xs, msg);
-  vferrp(v, stderr, "compile", x, msg, xs);
-  for (obj f = *e; !nilp(f); f = par(f))
-    fprintf(stderr, "  in %s\n", symp(name(f)) ? symnom(name(f)) : "\\");
-  return restart(v); }
 static obj arity_error(vm v, mem e, obj x, num h, num w) {
-  return compile_error(v, e, x, "wrong arity : %ld of %ld", h, w); }
+  return err(v, "compile", x, "wrong arity : %ld of %ld", h, w); }
 static obj type_error(vm v, mem e, obj x, enum type h, enum type w) {
-  return compile_error(v, e, x, "wrong type : %s for %s", tnom(h), tnom(w)); }
-
+  return err(v, "compile", x, "wrong type : %s for %s", tnom(h), tnom(w)); }
 #define toplp(x) nilp(*x)
 #define c1(nom,...) static obj nom(vm v,mem e,num m,##__VA_ARGS__)
 #define c2(nom,...) static obj nom(vm v,mem e,num m,obj x,##__VA_ARGS__)
@@ -106,7 +96,7 @@ static enum type consumes(obj h) {
   return i == tchom ? Hom : i == tcnum ? Num : i == tctwo ? Two : None; }
 
 // totally dumb procedural compile time type checking:
-// produce checks if its immediate continuation is a
+// check if your immediate continuation is a
 // type check. if so and it conflicts then it errors at
 // compile time. but if it's compatible then the check
 // gets eliminated.
@@ -311,11 +301,10 @@ c1(c_co_pre) {
 // before generating a branch emit a jump to
 // the top of stack 2
 c1(c_co_pre_con) {
-  terp *i;
   obj x = ccc(v, e, m+2), k = X(S2);
+  terp *i = G(k);
   return
-    x == k ? x :
-    (i = G(k)) == ret || i == yield ? em1(i, x) :
+    i == ret ? em1(i, x) :
     em2(jump, i == jump ? (obj) GF(k) : k, x); }
 
 // after generating a branch store its address
@@ -343,14 +332,14 @@ static void c_co_r(vm v, mem e, obj x) {
 
 c2(c_co) {
   return with(x, Push(N(c_co_pre))),
-         c_co_r(v, e, x),
+         c_co_r(v, e, Y(x)),
          x = ccc(v, e, m), S2 = Y(S2), x; }
 
 static void c_se_r(vm v, mem e, obj x) {
   if (twop(x)) with(x, c_se_r(v, e, Y(x))),
                Push(N(c_ev), X(x)); }
 c2(c_se) {
-  if (!twop(x)) x = pair(v, nil, nil);
+  if (!twop(x = Y(x))) x = pair(v, nil, nil);
   return c_se_r(v, e, x), ccc(v, e, m); }
 
 // this function emits an instruction to call a
@@ -412,16 +401,16 @@ c2(c_sy) {
       clo(*e) = q;
       return imx(v, e, m, clon, N(y)); } }
 
-c2(c_qt) { return c_imm(v, e, m, twop(x) ? X(x) : x); }
+c2(c_qt) { return c_imm(v, e, m, twop(x = Y(x)) ? X(x) : x); }
 
 c2(c_2) {
-  obj z = X(x), y = Y(x);
+  obj z = X(x);
   return
-    z == Qt ? c_qt(v, e, m, y) :
-    z == If ? c_co(v, e, m, y) :
+    z == Qt ? c_qt(v, e, m, x) :
+    z == If ? c_co(v, e, m, x) :
     z == De ? c_de(v, e, m, x) :
     z == La ? c_la(v, e, m, x) :
-    z == Se ? c_se(v, e, m, y) :
+    z == Se ? c_se(v, e, m, x) :
     c_ap(v, e, m, x); }
 
 c2(c_ap) {

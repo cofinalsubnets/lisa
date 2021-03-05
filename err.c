@@ -11,9 +11,8 @@ void errp(vm v, const char *seg, obj x, const char *msg, ...) {
 
 obj err(vm v, const char *seg, obj x, const char *msg, ...) {
   va_list xs;
-  return va_start(xs, msg),
-         vferrp(v, stderr, seg, x, msg, xs),
-         restart(v); }
+  va_start(xs, msg); vferrp(v, stderr, seg, x, msg, xs); va_end(xs);
+  return restart(v); }
 
 obj restart(vm v) {
   v->fp = v->sp = v->mem_pool + v->mem_len;
