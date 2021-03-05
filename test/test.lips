@@ -170,7 +170,7 @@
      (= z '\) (cla e m x k)
      (= z ',) (cse e m y k)
               (cap e m x k))))
-   toplp (\ e (nilp (e-arg e)))
+   toplp (\ e (nilp (e-par e)))
    look (\ e y (?
      (tbl-has (e-val e) y) (li 'here (tbl-get (e-val e) y))
      (toplp e) (li 'wait (e-val e))
@@ -182,11 +182,35 @@
    desug (\ d (li (li '\ (li ', (init d) (last d)))))
    init (\ l (? (twop (:* l)) (:: (*: l) (init (:* l)))))
    last (\ l (? (twop (:* l)) (last (:* l)) (*: l)))
-   cap (\ e m x k ()) ; XXX
-   cse (\ e m x k (? (twop x) (cev e m (*: x) (\ e m (cse e m (:* x) k)))
-                              (k e m)))
+
+   cca (\ e m x k (-> (k e (+ m 2)) (\ q
+     (? (nilp (= i-ret (hom-get-i q))) (emi i-call (emx x q))
+        (= x (len (e-arg e))) (emi i-loop q)
+                              (emi i-recur (emx x q))))))
+   cap (\ e m x k (:
+     capi (\ e m x k
+       (? (nilp x) (k e m)
+         (capi e m (:* x) (\ e m
+           (cev e m (*: x) (\ e m (inst e m i-push k)))))))
+     (capi e m (:* x) (\ e m
+       (cev e m (*: x) (\ e m
+         (cca e m (len (:* x)) k)))))))
+
+   cse (\ e m x k
+    (? (nilp x) (k e m)
+      (cev e m (*: x) (\ e m
+        (cse e m (:* x) k)))))
+
+   cder (\ e m x k
+     (? (nilp x) (k e m)
+       (cev e m (*: (:* x)) (\ e m
+         (cdeb e m (*: x) (\ e m
+           (cder e m (:* (:* x)) k)))))))
+   cdeb (\ e m x k
+     (? (toplp e) (insx e m i-tbind x k)
+                  (insx e m i-setl (idx (e-loc e) x) k)))
    cde (\ e m x k (? (nilp (:* x))
                        (imm e m nil k)
-                     (= 0 (% (len (:* x)) 2))
-                       (cev e m (desug x))
-                     (, (cder e (:* x)) (k e m)))))
+                     (= 1 (% (len (:* x)) 2))
+                       (cev e m (desug x) k)
+                     (cder e m (:* x) k ))))
