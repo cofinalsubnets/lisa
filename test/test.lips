@@ -168,7 +168,7 @@
      (= z '?) (cco e m y k)
      (= z ':) (cde e m x k)
      (= z '\) (cla e m x k)
-     (= z ',) (cse e m y k)
+     (= z ',) (cse e m x k)
               (cap e m x k))))
    toplp (\ e (nilp (e-par e)))
    look (\ e y (?
@@ -196,10 +196,14 @@
        (cev e m (*: x) (\ e m
          (cca e m (len (:* x)) k)))))))
 
-   cse (\ e m x k
+   cser (\ e m x k
     (? (nilp x) (k e m)
       (cev e m (*: x) (\ e m
-        (cse e m (:* x) k)))))
+        (cser e m (:* x) k)))))
+   cse (\ e m x k
+     (? (nilp (:* x))
+       (imm e m () k)
+       (cser e m (:* x) k)))
 
    cder (\ e m x k
      (? (nilp x) (k e m)
@@ -213,4 +217,13 @@
                        (imm e m nil k)
                      (= 1 (% (len (:* x)) 2))
                        (cev e m (desug x) k)
-                     (cder e m (:* x) k ))))
+                     (cder e m (:* x) k )))
+
+  (,
+    (test 'comp-ap (= 6 ((ana (li + 1 2 3)))))
+    (test 'comp-seq (: box (li 0) inc (\(*! box (+ 1 (*: box))))
+      (= 3 ((ana (li ', (li inc) (li inc) (li inc)))))))
+    (test 'comp-de
+      (-> 123 (\ x
+        (-> ((ana (li ': '__123 x))) (\ y
+          (-> __123 (\ z (= x y z))))))))))

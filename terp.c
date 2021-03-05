@@ -536,8 +536,8 @@ v_op(cons) {
   xp = puttwo(hp); hp += 2; Next(1); }
 v_op(car) { Ap(ip+1, X(xp)); }
 v_op(cdr) { Ap(ip+1, Y(xp)); }
-v_op(setcar) { X(xp) = *sp++; Next(1); }
-v_op(setcdr) { Y(xp) = *sp++; Next(1); }
+v_op(setcar) { obj x = *sp++; X(xp) = x; xp = x; Next(1); }
+v_op(setcdr) { obj x = *sp++; X(xp) = x; xp = x; Next(1); }
 
 v_op(cons_u) {
   ArityCheck(2);
