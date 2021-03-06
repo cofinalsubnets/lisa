@@ -13,10 +13,6 @@ features:
 - pass at least 6 function arguments in registers
 - tail call optimization
 
-
-## usage
-see ([1][make]) and ([2][lips_h]).
-
 ## lisp dialect
 parentheses, semicolons, and single and double quotes all do
 what you would expect. in general functions are call by value
@@ -145,6 +141,3 @@ improvements:
 [lisp]: https://en.wikipedia.org/wiki/Lisp_(programming_language)
 [forth]: https://en.wikipedia.org/wiki/Forth_(programming_language)
 [threaded]: https://en.wikipedia.org/wiki/Threaded_code 
-[make]: makefile
-[lips_h]: main.c:#L29
-
