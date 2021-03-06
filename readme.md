@@ -145,6 +145,6 @@ improvements:
 [lisp]: https://en.wikipedia.org/wiki/Lisp_(programming_language)
 [forth]: https://en.wikipedia.org/wiki/Forth_(programming_language)
 [threaded]: https://en.wikipedia.org/wiki/Threaded_code 
-[make]: blob/main/makefile
-[lips_h]: blob/main/main.c:#L29
+[make]: makefile
+[lips_h]: main.c:#L29
 
