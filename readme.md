@@ -1,7 +1,7 @@
 # lips
-it's a [lisp][1] dialect with a fast virtual machine that
-runs [forth][2]-style [threaded code][3]. it works on
-AMD64/ARM64 and probably on other 64-bit platforms, but will
+it's a [lisp][lisp] dialect with a fast virtual machine that
+runs [forth][forth]-style [threaded code][threaded]. it works
+on AMD64/ARM64 and probably on other 64-bit platforms, but will
 most likely crash on 32-bit because of certain technical
 assumptions. specifically it relies on these platform
 features:
@@ -14,37 +14,8 @@ features:
 - tail call optimization
 
 
-## how to build
-`make` should do it on linux. on bsd/mac/unix you may need to
-comment out some lines that use GNU-specific coreutils options.
-`make install` puts the binary in `~/.local/bin`.  `lips -h`
-shows the usage. `lips -p test/test.lips` starts a repl in the
-test environment after running the tests.
-
-## missing features
-- macros
-- string functions
-- arrays
-- error handling
-- user types
-- unicode
-- useful i/o
-- namespaces / module system
-
-the bootstrap compiler lacks several basic features that should
-be in the final version:
-- beta reduction
-- delta reduction
-- dead code elimination
-- a real type system
-
-the memory manager is very simple and might benefit from these
-improvements:
-- semispaces, which would eliminate most calls to malloc() and
-  ensure that recovery from oom is always possible.
-- generations, which would make memory use scale better with
-  large amounts of persistent data but would add complexity by
-  requiring a write barrier.
+## usage
+see ([1][make]) and ([2][lips_h]).
 
 ## lisp dialect
 parentheses, semicolons, and single and double quotes all do
@@ -113,8 +84,6 @@ this whole section is unstable and  some of these names are
 bad, sorry, you know what they say about naming things!
 - `ev = eval` `ap = apply` `ccc = call/cc`
 - `.` print arguments separated by spaces then newline
-- `sh` capture stdout from a shell command in a string, eg.
-  `(sh "echo -n sh") = "sh"`
 - `+` `-` `*` `/` `%` what you think
 - `&&` `||` left-to-right, shortcut eval when bound early.
 - `<` `<=` `=` `>=` `>` = is recursive with value semantics
@@ -148,7 +117,34 @@ bad, sorry, you know what they say about naming things!
    quine ((\ q ((ev q) q)) '(\ i (li i (li '` i)))))
 ; it's ((\ i (li i (li '` i))) '(\ i (li i (li '` i))))
 ```
-[1]: https://en.wikipedia.org/wiki/Lisp_(programming_language)
-[2]: https://en.wikipedia.org/wiki/Forth_(programming_language)
-[3]: https://en.wikipedia.org/wiki/Threaded_code 
+## missing features
+- macros!!!
+- exceptions
+- basic string functions
+- arrays and many other types
+- unicode
+- useful i/o
+- namespaces / module system
+
+the compiler still lacks several basic features:
+- control flow analysis
+- dead code elimination
+- beta reduction (inlining)
+- delta reduction (constant folding)
+- a real type system
+- native code generation
+
+the memory manager is very simple and might benefit from these
+improvements:
+- semispaces, which would eliminate most calls to malloc() and
+  ensure that recovery from oom is always possible.
+- generations, which would make memory use scale better with
+  large amounts of persistent data but would add complexity by
+  requiring a write barrier.
+
+[lisp]: https://en.wikipedia.org/wiki/Lisp_(programming_language)
+[forth]: https://en.wikipedia.org/wiki/Forth_(programming_language)
+[threaded]: https://en.wikipedia.org/wiki/Threaded_code 
+[make]: blob/main/makefile
+[lips_h]: blob/main/main.c:#L29
 
