@@ -3,7 +3,7 @@
   _(immv),   _(argn),   _(clon),    _(locn),   _(take),\
   _(prel),   _(setl),   _(pc0),     _(pc1),    _(clos),\
   _(encll),  _(encln),  _(yield),   _(ret),    _(jump),\
-  _(branch), _(barnch), _(call),    _(recur),  _(loop),\
+  _(branch), _(barnch), _(call),    _(rec),  _(loop),\
   _(tbind),  _(push),   _(add),     _(sub),    _(mul),\
   _(dqv),    _(mod),    _(neg),     _(lt),     _(lteq),\
   _(eq),     _(gteq),   _(gt),      _(twopp),  _(numpp),\

@@ -151,6 +151,7 @@
  e-clo (gtk 'clo) e-par (gtk 'par)
  e-lam (gtk 'lam) e-nom (gtk 'nom)
  e-val (gtk 'val) e-sig (gtk 'sig)
+ e-s1  (gtk 's1)  e-s2  (gtk 's2)
  inst (\ e m i k (emi i (k e (+ m 1))))
  insx (\ e m i x k (emi i (emx x (k e (+ m 2)))))
  ini  (\ e m (insx e m i-ret (e-nom e) (\ e m (hom m))))
@@ -181,7 +182,7 @@
              
  c2 (\ e m x k (-> (*: x) (\ z (?
   (= z '`) (-> (:* x) (\ y (imm e m (? (twop y) (*: y)) k)))
-  (= z '?) (cco e m y k)
+  (= z '?) (cco e m x k)
   (= z ':) (cde e m x k)
   (= z '\) (cla e m x k)
   (= z ',) (cse e m x k)
@@ -211,7 +212,7 @@
  cca (\ e m x k (-> (k e (+ m 2)) (\ q (?
   (nilp (= i-ret (hom-get-i q))) (emi i-call (emx x q))
   (= x (len (e-arg e)))          (emi i-loop q)
-                                 (emi i-recur (emx x q))))))
+                                 (emi i-rec (emx x q))))))
  cap (\ e m x k
   ((: capi (\ e m x k
             (? (nilp x) (k e m)
@@ -240,6 +241,33 @@
   (= 1 (% (len (:* x)) 2)) (cev e m (desug x) k)
                            (cder e m (:* x) k)))
 
+ ccopre (\ e m k (-> (k e m) (\ k
+  (*: (e-s2 e (:: k (e-s2 e)))))))
+ ccopostcon (\ e m k (-> (k e m) (\ k
+  (*: (e-s1 e (:: k (e-s1 e)))))))
+ ccopreant (\ e m k (-> (k e (+ m 2)) (\ k
+  (-> (emi i-branch (emx (*: (e-s1 e)) k)) (\ k
+   (, (e-s1 e (:* (e-s1 e))) k))))))
+ ccoprecon (\ e m k (-> (k e (+ m 2)) (\ x
+  (-> (*: (e-s2 e)) (\ k
+   (: i (hom-get-i k)
+    (? (= i i-ret) (emi i x)
+     (emi i-jump
+      (emx (? (= i i-jump) (hom-get-x (hom-seek k 1)) k) x)))))))))
+ cco (\ e m x k
+  (? (nilp (:* x)) (imm e m nil k)
+   (-> (ccor e m (:* x) (\ e m (ccopre e m k))) (\ k
+    (, (e-s2 e (:* (e-s2 e))) k)))))
+ ccor (\ e m x k (?
+  (nilp x) (ccor e m (:: x x) k)
+  (nilp (:* x)) (cev e m (*: x) (\ e m (ccoprecon e m k)))
+  (cev e m (*: x) (\ e m
+   (ccopreant e m (\ e m
+    (ccor e m (:* (:* x)) (\ e m
+     (ccopostcon e m (\ e m
+      (cev e m (*: (:* x)) (\ e m
+       (ccoprecon e m k)))))))))))))
+
   (,(test 'comp-em
      (= 3 ((emi i-immv (emx 3 (emi i-ret (hom 3)))))))
     (test 'comp-qt (-> (li 1) (\ y (= y ((ana (li '` y)))))))
@@ -250,4 +278,6 @@
      (-> 123 (\ x
       (-> ((ana (li ': '__123 x))) (\ y
        (-> __123 (\ z (= x y z))))))))
-    (test 'comp-y-top (= __123 ((ana '__123))))))
+    (test 'comp-y-top (= __123 ((ana '__123))))
+    (test 'comp-co (&& (= 1 ((ana '(? () 0 1))))
+                       (= 0 ((ana '(? 1 0 ()))))))))

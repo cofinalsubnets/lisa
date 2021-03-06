@@ -51,7 +51,7 @@ obj assq(vm v, obj a, obj k) {
   for (; twop(a); a = Y(a)) if (k == XX(a)) return YX(a);
   return 0; }
 
-static uint64_t hash_bytes(num len, char *us) {
+static Inline uint64_t hash_bytes(num len, char *us) {
   num h = 1;
   for (; len--; h *= mix, h ^= *us++);
   return mix * h; }
@@ -69,10 +69,10 @@ static uint64_t hc(obj x) {
 // the least entropy, but they are also the most significant bits to
 // the modulo operation. dropping a number of least-significant-bits
 // proportional to the length of the table improves key distribution.
-static uint64_t hb_idx(num cap, uint64_t code) {
+static Inline uint64_t hb_idx(num cap, uint64_t code) {
   return (code / (cap<<10)) % cap; }
 
-static tble hb(obj t, uint64_t code) {
+static Inline tble hb(obj t, uint64_t code) {
   return gettbl(t)->tab[hb_idx(gettbl(t)->cap, code)]; }
 
 // tbl_resize(vm, tbl, new_size): destructively resize a hash table.
@@ -121,13 +121,13 @@ obj tbl_set(vm v, obj t, obj k, obj val) {
   if (tbl_k(t) > 2) tbl_resize(v, t, gettbl(t)->cap * 2) ;
   return um, um, val; }
 
-static NoInline obj tbl_keys_j(vm v, tble e, obj l) {
+static obj tbl_keys_j(vm v, tble e, obj l) {
   if (!e) return l;
   obj x = e->key;
   with(x, l = tbl_keys_j(v, e->next, l));
   return pair(v, x, l); }
 
-static NoInline obj tbl_keys_i(vm v, obj t, num i) {
+static obj tbl_keys_i(vm v, obj t, num i) {
   if (i == gettbl(t)->cap) return nil;
   obj k = tbl_keys_i(v, t, i+1);
   return tbl_keys_j(v, gettbl(t)->tab[i], k); }
