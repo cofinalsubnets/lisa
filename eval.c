@@ -411,7 +411,7 @@ c2(c_2) {
     z == De ? c_de(v, e, m, x) :
     z == La ? c_la(v, e, m, x) :
     z == Se ? c_se(v, e, m, x) :
-    c_ap(v, e, m, x); }
+              c_ap(v, e, m, x); }
 
 c2(c_ap) {
   c2 *c;
@@ -574,7 +574,7 @@ static void rin(vm v, mem d, const char *n, terp *u) {
   tbl_set(v, *d, y, putnum(u)); }
 
 #define prims(_)\
-  _(".", em_u, em_c),\
+  _(".", em_u, em_c),        _("ns", globs, NULL),\
   _("*:", car_u, car_c),     _(":*", cdr_u, cdr_c),\
   _("*!", setcar_u, rpla_c), _("!*", setcdr_u, rpld_c),\
   _("::", cons_u, cons_c),   _("=", eq_u, eq_c),\
