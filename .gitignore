@@ -9,3 +9,4 @@ lips
 core
 vgcore.*
 cachegrind.*
+__pycache__

@@ -7,12 +7,16 @@ s=$(wildcard *.c)
 o=$(s:.c=.o)
 v=`git rev-parse HEAD`
 
+# C compiler
+# gcc and clang both work. other compilers, tcc etc., don't.
+# gcc generates faster and smaller code on x86 and ARM.
+#
 # why these compiler flags :
 # - fixnums need sign-extended bit shifting.
 # - inlining bloats code and GCC even does it for tail calls,
 #   which is silly. turn it off by default.
 # - stack smash protection also hurts tco.
-c=cc -g -O2 -flto -DNOM=\"$n\" -DVN=\"$v\"\
+c=cc -g -O2 -flto -std=c11 -DNOM=\"$n\" -DVN=\"$v\"\
 	-Wall -Wno-shift-negative-value\
 	-fno-inline -fno-stack-protector
 

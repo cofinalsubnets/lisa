@@ -123,7 +123,7 @@ bad, sorry, you know what they say about naming things!
 - macros!!!
 - exceptions
 - basic string functions
-- arrays and many other types
+- arrays, floats and many other types
 - unicode
 - useful i/o
 - namespaces / module system

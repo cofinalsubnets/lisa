@@ -19,25 +19,44 @@
 // the extra gc time. but with one or two generations persistent
 // data will rarely be copied, which amounts to more efficient
 // storage over time.
+//
 static int copy(vm, num);
 static obj cp(vm, obj, num, mem);
 
 // gc entry point reqsp : vm x num -> bool
-// try to return with at least req words of
-// available memory. return true on success,
-// false otherwise. this function also manages
-// the size of the memory pool to keep time and
-// space overhead low.
-// - copy into a new pool of the same size.
-// - if there's enough space and time return success.
-// - adjust the size copy again.
-// if the first copy fails the request fails.
-// if the second copy fails the request succeeds if
-// there's enough space (time is ignored).
+//
+// try to return with at least req words of available memory.
+// return true on success, false otherwise. this function also
+// manages the size of the memory pool. here is the procedure
+// in a nutshell:
+//
+// - copy into a new pool of the same size. if this fails,
+//   the request fails (oom).
+// - if there's enough space and the garbage collector
+//   is running fast enough, return success.
+// - otherwise adjust the size and copy again. if this fails,
+//   we can still succeed if the first copy left us with
+//   enough free space (ie. we tried to grow for performance
+//   reasons). but otherwise the request fails (oom).
+//
+// at a constant rate of allocation, doubling the size of the
+// heap halves the amount of time spent in garbage collection.
+// the memory manager uses this relation to automatically trade
+// space for time to keep the time spent in garbage collection
+// within certain limits, given here in units of program time
+// per unit garbage collection time:
+#define lb 32
+#define ub 128
+// in theory these bounds control the overall time spent in
+// garbage collection (3-6% at nonzero allocation). actual
+// results may vary, but in an ideal (high-memory) environment
+// anything we do to make gc "faster" (other than adjusting the
+// limits) will have the actual effect of improving memory
+// efficiency.
 #define grow() (len*=2,vit*=2)
 #define shrink() (len/=2,vit/=2)
-#define growp (allocd > len || vit < 32)
-#define shrinkp (allocd < len/2 && vit >= 64)
+#define growp (allocd > len || vit < lb)
+#define shrinkp (allocd < len/2 && vit >= ub)
 void reqsp(vm v, num req) {
   num len = v->mem_len, vit = copy(v, len);
   if (vit) {
