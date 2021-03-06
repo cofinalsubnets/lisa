@@ -1,3 +1,4 @@
+// this is such a genius idea, i stole it from luajit
 #define insts(_)\
   _(arity),  _(tcnum),  _(tchom),   _(tctwo),  _(lbind),\
   _(immv),   _(argn),   _(clon),    _(locn),   _(take),\
@@ -20,6 +21,7 @@
   _(tbll), _(tblmk),_(tblg),_(tblc),_(tbls),_(tbld),_(tblks),\
   _(hom_seek_u),_(hom_geti_u),_(hom_seti_u),\
   _(fail),_(fail_u),_(ccc_u),_(cont),_(vararg),_(tuck),\
+  _(rd_u),\
   _(drop),_(hom_getx_u),_(hom_setx_u),_(em_u),_(ev_u),_(ap_u)
 #define ninl(x) x NoInline
 terp insts(ninl);

@@ -1,94 +1,72 @@
 #include "lips.h"
 #include "terp.h"
+#include "eval.h"
 ////
 /// bootstrap thread compiler
 //
-// it's basically an "analyzing evaluator" that produces
-// threads that run on the lisp vm. each code-generating
-// function first generates its immediate continuation,
-// so there's an implicit CPS transformation. compiler
-// functions explicitly construct their own call sequence
-// at run time by using the main stack to store code and
-// pointers to compiler entry points, which are then
-// accessed like this:
-#define ccc ((c1*)Gn(*Sp++))
-//
-// the compiler does a few optimizations which we can
-// safely remove once the self-hosted compiler works.
-typedef obj c1(vm, mem, num),
-            c2(vm, mem, num, obj),
-            c3(vm, mem, num, obj, obj);
 static void c_de_r(vm, mem, obj),
             scan(vm, mem, obj), pushs(vm, ...);
 static Inline c2 *inliner(vm, mem, obj);
 static c1  c_ev, produce, c_d_bind, inst, insx, c_ini;
 static c2 c_eval, c_sy, c_2, c_imm, ltu, c_ap;
 static c3 c_la_clo, late;
-static obj hom_ini(vm, num), tupl(vm, ...), hom_fin(vm, obj),
+static obj tupl(vm, ...), hom_fin(vm, obj),
            def_sug(vm, obj), snoc(vm, obj, obj),
            look(vm, obj, obj);
-static num lidx(obj, obj);
+static num idx(obj, obj);
 static obj linitp(vm, obj, mem);
 static obj imx(vm, mem, num, terp*, obj);
 enum location { Here, Loc, Arg, Clo, Wait };
+#define c1(nom,...) static obj nom(vm v,mem e,num m,##__VA_ARGS__)
+#define c2(nom,...) static obj nom(vm v,mem e,num m,obj x,##__VA_ARGS__)
 
-#define N(x) putnum(x)
-#define Gn(x) getnum(x)
-#define End 0l
+
+// it's basically an "analyzing evaluator" that produces
+// threads that run on the lisp vm. each code-generating
+// function first generates its immediate continuation,
+// so there's an implicit CPS transformation. continuations
+// are explicitly constructed by pushing function pointers
+// onto the main lips stack like this:
 #define Push(...) pushs(v,__VA_ARGS__,End)
-// compile current continuation
-// it uses the main data stack as an alternate return stack
-// on which it can explicitly construct its own continuations.
-// any time you see something like
-//    return Push(...), ccc(v, e, m)
-// that's basically a hack to enable CPS in C.
+// and then popped off like this:
+#define ccc ((c1*)Gn(*Sp++))
+// there's a natural correspondence between the Push(...),
+// ccc(...) idiom used in this file and normal continuation
+// passing style in lisp (cf. the stage 2 compiler).
 
-// the compiler uses three stacks:
-// 0. stack 0 is the main data/call stack, and
-//    is used for compiler continuations
-// 1. stack 1 is implemented with pairs in Xp,
-//    and is used for conditional branch entry
-//    points
-// 2. stack 2 is implemented with pairs in Ip,
-//    and is used for conditional exit points
+#define End 0l
+// in addition to the main stack, the compiler uses Xp and Ip
+// as auxiliary stacks for code entry points when generating
+// conditionals. this is admittedly kind of sus.
 
 // " compilation environments "
-// the compilation environment is represented as a pointer to
-// a tuple with a structure specified below, or nil for the
-// global environment. the object should be gc protected.
-#define arg(x)  AR(x)[0]
-#define loc(x)  AR(x)[1]
-#define clo(x)  AR(x)[2]
-#define par(x)  AR(x)[3]
-#define lams(x) AR(x)[4]
-#define name(x) AR(x)[5]
-#define vals(x) AR(x)[6]
-#define asig(x) AR(x)[7]
-// 1. the list of arguments to the procedure being compiled
-// 2. the list of local variables defined in the procedure
-// 3. the list of closure variables imported into the procedure
-// 4. the parent (lexical) scope of the procedure
-// 5. the dictionary of known variable values for this procedure
+// the current lexical environment is passed to compiler
+// functions as a pointer to an object, either a tuple with a
+// structure specified below, or nil for toplevel. it's a
+// pointer to an object, instead of just an object, so it can
+// be gc-protected once instead of separately by every function.
+// in the other compiler it's just a regular object.
+#define toplp(x) nilp(*x)
+#define arg(x)  AR(x)[0] // argument variables : a list
+#define loc(x)  AR(x)[1] // local variables : a list
+#define clo(x)  AR(x)[2] // closure variables : a list
+#define par(x)  AR(x)[3] // surrounding scope : tuple or nil
+#define lams(x) AR(x)[4] // inner definitions : a table before code generation, then a list
+#define name(x) AR(x)[5] // function name : a symbol or nil
+#define vals(x) AR(x)[6] // immediate values bound in this scope : a table
+#define asig(x) AR(x)[7] // arity signature : an integer
+// for a function f let n be the number of required arguments.
+// then if f takes a fixed number of arguments the arity
+// signature is n; otherwise it's -n-1.
 
-#define Arity(n) {\
-  num i = llen(Y(x));\
-  if (i<n) return arity_error(v, e, x, i, n); }
-
+// here's some functions for errors.
 static obj arity_error(vm v, mem e, obj x, num h, num w) {
   return err(v, "compile", x, "wrong arity : %ld of %ld", h, w); }
 static obj type_error(vm v, mem e, obj x, enum type h, enum type w) {
   return err(v, "compile", x, "wrong type : %s for %s", tnom(h), tnom(w)); }
-#define toplp(x) nilp(*x)
-#define c1(nom,...) static obj nom(vm v,mem e,num m,##__VA_ARGS__)
-#define c2(nom,...) static obj nom(vm v,mem e,num m,obj x,##__VA_ARGS__)
-
-static Inline obj em1(terp *i, obj k) {
-  hom h = gethom(k)-1;
-  G(h) = i;
-  return puthom(h); }
-
-static Inline obj em2(terp *i, obj j, obj k) {
-  return em1(i, em1((terp*)j, k)); }
+#define Arity(n) {\
+  num i = llen(Y(x));\
+  if (i<n) return arity_error(v, e, x, i, n); }
 
 #define None 8
 static enum type consumes(obj h) {
@@ -259,12 +237,12 @@ c1(c_d_bind) {
   obj y = *Sp++;
   return toplp(e) ?
     imx(v, e, m, tbind, y) :
-    imx(v, e, m, setl, N(lidx(loc(*e), y))); }
+    imx(v, e, m, setl, N(idx(loc(*e), y))); }
 
 c1(c_ev_d) {
   obj w = *Sp++, y;
   mm(&w);
-  if (toplp(e) || lidx(loc(*e), X(w)) != -1)
+  if (toplp(e) || idx(loc(*e), X(w)) != -1)
     Push(N(c_d_bind), X(w));
   y = look(v, *e, X(w));
   return um,
@@ -360,10 +338,10 @@ static obj look(vm v, obj e, obj y) {
   if (nilp(e)) return (q = topl_lookup(v, y)) ?
     L(Here, q) : L(Wait, Dict);
   if ((q = tbl_get(v, vals(e), y))) return L(Here, q);
-  if ((q = lidx(lams(e), y)) != -1) return L(Wait, vals(e));
-  if ((q = lidx(loc(e), y)) != -1) return L(Loc, e);
-  if ((q = lidx(arg(e), y)) != -1) return L(Arg, e);
-  if ((q = lidx(clo(e), y)) != -1) return L(Clo, e);
+  if ((q = idx(lams(e), y)) != -1) return L(Wait, vals(e));
+  if ((q = idx(loc(e), y)) != -1) return L(Loc, e);
+  if ((q = idx(arg(e), y)) != -1) return L(Arg, e);
+  if ((q = idx(clo(e), y)) != -1) return L(Clo, e);
   return look(v, par(e), y); }
 #undef L
 
@@ -384,10 +362,10 @@ c2(c_sy) {
   if (toplp(e)) return (q = topl_lookup(v, x)) ?
     c_imm(v, e, m, q) : late(v, e, m, x, Dict);
   if ((q = tbl_get(v, vals(*e), x))) return c_imm(v, e, m, q);
-  if ((q = lidx(lams(*e), x)) != -1) return late(v, e, m, x, vals(*e));
-  if ((q = lidx(loc(*e), x)) != -1) return imx(v, e, m, locn, N(q));
-  if ((q = lidx(arg(*e), x)) != -1) return imx(v, e, m, argn, N(q));
-  if ((q = lidx(clo(*e), x)) != -1) return imx(v, e, m, clon, N(q));
+  if ((q = idx(lams(*e), x)) != -1) return late(v, e, m, x, vals(*e));
+  if ((q = idx(loc(*e), x)) != -1) return imx(v, e, m, locn, N(q));
+  if ((q = idx(arg(*e), x)) != -1) return imx(v, e, m, argn, N(q));
+  if ((q = idx(clo(*e), x)) != -1) return imx(v, e, m, clon, N(q));
 
   // the symbol isn't bound locally so search the enclosing scopes
   with(x, q = look(v, par(*e), x));
@@ -557,10 +535,78 @@ c1(emsepsp) { return imx(v, e, m, emse, putnum(' ')); }
 c1(emsepnl) { return imx(v, e, m, emse, putnum('\n')); }
 c2(em_c) { return cunv(v, e, m, Y(x), emsepsp, emsepnl); }
 
-struct intro_rec {
-  const char *nom;
-  terp *addr; };
+static Inline c2 *inliner(vm v, mem e, obj x) {
+  if (symp(x)) x = X(x = look(v, *e, x)) == N(Here) ? Y(x) : 0;
+  if (x && homp(x) && (x = tbl_get(v, v->cdict, N(G(x)))))
+    return (c2*) Gn(x);
+  return NULL; }
 
+static obj snoc(vm v, obj l, obj x) {
+  if (!twop(l)) return pair(v, x, l);
+  with(l, x = snoc(v, Y(l), x));
+  return pair(v, X(l), x); }
+
+static obj linitp(vm v, obj x, mem d) {
+  if (!twop(Y(x))) return *d = x, nil;
+  obj y; with(x, y = linitp(v, Y(x), d));
+  return pair(v, X(x), y); }
+
+// syntactic sugar for define
+static obj def_sug(vm v, obj x) {
+  obj y = nil;
+  with(y, x = linitp(v, x, &y));
+  x = pair(v, x, y),   x = pair(v, Se, x);
+  x = pair(v, x, nil), x = pair(v, La, x);
+  return pair(v, x, nil); }
+
+// list functions
+static num idx(obj l, obj x) {
+  num i = 0;
+  for (; twop(l); l = Y(l), i++) if (x == X(l)) return i;
+  return -1; }
+
+num llen(obj l) {
+  for (num i = 0;; l = Y(l), i++) if (!twop(l)) return i; }
+
+static tup tuplr(vm v, num i, va_list xs) {
+  tup t; obj x = va_arg(xs, obj);
+  return x ?
+    (with(x, t = tuplr(v, i+1, xs)), t->xs[i] = x, t) :
+    ((t = cells(v, Size(tup) + i))->len = i, t); }
+
+static obj tupl(vm v, ...) {
+  tup t; va_list xs;
+  return va_start(xs, v), t = tuplr(v, 0, xs), va_end(xs), puttup(t); }
+
+static void pushss(vm v, num i, va_list xs) {
+  obj x = va_arg(xs, obj);
+  if (x) with(x, pushss(v, i+1, xs)), *--Sp = x;
+  else if (Avail < i) reqsp(v, i); }
+
+static void pushs(vm v, ...) {
+  va_list xs; va_start(xs, v), pushss(v, 0, xs), va_end(xs); }
+
+obj hom_ini(vm v, num n) {
+  hom a = cells(v, n + 2);
+  return G(a+n) = NULL,
+         GF(a+n) = (terp*) a,
+         memset(a, -1, w2b(n)),
+         puthom(a+n); }
+
+static obj hom_fin(vm v, obj a) {
+  for (hom b = gethom(a);;) if (!b++->g)
+    return (obj) (b->g = (terp*) a); }
+
+obj homnom(vm v, obj x) {
+  terp *k = G(x);
+  if (k == clos || k == pc0 || k == pc1)
+    x = (obj) G(FF(x));
+  mem h = (mem) gethom(x);
+  while (*h) h++;
+  x = h[-1];
+  return (mem)x >= Pool &&
+         (mem)x < Pool+Len &&
+         symp(x) ? x : nil; }
 
 static void rpr(vm v, mem d, const char *n, terp *u, c2 *c) {
   obj x, y = interns(v, n);
@@ -573,6 +619,7 @@ static void rin(vm v, mem d, const char *n, terp *u) {
   tbl_set(v, *d, y, putnum(u)); }
 
 #define prims(_)\
+  _("read", rd_u, NULL),\
   _(".", em_u, em_c),        _("ns", globs, NULL),\
   _("*:", car_u, car_c),     _(":*", cdr_u, cdr_c),\
   _("*!", setcar_u, rpla_c), _("!*", setcdr_u, rpld_c),\
@@ -618,8 +665,6 @@ static Inline obj syntax_array(vm v) {
 #undef bsym
   return y; }
 
-
-
 vm initialize() {
   vm v = malloc(sizeof(struct rt));
   if (!v) errp(v, "init", 0, "malloc failed");
@@ -638,77 +683,3 @@ vm initialize() {
 
 void finalize(vm v) {
   free(v->mem_pool), free(v); }
-
-static Inline c2 *inliner(vm v, mem e, obj x) {
-  if (symp(x)) x = X(x = look(v, *e, x)) == N(Here) ? Y(x) : 0;
-  if (x && homp(x) && (x = tbl_get(v, v->cdict, N(G(x)))))
-    return (c2*) Gn(x);
-  return NULL; }
-
-static obj snoc(vm v, obj l, obj x) {
-  if (!twop(l)) return pair(v, x, l);
-  with(l, x = snoc(v, Y(l), x));
-  return pair(v, X(l), x); }
-
-static obj linitp(vm v, obj x, mem d) {
-  if (!twop(Y(x))) return *d = x, nil;
-  obj y; with(x, y = linitp(v, Y(x), d));
-  return pair(v, X(x), y); }
-
-// syntactic sugar for define
-static obj def_sug(vm v, obj x) {
-  obj y = nil;
-  with(y, x = linitp(v, x, &y));
-  x = pair(v, x, y),   x = pair(v, Se, x);
-  x = pair(v, x, nil), x = pair(v, La, x);
-  return pair(v, x, nil); }
-
-// list functions
-static num lidx(obj l, obj x) {
-  num i = 0;
-  for (; twop(l); l = Y(l), i++) if (x == X(l)) return i;
-  return -1; }
-
-num llen(obj l) {
-  for (num i = 0;; l = Y(l), i++) if (!twop(l)) return i; }
-
-static tup tuplr(vm v, num i, va_list xs) {
-  tup t; obj x = va_arg(xs, obj);
-  return x ?
-    (with(x, t = tuplr(v, i+1, xs)), t->xs[i] = x, t) :
-    ((t = cells(v, Size(tup) + i))->len = i, t); }
-
-static obj tupl(vm v, ...) {
-  tup t; va_list xs;
-  va_start(xs, v), t = tuplr(v, 0, xs), va_end(xs);
-  return puttup(t); }
-
-static void pushss(vm v, num i, va_list xs) {
-  obj x = va_arg(xs, obj);
-  if (x) with(x, pushss(v, i+1, xs)), *--Sp = x;
-  else if (Avail < i) reqsp(v, i); }
-
-static void pushs(vm v, ...) {
-  va_list xs; va_start(xs, v), pushss(v, 0, xs), va_end(xs); }
-
-static obj hom_ini(vm v, num n) {
-  hom a = cells(v, n + 2);
-  return G(a+n) = NULL,
-         GF(a+n) = (terp*) a,
-         memset(a, -1, w2b(n)),
-         puthom(a+n); }
-
-static obj hom_fin(vm v, obj a) {
-  for (hom b = gethom(a);;) if (!b++->g)
-    return (obj) (b->g = (terp*) a); }
-
-obj homnom(vm v, obj x) {
-  terp *k = G(x);
-  if (k == clos || k == pc0 || k == pc1)
-    x = (obj) G(FF(x));
-  mem h = (mem) gethom(x);
-  while (*h) h++;
-  x = h[-1];
-  return (mem)x >= Pool &&
-         (mem)x < Pool+Len &&
-         symp(x) ? x : nil; }

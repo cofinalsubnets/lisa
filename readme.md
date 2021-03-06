@@ -15,18 +15,25 @@ features:
 
 ## lisp dialect
 parentheses, semicolons, and single and double quotes all do
-what you would expect. in general functions are call by value
-with unspecified order, but this rule is frequently violated in
-special cases when the function is known at compile time (eg.
-to permit shortcut evaluation). user visible data include
-integers, symbols, strings, pairs, functions, hash tables, and
-nil, which is self quoting and false. the compiler does a
-certain amount of static type and arity checking, so some
-obvious programming errors will be caught at compile time.
+what you would expect. there's no quasiquotation or improper
+list literals. the syntax consists of a small set of short
+[function words][fun_word] and tries to minimize superfluous
+parentheses. user visible data types currently include
+integers, symbols, strings, pairs, functions, hash tables,
+and nil, which is self quoting and false.
 
-the examples below are given with their equivalents in scheme.
+currently functions (including user functions) are usually
+call by value with right-to-left argument evaluation, but
+for many specific primitive functions the compiler produces
+code with different behavior (eg. left-to-right shortcut
+evaluation). left-to-right evaluation as a rule is a planned
+feature. the compiler also does a certain amount of static
+type and arity checking, so some obvious programming errors
+will be caught immediately.
 
 ### special forms
+the examples below are given with their equivalents in scheme.
+
 #### `\` lambda
 - `(\) = (lambda () '())`
 - `(\ a) = (lambda () a)`
@@ -45,7 +52,7 @@ ordinary symbol with special meaning in a lambda list.
 - `(, a) = a`
 - `(, a b) = (begin a b)`
 
-evaluate expressions left to right. the expression has the
+evaluate expressions left-to-right. the expression has the
 value of its last argument, or nil.
 
 #### `:` define
@@ -122,13 +129,14 @@ bad, sorry, you know what they say about naming things!
 - useful i/o
 - namespaces / module system
 
-the compiler still lacks several basic features:
+the bootstrap compiler isn't fully ported to lips yet, and
+it lacks several basic features that should be in the final
+version:
 - control flow analysis
 - dead code elimination
 - beta reduction (inlining)
 - delta reduction (constant folding)
 - a real type system
-- native code generation
 
 the memory manager is very simple and might benefit from these
 improvements:
@@ -140,4 +148,5 @@ improvements:
 
 [lisp]: https://en.wikipedia.org/wiki/Lisp_(programming_language)
 [forth]: https://en.wikipedia.org/wiki/Forth_(programming_language)
-[threaded]: https://en.wikipedia.org/wiki/Threaded_code 
+[threaded]: https://en.wikipedia.org/wiki/Threaded_code
+[fun_word]: https://en.wikipedia.org/wiki/Function_word

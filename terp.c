@@ -265,6 +265,9 @@ v_op(cont) {
   memcpy(sp, t->xs+1, w2b(t->len-1));
   Jump(ret); }
 
+v_op(rd_u) {
+  obj x; CallC(x = parse(v, stdin), x = x ? pair(v, x, nil) : nil);
+  Go(ret, x); }
 
 // eval
 v_op(ev_u) {

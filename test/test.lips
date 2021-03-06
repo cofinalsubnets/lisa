@@ -14,16 +14,11 @@
 (: li (\ . . .) ; dot only has special meaning following another argument, which can be dot
    ++ (\ a b(?(twop a)(::(*: a)(++(:* a)b))b)) ; append
    iota (\ n x .
-     (: .i (\ m n (? (< m n) (:: m (.i (+ m 1) n))))
-       (? (nilp x) (.i 0 n) (.i n (*: x)))))
+    (: iota.l (\ m n (? (< m n) (:: m (iota.l (+ m 1) n))))
+     (? (nilp x) (iota.l 0 n) (iota.l n (*: x)))))
    rho (\ n xs .
-     ;; like in APL
-     ;; (rho 0 1 2) = ()
-     ;; (rho 1 1 2) = (li 1 2)
-     ;; (rho 2 1 2) = (li 1 2 1 2)
-     ;; (rho 2 (rho 2 0)) = (li (li 0 0) (li 0 0))
-     (: rho.l(\ n x(?(= n 1)x(++ x(rho.l(- n 1)x))))
-       (?(> n 0)(rho.l n xs)))))
+    (: rho.l(\ n x(?(= n 1)x(++ x(rho.l(- n 1)x))))
+     (?(> n 0)(rho.l n xs)))))
 
 ; hurray a new language
 (: quine ((\ q ((ev q) q)) '(\ i (li i (li '` i))))
@@ -269,16 +264,17 @@
        (ccoprecon e m k)))))))))))))
 
   (,(test 'get-set (= (li 1) (: d (tbl) (e-s1 d (:: 1 (e-s1 d))))))
-    (test 'comp-em
-     (= 3 ((emi i-immv (emx 3 (emi i-ret (hom 3)))))))
+    (test 'comp-em (= 3 ((emi i-immv (emx 3 (emi i-ret (hom 3)))))))
     (test 'comp-qt (-> (li 1) (\ y (= y ((ana (li '` y)))))))
     (test 'comp-ap (= 6 ((ana (li + 1 2 3)))))
     (test 'comp-sq (: box (li 0) inc (\(*! box (+ 1 (*: box))))
      (= 3 ((ana (li ', (li inc) (li inc) (li inc)))))))
     (test 'comp-de
      (-> 123 (\ x
-      (-> ((ana (li ': '__123 x))) (\ y
-       (-> __123 (\ z (= x y z))))))))
-    (test 'comp-y-top (= __123 ((ana '__123))))
-    (test 'comp-co (&& (= 1 ((ana '(? () 0 1))))
-                       (= 0 ((ana '(? 1 0 ()))))))))
+      (-> ((ana (li ': '_123 x))) (\ y
+       (-> _123 (\ z (= x y z))))))))
+    (test 'comp-sy (= _123 ((ana '_123))))
+    (test 'comp-co (&& (= 1 ((ana '(? () 0 1))));false
+                       (= 0 ((ana '(? 1 0 ()))));true
+                       (= 1 ((ana '(? () (? () 1 0);nested
+                                         (? () 0 1)))))))))

@@ -90,8 +90,7 @@ static Inline void do_copy(vm v, num l0, mem b0, num l1, mem b1) {
   num ro = t1 - t0;
   Sp += ro, Fp += ro;
   Syms = nil;
-  while (t0-- > s0)
-    Sp[t0 - s0] = cp(v, *t0, l0, b0);
+  while (t0-- > s0) Sp[t0 - s0] = cp(v, *t0, l0, b0);
 #define CP(x) x=cp(v,x,l0,b0)
   CP(Ip), CP(Xp), CP(Syn), CP(v->dict); CP(v->cdict);
   for (root r = Safe; r; r = r->next)
@@ -107,16 +106,14 @@ typedef obj cp_(vm, obj, num, mem);
 static cp_ cphom, cptup, cptwo, cpsym, cpoct, cptbl;
 #define cpcc(n) static obj n(vm v, obj x, num ln, mem lp)
 
-// this is the generic copy function.
-cpcc(cp) {
-  switch (kind(x)) {
-    case Hom: return cphom(v, x, ln, lp);
-    case Tup: return cptup(v, x, ln, lp);
-    case Oct: return cpoct(v, x, ln, lp);
-    case Two: return cptwo(v, x, ln, lp);
-    case Sym: return cpsym(v, x, ln, lp);
-    case Tbl: return cptbl(v, x, ln, lp);
-    default:  return x; } }
+cpcc(cp) {  switch (kind(x)) {
+  case Hom: return cphom(v, x, ln, lp);
+  case Tup: return cptup(v, x, ln, lp);
+  case Oct: return cpoct(v, x, ln, lp);
+  case Two: return cptwo(v, x, ln, lp);
+  case Sym: return cpsym(v, x, ln, lp);
+  case Tbl: return cptbl(v, x, ln, lp);
+  default:  return x; } }
 
 #define inb(o,l,u) (o>=l&&o<u)
 #define fresh(o) inb((mem)(o),Pool,Pool+Len)
