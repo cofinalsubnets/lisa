@@ -8,8 +8,8 @@ static void c_de_r(vm, mem, obj),
             scan(vm, mem, obj), pushs(vm, ...);
 static Inline c2 *inliner(vm, mem, obj);
 static c1  c_ev, produce, c_d_bind, inst, insx, c_ini;
-static c2 c_eval, c_sy, c_2, c_imm, ltu, c_ap;
-static c3 c_la_clo, late;
+static c2 c_eval, c_sy, c_2, c_imm, ltu, c_ap, c_la_clo;
+static c3 late;
 static obj tupl(vm, ...), hom_fin(vm, obj),
            def_sug(vm, obj), snoc(vm, obj, obj),
            look(vm, obj, obj);
@@ -27,17 +27,16 @@ enum location { Here, Loc, Arg, Clo, Wait };
 // so there's an implicit CPS transformation. continuations
 // are explicitly constructed by pushing function pointers
 // onto the main lips stack like this:
-#define Push(...) pushs(v,__VA_ARGS__,End)
+#define Push(...) pushs(v,__VA_ARGS__,non)
 // and then popped off like this:
 #define ccc ((c1*)Gn(*Sp++))
 // there's a natural correspondence between the Push(...),
-// ccc(...) idiom used in this file and normal continuation
+// ccc(...) pattern used in this file and normal continuation
 // passing style in lisp (cf. the stage 2 compiler).
 
-#define End 0l
 // in addition to the main stack, the compiler uses Xp and Ip
-// as auxiliary stacks for code entry points when generating
-// conditionals. this is admittedly kind of sus.
+// as stacks for storing code entry points when generating
+// conditionals, which is admittedly kind of sus.
 
 // " compilation environments "
 // the current lexical environment is passed to compiler
@@ -130,7 +129,7 @@ static obj asign(vm v, obj a, num i, mem m) {
 static obj scope(vm v, mem e, obj a, obj n) {
   num s = 0;
   with(n, a = asign(v, a, 0, &s));
-  obj x, y = tupl(v, a, nil, nil, *e, nil, n, nil, N(s), End);
+  obj x, y = tupl(v, a, nil, nil, *e, nil, n, nil, N(s), non);
   with(y, x = table(v), vals(y) = x,
           x = table(v), lams(y) = x);
   return y; }
@@ -218,14 +217,14 @@ c2(c_la) {
   with(k,
     x = homp(x = ltu(v, e, nom, x)) ? x :
     (j = toplp(e) || !twop(loc(*e)) ? encln : encll,
-     c_la_clo(v, e, m, X(x), Y(x))));
+     c_la_clo(v, e, X(x), Y(x))));
   return em2(j, x, k); }
 
 c2(c_imm) {
   return Push(N(immv), x, N(produce), N(kind(x)), x),
          insx(v, e, m); }
 
-static obj c_la_clo(vm v, mem e, num m, obj arg, obj seq) {
+static obj c_la_clo(vm v, mem e, obj arg, obj seq) {
   num i = llen(arg);
   mm(&arg), mm(&seq);
   for (Push(N(insx), N(take), N(i), N(c_ini));

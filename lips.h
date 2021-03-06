@@ -8,8 +8,9 @@
 
 // thanks !!
 typedef int64_t obj, num, *mem;
-#define Word 8l
-#define nil (~(obj)0l)
+#define non ((obj)0)
+#define nil (~non)
+#define Word sizeof(non)
 
 typedef struct root { mem one; struct root *next; } *root;
 typedef struct rt {

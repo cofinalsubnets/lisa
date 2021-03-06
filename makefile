@@ -10,7 +10,7 @@ v=`git rev-parse HEAD`
 # why these compiler flags :
 # - fixnums need sign-extended bit shifting.
 # - inlining bloats code and GCC even does it for tail calls,
-#   which is silly. don't do it at all by default.
+#   which is silly. turn it off by default.
 # - stack smash protection also hurts tco.
 c=cc -g -O2 -flto -DNOM=\"$n\" -DVN=\"$v\"\
 	-Wall -Wno-shift-negative-value\

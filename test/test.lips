@@ -45,9 +45,9 @@
 
 ; hash tables are mysterious
 (: hasht (\ n
-  (: d (tbl) (, (from 0 (+ n 1) (\ m (tbl-set d m m)))
-                (tbl-get d n))))
-  (test 'hashes (= 99 (hasht 99))))
+ (: d (tbl) (,(from 0 (+ n 1) (\ m (tbl-set d m m)))
+              (tbl-get d n))))
+ (test 'hashes (= 99 (hasht 99))))
 
 
 (test 'continuations
@@ -123,7 +123,7 @@
          (snoc ((flip snoc) 2 (li 1)) 3)
          (foldr () :: (iota 1 4)))))
 
-(:
+(: ; ok now let's port the compiler
  env (\ a p n vs
   (: .l (\ a n ;; lol what is this thing
          (? (twop a)
@@ -149,10 +149,8 @@
  e-s1  (gtk 's1)  e-s2  (gtk 's2)
  inst (\ e m i k (emi i (k e (+ m 1))))
  insx (\ e m i x k (emi i (emx x (k e (+ m 2)))))
- ini  (\ e m (insx e m i-ret (e-nom e) (\ e m (hom m))))
  imm  (\ e m x k (insx e m i-immv x k))
  cev  (\ e m x k ((? (twop x) c2 (symp x) cy imm) e m x k))
- ana (\ x (cev (env () () () (ns)) 0 x ini))
 
  cy (\ e m x k (?                      ; this is weird sorry
   (tbl-has (e-val e) x)                ; the C version has a lot of reassigning variables
@@ -194,14 +192,16 @@
  desug (\ d (li (li '\ (li ', (init d) (last d)))))
  init (\ l (? (twop (:* l)) (:: (*: l) (init (:* l)))))
  last (\ l (? (twop (:* l)) (last (:* l)) (*: l)))
+ t-hom 0 t-num 1 t-two 2 t-tup 3 t-oct 4
+ t-tbl 5 t-sym 6 t-nil 7 t-none 8
  consumes (\ h (-> (hom-get-i h) (\ i
-  (? (= i i-tchom) 0
-     (= i i-tcnum) 1
-     (= i i-tctwo) 2
-                   8))))
+  (? (= i i-tchom) t-hom
+     (= i i-tcnum) t-num
+     (= i i-tctwo) t-two
+                   t-none))))
  late (\ e m x d k (-> (k e (+ m 2)) (\ h
   (-> (consumes h) (\ t
-   (-> (? (= t 'none) h (hom-seek h 1)) (\ h
+   (-> (? (= t t-none) h (hom-seek h 1)) (\ h
     (emi i-lbind (emx (:: t (:: d x)) h)))))))))
   
  cca (\ e m x k (-> (k e (+ m 2)) (\ q (?
@@ -263,18 +263,49 @@
       (cev e m (*: (:* x)) (\ e m
        (ccoprecon e m k)))))))))))))
 
-  (,(test 'get-set (= (li 1) (: d (tbl) (e-s1 d (:: 1 (e-s1 d))))))
-    (test 'comp-em (= 3 ((emi i-immv (emx 3 (emi i-ret (hom 3)))))))
-    (test 'comp-qt (-> (li 1) (\ y (= y ((ana (li '` y)))))))
-    (test 'comp-ap (= 6 ((ana (li + 1 2 3)))))
-    (test 'comp-sq (: box (li 0) inc (\(*! box (+ 1 (*: box))))
-     (= 3 ((ana (li ', (li inc) (li inc) (li inc)))))))
-    (test 'comp-de
-     (-> 123 (\ x
-      (-> ((ana (li ': '_123 x))) (\ y
-       (-> _123 (\ z (= x y z))))))))
-    (test 'comp-sy (= _123 ((ana '_123))))
-    (test 'comp-co (&& (= 1 ((ana '(? () 0 1))));false
-                       (= 0 ((ana '(? 1 0 ()))));true
-                       (= 1 ((ana '(? () (? () 1 0);nested
-                                         (? () 0 1)))))))))
+ t-nom (\ t (?
+  (= t t-hom) 'hom
+  (= t t-num) 'num
+  (= t t-two) 'two
+  (= t t-tup) 'tup
+  (= t t-oct) 'str
+  (= t t-tbl) 'tbl
+  (= t t-sym) 'sym
+  (= t t-nil) 'nil))
+
+ type-err (\ h w (fail
+  (li 'type-error ': (t-nom h) 'for (t-nom w))))
+ arity-err (\ h w (fail
+  (li 'arity-error ': h 'of w)))
+ tc (\ t h
+  (-> (consumes h) (\ u
+   (? (= t u) (tc t (hom-seek h 1))
+    (? (= u t-none) h
+     (type-err t u))))))
+ produce (\ e m t k (tc t (k e (+ m 2))))
+ cla (\ e m x k
+  (-> (produce e m t-hom (\ e m (k e (+ m 2)))) (\ k
+   (-> (ltu e () x) (\ x (?
+    (homp x) (emi i-immv (emx x k))
+             (emi (? (|| (toplp e) (nilp (e-loc e))) i-encln i-encll)
+                  (emx (claclo e x) k))))))))
+
+ ini (\ e m (insx e m i-ret (e-nom e) (\ e m (hom m))))
+ ana (\ x (cev (env () () () (ns)) 0 x ini)))
+
+(test 'get-set (= (li 1) (: d (tbl) (e-s1 d (:: 1 (e-s1 d))))))
+(test 'comp-em (= 3 ((emi i-immv (emx 3 (emi i-ret (hom 3)))))))
+(test 'comp-qt (-> (li 1) (\ y (= y ((ana (li '` y)))))))
+(test 'comp-ap (= 6 ((ana (li + 1 2 3)))))
+(test 'comp-sq (: box (li 0) inc (\(*! box (+ 1 (*: box))))
+ (= 3 ((ana (li ', (li inc) (li inc) (li inc)))))))
+(test 'comp-de
+ (-> 123 (\ x
+  (-> ((ana (li ': '_123 x))) (\ y
+   (-> _123 (\ z (= 123 x y z))))))))
+(test 'comp-sy (= _123 ((ana '_123))))
+(test 'comp-co (&& (= 1 ((ana '(? () 0 1))));false
+                   (= 0 ((ana '(? 1 0 ()))));true
+                   (nilp ((ana '(? () 1))));even
+                   (= 1 ((ana '(? () (? () 1 0);nested
+                                     (? () 0 1)))))))

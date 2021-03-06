@@ -1,10 +1,9 @@
 # lips
 it's a [lisp][lisp] dialect with a fast virtual machine that
 runs [forth][forth]-style [threaded code][threaded]. it works
-on AMD64/ARM64 and probably on other 64-bit platforms, but will
-most likely crash on 32-bit because of certain technical
-assumptions. specifically it relies on these platform
-features:
+on AMD64/ARM64 and probably on other 64-bit platforms, but
+will most likely crash on 32-bit because of certain technical
+assumptions. specifically it relies on these platform features:
 - 8-byte pointer alignment
 - no more than 61 bits of code address space (so function
   pointers can go in fixnums)

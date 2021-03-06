@@ -30,6 +30,7 @@ class Lang
 
 
 class Bench < Hash
+  A = {}
   def nom; @nom end
   def initialize(nom)
     @nom = nom end
@@ -41,9 +42,12 @@ class Bench < Hash
     each { |p, f| p.run f, n, r } end
   def self.mark(nom, n=1, p=2)
     yield (i = new nom)
-    i.run n, p end end
+    A[nom] = proc { i.run n, p } end
+  def self.run(a)
+    a.each { |n| A[n][] } end
+end
 
-lips = Lang.new "lips", "../lips.bin"
+lips = Lang.new "lips", ARGV.shift
 ruby = Lang.new "ruby", "ruby"
 mruby = Lang.new "mruby", "mruby"
 chez = Lang.new "chez", "chez-scheme", "--script"
@@ -56,6 +60,7 @@ luajit = Lang.new "luajit", "luajit"
 ljoff = Lang.new '"" -joff', "luajit", "-joff"
 sbcl = Lang.new "sbcl", "sbcl", "--script"
 clisp = Lang.new "clisp", "clisp"
+newlisp = Lang.new "newlisp", "newlisp"
 ecl = Lang.new "ecl", "ecl", "--shell"
 perl5 = Lang.new "perl5", "perl" # it's really slow
 ghc = Lang.new "ghc", "runghc"
@@ -66,59 +71,64 @@ bash = Lang.new "bash", "bash"
 
 # startup time benchmark. perl does well on this
 # one. ruby is near the bottom of the pack here.
-Bench.mark("startup time", 16, 4) do |bye|
+Bench.mark("start/stop", 16, 4) do |bye|
   bye.add lips, "bye.lips"
-  bye.add perl5, "bye.pl"
-#  bye.add ruby, "bye.rb"
-#  bye.add cpy, "bye.py"
-#  bye.add pypy, "bye.py"
-  bye.add pico, "bye.l"
-#  bye.add chez, "bye.scm"
-  bye.add bash, "bye.sh"
   bye.add luajit, "bye.lua"
+  bye.add sbcl, "bye.lisp"
+  bye.add chez, "bye.scm"
+  bye.add node, "bye.js"
+  bye.add perl5, "bye.pl"
+  bye.add ruby, "bye.rb"
+  bye.add pypy, "bye.py"
+  bye.add cpy, "bye.py"
+  bye.add pico, "bye.l"
+  bye.add bash, "bye.sh"
   bye.add lua, "bye.lua"
 end
 
-#Bench.mark("fib(32)", 32, 4) do |fib|
-#  fib.add lips, "fib.lips"
-#  fib.add chez, "fib.scm"
-#  fib.add sbcl, "fib.lisp"
-#  fib.add guile, "fib.scm"
-#  fib.add luajit, "fib.lua"
-#  fib.add ljoff, "fib.lua"
-#  fib.add node, "fib.js"
-#  fib.add ruby, "fib.rb"
-#  fib.add pypy, "fib.py"
-#  fib.add lua, "fib.lua"
-#  fib.add pico, "fib.l"
-#  fib.add mruby, "fib.rb"
-#  fib.add cpy, "fib.py"
-#  fib.add owl, "fib.scm"
-#  fib.add ecl, "fib.lisp"
-#  fib.add clisp, "fib.lisp"
-#  fib.add perl5, "fib.pl"
+Bench.mark("fib(32)") do |fib|
+  fib.add lips, "fib.lips"
+  fib.add luajit, "fib.lua"
+  fib.add sbcl, "fib.lisp"
+  fib.add chez, "fib.scm"
+  fib.add ljoff, "fib.lua"
+  fib.add guile, "fib.scm"
+  fib.add newlisp, "fib.lsp"
+  fib.add node, "fib.js"
+  fib.add ruby, "fib.rb"
+  fib.add pypy, "fib.py"
+  fib.add lua, "fib.lua"
+  fib.add pico, "fib.l"
+  fib.add mruby, "fib.rb"
+  fib.add cpy, "fib.py"
+  fib.add owl, "fib.scm"
+  fib.add ecl, "fib.lisp"
+  fib.add clisp, "fib.lisp"
+  fib.add perl5, "fib.pl"
 #  fib.add ghc, "fib.hs"
 #  fib.add hugs, "fib.hs"
-#end
+end
 
-#Bench.mark("ack(3,9)") do |ack|
-#  ack.add chez, "ack.scm"
-#  ack.add sbcl, "ack.lisp"
-#  ack.add lips, "ack.lips"
-#  ack.add guile, "ack.scm"
-#  ack.add luajit, "ack.lua"
-#  ack.add ljoff, "ack.lua"
-#  ack.add node, "ack.js"
-#  ack.add ruby, "ack.rb"
-#  ack.add lua, "ack.lua"
-#  ack.add pico, "ack.l"
-##  ack.add owl, "ack.scm"
-##  ack.add mruby, "ack.rb"
-##  ack.add ecl, "ack.lisp"
-##  ack.add clisp, "ack.lisp" # stack overflow
-#  ack.add pypy, "ack.py"
-##  ack.add cpy, "ack.py" # stack overflow
-##  ack.add perl5, "ack.pl"
-##  ack.add ghc, "ack.hs"
-##  ack.add hugs, "ack.hs"
-#end
+Bench.mark("ack(3,9)") do |ack|
+  ack.add lips, "ack.lips"
+  ack.add luajit, "ack.lua"
+  ack.add sbcl, "ack.lisp"
+  ack.add chez, "ack.scm"
+  ack.add node, "ack.js"
+  ack.add ljoff, "ack.lua"
+  ack.add guile, "ack.scm"
+  ack.add ruby, "ack.rb"
+  ack.add lua, "ack.lua"
+  ack.add pico, "ack.l"
+  ack.add owl, "ack.scm"
+#  ack.add mruby, "ack.rb"
+#  ack.add ecl, "ack.lisp"
+#  ack.add clisp, "ack.lisp" # stack overflow
+  ack.add pypy, "ack.py"
+#  ack.add cpy, "ack.py" # stack overflow
+#  ack.add perl5, "ack.pl"
+#  ack.add ghc, "ack.hs"
+#  ack.add hugs, "ack.hs"
+end
+
+Bench.run ARGV
