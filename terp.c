@@ -91,9 +91,6 @@ static v_op(ee_0) {
 // to spill function arguments on AMD64, sorry.
 v_op(gc) { num n = Xp; CallC(reqsp(v, n)); Next(0); }
 #define avail (sp-hp)
-// don't use the memory manager normally from this file.
-#undef mm
-#undef um
 
 
 // load instructions
@@ -341,13 +338,19 @@ v_op(tblc) {
   TypeCheck(Argv[0], Tbl);
   xp = tbl_get(v, Argv[0], Argv[1]);
   Go(ret, xp ? putnum(0) : nil); }
+
+static obj tblss(vm v, num i, num l) {
+  mem fp = Fp;
+  return i > l-2 ? Argv[i-1] :
+    (tbl_set(v, *Argv, Argv[i], Argv[i+1]),
+     tblss(v, i+2, l)); }
+
 v_op(tbls) {
   obj x = nil;
   ArityCheck(1);
   xp = *Argv;
   TypeCheck(xp, Tbl);
-  for (mem i = Argv+1, l = Argv+getnum(Argc); i <= l-2; i += 2)
-    CallC(x = tbl_set(v, xp, i[0], i[1]));
+  CallC(x = tblss(v, 1, getnum(Argc)));
   Go(ret, x); }
 v_op(tbld) {
   ArityCheck(2);

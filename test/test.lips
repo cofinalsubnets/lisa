@@ -191,10 +191,10 @@
  look (\ e y (?
   (tbl-has (e-val e) y)    (li 'here (tbl-get (e-val e) y))
   (toplp e)                (li 'wait (e-val e))
-  (>= (idx (e-lam e) y) 0) (li 'wait (e-val e))
-  (>= (idx (e-loc e) y) 0) (li 'loc e)
-  (>= (idx (e-arg e) y) 0) (li 'arg e)
-  (>= (idx (e-clo e) y) 0) (li 'clo e)
+  (< -1 (idx (e-lam e) y)) (li 'wait (e-val e))
+  (< -1 (idx (e-loc e) y)) (li 'loc e)
+  (< -1 (idx (e-arg e) y)) (li 'arg e)
+  (< -1 (idx (e-clo e) y)) (li 'clo e)
                            (look (e-par e) y)))
  desug (\ d (li (li '\ (li ', (init d) (last d)))))
  init (\ l (? (twop (:* l)) (:: (*: l) (init (:* l)))))
@@ -268,7 +268,8 @@
       (cev e m (*: (:* x)) (\ e m
        (ccoprecon e m k)))))))))))))
 
-  (,(test 'comp-em
+  (,(test 'get-set (= (li 1) (: d (tbl) (e-s1 d (:: 1 (e-s1 d))))))
+    (test 'comp-em
      (= 3 ((emi i-immv (emx 3 (emi i-ret (hom 3)))))))
     (test 'comp-qt (-> (li 1) (\ y (= y ((ana (li '` y)))))))
     (test 'comp-ap (= 6 ((ana (li + 1 2 3)))))

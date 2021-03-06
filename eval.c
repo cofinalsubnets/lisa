@@ -23,7 +23,7 @@ static void c_de_r(vm, mem, obj),
 static Inline c2 *inliner(vm, mem, obj);
 static c1  c_ev, produce, c_d_bind, inst, insx, c_ini;
 static c2 c_eval, c_sy, c_2, c_imm, ltu, c_ap;
-static c3 c_la_clo;
+static c3 c_la_clo, late;
 static obj hom_ini(vm, num), tupl(vm, ...), hom_fin(vm, obj),
            def_sug(vm, obj), snoc(vm, obj, obj),
            look(vm, obj, obj);
@@ -261,7 +261,6 @@ c1(c_d_bind) {
     imx(v, e, m, tbind, y) :
     imx(v, e, m, setl, N(lidx(loc(*e), y))); }
 
-static c3 late;
 c1(c_ev_d) {
   obj w = *Sp++, y;
   mm(&w);
