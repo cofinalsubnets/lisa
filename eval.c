@@ -348,7 +348,7 @@ c1(c_call) {
   obj a = *Sp++, k = ccc(v, e, m+2);
   return G(k) != ret ? em2(call, a, k) :
          Gn(a) == llen(arg(*e)) ? em1(loop, k) :
-         em2(recur, a, k); }
+         em2(rec, a, k); }
 
 static obj topl_lookup(vm v, obj y) {
   obj q = tbl_get(v, Dict, y);

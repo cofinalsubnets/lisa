@@ -211,7 +211,7 @@
  cca (\ e m x k (-> (k e (+ m 2)) (\ q (?
   (nilp (= i-ret (hom-get-i q))) (emi i-call (emx x q))
   (= x (len (e-arg e)))          (emi i-loop q)
-                                 (emi i-recur (emx x q))))))
+                                 (emi i-rec (emx x q))))))
  cap (\ e m x k
   ((: capi (\ e m x k
             (? (nilp x) (k e m)

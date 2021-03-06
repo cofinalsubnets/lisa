@@ -200,7 +200,7 @@ v_op(loop) {
   Ap(gethom(xp), nil); }
 
 // general tail call
-v_op(recur) {
+v_op(rec) {
   num adic = getnum(GF(ip));
 
   obj off = Subd, rp = Retp; // save return info
