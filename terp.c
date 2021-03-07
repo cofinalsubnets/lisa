@@ -302,6 +302,7 @@ v_op(hom_u) {
   Have(len);
   hom h = (hom) hp;
   hp += len;
+  memset(h, -1, w2b(len));
   h[len-1].g = (terp*) h;
   h[len-2].g = NULL;
   Go(ret, puthom(h+len-2)); }
