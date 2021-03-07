@@ -667,9 +667,9 @@ static Inline obj syntax_array(vm v) {
 
 vm initialize() {
   vm v = malloc(sizeof(struct rt));
-  if (!v) errp(v, "init", 0, "malloc failed");
+  if (!v) errp(v, "init", 0, "oom");
   else if (setjmp(v->restart))
-    errp(v, "init", 0, "failed"), finalize(v), v = NULL;
+    finalize(v), v = NULL;
   else {
     v->t0 = clock();
     v->ip = v->xp = v->dict = v->syms = v->syn = v->cdict = nil;

@@ -33,17 +33,17 @@ int main(int argc, char**argv) {
       "  -v   print version and exit\n"
       "  -p   start repl after loading files\n"
       ;
-loop:
+args:
   switch (opt = getopt(argc, argv, opts)) {
     case -1: break;
     case '?': return EXIT_FAILURE;
-    case 'p': i = 1; goto loop;
+    case 'p': i = 1; goto args;
     case 'v': puts(VN); return EXIT_SUCCESS;
     case 'h': fputs(usage, stdout); return EXIT_SUCCESS; }
 
-
   vm v = initialize();
   if (v == NULL) return EXIT_FAILURE;
+
   if (argv[optind] == NULL ||
       ((r = scripts(v, argv+optind)) == EXIT_SUCCESS && i))
     r = repl(v, stdin, stdout);

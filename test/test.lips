@@ -80,15 +80,6 @@
          (&& (|| (ct ()) (ct ()) (ct 1) (ct 2))
              (= (get box) 6)))))
 
-(: fib (\ n ;; double recursive fibonacci function
-    (? (< n 3) 1 (+ (fib (- n 1)) (fib (- n 2)))))
-   ack (\ m n ;; ackermann function
-    (? (< m 1) (+ n 1)
-     (ack (- m 1) (? (> n 0) (ack m (- n 1)) 1))))
-   (, (test 'fib32 (= 2178309 (fib 32)))
-      (test 'ack3,9 (= 4093 (ack 3 9)))))
-
-
 (: emm (\ f x k ((\ f x k (, (f k x) k)) f x (hom-seek k -1)))
    emi (\ i k (emm hom-set-i i k))
    emx (\ x k (emm hom-set-x x k))
@@ -273,10 +264,11 @@
          (ccopostcon e m (\ e m
           (cev e m (*: (:* x)) (\ e m
            (ccoprecon e m k))))))))))))))
+
   (? (nilp (:* x)) (imm e m nil k)
    (-> (ccor e m (:* x) (\ e m (ccopre e m k))) (\ k
     (, (e-s2 e (:* (e-s2 e))) k))))))
- 
+
  ltu (\ e nom l (,
   (: n ((\ x (? x x (:: x x))) (:* l))
      x (last n)
@@ -332,7 +324,7 @@
   (: scandef (\ e x (?
       (nilp x) 1
       (nilp (:* x)) ()
-      (-> (scandef e (:* (:* x))) (\ r 
+      (-> (scandef e (:* (:* x))) (\ r
        (, (? r (scandefadd e (*: x) (*: (:* x))))
           r)))))
      mcar (\ x (? x (*: x)))
@@ -350,7 +342,7 @@
   (? (&& (twop x) (nilp (: y (*: x) (|| (= y '\) (= y '`))))
      (? (= (*: x) ':) (scandef e (:* x))
                       (each x (\ x (scan e x))))))))
-  
+
  t-nom (\ t (?
   (= t t-hom) 'hom
   (= t t-num) 'num
@@ -407,4 +399,14 @@
                    (= 1 ((ana '(? () (? () 1 0);nested
                                      (? () 0 1)))))))
 (test 'comp-la (= 6 (((ana '(\ a b ((\ c (+ c b 1)) a)))) 3 2)))
-(test 'comp-fib (= 2178309 ((ana '(: fib (\ n (? (< n 3) 1 (+ (fib (- n 1)) (fib (- n 2))))) (fib 32))))))
+
+
+(: math-tests
+   '(: fib (\ n ;; double recursive fibonacci function
+        (? (< n 3) 1 (+ (fib (- n 1)) (fib (- n 2)))))
+       ack (\ m n ;; ackermann function
+        (? (< m 1) (+ n 1)
+         (ack (- m 1) (? (> n 0) (ack m (- n 1)) 1))))
+     (, (test 'fib32 (= 2178309 (fib 32)))
+        (test 'ack3,9 (= 4093 (ack 3 9)))))
+ ((ana math-tests))) ;; ???

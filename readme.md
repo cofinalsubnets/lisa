@@ -1,22 +1,15 @@
 # lips
 it's a [lisp][lisp] dialect with a fast virtual machine that
 runs [forth][forth]-style [threaded code][threaded]. it works
-on AMD64/ARM64 and probably on other 64-bit platforms, but
-will most likely crash on 32-bit because of certain technical
-assumptions. specifically it relies on these platform features:
-- 8-byte pointer alignment
-- no more than 61 bits of code address space (so function
-  pointers can go in fixnums)
-- sign-extended bit shifting (seems to be the norm but
-  not required by the C standard)
-- pass at least 6 function arguments in registers
-- tail call optimization
+on AMD64/ARM64 and probably on other 64-bit platforms. gcc
+and clang can both compile it, but other compilers seem to
+have trouble.
 
 ## lisp dialect
 parentheses, semicolons, and single and double quotes all do
 what you would expect. there's no quasiquotation or improper
 list literals. the syntax consists of a small set of short
-[function words][fun_word] and tries to minimize superfluous
+[function words][fun_word] that try to minimize superfluous
 parentheses. user visible data types currently include
 integers, symbols, strings, pairs, functions, hash tables,
 and nil, which is self quoting and false.
@@ -25,8 +18,7 @@ currently functions (including user functions) are usually
 call by value with right-to-left argument evaluation, but
 for many specific primitive functions the compiler produces
 code with different behavior (eg. left-to-right shortcut
-evaluation). left-to-right evaluation as a rule is a planned
-feature. the compiler also does a certain amount of static
+evaluation). the compiler also does a certain amount of static
 type and arity checking, so some obvious programming errors
 will be caught immediately.
 
@@ -127,9 +119,6 @@ bad, sorry, you know what they say about naming things!
 - unicode
 - useful i/o
 - namespaces / module system
-
-the bootstrap compiler isn't fully ported to lips yet, and doesn't
-do a lot of optimizing.
 
 [lisp]: https://en.wikipedia.org/wiki/Lisp_(programming_language)
 [forth]: https://en.wikipedia.org/wiki/Forth_(programming_language)
