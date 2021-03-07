@@ -620,6 +620,7 @@ static void rin(vm v, mem d, const char *n, terp *u) {
 #define prims(_)\
   _("read", rd_u, NULL),\
   _(".", em_u, em_c),        _("ns", globs, NULL),\
+  _("cns", cglobs, NULL),\
   _("*:", car_u, car_c),     _(":*", cdr_u, cdr_c),\
   _("*!", setcar_u, rpla_c), _("!*", setcdr_u, rpld_c),\
   _("::", cons_u, cons_c),   _("=", eq_u, eq_c),\

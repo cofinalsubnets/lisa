@@ -732,3 +732,4 @@ v_op(fail) { return interpret_error(v, xp, puthom(ip), fp, "fail"); }
 v_op(fail_u) { Go(fail, getnum(Argc) ? *Argv : nil); }
 v_op(zzz) { exit(EXIT_SUCCESS); }
 v_op(globs) { Go(ret, Dict); }
+v_op(cglobs) { Go(ret, v->cdict); }
