@@ -90,10 +90,10 @@
 
 
 (: emm (\ f x k ((\ f x k (, (f k x) k)) f x (hom-seek k -1)))
-   emi (\ i k (emm hom-set-i i k))
+   emi (\ i k (,(.(inom i))(emm hom-set-i i k)))
    emx (\ x k (emm hom-set-x x k))
    hom-fin (\ k (: .hf (\ j k (? (= 0 (hom-get-i k))
-                                 (hom-set-x (hom-seek k 1) j)
+                                 (,(hom-set-x (hom-seek k 1) j) j)
                                  (.hf j (hom-seek k 1))))
                    (.hf k k))))
 (: map (\ f x (? (twop x) (:: (f (*: x)) (map f (:* x)))))
@@ -150,6 +150,10 @@
  e-val (gtk 'val) e-sig (gtk 'sig)
  e-s1  (gtk 's1)  e-s2  (gtk 's2)
  inst (\ e m i k (emi i (k e (+ m 1))))
+ inom (\ i ((: ii (\ l (? l (? (= i (tbl-get (cns) (*: l))) (*: l)
+                                 (ii (:* l))))))
+            (tbl-keys (cns))))
+
  insx (\ e m i x k (emi i (emx x (k e (+ m 2)))))
  imm  (\ e m x k (insx e m i-immv x k))
  cev  (\ e m x k ((? (twop x) c2 (symp x) cy imm) e m x k))
@@ -159,7 +163,7 @@
    (imm e m (tbl-get (e-val e) x) k) ; and that behavior is unstable right now
   (toplp e)
    (late e m x (e-val e) k)
-  (< -1 (: a (idx (e-lam e) x)))
+  (< -1 (idx (e-lam e) x))
    (late e m x (e-val e) k)
   (< -1 (: b (idx (e-loc e) x)))
    (insx e m i-locn b k)
@@ -210,10 +214,10 @@
     (emi i-lbind (emx (:: t (:: d x)) h)))))))))
 
  cap (\ e m x k
-  ((: cca (\ e m x k (-> (k e (+ m 2)) (\ q (?
-       (nilp (= i-ret (hom-get-i q))) (emi i-call (emx x q))
-       (= x (len (e-arg e)))          (emi i-loop q)
-                                      (emi i-rec (emx x q))))))
+  ((: cca (\ e m x k (-> (k e (+ m 2)) (\ k (?
+       (nilp (= i-ret (hom-get-i k))) (emi i-call (emx x k))
+       (= x (len (e-arg e)))          (emi i-loop k)
+                                      (emi i-rec (emx x k))))))
       capi (\ e m x k
             (? (nilp x) (k e m)
              (capi e m (:* x) (\ e m
@@ -278,6 +282,10 @@
      n (? m m (:: m m))
      f (env (init n) e n (tbl))
    (compose f (last n))))
+
+ ldel (\ l k (? l
+  ((? (= (k (*: l))) id (\ m (:: (*: l) m)))
+   (ldel (:* l) k))))
 
  precomps (\ e ks (? ks (,
   (? (homp (: k (*: ks) i (ltu e k (tbl-get (e-lams e) k))))
@@ -395,4 +403,4 @@
                    (nilp ((ana '(? () 1))));even
                    (= 1 ((ana '(? () (? () 1 0);nested
                                      (? () 0 1)))))))
-(test 'comp-la (= 6 (((ana '(\ a b (+ a b 1))))3 2)))
+(test 'comp-la (= 6 (((ana '(\ a b ((\ c (+ c b 1)) a)))) 3 2)))
