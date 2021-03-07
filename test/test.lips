@@ -90,7 +90,7 @@
 
 
 (: emm (\ f x k ((\ f x k (, (f k x) k)) f x (hom-seek k -1)))
-   emi (\ i k (,(.(inom i))(emm hom-set-i i k)))
+   emi (\ i k (emm hom-set-i i k))
    emx (\ x k (emm hom-set-x x k))
    hom-fin (\ k (: .hf (\ j k (? (= 0 (hom-get-i k))
                                  (,(hom-set-x (hom-seek k 1) j) j)
@@ -176,8 +176,8 @@
     (= r 'here) (imm e m (:* q) k)
     (= r 'wait) (late e m x (:* q) k)
     (-> (len (e-clo e)) (\ y
-     (,(e-clo e (snoc (e-clo e) x)
-       (insx e m i-clon y k))))))))))))
+     (,(e-clo e (snoc (e-clo e) x))
+       (insx e m i-clon y k)))))))))))
 
  c2 (\ e m x k (-> (*: x) (\ z (?
   (= z '`) (-> (:* x) (\ y (imm e m (? (twop y) (*: y)) k)))
@@ -277,11 +277,21 @@
    (-> (ccor e m (:* x) (\ e m (ccopre e m k))) (\ k
     (, (e-s2 e (:* (e-s2 e))) k))))))
  
- ltu (\ e n l
-  (: m (:* l)
-     n (? m m (:: m m))
-     f (env (init n) e n (tbl))
-   (compose f (last n))))
+ ltu (\ e nom l (,
+  (: n ((\ x (? x x (:: x x))) (:* l))
+     x (last n)
+     f (env (init n) e nom (tbl)))
+  (scan f x)
+  (resolve f)
+  (-> (cev f 4 x (ini i-ret)) (\ k
+   (-> (? (nilp (e-loc f)) k
+        (emi i-prel (emx (len (e-loc f)) k))) (\ k
+    (-> (hom-fin (?
+         (> (: i (e-sig f)) 0) (emi i-arity (emx i k))
+         (< i 0) (emi i-vararg (emx (- (- i) 1) k))
+         k)) (\ k
+     (? (e-clo f) (:: (e-clo f) k) k)))))))))
+
 
  ldel (\ l k (? l
   ((? (= (k (*: l))) id (\ m (:: (*: l) m)))
@@ -317,18 +327,6 @@
   (: ls (e-lam e)
      ks (tbl-keys ls)
      (recomps e ls (e-lam e ks)))))
-
- compose (\ e x (,
-  (scan e x)
-  (resolve e)
-  (-> (cev e 4 x (ini i-ret)) (\ k (,
-   (-> (? (= 0 (: i (len (e-loc e)))) k
-        (emi i-prel (emx i k))) (\ k
-    (-> (hom-fin (?
-         (> (: i (e-sig e)) 0) (emi i-arity (emx i k))
-         (< i 0) (emi i-vararg (emx (- (- i) 1) k))
-         k)) (\ k
-     (? (e-clo e) (:: (e-clo e) k) k))))))))))
 
  scan (\ e x (,
   (: scandef (\ e x (?
@@ -374,11 +372,16 @@
      (type-err t u))))))
  produce (\ e m t k (tc t (k e (+ m 2))))
  cla (\ e m x k
-  (-> (produce e m t-hom (\ e m (k e (+ m 2)))) (\ k
+  (-> (produce e m t-hom (\ e m (k e (+ m 2)))) (: cla.in (\ k
    (-> (ltu e () x) (\ x (?
     (homp x) (emi i-immv (emx x k))
-             (emi (? (|| (toplp e) (nilp (e-loc e))) i-encln i-encll)
-                  (emx (claclo e x) k))))))))
+             (emi (? (e-loc e) i-encll i-encln)
+              (emx (:: (:* x) ((claclo e (*: x) 0) e 0)) k)))))))))
+
+ claclo (\ e arg n (? (nilp arg)
+   (\ e m (emi i-take (emx n (hom (+ m 2)))))
+   (-> (claclo e (:* arg) (+ n 1)) (\ k
+    (\ e m (cy e m (*: arg) (\ e m (inst e m i-push k))))))))
 
  ini (\ i (\ e m (insx e m i (e-nom e) (\ e m (hom m)))))
  ana (\ x (cev (env () () () (ns)) 0 x (ini i-ret))))
