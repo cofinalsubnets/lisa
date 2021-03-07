@@ -16,7 +16,7 @@ v=`git rev-parse HEAD`
 # - inlining bloats code and GCC even does it for tail calls,
 #   which is silly. turn it off by default.
 # - stack smash protection also hurts tco.
-c=cc -g -O2 -flto -std=c11 -DNOM=\"$n\" -DVN=\"$v\"\
+c=gcc -g -O2 -flto -std=gnu17 -DNOM=\"$n\" -DVN=\"$v\"\
 	-Wall -Wno-shift-negative-value\
 	-fno-inline -fno-stack-protector
 

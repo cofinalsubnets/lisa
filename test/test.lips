@@ -172,7 +172,7 @@
     (-> (len (e-clo e)) (\ y
      (,(e-clo e (snoc (e-clo e) x)
        (imx e m i-clon y))))))))))))
-             
+
  c2 (\ e m x k (-> (*: x) (\ z (?
   (= z '`) (-> (:* x) (\ y (imm e m (? (twop y) (*: y)) k)))
   (= z '?) (cco e m x k)
@@ -203,7 +203,7 @@
   (-> (consumes h) (\ t
    (-> (? (= t t-none) h (hom-seek h 1)) (\ h
     (emi i-lbind (emx (:: t (:: d x)) h)))))))))
-  
+
  cca (\ e m x k (-> (k e (+ m 2)) (\ q (?
   (nilp (= i-ret (hom-get-i q))) (emi i-call (emx x q))
   (= x (len (e-arg e)))          (emi i-loop q)
@@ -231,6 +231,7 @@
  cdeb (\ e m x k (?
   (toplp e) (insx e m i-tbind x k)
             (insx e m i-setl (idx (e-loc e) x) k)))
+
  cde (\ e m x k (?
   (nilp (:* x))            (imm e m nil k)
   (= 1 (% (len (:* x)) 2)) (cev e m (desug x) k)
@@ -238,21 +239,26 @@
 
  ccopre (\ e m k (-> (k e m) (\ k
   (*: (e-s2 e (:: k (e-s2 e)))))))
+
  ccopostcon (\ e m k (-> (k e m) (\ k
   (*: (e-s1 e (:: k (e-s1 e)))))))
+
  ccopreant (\ e m k (-> (k e (+ m 2)) (\ k
   (-> (emi i-branch (emx (*: (e-s1 e)) k)) (\ k
    (, (e-s1 e (:* (e-s1 e))) k))))))
+
  ccoprecon (\ e m k (-> (k e (+ m 2)) (\ x
   (-> (*: (e-s2 e)) (\ k
    (: i (hom-get-i k)
     (? (= i i-ret) (emi i x)
      (emi i-jump
       (emx (? (= i i-jump) (hom-get-x (hom-seek k 1)) k) x)))))))))
+
  cco (\ e m x k
   (? (nilp (:* x)) (imm e m nil k)
    (-> (ccor e m (:* x) (\ e m (ccopre e m k))) (\ k
     (, (e-s2 e (:* (e-s2 e))) k)))))
+
  ccor (\ e m x k (?
   (nilp x) (ccor e m (:: x x) k)
   (nilp (:* x)) (cev e m (*: x) (\ e m (ccoprecon e m k)))
@@ -263,6 +269,28 @@
       (cev e m (*: (:* x)) (\ e m
        (ccoprecon e m k)))))))))))))
 
+ each (\ x f (? x (,(f (*: x)) (each (:* x) f))))
+ scan (\ e x (?
+  (|| (nilp (twop x)) (= (*: x) '\) (= (*: x) '`)) ()
+  (= (*: x) ':) (scandef e (:* x))
+  (each x scan)))
+ scandef (\ e x (?
+  (nilp x) 1
+  (nilp (:* x)) ()
+  (-> (scandef e (:* (:* x))) (\ r 
+   (, (? r (scandefadd e (*: x) (*: (:* x))))
+      r)))))
+ mcar (\ x (? x (*: x)))
+ addloc (\ e y (e-loc e (:: y (e-loc e))))
+ scandefadd (\ e y x (,
+  (? (symp x) (addloc e y)
+     (twop x) (-> (*: x) (\ z (?
+      (= z '`) (tbl-set (e-val e) y (mcar (:* x)))
+      (= z '\) (, (tbl-set (e-lam e) y x) (addloc e y))
+      (addloc e y))))
+     (tbl-set (e-val e) y x))
+  (scan e x)))
+  
  t-nom (\ t (?
   (= t t-hom) 'hom
   (= t t-num) 'num

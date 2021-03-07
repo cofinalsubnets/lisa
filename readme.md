@@ -128,22 +128,8 @@ bad, sorry, you know what they say about naming things!
 - useful i/o
 - namespaces / module system
 
-the bootstrap compiler isn't fully ported to lips yet, and
-it lacks several basic features that should be in the final
-version:
-- control flow analysis
-- dead code elimination
-- beta reduction (inlining)
-- delta reduction (constant folding)
-- a real type system
-
-the memory manager is very simple and might benefit from these
-improvements:
-- semispaces, which would eliminate most calls to malloc() and
-  ensure that recovery from oom is always possible.
-- generations, which would make memory use scale better with
-  large amounts of persistent data but would add complexity by
-  requiring a write barrier.
+the bootstrap compiler isn't fully ported to lips yet, and doesn't
+do a lot of optimizing.
 
 [lisp]: https://en.wikipedia.org/wiki/Lisp_(programming_language)
 [forth]: https://en.wikipedia.org/wiki/Forth_(programming_language)

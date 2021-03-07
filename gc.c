@@ -1,27 +1,30 @@
 #include "lips.h"
-// a simple garbage collector of the copying type.
+// a simple garbage collector of the copying type
 //
-// normally it maintains one pool of memory. allocations
-// increment a pointer into the pool. when the pool isn't
-// large enough to support a requested allocation, the
-// garbage collector migrates all reachable data into a new
-// pool. possible improvements:
-// - configurable growth function and time/space bounds
-// - semispaces
-// - generations
-// the first two are fairly simple. generational garbage
-// collection would be significantly more complicated because
-// it would mean having a write barrier, but it would let us
-// avoid a lot of copying. this will probably become more
-// important as the amount of persistent data held in memory
-// grows: with no generations, this data will be copied often,
-// causing the memory manager to allocate more memory to offset
-// the extra gc time. but with one or two generations persistent
-// data will rarely be copied, which amounts to more efficient
-// storage over time.
+// a copying collector is an inversion of the allocate-and-free
+// approach to tracing garbage collection: instead of finding all
+// the unreachable objects and releasing them, we find all the
+// reachable objects and reallocate them; then the whole old
+// block of memory is released at once. this model handles small,
+// transient allocations extremely well, since it keeps no
+// metadata, spends no time on unreachable objects, and compacts
+// the heap every gc cycle. a negative consequence of this design
+// is that heap objects don't have constant locations over their
+// lifetime, which would be convenient for some applications like
+// hashing.
+//
+// for simplicity, we keep all allocations in one memory pool. this
+// imposes the significant disadvantage that persistent objects have
+// to be rewritten to memory every gc cycle, which ultimately (because
+// of how memory is allocated, see below) leads to higher runtime
+// memory use. a solution to this would be to have one or more generations
+// of persistent data and maintain a reference hierarchy between them,
+// which would let them be garbage collected independently; then they
+// would be left alone most of the time.
 //
 static int copy(vm, num);
 static obj cp(vm, obj, num, mem);
+static Inline void do_copy(vm, num, mem, num, mem);
 
 // gc entry point reqsp : vm x num -> bool
 //
@@ -88,7 +91,6 @@ void reqsp(vm v, num req) {
 // t values come from clock(). if t0 < t1 < t2
 // u will always be >= 1. somehow t1 is sometimes
 // equal to t2, so in that case u = 1.
-static Inline void do_copy(vm, num, mem, num, mem);
 static int copy(vm v, num len) {
   clock_t t1 = clock(), t2, u;
   mem b0 = v->mem_pool, b1 = malloc(w2b(len));
@@ -112,8 +114,7 @@ static Inline void do_copy(vm v, num l0, mem b0, num l1, mem b1) {
   while (t0-- > s0) Sp[t0 - s0] = cp(v, *t0, l0, b0);
 #define CP(x) x=cp(v,x,l0,b0)
   CP(Ip), CP(Xp), CP(Syn), CP(v->dict); CP(v->cdict);
-  for (root r = Safe; r; r = r->next)
-    CP(*(r->one)); }
+  for (root r = Safe; r; r = r->next) CP(*(r->one)); }
 #undef CP
 
 // the exact method for copying an object into
