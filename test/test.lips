@@ -298,7 +298,7 @@
    (ldel (:* l) k))))
 
  precomps (\ e ks (? ks (,
-  (? (homp (: k (*: ks) i (ltu e k (tbl-get (e-lams e) k))))
+  (? (homp (: k (*: ks) i (ltu e k (tbl-get (e-lam e) k))))
       (, (tbl-set (e-val e) k i) (tbl-del (e-lam e) k) (e-loc e (ldel (e-loc e) k)))
      (, (!* i (tbl-get (e-lam e) k)) (tbl-set (e-lam e) k i)))
   (precomps e (:* ks)))))
@@ -407,3 +407,4 @@
                    (= 1 ((ana '(? () (? () 1 0);nested
                                      (? () 0 1)))))))
 (test 'comp-la (= 6 (((ana '(\ a b ((\ c (+ c b 1)) a)))) 3 2)))
+(test 'comp-fib (= 2178309 ((ana '(: fib (\ n (? (< n 3) 1 (+ (fib (- n 1)) (fib (- n 2))))) (fib 32))))))
