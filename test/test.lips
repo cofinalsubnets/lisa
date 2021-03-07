@@ -20,10 +20,6 @@
     (: rho.l(\ n x(?(= n 1)x(++ x(rho.l(- n 1)x))))
      (?(> n 0)(rho.l n xs)))))
 
-; hurray a new language
-(: quine ((\ q ((ev q) q)) '(\ i (li i (li '` i))))
- (test 'ev-q (= (ev quine) quine)))
-
 (: list-len (\ l (? (twop l) (+ 1 (list-len (:* l))) 0))
    de-str (\ s
      (: de-str.l (\ s n
@@ -402,6 +398,12 @@
                                      (? () 0 1)))))))
 (test 'comp-la (= 6 (((ana '(\ a b ((\ c (+ c b 1)) a)))) 3 2)))
 
+; hurray a new language
+(: stage-3 ((ana compiler))
+   eval (\ x ((stage-3 x)))
+   quine ((\ q ((ev q) q)) '(\ i (li i (li '` i)))))
+
+(test 'quine (= quine (ev quine) (eval quine)))
 
 (: math
    '(: fib (\ n ;; double recursive fibonacci function
@@ -411,4 +413,4 @@
          (ack (- m 1) (? (> n 0) (ack m (- n 1)) 1))))
      (, (test 'fib32 (= 2178309 (fib 32)))
         (test 'ack3,9 (= 4093 (ack 3 9)))))
- (: stage-3 ((ana compiler)) ((stage-3 math)))) ;; ???
+ (eval math))
