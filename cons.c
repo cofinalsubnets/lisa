@@ -129,7 +129,8 @@ static obj tbl_keys_j(vm v, tble e, obj l) {
 
 static obj tbl_keys_i(vm v, obj t, num i) {
   if (i == gettbl(t)->cap) return nil;
-  obj k = tbl_keys_i(v, t, i+1);
+  obj k;
+  with(t, k = tbl_keys_i(v, t, i+1));
   return tbl_keys_j(v, gettbl(t)->tab[i], k); }
 
 obj tbl_keys(vm v, obj t) {
