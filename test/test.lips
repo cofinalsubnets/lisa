@@ -132,7 +132,8 @@
  e-lam (gtk 'lam) e-nom (gtk 'nom)
  e-val (gtk 'val) e-sig (gtk 'sig)
  e-s1  (gtk 's1)  e-s2  (gtk 's2)
- inst (\ e m i k (emi i (k e (+ m 1))))
+ inst (\ e m i k (,;(.(inom i))
+                   (emi i (k e (+ m 1)))))
  inom (\ i ((: ii (\ l (? l (? (= i (tbl-get (cns) (*: l))) (*: l)
                                  (ii (:* l))))))
             (tbl-keys (cns))))
@@ -180,9 +181,7 @@
  look (\ e y (?
   (toplp e) (looktop e y)
   (tbl-has (e-val e) y)    (:: 'here (tbl-get (e-val e) y))
-  (|| (&& (tblp (e-lam e)) (tbl-has (e-lam e) y))
-      (&& (twop (e-lam e)) (< -1 (idx (e-lam e) y))))
-   (:: 'wait (e-val e))
+  (< -1 (idx (e-lam e) y)) (:: 'wait (e-val e))
    
   (< -1 (idx (e-loc e) y)) (:: 'loc e)
   (< -1 (idx (e-arg e) y)) (:: 'arg e)
@@ -224,13 +223,17 @@
   (? (:* x) (cser e m (:* x) k)
             (imm e m () k))))
 
+ mat (\ e x (: y (look e x) (? (= (*: y) 'here) (li (:* y)))))
  cde (\ e m x k (,
   (: desug (\ d (li (li '\ (li ', (init d) (last d)))))
-     cder (\ e m x k (?
-      (nilp x) (k e m)
-               (cev e m (*: (:* x)) (\ e m
-                (cdeb e m (*: x) (\ e m
-                 (cder e m (:* (:* x)) k)))))))
+     cder (\ e m x k (? (nilp x) (k e m) (?
+      (-> (\ e m (cder e m (:* (:* x)) k)) (\ k
+       (-> (? (|| (toplp e) (< -1 (idx (e-loc e) (*: x))))
+              (\ e m (cdeb e m (*: x) k))
+              k) (\ k
+        (? (: q (mat e (*: x)))
+         (imm e m (*: q) k)
+         (cev e m (*: (:* x)) k)))))))))
      cdeb (\ e m x k (?
       (toplp e) (insx e m i-tbind x k)
                 (insx e m i-setl (idx (e-loc e) x) k))))
@@ -267,13 +270,13 @@
    (-> (ccor e m (:* x) (\ e m (ccopre e m k))) (\ k
     (, (e-s2 e (:* (e-s2 e))) k))))))
 
- ltu (\ e nom l (,
+ ltu (\ e nom l (, (. 'ltu nom l)
   (: n ((\ x (? x x (:: x x))) (:* l))
      x (last n)
      f (env (init n) e nom (tbl)))
   (scan f x)
   (resolve f)
-  (? (e-lam f) (. 'ltu 'lams (e-lam f)))
+  (? (e-lam f) (. 'ltu '-- 'closures 'eliminated (e-lam f)))
   (-> (cev f 4 x (ini i-ret)) (\ k
    (-> (? (nilp (e-loc f)) k
         (emi i-prel (emx (len (e-loc f)) k))) (\ k
