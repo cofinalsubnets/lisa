@@ -142,29 +142,19 @@
  imm  (\ e m x k (insx e m i-immv x k))
  cev  (\ e m x k ((? (twop x) c2 (symp x) cy imm) e m x k))
 
- cy (\ e m x k (?                    ; this is weird sorry
-
-  (tbl-has (e-val e) x)              ; the C version has a lot of reassigning variables
-   (imm e m (tbl-get (e-val e) x) k) ; and that behavior is unstable right now
-  (toplp e) (?
-   (tbl-has (cns) x)
-    (imm e m (tbl-get (cns) x) k)
-   (late e m x (e-val e) k))
-  (< -1 (idx (e-lam e) x))
-   (late e m x (e-val e) k)
-  (< -1 (: b (idx (e-loc e) x)))
-   (insx e m i-locn b k)
-  (< -1 (: c (idx (e-arg e) x)))
-   (insx e m i-argn c k)
-  (< -1 (: d (idx (e-clo e) x)))
-   (insx e m i-clon d k)
-  (-> (look (e-par e) x) (\ q
-   (-> (*: q) (\ r (?
-    (= r 'here) (imm e m (:* q) k)
-    (= r 'wait) (late e m x (:* q) k)
-    (-> (len (e-clo e)) (\ y
-     (,(e-clo e (snoc (e-clo e) x))
-       (insx e m i-clon y k)))))))))))
+ cy (\ e m x k (:
+  r (look e x)
+  s (*: r)
+  (? (= s 'here)  (imm e m (:* r) k)
+     (= s 'wait)  (late e m x (:* r) k)
+     (= e (:* r)) (? (= s 'arg)
+                      (insx e m i-argn (idx (e-arg e) x) k)
+                     (= s 'loc)
+                      (insx e m i-locn (idx (e-loc e) x) k)
+                     (= s 'clo)
+                      (insx e m i-clon (idx (e-clo e) x) k))
+     (: l (len (e-clo e)) (, (e-clo e (snoc (e-clo e) x))
+                             (insx e m i-clon l k))))))
 
  c2 (\ e m x k (-> (*: x) (\ z (?
   (= z '`) (-> (:* x) (\ y (imm e m (? (twop y) (*: y)) k)))
@@ -270,13 +260,12 @@
    (-> (ccor e m (:* x) (\ e m (ccopre e m k))) (\ k
     (, (e-s2 e (:* (e-s2 e))) k))))))
 
- ltu (\ e nom l (, (. 'ltu nom l)
+ ltu (\ e nom l (,
   (: n ((\ x (? x x (:: x x))) (:* l))
      x (last n)
      f (env (init n) e nom (tbl)))
   (scan f x)
   (resolve f)
-  (? (e-lam f) (. 'ltu '-- 'closures 'eliminated (e-lam f)))
   (-> (cev f 4 x (ini i-ret)) (\ k
    (-> (? (nilp (e-loc f)) k
         (emi i-prel (emx (len (e-loc f)) k))) (\ k
