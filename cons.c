@@ -33,23 +33,25 @@ obj string(vm v, const char *c) {
   memcpy(o->text, c, o->len = bs);
   return putoct(o); }
 
+void psyms(vm v, obj s) {
+  if (symp(s)) emsep(v, s, stdout, ' '), psyms(v, getsym(s)->next);
+  else puts(""); }
 //symbols
 obj interns(vm v, const char *c) {
   return intern(v, string(v, c)); }
 
 obj intern(vm v, obj x) {
+  printf("[intern] searching %s\n", chars(x));
+  psyms(v, Syms);
   for (obj s = Syms; symp(s); s = getsym(s)->next)
     if (0 == strcmp(chars(x), symnom(s))) return s;
+  printf("[intern] interning %s\n", chars(x));
   sym y; with(x, y = cells(v, Size(sym)));
   return y->nom = x, y->code = mix* hc(x), y->next = Syms, Syms = putsym(y); }
 
 obj ldel(vm v, obj l, obj i) {
   return !twop(l) ? l : i == X(l) ? ldel(v, Y(l), i) :
     (with(l, i = ldel(v, Y(l), i)), pair(v, X(l), i)); }
-
-obj assq(vm v, obj a, obj k) {
-  for (; twop(a); a = Y(a)) if (k == XX(a)) return YX(a);
-  return 0; }
 
 static Inline uint64_t hash_bytes(num len, char *us) {
   num h = 1;

@@ -171,10 +171,9 @@ cpcc(cpsym) {
   return fresh(src->nom) ? (obj) src->nom :
     (dst = bump(v, Size(sym)),
      dst->nom = cp(v, src->nom, ln, lp),
-     src->nom = putsym(dst),
      dst->code = src->code,
      dst->next = Syms,
-     Syms = putsym(dst)); }
+     Syms = src->nom = putsym(dst)); }
 
 #define stale(o) inb((mem)(o),lp,lp+ln)
 cpcc(cphom) {

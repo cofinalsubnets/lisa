@@ -372,38 +372,33 @@
     (\ e m (cy e m (*: arg) (\ e m (inst e m i-push k))))))))
 
  ini (\ i (\ e m (insx e m i (e-nom e) (\ e m (hom m)))))
- ana (\ x (cev (env () () () (ns)) 0 x (ini i-ret)))))
+ ana (\ x (cev (env () () () (ns)) 0 x (ini i-ret)))
+ (\ x ((ana x)))
+ ))
 
-(ev compiler)
+(: eva (ev compiler))
 
-(test 'get-set (= (li 1) (: d (tbl) (e-s1 d (:: 1 (e-s1 d))))))
-(test 'de-scan (: e (env () () () (tbl)) (,
- (scan e '(: a 1 b (+ a a) f (\)))
- (&& (= (tbl-get (e-val e) 'a) 1)
-     (= (e-loc e) '(b f))))))
 (test 'comp-em (= 3 ((emi i-immv (emx 3 (emi i-ret (hom 3)))))))
-(test 'comp-qt (-> (li 1) (\ y (= y ((ana (li '` y)))))))
-(test 'comp-ap (= 6 ((ana (li + 1 2 3)))))
+(test 'comp-qt (-> (li 1) (\ y (= y (eva (li '` y))))))
+(test 'comp-ap (= 6 (eva (li + 1 2 3))))
 (test 'comp-sq (: box (li 0) inc (\(*! box (+ 1 (*: box))))
- (= 3 ((ana (li ', (li inc) (li inc) (li inc)))))))
+ (= 3 (eva (li ', (li inc) (li inc) (li inc))))))
 (test 'comp-de
  (-> 123 (\ x
-  (-> ((ana (li ': '_123 x))) (\ y
+  (-> (eva (li ': '_123 x)) (\ y
    (-> _123 (\ z (= 123 x y z))))))))
-(test 'comp-sy (= _123 ((ana '_123))))
-(test 'comp-co (&& (= 1 ((ana '(? () 0 1))));false
-                   (= 0 ((ana '(? 1 0 ()))));true
-                   (nilp ((ana '(? () 1))));even
-                   (= 1 ((ana '(? () (? () 1 0);nested
-                                     (? () 0 1)))))))
-(test 'comp-la (= 6 (((ana '(\ a b ((\ c (+ c b 1)) a)))) 3 2)))
+(test 'comp-sy (= _123 (eva '_123)))
+(test 'comp-co (&& (= 1 (eva '(? () 0 1)));false
+                   (= 0 (eva '(? 1 0 ())));true
+                   (nilp (eva '(? () 1)));even
+                   (= 1 (eva '(? () (? () 1 0);nested
+                                    (? () 0 1))))))
+(test 'comp-la (= 6 ((eva '(\ a b ((\ c (+ c b 1)) a))) 3 2)))
 
 ; hurray a new language
-(: stage-3 ((ana compiler))
-   eval (\ x ((stage-3 x)))
-   quine ((\ q ((ev q) q)) '(\ i (li i (li '` i)))))
+(: quine ((\ q ((eva q) q)) '(\ i (li i (li '` i)))))
 
-(test 'quine (= quine (ev quine) (eval quine)))
+(test 'quine (= quine (ev quine) (eva quine)))
 
 (: math
    '(: fib (\ n ;; double recursive fibonacci function
@@ -413,4 +408,4 @@
          (ack (- m 1) (? (> n 0) (ack m (- n 1)) 1))))
      (, (test 'fib32 (= 2178309 (fib 32)))
         (test 'ack3,9 (= 4093 (ack 3 9)))))
- (eval math))
+ (eva math))

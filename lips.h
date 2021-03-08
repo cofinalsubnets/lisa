@@ -47,6 +47,7 @@ rt initialize();
 void finalize(rt),
      emit(rt, obj, FILE*),
      vferrp(rt, FILE*, const char*, obj, const char*, va_list), // lol
+     psyms(rt, obj),
      errp(rt, const char*, obj, const char*, ...),
      emsep(rt, obj, FILE*, char),
      reqsp(rt, num),
