@@ -47,15 +47,13 @@ rt initialize();
 void finalize(rt),
      emit(rt, obj, FILE*),
      vferrp(rt, FILE*, const char*, obj, const char*, va_list), // lol
-     psyms(rt, obj),
      errp(rt, const char*, obj, const char*, ...),
      emsep(rt, obj, FILE*, char),
      reqsp(rt, num),
      *bump(rt, num),
      *cells(rt, num);
 
-obj ldel(rt, obj, obj),
-    err(rt, const char*, obj, const char*, ...),
+obj err(rt, const char*, obj, const char*, ...),
     restart(rt),
     homnom(rt, obj),
     pair(rt, obj, obj),
@@ -69,7 +67,6 @@ obj ldel(rt, obj, obj),
     tbl_get(rt, obj, obj),
     tbl_del(rt, obj, obj),
     tbl_keys(rt, obj),
-    mdict(rt),
     string(rt, const char*);
 num llen(obj);
 

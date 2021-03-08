@@ -16,6 +16,7 @@ static obj tupl(vm, ...),
 static num idx(obj, obj);
 static obj linitp(vm, obj, mem);
 static obj imx(vm, mem, num, terp*, obj);
+static obj ldel(vm, obj, obj);
 enum location { Here, Loc, Arg, Clo, Wait };
 #define c1(nom,...) static obj nom(vm v,mem e,num m,##__VA_ARGS__)
 #define c2(nom,...) static obj nom(vm v,mem e,num m,obj x,##__VA_ARGS__)
@@ -687,3 +688,8 @@ vm initialize() {
 
 void finalize(vm v) {
   free(v->mem_pool), free(v); }
+
+static obj ldel(vm v, obj l, obj i) {
+  return !twop(l) ? l : i == X(l) ? ldel(v, Y(l), i) :
+    (with(l, i = ldel(v, Y(l), i)), pair(v, X(l), i)); }
+

@@ -33,9 +33,6 @@ obj string(vm v, const char *c) {
   memcpy(o->text, c, o->len = bs);
   return putoct(o); }
 
-void psyms(vm v, obj s) {
-  if (symp(s)) emsep(v, s, stdout, '\n'),
-               psyms(v, getsym(s)->next); }
 //symbols
 obj interns(vm v, const char *c) {
   return intern(v, string(v, c)); }
@@ -45,10 +42,6 @@ obj intern(vm v, obj x) {
     if (0 == strcmp(chars(x), symnom(s))) return s;
   sym y; with(x, y = cells(v, Size(sym)));
   return y->nom = x, y->code = mix* hc(x), y->next = Syms, Syms = putsym(y); }
-
-obj ldel(vm v, obj l, obj i) {
-  return !twop(l) ? l : i == X(l) ? ldel(v, Y(l), i) :
-    (with(l, i = ldel(v, Y(l), i)), pair(v, X(l), i)); }
 
 static Inline uint64_t hash_bytes(num len, char *us) {
   num h = 1;

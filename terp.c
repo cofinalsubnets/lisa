@@ -65,6 +65,12 @@ static obj interpret_error(vm v, obj xp, obj ip, mem fp, const char *msg, ...) {
     fprintf(stderr, "  in %s\n", symp(ip = homnom(v, ip)) ? symnom(ip) : "\\");
   return restart(v); }
 
+obj restart(vm v) {
+  v->fp = v->sp = v->mem_pool + v->mem_len;
+  v->xp = v->ip = nil;
+  v->mem_root = NULL;
+  longjmp(v->restart, 1); }
+
 // vm instructions for different errors. the compiler will
 // never emit these. 
 static v_op(eetc) {
