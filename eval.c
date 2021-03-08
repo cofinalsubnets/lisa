@@ -10,7 +10,7 @@ static Inline c2 *inliner(vm, mem, obj);
 static c1  c_ev, produce, c_d_bind, inst, insx, c_ini;
 static c2 c_eval, c_sy, c_2, c_imm, ltu, c_ap, c_la_clo;
 static c3 late;
-static obj tupl(vm, ...), hom_fin(vm, obj),
+static obj tupl(vm, ...),
            def_sug(vm, obj), snoc(vm, obj, obj),
            look(vm, obj, obj);
 static num idx(obj, obj);
@@ -592,9 +592,12 @@ obj hom_ini(vm v, num n) {
          memset(a, -1, w2b(n)),
          puthom(a+n); }
 
-static obj hom_fin(vm v, obj a) {
-  for (hom b = gethom(a);;) if (!b++->g)
-    return (obj) (b->g = (terp*) a); }
+obj hom_fin(vm v, obj a) {
+  for (hom b = gethom(a);;) if (!b++->g) {
+    if ((obj)G(b) > a) {
+      errp(v, "compile", 0, "boundary overrun");
+      exit(EXIT_FAILURE); }
+    return (obj) (b->g = (terp*) a); } }
 
 obj homnom(vm v, obj x) {
   terp *k = G(x);
@@ -638,6 +641,7 @@ static void rin(vm v, mem d, const char *n, terp *u) {
   _("str-len", strl, NULL),  _("str-get", strg, NULL),\
   _("str", strmk, NULL),     _(".c", pc_u, NULL),\
   _("hom", hom_u, NULL),     _("hom-seek", hom_seek_u, NULL),\
+  _("hom-fin", hom_fin_u, NULL),\
   _("hom-set-x", hom_setx_u, NULL), _("hom-get-x", hom_getx_u, NULL),\
   _("hom-set-i", hom_seti_u, NULL), _("hom-get-i", hom_geti_u, NULL),\
   _("zzz", zzz, NULL),       _("nump", nump_u, nump_c),\

@@ -14,7 +14,7 @@
   _(lt_u),   _(lteq_u), _(eq_u),    _(gteq_u), _(gt_u),\
   _(twop_u), _(nump_u), _(homp_u),  _(tblp_u), _(strp_u),\
   _(nilp_u), _(car_u),  _(cdr_u),   _(cons_u),\
-  _(strmk),  _(strg),   _(strl),\
+  _(strmk),  _(strg),   _(strl),_(hom_fin_u),\
   _(setcar_u), _(setcdr_u),_(globs),_(cglobs),\
   _(symp_u), _(emse), _(hom_u), _(pc_u),\
   _(or_u), _(and_u), _(zzz),\

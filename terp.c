@@ -306,6 +306,11 @@ v_op(hom_u) {
   h[len-1].g = (terp*) h;
   h[len-2].g = NULL;
   Go(ret, puthom(h+len-2)); }
+v_op(hom_fin_u) {
+  ArityCheck(1);
+  TypeCheck(*Argv, Hom);
+  obj x; CallC(x = hom_fin(v, *Argv));
+  Go(ret, x); }
 v_op(hom_setx_u) {
   ArityCheck(2);
   TypeCheck(Argv[0], Hom);
@@ -544,7 +549,7 @@ v_op(cons) {
 v_op(car) { Ap(ip+1, X(xp)); }
 v_op(cdr) { Ap(ip+1, Y(xp)); }
 v_op(setcar) { obj x = *sp++; X(xp) = x; xp = x; Next(1); }
-v_op(setcdr) { obj x = *sp++; X(xp) = x; xp = x; Next(1); }
+v_op(setcdr) { obj x = *sp++; Y(xp) = x; xp = x; Next(1); }
 
 v_op(cons_u) {
   ArityCheck(2);

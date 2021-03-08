@@ -78,11 +78,7 @@
 
 (: emm (\ f x k ((\ f x k (, (f k x) k)) f x (hom-seek k -1)))
    emi (\ i k (emm hom-set-i i k))
-   emx (\ x k (emm hom-set-x x k))
-   hom-fin (\ k (: .hf (\ j k (? (= 0 (hom-get-i k))
-                                 (,(hom-set-x (hom-seek k 1) j) j)
-                                 (.hf j (hom-seek k 1))))
-                   (.hf k k))))
+   emx (\ x k (emm hom-set-x x k)))
 (: map (\ f x (? (twop x) (:: (f (*: x)) (map f (:* x)))))
    foldl(\ z f x (? (twop x) (foldl (f z (*: x)) f (:* x)) z))
    foldr (\ z f x (? (twop x) (f (*: x) (foldr z f (:* x))) z))
@@ -111,7 +107,7 @@
          (map (\ x (+ 1 x)) (iota 3))
          (snoc ((flip snoc) 2 (li 1)) 3)
          (foldr () :: (iota 1 4)))))
-
+(: boot (\ e (,
 (: compiler '(: ; ok now let's port the compiler
  env (\ a p n vs
   (: .l (\ a n ;; lol what is this thing
@@ -145,11 +141,13 @@
  imm  (\ e m x k (insx e m i-immv x k))
  cev  (\ e m x k ((? (twop x) c2 (symp x) cy imm) e m x k))
 
- cy (\ e m x k (?                      ; this is weird sorry
-  (tbl-has (e-val e) x)                ; the C version has a lot of reassigning variables
+ cy (\ e m x k (?                    ; this is weird sorry
+  (tbl-has (e-val e) x)              ; the C version has a lot of reassigning variables
    (imm e m (tbl-get (e-val e) x) k) ; and that behavior is unstable right now
-  (toplp e)
-   (late e m x (e-val e) k)
+  (toplp e) (?
+   (tbl-has (cns) x)
+    (imm e m (tbl-get (cns) x) k)
+   (late e m x (e-val e) k))
   (< -1 (idx (e-lam e) x))
    (late e m x (e-val e) k)
   (< -1 (: b (idx (e-loc e) x)))
@@ -287,9 +285,10 @@
 
  precomps (\ e ks (? ks (,
   (? (homp (: k (*: ks) i (ltu e k (tbl-get (e-lam e) k))))
-      (, (tbl-set (e-val e) k i) (tbl-del (e-lam e) k) (e-loc e (ldel (e-loc e) k)))
-     (, (!* i (tbl-get (e-lam e) k)) (tbl-set (e-lam e) k i)))
+      (,  (tbl-set (e-val e) k i) (tbl-del (e-lam e) k) (e-loc e (ldel (e-loc e) k)))
+     (, (!* i (tbl-get (e-lam e) k))  (tbl-set (e-lam e) k i)))
   (precomps e (:* ks)))))
+
  okvs (\ e vs (?
   (nilp vs) 0
   (: v (*: vs)
@@ -297,11 +296,10 @@
       (okvs e (:* vs))))))
 
  elims (\ e
-  ((: elim (\ e ks (? ks
-    (-> (*: ks) (\ k
-     (? (nilp (okvs e (*: (tbl-get (e-lam e) k))))
-      (, (tbl-del (e-lam e) k) (elims e))
-      (elim e (:* ks))))))))
+  ((: elim (\ e ks (? ks (-> (*: ks) (\ k
+    (? (nilp (okvs e (*: (tbl-get (e-lam e) k))))
+     (, (tbl-del (e-lam e) k) (elims e))
+     (elim e (:* ks))))))))
    e (tbl-keys (e-lam e))))
 
  recomps (\ e d ks (? ks (: k (*: ks) (,
@@ -313,8 +311,7 @@
   (precomps e (tbl-keys (e-lam e)))
   (elims e)
   (: ls (e-lam e)
-     ks (tbl-keys ls)
-     (recomps e ls (e-lam e ks)))))
+     (recomps e ls (e-lam e (tbl-keys ls))))))
 
  scan (\ e x (,
   (: scandef (\ e x (?
@@ -375,8 +372,9 @@
  ana (\ x (cev (env () () () (ns)) 0 x (ini i-ret)))
  (\ x ((ana x)))
  ))
+ (e compiler))))
 
-(: eva (ev compiler))
+(: eva (boot ev))
 
 (test 'comp-em (= 3 ((emi i-immv (emx 3 (emi i-ret (hom 3)))))))
 (test 'comp-qt (-> (li 1) (\ y (= y (eva (li '` y))))))
@@ -396,7 +394,9 @@
 (test 'comp-la (= 6 ((eva '(\ a b ((\ c (+ c b 1)) a))) 3 2)))
 
 ; hurray a new language
-(: quine ((\ q ((eva q) q)) '(\ i (li i (li '` i)))))
+(: quine ((\ q ((eva q) q)) '(\ i (li i (li '` i))))
+   ;eval (eva compiler)
+   )
 
 (test 'quine (= quine (ev quine) (eva quine)))
 
@@ -408,4 +408,4 @@
          (ack (- m 1) (? (> n 0) (ack m (- n 1)) 1))))
      (, (test 'fib32 (= 2178309 (fib 32)))
         (test 'ack3,9 (= 4093 (ack 3 9)))))
- (eva math))
+ ((boot eva) math))

@@ -34,18 +34,15 @@ obj string(vm v, const char *c) {
   return putoct(o); }
 
 void psyms(vm v, obj s) {
-  if (symp(s)) emsep(v, s, stdout, ' '), psyms(v, getsym(s)->next);
-  else puts(""); }
+  if (symp(s)) emsep(v, s, stdout, '\n'),
+               psyms(v, getsym(s)->next); }
 //symbols
 obj interns(vm v, const char *c) {
   return intern(v, string(v, c)); }
 
 obj intern(vm v, obj x) {
-  printf("[intern] searching %s\n", chars(x));
-  psyms(v, Syms);
   for (obj s = Syms; symp(s); s = getsym(s)->next)
     if (0 == strcmp(chars(x), symnom(s))) return s;
-  printf("[intern] interning %s\n", chars(x));
   sym y; with(x, y = cells(v, Size(sym)));
   return y->nom = x, y->code = mix* hc(x), y->next = Syms, Syms = putsym(y); }
 
