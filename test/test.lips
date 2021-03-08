@@ -142,6 +142,7 @@
  cev  (\ e m x k ((? (twop x) c2 (symp x) cy imm) e m x k))
 
  cy (\ e m x k (?                    ; this is weird sorry
+
   (tbl-has (e-val e) x)              ; the C version has a lot of reassigning variables
    (imm e m (tbl-get (e-val e) x) k) ; and that behavior is unstable right now
   (toplp e) (?
@@ -179,7 +180,10 @@
  look (\ e y (?
   (toplp e) (looktop e y)
   (tbl-has (e-val e) y)    (:: 'here (tbl-get (e-val e) y))
-  (< -1 (idx (e-lam e) y)) (:: 'wait (e-val e))
+  (|| (&& (tblp (e-lam e)) (tbl-has (e-lam e) y))
+      (&& (twop (e-lam e)) (< -1 (idx (e-lam e) y))))
+   (:: 'wait (e-val e))
+   
   (< -1 (idx (e-loc e) y)) (:: 'loc e)
   (< -1 (idx (e-arg e) y)) (:: 'arg e)
   (< -1 (idx (e-clo e) y)) (:: 'clo e)
@@ -269,6 +273,7 @@
      f (env (init n) e nom (tbl)))
   (scan f x)
   (resolve f)
+  (? (e-lam f) (. 'ltu 'lams (e-lam f)))
   (-> (cev f 4 x (ini i-ret)) (\ k
    (-> (? (nilp (e-loc f)) k
         (emi i-prel (emx (len (e-loc f)) k))) (\ k
@@ -285,7 +290,7 @@
 
  precomps (\ e ks (? ks (,
   (? (homp (: k (*: ks) i (ltu e k (tbl-get (e-lam e) k))))
-      (,  (tbl-set (e-val e) k i) (tbl-del (e-lam e) k) (e-loc e (ldel (e-loc e) k)))
+      (, (tbl-set (e-val e) k i) (tbl-del (e-lam e) k) (e-loc e (ldel (e-loc e) k)))
      (, (!* i (tbl-get (e-lam e) k))  (tbl-set (e-lam e) k i)))
   (precomps e (:* ks)))))
 
@@ -304,8 +309,8 @@
 
  recomps (\ e d ks (? ks (: k (*: ks) (,
   (e-loc e (ldel (e-loc e) k))
-  (recomps e d (:* ks))
-  (tbl-set (e-val e) k (ltu e k (:* (tbl-get d k))))))))
+  (tbl-set (e-val e) k (ltu e k (:* (tbl-get d k))))
+  (recomps e d (:* ks))))))
 
  resolve (\ e (,
   (precomps e (tbl-keys (e-lam e)))
@@ -408,4 +413,4 @@
          (ack (- m 1) (? (> n 0) (ack m (- n 1)) 1))))
      (, (test 'fib32 (= 2178309 (fib 32)))
         (test 'ack3,9 (= 4093 (ack 3 9)))))
- ((boot eva) math))
+ (eva math))
