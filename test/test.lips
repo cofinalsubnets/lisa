@@ -93,6 +93,10 @@
    flip (\ f (\ x y (f y x)))
    snoc  (\ l x (? (twop l) (:: (*: l) (snoc (:* l) x))
                             (:: x l)))
+
+   ldel (\ l k (? l
+    ((? (= k (*: l)) id (\ m (:: (*: l) m)))
+     (ldel (:* l) k))))
    idx (\ l x
     ((: .l (\ l x n (? (twop l) (? (= x (*: l)) n (.l (:* l) x (+ n 1))) -1)))
      l x 0))
@@ -144,6 +148,7 @@
 
  cy (\ e m x k (:
   r ((\ r (? (= x 'ana) (. r) r))(look e x))
+  _ (. 'cy x r (:* r) (dbg-env e))
   s (*: r)
   (? (= s 'here)  (imm e m (:* r) k)
      (= s 'wait)  (late e m x (:* r) k)
@@ -167,7 +172,7 @@
                        (tbl-has c y) (:: 'here (tbl-get c y))
                        (:: 'wait d))))
  look (\ e y (,
- (? (= y 'ana) (,(. 'ana) (dbg-env e)))
+ (. 'look y (dbg-env e))
  (?
   (tbl-has (e-val e) y) (:: 'here (tbl-get (e-val e) y))
   (toplp e)
@@ -264,12 +269,15 @@
 
  ltu (\ e nom l (,
   (? (= nom 'ana)
-   (,(. 'ltu)(dbg-env e)))
+   (. 'ltu (dbg-env e)))
   (: n ((\ x (? x x (:: x x))) (:* l))
      x (last n)
      f (env (init n) e nom (tbl)))
+  (. 'scan)
   (scan f x)
+  (.'resolve)
   (resolve f)
+  (.'post)
   (-> (cev f 4 x (ini i-ret)) (\ k
    (-> (? (nilp (e-loc f)) k
         (emi i-prel (emx (len (e-loc f)) k))) (\ k
@@ -280,15 +288,14 @@
      (? (e-clo f) (:: (e-clo f) k) k)))))))))
 
 
- ldel (\ l k (? l
-  ((? (= (k (*: l))) id (\ m (:: (*: l) m)))
-   (ldel (:* l) k))))
-
  precomps (\ e ks (? ks (,
   (: k (*: ks) i (ltu e k (tbl-get (e-lam e) k)))
   (? (homp i)
-      (, (tbl-set (e-val e) k i) (tbl-del (e-lam e) k) (e-loc e (ldel (e-loc e) k)))
-     (, (!* i (tbl-get (e-lam e) k))  (tbl-set (e-lam e) k i)))
+     (, (tbl-set (e-val e) k i)
+        (tbl-del (e-lam e) k)
+        (e-loc e (ldel (e-loc e) k)))
+     (, (!* i (tbl-get (e-lam e) k))
+        (tbl-set (e-lam e) k i)))
   (precomps e (:* ks)))))
 
  okvs (\ e vs (?
@@ -308,8 +315,11 @@
   (recomps e d (:* ks))))))
 
  resolve (\ e (,
+  (. 'precomps (dbg-env e))
   (precomps e (tbl-keys (e-lam e)))
+  (. 'elim (dbg-env e))
   (elim e (tbl-keys (e-lam e)))
+  (. 'recomps (dbg-env e))
   (: ls (e-lam e)
      (recomps e ls (e-lam e (tbl-keys ls))))))
 
@@ -368,7 +378,7 @@
   (-> (claclo e (:* arg) (+ n 1)) (\ k
    (\ e m (cy e m (*: arg) (\ e m (inst e m i-push k))))))))
 
- dbg-env (\ e (. 'env ': 'arg (e-arg e) 'loc (e-loc e) 'clo (e-clo e) 'val (tbl-keys (e-val e)) 'lam (? (tblp (e-lam e)) (tbl-keys (e-lam e)) (e-lam e))))
+ dbg-env (\ e (li 'env ': (e-nom e) 'arg (e-arg e) 'loc (e-loc e) 'clo (e-clo e) 'val (tbl-keys (e-val e)) 'lam (? (tblp (e-lam e)) (tbl-keys (e-lam e)) (e-lam e)) 'par (e-par e)))
  ini (\ i (\ e m (insx e m i (e-nom e) (\ e m (hom m)))))
  ana (\ x ((cev (env () () () (ns)) 0 x (ini i-ret))))
  (,
@@ -381,7 +391,8 @@
    (-> 123 (\ x
     (-> (ana (li ': '_123 x)) (\ y
      (-> _123 (\ z (= 123 x y z)))))))
-   (= 3 (ana '(: a (\ 1) b (\ 2) c (\(+(a)(b))) (c))))))
+   (= 3 (ana '(: a (\ 1) b (\ 2) c (\(+(a)(b))) (c))))
+  ))
   (test 'comp-sy (= _123 (ana '_123)))
   (test 'comp-co (&& (= 1 (ana '(? () 0 1)));false
                      (= 0 (ana '(? 1 0 ())));true
@@ -390,7 +401,8 @@
                                       (? () 0 1))))))
   (test 'comp-la (&&
    (= 3 (ana '((\(+((\ 1))((\ 2)))))))
-   (= 6 ((ana '(\ a b ((\ c (+ c b 1)) a))) 3 2))))
+   (= 6 ((ana '(\ a b ((\ c (+ c b 1)) a))) 3 2))
+   ))
   ana
  )))
  (e compiler))))
