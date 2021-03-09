@@ -136,8 +136,7 @@
  e-lam (gtk 'lam) e-nom (gtk 'nom)
  e-val (gtk 'val) e-sig (gtk 'sig)
  e-s1  (gtk 's1)  e-s2  (gtk 's2)
- inst (\ e m i k (,;(.(inom i))
-                   (emi i (k e (+ m 1)))))
+ inst (\ e m i k (emi i (k e (+ m 1)))) ; XXX ok
  inom (\ i ((: ii (\ l (? l (? (= i (tbl-get (cns) (*: l))) (*: l)
                                  (ii (:* l))))))
             (tbl-keys (cns))))
@@ -147,8 +146,8 @@
  cev  (\ e m x k ((? (twop x) c2 (symp x) cy imm) e m x k))
 
  cy (\ e m x k (:
-  r ((\ r (? (= x 'ana) (. r) r))(look e x))
-  _ (. 'cy x r (:* r) (dbg-env e))
+  r (look e x)
+;  _ (. 'cy x r (:* r) (dbg-env e))
   s (*: r)
   (? (= s 'here)  (imm e m (:* r) k)
      (= s 'wait)  (late e m x (:* r) k)
@@ -172,7 +171,7 @@
                        (tbl-has c y) (:: 'here (tbl-get c y))
                        (:: 'wait d))))
  look (\ e y (,
- (. 'look y (dbg-env e))
+; (. 'look y (dbg-env e))
  (?
   (tbl-has (e-val e) y) (:: 'here (tbl-get (e-val e) y))
   (toplp e)
@@ -199,26 +198,28 @@
     (emi i-lbind (emx (:: t (:: d x)) h)))))))))
 
  cap (\ e m x k
-  ((: cca (\ e m x k (-> (k e (+ m 2)) (\ k (?
-       (nilp (= i-ret (hom-get-i k))) (emi i-call (emx x k))
-       (= x (len (e-arg e)))          (emi i-loop k)
-                                      (emi i-rec (emx x k))))))
-      capi (\ e m x k
-            (? (nilp x) (k e m)
-             (capi e m (:* x) (\ e m
-              (cev e m (*: x) (\ e m (inst e m i-push k))))))))
+  ((: capi (\ e m x k
+       (? (nilp x) (k e m)
+        (capi e m (:* x) (\ e m
+         (cev e m (*: x) (\ e m
+          (inst e m i-push k))))))))
    e m (:* x) (\ e m
     (cev e m (*: x) (\ e m
-     (inst e m i-tchom (\ e m
-       (cca e m (len (:* x)) k))))))))
+     (inst e m i-tchom (\ e m (-> (k e (+ m 2)) (\ k
+      (: l (len (:* x)) (?
+       (nilp (= i-ret (hom-get-i k)))
+        (emi i-call (emx l k))
+       (= l (len (e-arg e)))
+        (emi i-loop k)
+       (emi i-rec (emx l k)))))))))))))
 
- cse (\ e m x k (,
-  (: cser (\ e m x k (?
+ cse (\ e m x k (? (:* x)
+  ((: cser (\ e m x k (?
       (nilp x) (k e m)
                (cev e m (*: x) (\ e m
                 (cser e m (:* x) k))))))
-  (? (:* x) (cser e m (:* x) k)
-            (imm e m () k))))
+   e m (:* x) k)
+  (imm e m () k)))
 
  mat (\ e x (: y (look e x) (? (= (*: y) 'here) (li (:* y)))))
  cde (\ e m x k (,
@@ -238,6 +239,7 @@
       (= 1 (% (len (:* x)) 2)) (cev e m (desug x) k)
                                (cder e m (:* x) k))))
 
+ isla (\ x (&& (twop x) (= '\ (*: x))))
  ccopre (\ e m k (-> (k e m) (\ k
   (*: (e-s2 e (:: k (e-s2 e)))))))
 
@@ -268,21 +270,16 @@
     (, (e-s2 e (:* (e-s2 e))) k))))))
 
  ltu (\ e nom l (,
-  (? (= nom 'ana)
-   (. 'ltu (dbg-env e)))
   (: n ((\ x (? x x (:: x x))) (:* l))
      x (last n)
-     f (env (init n) e nom (tbl)))
-  (. 'scan)
+     f (env (init n) e (:: nom (e-nom e)) (tbl)))
   (scan f x)
-  (.'resolve)
   (resolve f)
-  (.'post)
   (-> (cev f 4 x (ini i-ret)) (\ k
    (-> (? (nilp (e-loc f)) k
         (emi i-prel (emx (len (e-loc f)) k))) (\ k
     (-> (hom-fin (?
-         (> (: i (e-sig f)) 0) (emi i-arity (emx i k))
+         (> (: i (e-sig f)) 0) (,(? (= i 4) (. 'arity 4 k x))(emi i-arity (emx i k)))
          (< i 0) (emi i-vararg (emx (- (- i) 1) k))
          k)) (\ k
      (? (e-clo f) (:: (e-clo f) k) k)))))))))
@@ -315,11 +312,8 @@
   (recomps e d (:* ks))))))
 
  resolve (\ e (,
-  (. 'precomps (dbg-env e))
   (precomps e (tbl-keys (e-lam e)))
-  (. 'elim (dbg-env e))
   (elim e (tbl-keys (e-lam e)))
-  (. 'recomps (dbg-env e))
   (: ls (e-lam e)
      (recomps e ls (e-lam e (tbl-keys ls))))))
 
@@ -366,12 +360,16 @@
     (? (= u t-none) h
      (type-err t u))))))
  produce (\ e m t k (tc t (k e (+ m 2))))
- cla (\ e m x k
+
+ cla (\ e m x k (,
+  (: gnom (\ e k (: i (hom-get-i k)
+   (? (= i i-tbind) (hom-get-x (hom-seek k 1))
+      (= i i-setl)  (at (e-loc e) (hom-get-x (hom-seek k 1)))))))
   (-> (produce e m t-hom (\ e m (k e (+ m 2)))) (: cla.in (\ k
-   (-> (ltu e () x) (\ x (?
-    (homp x) (emi i-immv (emx x k))
-             (emi (? (e-loc e) i-encll i-encln)
-              (emx (:: (:* x) ((claclo e (*: x) 0) e 0)) k)))))))))
+    (-> (ltu e (gnom e k) x) (\ x (?
+     (homp x) (emi i-immv (emx x k))
+              (emi (? (e-loc e) i-encll i-encln)
+               (emx (:: (:* x) ((claclo e (*: x) 0) e 0)) k))))))))))
 
  claclo (\ e arg n (? (nilp arg)
   (\ e m (emi i-take (emx n (hom (+ m 2)))))
@@ -384,9 +382,13 @@
  (,
   (test 'comp-em (= 3 ((emi i-immv (emx 3 (emi i-ret (hom 3)))))))
   (test 'comp-qt (-> (li 1) (\ y (= y (ana (li '` y))))))
-  (test 'comp-ap (= 6 (ana (li + 1 2 3))))
-  (test 'comp-sq (: box (li 0) inc (\(*! box (+ 1 (*: box))))
-   (= 3 (ana (li ', (li inc) (li inc) (li inc))))))
+  (test 'comp-ap (&&
+   (= 9 (ana (li + 1 2 (li * 2 3))))
+   (= 6 (ana (li + 1 2 3)))))
+  (test 'comp-sq (:
+    box (li())
+    inc (\(*! box (:: (len (*: box)) (*: box))))
+   (= '(2 1 0) (ana (li ', (li inc) (li inc) (li inc))))))
   (test 'comp-de (&&
    (-> 123 (\ x
     (-> (ana (li ': '_123 x)) (\ y
@@ -400,9 +402,11 @@
                      (= 1 (ana '(? () (? () 1 0);nested
                                       (? () 0 1))))))
   (test 'comp-la (&&
-   (= 3 (ana '((\(+((\ 1))((\ 2)))))))
-   (= 6 ((ana '(\ a b ((\ c (+ c b 1)) a))) 3 2))
-   ))
+   (= 3  (ana '((\(+((\ 1))((\ 2)))))))
+   (= 6  ((ana '(\ a b ((\ c (+ c b 1)) a))) 3 2))
+   (= 34 ((ana '(\ a b c (: f (\ x y z (+ a b c x y z)) (f a b c)))) 9 7 1))
+   (= 24 (ana '((\ a b ((\ a b c (+ a b c)) (* a (+ a b)) (* b (* a b)) (* b b b))) 2 2)))
+  ))
   ana
  )))
  (e compiler))))

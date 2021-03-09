@@ -609,7 +609,7 @@ obj homnom(vm v, obj x) {
   x = h[-1];
   return (mem)x >= Pool &&
          (mem)x < Pool+Len &&
-         symp(x) ? x : nil; }
+         twop(x) ? x : nil; }
 
 static void rpr(vm v, mem d, const char *n, terp *u, c2 *c) {
   obj x, y = interns(v, n);

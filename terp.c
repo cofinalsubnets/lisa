@@ -62,7 +62,7 @@ static obj interpret_error(vm v, obj xp, obj ip, mem fp, const char *msg, ...) {
   vferrp(v, stderr, "interpret", xp, msg, xs);
   for (;fp < Pool + Len;
        ip = Retp, fp += Size(fr) + getnum(Argc) + getnum(Subd))
-    fprintf(stderr, "  in %s\n", symp(ip = homnom(v, ip)) ? symnom(ip) : "\\");
+    fputs("  in ", stderr), emsep(v, ip, stderr, '\n');
   return restart(v); }
 
 obj restart(vm v) {

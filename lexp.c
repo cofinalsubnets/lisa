@@ -100,9 +100,9 @@ static void emit_2(vm v, obj x, FILE *o) {
                 emsep(v, X(x), o, ')'); }
 
 static void emhom(vm v, obj x, FILE *o) {
-  x = homnom(v, x);
-  fputc('\\', o);
-  if (symp(x)) fputs(symnom(x), o); }
+  for (x = homnom(v, x); twop(x); x = Y(x)) {
+    fputc('\\', o); if (symp(X(x))) emit(v, X(x), o); }
+  fputc('\\', o); }
 
 static void emoct(vm v, obj x, FILE *o) {
   fputc('"', o);
