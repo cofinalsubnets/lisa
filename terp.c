@@ -223,7 +223,10 @@ v_op(rec) {
 // type/arity checking
 v_op(tcnum) { TypeCheck(xp, Num); Next(1); }
 v_op(tctwo) { TypeCheck(xp, Two); Next(1); }
-v_op(tchom) { TypeCheck(xp, Hom); Next(1); }
+v_op(tchom) {
+  if (kind(xp) != Hom) {
+    puts("OOO"); }
+  TypeCheck(xp, Hom); Next(1); }
 v_op(arity) { Arity((obj)GF(ip)); Next(2); }
 
 // continuations

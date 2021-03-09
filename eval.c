@@ -612,10 +612,10 @@ obj homnom(vm v, obj x) {
          twop(x) ? x : nil; }
 
 static void rpr(vm v, mem d, const char *n, terp *u, c2 *c) {
-  obj x, y = interns(v, n);
+  obj x, y = pair(v, interns(v, n), nil);
   with(y, x = hom_ini(v, 2));
   x = em2(u, y, x);
-  tbl_set(v, *d, y, x);
+  tbl_set(v, *d, X(y), x);
   if (c) tbl_set(v, *d, N(u), N(c)); }
 static void rin(vm v, mem d, const char *n, terp *u) {
   obj y = interns(v, n);
