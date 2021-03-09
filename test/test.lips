@@ -113,7 +113,8 @@
          (map (\ x (+ 1 x)) (iota 3))
          (snoc ((flip snoc) 2 (li 1)) 3)
          (foldr () :: (iota 1 4)))))
-(: boot (\ e (,
+
+(: eval (: boot (\ e (,
 (: compiler '(: ; ok now let's port the compiler
    -> (\ x f (f x))
  .l (\ a n ;; lol what is this thing
@@ -397,48 +398,42 @@
  dbg-env (\ e (li 'env ': (e-nom e) 'arg (e-arg e) 'loc (e-loc e) 'clo (e-clo e) 'val (tbl-keys (e-val e)) 'lam (? (tblp (e-lam e)) (tbl-keys (e-lam e)) (e-lam e)) 'par (e-par e)))
  ini (\ i (\ e m (insx e m i (e-nom e) (\ e m (hom m)))))
  ana (\ x ((cev (env () () () (ns)) 0 x (ini i-ret))))
- (,
-  (test 'envs (= '(a b c d) (e-arg (env '(a b c d .) () () (tbl)))))
-  (test 'comp-em (= 3 ((emi i-immv (emx 3 (emi i-ret (hom 3)))))))
-  (test 'comp-qt (= (li 1) (ana (li '` (li 1)))))
-  (test 'comp-ap (&&
-   (= 9 (ana (li + 1 2 (li * 2 3))))
-   (= 6 (ana (li + 1 2 3)))))
-  (test 'comp-sq (:
-    box (li())
-    inc (\(*! box (:: (len (*: box)) (*: box))))
-   (= '(2 1 0) (ana (li ', (li inc) (li inc) (li inc))))))
-  (test 'comp-de (&&
-   (-> 123 (\ x
-    (-> (ana (li ': '_123 x)) (\ y
-     (-> _123 (\ z (= 123 x y z)))))))
-   (= 3 (ana '(: a (\ 1) b (\ 2) c (\(+(a)(b))) (c))))
-  ))
-  (test 'comp-sy (= _123 (ana '_123)))
-  (test 'comp-co (&& (= 1 (ana '(? () 0 1)));false
-                     (= 0 (ana '(? 1 0 ())));true
-                     (nilp (ana '(? () 1)));even
-                     (= 1 (ana '(? () (? () 1 0);nested
-                                      (? () 0 1))))))
-  (test 'comp-la (&&
-   (= 3  (ana '((\(+((\ 1))((\ 2)))))))
-   (= 6  ((ana '(\ a b ((\ c (+ c b 1)) a))) 3 2))
-   (= 34 ((ana '(\ a b c (: f (\ x y z (+ a b c x y z)) (f a b c)))) 9 7 1))
-   (= 24 (ana '((\ a b ((\ a b c (+ a b c)) (* a (+ a b)) (* b (* a b)) (* b b b))) 2 2)))
-   (= '(1 2 3) ((ana '(\ a b c ((\ (li a b c))))) 1 2 3))
-  ))
-  ana
- )))
- (e compiler))))
+ ))
+ (e compiler)))
+ (boot (boot ev))
 
-(: s1 ev
-   s2 (boot s1)
-   s3 (boot s2))
+ ))
 
+(test 'envs (= '(a b c d) (e-arg (env '(a b c d .) () () (tbl)))))
+(test 'comp-em (= 3 ((emi i-immv (emx 3 (emi i-ret (hom 3)))))))
+(test 'comp-qt (= (li 1) (eval (li '` (li 1)))))
+(test 'comp-ap (&&
+ (= 9 (eval (li + 1 2 (li * 2 3))))
+ (= 6 (eval (li + 1 2 3)))))
+(test 'comp-sq (:
+  box (li())
+  inc (\(*! box (:: (len (*: box)) (*: box))))
+ (= '(2 1 0) (eval (li ', (li inc) (li inc) (li inc))))))
+(test 'comp-de (&&
+ (-> 123 (\ x
+  (-> (eval (li ': '_123 x)) (\ y
+   (-> _123 (\ z (= 123 x y z)))))))
+ (= 3 (eval '(: a (\ 1) b (\ 2) c (\(+(a)(b))) (c))))))
+(test 'comp-sy (= _123 (eval '_123)))
+(test 'comp-co (&& (= 1 (eval '(? () 0 1)));false
+                   (= 0 (eval '(? 1 0 ())));true
+                   (nilp (eval '(? () 1)));even
+                   (= 1 (eval '(? () (? () 1 0);nested
+                                     (? () 0 1))))))
+(test 'comp-la (&&
+ (= 3  (eval '((\(+((\ 1))((\ 2)))))))
+ (= 6  ((eval '(\ a b ((\ c (+ c b 1)) a))) 3 2))
+ (= 34 ((eval '(\ a b c (: f (\ x y z (+ a b c x y z)) (f a b c)))) 9 7 1))
+ (= 24 (eval '((\ a b ((\ a b c (+ a b c)) (* a (+ a b)) (* b (* a b)) (* b b b))) 2 2)))
+ (= '(1 2 3) ((eval '(\ a b c ((\ (li a b c))))) 1 2 3))))
 ; hurray a new language
 (: quine ((\ q ((ev q) q)) '(\ i (li i (li '` i))))
-  (test 'quine (= quine (s1 quine) (s2 quine) (s3 quine))))
-
+  (test 'quine (= quine (ev quine) (eval quine))))
 
 (: math
    '(: fib (\ n ;; double recursive fibonacci function
@@ -446,7 +441,9 @@
        ack (\ m n ;; ackermann function
         (? (< m 1) (+ n 1)
          (ack (- m 1) (? (> n 0) (ack m (- n 1)) 1))))
+       quine ((\ q ((eval q) q)) '(\ i (li i (li '` i))))
      (, (test 'fib32 (= 2178309 (fib 32)))
         (test 'ack3,9 (= 4093 (ack 3 9)))
+        (test 'quine (= quine (ev quine) (eval quine)))
         ))
- (s3 math))
+ (eval math))
