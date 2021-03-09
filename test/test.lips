@@ -151,7 +151,7 @@
    ))))))
 
  insx (\ e m i x k (emi i (emx x (k e (+ m 2)))))
- imm  (\ e m x k (insx e m i-immv x k))
+ imm  (\ e m x k (insx e m i-immv x (\ e m (produce e m (t-num x) k))))
  cev  (\ e m x k ((? (twop x) c2 (symp x) cy imm) e m x k))
 
  cy (\ e m x k (:
@@ -245,9 +245,9 @@
      cdeb (\ e m x k (?
       (toplp e) (insx e m i-tbind x k)
                 (insx e m i-setl (idx (e-loc e) x) k))))
-  (?  (nilp (:* x))            (imm e m nil k)
-      (= 1 (% (len (:* x)) 2)) (cev e m (desug x) k)
-                               (cder e m (:* x) k))))
+  (? (nilp (:* x))            (imm e m nil k)
+     (= 1 (% (len (:* x)) 2)) (cev e m (desug x) k)
+     (cder e m (:* x) k))))
 
  isla (\ x (&& (twop x) (= '\ (*: x))))
  ccopre (\ e m k (-> (k e m) (\ k
@@ -322,7 +322,6 @@
   (recomps e d (:* ks))))))
 
  resolve (\ e (,
- ; (. 'resolve 'locals (e-loc e) 'lams (tbl-keys (e-lam e)))
   (precomps e (tbl-keys (e-lam e)))
   (elim e (tbl-keys (e-lam e)))
   (: ls (e-lam e)
@@ -350,16 +349,16 @@
    (? (= (*: x) ':) (scandef e (:* x))
                     (each x (\ x (scan e x)))))))
 
+ t-num (\ x (?
+  (homp x) t-hom (nump x) t-num
+  (twop x) t-two ;(tupp x) t-tup
+  (symp x) t-sym (strp x) t-oct
+  (tblp x) t-tbl (nilp x) t-nil))
  t-nom (\ t (?
-  (= t t-hom) 'hom
-  (= t t-num) 'num
-  (= t t-two) 'two
-  (= t t-tup) 'tup
-  (= t t-oct) 'str
-  (= t t-tbl) 'tbl
-  (= t t-sym) 'sym
-  (= t t-nil) 'nil))
-
+  (= t t-hom) 'hom (= t t-num) 'num
+  (= t t-two) 'two (= t t-tup) 'tup
+  (= t t-oct) 'str (= t t-tbl) 'tbl
+  (= t t-sym) 'sym (= t t-nil) 'nil))
  type-err (\ h w (fail
   (li 'type-error ': (t-nom h) 'for (t-nom w))))
  arity-err (\ h w (fail
@@ -374,27 +373,26 @@
  cla (\ e m x k (,
   (: gnom (\ e k (: i (hom-get-i k)
    (? (= i i-tbind) (hom-get-x (hom-seek k 1))
-      (= i i-setl)  (at (e-loc e) (hom-get-x (hom-seek k 1))))))
-     ;_ (. 'cla (dbg-env e))
-  )
+      (= i i-setl)  (at (e-loc e) (hom-get-x (hom-seek k 1)))))))
   (-> (produce e m t-hom (\ e m (k e (+ m 2)))) (: cla.in (\ k
     (-> (ltu e (gnom e k) x) (\ x (?
      (homp x) (emi i-immv (emx x k))
-              (,;(. 'closure (gnom e k) (*: x))
-               (emi (? (e-loc e) i-encll i-encln)
-                (emx (:: (:* x) (claclo e (*: x))) k)))))))))))
+              (emi (? (e-loc e) i-encll i-encln)
+               (emx (:: (:* x) (claclo e (*: x))) k))))))))))
 
- clacloini (\ n (\ e m (emi i-take (emx n (hom (+ m 2))))))
- clacloin (\ e arg k (? (nilp arg) k
-  (clacloin e (:* arg) (\ e m
-   (cev e m (*: arg) (\ e m
-    (inst e m i-push k)))))))
- claclo (\ e arg ((clacloin e arg (clacloini (len arg))) e 0))
+ claclo (\ e arg
+  (: clacloin (\ e arg k (? (nilp arg) k
+      (clacloin e (:* arg) (\ e m
+       (cev e m (*: arg) (\ e m
+        (inst e m i-push k)))))))
+     k (\ e m (emi i-take (emx (len arg) (hom (+ m 2)))))
+   ((clacloin e arg k) e 0)))
 
  dbg-env (\ e (li 'env ': (e-nom e) 'arg (e-arg e) 'loc (e-loc e) 'clo (e-clo e) 'val (tbl-keys (e-val e)) 'lam (? (tblp (e-lam e)) (tbl-keys (e-lam e)) (e-lam e)) 'par (e-par e)))
  ini (\ i (\ e m (insx e m i (e-nom e) (\ e m (hom m)))))
  ana (\ x ((cev (env () () () (ns)) 0 x (ini i-ret))))
  (,
+  (. 'ana ': (emh ana))
   (test 'comp-em (= 3 ((emi i-immv (emx 3 (emi i-ret (hom 3)))))))
   (test 'comp-qt (-> (li 1) (\ y (= y (ana (li '` y))))))
   (test 'comp-ap (&&
