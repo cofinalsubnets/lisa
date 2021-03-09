@@ -87,7 +87,6 @@
                                    (*: x)))
    each (\ x f (? x (,(f (*: x)) (each (:* x) f))))
 
-   -> (\ x f (f x))
    at (\ l n (? (< n 1) (*: l) (at (:* l) (- n 1))))
    atn (\ n (\ l (at l n)))
    flip (\ f (\ x y (f y x)))
@@ -116,21 +115,23 @@
          (foldr () :: (iota 1 4)))))
 (: boot (\ e (,
 (: compiler '(: ; ok now let's port the compiler
+   -> (\ x f (f x))
+ .l (\ a n ;; lol what is this thing
+  (? (twop a)
+     (? (&& (twop (:* a)) (= '. (*: (:* a))))
+         (:: (- (+ n 1)) (li (*: a)))
+        (-> (.l (:* a) (+ n 1)) (\ r
+         (:: (*: r) (:: (*: a) (:* r))))))
+     (:: n a)))
  env (\ a p n vs
-  (: .l (\ a n ;; lol what is this thing
-         (? (twop a)
-             (? (&& (twop (:* a)) (= '. (*: (:* a))))
-                 (:: (- (+ n 1)) (li (*: a)))
-                (-> (.l (:* a) (+ n 1)) (\ r
-                 (:: (*: r) (:: (*: a) (:* r))))))
-            (:: n a)))
+   
        (-> (.l a 0) (\ b (: d (tbl)
           (, (tbl-set d
                'arg (:* b) 'loc ()
                'clo ()     'par p
                'lam (tbl)  'nom n
                'val vs  'sig (*: b))
-             d))))))
+             d)))))
  gtk (\ k (\ d v . (?
   (nilp v) (tbl-get d k)
            (tbl-set d k (*: v)))))
@@ -219,9 +220,10 @@
       (: l (len (:* x)) (?
        (nilp (= i-ret (hom-get-i k)))
         (emi i-call (emx l k))
-       (= l (len (e-arg e)))
-        (emi i-loop k)
-       (emi i-rec (emx l k)))))))))))))
+       (-> (hom-seek k 1) (\ k (?
+         (= l (len (e-arg e)))
+          (emi i-loop k)
+         (emi i-rec (emx l k))))))))))))))))
 
  cse (\ e m x k (? (:* x)
   ((: cser (\ e m x k (?
@@ -392,9 +394,10 @@
  ini (\ i (\ e m (insx e m i (e-nom e) (\ e m (hom m)))))
  ana (\ x ((cev (env () () () (ns)) 0 x (ini i-ret))))
  (,
-  (. 'ana ': (emh ana))
+  (. 'env.l ': (emh .l))
+  (test 'envs (= '(a b c d) (e-arg (env '(a b c d .) () () (tbl)))))
   (test 'comp-em (= 3 ((emi i-immv (emx 3 (emi i-ret (hom 3)))))))
-  (test 'comp-qt (-> (li 1) (\ y (= y (ana (li '` y))))))
+  (test 'comp-qt (= (li 1) (ana (li '` (li 1)))))
   (test 'comp-ap (&&
    (= 9 (ana (li + 1 2 (li * 2 3))))
    (= 6 (ana (li + 1 2 3)))))
@@ -440,7 +443,7 @@
        ack (\ m n ;; ackermann function
         (? (< m 1) (+ n 1)
          (ack (- m 1) (? (> n 0) (ack m (- n 1)) 1))))
-     (, (test 'fib32 (= 2178309 (fib 32)))
-        (test 'ack3,9 (= 4093 (ack 3 9)))
+     (, ;(test 'fib32 (= 2178309 (fib 32)))
+        ;(test 'ack3,9 (= 4093 (ack 3 9)))
         ))
  (eva math))

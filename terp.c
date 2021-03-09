@@ -159,6 +159,7 @@ v_op(yield) { return Pack(), xp; }
 
 // return from a function
 v_op(ret) {
+  //printf("ret "), emsep(v, (obj) ip, stdout, ' '); emsep(v, Retp, stdout, '\n');
   ip = gethom(Retp);
   sp = (mem) ((num) Argv + Argc - Num);
   fp = (mem) ((num)   sp + Subd - Num);
@@ -185,6 +186,7 @@ v_op(clos) {
 // regular function call
 v_op(call) {
   Have(Size(fr));
+  //printf("call "), emsep(v, (obj) ip, stdout, ' '); emsep(v, xp, stdout, '\n');
   obj adic = (obj) GF(ip);
   num off = fp - (mem) ((num) sp + adic - Num);
   fp = sp -= Size(fr);
@@ -197,6 +199,7 @@ v_op(call) {
 // tail call: special case where the caller and callee
 // have the same arity, so we can keep the frame
 v_op(loop) {
+  //printf("jmp "), emsep(v, (obj)ip, stdout, ' '); emsep(v, xp, stdout, '\n');
   num adic = getnum(Argc);
   for (mem p = Argv; adic--; *p++ = *sp++);
   sp = fp;
@@ -204,6 +207,7 @@ v_op(loop) {
 
 // general tail call
 v_op(rec) {
+  //printf("rec "), emsep(v, (obj)ip, stdout, ' '); emsep(v, xp, stdout, '\n');
   num adic = getnum(GF(ip));
 
   obj off = Subd, rp = Retp; // save return info
@@ -223,10 +227,7 @@ v_op(rec) {
 // type/arity checking
 v_op(tcnum) { TypeCheck(xp, Num); Next(1); }
 v_op(tctwo) { TypeCheck(xp, Two); Next(1); }
-v_op(tchom) {
-  if (kind(xp) != Hom) {
-    puts("OOO"); }
-  TypeCheck(xp, Hom); Next(1); }
+v_op(tchom) { TypeCheck(xp, Hom); Next(1); }
 v_op(arity) { Arity((obj)GF(ip)); Next(2); }
 
 // continuations
@@ -511,7 +512,9 @@ v_op(pc0) {
   Argc = putnum(adic);
   Clos = AR(ec)[2];
   if (!nilp(loc)) *--sp = loc;
+  //printf("pc0 "), emsep(v, (obj)ip, stdout, ' ');
   ip = gethom(AR(ec)[3]);
+  //emsep(v, (obj)ip, stdout, '\n');
   Next(0); }
 
 // finalize function instance closure
@@ -728,8 +731,8 @@ v_op(gt_u)   { ord_w(>); }
 
 #define typpp(t) {\
   for (obj *xs = Argv, *l=xs+getnum(Argc);xs<l;)\
-    if (kind(*xs++)!=t) return nil;\
-  return ok; }
+    if (kind(*xs++)!=t) Go(ret, nil);\
+  Go(ret, ok); }
 v_op(nump_u) { typpp(Num); }
 v_op(homp_u) { typpp(Hom); }
 v_op(strp_u) { typpp(Oct); }
