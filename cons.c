@@ -37,11 +37,22 @@ obj string(vm v, const char *c) {
 obj interns(vm v, const char *c) {
   return intern(v, string(v, c)); }
 
+obj sseekc(vm, mem, obj), seekc(vm, obj, obj);
+static obj sseek(vm v, obj y, obj x) {
+  int i = strcmp(symnom(y), chars(x));
+  if (i == 0) return y;
+  return sseekc(v, i<0?&(getsym(y)->r):&(getsym(y)->l), x); }
+obj sseekc(vm v, mem y, obj x) {
+  if (nilp(*y)) {
+    sym u = bump(v, Size(sym));
+    u->nom = x, u->code = hc(x);
+    u->l = nil, u->r = nil;
+    return *y = putsym(u); }
+  return sseek(v, *y, x); }
+
 obj intern(vm v, obj x) {
-  for (obj s = Syms; symp(s); s = getsym(s)->next)
-    if (0 == strcmp(chars(x), symnom(s))) return s;
-  sym y; with(x, y = cells(v, Size(sym)));
-  return y->nom = x, y->code = mix* hc(x), y->next = Syms, Syms = putsym(y); }
+  if (Avail < Size(sym)) with(x, reqsp(v, Size(sym)));
+  return sseekc(v, &Syms, x); }
 
 static Inline uint64_t hash_bytes(num len, char *us) {
   num h = 1;

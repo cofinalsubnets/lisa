@@ -28,7 +28,7 @@ union hom { terp *g; };
 typedef struct two { obj x, y; } *two;
 typedef struct tup { num len; obj xs[]; } *tup;
 typedef struct oct { num len; char text[]; } *oct;
-typedef struct sym { obj nom, code, next; } *sym;
+typedef struct sym { obj nom, code, l, r; } *sym;
 
 typedef struct tble { obj key, val; struct tble *next; } *tble;
 typedef struct tbl { num len, cap; tble *tab; } *tbl;
@@ -62,6 +62,7 @@ obj err(rt, const char*, obj, const char*, ...),
     interns(rt, const char*),
     eval(rt, obj),
     hom_fin(rt, obj),
+    sseekc(vm, mem, obj),
     table(rt),
     tbl_set(rt, obj, obj, obj),
     tbl_get(rt, obj, obj),
@@ -128,7 +129,7 @@ extern const char *t_nom[];
 #define Pool v->mem_pool
 #define Len v->mem_len
 #define Dict v->dict
-#define Syms v->syms
+#define Syms (v->syms)
 #define Syn v->syn
 #define If AR(v->syn)[Cond]
 #define De AR(v->syn)[Def]

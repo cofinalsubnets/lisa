@@ -167,13 +167,9 @@ cpcc(cpoct) {
      *(mem)src->text = putoct(dst)); }
 
 cpcc(cpsym) {
-  sym dst, src = getsym(x);
+  sym src = getsym(x);
   return fresh(src->nom) ? (obj) src->nom :
-    (dst = bump(v, Size(sym)),
-     dst->nom = cp(v, src->nom, ln, lp),
-     dst->code = src->code,
-     dst->next = Syms,
-     Syms = src->nom = putsym(dst)); }
+    sseekc(v, &Syms, cp(v, src->nom, ln, lp)); }
 
 #define stale(o) inb((mem)(o),lp,lp+ln)
 cpcc(cphom) {

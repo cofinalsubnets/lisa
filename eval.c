@@ -56,13 +56,6 @@ enum location { Here, Loc, Arg, Clo, Wait };
 // then if f takes a fixed number of arguments the arity
 // signature is n; otherwise it's -n-1.
 
-// here's some functions for errors.
-static obj arity_error(vm v, mem e, obj x, num h, num w) {
-  return err(v, "compile", x, "wrong arity : %ld of %ld", h, w); }
-#define Arity(n) {\
-  num i = llen(Y(x));\
-  if (i<n) return arity_error(v, e, x, i, n); }
-
 static obj compile(vm v, obj x) {
   static obj top = nil;
   Push(N(c_ev), x, N(inst), N(yield), N(c_ini));
@@ -336,124 +329,6 @@ c1(c_ini) {
   if (!toplp(e)) k = em1((terp*)name(*e), k);
   return k; }
 
-static obj c_un_t(vm v, mem e, num m, obj x, terp *o, terp *tc) {
-  Arity(1);
-  Push(XY(x), N(inst), N(tc), N(inst), N(o));
-  return c_ev(v, e, m); }
-
-static obj c_bin_tx(vm v, mem e, num m, obj x, terp *o, terp *tc) {
-  Arity(2);
-  Push(X(YY(x)), N(inst), N(push), N(c_ev), XY(x),
-       N(inst), N(tc), N(inst), N(o));
-  return c_ev(v, e, m); }
-
-static void c_m_bin_r(vm v, mem e, obj x, terp *o) {
-  if (twop(x))
-    with(x, c_m_bin_r(v, e, Y(x), o)),
-    Push(N(inst), N(push),
-         N(c_ev), X(x),
-         N(inst), N(tcnum),
-         N(inst), N(o)); }
-
-c2(c_m_bin_lr, terp *i, terp *j, num z) {
-  if (!twop(Y(x))) return c_imm(v, e, m, N(z));
-  x = Y(Sp[2]);
-  if (!twop(Y(x))) { if (j) with(x, Push(N(inst), N(j))); }
-  else with(x, c_m_bin_r(v, e, Y(x), i));
-  return Push(X(x), N(inst), N(tcnum)), c_ev(v, e, m); }
-
-static obj c_bin(vm v, mem e, num m, obj x, terp *o) {
-  Push(X(x), N(inst), N(push), N(c_ev), XY(x), N(inst), N(o));
-  return c_ev(v, e, m); }
-c2(cons_c) {
-  Arity(2);
-  Push(XY(x), N(inst), N(push), N(c_ev), X(YY(x)), N(inst), N(cons));
-  return c_ev(v, e, m); }
-
-c2(fail_c) {
-  Push(twop(Y(x)) ? XY(x) : nil, N(inst), N(fail));
-  return c_ev(v, e, m); }
-
-#define apc(f,...) (f)(v,e,m,##__VA_ARGS__)
-c2(c_add) { return apc(c_m_bin_lr, x, add, NULL, 0); }
-c2(c_sub) { return apc(c_m_bin_lr, x, sub, neg, 0); }
-c2(mul_c) { return apc(c_m_bin_lr, x, mul, NULL, 1); }
-c2(div_c) { return apc(c_m_bin_lr, x, dqv, NULL, 1); }
-c2(mod_c) { return apc(c_m_bin_lr, x, mod, NULL, 1); }
-c2(car_c) { return apc(c_un_t, x, car, tctwo); }
-c2(cdr_c) { return apc(c_un_t, x, cdr, tctwo); }
-c2(rpla_c) { return apc(c_bin_tx, x, setcar, tctwo); }
-c2(rpld_c) { return apc(c_bin_tx, x, setcdr, tctwo); }
-
-c1(or_c_pre_op) {
-  obj x = ccc(v, e, m+2), k = X(S2);
-  return em2(branch, k, x); }
-
-c1(and_c_pre_op) {
-  obj x = ccc(v, e, m+2), k = X(S2);
-  return em2(barnch, k, x); }
-
-c1(cnop) { return ccc(v, e, m); }
-
-static void c_cmp_r(vm v, mem e, obj x, terp *o) {
-  if (!twop(x)) return Push(N(c_co_pre), N(inst), N(drop));
-  with(x, c_cmp_r(v, e, Y(x), o));
-  Push(N(c_ev), X(x), N(inst), N(tuck), N(inst), N(o),
-       N(and_c_pre_op)); }
-
-static void c_pr_r(vm v, mem e, obj x, terp *p) {
-  if (!twop(x)) return Push(N(c_co_pre));
-  with(x, c_pr_r(v, e, Y(x), p));
-  Push(N(c_ev), X(x), N(inst), N(p), N(and_c_pre_op)); }
-
-c2(c_pr, terp *p) {
-  if (!twop(x)) return c_imm(v, e, x, nil);
-  if (!twop(Y(x))) return
-    Push(X(x), N(inst), N(p)),
-    c_ev(v, e, m);
-  return
-    c_pr_r(v, e, x, p),
-    x = ccc(v, e, m),
-    S2 = Y(S2),
-    x; }
-
-c2(nump_c) { return c_pr(v, e, m, Y(x), numpp); }
-c2(homp_c) { return c_pr(v, e, m, Y(x), hompp); }
-c2(strp_c) { return c_pr(v, e, m, Y(x), strpp); }
-c2(nilp_c) { return c_pr(v, e, m, Y(x), nilpp); }
-c2(symp_c) { return c_pr(v, e, m, Y(x), sympp); }
-c2(tblp_c) { return c_pr(v, e, m, Y(x), tblpp); }
-c2(twop_c) { return c_pr(v, e, m, Y(x), twopp); }
-
-c2(c_cmp, terp *j) {
-  if (!twop(x)) return c_imm(v, e, x, nil);
-  if (!twop(Y(x))) return c_imm(v, e, m, N(0));
-  if (!twop(YY(x))) return c_bin(v, e, m, x, j);
-  with(x, c_cmp_r(v, e, Y(x), j));
-  Push(X(x), N(inst), N(push));
-  return x = c_ev(v, e, m), S2 = Y(S2), x; }
-
-static void cunvr(vm v, mem e, obj x, obj xs, c1 *sep, c1 *fin) {
-  if (nilp(xs)) return Push(N(c_ev), x, N(fin ? fin : cnop));
-  with(x, cunvr(v, e, X(xs), Y(xs), sep, fin));
-  Push(N(c_ev), x, N(sep ? sep : cnop)); }
-
-static obj cunv(vm v, mem e, num m, obj x, c1*sep, c1*fin) {
-  if (!twop(x)) return c_imm(v, e, m, nil);
-  cunvr(v, e, X(x), Y(x), sep, fin);
-  return ccc(v, e, m); }
-
-c2(lt_c) { return c_cmp(v, e, m, Y(x), lt); }
-c2(lteq_c) { return c_cmp(v, e, m, Y(x), lteq); }
-c2(eq_c) { return c_cmp(v, e, m, Y(x), eq); }
-c2(gteq_c) { return c_cmp(v, e, m, Y(x), gteq); }
-c2(gt_c) { return c_cmp(v, e, m, Y(x), gt); }
-c2(or_c) { return x = cunv(v, e, m, Y(x), or_c_pre_op, c_co_pre), S2 = Y(S2), x; }
-c2(and_c) { return x = cunv(v, e, m, Y(x), and_c_pre_op, c_co_pre), S2 = Y(S2), x; }
-c1(emsepsp) { return imx(v, e, m, emse, putnum(' ')); }
-c1(emsepnl) { return imx(v, e, m, emse, putnum('\n')); }
-c2(em_c) { return cunv(v, e, m, Y(x), emsepsp, emsepnl); }
-
 static obj snoc(vm v, obj l, obj x) {
   if (!twop(l)) return pair(v, x, l);
   with(l, x = snoc(v, Y(l), x));
@@ -524,7 +399,7 @@ obj homnom(vm v, obj x) {
          (mem)x < Pool+Len &&
          twop(x) ? x : nil; }
 
-static void rpr(vm v, mem d, const char *n, terp *u, c2 *c) {
+static void rpr(vm v, mem d, const char *n, terp *u) {
   obj x, y = pair(v, interns(v, n), nil);
   with(y, x = hom_ini(v, 2));
   x = em2(u, y, x);
@@ -562,7 +437,7 @@ static void rin(vm v, mem d, const char *n, terp *u) {
   _("tblp", tblp_u, tblp_c), _("strp", strp_u, strp_c),\
   _("nilp", nilp_u, nilp_c), _("homp", homp_u, homp_c)
 
-#define RPR(a,b,c) rpr(v,&d,a,b,c)
+#define RPR(a,b,c) rpr(v,&d,a,b)
 #define RIN(x) rin(v,&d,"i-"#x,x)
 static Inline obj code_dictionary(vm v) {
   obj d = table(v);

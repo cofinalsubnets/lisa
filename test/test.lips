@@ -128,14 +128,13 @@
            (:: (*: r) (:: (*: a) (:* r))))))
        (:: n a)))
    env (\ a p n vs
-     
-         (-> (.l a 0) (\ b (: d (tbl)
-            (, (tbl-set d
-                 'arg (:* b) 'loc ()
-                 'clo ()     'par p
-                 'lam (tbl)  'nom n
-                 'val vs  'sig (*: b))
-               d)))))
+        (-> (.l a 0) (\ b (: d (tbl)
+           (, (tbl-set d
+                'arg (:* b) 'loc ()
+                'clo ()     'par p
+                'lam (tbl)  'nom n
+                'val vs  'sig (*: b))
+              d)))))
    gtk (\ k (\ d v . (?
     (nilp v) (tbl-get d k)
              (tbl-set d k (*: v)))))
@@ -144,7 +143,7 @@
    e-lam (gtk 'lam) e-nom (gtk 'nom)
    e-val (gtk 'val) e-sig (gtk 'sig)
    e-s1  (gtk 's1)  e-s2  (gtk 's2)
-   inst (\ e m i k (emi i (k e (+ m 1)))) ; XXX ok
+   inst (\ e m i k (emi i (k e (+ m 1))))
    inom (\ i (-> (tbl-keys (cns)) (: in (\ l (? l
     (? (= i (tbl-get (cns) (*: l))) (*: l) (in (:* l))))))))
    emh (\ h (: i (hom-get-i h)
@@ -212,7 +211,7 @@
        (= i i-tcnum) t-num
        (= i i-tctwo) t-two
                      t-none))))
-   cap (\ e m x k
+   cap (\ e m x k (,
     ((: capi (\ e m x k
          (? (nilp x) (k e m)
           (capi e m (:* x) (\ e m
@@ -227,7 +226,7 @@
          (-> (hom-seek k 1) (\ k (?
            (= l (len (e-arg e)))
             (emi i-loop k)
-           (emi i-rec (emx l k))))))))))))))))
+           (emi i-rec (emx l k)))))))))))))))))
 
    cse (\ e m x k (? (:* x)
     ((: cser (\ e m x k (?
@@ -400,7 +399,6 @@
    (e compiler)))
  (boot (boot ev))))
 
-(test 'envs (= '(a b c d) (e-arg (env '(a b c d .) () () (tbl)))))
 (test 'comp-em (= 3 ((emi i-immv (emx 3 (emi i-ret (hom 3)))))))
 (test 'comp-qt (= (li 1) (eval (li '` (li 1)))))
 (test 'comp-ap (&&
