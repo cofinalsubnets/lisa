@@ -6,7 +6,6 @@
 //
 static void c_de_r(vm, mem, obj),
             scan(vm, mem, obj), pushs(vm, ...);
-static Inline c2 *inliner(vm, mem, obj);
 static c1  c_ev, produce, c_d_bind, inst, insx, c_ini;
 static c2 c_eval, c_sy, c_2, c_imm, ltu, c_ap, c_la_clo;
 static c3 late;
@@ -159,9 +158,9 @@ static int okvs(vm v, mem e, obj vs) {
 static void eliminate_runtime_dependencies(vm v, mem e) {
   for (obj ks = tbl_keys(v, lams(*e)); twop(ks); ks = Y(ks)) {
     obj vs = X(tbl_get(v, lams(*e), X(ks)));
-    if (!okvs(v, e, vs)) {
-      tbl_del(v, lams(*e), X(ks));
-      return eliminate_runtime_dependencies(v, e); } } }
+    if (!okvs(v, e, vs)) return
+      tbl_del(v, lams(*e), X(ks)),
+      eliminate_runtime_dependencies(v, e); } }
 
 static void recompile_inner_lambdas(vm v, mem e, mem d, obj ks) {
   obj x;
@@ -205,8 +204,7 @@ static obj ltu(vm v, mem e, obj n, obj l) {
   return l; }
 
 c1(c_ev) { return c_eval(v, e, m, *Sp++); }
-c2(c_eval) {
-  return (symp(x) ? c_sy : twop(x) ? c_2 : c_imm)(v, e, m, x); }
+c2(c_eval) { return (symp(x) ? c_sy : twop(x) ? c_2 : c_imm)(v, e, m, x); }
 
 c2(c_la) {
   terp *j = immv;
@@ -391,9 +389,6 @@ c2(c_2) {
               c_ap(v, e, m, x); }
 
 c2(c_ap) {
-  c2 *c;
-  with(x, c = inliner(v, e, X(x)));
-  if (c) return c(v, e, m, x);
   for (mm(&x),
        Push(N(c_ev), X(x), N(inst), N(tchom),
             N(c_call), N(llen(Y(x))));
@@ -535,12 +530,6 @@ c1(emsepsp) { return imx(v, e, m, emse, putnum(' ')); }
 c1(emsepnl) { return imx(v, e, m, emse, putnum('\n')); }
 c2(em_c) { return cunv(v, e, m, Y(x), emsepsp, emsepnl); }
 
-static Inline c2 *inliner(vm v, mem e, obj x) {
-  if (symp(x)) x = X(x = look(v, *e, x)) == N(Here) ? Y(x) : 0;
-  if (x && homp(x) && (x = tbl_get(v, v->cdict, N(G(x)))))
-    return (c2*) Gn(x);
-  return NULL; }
-
 static obj snoc(vm v, obj l, obj x) {
   if (!twop(l)) return pair(v, x, l);
   with(l, x = snoc(v, Y(l), x));
@@ -615,8 +604,7 @@ static void rpr(vm v, mem d, const char *n, terp *u, c2 *c) {
   obj x, y = pair(v, interns(v, n), nil);
   with(y, x = hom_ini(v, 2));
   x = em2(u, y, x);
-  tbl_set(v, *d, X(y), x);
-  if (c) tbl_set(v, *d, N(u), N(c)); }
+  tbl_set(v, *d, X(y), x); }
 static void rin(vm v, mem d, const char *n, terp *u) {
   obj y = interns(v, n);
   tbl_set(v, *d, y, putnum(u)); }

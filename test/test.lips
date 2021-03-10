@@ -67,14 +67,16 @@
       (= 15 ((id +) 1 2 3 4 5))
       (= 1  ((id ||) 1 2 3))))
 
-(: box (:: 0 ())
-   get *: set *!
-   ct (\ x (,(set box (+ 1 (get box))) x))
-   (test 'shortcut-eval
-     (&& (&& (nilp (&& (ct 1) (ct 2) (ct ()) (ct 3)))
-             (= (get box) 3))
-         (&& (|| (ct ()) (ct ()) (ct 1) (ct 2))
-             (= (get box) 6)))))
+; shortcut evaluation is out of the bootstrap compiler --
+; put this test back in after stage 3 does it
+;(: box (:: 0 ())
+;   get *: set *!
+;   ct (\ x (,(set box (+ 1 (get box))) x))
+;   (test 'shortcut-eval
+;     (&& (&& (nilp (&& (ct 1) (ct 2) (ct ()) (ct 3)))
+;             (= (get box) 3))
+;         (&& (|| (ct ()) (ct ()) (ct 1) (ct 2))
+;             (= (get box) 6)))))
 
 (: emm (\ f x k ((\ f x k (, (f k x) k)) f x (hom-seek k -1)))
    emi (\ i k (emm hom-set-i i k))
@@ -158,9 +160,12 @@
    cev  (\ e m x k ((? (twop x) c2 (symp x) cy imm) e m x k))
   
    cy (\ e m x k (:
-    r (look e x)
     addclo (\ e y (e-clo e (snoc (e-clo e) y)))
-  ;  _ (. 'cy x r (:* r) (dbg-env e))
+    late (\ e m x d k (-> (k e (+ m 2)) (\ h
+     (-> (consumes h) (\ t
+      (-> (? (= t t-none) h (hom-seek h 1)) (\ h
+       (emi i-lbind (emx (:: t (:: d x)) h)))))))))
+    r (look e x)
     s (*: r)
     (? (= s 'here)  (imm e m (:* r) k)
        (= s 'wait)  (late e m x (:* r) k)
@@ -174,28 +179,30 @@
                                (insx e m i-clon l k))))))
   
    cqt (\ e m x k (: y (:* x) (imm e m (? y (*: y)) k)))
-   c2 (\ e m x k (-> (*: x) (\ z ((?
-    (= z '`) cqt (= z '?) cco (= z ':) cde
-    (= z '\) cla (= z ',) cse          cap) e m x k))))
+   c2 (\ e m x k (: z (*: x) ((?
+    (= z '`) cqt
+    (= z '?) cco
+    (= z ':) cde
+    (= z '\) cla
+    (= z ',) cse
+    cap) e m x k)))
   
    toplp (\ e (nilp (e-par e)))
-   looktop (\ e y
-    (: d (ns) c (cns) (? (tbl-has d y) (:: 'here (tbl-get d y))
-                         (tbl-has c y) (:: 'here (tbl-get c y))
-                         (:: 'wait d))))
-   look (\ e y (,
-  ; (. 'look y (dbg-env e))
-   (?
-    (tbl-has (e-val e) y) (:: 'here (tbl-get (e-val e) y))
-    (toplp e)
-     (? (tbl-has (cns) y)
-      (:: 'here (tbl-get (cns) y))
-      (:: 'wait (ns)))
-    (< -1 (idx (e-lam e) y)) (:: 'wait (e-val e))
-    (< -1 (idx (e-loc e) y)) (:: 'loc e)
-    (< -1 (idx (e-arg e) y)) (:: 'arg e)
-    (< -1 (idx (e-clo e) y)) (:: 'clo e)
-    (look (e-par e) y))))
+   look (\ e y
+    (: looktop (\ e y
+        (: d (ns) c (cns) (? (tbl-has d y) (:: 'here (tbl-get d y))
+                             (tbl-has c y) (:: 'here (tbl-get c y))
+                             (:: 'wait d))))
+     (? (tbl-has (e-val e) y) (:: 'here (tbl-get (e-val e) y))
+        (toplp e)
+         (? (tbl-has (cns) y)
+          (:: 'here (tbl-get (cns) y))
+          (:: 'wait (ns)))
+        (< -1 (idx (e-lam e) y)) (:: 'wait (e-val e))
+        (< -1 (idx (e-loc e) y)) (:: 'loc e)
+        (< -1 (idx (e-arg e) y)) (:: 'arg e)
+        (< -1 (idx (e-clo e) y)) (:: 'clo e)
+        (look (e-par e) y))))
    init (\ l (? (twop (:* l)) (:: (*: l) (init (:* l)))))
    last (\ l (? (twop (:* l)) (last (:* l)) (*: l)))
    t-hom 0 t-num 1 t-two 2 t-tup 3 t-oct 4
@@ -205,11 +212,6 @@
        (= i i-tcnum) t-num
        (= i i-tctwo) t-two
                      t-none))))
-   late (\ e m x d k (-> (k e (+ m 2)) (\ h
-    (-> (consumes h) (\ t
-     (-> (? (= t t-none) h (hom-seek h 1)) (\ h
-      (emi i-lbind (emx (:: t (:: d x)) h)))))))))
-  
    cap (\ e m x k
     ((: capi (\ e m x k
          (? (nilp x) (k e m)
@@ -226,7 +228,7 @@
            (= l (len (e-arg e)))
             (emi i-loop k)
            (emi i-rec (emx l k))))))))))))))))
-  
+
    cse (\ e m x k (? (:* x)
     ((: cser (\ e m x k (?
         (nilp x) (k e m)
@@ -234,10 +236,10 @@
                   (cser e m (:* x) k))))))
      e m (:* x) k)
     (imm e m () k)))
-  
-   mat (\ e x (: y (look e x) (? (= (*: y) 'here) (li (:* y)))))
+
    cde (\ e m x k (,
     (: desug (\ d (li (li '\ (li ', (init d) (last d)))))
+       mat (\ e x (: y (look e x) (? (= (*: y) 'here) (li (:* y)))))
        cder (\ e m x k (? (nilp x) (k e m) (?
         (-> (\ e m (cder e m (:* (:* x)) k)) (\ k
          (-> (? (|| (toplp e) (< -1 (idx (e-loc e) (*: x))))
@@ -252,15 +254,14 @@
     (? (nilp (:* x))            (imm e m nil k)
        (= 1 (% (len (:* x)) 2)) (cev e m (desug x) k)
        (cder e m (:* x) k))))
-  
-   isla (\ x (&& (twop x) (= '\ (*: x))))
-   ccopre (\ e m k (-> (k e m) (\ k
-    (*: (e-s2 e (:: k (e-s2 e)))))))
-  
+
+
    cco (\ e m x k (,
     (: ccopreant (\ e m k (-> (k e (+ m 2)) (\ k
         (-> (emi i-branch (emx (*: (e-s1 e)) k)) (\ k
          (, (e-s1 e (:* (e-s1 e))) k))))))
+       ccopre (\ e m k (-> (k e m) (\ k
+        (*: (e-s2 e (:: k (e-s2 e)))))))
        ccoprecon (\ e m k (-> (k e (+ m 2)) (\ x
         (-> (*: (e-s2 e)) (\ k
          (: i (hom-get-i k)
@@ -278,7 +279,7 @@
            (ccopostcon e m (\ e m
             (cev e m (*: (:* x)) (\ e m
              (ccoprecon e m k))))))))))))))
-  
+
     (? (nilp (:* x)) (imm e m nil k)
      (-> (ccor e m (:* x) (\ e m (ccopre e m k))) (\ k
       (, (e-s2 e (:* (e-s2 e))) k))))))
@@ -328,8 +329,7 @@
    resolve (\ e (,
     (precomps e (tbl-keys (e-lam e)))
     (elim e (tbl-keys (e-lam e)))
-    (: ls (e-lam e)
-       (recomps e ls (e-lam e (tbl-keys ls))))))
+    (: ls (e-lam e) (recomps e ls (e-lam e (tbl-keys ls))))))
   
    scan (\ e x (,
     (: scandef (\ e x (?
@@ -347,15 +347,13 @@
             (= z '\) (, (tbl-set (e-lam e) y x) (addloc e y))
             (addloc e y))))
            (tbl-set (e-val e) y x))
-        (scan e x)))
-       scanner (\ x (: nop (\) (? (twop x)
-        (: y (*: x) (?
-         (= y '\) nop
-         (= y '`) nop
-         (= y ':) (\ e x (scandef e (:* x)))
-         (\ e x (each x (\ x (scan e x)))))) nop))))
+        (scan e x))))
+    (? (twop x) (: y (*: x) (?
+     (= y '\) ()
+     (= y '`) ()
+     (= y ':) (scandef e (:* x))
+     (each x (\ x (scan e x))))))))
   
-    ((scanner x) e x)))
   
    t-num (\ x (?
     (homp x) t-hom (nump x) t-num
