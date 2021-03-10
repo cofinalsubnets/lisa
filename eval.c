@@ -15,7 +15,6 @@ static obj tupl(vm, ...),
 static num idx(obj, obj);
 static obj linitp(vm, obj, mem);
 static obj imx(vm, mem, num, terp*, obj);
-static obj ldel(vm, obj, obj);
 enum location { Here, Loc, Arg, Clo, Wait };
 #define c1(nom,...) static obj nom(vm v,mem e,num m,##__VA_ARGS__)
 #define c2(nom,...) static obj nom(vm v,mem e,num m,obj x,##__VA_ARGS__)
@@ -99,8 +98,7 @@ static void scan_def_add(vm v, mem e, obj y, obj x) {
   switch (kind(x)) {
     case Two:
       if (X(x) == Qt) { x = twop(Y(x)) ? XY(x) : x; goto imm; }
-      if (X(x) == La) with(y, tbl_set(v, lams(*e), y, x));
-    case Sym: y = pair(v, y, loc(*e)), loc(*e) = y;  break;
+    case Sym: y = pair(v, y, loc(*e)), loc(*e) = y; break;
     default: imm: tbl_set(v, vals(*e), y, x); }
   um, scan(v, e, x); }
 
@@ -130,56 +128,12 @@ static obj scope(vm v, mem e, obj a, obj n) {
   num s = 0;
   with(n, a = asign(v, a, 0, &s));
   obj x, y = tupl(v, a, nil, nil, *e, nil, n, nil, N(s), non);
-  with(y, x = table(v), vals(y) = x,
-          x = table(v), lams(y) = x);
+  with(y, x = table(v), vals(y) = x);
   return y; }
-
-static void precompile_inner_lambdas(vm v, mem e) {
-  obj ks = tbl_keys(v, lams(*e));
-  for (mm(&ks); twop(ks); ks = Y(ks)) {
-    obj y = tbl_get(v, lams(*e), X(ks));
-    if (homp(y = ltu(v, e, X(ks), y)))
-      tbl_set(v, vals(*e), X(ks), y),
-      tbl_del(v, lams(*e), X(ks)),
-      y = ldel(v, loc(*e), X(ks)),
-      loc(*e) = y;
-    else
-      Y(y) = tbl_get(v, lams(*e), X(ks)),
-      tbl_set(v, lams(*e), X(ks), y); }
-  um; }
-
-static int okvs(vm v, mem e, obj vs) {
-  if (!twop(vs)) return 1;
-  if (!tbl_get(v, vals(*e), X(vs)) &&
-      !tbl_get(v, lams(*e), X(vs)))
-    return 0;
-  return okvs(v, e, Y(vs)); }
-
-static void eliminate_runtime_dependencies(vm v, mem e) {
-  for (obj ks = tbl_keys(v, lams(*e)); twop(ks); ks = Y(ks)) {
-    obj vs = X(tbl_get(v, lams(*e), X(ks)));
-    if (!okvs(v, e, vs)) return
-      tbl_del(v, lams(*e), X(ks)),
-      eliminate_runtime_dependencies(v, e); } }
-
-static void recompile_inner_lambdas(vm v, mem e, mem d, obj ks) {
-  obj x;
-  if (twop(ks))
-    with(ks, x = ldel(v, loc(*e), X(ks)), loc(*e) = x,
-             recompile_inner_lambdas(v, e, d, Y(ks)),
-             x = ltu(v, e, X(ks), Y(tbl_get(v, *d, X(ks))))),
-    tbl_set(v, vals(*e), X(ks), x); }
-
-static void resolve(vm v, mem e) {
-  precompile_inner_lambdas(v, e);
-  eliminate_runtime_dependencies(v, e);
-  obj ks = tbl_keys(v, lams(*e)), ls = lams(*e);
-  with(ls, recompile_inner_lambdas(v, e, &ls, lams(*e) = ks)); }
 
 static obj compose(vm v, mem e, obj x) {
   Push(N(c_ev), x, N(inst), N(ret), N(c_ini));
   scan(v, e, Sp[1]);
-  resolve(v, e);
   obj i; x = ccc(v, e, 4); // 4 = 2 + 2
   if ((i = llen(loc(*e)))) x = em2(prel,  N(i), x);
   i = Gn(asig(*e));
@@ -336,7 +290,6 @@ static obj look(vm v, obj e, obj y) {
   if (nilp(e)) return (q = topl_lookup(v, y)) ?
     L(Here, q) : L(Wait, Dict);
   if ((q = tbl_get(v, vals(e), y))) return L(Here, q);
-  if ((q = idx(lams(e), y)) != -1) return L(Wait, vals(e));
   if ((q = idx(loc(e), y)) != -1) return L(Loc, e);
   if ((q = idx(arg(e), y)) != -1) return L(Arg, e);
   if ((q = idx(clo(e), y)) != -1) return L(Clo, e);
@@ -360,7 +313,6 @@ c2(c_sy) {
   if (toplp(e)) return (q = topl_lookup(v, x)) ?
     c_imm(v, e, m, q) : late(v, e, m, x, Dict);
   if ((q = tbl_get(v, vals(*e), x))) return c_imm(v, e, m, q);
-  if ((q = idx(lams(*e), x)) != -1) return late(v, e, m, x, vals(*e));
   if ((q = idx(loc(*e), x)) != -1) return imx(v, e, m, locn, N(q));
   if ((q = idx(arg(*e), x)) != -1) return imx(v, e, m, argn, N(q));
   if ((q = idx(clo(*e), x)) != -1) return imx(v, e, m, clon, N(q));
@@ -676,8 +628,3 @@ vm initialize() {
 
 void finalize(vm v) {
   free(v->mem_pool), free(v); }
-
-static obj ldel(vm v, obj l, obj i) {
-  return !twop(l) ? l : i == X(l) ? ldel(v, Y(l), i) :
-    (with(l, i = ldel(v, Y(l), i)), pair(v, X(l), i)); }
-
