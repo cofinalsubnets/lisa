@@ -6,7 +6,7 @@
 //
 static void c_de_r(vm, mem, obj),
             scan(vm, mem, obj), pushs(vm, ...);
-static c1  c_ev, produce, c_d_bind, inst, insx, c_ini;
+static c1  c_ev, c_d_bind, inst, insx, c_ini;
 static c2 c_eval, c_sy, c_2, c_imm, ltu, c_ap, c_la_clo;
 static c3 late;
 static obj tupl(vm, ...),
@@ -49,10 +49,9 @@ enum location { Here, Loc, Arg, Clo, Wait };
 #define loc(x)  AR(x)[1] // local variables : a list
 #define clo(x)  AR(x)[2] // closure variables : a list
 #define par(x)  AR(x)[3] // surrounding scope : tuple or nil
-#define lams(x) AR(x)[4] // inner definitions : a table before code generation, then a list
-#define name(x) AR(x)[5] // function name : a symbol or nil
-#define vals(x) AR(x)[6] // immediate values bound in this scope : a table
-#define asig(x) AR(x)[7] // arity signature : an integer
+#define name(x) AR(x)[4] // function name : a symbol or nil
+#define vals(x) AR(x)[5] // immediate values bound in this scope : a table
+#define asig(x) AR(x)[6] // arity signature : an integer
 // for a function f let n be the number of required arguments.
 // then if f takes a fixed number of arguments the arity
 // signature is n; otherwise it's -n-1.
@@ -60,28 +59,9 @@ enum location { Here, Loc, Arg, Clo, Wait };
 // here's some functions for errors.
 static obj arity_error(vm v, mem e, obj x, num h, num w) {
   return err(v, "compile", x, "wrong arity : %ld of %ld", h, w); }
-static obj type_error(vm v, mem e, obj x, enum type h, enum type w) {
-  return err(v, "compile", x, "wrong type : %s for %s", tnom(h), tnom(w)); }
 #define Arity(n) {\
   num i = llen(Y(x));\
   if (i<n) return arity_error(v, e, x, i, n); }
-
-#define None 8
-static enum type consumes(obj h) {
-  terp *i = G(h);
-  return i == tchom ? Hom : i == tcnum ? Num : i == tctwo ? Two : None; }
-
-// totally dumb procedural compile time type checking:
-// check if your immediate continuation is a
-// type check. if so and it conflicts then it errors at
-// compile time. but if it's compatible then the check
-// gets eliminated.
-c1(produce) {
-  enum type u, t = Gn(*Sp++);
-  obj k, x = *Sp++;
-  with(x, k = ccc(v, e, m));
-  while (t == (u = consumes(k))) k += Word;
-  return u == None ? k : type_error(v, e, x, t, u); }
 
 static obj compile(vm v, obj x) {
   static obj top = nil;
@@ -127,7 +107,7 @@ static obj asign(vm v, obj a, num i, mem m) {
 static obj scope(vm v, mem e, obj a, obj n) {
   num s = 0;
   with(n, a = asign(v, a, 0, &s));
-  obj x, y = tupl(v, a, nil, nil, *e, nil, n, nil, N(s), non);
+  obj x, y = tupl(v, a, nil, nil, *e, n, nil, N(s), non);
   with(y, x = table(v), vals(y) = x);
   return y; }
 
@@ -164,9 +144,7 @@ c2(c_la) {
   terp *j = immv;
   obj k;
   obj nom = *Sp == N(c_d_bind) ? Sp[1] : nil;
-  with(nom, with(x,
-    Push(N(produce), N(Hom), x),
-    k = ccc(v, e, m+2)));
+  with(nom, with(x, k = ccc(v, e, m+2)));
   with(k,
     x = homp(x = ltu(v, e, nom, x)) ? x :
     (j = toplp(e) || !twop(loc(*e)) ? encln : encll,
@@ -174,8 +152,7 @@ c2(c_la) {
   return em2(j, x, k); }
 
 c2(c_imm) {
-  return Push(N(immv), x, N(produce), N(kind(x)), x),
-         insx(v, e, m); }
+  return Push(N(immv), x), insx(v, e, m); }
 
 static obj c_la_clo(vm v, mem e, obj arg, obj seq) {
   num i = llen(arg);
@@ -187,15 +164,13 @@ static obj c_la_clo(vm v, mem e, obj arg, obj seq) {
 
 c1(c_d_bind) {
   obj y = *Sp++;
-  return toplp(e) ?
-    imx(v, e, m, tbind, y) :
-    imx(v, e, m, setl, N(idx(loc(*e), y))); }
+  return toplp(e) ? imx(v, e, m, tbind, y) :
+                    imx(v, e, m, setl, N(idx(loc(*e), y))); }
 
 c1(c_ev_d) {
   obj w = *Sp++, y;
   mm(&w);
-  if (toplp(e) || idx(loc(*e), X(w)) != -1)
-    Push(N(c_d_bind), X(w));
+  if (toplp(e) || -1 < idx(loc(*e), X(w))) Push(N(c_d_bind), X(w));
   y = look(v, *e, X(w));
   return um,
     X(y) == N(Here) ? c_imm(v, e, m, Y(y)) :
@@ -303,9 +278,7 @@ c2(late, obj d) {
   obj k;
   x = pair(v, d, x);
   with(x, k = ccc(v, e, m+2));
-  enum type t = consumes(k);
-  if (t != None) k += Word;
-  with(k, x = pair(v, N(t), x));
+  with(k, x = pair(v, N(8), x));
   return em2(lbind, x, k); }
 
 c2(c_sy) {
@@ -384,7 +357,6 @@ static void c_m_bin_r(vm v, mem e, obj x, terp *o) {
 
 c2(c_m_bin_lr, terp *i, terp *j, num z) {
   if (!twop(Y(x))) return c_imm(v, e, m, N(z));
-  Push(N(produce), N(Num), x);
   x = Y(Sp[2]);
   if (!twop(Y(x))) { if (j) with(x, Push(N(inst), N(j))); }
   else with(x, c_m_bin_r(v, e, Y(x), i));
@@ -395,7 +367,7 @@ static obj c_bin(vm v, mem e, num m, obj x, terp *o) {
   return c_ev(v, e, m); }
 c2(cons_c) {
   Arity(2);
-  Push(XY(x), N(inst), N(push), N(c_ev), X(YY(x)), N(inst), N(cons), N(produce), N(Two), x);
+  Push(XY(x), N(inst), N(push), N(c_ev), X(YY(x)), N(inst), N(cons));
   return c_ev(v, e, m); }
 
 c2(fail_c) {
