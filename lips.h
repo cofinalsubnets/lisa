@@ -70,6 +70,7 @@ obj err(rt, const char*, obj, const char*, ...),
     tbl_keys(rt, obj),
     string(rt, const char*);
 num llen(obj);
+int eql(obj, obj);
 
 const char *tnom(enum type);
 extern const char *t_nom[];

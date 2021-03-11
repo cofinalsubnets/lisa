@@ -158,7 +158,7 @@ obj tbl_del(vm v, obj t, obj k) {
 
 obj tbl_get(vm v, obj t, obj k) {
   tble e = hb(t, hc(k));
-  for (;e; e = e->next) if (e->key == k) return e->val;
+  for (;e; e = e->next) if (eql(e->key, k)) return e->val;
   return 0; }
 
 obj table(vm v) {

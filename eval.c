@@ -276,35 +276,29 @@ c2(late, obj d) {
 
 c2(c_sy) {
   obj y, q;
-  if (toplp(e)) return (q = topl_lookup(v, x)) ?
-    c_imm(v, e, m, q) : late(v, e, m, x, Dict);
-  if ((q = tbl_get(v, vals(*e), x))) return c_imm(v, e, m, q);
-  if ((q = idx(loc(*e), x)) != -1) return imx(v, e, m, locn, N(q));
-  if ((q = idx(arg(*e), x)) != -1) return imx(v, e, m, argn, N(q));
-  if ((q = idx(clo(*e), x)) != -1) return imx(v, e, m, clon, N(q));
-
-  // the symbol isn't bound locally so search the enclosing scopes
-  with(x, q = look(v, par(*e), x));
-  switch (Gn(X(q))) {
+  with(x, y = X(q = look(v, *e, x)));
+  switch (Gn(y)) {
     case Here: return c_imm(v, e, m, Y(q));
     case Wait: return late(v, e, m, x, Y(q));
     default:
+      if (Y(q) == *e) switch (Gn(y)) {
+        case Loc : return imx(v, e, m, locn, N(idx(loc(*e), x)));
+        case Arg : return imx(v, e, m, argn, N(idx(arg(*e), x)));
+        case Clo : return imx(v, e, m, clon, N(idx(clo(*e), x))); }
       y = llen(clo(*e));
-      with(x, q = snoc(v, clo(*e), x));
-      clo(*e) = q;
+      with(x, q = snoc(v, clo(*e), x)), clo(*e) = q;
       return imx(v, e, m, clon, N(y)); } }
 
 c2(c_qt) { return c_imm(v, e, m, twop(x = Y(x)) ? X(x) : x); }
 
 c2(c_2) {
   obj z = X(x);
-  return
-    z == Qt ? c_qt(v, e, m, x) :
-    z == If ? c_co(v, e, m, x) :
-    z == De ? c_de(v, e, m, x) :
-    z == La ? c_la(v, e, m, x) :
-    z == Se ? c_se(v, e, m, x) :
-              c_ap(v, e, m, x); }
+  return (z == Qt ? c_qt :
+          z == If ? c_co :
+          z == De ? c_de :
+          z == La ? c_la :
+          z == Se ? c_se :
+                    c_ap)(v, e, m, x); }
 
 c2(c_ap) {
   for (mm(&x),
@@ -382,11 +376,8 @@ obj hom_ini(vm v, num n) {
          puthom(a+n); }
 
 obj hom_fin(vm v, obj a) {
-  for (hom b = gethom(a);;) if (!b++->g) {
-    if ((obj)G(b) > a) {
-      errp(v, "compile", 0, "boundary overrun");
-      exit(EXIT_FAILURE); }
-    return (obj) (b->g = (terp*) a); } }
+  for (hom b = gethom(a);;) if (!b++->g)
+    return (obj) (b->g = (terp*) a); }
 
 obj homnom(vm v, obj x) {
   terp *k = G(x);
@@ -409,35 +400,35 @@ static void rin(vm v, mem d, const char *n, terp *u) {
   tbl_set(v, *d, y, putnum(u)); }
 
 #define prims(_)\
-  _("read", rd_u, NULL),\
-  _(".", em_u, em_c),        _("ns", globs, NULL),\
-  _("cns", cglobs, NULL),\
-  _("*:", car_u, car_c),     _(":*", cdr_u, cdr_c),\
-  _("*!", setcar_u, rpla_c), _("!*", setcdr_u, rpld_c),\
-  _("::", cons_u, cons_c),   _("=", eq_u, eq_c),\
-  _("<", lt_u, lt_c),        _("<=", lteq_u, lteq_c),\
-  _(">", gt_u, gt_c),        _(">=", gteq_u, gteq_c),\
-  _("+", add_u, c_add),      _("-", sub_u, c_sub),\
-  _("*", mul_u, mul_c),      _("/", div_u, div_c),\
-  _("%", mod_u, mod_c),      _("ap", ap_u, NULL),\
-  _("ccc", ccc_u, NULL),     _("ev", ev_u, NULL),\
-  _("||", or_u, or_c),       _("&&", and_u, and_c),\
-  _("fail", fail_u, fail_c), _("tbl", tblmk, NULL),\
-  _("tbl-get", tblg, NULL),  _("tbl-set", tbls, NULL),\
-  _("tbl-has", tblc, NULL),  _("tbl-del", tbld, NULL),\
-  _("tbl-keys", tblks, NULL),_("tbl-len", tbll, NULL),\
-  _("str-len", strl, NULL),  _("str-get", strg, NULL),\
-  _("str", strmk, NULL),     _(".c", pc_u, NULL),\
-  _("hom", hom_u, NULL),     _("hom-seek", hom_seek_u, NULL),\
-  _("hom-fin", hom_fin_u, NULL),\
-  _("hom-set-x", hom_setx_u, NULL), _("hom-get-x", hom_getx_u, NULL),\
-  _("hom-set-i", hom_seti_u, NULL), _("hom-get-i", hom_geti_u, NULL),\
-  _("zzz", zzz, NULL),       _("nump", nump_u, nump_c),\
-  _("symp", symp_u, symp_c), _("twop", twop_u, twop_c),\
-  _("tblp", tblp_u, tblp_c), _("strp", strp_u, strp_c),\
-  _("nilp", nilp_u, nilp_c), _("homp", homp_u, homp_c)
+  _("read", rd_u),\
+  _(".", em_u),        _("ns", globs),\
+  _("cns", cglobs),\
+  _("*:", car_u),     _(":*", cdr_u),\
+  _("*!", setcar_u), _("!*", setcdr_u),\
+  _("::", cons_u),   _("=", eq_u),\
+  _("<", lt_u),        _("<=", lteq_u),\
+  _(">", gt_u),        _(">=", gteq_u),\
+  _("+", add_u),      _("-", sub_u),\
+  _("*", mul_u),      _("/", div_u),\
+  _("%", mod_u),      _("ap", ap_u),\
+  _("ccc", ccc_u),     _("ev", ev_u),\
+  _("||", or_u),       _("&&", and_u),\
+  _("fail", fail_u), _("tbl", tblmk),\
+  _("tbl-get", tblg),  _("tbl-set", tbls),\
+  _("tbl-has", tblc),  _("tbl-del", tbld),\
+  _("tbl-keys", tblks),_("tbl-len", tbll),\
+  _("str-len", strl),  _("str-get", strg),\
+  _("str", strmk),     _(".c", pc_u),\
+  _("hom", hom_u),     _("hom-seek", hom_seek_u),\
+  _("hom-fin", hom_fin_u),\
+  _("hom-set-x", hom_setx_u), _("hom-get-x", hom_getx_u),\
+  _("hom-set-i", hom_seti_u), _("hom-get-i", hom_geti_u),\
+  _("zzz", zzz),       _("nump", nump_u),\
+  _("symp", symp_u), _("twop", twop_u),\
+  _("tblp", tblp_u), _("strp", strp_u),\
+  _("nilp", nilp_u), _("homp", homp_u)
 
-#define RPR(a,b,c) rpr(v,&d,a,b)
+#define RPR(a,b) rpr(v,&d,a,b)
 #define RIN(x) rin(v,&d,"i-"#x,x)
 static Inline obj code_dictionary(vm v) {
   obj d = table(v);

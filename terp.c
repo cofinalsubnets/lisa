@@ -652,7 +652,7 @@ v_op(tblpp) { xp = tblp(xp) ? ok : nil; Next(1); }
 v_op(nilpp) { xp = nilp(xp) ? ok : nil; Next(1); }
 
 // comparison
-static int eql(obj, obj);
+int eql(obj, obj);
 static int twoeq(obj a, obj b) {
   return eql(X(a), X(b)) && eql(Y(a), Y(b)); }
 
@@ -668,7 +668,7 @@ static int streq(obj a, obj b) {
   for (num i = 0; i < o->len; i++)
     if (o->text[i] != m->text[i]) return 0;
   return 1; }
-static int eql(obj a, obj b) {
+int eql(obj a, obj b) {
   if (a == b) return 1;
   if (kind(a) != kind(b)) return 0;
   switch (kind(a)) {
