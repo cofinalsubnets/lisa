@@ -50,8 +50,7 @@ enum location { Here, Loc, Arg, Clo, Wait };
 #define clo(x)  AR(x)[2] // closure variables : a list
 #define par(x)  AR(x)[3] // surrounding scope : tuple or nil
 #define name(x) AR(x)[4] // function name : a symbol or nil
-#define vals(x) AR(x)[5] // immediate values bound in this scope : a table
-#define asig(x) AR(x)[6] // arity signature : an integer
+#define asig(x) AR(x)[5] // arity signature : an integer
 // for a function f let n be the number of required arguments.
 // then if f takes a fixed number of arguments the arity
 // signature is n; otherwise it's -n-1.
@@ -67,13 +66,8 @@ obj eval(vm v, obj x) {
   return G(h)(v, h, v->fp, v->sp, v->hp, nil); }
 
 static void scan_def_add(vm v, mem e, obj y, obj x) {
-  mm(&x);
-  switch (kind(x)) {
-    case Two:
-      if (X(x) == Qt) { x = twop(Y(x)) ? XY(x) : x; goto imm; }
-    case Sym: y = pair(v, y, loc(*e)), loc(*e) = y; break;
-    default: imm: tbl_set(v, vals(*e), y, x); }
-  um, scan(v, e, x); }
+  with(x, y = pair(v, y, loc(*e)), loc(*e) = y);
+  scan(v, e, x); }
 
 static int scan_def(vm v, mem e, obj x) {
   if (!twop(x)) return 1; // this is an even case so export all the definitions to the local scope
@@ -84,10 +78,9 @@ static int scan_def(vm v, mem e, obj x) {
 
 static void scan(vm v, mem e, obj x) {
   if (!twop(x) || X(x) == La || X(x) == Qt) return;
-  if (X(x) == De) scan_def(v, e, Y(x));
-  else {
-    for (mm(&x); twop(x); x = Y(x)) scan(v, e, X(x));
-    um; } }
+  if (X(x) == De) return (void) scan_def(v, e, Y(x));
+  for (mm(&x); twop(x); x = Y(x)) scan(v, e, X(x));
+  um; } 
 
 static obj asign(vm v, obj a, num i, mem m) {
   if (!twop(a)) return *m = i, a;
@@ -100,9 +93,7 @@ static obj asign(vm v, obj a, num i, mem m) {
 static obj scope(vm v, mem e, obj a, obj n) {
   num s = 0;
   with(n, a = asign(v, a, 0, &s));
-  obj x, y = tupl(v, a, nil, nil, *e, n, nil, N(s), non);
-  with(y, x = table(v), vals(y) = x);
-  return y; }
+  return tupl(v, a, nil, nil, *e, n, N(s), non); }
 
 static obj compose(vm v, mem e, obj x) {
   Push(N(c_ev), x, N(inst), N(ret), N(c_ini));
@@ -257,7 +248,6 @@ static obj look(vm v, obj e, obj y) {
   obj q;
   if (nilp(e)) return (q = topl_lookup(v, y)) ?
     L(Here, q) : L(Wait, Dict);
-  if ((q = tbl_get(v, vals(e), y))) return L(Here, q);
   if ((q = idx(loc(e), y)) != -1) return L(Loc, e);
   if ((q = idx(arg(e), y)) != -1) return L(Arg, e);
   if ((q = idx(clo(e), y)) != -1) return L(Clo, e);
