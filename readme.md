@@ -1,5 +1,7 @@
 # lips
-## special forms with scheme equivalents
+another lisp
+## special forms
+with scheme equivalents
 ### `,` begin
 - `(, a b c) = (begin a b c)`
 
