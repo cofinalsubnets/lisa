@@ -1,5 +1,4 @@
 # lips
-another lisp
 ## special forms
 with scheme equivalents
 ### `,` begin
