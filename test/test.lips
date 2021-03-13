@@ -1,15 +1,6 @@
 ;; here's some functions for doing tests with
 (: test (\ n v (. (? v 'ok 'NO) n)))
 
-(: type (\ x (?
-  (homp x) 'hom
-  (nump x) 'num
-  (symp x) 'sym
-  (twop x) 'two
-  (strp x) 'str
-  (tblp x) 'tbl
-           'nil)))
-
 ;; here's some data constructors
 (: li (\ . . .) ; dot only has special meaning following another argument, which can be dot
    ++ (\ a b(?(twop a)(::(*: a)(++(:* a)b))b)) ; append
@@ -78,9 +69,6 @@
 ;         (&& (|| (ct ()) (ct ()) (ct 1) (ct 2))
 ;             (= (get box) 6)))))
 
-(: emm (\ f x k ((\ f x k (, (f k x) k)) f x (hom-seek k -1)))
-   emi (\ i k (emm hom-set-i i k))
-   emx (\ x k (emm hom-set-x x k)))
 (: map (\ f x (? (twop x) (:: (f (*: x)) (map f (:* x)))))
    foldl(\ z f x (? (twop x) (foldl (f z (*: x)) f (:* x)) z))
    foldr (\ z f x (? (twop x) (f (*: x) (foldr z f (:* x))) z))
@@ -107,7 +95,8 @@
    len (\ l (? (twop l) (+ 1 (len (:* l))) 0)))
 
 (test 'functionals
-  (&& (= (foldr 1 + (li 2 3))
+  (&& (= 6
+         (foldr 1 + (li 2 3))
          (foldr1 + (li 1 2 3))
          (foldl 1 + (li 2 3))
          (foldl1 + (li 1 2 3)))
@@ -116,315 +105,280 @@
          (snoc ((flip snoc) 2 (li 1)) 3)
          (foldr () :: (iota 1 4)))))
 
-(: eval
- (: boot (\ e (,
-  (: compiler '(: ; ok now let's port the compiler
-     -> (\ x f (f x))
-   .l (\ a n ;; lol what is this thing
-    (? (twop a)
-       (? (? (twop (:* a)) (= '. (*: (:* a))))
-           (:: (- (+ n 1)) (li (*: a)))
-          (-> (.l (:* a) (+ n 1)) (\ r
-           (:: (*: r) (:: (*: a) (:* r))))))
-       (:: n a)))
-   env (\ a p n vs
-        (-> (.l a 0) (\ b (: d (tbl)
-           (, (tbl-set d
-                'arg (:* b) 'loc ()
-                'clo ()     'par p
-                'lam (tbl)  'nom n
-                'val vs  'sig (*: b))
-              d)))))
-   gtk (\ k (\ d v . (?
-    (nilp v) (tbl-get d k)
-             (tbl-set d k (*: v)))))
-   e-arg (gtk 'arg) e-loc (gtk 'loc)
-   e-clo (gtk 'clo) e-par (gtk 'par)
-   e-lam (gtk 'lam) e-nom (gtk 'nom)
-   e-val (gtk 'val) e-sig (gtk 'sig)
-   e-s1  (gtk 's1)  e-s2  (gtk 's2)
-   inst (\ e m i k (emi i (k e (+ m 1))))
-   inom (\ i (-> (tbl-keys (cns)) (: in (\ l (? l
-    (? (= i (tbl-get (cns) (*: l))) (*: l) (in (:* l))))))))
-   emh (\ h (: i (hom-get-i h)
-    (? (= i 0) () (-> (inom i) (\ x
-     (? x (? (|| (= i i-pc0) (= i i-pc1) (= i i-clos))
-              (:: (inom i) (emh (hom-get-x (hom-seek h 2))))
-             (:: (inom i) (emh (hom-seek h 1))))
-      (emh (hom-seek h 1))
-     ))))))
-  
-   insx (\ e m i x k (emi i (emx x (k e (+ m 2)))))
-   imm  (\ e m x k (insx e m i-immv x (\ e m (produce e m (t-num x) k))))
-   cev  (\ e m x k ((? (twop x) c2 (symp x) cy imm) e m x k))
-  
-   cy (\ e m x k (:
-    addclo (\ e y (e-clo e (snoc (e-clo e) y)))
-    late (\ e m x d k (-> (k e (+ m 2)) (\ h
-     (-> (consumes h) (\ t
-      (-> (? (= t t-none) h (hom-seek h 1)) (\ h
-       (emi i-lbind (emx (:: t (:: d x)) h)))))))))
-    r (look e x)
-    s (*: r)
-    (? (= s 'here)  (imm e m (:* r) k)
-       (= s 'wait)  (late e m x (:* r) k)
-       (= e (:* r)) (? (= s 'arg)
-                        (insx e m i-argn (idx (e-arg e) x) k)
-                       (= s 'loc)
-                        (insx e m i-locn (idx (e-loc e) x) k)
-                       (= s 'clo)
-                        (insx e m i-clon (idx (e-clo e) x) k))
-       (: l (len (e-clo e)) (, (addclo e x)
-                               (insx e m i-clon l k))))))
-  
-   cqt (\ e m x k (: y (:* x) (imm e m (? y (*: y)) k)))
-   c2 (\ e m x k (: z (*: x) ((?
-    (= z '`) cqt
-    (= z '?) cco
-    (= z ':) cde
-    (= z '\) cla
-    (= z ',) cse
-    cap) e m x k)))
-  
-   toplp (\ e (nilp (e-par e)))
-   look (\ e y
-    (: looktop (\ e y
-        (: d (ns) c (cns) (? (tbl-has d y) (:: 'here (tbl-get d y))
-                             (tbl-has c y) (:: 'here (tbl-get c y))
-                             (:: 'wait d))))
-     (? (tbl-has (e-val e) y) (:: 'here (tbl-get (e-val e) y))
-        (toplp e)
-         (? (tbl-has (cns) y)
-          (:: 'here (tbl-get (cns) y))
-          (:: 'wait (ns)))
-        (< -1 (idx (e-lam e) y)) (:: 'wait (e-val e))
-        (< -1 (idx (e-loc e) y)) (:: 'loc e)
-        (< -1 (idx (e-arg e) y)) (:: 'arg e)
-        (< -1 (idx (e-clo e) y)) (:: 'clo e)
-        (look (e-par e) y))))
-   init (\ l (? (twop (:* l)) (:: (*: l) (init (:* l)))))
-   last (\ l (? (twop (:* l)) (last (:* l)) (*: l)))
-   t-hom 0 t-num 1 t-two 2 t-tup 3 t-oct 4
-   t-tbl 5 t-sym 6 t-nil 7 t-none 8
-   consumes (\ h (-> (hom-get-i h) (\ i
-    (? (= i i-tchom) t-hom
-       (= i i-tcnum) t-num
-       (= i i-tctwo) t-two
-                     t-none))))
-   cap (\ e m x k (,
-    ((: capi (\ e m x k
-         (? (nilp x) (k e m)
-          (capi e m (:* x) (\ e m
-           (cev e m (*: x) (\ e m
-            (inst e m i-push k))))))))
-     e m (:* x) (\ e m
+(: eval ((\ q ((ev q) q)) '(: ; ok now let's port the compiler
+ -> (\ x f (f x))
+ .l (\ a n ;; lol what is this thing
+  (? (twop a)
+     (? (? (twop (:* a)) (= '. (*: (:* a))))
+         (:: (- (+ n 1)) (li (*: a)))
+        (-> (.l (:* a) (+ n 1)) (\ r
+         (:: (*: r) (:: (*: a) (:* r))))))
+     (:: n a)))
+ env (\ a p n vs
+      (-> (.l a 0) (\ b (: d (tbl)
+         (, (tbl-set d
+              'arg (:* b) 'loc ()
+              'clo ()     'par p
+              'lam (tbl)  'nom n
+              'val vs  'sig (*: b))
+            d)))))
+ gtk (\ k (\ d v . (?
+  (nilp v) (tbl-get d k)
+           (tbl-set d k (*: v)))))
+ e-arg (gtk 'arg) e-loc (gtk 'loc)
+ e-clo (gtk 'clo) e-par (gtk 'par)
+ e-lam (gtk 'lam) e-nom (gtk 'nom)
+ e-val (gtk 'val) e-sig (gtk 'sig)
+ e-s1  (gtk 's1)  e-s2  (gtk 's2)
+ inst (\ e m i k (emi i (k e (+ m 1))))
+ inom (\ i (-> (tbl-keys (cns)) (: in (\ l (? l
+  (? (= i (tbl-get (cns) (*: l))) (*: l) (in (:* l))))))))
+ emh (\ h (: i (hom-get-i h)
+  (? (= i 0) () (-> (inom i) (\ x
+   (? x (? (|| (= i i-pc0) (= i i-pc1) (= i i-clos))
+            (:: (inom i) (emh (hom-get-x (hom-seek h 2))))
+           (:: (inom i) (emh (hom-seek h 1))))
+    (emh (hom-seek h 1))))))))
+
+ insx (\ e m i x k (emi i (emx x (k e (+ m 2)))))
+ imm  (\ e m x k (insx e m i-immv x (\ e m (produce e m (t-num x) k))))
+ cev  (\ e m x k ((? (twop x) c2 (symp x) cy imm) e m x k))
+
+ cy (\ e m x k (:
+  addclo (\ e y (e-clo e (snoc (e-clo e) y)))
+  late (\ e m x d k (-> (k e (+ m 2)) (\ h
+   (-> (consumes h) (\ t
+    (-> (? (= t t-none) h (hom-seek h 1)) (\ h
+     (emi i-lbind (emx (:: t (:: d x)) h)))))))))
+  r (look e x)
+  s (*: r)
+  (? (= s 'here)  (imm e m (:* r) k)
+     (= s 'wait)  (late e m x (:* r) k)
+     (= e (:* r)) (? (= s 'arg)
+                      (insx e m i-argn (idx (e-arg e) x) k)
+                     (= s 'loc)
+                      (insx e m i-locn (idx (e-loc e) x) k)
+                     (= s 'clo)
+                      (insx e m i-clon (idx (e-clo e) x) k))
+     (: l (len (e-clo e)) (, (addclo e x)
+                             (insx e m i-clon l k))))))
+
+ cqt (\ e m x k (: y (:* x) (imm e m (? y (*: y)) k)))
+ c2 (\ e m x k (: z (*: x) ((?
+  (= z '`) cqt
+  (= z '?) cco
+  (= z ':) cde
+  (= z '\) cla
+  (= z ',) cse
+  cap) e m x k)))
+
+ toplp (\ e (nilp (e-par e)))
+ look (\ e y
+  (: looktop (\ e y
+      (: d (ns) c (cns) (? (tbl-has d y) (:: 'here (tbl-get d y))
+                           (tbl-has c y) (:: 'here (tbl-get c y))
+                           (:: 'wait d))))
+   (? (tbl-has (e-val e) y) (:: 'here (tbl-get (e-val e) y))
+      (toplp e)
+       (? (tbl-has (cns) y)
+        (:: 'here (tbl-get (cns) y))
+        (:: 'wait (ns)))
+      (< -1 (idx (e-lam e) y)) (:: 'wait (e-val e))
+      (< -1 (idx (e-loc e) y)) (:: 'loc e)
+      (< -1 (idx (e-arg e) y)) (:: 'arg e)
+      (< -1 (idx (e-clo e) y)) (:: 'clo e)
+      (look (e-par e) y))))
+ init (\ l (? (twop (:* l)) (:: (*: l) (init (:* l)))))
+ last (\ l (? (twop (:* l)) (last (:* l)) (*: l)))
+ t-hom 0 t-num 1 t-two 2 t-tup 3 t-oct 4
+ t-tbl 5 t-sym 6 t-nil 7 t-none 8
+ consumes (\ h (-> (hom-get-i h) (\ i
+  (? (= i i-tchom) t-hom
+     (= i i-tcnum) t-num
+     (= i i-tctwo) t-two
+                   t-none))))
+ cap (\ e m x k (,
+  ((: capi (\ e m x k
+       (? (nilp x) (k e m)
+        (capi e m (:* x) (\ e m
+         (cev e m (*: x) (\ e m
+          (inst e m i-push k))))))))
+   e m (:* x) (\ e m
+    (cev e m (*: x) (\ e m
+     (inst e m i-tchom (\ e m (-> (k e (+ m 2)) (\ k
+      (: l (len (:* x)) (?
+       (nilp (= i-ret (hom-get-i k)))
+        (emi i-call (emx l k))
+       (-> (hom-seek k 1) (\ k (?
+         (= l (len (e-arg e)))
+          (emi i-loop k)
+         (emi i-rec (emx l k)))))))))))))))))
+
+ cse (\ e m x k (? (:* x)
+  ((: cser (\ e m x k (?
+      (nilp x) (k e m)
+               (cev e m (*: x) (\ e m
+                (cser e m (:* x) k))))))
+   e m (:* x) k)
+  (imm e m () k)))
+
+ cde (\ e m x k (,
+  (: desug (\ d (li (li '\ (li ', (init d) (last d)))))
+     mat (\ e x (: y (look e x) (? (= (*: y) 'here) (li (:* y)))))
+     cder (\ e m x k (? (nilp x) (k e m) (?
+      (-> (\ e m (cder e m (:* (:* x)) k)) (\ k
+       (-> (? (|| (toplp e) (< -1 (idx (e-loc e) (*: x))))
+              (\ e m (cdeb e m (*: x) k))
+              k) (\ k
+        (? (: q (mat e (*: x)))
+         (imm e m (*: q) k)
+         (cev e m (*: (:* x)) k)))))))))
+     cdeb (\ e m x k (?
+      (toplp e) (insx e m i-tbind x k)
+                (insx e m i-setl (idx (e-loc e) x) k))))
+  (? (nilp (:* x))            (imm e m nil k)
+     (= 1 (% (len (:* x)) 2)) (cev e m (desug x) k)
+     (cder e m (:* x) k))))
+
+ cco (\ e m x k (,
+  (: ccopreant (\ e m k (-> (k e (+ m 2)) (\ k
+      (-> (emi i-branch (emx (*: (e-s1 e)) k)) (\ k
+       (, (e-s1 e (:* (e-s1 e))) k))))))
+     ccopre (\ e m k (-> (k e m) (\ k
+      (*: (e-s2 e (:: k (e-s2 e)))))))
+     ccoprecon (\ e m k (-> (k e (+ m 2)) (\ x
+      (-> (*: (e-s2 e)) (\ k
+       (: i (hom-get-i k)
+        (? (= i i-ret) (emi i x)
+         (emi i-jump
+          (emx (? (= i i-jump) (hom-get-x (hom-seek k 1)) k) x)))))))))
+     ccopostcon (\ e m k (-> (k e m) (\ k
+      (*: (e-s1 e (:: k (e-s1 e)))))))
+     ccor (\ e m x k (?
+      (nilp x) (ccor e m (:: x x) k)
+      (nilp (:* x)) (cev e m (*: x) (\ e m (ccoprecon e m k)))
       (cev e m (*: x) (\ e m
-       (inst e m i-tchom (\ e m (-> (k e (+ m 2)) (\ k
-        (: l (len (:* x)) (?
-         (nilp (= i-ret (hom-get-i k)))
-          (emi i-call (emx l k))
-         (-> (hom-seek k 1) (\ k (?
-           (= l (len (e-arg e)))
-            (emi i-loop k)
-           (emi i-rec (emx l k)))))))))))))))))
+       (ccopreant e m (\ e m
+        (ccor e m (:* (:* x)) (\ e m
+         (ccopostcon e m (\ e m
+          (cev e m (*: (:* x)) (\ e m
+           (ccoprecon e m k))))))))))))))
 
-   cse (\ e m x k (? (:* x)
-    ((: cser (\ e m x k (?
-        (nilp x) (k e m)
-                 (cev e m (*: x) (\ e m
-                  (cser e m (:* x) k))))))
-     e m (:* x) k)
-    (imm e m () k)))
+  (? (nilp (:* x)) (imm e m nil k)
+   (-> (ccor e m (:* x) (\ e m (ccopre e m k))) (\ k
+    (, (e-s2 e (:* (e-s2 e))) k))))))
 
-   cde (\ e m x k (,
-    (: desug (\ d (li (li '\ (li ', (init d) (last d)))))
-       mat (\ e x (: y (look e x) (? (= (*: y) 'here) (li (:* y)))))
-       cder (\ e m x k (? (nilp x) (k e m) (?
-        (-> (\ e m (cder e m (:* (:* x)) k)) (\ k
-         (-> (? (|| (toplp e) (< -1 (idx (e-loc e) (*: x))))
-                (\ e m (cdeb e m (*: x) k))
-                k) (\ k
-          (? (: q (mat e (*: x)))
-           (imm e m (*: q) k)
-           (cev e m (*: (:* x)) k)))))))))
-       cdeb (\ e m x k (?
-        (toplp e) (insx e m i-tbind x k)
-                  (insx e m i-setl (idx (e-loc e) x) k))))
-    (? (nilp (:* x))            (imm e m nil k)
-       (= 1 (% (len (:* x)) 2)) (cev e m (desug x) k)
-       (cder e m (:* x) k))))
+ ltu (\ e nom l (,
+  (: n ((\ x (? x x (:: x x))) (:* l))
+     x (last n)
+     f (env (init n) e (:: nom (e-nom e)) (tbl)))
+  (scan f x)
+  (resolve f)
+  (-> (cev f 4 x (ini i-ret)) (\ k
+   (-> (? (nilp (e-loc f)) k
+        (emi i-prel (emx (len (e-loc f)) k))) (\ k
+    (-> (hom-fin (?
+         (> (: i (e-sig f)) 0) (emi i-arity (emx i k))
+         (< i 0) (emi i-vararg (emx (- (- i) 1) k))
+         k)) (\ k
+     (? (e-clo f) (:: (e-clo f) k) k)))))))))
+
+ resolve (\ e (,
+  (: precomps (\ e ks (? ks (,
+      (: k (*: ks) i (ltu e k (tbl-get (e-lam e) k)))
+      (? (homp i)
+         (, (tbl-set (e-val e) k i)
+            (tbl-del (e-lam e) k)
+            (e-loc e (ldel (e-loc e) k)))
+         (, (!* i (tbl-get (e-lam e) k))
+            (tbl-set (e-lam e) k i)))
+      (precomps e (:* ks)))))
+
+     okvs (\ e vs (?
+      (nilp vs) 0
+      (: v (*: vs)
+       (? (|| (tbl-has (e-lam e) v) (tbl-has (e-val e) v))
+          (okvs e (:* vs))))))
+
+     elim (\ e ks (? ks (-> (*: ks) (\ k (?
+      (nilp (okvs e (*: (tbl-get (e-lam e) k))))
+       (, (tbl-del (e-lam e) k) (elim e (tbl-keys (e-lam e))))
+      (elim e (:* ks)))))))
+
+     recomps (\ e d ks (? ks (: k (*: ks) (,
+      (e-loc e (ldel (e-loc e) k))
+      (tbl-set (e-val e) k (ltu e k (:* (tbl-get d k))))
+      (recomps e d (:* ks)))))))
+  (precomps e (tbl-keys (e-lam e)))
+  (elim e (tbl-keys (e-lam e)))
+  (: ls (e-lam e) (recomps e ls (e-lam e (tbl-keys ls))))))
+
+ scan (\ e x (,
+  (: scandef (\ e x (?
+      (nilp x) 0
+      (nilp (:* x)) ()
+      (-> (scandef e (:* (:* x))) (\ r
+       (, (? r (scandefadd e (*: x) (*: (:* x)))) r)))))
+     mcar (\ x (? x (*: x)))
+     addloc (\ e y (e-loc e (:: y (e-loc e))))
+
+     scandefadd (\ e y x (,
+      (? (symp x) (addloc e y)
+         (twop x) (-> (*: x) (\ z (?
+          (= z '`) (tbl-set (e-val e) y (mcar (:* x)))
+          (= z '\) (, (tbl-set (e-lam e) y x) (addloc e y))
+          (addloc e y))))
+         (tbl-set (e-val e) y x))
+      (scan e x))))
+  (? (twop x) (: y (*: x) (?
+   (= y '\) ()
+   (= y '`) ()
+   (= y ':) (scandef e (:* x))
+   (each x (\ x (scan e x))))))))
 
 
-   cco (\ e m x k (,
-    (: ccopreant (\ e m k (-> (k e (+ m 2)) (\ k
-        (-> (emi i-branch (emx (*: (e-s1 e)) k)) (\ k
-         (, (e-s1 e (:* (e-s1 e))) k))))))
-       ccopre (\ e m k (-> (k e m) (\ k
-        (*: (e-s2 e (:: k (e-s2 e)))))))
-       ccoprecon (\ e m k (-> (k e (+ m 2)) (\ x
-        (-> (*: (e-s2 e)) (\ k
-         (: i (hom-get-i k)
-          (? (= i i-ret) (emi i x)
-           (emi i-jump
-            (emx (? (= i i-jump) (hom-get-x (hom-seek k 1)) k) x)))))))))
-       ccopostcon (\ e m k (-> (k e m) (\ k
-        (*: (e-s1 e (:: k (e-s1 e)))))))
-       ccor (\ e m x k (?
-        (nilp x) (ccor e m (:: x x) k)
-        (nilp (:* x)) (cev e m (*: x) (\ e m (ccoprecon e m k)))
-        (cev e m (*: x) (\ e m
-         (ccopreant e m (\ e m
-          (ccor e m (:* (:* x)) (\ e m
-           (ccopostcon e m (\ e m
-            (cev e m (*: (:* x)) (\ e m
-             (ccoprecon e m k))))))))))))))
+ t-num (\ x (?
+  (homp x) t-hom (nump x) t-num
+  (twop x) t-two ;(tupp x) t-tup
+  (symp x) t-sym (strp x) t-oct
+  (tblp x) t-tbl (nilp x) t-nil))
+ t-nom (\ t (?
+  (= t t-hom) 'hom (= t t-num) 'num
+  (= t t-two) 'two (= t t-tup) 'tup
+  (= t t-oct) 'str (= t t-tbl) 'tbl
+  (= t t-sym) 'sym (= t t-nil) 'nil))
+ type-err (\ h w (fail
+  (li 'type-error ': (t-nom h) 'for (t-nom w))))
+ arity-err (\ h w (fail
+  (li 'arity-error ': h 'of w)))
+ tc (\ t h
+  (-> (consumes h) (\ u
+   (? (= t u) (tc t (hom-seek h 1))
+    (? (= u t-none) h
+     (type-err t u))))))
+ produce (\ e m t k (tc t (k e (+ m 2))))
 
-    (? (nilp (:* x)) (imm e m nil k)
-     (-> (ccor e m (:* x) (\ e m (ccopre e m k))) (\ k
-      (, (e-s2 e (:* (e-s2 e))) k))))))
-  
-   ltu (\ e nom l (,
-    (: n ((\ x (? x x (:: x x))) (:* l))
-       x (last n)
-       f (env (init n) e (:: nom (e-nom e)) (tbl)))
-    (scan f x)
-    (resolve f)
-    (-> (cev f 4 x (ini i-ret)) (\ k
-     (-> (? (nilp (e-loc f)) k
-          (emi i-prel (emx (len (e-loc f)) k))) (\ k
-      (-> (hom-fin (?
-           (> (: i (e-sig f)) 0) (emi i-arity (emx i k))
-           (< i 0) (emi i-vararg (emx (- (- i) 1) k))
-           k)) (\ k
-       (? (e-clo f) (:: (e-clo f) k) k)))))))))
-  
-  
-   precomps (\ e ks (? ks (,
-    (: k (*: ks) i (ltu e k (tbl-get (e-lam e) k)))
-    (? (homp i)
-       (, (tbl-set (e-val e) k i)
-          (tbl-del (e-lam e) k)
-          (e-loc e (ldel (e-loc e) k)))
-       (, (!* i (tbl-get (e-lam e) k))
-          (tbl-set (e-lam e) k i)))
-    (precomps e (:* ks)))))
-  
-   okvs (\ e vs (?
-    (nilp vs) 0
-    (: v (*: vs)
-     (? (|| (tbl-has (e-lam e) v) (tbl-has (e-val e) v))
-        (okvs e (:* vs))))))
-  
-   elim (\ e ks (? ks (-> (*: ks) (\ k (?
-    (nilp (okvs e (*: (tbl-get (e-lam e) k))))
-     (, (tbl-del (e-lam e) k) (elim e (tbl-keys (e-lam e))))
-    (elim e (:* ks)))))))
-  
-   recomps (\ e d ks (? ks (: k (*: ks) (,
-    (e-loc e (ldel (e-loc e) k))
-    (tbl-set (e-val e) k (ltu e k (:* (tbl-get d k))))
-    (recomps e d (:* ks))))))
-  
-   resolve (\ e (,
-    (precomps e (tbl-keys (e-lam e)))
-    (elim e (tbl-keys (e-lam e)))
-    (: ls (e-lam e) (recomps e ls (e-lam e (tbl-keys ls))))))
-  
-   scan (\ e x (,
-    (: scandef (\ e x (?
-        (nilp x) 0
-        (nilp (:* x)) ()
-        (-> (scandef e (:* (:* x))) (\ r
-         (, (? r (scandefadd e (*: x) (*: (:* x)))) r)))))
-       mcar (\ x (? x (*: x)))
-       addloc (\ e y (e-loc e (:: y (e-loc e))))
-  
-       scandefadd (\ e y x (,
-        (? (symp x) (addloc e y)
-           (twop x) (-> (*: x) (\ z (?
-            (= z '`) (tbl-set (e-val e) y (mcar (:* x)))
-            (= z '\) (, (tbl-set (e-lam e) y x) (addloc e y))
-            (addloc e y))))
-           (tbl-set (e-val e) y x))
-        (scan e x))))
-    (? (twop x) (: y (*: x) (?
-     (= y '\) ()
-     (= y '`) ()
-     (= y ':) (scandef e (:* x))
-     (each x (\ x (scan e x))))))))
-  
-  
-   t-num (\ x (?
-    (homp x) t-hom (nump x) t-num
-    (twop x) t-two ;(tupp x) t-tup
-    (symp x) t-sym (strp x) t-oct
-    (tblp x) t-tbl (nilp x) t-nil))
-   t-nom (\ t (?
-    (= t t-hom) 'hom (= t t-num) 'num
-    (= t t-two) 'two (= t t-tup) 'tup
-    (= t t-oct) 'str (= t t-tbl) 'tbl
-    (= t t-sym) 'sym (= t t-nil) 'nil))
-   type-err (\ h w (fail
-    (li 'type-error ': (t-nom h) 'for (t-nom w))))
-   arity-err (\ h w (fail
-    (li 'arity-error ': h 'of w)))
-   tc (\ t h
-    (-> (consumes h) (\ u
-     (? (= t u) (tc t (hom-seek h 1))
-      (? (= u t-none) h
-       (type-err t u))))))
-   produce (\ e m t k (tc t (k e (+ m 2))))
-  
-   cla (\ e m x k (,
-    (: gnom (\ e k (: i (hom-get-i k)
-     (? (= i i-tbind) (hom-get-x (hom-seek k 1))
-        (= i i-setl)  (at (e-loc e) (hom-get-x (hom-seek k 1)))))))
-    (-> (produce e m t-hom (\ e m (k e (+ m 2)))) (: cla.in (\ k
-      (-> (ltu e (gnom e k) x) (\ x (?
-       (homp x) (emi i-immv (emx x k))
-                (emi (? (e-loc e) i-encll i-encln)
-                 (emx (:: (:* x) (claclo e (*: x))) k))))))))))
-  
-   claclo (\ e arg
-    (: clacloin (\ e arg k (? (nilp arg) k
-        (clacloin e (:* arg) (\ e m
-         (cev e m (*: arg) (\ e m
-          (inst e m i-push k)))))))
-       k (\ e m (emi i-take (emx (len arg) (hom (+ m 2)))))
-     ((clacloin e arg k) e 0)))
-  
-   dbg-env (\ e (li 'env ': (e-nom e) 'arg (e-arg e) 'loc (e-loc e) 'clo (e-clo e) 'val (tbl-keys (e-val e)) 'lam (? (tblp (e-lam e)) (tbl-keys (e-lam e)) (e-lam e)) 'par (e-par e)))
-   ini (\ i (\ e m (insx e m i (e-nom e) (\ e m (hom m)))))
-   ana (\ x ((cev (env () () () (ns)) 0 x (ini i-ret))))))
-   (e compiler)))
- (boot (boot ev))))
+ cla (\ e m x k (,
+  (: gnom (\ e k (: i (hom-get-i k)
+   (? (= i i-tbind) (hom-get-x (hom-seek k 1))
+      (= i i-setl)  (at (e-loc e) (hom-get-x (hom-seek k 1)))))))
+  (-> (produce e m t-hom (\ e m (k e (+ m 2)))) (: cla.in (\ k
+    (-> (ltu e (gnom e k) x) (\ x (?
+     (homp x) (emi i-immv (emx x k))
+              (emi (? (e-loc e) i-encll i-encln)
+               (emx (:: (:* x) (claclo e (*: x))) k))))))))))
 
-(test 'comp-em (= 3 ((emi i-immv (emx 3 (emi i-ret (hom 3)))))))
-(test 'comp-qt (= (li 1) (eval (li '` (li 1)))))
-(test 'comp-ap (&&
- (= 9 (eval (li + 1 2 (li * 2 3))))
- (= 6 (eval (li + 1 2 3)))))
-(test 'comp-sq (:
-  box (li())
-  inc (\(*! box (:: (len (*: box)) (*: box))))
- (= '(2 1 0) (eval (li ', (li inc) (li inc) (li inc))))))
-(test 'comp-de (&&
- (-> 123 (\ x
-  (-> (eval (li ': '_123 x)) (\ y
-   (-> _123 (\ z (= 123 x y z)))))))
- (= 3 (eval '(: a (\ 1) b (\ 2) c (\(+(a)(b))) (c))))))
-(test 'comp-sy (= _123 (eval '_123)))
-(test 'comp-co (&& (= 1 (eval '(? () 0 1)));false
-                   (= 0 (eval '(? 1 0 ())));true
-                   (nilp (eval '(? () 1)));even
-                   (= 1 (eval '(? () (? () 1 0);nested
-                                     (? () 0 1))))))
-(test 'comp-la (&&
- (= 3  (eval '((\(+((\ 1))((\ 2)))))))
- (= 6  ((eval '(\ a b ((\ c (+ c b 1)) a))) 3 2))
- (= 34 ((eval '(\ a b c (: f (\ x y z (+ a b c x y z)) (f a b c)))) 9 7 1))
- (= 24 (eval '((\ a b ((\ a b c (+ a b c)) (* a (+ a b)) (* b (* a b)) (* b b b))) 2 2)))
- (= '(1 2 3) ((eval '(\ a b c ((\ (li a b c))))) 1 2 3))))
+ claclo (\ e arg
+  (: clacloin (\ e arg k (? (nilp arg) k
+      (clacloin e (:* arg) (\ e m
+       (cev e m (*: arg) (\ e m
+        (inst e m i-push k)))))))
+     k (\ e m (emi i-take (emx (len arg) (hom (+ m 2)))))
+   ((clacloin e arg k) e 0)))
+
+ dbg-env (\ e (li 'env ': (e-nom e) 'arg (e-arg e) 'loc (e-loc e) 'clo (e-clo e) 'val (tbl-keys (e-val e)) 'lam (? (tblp (e-lam e)) (tbl-keys (e-lam e)) (e-lam e)) 'par (e-par e)))
+ ini (\ i (\ e m (insx e m i (e-nom e) (\ e m (hom m)))))
+ eval (\ x ((cev (env () () () (ns)) 0 x (ini i-ret)))))))
 
 (: math
    '(: fib (\ n ;; double recursive fibonacci function
@@ -433,8 +387,33 @@
         (? (< m 1) (+ n 1)
          (ack (- m 1) (? (> n 0) (ack m (- n 1)) 1))))
        quine ((\ q ((eval q) q)) '(\ i (li i (li '` i))))
-     (, ;(test 'fib32 (= 2178309 (fib 32)))
-        ;(test 'ack3,9 (= 4093 (ack 3 9)))
-        (test 'quine (= quine (ev quine) (eval quine)))
-        ))
+     (,(test 'comp-em (= 3 ((emi i-immv (emx 3 (emi i-ret (hom 3)))))))
+       (test 'comp-qt (= (li 1) (eval (li '` (li 1)))))
+       (test 'comp-ap (&&
+       (= 9 (eval (li + 1 2 (li * 2 3))))
+       (= 6 (eval (li + 1 2 3)))))
+       (test 'comp-sq (:
+         box (li())
+         inc (\(*! box (:: (len (*: box)) (*: box))))
+        (= '(2 1 0) (eval (li ', (li inc) (li inc) (li inc))))))
+       (test 'comp-de (&&
+        (-> 123 (\ x
+         (-> (eval (li ': '_123 x)) (\ y
+          (-> _123 (\ z (= 123 x y z)))))))
+        (= 3 (eval '(: a (\ 1) b (\ 2) c (\(+(a)(b))) (c))))))
+       (test 'comp-sy (= _123 (eval '_123)))
+       (test 'comp-co (&& (= 1 (eval '(? () 0 1)));false
+                          (= 0 (eval '(? 1 0 ())));true
+                          (nilp (eval '(? () 1)));even
+                          (= 1 (eval '(? () (? () 1 0);nested
+                                            (? () 0 1))))))
+       (test 'comp-la (&&
+        (= 3  (eval '((\(+((\ 1))((\ 2)))))))
+        (= 6  ((eval '(\ a b ((\ c (+ c b 1)) a))) 3 2))
+        (= 34 ((eval '(\ a b c (: f (\ x y z (+ a b c x y z)) (f a b c)))) 9 7 1))
+        (= 24 (eval '((\ a b ((\ a b c (+ a b c)) (* a (+ a b)) (* b (* a b)) (* b b b))) 2 2)))
+        (= '(1 2 3) ((eval '(\ a b c ((\ (li a b c))))) 1 2 3))))
+       (test 'quine (= quine (ev quine) (eval quine)))
+       (test 'fib32 (= 2178309 (fib 32)))
+       (test 'ack3,9 (= 4093 (ack 3 9)))))
  (eval math))
