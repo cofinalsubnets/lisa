@@ -263,6 +263,8 @@ static uint64_t hc(obj x) {
     case Sym: return getsym(x)->code;
     case Oct: return hash_bytes(getoct(x)->len, getoct(x)->text);
     case Two: return hc(X(x)) ^ hc(Y(x));
+    // you can use functions as hash keys but the performance won't necessarily be great...
+    case Hom: return mix * (uint64_t) G(x);
     default:  return mix * x; } }
 
 // the least significant bits of the product have the least

@@ -17,13 +17,12 @@ NoInline const char *tnom(enum type t) { switch (t) {
   case Tup: return "tuple";
   case Oct: return "string";
   case Sym: return "symbol";
-  case Nil: break; } // GCC can't figure out that it will always return even if the switch exhausts an enumeration???
-  return "nil"; }
+  default:  return "nil"; } }
 
 typedef obj P(vm, FILE*);
 static P atom, reads, quote, str;
 
-#define readx(v,m)err(v,"parse",0,m)
+#define readx(v,m)(errp(v,"parse",0,m),0)
 
 static int read0(FILE *i) {
   for (int c;;) switch ((c = getc(i))) {
@@ -42,8 +41,8 @@ obj parse(vm v, FILE *i) {
 
 static obj quote(vm v, FILE *i) {
   obj r = parse(v, i);
-  if (r) return (r = pair(v, r, nil), pair(v, Qt, r));
-  return feof(i) ? 0 : readx(v, err_eof); }
+  return !r ? r :
+   (r = pair(v, r, nil), pair(v, Qt, r)); }
 
 static obj reads(vm v, FILE *i) {
   obj x, y, c;
@@ -99,10 +98,14 @@ static void emit_2(vm v, obj x, FILE *o) {
   twop(Y(x)) ? (emsep(v, X(x), o, ' '), emit_2(v, Y(x), o)) :
                 emsep(v, X(x), o, ')'); }
 
-static void emhom(vm v, obj x, FILE *o) {
-  for (x = homnom(v, x); twop(x); x = Y(x)) {
-    fputc('\\', o); if (symp(X(x))) emit(v, X(x), o); }
-  fputc('\\', o); }
+static void emhomn(vm v, obj x, FILE *o) {
+  fputc('\\', o);
+  switch (kind(x)) {
+    case Two:
+      if (symp(X(x))) emit(v, X(x), o);
+      if (nilp(Y(x))) return;
+      return emhomn(v, Y(x), o);
+    case Sym: return emit(v, x, o); } }
 
 static void emoct(vm v, obj x, FILE *o) {
   fputc('"', o);
@@ -119,7 +122,7 @@ void emit(vm v, obj x, FILE *o) {
   switch (kind(x)) {
     case Num: fprintf(o, "%ld", getnum(x)); break;
     case Sym: fputs(symnom(x), o); break;
-    case Hom: return emhom(v, x, o);
+    case Hom: return emhomn(v, homnom(v, x), o);
     case Two: fputc('(', o); emit_2(v, x, o); break;
     case Oct: return emoct(v, x, o);
     case Tbl: return emtbl(v, x, o);

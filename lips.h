@@ -13,16 +13,9 @@ typedef int64_t obj, num, *mem;
 #define Word sizeof(non)
 
 typedef struct root { mem one; struct root *next; } *root;
-typedef struct rt {
-  obj ip, xp, *fp, *hp, *sp; // vm state variables
-  obj dict, syms, syn, cdict; // globals
-  root mem_root; // memory
-  num t0, count, mem_len, *mem_pool;
-  // top level restart
-  jmp_buf restart; } *rt, *vm;
-
 // can't just be terp** :( bc C
 typedef union hom *hom;
+typedef struct rt *rt, *vm;
 typedef obj terp(rt, hom, mem, mem, mem, obj);
 union hom { terp *g; };
 typedef struct two { obj x, y; } *two;
@@ -30,8 +23,20 @@ typedef struct tup { num len; obj xs[]; } *tup;
 typedef struct oct { num len; char text[]; } *oct;
 typedef struct sym { obj nom, code, l, r; } *sym;
 
+typedef struct spec {
+  struct spec *sp;
+  obj (*cp)(rt, obj), nom;
+} *spec;
 typedef struct tble { obj key, val; struct tble *next; } *tble;
 typedef struct tbl { num len, cap; tble *tab; } *tbl;
+
+struct rt {
+  obj ip, xp, *fp, *hp, *sp; // vm state variables
+  obj dict, syms, syn, cdict; // globals
+  root mem_root; // memory
+  num t0, count, mem_len, *mem_pool;
+  // top level restart
+  jmp_buf restart; };
 
 // the 3 ls bits of each pointer are a type tag
 enum type {
@@ -42,7 +47,7 @@ enum syn {
   Def = 0, Cond = 1, Lamb = 2, Quote = 3, Seq = 4, Splat = 5,
   NSyns };
 
-rt initialize();
+rt initialize(const char*);
 
 void finalize(rt),
      emit(rt, obj, FILE*),
@@ -141,3 +146,10 @@ extern const char *t_nom[];
 #define Avail (Sp-Hp)
 #define Inline inline __attribute__((always_inline))
 #define NoInline __attribute__((noinline))
+
+#ifndef NOM
+#define NOM "lips"
+#endif
+#ifndef VN
+#define VN "???"
+#endif

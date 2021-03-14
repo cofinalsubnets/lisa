@@ -6,22 +6,23 @@ typedef obj c1(vm, mem, num),
 ////
 /// bootstrap thread compiler
 //
-// it's basically an "analyzing evaluator" that produces
-// threads that run on the lisp vm. each code-generating
-// function first generates its immediate continuation,
-// so there's an implicit CPS transformation. continuations
-// are explicitly constructed by pushing function pointers
-// onto the main lips stack like this:
+// functions construct their continuations by pushing function
+// pointers onto the main stack with Push()
 #define Push(...) pushs(v,__VA_ARGS__,non)
-// and then popped off like this:
+// and then calling them with ccc
 #define ccc ((c1*)Gn(*Sp++))
 // there's a natural correspondence between the Push(...),
-// ccc(...) pattern used in this file and normal continuation
+// ccc(...) pattern in this file and normal continuation
 // passing style in lisp (cf. the stage 2 compiler).
 
 // in addition to the main stack, the compiler uses Xp and Ip
 // as stacks for storing code entry points when generating
 // conditionals, which is admittedly kind of sus.
+//
+// this compiler emits runtime type checks for safety but no
+// optimizations or static typing. it only has to compile the
+// lips compiler once, and that version only has to compile
+// itself once, so it seems better to keep the C code minimal.
 
 // " compilation environments "
 // the current lexical environment is passed to compiler
@@ -157,6 +158,7 @@ static obj ltu(vm v, mem e, obj n, obj l) {
   with(n,
     l = twop(l) ? l : pair(v, l, nil),
     with(y, l = linitp(v, l, &y),
+            with(l, n = pair(v, n, toplp(e) ? nil : name(*e))),
             n = scope(v, e, l, n)),
     l = compose(v, &n, X(y)));
   return l; }
@@ -189,21 +191,10 @@ c1(c_d_bind) {
   return toplp(e) ? imx(v, e, m, tbind, y) :
                     imx(v, e, m, setl, N(idx(loc(*e), y))); }
 
-c1(c_ev_d) {
-  obj w = *Sp++, y;
-  mm(&w);
-  if (toplp(e) || -1 < idx(loc(*e), X(w))) Push(N(c_d_bind), X(w));
-  y = look(v, *e, X(w));
-  return um,
-    X(y) == N(Here) ? c_imm(v, e, m, Y(y)) :
-    X(y) == N(Wait) && Y(y) != Dict ?
-      late(v, e, m, X(w), Y(y)) :
-    c_eval(v, e, m, XY(w)); }
-
 static void c_de_r(vm v, mem e, obj x) {
   if (twop(x))
     with(x, c_de_r(v, e, YY(x))),
-    Push(N(c_ev_d), x); }
+    Push(N(c_ev), XY(x), N(c_d_bind), X(x)); }
 
 c2(c_de) {
   return !twop(Y(x)) ? c_imm(v, e, m, nil) :
@@ -387,11 +378,19 @@ static obj tupl(vm v, ...) {
 
 static void pushss(vm v, num i, va_list xs) {
   obj x = va_arg(xs, obj);
-  if (x) with(x, pushss(v, i+1, xs)), *--Sp = x;
-  else if (Avail < i) reqsp(v, i); }
+  if (x) with(x, pushss(v, i, xs)), *--Sp = x;
+  else reqsp(v, i); }
 
 static void pushs(vm v, ...) {
-  va_list xs; va_start(xs, v), pushss(v, 0, xs), va_end(xs); }
+  num i = 0;
+  va_list xs; va_start(xs, v);
+  while (va_arg(xs, obj)) i++;
+  va_end(xs); va_start(xs, v);
+  if (Avail < i) pushss(v, i, xs);
+  else {
+    mem sp = Sp -= i;
+    while (i--) *sp++ = va_arg(xs, obj); }
+  va_end(xs); }
 
 obj hom_ini(vm v, num n) {
   hom a = cells(v, n + 2);
@@ -407,13 +406,11 @@ obj hom_fin(vm v, obj a) {
 obj homnom(vm v, obj x) {
   terp *k = G(x);
   if (k == clos || k == pc0 || k == pc1)
-    x = (obj) G(FF(x));
+    return homnom(v, (obj) G(FF(x)));
   mem h = (mem) gethom(x);
   while (*h) h++;
   x = h[-1];
-  return (mem)x >= Pool &&
-         (mem)x < Pool+Len &&
-         twop(x) ? x : nil; }
+  return (mem)x >= Pool && (mem)x < Pool+Len ? x : nil; }
 
 static void rpr(vm v, mem d, const char *n, terp *u) {
   obj x, y = pair(v, interns(v, n), nil);
@@ -453,11 +450,26 @@ static void rin(vm v, mem d, const char *n, terp *u) {
   _("tblp", tblp_u), _("strp", strp_u),\
   _("nilp", nilp_u), _("homp", homp_u)
 
+static Inline obj evfile(vm v, const char *p) {
+  FILE *f = fopen(p, "r");
+  if (!f) return 0;
+  obj y = parse(v, f);
+  fclose(f);
+  if (y) y = eval(v, y);
+  return y; }
+
+static Inline void boot(vm v, const char *b, obj d) {
+  obj x, n;
+  with(d, x = evfile(v, b),
+          with(x, n = interns(v, "ev")));
+  tbl_set(v, d, n, x); }
+
 #define RPR(a,b) rpr(v,&d,a,b)
 #define RIN(x) rin(v,&d,"i-"#x,x)
-static Inline obj code_dictionary(vm v) {
+static Inline obj code_dictionary(vm v, const char *b) {
   obj d = table(v);
   with(d, prims(RPR), insts(RIN));
+  if (b) boot(v, b, d);
   return d; }
 #undef RPR
 #undef RIN
@@ -473,7 +485,7 @@ static Inline obj syntax_array(vm v) {
 #undef bsym
   return y; }
 
-vm initialize() {
+vm initialize(const char *b) {
   vm v = malloc(sizeof(struct rt));
   if (!v) errp(v, "init", 0, "oom");
   else if (setjmp(v->restart))
@@ -485,7 +497,7 @@ vm initialize() {
     v->count = 0, v->mem_len = 1, v->mem_pool = NULL;
     v->mem_root = NULL;
     v->syn = syntax_array(v);
-    v->cdict = code_dictionary(v);
+    v->cdict = code_dictionary(v, b);
     v->dict = table(v); }
   return v; }
 
@@ -498,7 +510,7 @@ void finalize(vm v) {
 // convention. this allows us to keep all the most important
 // vm state variables in CPU registers at all times while the
 // interpreter is running, without any platform-specific code.
-// practically the interpreter amounts to a set of functions
+// basically the interpreter amounts to a set of functions
 // with a shared type that observe certain restrictions
 // concerning memory access, function calls, etc. the C
 // compiler has to tail call optimize these functions,
@@ -854,7 +866,7 @@ vm_op(tblc) {
 static obj tblss(vm v, num i, num l) {
   mem fp = Fp;
   return i > l-2 ? Argv[i-1] :
-    (tbl_set(v, *Argv, Argv[i], Argv[i+1]),
+    (tbl_set(v, Xp, Argv[i], Argv[i+1]),
      tblss(v, i+2, l)); }
 
 vm_op(tbls) {
@@ -881,9 +893,9 @@ vm_op(tbll) {
   TypeCheck(Argv[0], Tbl);
   Go(ret, putnum(gettbl(*Argv)->len)); }
 vm_op(tblmk) {
-  obj x;
-  CallC(x = table(v));
-  Go(ret, x); }
+  CallC(Xp = table(v),
+    tblss(v, 0, getnum(Argc)));
+  Go(ret, Xp); }
 
 // string instructions
 vm_op(strl) {
