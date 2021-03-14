@@ -20,12 +20,12 @@
 
 ; strings are supposed to work
 (test 'strings (&&
-  (: l (de-str "hello person")
-     (&& (= 12 (list-len l)) (= (*: l) 104)))
-  (= "a" (str 97))
-  (= "asdf" "asdf")
-  (nilp (= "asdf" "asd"))
-  (= "" (str 0 0 2 0))))
+ (: l (de-str "hello person")
+    (&& (= 12 (list-len l)) (= (*: l) 104)))
+ (= "a" (str 97))
+ (= "asdf" "asdf")
+ (nilp (= "asdf" "asd"))
+ (= "" (str 0 0 2 0))))
 
 ; here's a function for iterating over ranges
 (: from (\ m n f (? (< m n) (, (f m) (from (+ m 1) n f)))))
@@ -98,16 +98,16 @@
      l x 0))
    len (\ l (? (twop l) (+ 1 (len (:* l))) 0)))
 
-(test 'functionals
-  (&& (= 6
-         (foldr 1 + (li 2 3))
-         (foldr1 + (li 1 2 3))
-         (foldl 1 + (li 2 3))
-         (foldl1 + (li 1 2 3)))
-      (= (li 1 2 3)
-         (map (\ x (+ 1 x)) (iota 3))
-         (snoc ((flip snoc) 2 (li 1)) 3)
-         (foldr () :: (iota 1 4)))))
+(test 'functionals (&&
+ (= 6
+  (foldr 1 + (li 2 3))
+  (foldr1 + (li 1 2 3))
+  (foldl 1 + (li 2 3))
+  (foldl1 + (li 1 2 3)))
+ (= (li 1 2 3)
+  (map (\ x (+ 1 x)) (iota 3))
+  (snoc ((flip snoc) 2 (li 1)) 3)
+  (foldr () :: (iota 1 4)))))
 
 (tbl-set macros
  ; a macro for defining macros
@@ -115,7 +115,8 @@
                          (? (:* x) (ap defm (:* x)) v))))
  ; bind
  '>>= (\ x f (li f x)))
-(: eval ((\ q ((ev q) q)) '(: ; ok now let's port the compiler
+
+(: ev ((\ q ((ev q) q)) '(: ; ok now let's port the compiler
  env (\ a p n (>>=
   ((: asig (\ a n
        (? (twop a)
@@ -137,8 +138,8 @@
  e-val (gtk 'val) e-sig (gtk 'sig)
  e-s1  (gtk 's1)  e-s2  (gtk 's2)
  inst (\ e m i k (emi i (k e (+ m 1))))
- inom (\ i (>>= (tbl-keys cns) (: in (\ l (? l
-  (? (= i (tbl-get cns (*: l))) (*: l) (in (:* l))))))))
+ inom (\ i (>>= (tbl-keys ns) (: in (\ l (? l
+  (? (= i (tbl-get ns (*: l))) (*: l) (in (:* l))))))))
  emh (\ h (: i (hom-get-i h)
   (? (= i 0) () (>>= (inom i) (\ x
    (? x (? (|| (= i i-pc0) (= i i-pc1) (= i i-clos))
@@ -172,17 +173,14 @@
  cqt (\ e m x k (: y (:* x) (imm e m (? y (*: y)) k)))
  toplp (\ e (nilp (e-par e)))
  look (\ e y
-  (: looktop (\ e y
-      (: d ns c cns (? (tbl-has d y) (:: 'wait d)
-                           (tbl-has c y) (:: 'here (tbl-get c y))
-                           (:: 'wait d))))
-   (? (toplp e) (looktop e y)
-      (tbl-has (e-val e) y) (:: 'here (tbl-get (e-val e) y))
+   (? (tbl-has (e-val e) y) (:: 'here (tbl-get (e-val e) y))
       (< -1 (idx (e-lam e) y)) (:: 'wait (e-val e))
       (< -1 (idx (e-loc e) y)) (:: 'loc e)
       (< -1 (idx (e-arg e) y)) (:: 'arg e)
       (< -1 (idx (e-clo e) y)) (:: 'clo e)
-      (look (e-par e) y))))
+      (e-par e) (look (e-par e) y)
+      (tbl-has ns y) (:: 'here (tbl-get ns y))
+      (:: 'wait ns)))
  init (\ l (? (twop (:* l)) (:: (*: l) (init (:* l)))))
  last (\ l (? (twop (:* l)) (last (:* l)) (*: l)))
  t-hom 0 t-num 1 t-two 2 t-tup 3 t-oct 4
@@ -442,45 +440,41 @@
                  ((? z z cap) e m x k))))
  ini (\ e m (insx e m i-ret (e-nom e) (\ e m (hom m))))
  eval (\ x (: e (env () () ()) ((cev e 0 (pev e x) ini))))
-; eval ; comment this line to have compiler internals defined at toplevel
+ eval ; comment this line to have compiler internals defined at toplevel
  )))
 
-(::: :? (\ n a b (li ': n a (li '? a b))))
-
-(: math
-   '(: fib (\ n ;; double recursive fibonacci function
-        (? (< n 3) 1 (+ (fib (- n 1)) (fib (- n 2)))))
-       ack (\ m n ;; ackermann function
-        (? (< m 1) (+ n 1)
-         (ack (- m 1) (? (> n 0) (ack m (- n 1)) 1))))
-       quine ((\ q ((eval q) q)) '(\ i (li i (li '` i))))
-     (,(test 'comp-em (= 3 ((emi i-immv (emx 3 (emi i-ret (hom 3)))))))
-       (test 'comp-qt (= (li 1) (eval (li '` (li 1)))))
-       (test 'comp-ap (&&
-       (= 9 (eval (li + 1 2 (li * 2 3))))
-       (= 6 (eval (li + 1 2 3)))))
-       (test 'comp-sq (:
-         box (li())
-         inc (\(*! box (:: (len (*: box)) (*: box))))
-        (= '(2 1 0) (eval (li ', (li inc) (li inc) (li inc))))))
-       (test 'comp-de (&&
-        (>>= 123 (\ x
-         (>>= (eval (li ': '_123 x)) (\ y
-          (>>= _123 (\ z (= 123 x y z)))))))
-        (= 3 (eval '(: a (\ 1) b (\ 2) c (\(+(a)(b))) (c))))))
-       (test 'comp-sy (= _123 (eval '_123)))
-       (test 'comp-co (&& (= 1 (eval '(? () 0 1)));false
-                          (= 0 (eval '(? 1 0 ())));true
-                          (nilp (eval '(? () 1)));even
-                          (= 1 (eval '(? () (? () 1 0);nested
-                                            (? () 0 1))))))
-       (test 'comp-la (&&
-        (= 3  (eval '((\(+((\ 1))((\ 2)))))))
-        (= 6  ((eval '(\ a b ((\ c (+ c b 1)) a))) 3 2))
-        (= 34 ((eval '(\ a b c (: f (\ x y z (+ a b c x y z)) (f a b c)))) 9 7 1))
-        (= 24 (eval '((\ a b ((\ a b c (+ a b c)) (* a (+ a b)) (* b (* a b)) (* b b b))) 2 2)))
-        (= '(1 2 3) ((eval '(\ a b c ((\ (li a b c))))) 1 2 3))))
-;       (test 'fib32 (= 2178309 (fib 32)))
-;       (test 'ack3,9 (= 4093 (ack 3 9)))
-       (test 'quine (= quine (ev quine) (eval quine)))))
- (eval math))
+(: fib (\ n ;; double recursive fibonacci function
+     (? (< n 3) 1 (+ (fib (- n 1)) (fib (- n 2)))))
+    ack (\ m n ;; ackermann function
+     (? (< m 1) (+ n 1)
+      (ack (- m 1) (? (> n 0) (ack m (- n 1)) 1))))
+    quine ((\ q ((ev q) q)) '(\ i (li i (li '` i))))
+  (,(test 'comp-em (= 3 ((emi i-immv (emx 3 (emi i-ret (hom 3)))))))
+    (test 'comp-qt (= (li 1) (ev (li '` (li 1)))))
+    (test 'comp-ap (&&
+    (= 9 (ev (li + 1 2 (li * 2 3))))
+    (= 6 (ev (li + 1 2 3)))))
+    (test 'comp-sq (:
+      box (li())
+      inc (\(*! box (:: (len (*: box)) (*: box))))
+     (= '(2 1 0) (ev (li ', (li inc) (li inc) (li inc))))))
+    (test 'comp-de (&&
+     (>>= 123 (\ x
+      (>>= (ev (li ': '_123 x)) (\ y
+       (>>= _123 (\ z (= 123 x y z)))))))
+     (= 3 (ev '(: a (\ 1) b (\ 2) c (\(+(a)(b))) (c))))))
+    (test 'comp-sy (= _123 (ev '_123)))
+    (test 'comp-co (&& (= 1 (ev '(? () 0 1)));false
+                       (= 0 (ev '(? 1 0 ())));true
+                       (nilp (ev '(? () 1)));even
+                       (= 1 (ev '(? () (? () 1 0);nested
+                                         (? () 0 1))))))
+    (test 'comp-la (&&
+     (= 3  (ev '((\(+((\ 1))((\ 2)))))))
+     (= 6  ((ev '(\ a b ((\ c (+ c b 1)) a))) 3 2))
+     (= 34 ((ev '(\ a b c (: f (\ x y z (+ a b c x y z)) (f a b c)))) 9 7 1))
+     (= 24 (ev '((\ a b ((\ a b c (+ a b c)) (* a (+ a b)) (* b (* a b)) (* b b b))) 2 2)))
+     (= '(1 2 3) ((ev '(\ a b c ((\ (li a b c))))) 1 2 3))))
+    (test 'fib32 (= 2178309 (fib 32)))
+    (test 'ack3,9 (= 4093 (ack 3 9)))
+    (test 'quine (= quine (ev quine)))))

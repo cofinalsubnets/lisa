@@ -32,7 +32,7 @@ typedef struct tbl { num len, cap; tble *tab; } *tbl;
 
 struct rt {
   obj ip, xp, *fp, *hp, *sp; // vm state variables
-  obj dict, syms, syn, cdict, macros; // globals
+  obj syms, glob; // globals
   root mem_root; // memory
   num t0, count, mem_len, *mem_pool;
   // top level restart
@@ -43,9 +43,9 @@ enum type {
   Hom = 0, Num = 1, Two = 2, Tup = 3,
   Oct = 4, Tbl = 5, Sym = 6, Nil = 7 };
 
-enum syn {
-  Def = 0, Cond = 1, Lamb = 2, Quote = 3, Seq = 4, Splat = 5,
-  NSyns };
+enum globl {
+  Def, Cond, Lamb, Quote, Seq, Splat, Topl, Macs,
+  Eval, Apply, NGlobs };
 
 rt initialize(const char*);
 
@@ -132,15 +132,19 @@ extern const char *t_nom[];
 #define Xp v->xp
 #define Pool v->mem_pool
 #define Len v->mem_len
-#define Dict v->dict
+#define Dict Top
 #define Syms (v->syms)
-#define Syn v->syn
-#define If AR(v->syn)[Cond]
-#define De AR(v->syn)[Def]
-#define La AR(v->syn)[Lamb]
-#define Qt AR(v->syn)[Quote]
-#define Se AR(v->syn)[Seq]
-#define Va AR(v->syn)[Splat]
+#define Glob v->glob
+#define If AR(Glob)[Cond]
+#define De AR(Glob)[Def]
+#define La AR(Glob)[Lamb]
+#define Qt AR(Glob)[Quote]
+#define Se AR(Glob)[Seq]
+#define Va AR(Glob)[Splat]
+#define Top AR(Glob)[Topl]
+#define Mac AR(Glob)[Macs]
+#define Eva AR(Glob)[Eval]
+#define App AR(Glob)[Apply]
 #define Avail (Sp-Hp)
 #define Inline inline __attribute__((always_inline))
 #define NoInline __attribute__((noinline))

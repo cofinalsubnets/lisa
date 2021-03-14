@@ -53,6 +53,7 @@ static obj tupl(vm, ...),
            imx(vm, mem, num, terp*, obj),
            hom_ini(vm, num);
 static num idx(obj, obj);
+static obj topl_lookup(vm, obj);
 
 #define N(x) putnum(x)
 #define Gn(x) getnum(x)
@@ -105,20 +106,21 @@ static obj compile(vm v, obj x) {
   return ccc(v, &top, 0); }
 
 static obj apply(vm v, obj f, obj x) {
-  with(f, x = pair(v, x, nil),
-          x = pair(v, Qt, x),
-          x = pair(v, x, nil));
-  obj ap;
-  with(x, f = pair(v, f, nil),
-          f = pair(v, Qt, f),
-          x = pair(v, f, x),
-          ap = interns(v, "ap"));
-  x = pair(v, ap, x);
-  return eval(v, x); }
+  Push(f, x);
+  obj ap = topl_lookup(v, App);
+  hom h;
+  with(ap, h = cells(v, 5));
+  h[0].g = call;
+  h[1].g = (terp*) N(2);
+  h[2].g = yield;
+  h[3].g = NULL;
+  h[4].g = (terp*) h;
+  return call(v, h, Fp, Sp, Hp, ap); }
+
 /// evaluate an expression
 obj eval(vm v, obj x) {
-  hom h = gethom(compile(v, x));
-  return G(h)(v, h, v->fp, v->sp, v->hp, nil); }
+  x = pair(v, x, nil);
+  return apply(v, tbl_get(v, Dict, Eva), x); }
 
 static void scan_def_add(vm v, mem e, obj y, obj x) {
   with(x, y = pair(v, y, loc(*e)), loc(*e) = y);
@@ -280,8 +282,7 @@ c1(c_call) {
          em2(rec, a, k); }
 
 static obj topl_lookup(vm v, obj y) {
-  obj q = tbl_get(v, Dict, y);
-  return q ? q : tbl_get(v, v->cdict, y); }
+  return tbl_get(v, Dict, y); }
 
 #define L(n,x) pair(v, N(n), x)
 static obj look(vm v, obj e, obj y) {
@@ -331,7 +332,7 @@ c2(c_2) {
                     c_ap)(v, e, m, x); }
 
 c2(c_ap) {
-  obj y = tbl_get(v, v->macros, X(x));
+  obj y = tbl_get(v, Mac, X(x));
   if (y) {
     Rec(x = apply(v, y, Y(x)));
     return c_eval(v, e, m, x); }
@@ -470,14 +471,18 @@ static Inline obj evfile(vm v, const char *p) {
   if (!f) return 0;
   obj y = parse(v, f);
   fclose(f);
-  if (y) y = eval(v, y);
-  return y; }
+  if (!y) return y;
+  y = pair(v, y, nil);
+  y = pair(v, Qt, y);
+  y = pair(v, y, nil);
+  return eval(v, pair(v, Eva, y)); }
 
 static Inline void boot(vm v, const char *b, obj d) {
-  obj x, n;
+  obj x;
   with(d, x = evfile(v, b),
-          with(x, n = interns(v, "ev")));
-  tbl_set(v, d, n, x); }
+          tbl_set(v, d, Eva, x),
+          x = evfile(v, b));
+  tbl_set(v, d, Eva, x); }
 
 #define RPR(a,b) rpr(v,&d,a,b)
 #define RIN(x) rin(v,&d,"i-"#x,x)
@@ -489,16 +494,18 @@ static Inline obj code_dictionary(vm v, const char *b) {
 #undef RPR
 #undef RIN
 
-static Inline obj syntax_array(vm v) {
-  tup t = cells(v, Size(tup) + NSyns);
-  t->len = NSyns, memset(t->xs, -1, w2b(NSyns));
-  obj z, y = puttup(t);
+static Inline void init_globals_array(vm v) {
+  tup t = cells(v, Size(tup) + NGlobs);
+  t->len = NGlobs, memset(t->xs, -1, w2b(NGlobs));
+  obj z, y = Glob = puttup(t);
   with(y,
+    z = code_dictionary(v, NULL), Top = z,
+    z = table(v), Mac = z,
 #define bsym(i,s)(z=interns(v,s),AR(y)[i]=z)
+    bsym(Eval, "ev"), bsym(Apply, "ap"),
     bsym(Def, ":"), bsym(Cond, "?"), bsym(Lamb, "\\"),
-    bsym(Quote, "`"), bsym(Seq, ","), bsym(Splat, "."));
+    bsym(Quote, "`"), bsym(Seq, ","), bsym(Splat, ".")); }
 #undef bsym
-  return y; }
 
 vm initialize(const char *b) {
   vm v = malloc(sizeof(struct rt));
@@ -507,20 +514,15 @@ vm initialize(const char *b) {
     finalize(v), v = NULL;
   } else {
     v->t0 = clock(),
-    v->ip = v->xp = v->dict = v->syms = v->syn = v->cdict = v->macros = nil,
+    v->ip = v->xp = v->syms = v->glob = nil,
     v->fp = v->hp = v->sp = (mem)w2b(1),
     v->count = 0, v->mem_len = 1, v->mem_pool = NULL,
-    v->mem_root = NULL,
-    v->syn = syntax_array(v),
-    v->cdict = code_dictionary(v, b),
-    v->macros = table(v);
-    v->dict = table(v);
+    v->mem_root = NULL;
+    init_globals_array(v);
     obj y = interns(v, "ns");
-    tbl_set(v, v->dict, y, v->dict);
-    y = interns(v, "cns");
-    tbl_set(v, v->dict, y, v->cdict);
+    tbl_set(v, Top, y, Top);
     y = interns(v, "macros");
-    tbl_set(v, v->dict, y, v->macros); }
+    tbl_set(v, Top, y, Mac); }
   return v; }
 
 void finalize(vm v) {
@@ -803,7 +805,10 @@ vm_op(rd_u) {
 // eval
 vm_op(ev_u) {
   ArityCheck(1);
-  obj x; CallC(x = eval(v, *Argv));
+  obj x; hom h;
+  CallC(
+   h = gethom(compile(v, *Argv)),
+   x = G(h)(v, h, Fp, Sp, Hp, nil));
   Go(ret, x); }
 
 // apply
