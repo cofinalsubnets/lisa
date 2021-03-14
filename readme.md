@@ -63,7 +63,6 @@ bad, sorry, you know what they say about naming things!
 ; it's ((\ i (li i (li '` i))) '(\ i (li i (li '` i))))
 ```
 ## missing features
-- macros!!!
 - exceptions
 - basic string functions
 - arrays, floats and many other types

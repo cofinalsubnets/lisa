@@ -96,7 +96,7 @@ static Inline void do_copy(vm v, num l0, mem b0, num l1, mem b1) {
   Syms = nil;
   while (t0-- > s0) Sp[t0 - s0] = cp(v, *t0, l0, b0);
 #define CP(x) x=cp(v,x,l0,b0)
-  CP(Ip), CP(Xp), CP(Syn), CP(v->dict); CP(v->cdict);
+  CP(Ip), CP(Xp), CP(Syn), CP(v->dict); CP(v->cdict);CP(v->macros);
   for (root r = Safe; r; r = r->next) CP(*(r->one)); }
 #undef CP
 

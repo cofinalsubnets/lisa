@@ -32,7 +32,7 @@ typedef struct tbl { num len, cap; tble *tab; } *tbl;
 
 struct rt {
   obj ip, xp, *fp, *hp, *sp; // vm state variables
-  obj dict, syms, syn, cdict; // globals
+  obj dict, syms, syn, cdict, macros; // globals
   root mem_root; // memory
   num t0, count, mem_len, *mem_pool;
   // top level restart

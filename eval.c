@@ -77,7 +77,7 @@ enum location { Here, Loc, Arg, Clo, Wait };
   _(twop_u), _(nump_u), _(homp_u),  _(tblp_u), _(strp_u),\
   _(nilp_u), _(car_u),  _(cdr_u),   _(cons_u),\
   _(strmk),  _(strg),   _(strl),_(hom_fin_u),\
-  _(setcar_u), _(setcdr_u),_(globs),_(cglobs),\
+  _(setcar_u), _(setcdr_u),\
   _(symp_u), _(emse), _(hom_u), _(pc_u),\
   _(or_u), _(and_u), _(zzz),\
   _(tbll), _(tblmk),_(tblg),_(tblc),_(tbls),_(tbld),_(tblks),\
@@ -88,7 +88,10 @@ enum location { Here, Loc, Arg, Clo, Wait };
 #define ninl(x) x NoInline
 static terp insts(ninl);
 #undef ninl
-
+#define Rec(...) {\
+  obj _s1 = S1, _s2 = S2;\
+  with(_s1, with(_s2,__VA_ARGS__));\
+  S1 = _s1, S2 = _s2; }
 
 // emit code backwards like cons
 static Inline obj em1(terp *i, obj k) {
@@ -101,6 +104,17 @@ static obj compile(vm v, obj x) {
   Push(N(c_ev), x, N(inst), N(yield), N(c_ini));
   return ccc(v, &top, 0); }
 
+static obj apply(vm v, obj f, obj x) {
+  with(f, x = pair(v, x, nil),
+          x = pair(v, Qt, x),
+          x = pair(v, x, nil));
+  obj ap;
+  with(x, f = pair(v, f, nil),
+          f = pair(v, Qt, f),
+          x = pair(v, f, x),
+          ap = interns(v, "ap"));
+  x = pair(v, ap, x);
+  return eval(v, x); }
 /// evaluate an expression
 obj eval(vm v, obj x) {
   hom h = gethom(compile(v, x));
@@ -317,6 +331,10 @@ c2(c_2) {
                     c_ap)(v, e, m, x); }
 
 c2(c_ap) {
+  obj y = tbl_get(v, v->macros, X(x));
+  if (y) {
+    Rec(x = apply(v, y, Y(x)));
+    return c_eval(v, e, m, x); }
   for (mm(&x),
        Push(N(c_ev), X(x), N(inst), N(tchom),
             N(c_call), N(llen(Y(x))));
@@ -421,8 +439,7 @@ static void rin(vm v, mem d, const char *n, terp *u) {
 
 #define prims(_)\
   _("read", rd_u),\
-  _(".", em_u),        _("ns", globs),\
-  _("cns", cglobs),\
+  _(".", em_u),\
   _("*:", car_u),     _(":*", cdr_u),\
   _("*!", setcar_u), _("!*", setcdr_u),\
   _("::", cons_u),   _("=", eq_u),\
@@ -490,13 +507,20 @@ vm initialize(const char *b) {
     finalize(v), v = NULL;
   } else {
     v->t0 = clock(),
-    v->ip = v->xp = v->dict = v->syms = v->syn = v->cdict = nil,
+    v->ip = v->xp = v->dict = v->syms = v->syn = v->cdict = v->macros = nil,
     v->fp = v->hp = v->sp = (mem)w2b(1),
     v->count = 0, v->mem_len = 1, v->mem_pool = NULL,
     v->mem_root = NULL,
     v->syn = syntax_array(v),
     v->cdict = code_dictionary(v, b),
-    v->dict = table(v); }
+    v->macros = table(v);
+    v->dict = table(v);
+    obj y = interns(v, "ns");
+    tbl_set(v, v->dict, y, v->dict);
+    y = interns(v, "cns");
+    tbl_set(v, v->dict, y, v->cdict);
+    y = interns(v, "macros");
+    tbl_set(v, v->dict, y, v->macros); }
   return v; }
 
 void finalize(vm v) {
@@ -1245,5 +1269,3 @@ vm_op(drop) { sp++; Next(1); }
 vm_op(fail) { return interpret_error(v, xp, puthom(ip), fp, "fail"); }
 vm_op(fail_u) { Go(fail, getnum(Argc) ? *Argv : nil); }
 vm_op(zzz) { exit(EXIT_SUCCESS); }
-vm_op(globs) { Go(ret, Dict); }
-vm_op(cglobs) { Go(ret, v->cdict); }
