@@ -261,6 +261,11 @@
   (? (= (*: l) 'here)
    (quote (:* l))
    x)))
+ pede (\ e x (,
+  (: peder (\ e x (?
+   (nilp x) x
+   (:: (*: x) (:: (pev e (*: (:* x))) (peder e (:* (:* x))))))))
+  (:: ': (? (|| (nilp x) (= 1 (% (len x) 2))) x (peder e x)))))
  pesq (\ e x (,
   (: pesqr (\ e x (?
    (nilp (:* x)) (li (pev e (*: x)))
@@ -269,18 +274,23 @@
     (? (|| (symp y) (qtd y)) z (:: y z))))))
   (: y (:* x) (? y (:: ', (pesqr e y)) (quote y)))))
  pe2 (\ e x (: a (*: x) (?
+  (|| (= a '`) (= a '\)) x
+  (= a ':) (pede e (:* x))
   (= a '?) (peco e (:* x))
   (= a ',) (pesq e x)
   (map (\ x (pev e x)) x))))
 
  qtd (\ x (? (twop x) (= (*: x) '`) (nilp (symp x))))
  unq (\ x (? (twop x) (*: (:* x)) x))
- peco (\ e x (?
-  (nilp x) x
-  (nilp (:* x)) (pev e (*: x))
-  (: a (pev e (*: x))
-   (? (qtd a) (? (unq a) (pev e (*: (:* x))) (peco e (:* (:* x))))
-    (li '? a (pev e (*: (:* x))) (peco e (:* (:* x))))))))
+ peco (\ e x (,
+  (: pecor (\ e x (?
+      (nilp x) x
+      (nilp (:* x)) (li (pev e (*: x)))
+      (: a (pev e (*: x))
+       (? (qtd a) (? (unq a) (li (pev e (*: (:* x))))
+                             (pecor e (:* (:* x))))
+        (:: a (:: (pev e (*: (:* x))) (pecor e (:* (:* x))))))))))
+   (: r (pecor e x) (? r (? (nilp (:* r)) (*: r) (:: '? r))))))
   
  pev (\ e x (?
   (twop x) (pe2 e x)
@@ -293,7 +303,7 @@
      f (env (init n) e (:: nom (e-nom e)) (tbl)))
   (scan f x)
   (resolve f)
-  (-> (cev f 4 x ini) (\ k
+  (-> (cev f 4 (pev f x) ini) (\ k
    (-> (? (nilp (e-loc f)) k
         (emi i-prel (emx (len (e-loc f)) k))) (\ k
     (-> (hom-fin (?
@@ -406,7 +416,8 @@
      (\ e m x k (: z (tbl-get forms (*: x))
                  ((? z z cap) e m x k))))
  ini (\ e m (insx e m i-ret (e-nom e) (\ e m (hom m))))
- eval (\ x ((cev (env () () () (tbl)) 0 x ini)))
+ eval (\ x (: e (env () () () (tbl))
+            ((cev e 0 (pev e x) ini))))
 ; eval
  )
 

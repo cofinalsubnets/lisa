@@ -1173,7 +1173,7 @@ int eql(obj a, obj b) {
     case Oct: return streq(a, b);
     default: return 0; } }
 
-vm_op(lt)    { xp = *sp++ < xp  ? ok : nil; Next(1); }
+vm_op(lt)    { xp = *sp++ <  xp ? ok : nil; Next(1); }
 vm_op(lteq)  { xp = *sp++ <= xp ? ok : nil; Next(1); }
 vm_op(gteq)  { xp = *sp++ >= xp ? ok : nil; Next(1); }
 vm_op(gt)    { xp = *sp++ >  xp ? ok : nil; Next(1); }
