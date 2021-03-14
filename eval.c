@@ -48,12 +48,12 @@ static c2 c_eval, c_sy, c_2, c_imm, ltu, c_ap, c_la_clo;
 static c3 late;
 static obj tupl(vm, ...),
            def_sug(vm, obj), snoc(vm, obj, obj),
-           look(vm, obj, obj);
+           look(vm, obj, obj),
+           linitp(vm, obj, mem), hom_fin(vm, obj),
+           imx(vm, mem, num, terp*, obj),
+           hom_ini(vm, num);
 static num idx(obj, obj);
-static obj linitp(vm, obj, mem);
-static obj imx(vm, mem, num, terp*, obj);
 
-obj hom_ini(vm, num);
 #define N(x) putnum(x)
 #define Gn(x) getnum(x)
 enum location { Here, Loc, Arg, Clo, Wait };
@@ -121,7 +121,7 @@ static void scan(vm v, mem e, obj x) {
   if (!twop(x) || X(x) == La || X(x) == Qt) return;
   if (X(x) == De) return (void) scan_def(v, e, Y(x));
   for (mm(&x); twop(x); x = Y(x)) scan(v, e, X(x));
-  um; } 
+  um; }
 
 static obj asign(vm v, obj a, num i, mem m) {
   if (!twop(a)) return *m = i, a;
@@ -359,8 +359,8 @@ static obj def_sug(vm v, obj x) {
 
 // list functions
 static num idx(obj l, obj x) {
-  num i = 0;
-  for (; twop(l); l = Y(l), i++) if (x == X(l)) return i;
+  for (num i = 0; twop(l); l = Y(l), i++)
+    if (x == X(l)) return i;
   return -1; }
 
 num llen(obj l) {
@@ -387,9 +387,7 @@ static void pushs(vm v, ...) {
   while (va_arg(xs, obj)) i++;
   va_end(xs); va_start(xs, v);
   if (Avail < i) pushss(v, i, xs);
-  else {
-    mem sp = Sp -= i;
-    while (i--) *sp++ = va_arg(xs, obj); }
+  else for (mem sp = Sp -= i; i--; *sp++ = va_arg(xs, obj));
   va_end(xs); }
 
 obj hom_ini(vm v, num n) {
@@ -399,7 +397,7 @@ obj hom_ini(vm v, num n) {
          memset(a, -1, w2b(n)),
          puthom(a+n); }
 
-obj hom_fin(vm v, obj a) {
+static obj hom_fin(vm v, obj a) {
   for (hom b = gethom(a);;) if (!b++->g)
     return (obj) (b->g = (terp*) a); }
 
@@ -488,16 +486,16 @@ static Inline obj syntax_array(vm v) {
 vm initialize(const char *b) {
   vm v = malloc(sizeof(struct rt));
   if (!v) errp(v, "init", 0, "oom");
-  else if (setjmp(v->restart))
+  else if (setjmp(v->restart)) {
     finalize(v), v = NULL;
-  else {
-    v->t0 = clock();
-    v->ip = v->xp = v->dict = v->syms = v->syn = v->cdict = nil;
-    v->fp = v->hp = v->sp = (mem)w2b(1);
-    v->count = 0, v->mem_len = 1, v->mem_pool = NULL;
-    v->mem_root = NULL;
-    v->syn = syntax_array(v);
-    v->cdict = code_dictionary(v, b);
+  } else {
+    v->t0 = clock(),
+    v->ip = v->xp = v->dict = v->syms = v->syn = v->cdict = nil,
+    v->fp = v->hp = v->sp = (mem)w2b(1),
+    v->count = 0, v->mem_len = 1, v->mem_pool = NULL,
+    v->mem_root = NULL,
+    v->syn = syntax_array(v),
+    v->cdict = code_dictionary(v, b),
     v->dict = table(v); }
   return v; }
 
@@ -662,7 +660,6 @@ vm_op(yield) { return Pack(), xp; }
 
 // return from a function
 vm_op(ret) {
-  //printf("ret "), emsep(v, (obj) ip, stdout, ' '); emsep(v, Retp, stdout, '\n');
   ip = gethom(Retp);
   sp = (mem) ((num) Argv + Argc - Num);
   fp = (mem) ((num)   sp + Subd - Num);
@@ -689,7 +686,6 @@ vm_op(clos) {
 // regular function call
 vm_op(call) {
   Have(Size(fr));
-  //printf("call "), emsep(v, (obj) ip, stdout, ' '); emsep(v, xp, stdout, '\n');
   obj adic = (obj) GF(ip);
   num off = fp - (mem) ((num) sp + adic - Num);
   fp = sp -= Size(fr);
@@ -702,7 +698,6 @@ vm_op(call) {
 // tail call: special case where the caller and callee
 // have the same arity, so we can keep the frame
 vm_op(loop) {
-  //printf("jmp "), emsep(v, (obj)ip, stdout, ' '); emsep(v, xp, stdout, '\n');
   num adic = getnum(Argc);
   for (mem p = Argv; adic--; *p++ = *sp++);
   sp = fp;
@@ -710,7 +705,6 @@ vm_op(loop) {
 
 // general tail call
 vm_op(rec) {
-  //printf("rec "), emsep(v, (obj)ip, stdout, ' '); emsep(v, xp, stdout, '\n');
   num adic = getnum(GF(ip));
 
   obj off = Subd, rp = Retp; // save return info
@@ -954,28 +948,27 @@ vm_op(vararg) {
 // the next few functions create and store
 // lexical environments.
 vm_op(encl) {
-  num len = getnum(Argc);
-  num n = len ? len + 12 : 11;
-  Have(n);
+  num n = Xp;
   obj x = (obj) GF(ip);
   mem block = hp;
   hp += n;
   obj arg = nil; // optional argument array
-  if (len) {
+  if (n > 11) {
+    n -= 12;
     tup t = (tup) block;
-    block += 1 + len;
-    t->len = len;
-    memcpy(t->xs, Argv, w2b(len));
+    block += 1 + n;
+    t->len = n;
+    while (n--) t->xs[n] = Argv[n];
     arg = puttup(t); }
-  tup t = (tup) block; // compiler thread closure array (len=5)
+
+  tup t = (tup) block; // compiler thread closure array (1 length 5 elements)
+  hom at = (hom) (block+6); // compiler thread (1 instruction 2 data 2 tag)
+
   t->len = 5; // initialize alpha closure
   t->xs[0] = arg;
   t->xs[1] = xp; // Locs or nil
   t->xs[2] = Clos;
   t->xs[3] = Y(x);
-
-  block += 6;
-  hom at = (hom) block; // compiler thread
   t->xs[4] = puthom(at);
 
   at[0].g = pc0;
@@ -986,11 +979,15 @@ vm_op(encl) {
 
   Ap(ip+2, puthom(at)); }
 
-vm_op(encll) {
-  Go(encl, Locs); }
+vm_op(prencl) {
+  num n = getnum(Argc);
+  n += n ? 12 : 11;
+  Have(n);
+  Xp = n;
+  Jump(encl); }
 
-vm_op(encln) {
-  Go(encl, nil); }
+vm_op(encll) { Go(prencl, Locs); }
+vm_op(encln) { Go(prencl, nil); }
 
 // this function is run the first time a user
 // function with a closure is called. its
@@ -1009,7 +1006,7 @@ vm_op(pc0) {
   num off = (mem) fp - sp;
   G(ip) = pc1;
   sp -= adic;
-  memcpy(sp, AR(arg), w2b(adic));
+  for (num z = adic; z--; sp[z] = AR(arg)[z]);
   ec = (obj) GF(ip);
   fp = sp -= Size(fr);
   Retp = puthom(ip);
@@ -1017,9 +1014,7 @@ vm_op(pc0) {
   Argc = putnum(adic);
   Clos = AR(ec)[2];
   if (!nilp(loc)) *--sp = loc;
-  //printf("pc0 "), emsep(v, (obj)ip, stdout, ' ');
   ip = gethom(AR(ec)[3]);
-  //emsep(v, (obj)ip, stdout, '\n');
   Next(0); }
 
 // finalize function instance closure
@@ -1185,7 +1180,7 @@ vm_op(gt)    { xp = *sp++ >  xp ? ok : nil; Next(1); }
 // there should be a separate instruction for simple equality.
 vm_op(eq)   {
   obj y = *sp++;
-  xp = eql(xp, y) ? ok : nil; 
+  xp = eql(xp, y) ? ok : nil;
   Next(1); }
 
 #define ord_w(r){\

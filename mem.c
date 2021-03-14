@@ -1,8 +1,10 @@
 #include "lips.h"
-// a simple copying garbage collector
 static int copy(vm, num);
 static obj cp(vm, obj, num, mem);
 static Inline void do_copy(vm, num, mem, num, mem);
+static obj sseekc(vm, mem, obj);
+
+// a simple copying garbage collector
 
 // gc entry point reqsp : vm x num -> bool
 //
@@ -226,8 +228,6 @@ obj string(vm v, const char *c) {
   return putoct(o); }
 
 //symbols
-obj interns(vm v, const char *c) {
-  return intern(v, string(v, c)); }
 
 // symbols are interned into a binary search tree. we make no
 // attempt to keep it balanced but it gets rebuilt in somewhat
@@ -242,7 +242,7 @@ static obj sseek(vm v, obj y, obj x) {
   if (i == 0) return y;
   return sseekc(v, i<0?&(getsym(y)->r):&(getsym(y)->l), x); }
 
-obj sseekc(vm v, mem y, obj x) {
+static obj sseekc(vm v, mem y, obj x) {
   if (!nilp(*y)) return sseek(v, *y, x);
   sym u = bump(v, Size(sym));
   u->nom = x, u->code = hc(x);
@@ -253,29 +253,32 @@ obj intern(vm v, obj x) {
   if (Avail < Size(sym)) with(x, reqsp(v, Size(sym)));
   return sseekc(v, &Syms, x); }
 
+obj interns(vm v, const char *c) {
+  return intern(v, string(v, c)); }
+
 static Inline uint64_t hash_bytes(num len, char *us) {
   num h = 1;
   for (; len--; h *= mix, h ^= *us++);
   return mix * h; }
 
 static uint64_t hc(obj x) {
+  uint64_t r;
   switch (kind(x)) {
-    case Sym: return getsym(x)->code;
-    case Oct: return hash_bytes(getoct(x)->len, getoct(x)->text);
-    case Two: return hc(X(x)) ^ hc(Y(x));
+    case Sym: r = getsym(x)->code; break;
+    case Oct: r = hash_bytes(getoct(x)->len, getoct(x)->text); break;
+    case Two: r = hc(X(x)) ^ hc(Y(x)); break;
     // you can use functions as hash keys but the performance won't necessarily be great...
-    case Hom: return mix * (uint64_t) G(x);
-    default:  return mix * x; } }
+    case Hom: r = mix * (uint64_t) G(x); break;
+    default:  r = mix * x; } 
+#define bits (Word*8)
+#define shr 16
+#define shl (bits-shr)
+  return (r<<shl)|(r>>shr); }
+#undef bits
+#undef shr
+#undef shl
 
-// the least significant bits of the product have the least
-// "diffusion", which means their values are determined by the
-// fewest number of different bits in the hash code and multiplier.
-// they are effectively the bits with the least entropy, but they
-// are also the most significant bits to the modulo operation.
-// dropping a number of least-significant-bits proportional to the
-// length of the table improves key distribution.
-static Inline uint64_t hb_idx(num cap, uint64_t code) {
-  return (code / (cap<<10)) % cap; }
+#define hb_idx(a,k)((k)%(a))
 
 static Inline tble hb(obj t, uint64_t code) {
   return gettbl(t)->tab[hb_idx(gettbl(t)->cap, code)]; }
@@ -296,8 +299,9 @@ static void tbl_resize(vm v, obj t, num ns) {
     e->next = b[u],
     b[u] = e; }
 
-static num tbl_k_elen(tble e, num i) {
-  return e ? tbl_k_elen(e->next, i+1) : i; }
+static Inline num tbl_k_elen(tble e, num i) {
+  while (e) e = e->next, i++;
+  return i; }
 // simple hashing performance metric. will be > 1 if keys are
 // sufficiently unevenly distributed.
 static num tbl_k(obj t) {
