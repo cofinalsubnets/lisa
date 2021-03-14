@@ -42,12 +42,15 @@ static obj sseekc(vm, mem, obj);
 #define shrinkp (allocd < len/2 && vit >= ub)
 void reqsp(vm v, num req) {
   num len = v->mem_len, vit = copy(v, len);
-  if (vit) {
+  if (vit) { // copy succeeded
     num allocd = len - (Avail - req);
     if (growp) do grow(); while (growp);
     else if (shrinkp) do shrink(); while (shrinkp);
-    else return; // otherwise either grow or shrink
-    if (copy(v, len) || allocd <= Len) return; }
+    else return; // no size change needed
+    // otherwise grow or shrink
+    if (copy(v, len)) return;
+    // oh no, that didn't work, maybe we can still return though?
+    if (allocd <= Len) return; }
   err(v, "gc", 0, "oom"); }
 
 // the first step in copying is to allocate
