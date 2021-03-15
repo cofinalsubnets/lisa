@@ -26,6 +26,7 @@ static P atom, reads, quote, str;
 
 static int read0(FILE *i) {
   for (int c;;) switch ((c = getc(i))) {
+    case '#':
     case ';': do c = getc(i); while (c != '\n' && c != EOF);
     case ' ': case '\t': case '\n': continue;
     default: return c; } }
@@ -66,7 +67,7 @@ static obj rloop(vm v, FILE *i, oct o, num n, num lim,
 static obj atom_(vm v, FILE *p, oct o, num n, num lim) {
   obj x;
   while (n < lim) switch (x = fgetc(p)) {
-    case ' ': case '\n': case '\t': case ';':
+    case ' ': case '\n': case '\t': case ';': case '#':
     case '(': case ')': case '\'': case '"':
       ungetc(x, p); case EOF:
       o->text[n++] = 0;
