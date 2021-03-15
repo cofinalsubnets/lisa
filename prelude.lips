@@ -185,7 +185,7 @@
     ((\ k (, (tset e 's2 (:* (tget e 's2))) k))
      (ccor e m (:* x) (\ e m (ccopre e m k)))))))
 
- 
+
  quote (\ x (? (qtd x) x (li '` x)))
  pey (\ e x (: l (look e x)
   (? (= (*: l) 'here) (quote (:* l)) x)))
@@ -245,7 +245,7 @@
                              (pecor e (:* (:* x))))
         (:: a (:: (pev e (*: (:* x))) (pecor e (:* (:* x)))))))))
    (: r (pecor e x) (? r (? (nilp (:* r)) (*: r) (:: '? r))))))
-  
+
  pev (\ e x (?
   (twop x) (pe2 e x)
   (symp x) (pey e x)
