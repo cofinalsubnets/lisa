@@ -26,7 +26,6 @@
    rev (\ l (,
     (: rev.i (\ l m (? l (rev.i (:* l) (:: (*: l) m)) m)))
     (rev.i l ())))
-
    ldel (\ l k (? l
     ((? (= k (*: l)) id (\ m (:: (*: l) m)))
      (ldel (:* l) k))))
@@ -42,14 +41,13 @@
 
 (tbl-set macros
  ; a macro for defining macros
- '::: (: defm (\ n x . (,(tbl-set macros n (: v (eval (*: x))))
+ '::: (: defm (\ n x . (,(tbl-set macros n (: v (ev (*: x))))
                          (? (:* x) (ap defm (:* x)) v))))
  ; bind
  '>>= (\ x f (li f x)))
-
 ; ok now let's bootstrap a lisp compiler!
 ; we can do this by redefining ev at toplevel.
-(: ev ((\ q ((ev q) q)) '(:
+(tbl-set ns 'ev ((\ q ((ev q) q)) '(:
  env (\ a p n (>>=
   ((: asig (\ a n
        (? (twop a)
@@ -62,14 +60,7 @@
        'clo ()     'par p
        'lam (tbl)  'nom n
        'val (tbl)  'sig (*: b)))))
- gtk (\ k (\ d v . (?
-  (nilp v) (tbl-get d k)
-           (tbl-set d k (*: v)))))
- e-arg (gtk 'arg) e-loc (gtk 'loc)
- e-clo (gtk 'clo) e-par (gtk 'par)
- e-lam (gtk 'lam) e-nom (gtk 'nom)
- e-val (gtk 'val) e-sig (gtk 'sig)
- e-s1  (gtk 's1)  e-s2  (gtk 's2)
+ tset tbl-set tget tbl-get
  inst (\ e m i k (emi i (k e (+ m 1))))
  inom (\ i (>>= (tbl-keys ns) (: in (\ l (? l
   (? (= i (tbl-get ns (*: l))) (*: l) (in (:* l))))))))
@@ -85,7 +76,7 @@
  cev  (\ e m x k ((? (twop x) c2 (symp x) cy imm) e m x k))
 
  cy (\ e m x k (:
-  addclo (\ e y (e-clo e (snoc (e-clo e) y)))
+  addclo (\ e y (tset e'clo(snoc (tget e 'clo) y)))
   late (\ e m x d k (>>= (k e (+ m 2)) (\ h
    (>>= (consumes h) (\ t
     (>>= (? (= t t-none) h (hom-seek h 1)) (\ h
@@ -95,24 +86,24 @@
   (? (= s 'here)  (imm e m (:* r) k)
      (= s 'wait)  (late e m x (:* r) k)
      (= e (:* r)) (? (= s 'arg)
-                      (insx e m i-argn (idx (e-arg e) x) k)
+                      (insx e m i-argn (idx (tget e 'arg) x) k)
                      (= s 'loc)
-                      (insx e m i-locn (idx (e-loc e) x) k)
+                      (insx e m i-locn (idx (tget e'loc) x) k)
                      (= s 'clo)
-                      (insx e m i-clon (idx (e-clo e) x) k))
-     (: l (len (e-clo e)) (, (addclo e x)
+                      (insx e m i-clon (idx (tget e'clo) x) k))
+     (: l (len (tget e'clo)) (, (addclo e x)
                              (insx e m i-clon l k))))))
 
  cqt (\ e m x k (: y (:* x) (imm e m (? y (*: y)) k)))
- toplp (\ e (nilp (e-par e)))
+ toplp (\ e (nilp (tget e'par)))
  look (\ e y
-   (? (tbl-has (e-val e) y) (:: 'here (tbl-get (e-val e) y))
-      (< -1 (idx (e-lam e) y)) (:: 'wait (e-val e))
-      (< -1 (idx (e-loc e) y)) (:: 'loc e)
-      (< -1 (idx (e-arg e) y)) (:: 'arg e)
-      (< -1 (idx (e-clo e) y)) (:: 'clo e)
-      (e-par e) (look (e-par e) y)
-      (tbl-has ns y) (:: 'here (tbl-get ns y))
+   (? (tbl-has (tget e 'val) y) (:: 'here (tget (tget e 'val) y))
+      (< -1 (idx (tget e 'lam) y)) (:: 'wait (tget e 'val))
+      (< -1 (idx (tget e 'loc) y)) (:: 'loc e)
+      (< -1 (idx (tget e 'arg) y)) (:: 'arg e)
+      (< -1 (idx (tget e 'clo) y)) (:: 'clo e)
+      (tget e 'par) (look (tget e 'par) y)
+      (tbl-has ns y) (:: 'here (tget ns y))
       (:: 'wait ns)))
  init (\ l (? (twop (:* l)) (:: (*: l) (init (:* l)))))
  last (\ l (? (twop (:* l)) (last (:* l)) (*: l)))
@@ -135,7 +126,7 @@
      (inst e m i-tchom (\ e m (>>= (k e (+ m 2)) (\ k
       (: l (len (:* x)) (?
        (= i-ret (hom-get-i k))
-        ((\ k (? (= l (len (e-arg e))) (emi i-loop k)
+        ((\ k (? (= l (len (tget e 'arg))) (emi i-loop k)
                       (emi i-rec (emx l k))))
          (hom-seek k 1))
        (emi i-call (emx l k)))))))))))))
@@ -153,32 +144,32 @@
   (: desug (\ d (li (li '\ (li ', (init d) (last d)))))
      cder (\ e m x k (? (nilp x) (k e m) (?
       (>>= (\ e m (cder e m (:* (:* x)) k)) (\ k
-       (? (|| (toplp e) (< -1 (idx (e-loc e) (*: x))))
+       (? (|| (toplp e) (< -1 (idx (tget e 'loc) (*: x))))
            (cev e m (*: (:* x)) (\ e m (cdeb e m (*: x) k)))
           (: q (mat e (*: x)))
            (imm e m (*: q) k)
            (cev e m (*: x) k)))))))
      cdeb (\ e m x k (?
       (toplp e) (insx e m i-tbind x k)
-                (insx e m i-setl (idx (e-loc e) x) k)))
+                (insx e m i-setl (idx (tget e 'loc) x) k)))
    (? (nilp (:* x)) (imm e m () k)
       (= 1 (% (len (:* x)) 2)) (cev e m (desug x) k)
       (cder e m (:* x) k))))
 
  cco (\ e m x k
   (: ccopreant (\ e m k (>>= (k e (+ m 2)) (\ k
-      (>>= (emi i-branch (emx (*: (e-s1 e)) k)) (\ k
-       (, (e-s1 e (:* (e-s1 e))) k))))))
+      (>>= (emi i-branch (emx (*: (tget e 's1)) k)) (\ k
+       (, (tset e 's1 (:* (tget e 's1))) k))))))
      ccopre (\ e m k (>>= (k e m) (\ k
-      (*: (e-s2 e (:: k (e-s2 e)))))))
+      (*: (tset e 's2 (:: k (tget e 's2)))))))
      ccoprecon (\ e m k (>>= (k e (+ m 2)) (\ x
-      (>>= (*: (e-s2 e)) (\ k
+      (>>= (*: (tget e 's2)) (\ k
        (: i (hom-get-i k)
         (? (= i i-ret) (emi i x)
          (emi i-jump
           (emx (? (= i i-jump) (hom-get-x (hom-seek k 1)) k) x)))))))))
      ccopostcon (\ e m k (>>= (k e m) (\ k
-      (*: (e-s1 e (:: k (e-s1 e)))))))
+      (*: (tset e 's1 (:: k (tget e 's1)))))))
      ; unlike in the bootstrap compiler, here we can
      ; assume there are an odd number of arguments, ie.
      ; at least 1. this is assured by peco. thanks peco!
@@ -191,7 +182,7 @@
           (cev e m (*: (:* x)) (\ e m
            (ccoprecon e m k)))))))))))))
    (? (nilp (:* x)) (imm e m nil k)
-    ((\ k (, (e-s2 e (:* (e-s2 e))) k))
+    ((\ k (, (tset e 's2 (:* (tget e 's2))) k))
      (ccor e m (:* x) (\ e m (ccopre e m k)))))))
 
  
@@ -263,47 +254,47 @@
  ltu (\ e nom l
   (: n ((\ x (? x x (:: x x))) (:* l))
      x (last n)
-     f (env (init n) e (:: nom (e-nom e)))
+     f (env (init n) e (:: nom (tget e 'nom)))
    (, (scan f x)
       (resolve f)
       (>>= (cev f 4 (pev f x) ini) (\ k
-       (>>= (? (nilp (e-loc f)) k
-              (emi i-prel (emx (len (e-loc f)) k))) (\ k
+       (>>= (? (nilp (tget f 'loc)) k
+              (emi i-prel (emx (len (tget f 'loc)) k))) (\ k
         (>>= (hom-fin (?
-             (> (: i (e-sig f)) 0) (emi i-arity (emx i k))
+             (> (: i (tget f 'sig)) 0) (emi i-arity (emx i k))
              (< i 0) (emi i-vararg (emx (- (- i) 1) k))
              k)) (\ k
-         (? (e-clo f) (:: (e-clo f) k) k))))))))))
+         (? (tget f 'clo) (:: (tget f 'clo) k) k))))))))))
 
  resolve (\ e
   (: precomps (\ e ks (? ks
-      (: k (*: ks) i (ltu e k (tbl-get (e-lam e) k)) (,
-       (? (homp i) (, (tbl-set (e-val e) k i)
-                      (tbl-del (e-lam e) k)
-                      (e-loc e (ldel (e-loc e) k)))
-                   (, (!* i (tbl-get (e-lam e) k))
-                      (tbl-set (e-lam e) k i)))
+      (: k (*: ks) i (ltu e k (tget (tget e 'lam) k)) (,
+       (? (homp i) (, (tset (tget e 'val) k i)
+                      (tbl-del (tget e 'lam) k)
+                      (tset e'loc(ldel (tget e 'loc) k)))
+                   (, (!* i (tbl-get (tget e 'lam) k))
+                      (tbl-set (tget e 'lam) k i)))
        (precomps e (:* ks))))))
 
      okvs (\ e vs (?
       (nilp vs) 0
       (: v (*: vs)
-       (? (|| (tbl-has (e-lam e) v) (tbl-has (e-val e) v))
+       (? (|| (tbl-has (tget e 'lam) v) (tbl-has (tget e'val) v))
           (okvs e (:* vs))))))
 
      elim (\ e ks (? ks (>>= (*: ks) (\ k (?
-      (nilp (okvs e (*: (tbl-get (e-lam e) k))))
-       (, (tbl-del (e-lam e) k) (elim e (tbl-keys (e-lam e))))
+      (nilp (okvs e (*: (tbl-get (tget e 'lam) k))))
+       (, (tbl-del (tget e'lam) k) (elim e (tbl-keys (tget e'lam))))
       (elim e (:* ks)))))))
 
      recomps (\ e d ks (? ks (: k (*: ks) (,
-      (e-loc e (ldel (e-loc e) k))
-      (tbl-set (e-val e) k (ltu e k (:* (tbl-get d k))))
+      (tset e 'loc (ldel (tget e 'loc) k))
+      (tset (tget e 'val) k (ltu e k (:* (tget d k))))
       (recomps e d (:* ks))))))
 
-   (, (precomps e (tbl-keys (e-lam e)))
-      (elim e (tbl-keys (e-lam e)))
-      (: ls (e-lam e) (recomps e ls (e-lam e (tbl-keys ls)))))))
+   (, (precomps e (tbl-keys (tget e 'lam)))
+      (elim e (tbl-keys (tget e'lam)))
+      (: ls (tget e 'lam) (recomps e ls (tset e 'lam (tbl-keys ls)))))))
 
  scan (\ e x
   (: scandef (\ e x (?
@@ -311,15 +302,15 @@
       (:* x) ((\ r (, (? r (scandefadd e (*: x) (*: (:* x)))) r))
               (scandef e (:* (:* x))))))
      mcar (\ x (? x (*: x)))
-     addloc (\ e y (e-loc e (:: y (e-loc e))))
+     addloc (\ e y (tset e 'loc (:: y (tget e 'loc))))
 
      scandefadd (\ e y x (,
       (? (symp x) (addloc e y)
          (twop x) (>>= (*: x) (\ z (?
-          (= z '`) (tbl-set (e-val e) y (mcar (:* x)))
-          (= z '\) (, (tbl-set (e-lam e) y x) (addloc e y))
+          (= z '`) (tbl-set (tget e'val) y (mcar (:* x)))
+          (= z '\) (, (tbl-set (tget e'lam) y x) (addloc e y))
           (addloc e y))))
-         (tbl-set (e-val e) y x))
+         (tbl-set (tget e'val) y x))
       (scan e x)))
 
    (? (twop x) (: y (*: x) (?
@@ -358,7 +349,7 @@
  cla (\ e m x k
   (: gnom (\ e k (: i (hom-get-i k)
       (? (= i i-tbind) (hom-get-x (hom-seek k 1))
-         (= i i-setl)  (at (e-loc e) (hom-get-x (hom-seek k 1))))))
+         (= i i-setl)  (at (tget e'loc) (hom-get-x (hom-seek k 1))))))
 
      claclo (\ e arg
       (: clacloin (\ e arg k (? (nilp arg) k
@@ -371,13 +362,13 @@
    (>>= (produce e (+ m 2) t-hom k x) (\ k
     (>>= (ltu e (gnom e k) x) (\ x (?
      (homp x) (emi i-immv (emx x k))
-     (emi (? (e-loc e) i-encll i-encln)
+     (emi (? (tget e'loc) i-encll i-encln)
       (emx (:: (:* x) (claclo e (*: x))) k)))))))))
 
  c2 (: forms (tbl '` cqt '? cco ': cde '\ cla ', cse)
      (\ e m x k (: z (tbl-get forms (*: x))
                  ((? z z cap) e m x k))))
- ini (\ e m (insx e m i-ret (e-nom e) (\ e m (hom m))))
+ ini (\ e m (insx e m i-ret (tget e'nom) (\ e m (hom m))))
  eval (\ x (: e (env () () ()) ((cev e 0 (pev e x) ini))))
- ;eval ; comment this line to have compiler internals defined at toplevel
+ eval ; comment this line to have compiler internals defined at toplevel
  )))

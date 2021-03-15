@@ -1,25 +1,38 @@
 ;; here's some functions for doing tests with
-(: test (\ n v (. (? v 'ok 'NO) n)))
+(::: assert (\ x
+ (li '>>= x (li '\ 'x (li '? 'x 'x (li 'fail (li 'li ''assertion ''failed '': (li '` x))))))))
+(::: test (\ n x
+  (li ', (li 'assert x) (li '. ''ok (li '` n)))))
 
 (: test-special-forms (\(,
-  (test ', (&&
-   (= () (,))
+  (test , (&&
+   (nilp (,))
    (= 1 (, 1))
    (= 3 (, 1 2 3))))
-  (test ': (&&
-   (= () (:))
-   (= test (: test))
+  (test : (&&
+   (nilp (:))
+   (= + (: +))
    (>>= (: __4 4) (\ x (= x 4 __4)))
-   (>>= (: __5 5 __6 6) (\ x (&& (= x 6 __6)
-                                 (= 5 __5))))
+   (>>= (: __5 5 __6 6) (\ x (&& (= x 6 __6) (= 5 __5))))
    (= 6 (: a 1 b 2 c 3 (+ a b c)))))
-  (test '\ (&&
-   (= () ((\)))
+  (test \ (&&
+   (nilp ((\)))
    (= 1 ((\ 1)))
    (= 1 ((\ x x) 1))
    (= -5 ((\ f x (f x)) - 5))
    (= (li 1 2 3) ((\ x xs . (:: x xs)) 1 2 3))))
-  ))
+  (test ? (&&
+   (nilp (?))
+   (= 1 (? 1))
+   (nilp (? () 1))
+   (= 2 (? 1 2))
+   (= 1 (? 0 1 2))
+   (= 2 (? () 1 2))
+   (= 4 (? () 1 () 2 () 3 4))))
+  (test ` (&&
+   (nilp (`))
+   (= 1 '1)
+   (= 'a (ev ''a))))))
  (test-special-forms))
 
 (: de-str (\ s
@@ -28,7 +41,7 @@
            (:: (str-get s n) (de-str.l s (+ n 1)))))
      (de-str.l s 0)))
 
- (test 'strings (&&
+ (test strings (&&
   (: l (de-str "hello person")
    (&& (= 12 (len l)) (= (*: l) 104)))
   (= "a" (str 97))
@@ -44,15 +57,15 @@
 (: hasht (\ n
  (: d (tbl) (,(from 0 (+ n 1) (\ m (tbl-set d m m)))
               (tbl-get d n))))
- (test 'hashes (= 99 (hasht 99))))
+ (test hashes (= 99 (hasht 99))))
 
 
-(test 'continuations
+(test continuations
   ;; grow the call stack then call a continuation
   (: loop (\ m n c (? (= m n) (c m) (, (loop (+ 1 m) n c) m)))
     (= 12 (ccc (\ k (loop 0 12 k))))))
 
-(test 'closures
+(test closures
   ;; if the compiler gets too smart we'll need a better test.
   (: math (\ x y z
      (: a(\ n(\ m((i +)((i *)m n)z)))
@@ -61,7 +74,7 @@
         ((b(a x))y)))
     (= 22 (math 4 5 2))))
 
-(test 'user-functions
+(test user-functions
   (&& (= 36 ((id ap) * (rho 2 1 2 3)))
       (= 3  ((id &&) 1 2 3))
       (= 15 ((id +) 1 2 3 4 5))
@@ -78,7 +91,7 @@
 ;         (&& (|| (ct ()) (ct ()) (ct 1) (ct 2))
 ;             (= (get box) 6)))))
 
-(test 'functionals (&&
+(test functionals (&&
  (= 6
   (foldr 1 + (li 2 3))
   (foldr1 + (li 1 2 3))
@@ -95,32 +108,32 @@
      (? (< m 1) (+ n 1)
       (ack (- m 1) (? (> n 0) (ack m (- n 1)) 1))))
     quine ((\ q ((ev q) q)) '(\ i (li i (li '` i))))
-  (,(test 'comp-em (= 3 ((emi i-immv (emx 3 (emi i-ret (hom 3)))))))
-    (test 'comp-qt (= (li 1) (ev (li '` (li 1)))))
-    (test 'comp-ap (&&
+  (,(test comp-em (= 3 ((emi i-immv (emx 3 (emi i-ret (hom 3)))))))
+    (test comp-qt (= (li 1) (ev (li '` (li 1)))))
+    (test comp-ap (&&
     (= 9 (ev (li + 1 2 (li * 2 3))))
     (= 6 (ev (li + 1 2 3)))))
-    (test 'comp-sq (:
+    (test comp-sq (:
       box (li())
       inc (\(*! box (:: (len (*: box)) (*: box))))
      (= '(2 1 0) (ev (li ', (li inc) (li inc) (li inc))))))
-    (test 'comp-de (&&
+    (test comp-de (&&
      (>>= 123 (\ x
       (>>= (ev (li ': '_123 x)) (\ y
        (>>= _123 (\ z (= 123 x y z)))))))
      (= 3 (ev '(: a (\ 1) b (\ 2) c (\(+(a)(b))) (c))))))
-    (test 'comp-sy (= _123 (ev '_123)))
-    (test 'comp-co (&& (= 1 (ev '(? () 0 1)));false
+    (test comp-sy (= _123 (ev '_123)))
+    (test comp-co (&& (= 1 (ev '(? () 0 1)));false
                        (= 0 (ev '(? 1 0 ())));true
                        (nilp (ev '(? () 1)));even
                        (= 1 (ev '(? () (? () 1 0);nested
                                          (? () 0 1))))))
-    (test 'comp-la (&&
+    (test comp-la (&&
      (= 3  (ev '((\(+((\ 1))((\ 2)))))))
      (= 6  ((ev '(\ a b ((\ c (+ c b 1)) a))) 3 2))
      (= 34 ((ev '(\ a b c (: f (\ x y z (+ a b c x y z)) (f a b c)))) 9 7 1))
      (= 24 (ev '((\ a b ((\ a b c (+ a b c)) (* a (+ a b)) (* b (* a b)) (* b b b))) 2 2)))
      (= '(1 2 3) ((ev '(\ a b c ((\ (li a b c))))) 1 2 3))))
-;    (test 'fib32 (= 2178309 (fib 32)))
-;    (test 'ack3,9 (= 4093 (ack 3 9)))
-    (test 'quine (= quine (ev quine)))))
+    (test fib32 (= 2178309 (fib 32)))
+    (test ack3,9 (= 4093 (ack 3 9)))
+    (test quine (= quine (ev quine)))))

@@ -71,6 +71,8 @@ these are defined in `prelude.lips`, `make repl` imports them automatically
   useful.
 
 ## code examples
+the compiler is in `prelude.lisp`.
+
 ### fizzbuzz
 ```lisp
 (: /p (\ m n (= 0 (% m n)))
