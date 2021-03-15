@@ -8,12 +8,6 @@
     (: rho.l(\ n x(?(= n 1)x(++ x(rho.l(- n 1)x))))
      (?(> n 0)(rho.l n xs)))))
 
-(: list-len (\ l (? (twop l) (+ 1 (list-len (:* l))) 0))
-   de-str (\ s
-     (: de-str.l (\ s n
-        (? (= n (str-len s)) ()
-           (:: (str-get s n) (de-str.l s (+ n 1)))))
-        (de-str.l s 0))))
 (: map (\ f x (? (twop x) (:: (f (*: x)) (map f (:* x)))))
    foldl(\ z f x (? (twop x) (foldl (f z (*: x)) f (:* x)) z))
    foldr (\ z f x (? (twop x) (f (*: x) (foldr z f (:* x))) z))
@@ -52,7 +46,9 @@
  ; bind
  '>>= (\ x f (li f x)))
 
-(: ev ((\ q ((ev q) q)) '(: ; ok now let's port the compiler
+; ok now let's bootstrap a lisp compiler!
+; we can do this by redefining ev at toplevel.
+(: ev ((\ q ((ev q) q)) '(:
  env (\ a p n (>>=
   ((: asig (\ a n
        (? (twop a)

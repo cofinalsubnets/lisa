@@ -1,15 +1,20 @@
 ;; here's some functions for doing tests with
 (: test (\ n v (. (? v 'ok 'NO) n)))
 
+(: de-str (\ s
+    (: de-str.l (\ s n
+        (? (= n (str-len s)) ()
+           (:: (str-get s n) (de-str.l s (+ n 1)))))
+     (de-str.l s 0)))
 
+ (test 'strings (&&
+  (: l (de-str "hello person")
+   (&& (= 12 (len l)) (= (*: l) 104)))
+  (= "a" (str 97))
+  (= "asdf" "asdf")
+  (nilp (= "asdf" "asd"))
+  (= "" (str 0 0 2 0)))))
 ; strings are supposed to work
-(test 'strings (&&
- (: l (de-str "hello person")
-    (&& (= 12 (list-len l)) (= (*: l) 104)))
- (= "a" (str 97))
- (= "asdf" "asdf")
- (nilp (= "asdf" "asd"))
- (= "" (str 0 0 2 0))))
 
 ; here's a function for iterating over ranges
 (: from (\ m n f (? (< m n) (, (f m) (from (+ m 1) n f)))))

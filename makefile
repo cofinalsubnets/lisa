@@ -1,11 +1,11 @@
 m=makefile
 n=lips
 b=$n.bin
-t=$(wildcard test/*)
+t=prelude.lips $(wildcard test/*)
 h=$(wildcard *.h)
 s=$(wildcard *.c)
 o=$(s:.c=.o)
-v=`git rev-parse HEAD`
+v="`git rev-parse HEAD`-git"
 
 # C compiler
 # gcc and clang both work. other compilers, tcc etc., don't.

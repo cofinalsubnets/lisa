@@ -43,29 +43,29 @@ static int seekp(const char *p) {
   return close(a), b; }
 
 int main(int argc, char**argv) {
-  int r, i = 0, opt;
+  int r, i = argc == 1 ? 1 : 0, opt;
   const char
-    opts[] = "hpv",
-    usage[] =
-      "usage: " NOM " [options and files]\n"
-      "with no files, start a repl.\n"
+    opts[] = "hrv",
+    help[] =
+      "usage: " NOM " [options and scripts]\n"
+      " with scripts, run them and exit unless -r is given\n"
+      " with no scripts, start a repl\n"
       "options:\n"
-      "  -h   print this message and exit\n"
-      "  -v   print version and exit\n"
-      "  -p   start repl after loading files\n"
-      ;
+      " -r  start repl unconditionally\n"
+      " -h  print this message\n"
+      " -v  print version\n";
 args:
   switch (opt = getopt(argc, argv, opts)) {
     case -1: break;
     case '?': return EXIT_FAILURE;
-    case 'p': i = 1; goto args;
-    case 'v': puts(VN); return EXIT_SUCCESS;
-    case 'h': fputs(usage, stdout); return EXIT_SUCCESS; }
+    case 'r': i = 1; goto args;
+    case 'v': fputs(NOM " " VN "\n", stdout); goto args;
+    case 'h': fputs(help, stdout); goto args; }
 
   vm v = initialize(NULL);
   if (v == NULL) return EXIT_FAILURE;
-
-  if (argv[optind] == NULL ||
-      ((r = scripts(v, argv+optind)) == EXIT_SUCCESS && i))
-    r = repl(v, stdin, stdout);
+  if (argv[optind] == NULL) {// no scripts to process
+    r = i ? repl(v, stdin, stdout) : EXIT_SUCCESS; }
+  else if ((r = scripts(v, argv+optind)) == EXIT_SUCCESS)
+    r = i ? repl(v, stdin, stdout) : r;
   return finalize(v), r; }
