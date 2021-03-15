@@ -6,8 +6,8 @@ if exists("b:current_syntax")
  finish
 endif
 
-syn cluster   lipsAtomCluster  contains=lipsAtomBarSymbol,lipsAtomList,lipsAtomNmbr0,lipsComment,lipsDecl,lipsFunc,lipsLeadWhite
-syn cluster   lipsBaseListCluster contains=lipsAtom,lipsAtomBarSymbol,lipsAtomMark,lipsBQList,lipsBarSymbol,lipsComment,lipsConcat,lipsDecl,lipsFunc,lipsKey,lipsList,lipsNumber,lipsEscapeSpecial,lipsSymbol,lipsVar,lipsLeadWhite
+syn cluster   lipsAtomCluster  contains=lipsAtomBarSymbol,lipsAtomList,lipsAtomNmbr0,lipsComment,lipsTodo,lipsDecl,lipsFunc,lipsLeadWhite
+syn cluster   lipsBaseListCluster contains=lipsAtom,lipsAtomBarSymbol,lipsAtomMark,lipsBQList,lipsBarSymbol,lipsComment,lipsTodo,lipsConcat,lipsDecl,lipsFunc,lipsKey,lipsList,lipsNumber,lipsEscapeSpecial,lipsSymbol,lipsVar,lipsLeadWhite
 if exists("g:lips_instring")
  syn cluster   lipsListCluster  contains=@lipsBaseListCluster,lipsString,lipsInString,lipsInStringString
 else
@@ -76,10 +76,9 @@ syn match lipsEscapeSpecial  "\<+[a-zA-Z_][a-zA-Z_0-9-]*+\>"
 syn match lipsConcat "\s\.\s"
 syn match lipsParenError ")"
 
-syn cluster lipsCommentGroup contains=lipsTodo,@Spell
+syn cluster lipsCommentGroup contains=@Spell
 syn match lipsComment ";.*$" contains=@lipsCommentGroup
-syn match lipsComment "#.*$" contains=@lipsCommentGroup
-syn keyword lipsTodo contained XXX
+syn match lipsTodo "#.*$" contains=@lipsCommentGroup
 
 " ---------------------------------------------------------------------
 syn sync lines=100
