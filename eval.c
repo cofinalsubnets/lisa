@@ -3,6 +3,7 @@
 typedef obj c1(vm, mem, num),
             c2(vm, mem, num, obj),
             c3(vm, mem, num, obj, obj);
+#define StackHeight (Pool+Len-Sp)
 ////
 /// bootstrap thread compiler
 //
@@ -53,7 +54,6 @@ static obj tupl(vm, ...),
            imx(vm, mem, num, terp*, obj),
            hom_ini(vm, num);
 static num idx(obj, obj);
-static obj topl_lookup(vm, obj);
 
 #define N(x) putnum(x)
 #define Gn(x) getnum(x)
@@ -107,15 +107,13 @@ static obj compile(vm v, obj x) {
 
 static obj apply(vm v, obj f, obj x) {
   Push(f, x);
-  obj ap = topl_lookup(v, App);
-  hom h;
-  with(ap, h = cells(v, 5));
+  hom h = cells(v, 5);
   h[0].g = call;
   h[1].g = (terp*) N(2);
   h[2].g = yield;
   h[3].g = NULL;
   h[4].g = (terp*) h;
-  return call(v, h, Fp, Sp, Hp, ap); }
+  return call(v, h, Fp, Sp, Hp, tbl_get(v, Dict, App)); }
 
 /// evaluate an expression
 obj eval(vm v, obj x) {
@@ -281,13 +279,10 @@ c1(c_call) {
          Gn(a) == llen(arg(*e)) ? em1(loop, k) :
          em2(rec, a, k); }
 
-static obj topl_lookup(vm v, obj y) {
-  return tbl_get(v, Dict, y); }
-
 #define L(n,x) pair(v, N(n), x)
 static obj look(vm v, obj e, obj y) {
   obj q;
-  if (nilp(e)) return (q = topl_lookup(v, y)) ?
+  if (nilp(e)) return (q = tbl_get(v, Dict, y)) ?
     L(Here, q) : L(Wait, Dict);
   if ((q = idx(loc(e), y)) != -1) return L(Loc, e);
   if ((q = idx(arg(e), y)) != -1) return L(Arg, e);
@@ -583,33 +578,34 @@ typedef struct fr { obj clos, retp, subd, argc, argv[]; } *fr;
 
 // this is for runtime errors from the interpreter, it prints
 // a backtrace and everything.
-static obj interpret_error(vm v, obj xp, obj ip, mem fp, const char *msg, ...) {
+static obj interpret_error(vm v, obj xp, obj ip, mem fp, mem hp, const char *msg, ...) {
   va_list xs;
   va_start(xs, msg);
   vferrp(v, stderr, "interpret", xp, msg, xs);
   for (;fp < Pool + Len;
        ip = Retp, fp += Size(fr) + getnum(Argc) + getnum(Subd))
     fputs("  in ", stderr), emsep(v, ip, stderr, '\n');
-  return restart(v); }
+  return Hp = hp, restart(v); }
 
 obj restart(vm v) {
-  v->fp = v->sp = v->mem_pool + v->mem_len;
-  v->xp = v->ip = nil;
+  Fp = Sp = Pool + Len;
+  Xp = Ip = nil;
   v->mem_root = NULL;
+  //reqsp(v, 0);
   longjmp(v->restart, 1); }
 
 // vm instructions for different errors. the compiler will
 // never emit these.
 vm_op(eetc) {
-  return interpret_error(v, xp, puthom(ip), fp, "wrong type : %s for %s", tnom(kind(xp)), tnom(Xp)); }
+  return interpret_error(v, xp, puthom(ip), fp, hp, "wrong type : %s for %s", tnom(kind(xp)), tnom(Gn(Xp))); }
 vm_op(eear) {
-  return interpret_error(v, 0, puthom(ip), fp, "wrong arity : %ld of %ld", Xp, Ip); }
+  return interpret_error(v, 0, puthom(ip), fp, hp, "wrong arity : %ld of %ld", Xp, Ip); }
 vm_op(ee_0) {
-  return interpret_error(v, 0, puthom(ip), fp, "%ld/0", getnum(xp)); }
-#define type_error(x,t){xp=x,Xp=t;Jump(eetc);}
+  return interpret_error(v, 0, puthom(ip), fp, hp, "%ld/0", getnum(xp)); }
+#define type_error(x,t){xp=x,Xp=N(t);Jump(eetc);}
 #define arity_error(h,w){Xp=h,Ip=w;Jump(eear);}
 #define zero_error(x){xp=x;Jump(ee_0);}
-#define TypeCheck(x, t) if(kind(x)!=t)type_error(x,t)
+#define TypeCheck(x,t) if(kind(x)!=t)type_error(x,t)
 #define Arity(n) if(n>Argc)arity_error(getnum(Argc),getnum(n))
 #define ArityCheck(n) Arity(putnum(n))
 
@@ -668,7 +664,7 @@ vm_op(lbind) {
       d = XY(w), y = X(w);
   w = tbl_get(v, d, xp = YY(w));
   if (!w) return
-    interpret_error(v, xp, puthom(ip), fp, "free variable");
+    interpret_error(v, xp, puthom(ip), fp, hp, "free variable");
   xp = w;
   if (getnum(y) != 8) TypeCheck(xp, getnum(y));
   G(ip) = immv;
@@ -1271,6 +1267,6 @@ vm_op(tuck) { Have(1); sp--, sp[0] = sp[1], sp[1] = xp; Next(1); }
 vm_op(drop) { sp++; Next(1); }
 
 // errors
-vm_op(fail) { return interpret_error(v, xp, puthom(ip), fp, "fail"); }
+vm_op(fail) { return interpret_error(v, xp, puthom(ip), fp, hp, "fail"); }
 vm_op(fail_u) { Go(fail, getnum(Argc) ? *Argv : nil); }
 vm_op(zzz) { exit(EXIT_SUCCESS); }

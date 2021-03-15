@@ -100,6 +100,6 @@
      (= 34 ((ev '(\ a b c (: f (\ x y z (+ a b c x y z)) (f a b c)))) 9 7 1))
      (= 24 (ev '((\ a b ((\ a b c (+ a b c)) (* a (+ a b)) (* b (* a b)) (* b b b))) 2 2)))
      (= '(1 2 3) ((ev '(\ a b c ((\ (li a b c))))) 1 2 3))))
-    (test 'fib32 (= 2178309 (fib 32)))
-    (test 'ack3,9 (= 4093 (ack 3 9)))
+;    (test 'fib32 (= 2178309 (fib 32)))
+;    (test 'ack3,9 (= 4093 (ack 3 9)))
     (test 'quine (= quine (ev quine)))))

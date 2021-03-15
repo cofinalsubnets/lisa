@@ -1,7 +1,8 @@
 m=makefile
 n=lips
 b=$n.bin
-t=prelude.lips $(wildcard test/*)
+p=prelude.lips
+t=$p $(wildcard test/*)
 h=$(wildcard *.h)
 s=$(wildcard *.c)
 o=$(s:.c=.o)
@@ -55,10 +56,12 @@ perf.data: $b $t
 valg: $b $t
 	@valgrind ./$^
 sloc:
-	@which cloc && cloc --force-lang=Lisp,l --force-lang=Lisp,$n . || cat $s $h $m | grep -v ' *//.*' | grep -v '^$$' | wc -l
+	@which cloc >/dev/null && cloc --force-lang=Lisp,l --force-lang=Lisp,$n . || cat $s $h $m | grep -v ' *//.*' | grep -v '^$$' | wc -l
 bins: $o $n $b
 	@stat -c "%n %sB" $^
 bench: $b
 	@make -sC bench
+repl: $n $p
+	@which rlwrap >/dev/null && rlwrap $n -vr $p || $n -vr $p
 
-.PHONY: test clean perf valg sloc bins install vim bench
+.PHONY: test clean perf valg sloc bins install vim bench repl
