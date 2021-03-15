@@ -504,7 +504,7 @@ static Inline void init_globals_array(vm v) {
 
 vm initialize(const char *b) {
   vm v = malloc(sizeof(struct rt));
-  if (!v) errp(v, "init", 0, "oom");
+  if (!v) errp(v, 0, "[init] oom");
   else if (setjmp(v->restart)) {
     finalize(v), v = NULL;
   } else {
@@ -581,7 +581,8 @@ typedef struct fr { obj clos, retp, subd, argc, argv[]; } *fr;
 static obj interpret_error(vm v, obj xp, obj ip, mem fp, mem hp, const char *msg, ...) {
   va_list xs;
   va_start(xs, msg);
-  vferrp(v, stderr, "interpret", xp, msg, xs);
+  fputs("[interpret] ", stderr);
+  vferrp(v, stderr, xp, msg, xs);
   for (;fp < Pool + Len;
        ip = Retp, fp += Size(fr) + getnum(Argc) + getnum(Subd))
     fputs("  in ", stderr), emsep(v, ip, stderr, '\n');
@@ -596,14 +597,14 @@ obj restart(vm v) {
 
 // vm instructions for different errors. the compiler will
 // never emit these.
-vm_op(eetc) {
-  return interpret_error(v, xp, puthom(ip), fp, hp, "wrong type : %s for %s", tnom(kind(xp)), tnom(Gn(Xp))); }
-vm_op(eear) {
-  return interpret_error(v, 0, puthom(ip), fp, hp, "wrong arity : %ld of %ld", Xp, Ip); }
+vm_op(eetc, enum type t) {
+  return interpret_error(v, xp, puthom(ip), fp, hp, "wrong type : %s for %s", tnom(kind(xp)), tnom(t)); }
+vm_op(eear, num w) {
+  return interpret_error(v, 0, puthom(ip), fp, hp, "wrong arity : %ld of %ld", xp, w); }
 vm_op(ee_0) {
   return interpret_error(v, 0, puthom(ip), fp, hp, "%ld/0", getnum(xp)); }
-#define type_error(x,t){xp=x,Xp=N(t);Jump(eetc);}
-#define arity_error(h,w){Xp=h,Ip=w;Jump(eear);}
+#define type_error(x,t){xp=x;Jump(eetc, t);}
+#define arity_error(h,w){xp=h;Jump(eear, w);}
 #define zero_error(x){xp=x;Jump(ee_0);}
 #define TypeCheck(x,t) if(kind(x)!=t)type_error(x,t)
 #define Arity(n) if(n>Argc)arity_error(getnum(Argc),getnum(n))
@@ -1267,6 +1268,6 @@ vm_op(tuck) { Have(1); sp--, sp[0] = sp[1], sp[1] = xp; Next(1); }
 vm_op(drop) { sp++; Next(1); }
 
 // errors
-vm_op(fail) { return interpret_error(v, xp, puthom(ip), fp, hp, "fail"); }
+vm_op(fail) { return interpret_error(v, xp, puthom(ip), fp, hp, NULL); }
 vm_op(fail_u) { Go(fail, getnum(Argc) ? *Argv : nil); }
 vm_op(zzz) { exit(EXIT_SUCCESS); }

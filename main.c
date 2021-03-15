@@ -16,10 +16,10 @@ static int scripts(rt v, char**argv) {
   FILE *f;
   for (const char *q; (q = *argv++);)
     if (setjmp(v->restart)) return
-      errp(v, "main", 0, "%s : error", q),
+      errp(v, 0, "[main] %s : error", q),
       EXIT_FAILURE;
     else if (!(f = fopen(q, "r")))
-      err(v, "main", 0, "%s : %s", q, strerror(errno));
+      err(v, 0, "[main] %s : %s", q, strerror(errno));
     else { while ((x = parse(v, f))) eval(v, x);
            fclose(f); }
   return EXIT_SUCCESS; }

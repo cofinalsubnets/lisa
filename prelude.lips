@@ -1,4 +1,4 @@
-#!lips -r
+#!lips -vr
 ;; here's some data constructors
 (: li (\ . . .) ; dot only has special meaning following another argument, which can be dot
    ++ (\ a b(?(twop a)(::(*: a)(++(:* a)b))b)) ; append
@@ -81,7 +81,7 @@
     (emh (hom-seek h 1))))))))
 
  insx (\ e m i x k (emi i (emx x (k e (+ m 2)))))
- imm  (\ e m x k (insx e m i-immv x (\ e m (produce e m (t-tag x) k))))
+ imm  (\ e m x k (insx e m i-immv x (\ e m (produce e m (t-tag x) k x))))
  cev  (\ e m x k ((? (twop x) c2 (symp x) cy imm) e m x k))
 
  cy (\ e m x k (:
@@ -161,7 +161,7 @@
      cdeb (\ e m x k (?
       (toplp e) (insx e m i-tbind x k)
                 (insx e m i-setl (idx (e-loc e) x) k)))
-   (? (nilp (:* x)) (imm e m nil k)
+   (? (nilp (:* x)) (imm e m () k)
       (= 1 (% (len (:* x)) 2)) (cev e m (desug x) k)
       (cder e m (:* x) k))))
 
@@ -338,17 +338,20 @@
   (= t t-two) 'two (= t t-tup) 'tup
   (= t t-oct) 'str (= t t-tbl) 'tbl
   (= t t-sym) 'sym (= t t-nil) 'nil))
- type-err (\ e h w (fail (li
-  'type-error ': (t-nom h) 'for (t-nom w)
+ type-err (\ e h w x (fail (li
+  'type 'error: x ': (t-nom h) 'for (t-nom w)
   'in (ini e 0))))
  arity-err (\ e h w (fail (li
   'arity-error ': h 'of w
   ' in (ini e 0))))
- produce (\ e m t k (:
+
+ ; this function has a lot of arguments sorry...
+ ; env, len, type, cont, xpn.
+ produce (\ e m t k x (:
   tc (\ t h
    ((\ u (? (= u t) (tc t (hom-seek h 1))
             (= u t-none) h
-            (, (type-err e t u) h)))
+            (, (type-err e t u x) h)))
     (consumes h)))
   (tc t (k e m))))
 
@@ -365,7 +368,7 @@
          k (\ e m (emi i-take (emx (len arg) (hom (+ m 2)))))
        ((clacloin e arg k) e 0)))
 
-   (>>= (produce e (+ m 2) t-hom k) (\ k
+   (>>= (produce e (+ m 2) t-hom k x) (\ k
     (>>= (ltu e (gnom e k) x) (\ x (?
      (homp x) (emi i-immv (emx x k))
      (emi (? (e-loc e) i-encll i-encln)
@@ -376,5 +379,5 @@
                  ((? z z cap) e m x k))))
  ini (\ e m (insx e m i-ret (e-nom e) (\ e m (hom m))))
  eval (\ x (: e (env () () ()) ((cev e 0 (pev e x) ini))))
- eval ; comment this line to have compiler internals defined at toplevel
+ ;eval ; comment this line to have compiler internals defined at toplevel
  )))

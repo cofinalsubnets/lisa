@@ -6,8 +6,8 @@
 // the string processing primitives are good
 // enough, at which point it can be called the
 // bootstrap parser
-#define err_eof "unexpected eof"
-#define err_rpar "unmatched right delimiter"
+#define err_eof "[parse] unexpected eof"
+#define err_rpar "[parse] unmatched right delimiter"
 
 NoInline const char *tnom(enum type t) { switch (t) {
   case Hom: return "hom";
@@ -22,7 +22,7 @@ NoInline const char *tnom(enum type t) { switch (t) {
 typedef obj P(vm, FILE*);
 static P atom, reads, quote, str;
 
-#define readx(v,m)(errp(v,"parse",0,m),0)
+#define readx(v,m)(errp(v,0,m),0)
 
 static int read0(FILE *i) {
   for (int c;;) switch ((c = getc(i))) {
@@ -129,16 +129,20 @@ void emit(vm v, obj x, FILE *o) {
     case Tbl: return emtbl(v, x, o);
     default: fputs("()", o); } }
 
-void vferrp(vm v, FILE *o, const char *seg, obj x, const char *msg, va_list xs) {
-  if (seg) fputc('[', o), fputs(seg, o), fputs("] ", o);
-  if (x) emsep(v, x, o, ' '), fputs(";; ", o);
-  vfprintf(o, msg, xs), fputc('\n', o); }
+void vferrp(vm v, FILE *o, obj x, const char *msg, va_list xs) {
+  if (msg) {
+    vfprintf(o, msg, xs);
+    if (x) fputc(' ', o); }
+  if (x) {
+    if (msg) fputs("# ", o);
+    emit(v, x, o); }
+  fputc('\n', o); }
 
-void errp(vm v, const char *seg, obj x, const char *msg, ...) {
+void errp(vm v, obj x, const char *msg, ...) {
   va_list xs;
-  va_start(xs, msg), vferrp(v, stderr, seg, x, msg, xs), va_end(xs); }
+  va_start(xs, msg), vferrp(v, stderr, x, msg, xs), va_end(xs); }
 
-obj err(vm v, const char *seg, obj x, const char *msg, ...) {
+obj err(vm v, obj x, const char *msg, ...) {
   va_list xs;
-  va_start(xs, msg); vferrp(v, stderr, seg, x, msg, xs); va_end(xs);
+  va_start(xs, msg); vferrp(v, stderr, x, msg, xs); va_end(xs);
   return restart(v); }
