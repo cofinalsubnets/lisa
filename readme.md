@@ -1,8 +1,8 @@
 # lips
 ## usage
-build and optionally install with `make` or by consulting the 
-`makefile`. `make repl` defines some useful macros and functions,
-bootstraps the compiler, and starts a repl.
+`make install` installs files into the `~/.local` hierarchy.
+assuming `~/.local/bin` is in your `$PATH` `lips` should start
+a repl.
 
 ## special forms
 with scheme equivalents

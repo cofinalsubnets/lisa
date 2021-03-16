@@ -40,26 +40,20 @@ pref=~/.local
 bins=$(pref)/bin
 libs=$(pref)/lib/lips
 b0=$(bins)/$n
-b1=$(bins)/lipsh
 l0=$(libs)/prelude.lips
 
 $(bins):
 	@mkdir -p $(bins)
 $(libs):
 	@mkdir -p $(libs)
-
-$(b0): $(bins) $n
-	@cp $n $(bins)
+$(b0): $n $(bins)
+	@cp $^
 	@echo $@
-$(b1): $(bins) $(l0)
-	@ln -s $(l0) $(b1)
-	@echo $@
-
 $(l0): $p $(libs)
 	@cp $^
 	@echo $@
 
-install: $(b0) $(b1) $(l0)
+install: $(b0) $(l0)
 
 # vim stuff
 install-vim:

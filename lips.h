@@ -5,6 +5,10 @@
 #include <setjmp.h>
 #include <string.h>
 #include <time.h>
+#include <errno.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/stat.h>
 
 // thanks !!
 typedef int64_t obj, num, *mem;
@@ -47,9 +51,9 @@ enum globl {
   Def, Cond, Lamb, Quote, Seq, Splat, Topl, Macs,
   Eval, Apply, NGlobs };
 
-rt initialize(const char*);
+rt initialize(), finalize(rt);
 
-void finalize(rt),
+void
      emit(rt, obj, FILE*),
      vferrp(rt, FILE*, obj, const char*, va_list), // lol
      errp(rt, obj, const char*, ...),
@@ -74,6 +78,7 @@ obj err(rt, obj, const char*, ...),
     string(rt, const char*);
 num llen(obj);
 int eql(obj, obj);
+void    scr(vm, FILE*);
 
 const char *tnom(enum type);
 extern const char *t_nom[];

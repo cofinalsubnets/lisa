@@ -461,30 +461,11 @@ static void rin(vm v, mem d, const char *n, terp *u) {
   _("tblp", tblp_u), _("strp", strp_u),\
   _("nilp", nilp_u), _("homp", homp_u)
 
-static Inline obj evfile(vm v, const char *p) {
-  FILE *f = fopen(p, "r");
-  if (!f) return 0;
-  obj y = parse(v, f);
-  fclose(f);
-  if (!y) return y;
-  y = pair(v, y, nil);
-  y = pair(v, Qt, y);
-  y = pair(v, y, nil);
-  return eval(v, pair(v, Eva, y)); }
-
-static Inline void boot(vm v, const char *b, obj d) {
-  obj x;
-  with(d, x = evfile(v, b),
-          tbl_set(v, d, Eva, x),
-          x = evfile(v, b));
-  tbl_set(v, d, Eva, x); }
-
 #define RPR(a,b) rpr(v,&d,a,b)
 #define RIN(x) rin(v,&d,"i-"#x,x)
-static Inline obj code_dictionary(vm v, const char *b) {
+static Inline obj code_dictionary(vm v) {
   obj d = table(v);
   with(d, prims(RPR), insts(RIN));
-  if (b) boot(v, b, d);
   return d; }
 #undef RPR
 #undef RIN
@@ -494,7 +475,7 @@ static Inline void init_globals_array(vm v) {
   t->len = NGlobs, memset(t->xs, -1, w2b(NGlobs));
   obj z, y = Glob = puttup(t);
   with(y,
-    z = code_dictionary(v, NULL), Top = z,
+    z = code_dictionary(v), Top = z,
     z = table(v), Mac = z,
 #define bsym(i,s)(z=interns(v,s),AR(y)[i]=z)
     bsym(Eval, "ev"), bsym(Apply, "ap"),
@@ -502,26 +483,100 @@ static Inline void init_globals_array(vm v) {
     bsym(Quote, "`"), bsym(Seq, ","), bsym(Splat, ".")); }
 #undef bsym
 
-vm initialize(const char *b) {
+#define USR_PATH ".local/lib/"NOM"/"
+static int seekpl(const char *p) {
+  const char *h = getenv("HOME");
+  if (!h) return -1;
+  int a = open(h, O_RDONLY);
+  if (a == -1) return a;
+  int b = openat(a, USR_PATH, O_RDONLY);
+  close(a);
+  if (b == -1) return b;
+  a = openat(b, p, O_RDONLY);
+  return close(b), a; }
+
+#define SYS_PATH "/usr/lib/"NOM"/"
+static int seekp(const char *p) {
+  int a = seekpl(p);
+  if (-1 < a) return a;
+  a = open(SYS_PATH, O_RDONLY);
+  if (-1 == a) return a;
+  int b = openat(a, p, O_RDONLY);
+  return close(a), b; }
+
+vm initialize() {
   vm v = malloc(sizeof(struct rt));
-  if (!v) errp(v, 0, "[init] oom");
-  else if (setjmp(v->restart)) {
-    finalize(v), v = NULL;
-  } else {
-    v->t0 = clock(),
-    v->ip = v->xp = v->syms = v->glob = nil,
-    v->fp = v->hp = v->sp = (mem)w2b(1),
-    v->count = 0, v->mem_len = 1, v->mem_pool = NULL,
-    v->mem_root = NULL;
-    init_globals_array(v);
-    obj y = interns(v, "ns");
-    tbl_set(v, Top, y, Top);
-    y = interns(v, "macros");
-    tbl_set(v, Top, y, Mac); }
+  if (!v || setjmp(v->restart)) return
+    errp(v, 0, "[init] oom"), finalize(v);
+  v->t0 = clock(),
+  v->ip = v->xp = v->syms = v->glob = nil,
+  v->fp = v->hp = v->sp = (mem)w2b(1),
+  v->count = 0, v->mem_len = 1, v->mem_pool = NULL,
+  v->mem_root = NULL;
+  init_globals_array(v);
+  obj y = interns(v, "ns");
+  tbl_set(v, Top, y, Top);
+  y = interns(v, "macros");
+  tbl_set(v, Top, y, Mac);
+
+  // now we can bootstrap ...
+#define EGG "prelude.lips"
+  int pre = seekp(EGG);
+  if (pre == -1) errp(v, 0, "[init] can't find %s", EGG);
+  else {
+    FILE *f = fdopen(pre, "r");
+    if (setjmp(v->restart)) return
+      errp(v, 0, "[init] error in %s", EGG),
+      fclose(f), finalize(v);
+    scr(v, f), fclose(f); }
   return v; }
 
-void finalize(vm v) {
-  free(v->mem_pool), free(v); }
+vm finalize(vm v) {
+  if (v) free(v->mem_pool), free(v);
+  return NULL; }
+
+
+mem save(vm v) {
+  reqsp(v, 0);
+  // the image format is
+  //   len off glob sym data .
+  num len = Hp-Pool;
+  mem b = malloc(w2b(4+len));
+  if (b) {
+    b[0] = len;
+    b[1] = (obj) Pool;
+    b[2] = Glob;
+    b[3] = Syms;
+    memcpy(b+4, Pool, w2b(len)); }
+  return b; }
+
+static Inline int inb(num a, num b, num c) {
+  return a <= b && b < c; }
+
+static obj tr(vm v, obj src, num off) {
+  switch (kind(src)) {
+    case Nil: case Num: return src;
+    default:
+      if (!inb(off, src, off + Len))
+        return src;
+    return src - off + (obj) v->mem_pool; } }
+
+vm restore(mem img) {
+  vm v = malloc(sizeof(struct rt));
+  num ilen = img[0], off = img[1], plen = 1;
+  while (plen < ilen) plen += plen;
+  mem lim = img + 4 + ilen, pool = malloc(w2b(plen));
+  v->mem_pool = pool;
+  v->glob = tr(v, img[2], off); v->syms = tr(v, img[3], off);
+  for (img += 4; img < lim; img++)
+    *pool++ = tr(v, *img, off);
+
+    
+
+    
+  
+
+}
 
 // "the interpreter"
 // it's a stack machine with one free register (xp)

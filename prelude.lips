@@ -1,4 +1,3 @@
-#!lips -vr
 ;; here's some data constructors
 (: li (\ . . .) ; dot only has special meaning following another argument, which can be dot
    ++ (\ a b(?(twop a)(::(*: a)(++(:* a)b))b)) ; append
