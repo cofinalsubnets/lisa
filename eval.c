@@ -595,13 +595,13 @@ static Inline void errargs(vm v, mem fp) {
     if (twop(x) || tupp(x))
       fputc('#', stderr), fputs(tnom(kind(x)), stderr);
     else emit(v, x, stderr);
-    if (i == argc) break; } }
+    if (i == argc) break; }
+  fputc('\n', stderr); }
 // this is for runtime errors from the interpreter, it prints
 // a backtrace and everything.
 vm_op(interpret_error) {
   fputs("# ", stderr), emit(v, puthom(ip), stderr),
   fputs(" does not exist", stderr), errargs(v, fp);
-  fputc('\n', stderr);
   if (fp < Pool + Len)
     do ip = gethom(Retp), fp += Size(fr) + getnum(Argc) + getnum(Subd),
        fputs("#  in ", stderr), emsep(v, puthom(ip), stderr, '\n');
@@ -617,9 +617,6 @@ obj restart(vm v) {
 
 // vm instructions for different errors. the compiler will
 // never emit these.
-#define type_error(x,t)Jump(interpret_error)
-#define arity_error(h,w)Jump(interpret_error)
-#define zero_error(x)Jump(interpret_error)
 #define TypeCheck(x,t) if(kind(x)!=t)Jump(interpret_error)
 #define Arity(n) if(n>Argc)Jump(interpret_error)
 #define ArityCheck(n) Arity(putnum(n))
@@ -1170,11 +1167,11 @@ vm_op(mul) {
   xp = putnum(getnum(xp) * getnum(*sp++));
   Next(1); }
 vm_op(dqv) {
-  if (xp == putnum(0)) zero_error(*sp);
+  if (xp == putnum(0)) Jump(interpret_error);
   xp = putnum(getnum(*sp++) / getnum(xp));
   Next(1); }
 vm_op(mod) {
-  if (xp == putnum(0)) zero_error(*sp);
+  if (xp == putnum(0)) Jump(interpret_error);
   xp = putnum(getnum(*sp++) % getnum(xp));
   Next(1); }
 
@@ -1187,7 +1184,7 @@ vm_op(mod) {
   obj x,m=_z,*xs=_v,*l=xs+_c;\
   if (_c) for(;xs<l;m=m op getnum(x)){\
     x = *xs++; TypeCheck(x, Num);\
-    if (x == putnum(0)) zero_error(putnum(m));}\
+    if (x == putnum(0)) Jump(interpret_error);}\
   Go(ret, putnum(m));}
 
 vm_op(add_u) {

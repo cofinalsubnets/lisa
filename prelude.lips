@@ -1,4 +1,4 @@
-(: locals '(locals old-ev prelude stage2 macros ns)
+(: delete '(delete old-ev prelude stage2 macros ns)
    old-ev ev
    prelude '(,
   ;; here's some data constructors
@@ -23,7 +23,8 @@
 
      at (\ l n (? (< n 1) (*: l) (at (:* l) (- n 1))))
      atn (\ n (\ l (at l n)))
-     flip (\ f (\ x y (f y x))))
+     flip (\ f (\ x y (f y x)))
+     curry (\ f (\ x (\ y . (ap f (:: x y))))))
   ;; and some list functions
   (: snoc  (\ l x (? (twop l) (:: (*: l) (snoc (:* l) x))
                               (:: x l)))
@@ -391,4 +392,4 @@
 
 (? (= old-ev ev) (fail "bootstrap failed")
                  (ev prelude))
-(each locals (\ l (tdel ns l)))
+(each delete (\ s (tdel ns s)))
