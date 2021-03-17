@@ -37,26 +37,28 @@
 
 (: de-str (\ s
     (: de-str.l (\ s n
-        (? (= n (str-len s)) ()
-           (:: (str-get s n) (de-str.l s (+ n 1)))))
+        (? (= n (slen s)) ()
+           (:: (sget s n) (de-str.l s (+ n 1)))))
      (de-str.l s 0)))
 
+; strings are supposed to work
  (test strings (&&
+  (= "hollow world" (scat "hol" "low " "wor" "ld"))
+  (= "bidden" (ssub "forbidden planet" 3 9))
   (: l (de-str "hello person")
    (&& (= 12 (len l)) (= (*: l) 104)))
   (= "a" (str 97))
   (= "asdf" "asdf")
   (nilp (= "asdf" "asd"))
   (= "" (str 0 0 2 0)))))
-; strings are supposed to work
 
 ; here's a function for iterating over ranges
 (: from (\ m n f (? (< m n) (, (f m) (from (+ m 1) n f)))))
 
 ; hash tables are mysterious
 (: hasht (\ n
- (: d (tbl) (,(from 0 (+ n 1) (\ m (tbl-set d m m)))
-              (tbl-get d n))))
+ (: d (tbl) (,(from 0 (+ n 1) (\ m (tset d m m)))
+              (tget d n))))
  (test hashes (= 99 (hasht 99))))
 
 

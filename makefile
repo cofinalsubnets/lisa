@@ -2,7 +2,7 @@ m=makefile
 n=lips
 b=$n.bin
 p=prelude.lips
-t=$p $(wildcard test/*)
+t=$(wildcard test/*)
 h=$(wildcard *.h)
 s=$(wildcard *.c)
 o=$(s:.c=.o)
@@ -74,7 +74,7 @@ bins: $o $n $b
 	@stat -c "%n %sB" $^
 bench: $b
 	@make -sC bench
-repl: $n $p
-	@which rlwrap >/dev/null && rlwrap $n -vr $p || $n -vr $p
+repl: $n
+	@which rlwrap >/dev/null && rlwrap $n -vr || $n -vr
 
 .PHONY: test clean perf valg sloc bins install vim bench repl

@@ -95,9 +95,6 @@ static obj str(vm v, FILE *i) {
 void emsep(vm v, obj x, FILE *o, char s) {
   emit(v, x, o), fputc(s, o); }
 
-static void emit_2(vm v, obj x, FILE *o) {
-  twop(Y(x)) ? (emsep(v, X(x), o, ' '), emit_2(v, Y(x), o)) :
-                emsep(v, X(x), o, ')'); }
 
 static void emhomn(vm v, obj x, FILE *o) {
   fputc('\\', o);
@@ -108,26 +105,35 @@ static void emhomn(vm v, obj x, FILE *o) {
       return emhomn(v, Y(x), o);
     case Sym: return emit(v, x, o); } }
 
-static void emoct(vm v, obj x, FILE *o) {
+static void emoct(vm v, oct s, FILE *o) {
   fputc('"', o);
-  oct s = getoct(x);
   for (num i = 0, l = s->len - 1; i < l; i++)
     if (s->text[i] == '"') fputs("\\\"", o);
     else fputc(s->text[i], o);
   fputc('"', o); }
-static void emtbl(vm v, obj x, FILE *o) {
-  tbl t = gettbl(x);
+static void emtbl(vm v, tbl t, FILE *o) {
   fprintf(o, "#tbl:%ld/%ld", t->len, t->cap); }
-
+static void emsym(vm v, sym y, FILE *o) {
+  nilp(y->nom) ? fprintf(o, "#sym@%lx", (num) y) :
+                 fputs(chars(y->nom), o); }
+static void emtwo_(vm v, two w, FILE *o) {
+  twop(w->y) ? (emsep(v, w->x, o, ' '), emtwo_(v, gettwo(w->y), o)) :
+                emsep(v, w->x, o, ')'); }
+static void emtwo(vm v, two w, FILE *o) {
+  fputc('(', o), emtwo_(v, w, o); }
+static void emnum(vm v, num n, FILE *o) {
+  fprintf(o, "%ld", n); }
+static void emhom(vm v, hom h, FILE *o) {
+  emhomn(v, homnom(v, puthom(h)), o); }
 void emit(vm v, obj x, FILE *o) {
   switch (kind(x)) {
-    case Num: fprintf(o, "%ld", getnum(x)); break;
-    case Sym: fputs(symnom(x), o); break;
-    case Hom: return emhomn(v, homnom(v, x), o);
-    case Two: fputc('(', o); emit_2(v, x, o); break;
-    case Oct: return emoct(v, x, o);
-    case Tbl: return emtbl(v, x, o);
-    default: fputs("()", o); } }
+    case Hom: return emhom(v, gethom(x), o);
+    case Num: return emnum(v, getnum(x), o);
+    case Sym: return emsym(v, getsym(x), o);
+    case Two: return emtwo(v, gettwo(x), o);
+    case Oct: return emoct(v, getoct(x), o);
+    case Tbl: return emtbl(v, gettbl(x), o);
+    default:  return (void) fputs("()", o); } }
 
 void vferrp(vm v, FILE *o, obj x, const char *msg, va_list xs) {
   if (msg) {

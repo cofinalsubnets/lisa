@@ -77,13 +77,13 @@ enum location { Here, Loc, Arg, Clo, Wait };
   _(lt_u),   _(lteq_u), _(eq_u),    _(gteq_u), _(gt_u),\
   _(twop_u), _(nump_u), _(homp_u),  _(tblp_u), _(strp_u),\
   _(nilp_u), _(car_u),  _(cdr_u),   _(cons_u),\
-  _(strmk),  _(strg),   _(strl),_(hom_fin_u),\
+  _(strmk),  _(strg),   _(strl),_(strs),_(strc),_(hom_fin_u),\
   _(setcar_u), _(setcdr_u),\
   _(symp_u), _(emse), _(hom_u), _(pc_u),\
   _(or_u), _(and_u), _(zzz),\
   _(tbll), _(tblmk),_(tblg),_(tblc),_(tbls),_(tbld),_(tblks),\
   _(hom_seek_u),_(hom_geti_u),_(emi),\
-  _(fail),_(fail_u),_(ccc_u),_(cont),_(vararg),_(tuck),\
+  _(fail),_(ccc_u),_(cont),_(vararg),_(tuck),\
   _(rd_u),\
   _(drop),_(hom_getx_u),_(emx),_(em_u),_(ev_u),_(ap_u)
 #define ninl(x) x NoInline
@@ -422,7 +422,9 @@ obj homnom(vm v, obj x) {
   mem h = (mem) gethom(x);
   while (*h) h++;
   x = h[-1];
-  return (mem)x >= Pool && (mem)x < Pool+Len ? x : nil; }
+  return (mem)x >= Pool && (mem)x < Pool+Len ? x :
+    x == (obj)yield ? Eva :
+    nil; }
 
 static void rpr(vm v, mem d, const char *n, terp *u) {
   obj x, y = pair(v, interns(v, n), nil);
@@ -446,11 +448,12 @@ static void rin(vm v, mem d, const char *n, terp *u) {
   _("%", mod_u),      _("ap", ap_u),\
   _("ccc", ccc_u),     _("ev", ev_u),\
   _("||", or_u),       _("&&", and_u),\
-  _("fail", fail_u), _("tbl", tblmk),\
-  _("tbl-get", tblg),  _("tbl-set", tbls),\
-  _("tbl-has", tblc),  _("tbl-del", tbld),\
-  _("tbl-keys", tblks),_("tbl-len", tbll),\
-  _("str-len", strl),  _("str-get", strg),\
+  _("fail", fail), _("tbl", tblmk),\
+  _("tget", tblg),  _("tset", tbls),\
+  _("thas", tblc),  _("tdel", tbld),\
+  _("tkeys", tblks),_("tlen", tbll),\
+  _("slen", strl),  _("sget", strg),\
+  _("scat", strc), _("ssub", strs),\
   _("str", strmk),     _(".c", pc_u),\
   _("hom", hom_u),     _("hom-seek", hom_seek_u),\
   _("hom-fin", hom_fin_u),\
@@ -483,31 +486,22 @@ static Inline void init_globals_array(vm v) {
     bsym(Quote, "`"), bsym(Seq, ","), bsym(Splat, ".")); }
 #undef bsym
 
-#define USR_PATH ".local/lib/"NOM"/"
-static int seekpl(const char *p) {
-  const char *h = getenv("HOME");
-  if (!h) return -1;
-  int a = open(h, O_RDONLY);
-  if (a == -1) return a;
-  int b = openat(a, USR_PATH, O_RDONLY);
-  close(a);
-  if (b == -1) return b;
-  a = openat(b, p, O_RDONLY);
-  return close(b), a; }
 
+#define USR_PATH ".local/lib/"NOM"/"
 #define SYS_PATH "/usr/lib/"NOM"/"
 static int seekp(const char *p) {
-  int a = seekpl(p);
+  int a = open(p, O_RDONLY), b, c;
   if (-1 < a) return a;
-  a = open(SYS_PATH, O_RDONLY);
-  if (-1 == a) return a;
-  int b = openat(a, p, O_RDONLY);
-  return close(a), b; }
+  b = open(getenv("HOME"), O_RDONLY);
+  c = openat(b,USR_PATH, O_RDONLY), close(b);
+  b = openat(c, p, O_RDONLY), close(c);
+  if (-1 < b) return b;
+  b = open(SYS_PATH, O_RDONLY);
+  c = openat(b, p, O_RDONLY), close(b);
+  return c; }
 
-vm initialize() {
-  vm v = malloc(sizeof(struct rt));
-  if (!v || setjmp(v->restart)) return
-    errp(v, 0, "[init] oom"), finalize(v);
+
+static Inline void sinitv(vm v) {
   v->t0 = clock(),
   v->ip = v->xp = v->syms = v->glob = nil,
   v->fp = v->hp = v->sp = (mem)w2b(1),
@@ -517,8 +511,13 @@ vm initialize() {
   obj y = interns(v, "ns");
   tbl_set(v, Top, y, Top);
   y = interns(v, "macros");
-  tbl_set(v, Top, y, Mac);
+  tbl_set(v, Top, y, Mac); }
 
+vm initialize() {
+  vm v = malloc(sizeof(struct rt));
+  if (!v || setjmp(v->restart)) return
+    errp(v, 0, "[init] oom"), finalize(v);
+  sinitv(v);
   // now we can bootstrap ...
 #define EGG "prelude.lips"
   int pre = seekp(EGG);
@@ -534,49 +533,6 @@ vm initialize() {
 vm finalize(vm v) {
   if (v) free(v->mem_pool), free(v);
   return NULL; }
-
-
-mem save(vm v) {
-  reqsp(v, 0);
-  // the image format is
-  //   len off glob sym data .
-  num len = Hp-Pool;
-  mem b = malloc(w2b(4+len));
-  if (b) {
-    b[0] = len;
-    b[1] = (obj) Pool;
-    b[2] = Glob;
-    b[3] = Syms;
-    memcpy(b+4, Pool, w2b(len)); }
-  return b; }
-
-static Inline int inb(num a, num b, num c) {
-  return a <= b && b < c; }
-
-static obj tr(vm v, obj src, num off) {
-  switch (kind(src)) {
-    case Nil: case Num: return src;
-    default:
-      if (!inb(off, src, off + Len))
-        return src;
-    return src - off + (obj) v->mem_pool; } }
-
-vm restore(mem img) {
-  vm v = malloc(sizeof(struct rt));
-  num ilen = img[0], off = img[1], plen = 1;
-  while (plen < ilen) plen += plen;
-  mem lim = img + 4 + ilen, pool = malloc(w2b(plen));
-  v->mem_pool = pool;
-  v->glob = tr(v, img[2], off); v->syms = tr(v, img[3], off);
-  for (img += 4; img < lim; img++)
-    *pool++ = tr(v, *img, off);
-
-    
-
-    
-  
-
-}
 
 // "the interpreter"
 // it's a stack machine with one free register (xp)
@@ -631,16 +587,25 @@ typedef struct fr { obj clos, retp, subd, argc, argv[]; } *fr;
 #define Argc ff(fp)->argc
 #define Argv ff(fp)->argv
 
+static Inline void errargs(vm v, mem fp) {
+  num argc, i = 0;
+  if (fp == Pool + Len || !(argc = getnum(Argc))) return;
+  else for (fputs(" at ", stderr);;fputc(' ', stderr)) {
+    obj x = Argv[i++];
+    if (twop(x) || tupp(x))
+      fputc('#', stderr), fputs(tnom(kind(x)), stderr);
+    else emit(v, x, stderr);
+    if (i == argc) break; } }
 // this is for runtime errors from the interpreter, it prints
 // a backtrace and everything.
-static obj interpret_error(vm v, obj xp, obj ip, mem fp, mem hp, const char *msg, ...) {
-  va_list xs;
-  va_start(xs, msg);
-  fputs("[interpret] ", stderr);
-  vferrp(v, stderr, xp, msg, xs);
-  for (;fp < Pool + Len;
-       ip = Retp, fp += Size(fr) + getnum(Argc) + getnum(Subd))
-    fputs("  in ", stderr), emsep(v, ip, stderr, '\n');
+vm_op(interpret_error) {
+  fputs("# ", stderr), emit(v, puthom(ip), stderr),
+  fputs(" does not exist", stderr), errargs(v, fp);
+  fputc('\n', stderr);
+  if (fp < Pool + Len)
+    do ip = gethom(Retp), fp += Size(fr) + getnum(Argc) + getnum(Subd),
+       fputs("#  in ", stderr), emsep(v, puthom(ip), stderr, '\n');
+    while (fp < Pool + Len);
   return Hp = hp, restart(v); }
 
 obj restart(vm v) {
@@ -652,17 +617,11 @@ obj restart(vm v) {
 
 // vm instructions for different errors. the compiler will
 // never emit these.
-vm_op(eetc, enum type t) {
-  return interpret_error(v, xp, puthom(ip), fp, hp, "wrong type : %s for %s", tnom(kind(xp)), tnom(t)); }
-vm_op(eear, num w) {
-  return interpret_error(v, 0, puthom(ip), fp, hp, "wrong arity : %ld of %ld", xp, w); }
-vm_op(ee_0) {
-  return interpret_error(v, 0, puthom(ip), fp, hp, "%ld/0", getnum(xp)); }
-#define type_error(x,t){xp=x;Jump(eetc, t);}
-#define arity_error(h,w){xp=h;Jump(eear, w);}
-#define zero_error(x){xp=x;Jump(ee_0);}
-#define TypeCheck(x,t) if(kind(x)!=t)type_error(x,t)
-#define Arity(n) if(n>Argc)arity_error(getnum(Argc),getnum(n))
+#define type_error(x,t)Jump(interpret_error)
+#define arity_error(h,w)Jump(interpret_error)
+#define zero_error(x)Jump(interpret_error)
+#define TypeCheck(x,t) if(kind(x)!=t)Jump(interpret_error)
+#define Arity(n) if(n>Argc)Jump(interpret_error)
 #define ArityCheck(n) Arity(putnum(n))
 
 // this is the garbage collector interface used
@@ -719,8 +678,7 @@ vm_op(lbind) {
   obj w = (obj) GF(ip),
       d = XY(w), y = X(w);
   w = tbl_get(v, d, xp = YY(w));
-  if (!w) return
-    interpret_error(v, xp, puthom(ip), fp, hp, "free variable");
+  if (!w) Jump(interpret_error);
   xp = w;
   if (getnum(y) != 8) TypeCheck(xp, getnum(y));
   G(ip) = immv;
@@ -984,6 +942,41 @@ vm_op(strg) {
   Go(ret, getnum(Argv[1]) < getoct(Argv[0])->len-1 ?
     putnum(getoct(Argv[0])->text[getnum(Argv[1])]) :
     nil); }
+
+vm_op(strc) {
+  num l = getnum(Argc), sum = 0, i = 0;
+  while (i < l) {
+    obj x = Argv[i++];
+    TypeCheck(x, Oct);
+    sum += getoct(x)->len - 1; }
+  num words = b2w(sum+1) + 1;
+  Have(words); oct d = (oct) hp; hp += words;
+  d->len = sum + 1;
+  d->text[sum] = 0;
+  while (i) {
+    oct x = getoct(Argv[--i]);
+    sum -= x->len - 1;
+    memcpy(d->text+sum, x->text, x->len - 1); }
+  Go(ret, putoct(d)); }
+
+#define min(a,b)(a<b?a:b)
+#define max(a,b)(a>b?a:b)
+vm_op(strs) {
+  ArityCheck(3);
+  TypeCheck(Argv[0], Oct);
+  TypeCheck(Argv[1], Num);
+  TypeCheck(Argv[2], Num);
+  oct src = getoct(Argv[0]);
+  num lb = getnum(Argv[1]), ub = getnum(Argv[2]);
+  lb = max(lb, 0), ub = max(min(ub, src->len-1), lb);
+  num words = 1 + b2w(ub - lb + 1);
+  Have(words);
+  oct dst = (oct) hp; hp += words;
+  dst->len = ub - lb + 1;
+  dst->text[ub - lb] = 0;
+  memcpy(dst->text, src->text + lb, ub - lb);
+  Go(ret, putoct(dst)); }
+
 vm_op(strmk) {
   num i, l = getnum(Argc)+1, size = 1 + b2w(l);
   Have(size);
@@ -1323,6 +1316,5 @@ vm_op(tuck) { Have(1); sp--, sp[0] = sp[1], sp[1] = xp; Next(1); }
 vm_op(drop) { sp++; Next(1); }
 
 // errors
-vm_op(fail) { return interpret_error(v, xp, puthom(ip), fp, hp, NULL); }
-vm_op(fail_u) { Go(fail, getnum(Argc) ? *Argv : nil); }
+vm_op(fail) { Jump(interpret_error); }
 vm_op(zzz) { exit(EXIT_SUCCESS); }

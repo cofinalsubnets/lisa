@@ -51,9 +51,10 @@ enum globl {
   Def, Cond, Lamb, Quote, Seq, Splat, Topl, Macs,
   Eval, Apply, NGlobs };
 
-rt initialize(), finalize(rt);
+rt initialize(),
+   finalize(rt);
 
-void
+void scr(vm, FILE*),
      emit(rt, obj, FILE*),
      vferrp(rt, FILE*, obj, const char*, va_list), // lol
      errp(rt, obj, const char*, ...),
@@ -78,10 +79,8 @@ obj err(rt, obj, const char*, ...),
     string(rt, const char*);
 num llen(obj);
 int eql(obj, obj);
-void    scr(vm, FILE*);
 
 const char *tnom(enum type);
-extern const char *t_nom[];
 
 #define kind(x) ((x)&7)
 #define gethom(x) ((hom)((x)-Hom))
