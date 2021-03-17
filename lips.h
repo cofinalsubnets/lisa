@@ -52,10 +52,12 @@ enum globl {
   Eval, Apply, NGlobs };
 
 rt initialize(),
+   bootstrap(rt),
    finalize(rt);
 
 void scr(vm, FILE*),
      emit(rt, obj, FILE*),
+     phomn(rt, obj, FILE*),
      vferrp(rt, FILE*, obj, const char*, va_list), // lol
      errp(rt, obj, const char*, ...),
      emsep(rt, obj, FILE*, char),
@@ -155,7 +157,4 @@ const char *tnom(enum type);
 
 #ifndef NOM
 #define NOM "lips"
-#endif
-#ifndef VN
-#define VN "???"
 #endif

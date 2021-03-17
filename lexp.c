@@ -95,15 +95,12 @@ static obj str(vm v, FILE *i) {
 void emsep(vm v, obj x, FILE *o, char s) {
   emit(v, x, o), fputc(s, o); }
 
-
-static void emhomn(vm v, obj x, FILE *o) {
-  fputc('\\', o);
+void phomn(vm v, obj x, FILE *o) {
   switch (kind(x)) {
+    case Sym: emit(v, x, o); break;
     case Two:
       if (symp(X(x))) emit(v, X(x), o);
-      if (nilp(Y(x))) return;
-      return emhomn(v, Y(x), o);
-    case Sym: return emit(v, x, o); } }
+      if (twop(Y(x))) fputc('\\', o), phomn(v, Y(x), o); } }
 
 static void emoct(vm v, oct s, FILE *o) {
   fputc('"', o);
@@ -124,7 +121,7 @@ static void emtwo(vm v, two w, FILE *o) {
 static void emnum(vm v, num n, FILE *o) {
   fprintf(o, "%ld", n); }
 static void emhom(vm v, hom h, FILE *o) {
-  emhomn(v, homnom(v, puthom(h)), o); }
+  fputc('\\', o), phomn(v, homnom(v, puthom(h)), o); }
 void emit(vm v, obj x, FILE *o) {
   switch (kind(x)) {
     case Hom: return emhom(v, gethom(x), o);

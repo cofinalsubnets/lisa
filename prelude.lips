@@ -1,4 +1,4 @@
-(: delete '(delete old-ev prelude stage2 macros ns)
+(: local-vars '(local-vars old-ev prelude stage2 macros ns)
    old-ev ev
    prelude '(,
   ;; here's some data constructors
@@ -330,7 +330,8 @@
   (tblp x) 'tbl (nilp x) 'nil))
  t-c (\ x (case x
   'hom 0 'num 1 'two 2 'tup 3 'oct 4
-  'tbl 5 'sym 6 'nil 7 'none 8))
+  'tbl 5 'sym 6 'nil 7 'none 8
+  (fail)))
  t-checks (tbl
   i-tchom 'hom 'hom i-tchom
   i-tcnum 'num 'num i-tcnum
@@ -339,12 +340,12 @@
  ; this function has a lot of arguments sorry...
  ; env, len, type, cont, xpn.
  produce (\ e m t k (:
-  tc (\ t h
-   ((\ u (case u t (tc t (hom-seek h 1))
+  type (\ t h
+   ((\ t u (case u t (type t (hom-seek h 1))
                  'none h
                  (fail)))
-    (consumes h)))
-  (tc t (k e m))))
+    t (consumes h)))
+  (type t (k e m))))
 
  consumes (\ h (>>= (tget t-checks (hom-get-i h)) (\ c
   (? c c 'none))))
@@ -379,4 +380,4 @@
 
 (? (= old-ev ev) (fail "bootstrap failed")
                  (ev prelude))
-(each delete (\ s (tdel ns s)))
+(each local-vars (\ s (tdel ns s)))

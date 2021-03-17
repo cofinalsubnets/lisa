@@ -27,29 +27,32 @@ static int scripts(rt v, char**argv) {
 
 int main(int argc, char**argv) {
   vm v;
-  int r = OK, i = argc == 1 ? 1 : 0, opt, args;
+#define takka 1
+#define nprel 2
+  int opt, args,
+      F = argc == 1 ? takka : 0; // as in you get a
   const char
-    opts[] = "hrv",
+    opts[] = "hi_",
     help[] =
       "usage: %s [options and scripts]\n"
-      " with scripts, run them and exit unless -r is given\n"
-      " with no scripts, start a repl\n"
       "options:\n"
-      " -r  start repl unconditionally\n"
-      " -h  print this message\n"
-      " -v  print version\n";
-args:
-  switch (opt = getopt(argc, argv, opts)) {
-    case -1: break;
+      "  -_ don't bootstrap\n"
+      "  -i interact unconditionally\n"
+      "  -h print this message\n";
+  while ((opt = getopt(argc, argv, opts)) != -1) switch (opt) {
     case '?': return NO;
-    case 'r': i = 1; goto args;
-    case 'v': fprintf(stdout, "%s %s\n",argv[0],VN); goto args;
-    case 'h': fprintf(stdout, help, argv[0]); goto args; }
+    case '_': F|=nprel; break;
+    case 'i': F|=takka; break;
+    case 'h': fprintf(stdout, help, argv[0]); break; }
 
   args = argc - optind;
-  if (args == 0 && !i) return OK;
-  if (!(v = initialize())) return NO;
+  if (args == 0 && !F&takka) return OK;
 
+  v = initialize();
+  v = F&nprel ? v : bootstrap(v);
+  if (!v) return NO;
+
+  int r = OK;
   if (args) r = scripts(v, argv + optind);
-  if (r == OK && i) repl(v, stdin, stdout);
+  if (r == OK && F&takka) repl(v, stdin, stdout);
   return finalize(v), r; }

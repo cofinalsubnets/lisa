@@ -490,8 +490,7 @@ static Inline void init_globals_array(vm v) {
 #define USR_PATH ".local/lib/"NOM"/"
 #define SYS_PATH "/usr/lib/"NOM"/"
 static int seekp(const char *p) {
-  int a = open(p, O_RDONLY), b, c;
-  if (-1 < a) return a;
+  int b, c;
   b = open(getenv("HOME"), O_RDONLY);
   c = openat(b,USR_PATH, O_RDONLY), close(b);
   b = openat(c, p, O_RDONLY), close(c);
@@ -513,21 +512,25 @@ static Inline void sinitv(vm v) {
   y = interns(v, "macros");
   tbl_set(v, Top, y, Mac); }
 
+vm bootstrap(vm v) {
+  if (v == NULL) return v;
+  // now we can bootstrap ...
+  const char *path = "prelude.lips";
+  int pre = seekp(path);
+  if (pre == -1) errp(v, 0, "[init] can't find %s", path);
+  else {
+    FILE *f = fdopen(pre, "r");
+    if (setjmp(v->restart)) return
+      errp(v, 0, "[init] error in %s", path),
+      fclose(f), finalize(v);
+    scr(v, f), fclose(f); }
+  return v; }
+
 vm initialize() {
   vm v = malloc(sizeof(struct rt));
   if (!v || setjmp(v->restart)) return
     errp(v, 0, "[init] oom"), finalize(v);
   sinitv(v);
-  // now we can bootstrap ...
-#define EGG "prelude.lips"
-  int pre = seekp(EGG);
-  if (pre == -1) errp(v, 0, "[init] can't find %s", EGG);
-  else {
-    FILE *f = fdopen(pre, "r");
-    if (setjmp(v->restart)) return
-      errp(v, 0, "[init] error in %s", EGG),
-      fclose(f), finalize(v);
-    scr(v, f), fclose(f); }
   return v; }
 
 vm finalize(vm v) {
@@ -587,7 +590,7 @@ typedef struct fr { obj clos, retp, subd, argc, argv[]; } *fr;
 #define Argc ff(fp)->argc
 #define Argv ff(fp)->argv
 
-static Inline void errargs(vm v, mem fp) {
+static Inline void perrarg(vm v, mem fp) {
   num argc, i = 0;
   if (fp == Pool + Len || !(argc = getnum(Argc))) return;
   else for (fputs(" at ", stderr);;fputc(' ', stderr)) {
@@ -596,11 +599,14 @@ static Inline void errargs(vm v, mem fp) {
       fputc('#', stderr), fputs(tnom(kind(x)), stderr);
     else emit(v, x, stderr);
     if (i == argc) break; } }
+
 // this is for runtime errors from the interpreter, it prints
 // a backtrace and everything.
 vm_op(interpret_error) {
   fputs("# ", stderr), emit(v, puthom(ip), stderr),
-  fputs(" does not exist", stderr), errargs(v, fp);
+  // an error is expressed as the failure of the current function
+  // to be defined for its arguments.
+  fputs(" does not exist", stderr), perrarg(v, fp);
   fputc('\n', stderr);
   if (fp < Pool + Len)
     do ip = gethom(Retp), fp += Size(fr) + getnum(Argc) + getnum(Subd),
