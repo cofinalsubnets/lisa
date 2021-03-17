@@ -74,14 +74,6 @@
        'lam (tbl)  'nom n
        'val (tbl)  'sig (*: b)))))
  inst (\ e m i k (emi i (k e (+ m 1))))
- inom (\ i (>>= (tkeys ns) (: in (\ l (? l
-  (? (= i (tget ns (*: l))) (*: l) (in (:* l))))))))
- emh (\ h (: i (hom-get-i h)
-  (? (= i 0) () (>>= (inom i) (\ x
-   (? x (? (|| (= i i-pc0) (= i i-pc1) (= i i-clos))
-            (:: (inom i) (emh (hom-get-x (hom-seek h 2))))
-           (:: (inom i) (emh (hom-seek h 1))))
-    (emh (hom-seek h 1))))))))
 
  insx (\ e m i x k (emi i (emx x (k e (+ m 2)))))
  imm  (\ e m x k (insx e m i-immv x (\ e m (produce e m (t-tag x) k))))
@@ -91,8 +83,8 @@
   addclo (\ e y (tset e'clo(snoc (tget e 'clo) y)))
   late (\ e m x d k (>>= (k e (+ m 2)) (\ h
    (>>= (consumes h) (\ t
-    (>>= (? (= t t-none) h (hom-seek h 1)) (\ h
-     (emi i-lbind (emx (:: t (:: d x)) h)))))))))
+    (>>= (? (= t 'none) h (hom-seek h 1)) (\ h
+     (emi i-lbind (emx (:: (t-c t) (:: d x)) h)))))))))
   r (look e x)
   s (*: r)
   (? (= s 'here)  (imm e m (:* r) k)
@@ -119,8 +111,6 @@
       (:: 'wait ns)))
  init (\ l (? (twop (:* l)) (:: (*: l) (init (:* l)))))
  last (\ l (? (twop (:* l)) (last (:* l)) (*: l)))
- t-hom 0 t-num 1 t-two 2 t-tup 3 t-oct 4
- t-tbl 5 t-sym 6 t-nil 7 t-none 8
  inliners (tbl
   fail (\ e m x k (inst e m i-fail k)))
 
@@ -136,7 +126,7 @@
    e m (:* x) (\ e m
     (? (: q (tget inliners (*: x)))
       (q e m x k)
-      (cev e m (*: x) (consume t-hom (\ e m
+      (cev e m (*: x) (consume 'hom (\ e m
        (>>= (k e (+ m 2)) (\ k
         (: l (len (:* x)) (?
          (= i-ret (hom-get-i k))
@@ -333,34 +323,31 @@
     '\ () '` ()
     (each x (\ x (scan e x))))))))
 
-  
  t-tag (\ x (?
-  (homp x) t-hom (nump x) t-num
-  (twop x) t-two ;(tupp x) t-tup
-  (symp x) t-sym (strp x) t-oct
-  (tblp x) t-tbl (nilp x) t-nil))
- t-nom (\ t (case t
-  t-hom 'hom t-num 'num
-  t-two 'two t-tup 'tup
-  t-oct 'str t-tbl 'tbl
-  t-sym 'sym t-nil 'nil))
+  (homp x) 'hom (nump x) 'num
+  (twop x) 'two ;(tupp x) t-tup
+  (symp x) 'sym (strp x) 'oct
+  (tblp x) 'tbl (nilp x) 'nil))
+ t-c (\ x (case x
+  'hom 0 'num 1 'two 2 'tup 3 'oct 4
+  'tbl 5 'sym 6 'nil 7 'none 8))
  t-checks (tbl
-  i-tchom t-hom t-hom i-tchom
-  i-tcnum t-num t-num i-tcnum
-  i-tctwo t-two t-two i-tctwo)
+  i-tchom 'hom 'hom i-tchom
+  i-tcnum 'num 'num i-tcnum
+  i-tctwo 'two 'two i-tctwo)
 
  ; this function has a lot of arguments sorry...
  ; env, len, type, cont, xpn.
  produce (\ e m t k (:
   tc (\ t h
    ((\ u (case u t (tc t (hom-seek h 1))
-                 t-none h
+                 'none h
                  (fail)))
     (consumes h)))
   (tc t (k e m))))
 
  consumes (\ h (>>= (tget t-checks (hom-get-i h)) (\ c
-  (? c c t-none))))
+  (? c c 'none))))
 
  cla (\ e m x k
   (: gnom (\ e k (: i (hom-get-i k) (case i
@@ -375,7 +362,7 @@
          k (\ e m (emi i-take (emx (len arg) (hom (+ m 2)))))
        ((clacloin e arg k) e 0)))
 
-   (>>= (produce e (+ m 2) t-hom k) (\ k
+   (>>= (produce e (+ m 2) 'hom k) (\ k
     (>>= (ltu e (gnom e k) x) (\ x (?
      (homp x) (emi i-immv (emx x k))
      (emi (? (tget e'loc) i-encll i-encln)
