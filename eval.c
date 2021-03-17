@@ -595,13 +595,13 @@ static Inline void errargs(vm v, mem fp) {
     if (twop(x) || tupp(x))
       fputc('#', stderr), fputs(tnom(kind(x)), stderr);
     else emit(v, x, stderr);
-    if (i == argc) break; }
-  fputc('\n', stderr); }
+    if (i == argc) break; } }
 // this is for runtime errors from the interpreter, it prints
 // a backtrace and everything.
 vm_op(interpret_error) {
   fputs("# ", stderr), emit(v, puthom(ip), stderr),
   fputs(" does not exist", stderr), errargs(v, fp);
+  fputc('\n', stderr);
   if (fp < Pool + Len)
     do ip = gethom(Retp), fp += Size(fr) + getnum(Argc) + getnum(Subd),
        fputs("#  in ", stderr), emsep(v, puthom(ip), stderr, '\n');
