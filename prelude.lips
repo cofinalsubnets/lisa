@@ -73,8 +73,8 @@
        'clo ()     'par p
        'lam (tbl)  'nom n
        'val (tbl)  'sig (*: b)))))
- inst (\ e m i k (emi i (k e (+ m 1))))
 
+ inst (\ e m i k (emi i (k e (+ m 1))))
  insx (\ e m i x k (emi i (emx x (k e (+ m 2)))))
  imm  (\ e m x k (insx e m i-immv x (\ e m (produce e m (t-tag x) k))))
  cev  (\ e m x k ((? (twop x) c2 (symp x) cy imm) e m x k))
@@ -112,29 +112,35 @@
  init (\ l (? (twop (:* l)) (:: (*: l) (init (:* l)))))
  last (\ l (? (twop (:* l)) (last (:* l)) (*: l)))
  inliners (tbl
+  *: (\ e m x k (cev e m (*: (:* x)) (consume 'two (\ e m (inst e m i-car k)))))
+  :* (\ e m x k (cev e m (*: (:* x)) (consume 'two (\ e m (inst e m i-cdr k)))))
+  :: (\ e m x k (cev e m (*: (:* x)) (\ e m
+                 (inst e m i-push (\ e m
+                  (cev e m (*: (:* (:* x))) (\ e m
+                   (inst e m i-cons k))))))))
   fail (\ e m x k (inst e m i-fail k)))
 
- consume (\ t k (\ e m (>>= (tget t-checks t)
-  (\ tc (?  tc (inst e m tc k) k)))))
+ consume (\ t k (? (: tc (tget t-checks t))
+  (\ e m (inst e m tc k)) (fail)))
 
- cap (\ e m x k
+ cap (\ e m x k (?
+  (: q (tget inliners (*: x)))
+   (q e m x k)
   ((: capi (\ e m x k
        (? (nilp x) (k e m)
         (capi e m (:* x) (\ e m
          (cev e m (*: x) (\ e m
           (inst e m i-push k))))))))
    e m (:* x) (\ e m
-    (? (: q (tget inliners (*: x)))
-      (q e m x k)
       (cev e m (*: x) (consume 'hom (\ e m
        (>>= (k e (+ m 2)) (\ k
         (: l (len (:* x)) (?
-         (= i-ret (hom-get-i k))
+         (nilp (= i-ret (hom-get-i k)))
+          (emi i-call (emx l k))
           (>>= (hom-seek k 1) (\ k
            (? (= l (len (tget e 'arg)))
             (emi i-loop k)
-            (emi i-rec (emx l k)))))
-         (emi i-call (emx l k)))))))))))))
+            (emi i-rec (emx l k))))))))))))))))
 
  cse (\ e m x k (? (:* x)
   ((: cser (\ e m x k (?
@@ -339,12 +345,12 @@
 
  ; this function has a lot of arguments sorry...
  ; env, len, type, cont, xpn.
- produce (\ e m t k (:
-  type (\ t h
-   ((\ t u (case u t (type t (hom-seek h 1))
-                 'none h
-                 (fail)))
-    t (consumes h)))
+ produce (\ e m t k (,
+   (: type (\ t h
+     ((\ t u (case u t (type t (hom-seek h 1))
+                   'none h
+                   (fail)))
+      t (consumes h))))
   (type t (k e m))))
 
  consumes (\ h (>>= (tget t-checks (hom-get-i h)) (\ c
@@ -372,7 +378,7 @@
  forms(tbl '` cqt '? cco ': cde '\ cla ', cse)
  c2 (\ e m x k (: z (tget forms (*: x)) ((? z z cap) e m x k)))
  ini (\ e m (insx e m i-ret (tget e'nom) (\ e m (hom m))))
- eval (\ x (: e (env () () ()) ((cev e 0 (pev e x) ini))))
+ eval (\ x (: e (env () () ()) ((cev e 0 (pev e x) ini) x)))
  eval ; comment this line to have compiler internals defined at toplevel
  ))
 

@@ -591,13 +591,12 @@ typedef struct fr { obj clos, retp, subd, argc, argv[]; } *fr;
 #define Argv ff(fp)->argv
 
 static Inline void perrarg(vm v, mem fp) {
-  num argc, i = 0;
-  if (fp == Pool + Len || !(argc = getnum(Argc))) return;
+  if (fp == Pool + Len) return;
+  num argc = getnum(Argc), i = 0;
+  if (argc == 0) return;
   else for (fputs(" at ", stderr);;fputc(' ', stderr)) {
     obj x = Argv[i++];
-    if (twop(x) || tupp(x))
-      fputc('#', stderr), fputs(tnom(kind(x)), stderr);
-    else emit(v, x, stderr);
+    emit(v, x, stderr);
     if (i == argc) break; } }
 
 // this is for runtime errors from the interpreter, it prints
