@@ -29,8 +29,7 @@ typedef struct sym { obj nom, code, l, r; } *sym;
 
 typedef struct spec {
   struct spec *sp;
-  obj (*cp)(rt, obj), nom;
-} *spec;
+  obj (*cp)(rt, obj), nom; } *spec;
 typedef struct tble { obj key, val; struct tble *next; } *tble;
 typedef struct tbl { num len, cap; tble *tab; } *tbl;
 
@@ -58,8 +57,8 @@ rt initialize(),
 void scr(vm, FILE*),
      emit(rt, obj, FILE*),
      phomn(rt, obj, FILE*),
-     vferrp(rt, FILE*, obj, const char*, va_list), // lol
-     errp(rt, obj, const char*, ...),
+     vferrp(rt, FILE*, const char*, va_list), // lol
+     errp(rt, const char*, ...),
      emsep(rt, obj, FILE*, char),
      reqsp(rt, num),
      *bump(rt, num),

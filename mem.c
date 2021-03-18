@@ -51,7 +51,7 @@ void reqsp(vm v, num req) {
     if (copy(v, len)) return;
     // oh no, that didn't work, maybe we can still return though?
     if (allocd <= Len) return; }
-  err(v, 0, "[gc] oom"); }
+  errp(v, "# oom"); }
 
 // the first step in copying is to allocate
 // a new pool of the given length, which must

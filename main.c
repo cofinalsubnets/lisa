@@ -15,8 +15,8 @@ void scr(vm v, FILE *f) {
 static int scripts(rt v, char**argv) {
   for (char *q; (q = *argv++);) {
     FILE *f = fopen(q, "r");
-    if (!f) return errp(v, 0, "[%s] %s", q, strerror(errno)), NO;
-    if (setjmp(v->restart)) return errp(v, 0, "[%s] fail", q),
+    if (!f) return errp(v, 0, "# %s : %s", q, strerror(errno)), NO;
+    if (setjmp(v->restart)) return errp(v, 0, "# %s : fail", q),
                                    fclose(f),
                                    NO;
     scr(v, f);

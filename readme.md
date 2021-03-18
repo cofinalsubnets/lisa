@@ -11,13 +11,12 @@ with scheme equivalents
 - `(, a) = a`
 - `(, a b) = (begin a b)`
 
-
 ### `:` define / let
 - `(:) = '()`
 - `(: a) = a`
 - `(: a b) = (begin (define a b) a)`
 - `(: a b c d) = (begin (define a b) (define c d) c)`
-- `(: a b c d e) = (let* ((a b) (c d)) e)`
+- `(: a b c d e) = (letrec ((a b) (c d)) e)`
 
 ### `\` lambda
 - `(\) = (lambda () ())`
@@ -26,7 +25,6 @@ with scheme equivalents
 - `(\ a b (a b)) = (lambda (a b) (a b))`
 - `(\ a b . (a b)) = (lambda (a . b) (a b))`
 - `(\ a b c (, x y z)) = (lambda (a b c) x y z)`
-
 
 ### `?` cond
 - `(?) = '()`
@@ -46,16 +44,15 @@ nil is the only false value
 ## functions
 this whole section is unstable and  some of these names are
 bad, sorry, you know what they say about naming things!
-- `ev = eval` `ap = apply` `ccc = call/cc`
-- `.` print arguments separated by spaces then newline
-- `+` `-` `*` `/` `%` what you think
+- `+` `-` `*` `/` `%` what you probably think!
+- `<` `<=` `>=` `>` variadic, test each successive pair of
+  arguments, works on numbers.
+- `=` variadic, works on anything, recursive on pairs so
+  `(= (li 1 2 3) (li 1 2 3)).
+- `ev = eval`, `ap = apply`, `ccc = call/cc`
+- `.` print arguments separated by spaces, print newline, return
+  last argument; useful for debugging.
 - `&&` `||` left-to-right, shortcut eval when bound early.
-- `<` `<=` `=` `>=` `>` = is recursive with value semantics
-  on lists etc. order operations are currently well defined
-  only on numbers, but you won't get a type error. all
-  comparison functions are variadic and test their arguments
-  pairwise left-to-right, with shortcut evaluation when bound
-  early.
 - there's no built-in `list` but `list = (\ x . x)`
 - `*: = car` `:* = cdr` `:: = cons` `*! = set-car!` `!* = set-cdr!`
 - `homp` `nump` `twop` `symp` `nilp` type predicates
@@ -64,14 +61,11 @@ bad, sorry, you know what they say about naming things!
 
 ## macros
 these are defined in `prelude.lips`, `make repl` imports them automatically
-- `(::: nom def)` define macro, like even `:`.
-  using it elsewhere than at toplevel is probably a bad idea.
-- `(>>= x f) = (f x)` bind, so you can play like it's haskell.
-  `(>>= 1 (\ x (>>= 2 (\ y (+ x y)))))`. actually this is pretty
-  useful.
+- `(::: nom0 def0 nom1 def1 ...)` define macro
+- `(>>= x y z f) = (f x y z)` bind ; `(let ((a x) (b y) (c z)) q) = (>>= x y z (\ a b c q))`
 
 ## code examples
-the compiler is in `prelude.lisp`.
+the thread compiler and built-in functions are in `prelude.lisp`.
 
 ### fizzbuzz
 ```lisp
@@ -87,13 +81,10 @@ the compiler is in `prelude.lisp`.
 
 ### a quine
 ```lisp
-(: li (\ x . x) ; list
-   quine ((\ q ((ev q) q)) '(\ i (li i (li '` i)))))
-; it's ((\ i (li i (li '` i))) '(\ i (li i (li '` i))))
+((\ i (li i (li '` i))) '(\ i (li i (li '` i))))
 ```
 ## missing features
 - exceptions
-- basic string functions
 - arrays, floats and many other types
 - unicode
 - useful i/o

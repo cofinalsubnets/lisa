@@ -431,35 +431,35 @@ static void rpr(vm v, mem d, const char *n, terp *u) {
   with(y, x = hom_ini(v, 2));
   x = em2(u, y, x);
   tbl_set(v, *d, X(y), x); }
+
 static void rin(vm v, mem d, const char *n, terp *u) {
   obj y = interns(v, n);
   tbl_set(v, *d, y, putnum(u)); }
 
 #define prims(_)\
-  _("read", rd_u),\
-  _(".", em_u),\
-  _("*:", car_u),     _(":*", cdr_u),\
+  _("hom-fin", hom_fin_u),\
+  _("read", rd_u),   _(".", em_u),\
+  _("*:", car_u),    _(":*", cdr_u),\
   _("*!", setcar_u), _("!*", setcdr_u),\
   _("::", cons_u),   _("=", eq_u),\
-  _("<", lt_u),        _("<=", lteq_u),\
-  _(">", gt_u),        _(">=", gteq_u),\
-  _("+", add_u),      _("-", sub_u),\
-  _("*", mul_u),      _("/", div_u),\
-  _("%", mod_u),      _("ap", ap_u),\
-  _("ccc", ccc_u),     _("ev", ev_u),\
-  _("||", or_u),       _("&&", and_u),\
-  _("fail", fail), _("tbl", tblmk),\
-  _("tget", tblg),  _("tset", tbls),\
-  _("thas", tblc),  _("tdel", tbld),\
-  _("tkeys", tblks),_("tlen", tbll),\
-  _("slen", strl),  _("sget", strg),\
-  _("scat", strc), _("ssub", strs),\
-  _("str", strmk),     _(".c", pc_u),\
-  _("hom", hom_u),     _("hom-seek", hom_seek_u),\
-  _("hom-fin", hom_fin_u),\
-  _("emx", emx), _("hom-get-x", hom_getx_u),\
-  _("emi", emi), _("hom-get-i", hom_geti_u),\
-  _("zzz", zzz),       _("nump", nump_u),\
+  _("<", lt_u),      _("<=", lteq_u),\
+  _(">", gt_u),      _(">=", gteq_u),\
+  _("+", add_u),     _("-", sub_u),\
+  _("*", mul_u),     _("/", div_u),\
+  _("%", mod_u),     _("ap", ap_u),\
+  _("ccc", ccc_u),   _("ev", ev_u),\
+  _("||", or_u),     _("&&", and_u),\
+  _("fail", fail),   _("tbl", tblmk),\
+  _("tget", tblg),   _("tset", tbls),\
+  _("thas", tblc),   _("tdel", tbld),\
+  _("tkeys", tblks), _("tlen", tbll),\
+  _("slen", strl),   _("sget", strg),\
+  _("scat", strc),   _("ssub", strs),\
+  _("str", strmk),   _(".c", pc_u),\
+  _("hom", hom_u),   _("hom-seek", hom_seek_u),\
+  _("emx", emx),     _("hom-get-x", hom_getx_u),\
+  _("emi", emi),     _("hom-get-i", hom_geti_u),\
+  _("zzz", zzz),     _("nump", nump_u),\
   _("symp", symp_u), _("twop", twop_u),\
   _("tblp", tblp_u), _("strp", strp_u),\
   _("nilp", nilp_u), _("homp", homp_u)
@@ -482,8 +482,8 @@ static Inline void init_globals_array(vm v) {
     z = table(v), Mac = z,
 #define bsym(i,s)(z=interns(v,s),AR(y)[i]=z)
     bsym(Eval, "ev"), bsym(Apply, "ap"),
-    bsym(Def, ":"), bsym(Cond, "?"), bsym(Lamb, "\\"),
-    bsym(Quote, "`"), bsym(Seq, ","), bsym(Splat, ".")); }
+    bsym(Def, ":"),   bsym(Cond, "?"), bsym(Lamb, "\\"),
+    bsym(Quote, "`"), bsym(Seq, ","),  bsym(Splat, ".")); }
 #undef bsym
 
 
@@ -500,7 +500,24 @@ static int seekp(const char *p) {
   return c; }
 
 
-static Inline void sinitv(vm v) {
+vm bootstrap(vm v) {
+  if (v == NULL) return v;
+  // now we can bootstrap ...
+  const char *path = "prelude.lips";
+  int pre = seekp(path);
+  if (pre == -1) errp(v, "[init] can't find %s", path);
+  else {
+    FILE *f = fdopen(pre, "r");
+    if (setjmp(v->restart)) return
+      errp(v, "[init] error in %s", path),
+      fclose(f), finalize(v);
+    scr(v, f), fclose(f); }
+  return v; }
+
+vm initialize() {
+  vm v = malloc(sizeof(struct rt));
+  if (!v || setjmp(v->restart)) return
+    errp(v, "[init] oom"), finalize(v);
   v->t0 = clock(),
   v->ip = v->xp = v->syms = v->glob = nil,
   v->fp = v->hp = v->sp = (mem)w2b(1),
@@ -510,27 +527,7 @@ static Inline void sinitv(vm v) {
   obj y = interns(v, "ns");
   tbl_set(v, Top, y, Top);
   y = interns(v, "macros");
-  tbl_set(v, Top, y, Mac); }
-
-vm bootstrap(vm v) {
-  if (v == NULL) return v;
-  // now we can bootstrap ...
-  const char *path = "prelude.lips";
-  int pre = seekp(path);
-  if (pre == -1) errp(v, 0, "[init] can't find %s", path);
-  else {
-    FILE *f = fdopen(pre, "r");
-    if (setjmp(v->restart)) return
-      errp(v, 0, "[init] error in %s", path),
-      fclose(f), finalize(v);
-    scr(v, f), fclose(f); }
-  return v; }
-
-vm initialize() {
-  vm v = malloc(sizeof(struct rt));
-  if (!v || setjmp(v->restart)) return
-    errp(v, 0, "[init] oom"), finalize(v);
-  sinitv(v);
+  tbl_set(v, Top, y, Mac);
   return v; }
 
 vm finalize(vm v) {

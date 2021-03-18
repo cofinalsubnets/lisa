@@ -22,7 +22,7 @@ NoInline const char *tnom(enum type t) { switch (t) {
 typedef obj P(vm, FILE*);
 static P atom, reads, quote, str;
 
-#define readx(v,m)(errp(v,0,m),0)
+#define readx(v,m)(errp(v,m),0)
 
 static int read0(FILE *i) {
   for (int c;;) switch ((c = getc(i))) {
@@ -117,7 +117,9 @@ static void emtwo_(vm v, two w, FILE *o) {
   twop(w->y) ? (emsep(v, w->x, o, ' '), emtwo_(v, gettwo(w->y), o)) :
                 emsep(v, w->x, o, ')'); }
 static void emtwo(vm v, two w, FILE *o) {
-  fputc('(', o), emtwo_(v, w, o); }
+  if (w->x == Qt && twop(w->y) && nilp(Y(w->y)))
+    fputc('\'', o), emit(v, X(w->y), o);
+  else fputc('(', o), emtwo_(v, w, o); }
 static void emnum(vm v, num n, FILE *o) {
   fprintf(o, "%ld", n); }
 static void emhom(vm v, hom h, FILE *o) {
@@ -132,20 +134,9 @@ void emit(vm v, obj x, FILE *o) {
     case Tbl: return emtbl(v, gettbl(x), o);
     default:  return (void) fputs("()", o); } }
 
-void vferrp(vm v, FILE *o, obj x, const char *msg, va_list xs) {
-  if (msg) {
-    vfprintf(o, msg, xs);
-    if (x) fputc(' ', o); }
-  if (x) {
-    if (msg) fputs("# ", o);
-    emit(v, x, o); }
-  fputc('\n', o); }
+void vferrp(vm v, FILE *o, const char *msg, va_list xs) {
+  vfprintf(o, msg, xs), fputc('\n', o); }
 
-void errp(vm v, obj x, const char *msg, ...) {
+void errp(vm v, const char *msg, ...) {
   va_list xs;
-  va_start(xs, msg), vferrp(v, stderr, x, msg, xs), va_end(xs); }
-
-obj err(vm v, obj x, const char *msg, ...) {
-  va_list xs;
-  va_start(xs, msg); vferrp(v, stderr, x, msg, xs); va_end(xs);
-  return restart(v); }
+  va_start(xs, msg), vferrp(v, stderr, msg, xs), va_end(xs); }
