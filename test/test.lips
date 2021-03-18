@@ -39,18 +39,16 @@
     (: de-str.l (\ s n
         (? (= n (slen s)) ()
            (:: (sget s n) (de-str.l s (+ n 1)))))
-     (de-str.l s 0)))
+     (de-str.l s 0))))
 
 ; strings are supposed to work
- (test strings (&&
-  (= "hollow world" (scat "hol" "low " "wor" "ld"))
-  (= "bidden" (ssub "forbidden planet" 3 9))
-  (: l (de-str "hello person")
-   (&& (= 12 (len l)) (= (*: l) 104)))
-  (= "a" (str 97))
-  (= "asdf" "asdf")
-  (nilp (= "asdf" "asd"))
-  (= "" (str 0 0 2 0)))))
+(test strings (&&
+ (= "hollow world" (scat "hol" "low " "wor" "ld"))
+ (= "bidden" (ssub "forbidden planet" 3 9))
+ (= "a" (str 97))
+ (= "asdf" "asdf")
+ (nilp (= "asdf" "asd"))
+ (= "asdf" (ap str (de-str "asdf")))))
 
 ; here's a function for iterating over ranges
 (: from (\ m n f (? (< m n) (, (f m) (from (+ m 1) n f)))))

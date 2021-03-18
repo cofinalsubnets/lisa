@@ -52,6 +52,8 @@
    ; a macro for defining macros
    '::: (: defm (\ n x . (,(tset macros n (: v (ev (A x))))
                            (? (B x) (ap defm (B x)) v))))
+   'AA (\ x (X A (X (X A (X x))))) 'AB (\ x (X A (X (X B (X x)))))
+   'BA (\ x (X B (X (X A (X x))))) 'BB (\ x (X B (X (X B (X x)))))
    ; bind
    '>>= (\ x . (X (last x) (init x)))
    'case (\ x a .
@@ -68,7 +70,7 @@
  env (\ a p n (>>=
   ((: asig (\ a n
        (? (twop a)
-        (? (? (twop (B a)) (= '. (A (B a))))
+        (? (? (twop (B a)) (= '. (AB a)))
          (X (- (+ n 1)) (li (A a)))
          (>>= (asig (B a) (+ n 1)) (\ r
           (X (A r) (X (A a) (B r))))))
@@ -88,27 +90,31 @@
 
  inst (\ e m i k (emif i (k e (+ m 1))))
  insx (\ e m i x k (emif i (emx x (k e (+ m 2)))))
- imm  (\ e m x k (insx e m i-immv x (\ e m (produce e m (t-tag x) k))))
+ imm  (\ e m x k (insx e m i-immv x (-> (t-tag x) k)))
  cev  (\ e m x k ((? (twop x) c2 (symp x) cy imm) e m x k))
+
+ lfem (\ f (\ x . (\ e m (ap f (X e (X m x))))))
+ kev (lfem cev)
+ jnst (lfem inst)
+ jnsx (lfem insx)
 
  cy (\ e m x k (:
   addclo (\ e y (tset e'clo(snoc (tget e 'clo) y)))
   late (\ e m x d k (>>= (k e (+ m 2)) (\ h
    (>>= (consumes h) (\ t
-    (>>= (? (= t 'none) h (hom-seek h 1)) (\ h
+    (>>= (? t (hom-seek h 1) h) (\ h
      (emi i-lbind (emx (X (t-c t) (X d x)) h)))))))))
   r (look e x)
   s (A r)
   (? (= s 'here)  (imm e m (B r) k)
      (= s 'wait)  (late e m x (B r) k)
-     (= e (B r)) (? (= s 'arg)
-                      (insx e m i-argn (idx (tget e 'arg) x) k)
-                     (= s 'loc)
-                      (insx e m i-locn (idx (tget e'loc) x) k)
-                     (= s 'clo)
-                      (insx e m i-clon (idx (tget e'clo) x) k))
-     (: l (len (tget e'clo)) (, (addclo e x)
-                             (insx e m i-clon l k))))))
+     (= e (B r)) (case s
+      'arg (insx e m i-argn (idx (tget e 'arg) x) k)
+      'loc (insx e m i-locn (idx (tget e'loc) x) k)
+      'clo (insx e m i-clon (idx (tget e'clo) x) k))
+     (,(: l (len (tget e'clo)))
+       (addclo e x)
+       (insx e m i-clon l k)))))
 
  cqt (\ e m x k (: y (B x) (imm e m (? y (A y)) k)))
  toplp (\ e (nilp (tget e'par)))
@@ -121,47 +127,46 @@
       (tget e 'par) (look (tget e 'par) y)
       (thas ns y) (X 'here (tget ns y))
       (X 'wait ns)))
- consume (\ t k (? (: tc (tget t-checks t))
-  (\ e m (inst e m tc k)) (fail)))
+ >- (\ t k (? (: tc (tget t-checks t)) (jnst tc k) (fail)))
 
  cap (\ e m x k (:
    inline (\ x (case x
-    A (\ e m x k (cev e m (A (B x))
-                   (consume 'two (\ e m
-                    (inst e m i-car k)))))
-    B (\ e m x k (cev e m (A (B x))
-                   (consume 'two (\ e m
-                    (inst e m i-cdr k)))))
-    X (\ e m x k (cev e m (A (B x)) (\ e m
-                   (inst e m i-push (\ e m
-                    (cev e m (A (B (B x))) (\ e m
-                     (inst e m i-cons k))))))))
-    nilp (\ e m x k (cev e m (A (B x)) (\ e m (inst e m i-nilpp k))))
+    A (\ e m x k
+     (cev e m (AB x) (>- 'two (jnst i-car k))))
+    B (\ e m x k
+     (cev e m (AB x) (>- 'two (jnst i-cdr k))))
+    X (\ e m x k
+     (cev e m (? (: y (BB x)) (A y))
+      (jnst i-push (kev (AB x) (jnst i-cons (-> 'two k))))))
+    emi (\ e m x k
+     (cev e m (A (BB x)) (>- 'hom
+      (jnst i-push (kev (AB x) (>- 'num
+       (jnst i-emi (-> 'hom k))))))))
+    emx (\ e m x k
+     (cev e m (A (BB x)) (>- 'hom
+      (jnst i-push (kev (AB x)
+       (jnst i-emx (-> 'hom k)))))))
+    nilp (\ e m x k (cev e m (AB x) (jnst i-nilpp k)))
      
     fail (\ e m x k (inst e m i-fail k))))
-   check-arity (\ a h
-    (? (= i-arity (hom-get-i h))
-      (? (>= a (hom-get-x (hom-seek h 1))) (hom-seek h 2) (fail))
-      h))
  (?
   (: q (inline (A x)))
    (q e m x k)
   ((: capi (\ e m x k
        (? (nilp x) (k e m)
-        (capi e m (B x) (\ e m
-         (cev e m (A x) (\ e m
-          (inst e m i-push k))))))))
-   e m (B x) (\ e m
-      (cev e m (A x) (consume 'hom (\ e m
-       ((\ k l (?
-         (nilp (= i-ret (hom-get-i k)))
-          (emi i-call (emx l k))
-         (>>= (hom-seek k 1) (\ k
-          (? (= l (len (tget e 'arg)))
-           (emi i-loop k)
-           (emi i-rec (emx l k)))))))
-        (k e (+ m 2))
-        (len (B x)))))))))))
+        (capi e m (B x) (kev (A x) (jnst i-push k))))))
+
+   e m (B x) (kev (A x) (>- 'hom (\ e m
+
+    ((\ k l (?
+      (nilp (= i-ret (hom-get-i k)))
+       (emi i-call (emx l k))
+      (>>= (hom-seek k 1) (\ k
+       (? (= l (len (tget e 'arg)))
+        (emi i-loop k)
+        (emi i-rec (emx l k)))))))
+     (k e (+ m 2))
+     (len (B x))))))))))
 
  cse (\ e m x k (? (B x)
   ((: cser (\ e m x k (?
@@ -175,9 +180,9 @@
  cde (\ e m x k
   (: desug (\ d (li (li '\ (li ', (init d) (last d)))))
      cder (\ e m x k (? (nilp x) (k e m) (?
-      (>>= (\ e m (cder e m (B (B x)) k)) (\ k
+      (>>= (\ e m (cder e m (BB x) k)) (\ k
        (? (|| (toplp e) (< -1 (idx (tget e 'loc) (A x))))
-           (cev e m (A (B x)) (\ e m (cdeb e m (A x) k)))
+           (cev e m (AB x) (\ e m (cdeb e m (A x) k)))
           (: q (mat e (A x)))
            (imm e m (A q) k)
            (cev e m (A x) k)))))))
@@ -206,13 +211,12 @@
      ; assume there are an odd number of arguments, ie.
      ; at least 1. this is assured by peco. thanks peco!
      ccor (\ e m x k (?
-      (nilp (B x)) (cev e m (A x) (\ e m (ccoprecon e m k)))
-      (cev e m (A x) (\ e m
-       (ccopreant e m (\ e m
-        (ccor e m (B (B x)) (\ e m
-         (ccopostcon e m (\ e m
-          (cev e m (A (B x)) (\ e m
-           (ccoprecon e m k)))))))))))))
+      (nilp (B x)) (cev e m (A x) ((lfem ccoprecon) k))
+      (cev e m (A x)
+       ((lfem ccopreant)
+        ((lfem ccor) (BB x)
+         ((lfem ccopostcon)
+          (kev (AB x) ((lfem ccoprecon) k))))))))
    (? (nilp (B x)) (imm e m () k)
     ((\ k (, (tset e 's2 (B (tget e 's2))) k))
      (ccor e m (B x) (\ e m (ccopre e m k)))))))
@@ -223,7 +227,7 @@
   (? (= (A l) 'here) (quote (B l)) x)))
  pede (\ e x
   (: peder (\ e x (? x
-      (X (A x) (X (pev e (A (B x))) (peder e (B (B x)))))))
+      (X (A x) (X (pev e (AB x)) (peder e (BB x))))))
    (X ': (? (|| (nilp x) (= 1 (% (len x) 2))) x (peder e x)))))
  pesq (\ e x (,
   (: pesqr (\ e x (?
@@ -262,16 +266,16 @@
       z)))))
 
  qtd (\ x (? (twop x) (= (A x) '`) (nilp (symp x))))
- unq (\ x (? (twop x) (A (B x)) x))
+ unq (\ x (? (twop x) (AB x) x))
  peco (\ e x
   (: pecor (\ e x (?
       (nilp x) (li ())
       (nilp (B x)) (li (pev e (A x)))
       (: a (pev e (A x))
-       (? (qtd a) (? (unq a) (li (pev e (A (B x))))
-                             (pecor e (B (B x))))
-        (X a (X (pev e (A (B x))) (pecor e (B (B x)))))))))
-   (: r (pecor e x) (? r (? (nilp (B r)) (A r) (X '? r))))))
+       (? (qtd a) (? (unq a) (li (pev e (AB x)))
+                             (pecor e (BB x)))
+        (X a (X (pev e (A (B x))) (pecor e (BB x))))))))
+   (: r (pecor e x) (? r (? (B r) (X '? r) (A r))))))
 
  pev (\ e x (?
   (twop x) (pe2 e x)
@@ -279,7 +283,7 @@
   (quote x)))
 
  ltu (\ e nom l
-  (: n ((\ x (? x x (X x x))) (B l))
+  (: n ((\ x (? x x (X()))) (B l))
      x (last n)
      f (env (init n) e (X nom (tget e 'nom)))
    (, (scan f x)
@@ -326,8 +330,8 @@
  scan (\ e x
   (: scandef (\ e x (?
       (nilp x) 0
-      (B x) ((\ r (, (? r (scandefadd e (A x) (A (B x)))) r))
-              (scandef e (B (B x))))))
+      (B x) ((\ r (, (? r (scandefadd e (A x) (AB x))) r))
+              (scandef e (BB x)))))
      mcar (\ x (? x (A x)))
      addloc (\ e y (tset e 'loc (X y (tget e 'loc))))
 
@@ -352,7 +356,7 @@
   (tblp x) 'tbl (nilp x) 'nil))
  t-c (\ x (case x
   'hom 0 'num 1 'two 2 'tup 3 'oct 4
-  'tbl 5 'sym 6 'nil 7 'none 8
+  'tbl 5 'sym 6 'nil 7 () 8
   (fail)))
  t-checks (tbl
   i-tchom 'hom 'hom i-tchom
@@ -361,16 +365,15 @@
 
  ; this function has a lot of arguments sorry...
  ; env, len, type, cont, xpn.
- produce (\ e m t k (,
+ produces (\ e m t k (,
    (: type (\ t h
      ((\ t u (case u t (type t (hom-seek h 1))
-                   'none h
+                   () h
                    (fail)))
       t (consumes h))))
   (type t (k e m))))
-
- consumes (\ h (>>= (tget t-checks (hom-get-i h)) (\ c
-  (? c c 'none))))
+ -> (\ t k (\ e m (produces e m t k)))
+ consumes (\ h (? (: c (tget t-checks (hom-get-i h))) c))
 
  cla (\ e m x k
   (: gnom (\ e k (: i (hom-get-i k) (case i
@@ -380,12 +383,11 @@
      claclo (\ e arg
       (: clacloin (\ e arg k (? (nilp arg) k
           (clacloin e (B arg) (\ e m
-           (cev e m (A arg) (\ e m
-            (inst e m i-push k)))))))
+           (cev e m (A arg) (jnst i-push k))))))
          k (\ e m (emi i-take (emx (len arg) (hom (+ m 2)))))
        ((clacloin e arg k) e 0)))
 
-   (>>= (produce e (+ m 2) 'hom k) (\ k
+   (>>= (produces e (+ m 2) 'hom k) (\ k
     (>>= (ltu e (gnom e k) x) (\ x (?
      (homp x) (emi i-immv (emx x k))
      (emi (? (tget e'loc) i-encll i-encln)

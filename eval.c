@@ -85,7 +85,7 @@ enum location { Here, Loc, Arg, Clo, Wait };
   _(hom_seek_u),_(hom_geti_u),_(emi),\
   _(fail),_(ccc_u),_(cont),_(vararg),_(tuck),\
   _(rd_u),\
-  _(drop),_(hom_getx_u),_(emx),_(em_u),_(ev_u),_(ap_u)
+  _(drop),_(hom_getx_u),_(emx_u),_(emi_u),_(emx),_(em_u),_(ev_u),_(ap_u)
 #define ninl(x) x NoInline
 static terp insts(ninl);
 #undef ninl
@@ -457,8 +457,8 @@ static void rin(vm v, mem d, const char *n, terp *u) {
   _("scat", strc),   _("ssub", strs),\
   _("str", strmk),   _(".c", pc_u),\
   _("hom", hom_u),   _("hom-seek", hom_seek_u),\
-  _("emx", emx),     _("hom-get-x", hom_getx_u),\
-  _("emi", emi),     _("hom-get-i", hom_geti_u),\
+  _("emx", emx_u),     _("hom-get-x", hom_getx_u),\
+  _("emi", emi_u),     _("hom-get-i", hom_geti_u),\
   _("zzz", zzz),     _("nump", nump_u),\
   _("symp", symp_u), _("twop", twop_u),\
   _("tblp", tblp_u), _("strp", strp_u),\
@@ -857,12 +857,20 @@ vm_op(hom_fin_u) {
   obj x; CallC(x = hom_fin(v, *Argv));
   Go(ret, x); }
 vm_op(emx) {
+  hom h = gethom(*sp++) - 1;
+  G(h) = (terp*) xp;
+  Ap(ip+1, puthom(h)); }
+vm_op(emi) {
+  hom h = gethom(*sp++) - 1;
+  G(h) = (terp*) getnum(xp);
+  Ap(ip+1, puthom(h)); }
+vm_op(emx_u) {
   ArityCheck(2);
   TypeCheck(Argv[1], Hom);
   hom h = gethom(Argv[1]) - 1;
   G(h) = (terp*) Argv[0];
   Go(ret, puthom(h)); }
-vm_op(emi) {
+vm_op(emi_u) {
   ArityCheck(2);
   TypeCheck(Argv[0], Num);
   TypeCheck(Argv[1], Hom);
@@ -1130,7 +1138,7 @@ vm_op(emse) {
 
 // pairs
 vm_op(cons) {
-  Have(1); hp[0] = *sp++, hp[1] = xp;
+  Have(1); hp[0] = xp, hp[1] = *sp++;
   xp = puttwo(hp); hp += 2; Next(1); }
 vm_op(car) { Ap(ip+1, X(xp)); }
 vm_op(cdr) { Ap(ip+1, Y(xp)); }
@@ -1138,8 +1146,9 @@ vm_op(setcar) { obj x = *sp++; X(xp) = x; xp = x; Next(1); }
 vm_op(setcdr) { obj x = *sp++; Y(xp) = x; xp = x; Next(1); }
 
 vm_op(cons_u) {
-  ArityCheck(2);
-  Have(2); hp[0] = Argv[0], hp[1] = Argv[1];
+  num aa = getnum(Argc);
+  if (!aa) Jump(interpret_error);
+  Have(2); hp[0] = Argv[0], hp[1] = aa == 1 ? nil : Argv[1];
   xp = puttwo(hp), hp += 2; Jump(ret); }
 vm_op(car_u) {
   ArityCheck(1); TypeCheck(*Argv, Two);
