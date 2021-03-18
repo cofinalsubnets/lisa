@@ -76,7 +76,7 @@
 
  fuse (tbl
   i-nilpp (\ i h (>>= (hom-get-i h) (\ j (case j
-   i-branch (,(.'barnch h)(emi i-barnch (hom-seek h 1)))
+   i-branch (emi i-barnch (hom-seek h 1))
    i-barnch (emi i-branch (hom-seek h 1))
    (emi i h))))))
  emif (\ i h ((? (: q (tget fuse i)) q emi) i h))
