@@ -8,6 +8,7 @@ s=$(wildcard *.c)
 o=$(s:.c=.o)
 v="`git rev-parse HEAD`-git"
 tcmd=./$b -_ $p $t
+rcmd = ./$b -_i $p
 
 # C compiler
 # gcc and clang both work. other compilers, tcc etc., don't.
@@ -66,7 +67,7 @@ clean:
 perf: perf.data
 	@perf report
 perf.data: $b $t
-	@perf record ./$^
+	@perf record ./$(tcmd)
 valg: $b $t
 	@valgrind $(tcmd)
 sloc:
@@ -76,6 +77,6 @@ bins: $o $n $b
 bench: $b
 	@make -sC bench
 repl: $n
-	@which rlwrap >/dev/null && rlwrap $n -vr || $n -vr
+	@which rlwrap >/dev/null && rlwrap $(rcmd) || $(rcmd)
 
 .PHONY: test clean perf valg sloc bins install vim bench repl

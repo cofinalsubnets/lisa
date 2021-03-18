@@ -74,8 +74,15 @@
        'lam (tbl)  'nom n
        'val (tbl)  'sig (*: b)))))
 
- inst (\ e m i k (emi i (k e (+ m 1))))
- insx (\ e m i x k (emi i (emx x (k e (+ m 2)))))
+ fuse (tbl
+  i-nilpp (\ i h (>>= (hom-get-i h) (\ j (case j
+   i-branch (,(.'barnch h)(emi i-barnch (hom-seek h 1)))
+   i-barnch (emi i-branch (hom-seek h 1))
+   (emi i h))))))
+ emif (\ i h ((? (: q (tget fuse i)) q emi) i h))
+
+ inst (\ e m i k (emif i (k e (+ m 1))))
+ insx (\ e m i x k (emif i (emx x (k e (+ m 2)))))
  imm  (\ e m x k (insx e m i-immv x (\ e m (produce e m (t-tag x) k))))
  cev  (\ e m x k ((? (twop x) c2 (symp x) cy imm) e m x k))
 
@@ -118,6 +125,8 @@
                  (inst e m i-push (\ e m
                   (cev e m (*: (:* (:* x))) (\ e m
                    (inst e m i-cons k))))))))
+  nilp (\ e m x k (cev e m (*: (:* x)) (\ e m (inst e m i-nilpp k))))
+   
   fail (\ e m x k (inst e m i-fail k)))
 
  consume (\ t k (? (: tc (tget t-checks t))
@@ -192,7 +201,7 @@
          (ccopostcon e m (\ e m
           (cev e m (*: (:* x)) (\ e m
            (ccoprecon e m k)))))))))))))
-   (? (nilp (:* x)) (imm e m nil k)
+   (? (nilp (:* x)) (imm e m () k)
     ((\ k (, (tset e 's2 (:* (tget e 's2))) k))
      (ccor e m (:* x) (\ e m (ccopre e m k)))))))
 
