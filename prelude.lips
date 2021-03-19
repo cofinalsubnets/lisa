@@ -1,4 +1,4 @@
-(: local-vars '(local-vars old-ev prelude stage2 macros ns)
+(: local-vars '(local-vars old-ev prelude stage2 macros ns emi emx hom hom-seek hom-get-i hom-get-x hom-fin)
    old-ev ev
    prelude '(,
   ;; here's some data constructors
@@ -146,6 +146,13 @@
      (cev e m (A (BB x)) (>- 'hom
       (jnst i-push (kev (AB x)
        (jnst i-emx (-> 'hom k)))))))
+
+#    tset (\ e m x k (>>= (B x) (\ x
+#     (cev e m (A (BB x))
+#      (jnst i-push (kev (AB x)
+#       (jnst i-push (kev (A x) (>- 'tbl
+#        (jnst i-tset k))))))))))
+
     nilp (\ e m x k (cev e m (AB x) (jnst i-nilpp k)))
      
     fail (\ e m x k (inst e m i-fail k))))
@@ -281,14 +288,15 @@
   (twop x) (pe2 e x)
   (symp x) (pey e x)
   (quote x)))
+ prev (\ e x m (cev e m (pev e x) ini))
 
  ltu (\ e nom l
-  (: n ((\ x (? x x (X()))) (B l))
+  (: n (|| (B l) '(()))
      x (last n)
      f (env (init n) e (X nom (tget e 'nom)))
    (, (scan f x)
       (resolve f)
-      (>>= (cev f 4 (pev f x) ini) (\ k
+      (>>= (prev f x 4) (\ k
        (>>= (? (nilp (tget f 'loc)) k
               (emi i-prel (emx (len (tget f 'loc)) k))) (\ k
         (>>= (hom-fin (?
@@ -396,7 +404,7 @@
  forms(tbl '` cqt '? cco ': cde '\ cla ', cse)
  c2 (\ e m x k (: z (tget forms (A x)) ((? z z cap) e m x k)))
  ini (\ e m (insx e m i-ret (tget e'nom) (\ e m (hom m))))
- eval (\ x (: e (env () () ()) ((cev e 0 (pev e x) ini) x)))
+ eval (\ x ((prev (env () () 'ev) x 0)x))
  eval ; comment this line to have compiler internals defined at toplevel
  ))
 

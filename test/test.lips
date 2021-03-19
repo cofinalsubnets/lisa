@@ -108,7 +108,7 @@
      (? (< m 1) (+ n 1)
       (ack (- m 1) (? (> n 0) (ack m (- n 1)) 1))))
     quine ((\ i (li i (li '` i))) '(\ i (li i (li '` i))))
-  (,(test comp-em (= 3 ((emi i-immv (emx 3 (emi i-ret (hom 3)))))))
+  (,
     (test comp-qt (= (li 1) (ev (li '` (li 1)))))
     (test comp-ap (&&
     (= 9 (ev (li + 1 2 (li * 2 3))))

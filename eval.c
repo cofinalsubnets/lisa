@@ -63,6 +63,7 @@ enum location { Here, Loc, Arg, Clo, Wait };
 
 // this is such a genius idea, i stole it from luajit
 #define insts(_)\
+  _(tget),_(tset),\
   _(arity),  _(tcnum),  _(tchom),   _(tctwo),  _(lbind),\
   _(immv),   _(argn),   _(clon),    _(locn),   _(take),\
   _(prel),   _(setl),   _(pc0),     _(pc1),    _(clos),\
@@ -514,7 +515,7 @@ vm bootstrap(vm v) {
     scr(v, f), fclose(f); }
   return v; }
 
-vm initialize() {
+vm initialize(int argc, const char **argv) {
   vm v = malloc(sizeof(struct rt));
   if (!v || setjmp(v->restart)) return
     errp(v, "[init] oom"), finalize(v);
@@ -528,6 +529,13 @@ vm initialize() {
   tbl_set(v, Top, y, Top);
   y = interns(v, "macros");
   tbl_set(v, Top, y, Mac);
+  y = interns(v, "argv");
+  obj a = nil;
+  mm(&y); mm(&a);
+  for (obj z; argc--; a = z)
+    z = string(v, argv[argc]),
+    z = pair(v, z, a);
+  um, um, tbl_set(v, Top, y, a);
   return v; }
 
 vm finalize(vm v) {
@@ -599,15 +607,14 @@ static Inline void perrarg(vm v, mem fp) {
 // this is for runtime errors from the interpreter, it prints
 // a backtrace and everything.
 vm_op(interpret_error) {
-  fputs("# ", stderr), emit(v, puthom(ip), stderr),
   // an error is expressed as the failure of the current function
   // to be defined for its arguments.
+  fputs("# ", stderr), emit(v, puthom(ip), stderr),
   fputs(" does not exist", stderr), perrarg(v, fp);
   fputc('\n', stderr);
-  if (fp < Pool + Len)
-    do ip = gethom(Retp), fp += Size(fr) + getnum(Argc) + getnum(Subd),
-       fputs("#  in ", stderr), emsep(v, puthom(ip), stderr, '\n');
-    while (fp < Pool + Len);
+  while (fp < Pool + Len)
+    ip = gethom(Retp), fp += Size(fr) + getnum(Argc) + getnum(Subd),
+    fputs("# in ", stderr), emsep(v, puthom(ip), stderr, '\n');
   return Hp = hp, restart(v); }
 
 obj restart(vm v) {
@@ -892,6 +899,14 @@ vm_op(hom_seek_u) {
   Go(ret, puthom(gethom(Argv[0])+getnum(Argv[1]))); }
 
 // hash tables
+vm_op(tget) {
+  xp = tbl_get(v, xp, *sp++) || nil;
+  Next(1); }
+vm_op(tset) {
+  obj x = *sp++, y = *sp++;
+  CallC(x = tbl_set(v, xp, x, y));
+  Ap(ip+1, x); }
+
 vm_op(tblg) {
   ArityCheck(2);
   TypeCheck(Argv[0], Tbl);

@@ -48,9 +48,10 @@ int main(int argc, char**argv) {
   args = argc - optind;
   if (args == 0 && !F&takka) return OK;
 
-  v = initialize();
+  v = initialize(argc, argv);
   v = F&nprel ? v : bootstrap(v);
   if (!v) return NO;
+
 
   int r = OK;
   if (args) r = scripts(v, argv + optind);
