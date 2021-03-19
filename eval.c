@@ -3,7 +3,62 @@
 typedef obj c1(vm, mem, num),
             c2(vm, mem, num, obj),
             c3(vm, mem, num, obj, obj);
-#define StackHeight (Pool+Len-Sp)
+
+// here is some "static data". this idea comes from luajit.
+#define insts(_)\
+  _(tget),_(tset),_(gsym_u),\
+  _(arity),  _(tcnum),  _(tchom),   _(tctwo),  _(lbind),\
+  _(immv),   _(argn),   _(clon),    _(locn),   _(take),\
+  _(prel),   _(setl),   _(pc0),     _(pc1),    _(clos),\
+  _(encll),  _(encln),  _(yield),   _(ret),    _(jump),\
+  _(branch), _(barnch), _(call),    _(rec),\
+  _(tbind),  _(push),   _(add),     _(sub),    _(mul),\
+  _(dqv),    _(mod),    _(neg),     _(lt),     _(lteq),\
+  _(eq),     _(gteq),   _(gt),      _(twopp),  _(numpp),\
+  _(nilpp),  _(strpp),  _(tblpp),   _(sympp),  _(hompp),\
+  _(car),    _(cdr),    _(setcar),  _(setcdr), _(cons),\
+  _(add_u),  _(sub_u),  _(mul_u),   _(div_u),  _(mod_u),\
+  _(lt_u),   _(lteq_u), _(eq_u),    _(gteq_u), _(gt_u),\
+  _(twop_u), _(nump_u), _(homp_u),  _(tblp_u), _(strp_u),\
+  _(nilp_u), _(car_u),  _(cdr_u),   _(cons_u),\
+  _(strmk),  _(strg),   _(strl),_(strs),_(strc),_(hom_fin_u),\
+  _(setcar_u), _(setcdr_u),\
+  _(symp_u), _(emse), _(hom_u), _(pc_u),\
+  _(or_u), _(and_u), _(zzz),\
+  _(tbll), _(tblmk),_(tblg),_(tblc),_(tbls),_(tbld),_(tblks),\
+  _(hom_seek_u),_(hom_geti_u),_(emi),\
+  _(fail),_(ccc_u),_(cont),_(vararg),_(tuck),\
+  _(rd_u),\
+  _(drop),_(hom_getx_u),_(emx_u),_(emi_u),_(emx),_(em_u),_(ev_u),_(ap_u)
+#define prims(_)\
+  _("gensym", gsym_u),\
+  _("hom-fin", hom_fin_u),\
+  _("read", rd_u),   _(".", em_u),\
+  _("*:", car_u),    _(":*", cdr_u),\
+  _("*!", setcar_u), _("!*", setcdr_u),\
+  _("::", cons_u),   _("=", eq_u),\
+  _("<", lt_u),      _("<=", lteq_u),\
+  _(">", gt_u),      _(">=", gteq_u),\
+  _("+", add_u),     _("-", sub_u),\
+  _("*", mul_u),     _("/", div_u),\
+  _("%", mod_u),     _("ap", ap_u),\
+  _("ccc", ccc_u),   _("ev", ev_u),\
+  _("||", or_u),     _("&&", and_u),\
+  _("fail", fail),   _("tbl", tblmk),\
+  _("tget", tblg),   _("tset", tbls),\
+  _("thas", tblc),   _("tdel", tbld),\
+  _("tkeys", tblks), _("tlen", tbll),\
+  _("slen", strl),   _("sget", strg),\
+  _("scat", strc),   _("ssub", strs),\
+  _("str", strmk),   _(".c", pc_u),\
+  _("hom", hom_u),   _("hom-seek", hom_seek_u),\
+  _("emx", emx_u),     _("hom-get-x", hom_getx_u),\
+  _("emi", emi_u),     _("hom-get-i", hom_geti_u),\
+  _("zzz", zzz),     _("nump", nump_u),\
+  _("symp", symp_u), _("twop", twop_u),\
+  _("tblp", tblp_u), _("strp", strp_u),\
+  _("nilp", nilp_u), _("homp", homp_u)
+
 ////
 /// bootstrap thread compiler
 //
@@ -61,32 +116,6 @@ enum location { Here, Loc, Arg, Clo, Wait };
 #define c1(nom,...) static obj nom(vm v,mem e,num m,##__VA_ARGS__)
 #define c2(nom,...) static obj nom(vm v,mem e,num m,obj x,##__VA_ARGS__)
 
-// this is such a genius idea, i stole it from luajit
-#define insts(_)\
-  _(tget),_(tset),_(gsym_u),\
-  _(arity),  _(tcnum),  _(tchom),   _(tctwo),  _(lbind),\
-  _(immv),   _(argn),   _(clon),    _(locn),   _(take),\
-  _(prel),   _(setl),   _(pc0),     _(pc1),    _(clos),\
-  _(encll),  _(encln),  _(yield),   _(ret),    _(jump),\
-  _(branch), _(barnch), _(call),    _(rec),\
-  _(tbind),  _(push),   _(add),     _(sub),    _(mul),\
-  _(dqv),    _(mod),    _(neg),     _(lt),     _(lteq),\
-  _(eq),     _(gteq),   _(gt),      _(twopp),  _(numpp),\
-  _(nilpp),  _(strpp),  _(tblpp),   _(sympp),  _(hompp),\
-  _(car),    _(cdr),    _(setcar),  _(setcdr), _(cons),\
-  _(add_u),  _(sub_u),  _(mul_u),   _(div_u),  _(mod_u),\
-  _(lt_u),   _(lteq_u), _(eq_u),    _(gteq_u), _(gt_u),\
-  _(twop_u), _(nump_u), _(homp_u),  _(tblp_u), _(strp_u),\
-  _(nilp_u), _(car_u),  _(cdr_u),   _(cons_u),\
-  _(strmk),  _(strg),   _(strl),_(strs),_(strc),_(hom_fin_u),\
-  _(setcar_u), _(setcdr_u),\
-  _(symp_u), _(emse), _(hom_u), _(pc_u),\
-  _(or_u), _(and_u), _(zzz),\
-  _(tbll), _(tblmk),_(tblg),_(tblc),_(tbls),_(tbld),_(tblks),\
-  _(hom_seek_u),_(hom_geti_u),_(emi),\
-  _(fail),_(ccc_u),_(cont),_(vararg),_(tuck),\
-  _(rd_u),\
-  _(drop),_(hom_getx_u),_(emx_u),_(emi_u),_(emx),_(em_u),_(ev_u),_(ap_u)
 #define ninl(x) x NoInline
 static terp insts(ninl);
 #undef ninl
@@ -435,35 +464,6 @@ static void rpr(vm v, mem d, const char *n, terp *u) {
 static void rin(vm v, mem d, const char *n, terp *u) {
   obj y = interns(v, n);
   tbl_set(v, *d, y, putnum(u)); }
-
-#define prims(_)\
-  _("gensym", gsym_u),\
-  _("hom-fin", hom_fin_u),\
-  _("read", rd_u),   _(".", em_u),\
-  _("*:", car_u),    _(":*", cdr_u),\
-  _("*!", setcar_u), _("!*", setcdr_u),\
-  _("::", cons_u),   _("=", eq_u),\
-  _("<", lt_u),      _("<=", lteq_u),\
-  _(">", gt_u),      _(">=", gteq_u),\
-  _("+", add_u),     _("-", sub_u),\
-  _("*", mul_u),     _("/", div_u),\
-  _("%", mod_u),     _("ap", ap_u),\
-  _("ccc", ccc_u),   _("ev", ev_u),\
-  _("||", or_u),     _("&&", and_u),\
-  _("fail", fail),   _("tbl", tblmk),\
-  _("tget", tblg),   _("tset", tbls),\
-  _("thas", tblc),   _("tdel", tbld),\
-  _("tkeys", tblks), _("tlen", tbll),\
-  _("slen", strl),   _("sget", strg),\
-  _("scat", strc),   _("ssub", strs),\
-  _("str", strmk),   _(".c", pc_u),\
-  _("hom", hom_u),   _("hom-seek", hom_seek_u),\
-  _("emx", emx_u),     _("hom-get-x", hom_getx_u),\
-  _("emi", emi_u),     _("hom-get-i", hom_geti_u),\
-  _("zzz", zzz),     _("nump", nump_u),\
-  _("symp", symp_u), _("twop", twop_u),\
-  _("tblp", tblp_u), _("strp", strp_u),\
-  _("nilp", nilp_u), _("homp", homp_u)
 
 #define RPR(a,b) rpr(v,&d,a,b)
 #define RIN(x) rin(v,&d,"i-"#x,x)
