@@ -84,8 +84,7 @@
   i-nilpp (\ i h (>>= (hom-get-i h) (\ j (case j
    i-branch (emi i-barnch (hom-seek h 1))
    i-barnch (emi i-branch (hom-seek h 1))
-   (emi i h)))))
-  )
+   (emi i h))))))
  emif (\ i h ((? (: q (tget fuse i)) q emi) i h))
 
  inst (\ e m i k (emif i (k e (+ m 1))))
@@ -127,74 +126,87 @@
       (tget e 'par) (look (tget e 'par) y)
       (thas ns y) (X 'here (tget ns y))
       (X 'wait ns)))
+
  >- (\ t k (? (: tc (tget t-checks t)) (jnst tc k) (fail)))
+ -> (\ t k (\ e m (produces e m t k)))
 
  zgrp (\ f m id x (? (nilp x) (? (nilp (= m id)) (X m)) (,
   (: y (A x))
   (? (qtd y) (zgrp f (f m y) id (B x))
    (X y (zgrp f m id (B x)))))))
+ jgrp (\ f m id x
+  (: jgrpn (\ f m x (? (nilp x) (X m)
+            (? (qtd (: y (A x))) (jgrpn f (f m y) (B x))
+                                 (: z (jgrpn f m (B x))
+                                  (, (!* z (X y (B z))) z)))))
+   (? (= id (A (: j (jgrpn f m x)))) (B j) j)))
 
- bfold (\ i k x xs
-  (jnst i-push (kev x (>- 'num (jnst i
-   (? xs (bfold i k (A xs) (B xs)) k))))))
- cap (\ e m x k (:
-   capi (\ e m x k (? (nilp x) (k e m) (capi e m (B x) (kev (A x) (jnst i-push k)))))
-   inline (\ x (case x
-    A (\ e m x k
-     (cev e m (AB x) (>- 'two (jnst i-car k))))
-    B (\ e m x k
-     (cev e m (AB x) (>- 'two (jnst i-cdr k))))
-    X (\ e m x k
-     (cev e m (? (: y (BB x)) (A y))
-      (jnst i-push (kev (AB x)
-       (jnst i-cons (-> 'two k))))))
-    emi (\ e m x k (>>= (B x) (\ x
-     (cev e m (AB x) (>- 'hom
-      (jnst i-push (kev (A x) (>- 'num
-       (jnst i-emi (-> 'hom k))))))))))
-    emx (\ e m x k (>>= (B x) (\ x
-     (cev e m (AB x) (>- 'hom
-      (jnst i-push (kev (A x)
-       (jnst i-emx (-> 'hom k)))))))))
-    + (\ e m x k (>>= (zgrp + 0 0 (B x)) (-> 'num k) (\ x k
-     (cev e m (A x) (>- 'num (?
-      (nilp (B x)) k
-       (bfold i-add k (AB x) (BB x))))))))
-    - (\ e m x k (>>= (B x) (-> 'num k) (\ x k (?
-     (nilp x) (imm e m 0 k)
-     (cev e m (A x) (>- 'num (?
-      (nilp (B x)) (jnst i-neg k)
-      (>>= (zgrp + 0 0 (B x)) (\ x
-       (? x (bfold i-sub k (A x) (B x)) k))))))))))
-       
+ bf0 (\ i k x
+  (: bf (\ i k x xs
+      (jnst i-push (kev x (>- 'num (jnst i (bf0 i k xs))))))
+   (? x (bf i k (A x) (B x)) (-> 'num k))))
 
-     
+ inliners (tbl
+  A (\ x k (kev (A x) (>- 'two (jnst i-car k))))
+  B (\ x k (kev (A x) (>- 'two (jnst i-cdr k))))
+  X (\ x k (kev (? (: y (B x)) (A y))
+            (jnst i-push (kev (A x)
+             (jnst i-cons (-> 'two k))))))
 
-#   tget (\ e m x k (>>= (B x) (\ x
-#    (cev e m (AB x) (jnst i-push
-#     (kev (A x) (>- 'tbl (jnst i-tget k))))))))
+  ;; be nice to the compiler
+  emi (\ x k
+   (kev (AB x) (>- 'hom
+    (jnst i-push (kev (A x) (>- 'num
+     (jnst i-emi (-> 'hom k))))))))
+  emx (\ x k
+   (kev (AB x) (>- 'hom
+    (jnst i-push (kev (A x)
+     (jnst i-emx (-> 'hom k)))))))
+  + (\ x k (>>= (jgrp + 0 0 x) (\ x
+   (kev (A x) (>- 'num (bf0 i-add k (B x)))))))
+#  - (\ x k 
+#  (? (nilp x) ((lfem imm) 0 k)
+#   (kev (A x) (>- 'num (?
+#    (B x) (bf0 i-sub k (zgrp + 0 0 (B x)))
+#    (jnst i-neg (-> 'num k)))))))
+  - (\ x k
+  (? (nilp x)
+      ((lfem imm) 0 k)
+     (nilp (B x))
+      (kev (A x) (>- 'num (jnst i-neg (-> 'num k))))
+     (: y (jgrp + 0 0 (B x))
+        z (? (nump (A x)) (jgrp - (A x) 0 y) (X(A x)y))
+      (? z (kev (A z) (>- 'num (bf0 i-sub k (B z))))
+          ((lfem imm) 0 k)))))
+#   tget (\ x k
+#    (kev (AB x) (jnst i-push
+#     (kev (A x) (>- 'tbl (jnst i-tget k))))))
 
-#    tset (\ e m x k (>>= (B x) (\ x
-#     (cev e m (A (BB x))
+#    tset (\ x k
+#     (kev (A (BB x))
 #      (jnst i-push (kev (AB x)
 #       (jnst i-push (kev (A x) (>- 'tbl
-#        (jnst i-tset k))))))))))
+#        (jnst i-tset k))))))))
 
-    nilp (\ e m x k (cev e m (AB x) (jnst i-nilpp k)))
-     
-    fail (\ e m x k (inst e m i-fail k))
-    ))
- (? (: q (inline (A x))) (q e m x k)
-  (capi e m (B x) (kev (A x) (>- 'hom (\ e m
-    ((\ k l (?
+
+  nilp (\ x k (kev (A x) (jnst i-nilpp k)))
+  fail (\ x k (jnst i-fail k)))
+
+ cap (\ e m x k (:
+  capi(\ x k (? (nilp x) (k e m)
+   (capi (B x) (kev (A x) (jnst i-push k)))))
+
+  (>>= (A x) (B x) (\ z x
+
+  (? (: q (tget inliners z))
+   ((q x k) e m)
+  (capi
+   x (kev z (>- 'hom (\ e m
+    (>>= (k e (+ m 2)) (len x) (\ k l (?
       (nilp (= i-ret (hom-get-i k)))
        (emi i-call (emx l k))
       (>>= (hom-seek k 1) (\ k
-       (? (= l (len (tget e 'arg)))
-        (emi i-loop k)
-        (emi i-rec (emx l k)))))))
-     (k e (+ m 2))
-     (len (B x))))))))))
+        (emi i-rec (emx l k))))))))))))))))
 
  cse (\ e m x k (? (B x)
   ((: cser (\ e m x k (?
@@ -276,6 +288,10 @@
      rwlam (\ l (>>= (last l) (\ m (snoc (init l) (li ', (init m) (last m))))))
    (? (trlamp l) (rwlam l) l)))
 
+ pure (: pures (li + - * / % homp nilp symp nump tblp strp twop
+                && || scat slen sget ssub str)
+       (\ x (elem pures x)))
+ all (\ p l (? l (? (p (A l)) (all p (B l))) 0))
  pe2 (\ e x (: a (A x) (case a
   '` x
   '\ (pla e x)
@@ -284,10 +300,12 @@
   ', (pesq e x)
   (? (thas macros a)
       (pev e (ap (tget macros a) (B x)))
-     (map (\ x (pev e x)) x)))))
+     (? (all qtd (: z (map (\ x (pev e x)) x))) (? (pure (A z))))
+      (quote (ap (A z) (map unq (B z))))
+     z))))
 
  qtd (\ x (? (twop x) (= (A x) '`) (nilp (symp x))))
- unq (\ x (? (twop x) (AB x) x))
+ unq (\ x (? (twop x) (? (B x) (AB x)) x))
  peco (\ e x
   (: pecor (\ e x (?
       (nilp x) (li ())
@@ -394,7 +412,6 @@
                    (fail)))
       t (consumes h))))
   (type t (k e m))))
- -> (\ t k (\ e m (produces e m t k)))
  consumes (\ h (? (: c (tget t-checks (hom-get-i h))) c))
 
  cla (\ e m x k

@@ -68,7 +68,7 @@ enum location { Here, Loc, Arg, Clo, Wait };
   _(immv),   _(argn),   _(clon),    _(locn),   _(take),\
   _(prel),   _(setl),   _(pc0),     _(pc1),    _(clos),\
   _(encll),  _(encln),  _(yield),   _(ret),    _(jump),\
-  _(branch), _(barnch), _(call),    _(rec),  _(loop),\
+  _(branch), _(barnch), _(call),    _(rec),\
   _(tbind),  _(push),   _(add),     _(sub),    _(mul),\
   _(dqv),    _(mod),    _(neg),     _(lt),     _(lteq),\
   _(eq),     _(gteq),   _(gt),      _(twopp),  _(numpp),\
@@ -277,7 +277,6 @@ c2(c_se) {
 c1(c_call) {
   obj a = *Sp++, k = ccc(v, e, m+2);
   return G(k) != ret ? em2(call, a, k) :
-         Gn(a) == llen(arg(*e)) ? em1(loop, k) :
          em2(rec, a, k); }
 
 #define L(n,x) pair(v, N(n), x)
@@ -738,17 +737,14 @@ vm_op(call) {
   Argc = adic;
   Ap(gethom(xp), nil); }
 
-// tail call: special case where the caller and callee
-// have the same arity, so we can keep the frame
-vm_op(loop) {
-  num adic = getnum(Argc);
-  for (mem p = Argv; adic--; *p++ = *sp++);
-  sp = fp;
-  Ap(gethom(xp), nil); }
-
 // general tail call
 vm_op(rec) {
   num adic = getnum(GF(ip));
+  if (Argc == (obj)GF(ip)) {
+    for (mem p = Argv; adic--; *p++ = *sp++);
+    sp = fp;
+    Ap(gethom(xp), nil); }
+
 
   obj off = Subd, rp = Retp; // save return info
   mem src = sp + adic;
@@ -864,6 +860,13 @@ vm_op(hom_fin_u) {
   TypeCheck(*Argv, Hom);
   obj x; CallC(x = hom_fin(v, *Argv));
   Go(ret, x); }
+vm_op(tset) {
+  obj x = *sp++, y = *sp++;
+  CallC(x = tbl_set(v, xp, x, y));
+  Ap(ip+1, x); }
+vm_op(tget) {
+  xp = tbl_get(v, xp, *sp++);
+  Ap(ip+1, xp ? xp : nil); }
 vm_op(emx) {
   hom h = gethom(*sp++) - 1;
   G(h) = (terp*) xp;
@@ -900,14 +903,6 @@ vm_op(hom_seek_u) {
   Go(ret, puthom(gethom(Argv[0])+getnum(Argv[1]))); }
 
 // hash tables
-vm_op(tget) {
-  xp = tbl_get(v, xp, *sp++) || nil;
-  Next(1); }
-vm_op(tset) {
-  obj x = *sp++, y = *sp++;
-  CallC(x = tbl_set(v, xp, x, y));
-  Ap(ip+1, x); }
-
 vm_op(tblg) {
   ArityCheck(2);
   TypeCheck(Argv[0], Tbl);

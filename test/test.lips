@@ -1,39 +1,29 @@
-;; here's some functions for doing tests with
-(::: assert (\ x
- (li '>>= x (li '\ 'x (li '? 'x 'x (li 'fail (li 'li ''assertion ''failed '': (li '` x))))))))
-(::: test (\ n x
-  (li ', (li 'assert x) (li '. ''ok (li '` n)))))
+(::: T (\ x (li '? x (li . (li '` x)) (li fail))))
 
-(: test-special-forms (\(,
-  (test , (&&
-   (nilp (,))
-   (= 1 (, 1))
-   (= 3 (, 1 2 3))))
-  (test : (&&
-   (nilp (:))
-   (= + (: +))
-   (>>= (: __4 4) (\ x (= x 4 __4)))
-   (>>= (: __5 5 __6 6) (\ x (&& (= x 6 __6) (= 5 __5))))
-   (= 6 (: a 1 b 2 c 3 (+ a b c)))))
-  (test \ (&&
-   (nilp ((\)))
-   (= 1 ((\ 1)))
-   (= 1 ((\ x x) 1))
-   (= -5 ((\ f x (f x)) - 5))
-   (= (li 1 2 3) ((\ x xs . (:: x xs)) 1 2 3))))
-  (test ? (&&
-   (nilp (?))
-   (= 1 (? 1))
-   (nilp (? () 1))
-   (= 2 (? 1 2))
-   (= 1 (? 0 1 2))
-   (= 2 (? () 1 2))
-   (= 4 (? () 1 () 2 () 3 4))))
-  (test ` (&&
-   (nilp (`))
-   (= 1 '1)
-   (= 'a (ev ''a))))))
- (test-special-forms))
+(: Q '(\ i(li i(li '` i)))
+ (T (= ((ev Q) Q) ((\ i ((ev i) i)) Q))))
+
+(T (nilp (,)))
+(T (nilp (:)))
+(T (nilp (?)))
+(T (nilp ((\))))
+(T (nilp (`)))
+
+(T (= 1 (, 1)))
+(T (= + (: +)))
+(T (= 1 (? 1)))
+(T (= 1 ((\ 1))))
+(T (= 1 '1))
+(T (= 3 (, 1 2 3)))
+(T (= 3 (: a 1 b 2 (+ a b))))
+(T (= 1 ((\ x x) 1)))
+(T (= -5 ((\ f x (f x)) - 5)))
+(T (= (li 1 2 3) ((\ x xs . (:: x xs)) 1 2 3)))
+(T (nilp (? () 1)))
+(T (= 2 (? 1 2)))
+(T (= 1 (? 0 1 2)))
+(T (= 2 (? () 1 2)))
+(T (= 4 (? () 1 () 2 () 3 4)))
 
 (: de-str (\ s
     (: de-str.l (\ s n
@@ -41,44 +31,14 @@
            (:: (sget s n) (de-str.l s (+ n 1)))))
      (de-str.l s 0))))
 
-; strings are supposed to work
-(test strings (&&
- (= "hollow world" (scat "hol" "low " "wor" "ld"))
- (= "bidden" (ssub "forbidden planet" 3 9))
- (= "a" (str 97))
- (= "asdf" "asdf")
- (nilp (= "asdf" "asd"))
- (= "asdf" (ap str (de-str "asdf")))))
+(T (= "hollow world" (scat "hol" "low " "wor" "ld")))
+(T (= "bidden" (ssub "forbidden planet" 3 9)))
+(T (= "a" (str 97)))
+(T (= "asdf" "asdf"))
+(T (nilp (= "asdf" "asd")))
+(T (= "asdf" (ap str (de-str "asdf"))))
 
-; here's a function for iterating over ranges
-(: from (\ m n f (? (< m n) (, (f m) (from (+ m 1) n f)))))
-
-; hash tables are mysterious
-(: hasht (\ n
- (: d (tbl) (,(from 0 (+ n 1) (\ m (tset d m m)))
-              (tget d n))))
- (test hashes (= 99 (hasht 99))))
-
-
-(test continuations
-  ;; grow the call stack then call a continuation
-  (: loop (\ m n c (? (= m n) (c m) (, (loop (+ 1 m) n c) m)))
-    (= 12 (ccc (\ k (loop 0 12 k))))))
-
-(test closures
-  ;; if the compiler gets too smart we'll need a better test.
-  (: math (\ x y z
-     (: a(\ n(\ m((i +)((i *)m n)z)))
-        b(\ f(\ x(f x)))
-        i(\ x x)
-        ((b(a x))y)))
-    (= 22 (math 4 5 2))))
-
-(test user-functions
-  (&& (= 36 ((id ap) * (rho 2 1 2 3)))
-      (= 3  ((id &&) 1 2 3))
-      (= 15 ((id +) 1 2 3 4 5))
-      (= 1  ((id ||) 1 2 3))))
+(T (= 1 (ccc (\ k (, (k 1) 2)))))
 
 ; shortcut evaluation is out of the bootstrap compiler --
 ; put this test back in after stage 3 does it
@@ -91,49 +51,12 @@
 ;         (&& (|| (ct ()) (ct ()) (ct 1) (ct 2))
 ;             (= (get box) 6)))))
 
-(test functionals (&&
- (= 6
-  (foldr 1 + (li 2 3))
-  (foldr1 + (li 1 2 3))
-  (foldl 1 + (li 2 3))
-  (foldl1 + (li 1 2 3)))
- (= (li 1 2 3)
-  (map (\ x (+ 1 x)) (iota 3))
-  (snoc ((flip snoc) 2 (li 1)) 3)
-  (foldr () :: (iota 1 4)))))
 
 (: fib (\ n ;; double recursive fibonacci function
      (? (< n 3) 1 (+ (fib (- n 1)) (fib (- n 2)))))
     ack (\ m n ;; ackermann function
      (? (< m 1) (+ n 1)
       (ack (- m 1) (? (> n 0) (ack m (- n 1)) 1))))
-    quine ((\ i (li i (li '` i))) '(\ i (li i (li '` i))))
-  (,
-    (test comp-qt (= (li 1) (ev (li '` (li 1)))))
-    (test comp-ap (&&
-    (= 9 (ev (li + 1 2 (li * 2 3))))
-    (= 6 (ev (li + 1 2 3)))))
-    (test comp-sq (:
-      box (li())
-      inc (\(*! box (:: (len (*: box)) (*: box))))
-     (= '(2 1 0) (ev (li ', (li inc) (li inc) (li inc))))))
-    (test comp-de (&&
-     (>>= 123 (\ x
-      (>>= (ev (li ': '_123 x)) (\ y
-       (>>= _123 (\ z (= 123 x y z)))))))
-     (= 3 (ev '(: a (\ 1) b (\ 2) c (\(+(a)(b))) (c))))))
-    (test comp-sy (= _123 (ev '_123)))
-    (test comp-co (&& (= 1 (ev '(? () 0 1)));false
-                       (= 0 (ev '(? 1 0 ())));true
-                       (nilp (ev '(? () 1)));even
-                       (= 1 (ev '(? () (? () 1 0);nested
-                                         (? () 0 1))))))
-    (test comp-la (&&
-     (= 3  (ev '((\(+((\ 1))((\ 2)))))))
-     (= 6  ((ev '(\ a b ((\ c (+ c b 1)) a))) 3 2))
-     (= 34 ((ev '(\ a b c (: f (\ x y z (+ a b c x y z)) (f a b c)))) 9 7 1))
-     (= 24 (ev '((\ a b ((\ a b c (+ a b c)) (* a (+ a b)) (* b (* a b)) (* b b b))) 2 2)))
-     (= '(1 2 3) ((ev '(\ a b c ((\ (li a b c))))) 1 2 3))))
-    (test fib32 (= 2178309 (fib 32)))
-    (test ack3,9 (= 4093 (ack 3 9)))
-    (test quine (= quine (ev quine)))))
+  (, (T (= 2178309 (fib 32)))
+     (T (= 4093 (ack 3 9)))
+     ))
