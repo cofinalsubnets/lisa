@@ -150,9 +150,13 @@ cpcc(cpoct) {
      *(mem)src->text = putoct(dst)); }
 
 cpcc(cpsym) {
-  sym src = getsym(x);
-  return fresh(src->nom) ? (obj) src->nom :
-    sseekc(v, &Syms, cp(v, src->nom, ln, lp)); }
+  sym src = getsym(x), dst;
+  if (fresh(src->nom)) return src->nom;
+  if (nilp(src->nom)) { // anonymous symbol
+    dst = bump(v, Size(sym));
+    memcpy(dst, src, w2b(Size(sym))); }
+  else dst = getsym(sseekc(v, &Syms, cp(v, src->nom, ln, lp)));
+  return src->nom = putsym(dst); }
 
 #define stale(o) inb((mem)(o),lp,lp+ln)
 cpcc(cphom) {
@@ -197,7 +201,7 @@ cpcc(cptbl) {
 
 // XXX data constructors
 
-static const uint64_t mix = 2708237354241864315;
+const uint64_t mix = 2708237354241864315;
 static uint64_t hc(obj);
 // internal memory allocator
 Inline void *bump(vm v, num n) {

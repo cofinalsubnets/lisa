@@ -157,3 +157,4 @@ const char *tnom(enum type);
 #ifndef NOM
 #define NOM "lips"
 #endif
+extern const uint64_t mix;

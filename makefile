@@ -66,7 +66,7 @@ clean:
 	@rm -rf `git check-ignore *`
 perf: perf.data
 	@perf report
-perf.data: $b $t
+perf.data: $b $t $p
 	@perf record ./$(tcmd)
 valg: $b $t
 	@valgrind $(tcmd)

@@ -129,7 +129,16 @@
       (X 'wait ns)))
  >- (\ t k (? (: tc (tget t-checks t)) (jnst tc k) (fail)))
 
+ zgrp (\ f m id x (? (nilp x) (? (nilp (= m id)) (X m)) (,
+  (: y (A x))
+  (? (qtd y) (zgrp f (f m y) id (B x))
+   (X y (zgrp f m id (B x)))))))
+
+ bfold (\ i k x xs
+  (jnst i-push (kev x (>- 'num (jnst i
+   (? xs (bfold i k (A xs) (B xs)) k))))))
  cap (\ e m x k (:
+   capi (\ e m x k (? (nilp x) (k e m) (capi e m (B x) (kev (A x) (jnst i-push k)))))
    inline (\ x (case x
     A (\ e m x k
      (cev e m (AB x) (>- 'two (jnst i-car k))))
@@ -137,15 +146,33 @@
      (cev e m (AB x) (>- 'two (jnst i-cdr k))))
     X (\ e m x k
      (cev e m (? (: y (BB x)) (A y))
-      (jnst i-push (kev (AB x) (jnst i-cons (-> 'two k))))))
-    emi (\ e m x k
-     (cev e m (A (BB x)) (>- 'hom
-      (jnst i-push (kev (AB x) (>- 'num
-       (jnst i-emi (-> 'hom k))))))))
-    emx (\ e m x k
-     (cev e m (A (BB x)) (>- 'hom
       (jnst i-push (kev (AB x)
-       (jnst i-emx (-> 'hom k)))))))
+       (jnst i-cons (-> 'two k))))))
+    emi (\ e m x k (>>= (B x) (\ x
+     (cev e m (AB x) (>- 'hom
+      (jnst i-push (kev (A x) (>- 'num
+       (jnst i-emi (-> 'hom k))))))))))
+    emx (\ e m x k (>>= (B x) (\ x
+     (cev e m (AB x) (>- 'hom
+      (jnst i-push (kev (A x)
+       (jnst i-emx (-> 'hom k)))))))))
+    + (\ e m x k (>>= (zgrp + 0 0 (B x)) (-> 'num k) (\ x k
+     (cev e m (A x) (>- 'num (?
+      (nilp (B x)) k
+       (bfold i-add k (AB x) (BB x))))))))
+    - (\ e m x k (>>= (B x) (-> 'num k) (\ x k (?
+     (nilp x) (imm e m 0 k)
+     (cev e m (A x) (>- 'num (?
+      (nilp (B x)) (jnst i-neg k)
+      (>>= (zgrp + 0 0 (B x)) (\ x
+       (? x (bfold i-sub k (A x) (B x)) k))))))))))
+       
+
+     
+
+#   tget (\ e m x k (>>= (B x) (\ x
+#    (cev e m (AB x) (jnst i-push
+#     (kev (A x) (>- 'tbl (jnst i-tget k))))))))
 
 #    tset (\ e m x k (>>= (B x) (\ x
 #     (cev e m (A (BB x))
@@ -155,16 +182,10 @@
 
     nilp (\ e m x k (cev e m (AB x) (jnst i-nilpp k)))
      
-    fail (\ e m x k (inst e m i-fail k))))
- (?
-  (: q (inline (A x)))
-   (q e m x k)
-  ((: capi (\ e m x k
-       (? (nilp x) (k e m)
-        (capi e m (B x) (kev (A x) (jnst i-push k))))))
-
-   e m (B x) (kev (A x) (>- 'hom (\ e m
-
+    fail (\ e m x k (inst e m i-fail k))
+    ))
+ (? (: q (inline (A x))) (q e m x k)
+  (capi e m (B x) (kev (A x) (>- 'hom (\ e m
     ((\ k l (?
       (nilp (= i-ret (hom-get-i k)))
        (emi i-call (emx l k))
@@ -264,13 +285,6 @@
   (? (thas macros a)
       (pev e (ap (tget macros a) (B x)))
      (map (\ x (pev e x)) x)))))
-
- pcomm (\ e f m x (?  (nilp x) (li m) (,
-  (: y (pev e (A x)))
-  (? (nump y) (pcomm e f (f m y) (B x))
-   (, (: z (pcomm e f m (B x)))
-      (!* z (X y (B z)))
-      z)))))
 
  qtd (\ x (? (twop x) (= (A x) '`) (nilp (symp x))))
  unq (\ x (? (twop x) (AB x) x))

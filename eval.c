@@ -63,7 +63,7 @@ enum location { Here, Loc, Arg, Clo, Wait };
 
 // this is such a genius idea, i stole it from luajit
 #define insts(_)\
-  _(tget),_(tset),\
+  _(tget),_(tset),_(gsym_u),\
   _(arity),  _(tcnum),  _(tchom),   _(tctwo),  _(lbind),\
   _(immv),   _(argn),   _(clon),    _(locn),   _(take),\
   _(prel),   _(setl),   _(pc0),     _(pc1),    _(clos),\
@@ -438,6 +438,7 @@ static void rin(vm v, mem d, const char *n, terp *u) {
   tbl_set(v, *d, y, putnum(u)); }
 
 #define prims(_)\
+  _("gensym", gsym_u),\
   _("hom-fin", hom_fin_u),\
   _("read", rd_u),   _(".", em_u),\
   _("*:", car_u),    _(":*", cdr_u),\
@@ -1341,3 +1342,9 @@ vm_op(drop) { sp++; Next(1); }
 // errors
 vm_op(fail) { Jump(interpret_error); }
 vm_op(zzz) { exit(EXIT_SUCCESS); }
+vm_op(gsym_u) {
+  Have(Size(sym));
+  sym y = (sym) hp; hp += Size(sym);
+  y->nom = y->l = y->r = nil;
+  y->code = v->count++ * mix;
+  Go(ret, putsym(y)); }
