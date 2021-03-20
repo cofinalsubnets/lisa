@@ -240,10 +240,10 @@
 
  addloc (\ e y (tset e 'loc (X y (tget e 'loc))))
  sdefa (\ e y x
-  (? (qtd x) (tset (tget e'val) y x)
+  (? (qtd x) (tset (tget e'val) y (unq x))
      (, (addloc e y)
-        (? (twop x) (? (= '\ (A x)))
-         (tset (tget e'lam) y x)))))
+        (? (twop x) (? (= '\ (A x))
+         (tset (tget e'lam) y x))))))
 
  desug (\ d (li (li '\ (li ', (init d) (last d)))))
  quote (\ x (? (qtd x) x (li '` x)))
@@ -251,12 +251,13 @@
   (? (= (A l) 'here) (quote (B l)) x)))
 
  rw-: (\ e x
-  (: rw-:r (\ e x (? x (: z (rw e (AB x)) y (A x)
-   (, (sdefa e y z)
-      (X y (X z (rw-:r e (BB x))))))))
+  (: loop (\ e x (? x
+      (: z (rw e (AB x)) y (A x)
+       (, (sdefa e y z)
+          (X y (X z (loop e (BB x))))))))
    (? (nilp (B x)) ()
       (= 0 (% (len x) 2)) (desug x)
-      (X ': (rw-:r e (B x))))))
+      (X ': (loop e (B x))))))
 
  rw-, (\ e x (:
   rw-,r (\ e x (?
@@ -356,9 +357,9 @@
       (tset (tget e 'val) k (ltu e k (B (tget d k))))
       (recomps e d (B ks))))))
 
-   (, (precomps e (tkeys (tget e 'lam)))
-      (elim e (tkeys (tget e'lam)))
-      (: ls (tget e 'lam) (recomps e ls (tset e 'lam (tkeys ls)))))))
+   (, (precomps e (.'res 0 (tget e'loc)(tkeys (tget e 'lam))))
+      (elim e (.'res 1(tget e'loc)(tkeys (tget e'lam))))
+      (: ls (tget e 'lam) (recomps e ls (.'res 2 (tget e'loc)(tset e 'lam (tkeys ls))))))))
 
  t-tag (\ x (?
   (homp x) 'hom (nump x) 'num
