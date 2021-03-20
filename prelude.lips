@@ -173,9 +173,9 @@
         z (? (nump (A x)) (jgrp - (A x) 0 y) (X(A x)y))
       (? z (kev (A z) (>- 'num (bf0 i-sub k (B z))))
           ((lfem imm) 0 k)))))
-   tget (\ x k
-    (kev (AB x) (jnst i-push
-     (kev (A x) (>- 'tbl (jnst i-tget k))))))
+#   tget (\ x k
+#    (kev (AB x) (jnst i-push
+#     (kev (A x) (>- 'tbl (jnst i-tget k))))))
 
 #    tset (\ x k
 #     (kev (A (BB x))
