@@ -90,7 +90,7 @@
   i-immv (\ i h (>>= (hom-get-i (hom-seek h 1)) (\ j (?
    (? (? (= j i-call) 0 (= j i-rec))
       (? (: a (hom-get-x h)
-          (? (homp a) (? (= (hom-get-i a) i-arity) (?
+          (? (homp a) (? (= (hom-get-i a) i-id_xxx) (?
             (<= (hom-get-x (hom-seek a 1))
                 (hom-get-x (hom-seek h 2)))))))))
        (,
@@ -121,7 +121,7 @@ t-c (\ x (case x
 late (\ e m x d k (>>= (k e (+ m 2)) (\ h
  (>>= (consumes h) (\ t
   (>>= (? t (hom-seek h 1) h) (\ h
-   (emi i-lbind (emx (X (t-c t) (X d x)) h)))))))))
+   (emif i-lbind (emx (X (t-c t) (X d x)) h)))))))))
 
  cy (\ x k (\ e m (:
   r (look e x)
@@ -235,15 +235,15 @@ late (\ e m x d k (>>= (k e (+ m 2)) (\ h
 
  cco (\ e m x k
   (: ccopreant (\ k (\ e m (>>= (k e (+ m 2)) (\ k
-      (>>= (emi i-branch (emx (A (tget e 's1)) k)) (\ k
+      (>>= (emif i-branch (emx (A (tget e 's1)) k)) (\ k
        (, (tset e 's1 (B (tget e 's1))) k)))))))
      ccopre (\ k (\ e m (>>= (k e m) (\ k
       (A (tset e 's2 (X k (tget e 's2))))))))
      ccoprecon (\ k (\ e m (>>= (k e (+ m 2)) (\ x
       (>>= (A (tget e 's2)) (\ k
        (: i (hom-get-i k) (case i
-        (? (= i i-ret) (emi i x)
-         (emi i-jump
+        (? (= i i-ret) (emif i x)
+         (emif i-jump
           (emx (? (= i i-jump) (hom-get-x (hom-seek k 1)) k) x)))))))))))
      ccopostcon (\ k (\ e m (>>= (k e m) (\ k
       (A (tset e 's1 (X k (tget e 's1))))))))
@@ -339,10 +339,10 @@ late (\ e m x d k (>>= (k e (+ m 2)) (\ h
    (,
       (>>= (ev-part f x 4) (\ k
        (>>= (? (nilp (tget f 'loc)) k
-              (emi i-prel (emx (len (tget f 'loc)) k))) (\ k
+              (emif i-prel (emx (len (tget f 'loc)) k))) (\ k
         (>>= (hom-fin (?
-             (> (: i (tget f 'sig)) 0) (emi i-arity (emx i k))
-             (< i 0) (emi i-vararg (emx (- (- i) 1) k))
+             (> (: i (tget f 'sig)) 0) (emif i-id_xxx (emx i k))
+             (< i 0) (emif i-vararg (emx (- (- i) 1) k))
              k)) (\ k
          (? (tget f 'clo) (X (tget f 'clo) k) k))))))))))
 
@@ -383,10 +383,10 @@ late (\ e m x d k (>>= (k e (+ m 2)) (\ h
   (symp x) 'sym (strp x) 'oct
   (tblp x) 'tbl (nilp x) 'nil))
  t-checks (tbl
-  i-idhom 'hom 'hom i-idhom
-  i-idnum 'num 'num i-idnum
-  i-idtwo 'two 'two i-idtwo
-  i-idtbl 'tbl 'tbl i-idtbl)
+  i-id_hom 'hom 'hom i-id_hom
+  i-id_num 'num 'num i-id_num
+  i-id_two 'two 'two i-id_two
+  i-id_tbl 'tbl 'tbl i-id_tbl)
 
  ; this function has a lot of arguments sorry...
  ; env, len, type, cont, xpn.
@@ -408,13 +408,13 @@ late (\ e m x d k (>>= (k e (+ m 2)) (\ h
       (: clacloin (\ e arg k (? (nilp arg) k
           (clacloin e (B arg) (\ e m
            (cev e m (A arg) (code i-push k))))))
-         k (\ e m (emi i-take (emx (len arg) (hom (+ m 2)))))
+         k (\ e m (emif i-take (emx (len arg) (hom (+ m 2)))))
        ((clacloin e arg k) e 0)))
 
    (>>= (assert e (+ m 2) 'hom k) (\ k
     (>>= (ltu e (gnom e k) x) (\ x (?
-     (homp x) (emi i-immv (emx x k))
-     (emi (? (tget e'loc) i-encll i-encln)
+     (homp x) (emif i-immv (emx x k))
+     (emif (? (tget e'loc) i-encll i-encln)
       (emx (X (B x) (claclo e (A x))) k)))))))))
 
  forms(tbl '` cqt '? cco ': cde '\ cla ', cse)
