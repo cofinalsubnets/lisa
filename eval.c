@@ -7,7 +7,7 @@ typedef obj c1(vm, mem, num),
 // here is some "static data". this idea comes from luajit.
 #define insts(_)\
   _(tget),_(tset),_(gsym_u),\
-  _(arity),  _(tcnum),  _(tchom),   _(tctwo),  _(lbind),\
+  _(arity),  _(idnum),  _(idhom),   _(idtwo),  _(idtbl), _(lbind),\
   _(immv),   _(argn),   _(clon),    _(locn),   _(take),\
   _(prel),   _(setl),   _(pc0),     _(pc1),    _(clos),\
   _(encll),  _(encln),  _(yield),   _(ret),    _(jump),\
@@ -34,9 +34,9 @@ typedef obj c1(vm, mem, num),
   _("gensym", gsym_u),\
   _("hom-fin", hom_fin_u),\
   _("read", rd_u),   _(".", em_u),\
-  _("*:", car_u),    _(":*", cdr_u),\
-  _("*!", setcar_u), _("!*", setcdr_u),\
-  _("::", cons_u),   _("=", eq_u),\
+  _("A", car_u),    _("B", cdr_u),\
+  _("A!", setcar_u), _("B!", setcdr_u),\
+  _("X", cons_u),   _("=", eq_u),\
   _("<", lt_u),      _("<=", lteq_u),\
   _(">", gt_u),      _(">=", gteq_u),\
   _("+", add_u),     _("-", sub_u),\
@@ -59,7 +59,7 @@ typedef obj c1(vm, mem, num),
   _("tblp", tblp_u), _("strp", strp_u),\
   _("nilp", nilp_u), _("homp", homp_u)
 
-#define NO(...) {errp(v,#__VA_ARGS__);Jump(panic);}
+#define NO(...) Jump(panic,__VA_ARGS__)
 
 ////
 /// bootstrap thread compiler
@@ -358,7 +358,7 @@ c2(c_ap) {
     Rec(x = apply(v, y, Y(x)));
     return c_eval(v, e, m, x); }
   for (mm(&x),
-       Push(N(c_ev), X(x), N(inst), N(tchom),
+       Push(N(c_ev), X(x), N(inst), N(idhom),
             N(c_call), N(llen(Y(x))));
        twop(x = Y(x));
        Push(N(c_ev), X(x), N(inst), N(push)));
@@ -503,11 +503,11 @@ vm bootstrap(vm v) {
   // now we can bootstrap ...
   const char *path = "prelude.lips";
   int pre = seekp(path);
-  if (pre == -1) errp(v, "[init] can't find %s", path);
+  if (pre == -1) errp(v, "boot : can't find %s", path);
   else {
     FILE *f = fdopen(pre, "r");
     if (setjmp(v->restart)) return
-      errp(v, "[init] error in %s", path),
+      errp(v, "boot : error in %s", path),
       fclose(f), finalize(v);
     scr(v, f), fclose(f); }
   return v; }
@@ -515,7 +515,7 @@ vm bootstrap(vm v) {
 vm initialize(int argc, const char **argv) {
   vm v = malloc(sizeof(struct rt));
   if (!v || setjmp(v->restart)) return
-    errp(v, "[init] oom"), finalize(v);
+    errp(v, "init : oom"), finalize(v);
   v->t0 = clock(),
   v->ip = v->xp = v->syms = v->glob = nil,
   v->fp = v->hp = v->sp = (mem)w2b(1),
@@ -593,25 +593,40 @@ typedef struct fr { obj clos, retp, subd, argc, argv[]; } *fr;
 #define Argv ff(fp)->argv
 
 static Inline void perrarg(vm v, mem fp) {
-  if (fp == Pool + Len) return;
-  num argc = getnum(Argc), i = 0;
+  num argc = fp == Pool + Len ? 0 : getnum(Argc), i = 0;
   if (argc == 0) return;
-  else for (fputs(" at ", stderr);;fputc(' ', stderr)) {
+  for (fputs(" at (", stderr);;fputc(' ', stderr)) {
     obj x = Argv[i++];
     emit(v, x, stderr);
-    if (i == argc) break; } }
+    if (i == argc) { fputc(')', stderr); break; } } }
+static Inline void pfxpn(vm v, hom ip, mem fp) {
+  fputc('(', stderr), emit(v, puthom(ip), stderr);
+  num argc = fp == Pool + Len ? 0 : getnum(Argc);
+  if (argc) {
+    num i = 0;
+    for (fputc(' ', stderr);;fputc(' ', stderr)) {
+      obj x = Argv[i++];
+      emit(v, x, stderr);
+      if (i == argc) break; } }
+  fputc(')', stderr); }
 
 // this is for runtime errors from the interpreter, it prints
 // a backtrace and everything.
-vm_op(panic) {
+vm_op(panic, const char *msg, ...) {
+  fputs("# ", stderr),
+  emit(v, puthom(ip), stderr),
+  fputs(" does not exist", stderr), perrarg(v, fp);
+  if (msg) {
+    fputs(" : ", stderr);
+    va_list xs; va_start(xs, msg);
+    vfprintf(stderr, msg, xs);
+    va_end(xs); }
+  fputc('\n', stderr);
   // an error is expressed as the failure of the current function
   // to be defined for its arguments.
-  fputs("# ", stderr), emit(v, puthom(ip), stderr),
-  fputs(" does not exist", stderr), perrarg(v, fp);
-  fputc('\n', stderr);
   while (fp < Pool + Len)
     ip = gethom(Retp), fp += Size(fr) + getnum(Argc) + getnum(Subd),
-    fputs("# in ", stderr), emsep(v, puthom(ip), stderr, '\n');
+    fputs("#  in ", stderr), emsep(v, puthom(ip), stderr, '\n');
   return Hp = hp, restart(v); }
 
 obj restart(vm v) {
@@ -623,8 +638,10 @@ obj restart(vm v) {
 
 // vm instructions for different errors. the compiler will
 // never emit these.
-#define TypeCheck(x,t) if(kind(x)!=t)Jump(panic)
-#define Arity(n) if(n>Argc)Jump(panic)
+#define E_TYPE  "wrong type : %s for %s"
+#define E_ARITY "wrong arity : %ld of %ld"
+#define TypeCheck(x,t) if(kind(x)!=t)Jump(panic,E_TYPE, tnom(kind(x)), tnom(t))
+#define Arity(n) if(n>Argc)Jump(panic,E_ARITY, getnum(Argc), getnum(n))
 #define ArityCheck(n) Arity(putnum(n))
 
 // this is the garbage collector interface used
@@ -681,7 +698,7 @@ vm_op(lbind) {
   obj w = (obj) GF(ip),
       d = XY(w), y = X(w);
   w = tbl_get(v, d, xp = YY(w));
-  if (!w) NO("# free variable : %s", symnom(xp));
+  if (!w) NO("free variable : %s", symnom(xp));
   xp = w;
   if (getnum(y) != 8) TypeCheck(xp, getnum(y));
   G(ip) = immv;
@@ -690,6 +707,7 @@ vm_op(lbind) {
 
 // set a global variable
 vm_op(tbind) {
+  printf("tbind %s %lx\n", symnom(GF(ip)), xp);
   CallC(tbl_set(v, Dict, (obj) GF(ip), xp));
   Next(2); }
 
@@ -758,9 +776,10 @@ vm_op(rec) {
   Ap(gethom(xp), nil); }
 
 // type/arity checking
-vm_op(tcnum) { TypeCheck(xp, Num); Next(1); }
-vm_op(tctwo) { TypeCheck(xp, Two); Next(1); }
-vm_op(tchom) { TypeCheck(xp, Hom); Next(1); }
+vm_op(idnum) { TypeCheck(xp, Num); Next(1); }
+vm_op(idtwo) { TypeCheck(xp, Two); Next(1); }
+vm_op(idhom) { TypeCheck(xp, Hom); Next(1); }
+vm_op(idtbl) { TypeCheck(xp, Tbl); Next(1); }
 vm_op(arity) { Arity((obj)GF(ip)); Next(2); }
 
 // continuations
@@ -812,16 +831,17 @@ vm_op(rd_u) {
   obj x; CallC(x = parse(v, stdin), x = x ? pair(v, x, nil) : nil);
   Go(ret, x); }
 
-static obj compile(vm v, obj x) {
-  Push(N(c_ev), x, N(inst), N(yield), N(c_ini));
-  return ccc(v, NULL, 0); }
+static Inline obj compile(vm v, obj x) {
+  return Push(N(c_ev), x, N(inst), N(yield), N(c_ini)),
+         ccc(v, NULL, 0); }
 
 // eval
 vm_op(ev_u) {
   ArityCheck(1);
   obj x; hom h;
   CallC(
-   h = gethom(compile(v, *Argv)),
+   Push(N(c_ev), *Argv, N(inst), N(yield), N(c_ini)),
+   h = gethom(ccc(v, NULL, 0)),
    x = G(h)(v, h, Fp, Sp, Hp, nil));
   Go(ret, x); }
 
@@ -1159,7 +1179,7 @@ vm_op(setcdr) { obj x = *sp++; Y(xp) = x; xp = x; Next(1); }
 
 vm_op(cons_u) {
   num aa = getnum(Argc);
-  if (!aa) Jump(panic);
+  if (!aa) Jump(panic, E_ARITY, 0, 1);
   Have(2); hp[0] = Argv[0], hp[1] = aa == 1 ? nil : Argv[1];
   xp = puttwo(hp), hp += 2; Jump(ret); }
 vm_op(car_u) {
@@ -1190,11 +1210,11 @@ vm_op(mul) {
   xp = putnum(getnum(xp) * getnum(*sp++));
   Next(1); }
 vm_op(dqv) {
-  if (xp == putnum(0)) Jump(panic);
+  if (xp == putnum(0)) Jump(panic, "divide by zero");
   xp = putnum(getnum(*sp++) / getnum(xp));
   Next(1); }
 vm_op(mod) {
-  if (xp == putnum(0)) Jump(panic);
+  if (xp == putnum(0)) Jump(panic, "divide by zero");
   xp = putnum(getnum(*sp++) % getnum(xp));
   Next(1); }
 
@@ -1207,7 +1227,7 @@ vm_op(mod) {
   obj x,m=_z,*xs=_v,*l=xs+_c;\
   if (_c) for(;xs<l;m=m op getnum(x)){\
     x = *xs++; TypeCheck(x, Num);\
-    if (x == putnum(0)) Jump(panic);}\
+    if (x == putnum(0)) Jump(panic, "divide by zero");}\
   Go(ret, putnum(m));}
 
 vm_op(add_u) {
@@ -1336,7 +1356,7 @@ vm_op(tuck) { Have(1); sp--, sp[0] = sp[1], sp[1] = xp; Next(1); }
 vm_op(drop) { sp++; Next(1); }
 
 // errors
-vm_op(fail) { Jump(panic); }
+vm_op(fail) { Jump(panic, NULL); }
 vm_op(zzz) { exit(EXIT_SUCCESS); }
 vm_op(gsym_u) {
   Have(Size(sym));

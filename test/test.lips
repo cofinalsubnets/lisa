@@ -18,7 +18,7 @@
 (T (= 3 (: a 1 b 2 (+ a b))))
 (T (= 1 ((\ x x) 1)))
 (T (= -5 ((\ f x (f x)) - 5)))
-(T (= (li 1 2 3) ((\ x xs . (:: x xs)) 1 2 3)))
+(T (= (li 1 2 3) ((\ x xs . (X x xs)) 1 2 3)))
 (T (nilp (? () 1)))
 (T (= 2 (? 1 2)))
 (T (= 1 (? 0 1 2)))
@@ -28,7 +28,7 @@
 (: de-str (\ s
     (: de-str.l (\ s n
         (? (= n (slen s)) ()
-           (:: (sget s n) (de-str.l s (+ n 1)))))
+           (X (sget s n) (de-str.l s (+ n 1)))))
      (de-str.l s 0))))
 
 (T (= "hollow world" (scat "hol" "low " "wor" "ld")))
@@ -39,17 +39,6 @@
 (T (= "asdf" (ap str (de-str "asdf"))))
 
 (T (= 1 (ccc (\ k (, (k 1) 2)))))
-
-; shortcut evaluation is out of the bootstrap compiler --
-; put this test back in after stage 3 does it
-;(: box (:: 0 ())
-;   get *: set *!
-;   ct (\ x (,(set box (+ 1 (get box))) x))
-;   (test 'shortcut-eval
-;     (&& (&& (nilp (&& (ct 1) (ct 2) (ct ()) (ct 3)))
-;             (= (get box) 3))
-;         (&& (|| (ct ()) (ct ()) (ct 1) (ct 2))
-;             (= (get box) 6)))))
 
 
 (: fib (\ n ;; double recursive fibonacci function

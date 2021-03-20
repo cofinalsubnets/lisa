@@ -135,7 +135,7 @@ void emit(vm v, obj x, FILE *o) {
     default:  return (void) fputs("()", o); } }
 
 void vferrp(vm v, FILE *o, const char *msg, va_list xs) {
-  vfprintf(o, msg, xs), fputc('\n', o); }
+  fputs("# ", o), vfprintf(o, msg, xs), fputc('\n', o); }
 
 void errp(vm v, const char *msg, ...) {
   va_list xs;

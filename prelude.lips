@@ -1,8 +1,8 @@
-(: local-vars '(local-vars old-ev prelude stage2 macros ns emi emx hom hom-seek hom-get-i hom-get-x hom-fin)
-   old-ev ev
+(: local-vars '(local-vars old-ev prelude egg s0 s1 s2 macros ns emi emx hom hom-seek hom-get-i hom-get-x hom-fin)
    prelude '(,
   ;; here's some data constructors
-  (: X :: A *: B :* 
+  (: and (\ l . (: & (\ l (? l (? (A l) (& (B l))) 0)) (& l)))
+     or (\ l . (: | (\ l (? l (? (A l) 0 (| (B l))))) (| l)))
      li (\ . . .) ; dot only has special meaning following another argument, which can be dot
      ++ (\ a b(?(twop a)(X(A a)(++(B a)b))b)) ; append
      iota (\ n x .
@@ -62,11 +62,10 @@
                       (case.i x (B (B a))))
                      (A a))))) x a)))))
 
-(ev prelude)
 
 ; ok now let's bootstrap a lisp compiler!
 ; we can do this by redefining ev at toplevel.
-(: stage2 '(:
+(: egg '(:
  env (\ a p n (>>=
   ((: asig (\ a n
        (? (twop a)
@@ -117,28 +116,28 @@
 
  cqt (\ e m x k (: y (B x) (imm e m (? y (A y)) k)))
  toplp (\ e (nilp (tget e'par)))
- look (\ e y
-   (? (thas (tget e 'val) y) (X 'here (tget (tget e 'val) y))
-      (< -1 (idx (tget e 'lam) y)) (X 'wait (tget e 'val))
-      (< -1 (idx (tget e 'loc) y)) (X 'loc e)
-      (< -1 (idx (tget e 'arg) y)) (X 'arg e)
-      (< -1 (idx (tget e 'clo) y)) (X 'clo e)
-      (tget e 'par) (look (tget e 'par) y)
-      (thas ns y) (X 'here (tget ns y))
-      (X 'wait ns)))
+ look (\ e y (?
+  (thas (tget e 'val) y) (X 'here (tget (tget e 'val) y))
+  (toplp e) (?
+    ; if it's already defined then bind early unless we are
+    ; redefining it.
+    (? (thas ns y) (? (= -1 (idx (tget e 'loc) y))))
+     (X 'here (tget ns y))
+    (X 'wait ns))
+  (< -1 (idx (tget e 'lam) y)) (X 'wait (tget e 'val))
+  (< -1 (idx (tget e 'loc) y)) (X 'loc e)
+  (< -1 (idx (tget e 'arg) y)) (X 'arg e)
+  (< -1 (idx (tget e 'clo) y)) (X 'clo e)
+  (look (tget e 'par) y)))
 
  >- (\ t k (? (: tc (tget t-checks t)) (jnst tc k) (fail)))
  -> (\ t k (\ e m (produces e m t k)))
 
- zgrp (\ f m id x (? (nilp x) (? (nilp (= m id)) (X m)) (,
-  (: y (A x))
-  (? (qtd y) (zgrp f (f m y) id (B x))
-   (X y (zgrp f m id (B x)))))))
  jgrp (\ f m id x
   (: jgrpn (\ f m x (? (nilp x) (X m)
             (? (qtd (: y (A x))) (jgrpn f (f m y) (B x))
                                  (: z (jgrpn f m (B x))
-                                  (, (!* z (X y (B z))) z)))))
+                                  (, (B! z (X y (B z))) z)))))
    (? (= id (A (: j (jgrpn f m x)))) (B j) j)))
 
  bf0 (\ i k x
@@ -173,16 +172,15 @@
         z (? (nump (A x)) (jgrp - (A x) 0 y) (X(A x)y))
       (? z (kev (A z) (>- 'num (bf0 i-sub k (B z))))
           ((lfem imm) 0 k)))))
-#   tget (\ x k
-#    (kev (AB x) (jnst i-push
-#     (kev (A x) (>- 'tbl (jnst i-tget k))))))
+   tget (\ x k
+    (kev (AB x) (jnst i-push
+     (kev (A x) (>- 'tbl (jnst i-tget k))))))
 
-#    tset (\ x k
-#     (kev (A (BB x))
-#      (jnst i-push (kev (AB x)
-#       (jnst i-push (kev (A x) (>- 'tbl
-#        (jnst i-tset k))))))))
-
+   tset (\ x k
+    (kev (A (BB x))
+     (jnst i-push (kev (AB x)
+      (jnst i-push (kev (A x) (>- 'tbl
+       (jnst i-tset k))))))))
 
   nilp (\ x k (kev (A x) (jnst i-nilpp k)))
   fail (\ x k (jnst i-fail k)))
@@ -190,30 +188,26 @@
  cap (\ e m x k (:
   capi(\ x k (? (nilp x) (k e m)
    (capi (B x) (kev (A x) (jnst i-push k)))))
-
   (>>= (A x) (B x) (\ z x
-
-  (? (: q (tget inliners z))
-   ((q x k) e m)
-  (capi
-   x (kev z (>- 'hom (\ e m
-    (>>= (k e (+ m 2)) (len x) (\ k l (?
-      (nilp (= i-ret (hom-get-i k)))
-       (emi i-call (emx l k))
-      (>>= (hom-seek k 1) (\ k
-        (emi i-rec (emx l k))))))))))))))))
+   (? (: q (tget inliners z))
+    ((q x k) e m)
+   (capi
+    x (kev z (>- 'hom (\ e m
+     (>>= (k e (+ m 2)) (len x) (\ k l (?
+       (nilp (= i-ret (hom-get-i k)))
+        (emi i-call (emx l k))
+       (>>= (hom-seek k 1) (\ k
+         (emi i-rec (emx l k))))))))))))))))
 
  cse (\ e m x k (? (B x)
   ((: cser (\ e m x k (?
       (nilp x) (k e m)
-               (cev e m (A x) (\ e m
-                (cser e m (B x) k))))))
+               (cev e m (A x) ((lfem cser) (B x) k)))))
    e m (B x) k)
   (imm e m () k)))
-
  mat (\ e x (: y (look e x) (? (= (A y) 'here) (li (B y)))))
  cde (\ e m x k
-  (: desug (\ d (li (li '\ (li ', (init d) (last d)))))
+  (:
      cder (\ e m x k (? (nilp x) (k e m) (?
       (>>= (\ e m (cder e m (BB x) k)) (\ k
        (? (|| (toplp e) (< -1 (idx (tget e 'loc) (A x))))
@@ -225,7 +219,6 @@
       (toplp e) (insx e m i-tbind x k)
                 (insx e m i-setl (idx (tget e 'loc) x) k)))
    (? (nilp (B x)) (imm e m () k)
-      (= 1 (% (len (B x)) 2)) (cev e m (desug x) k)
       (cder e m (B x) k))))
 
  cco (\ e m x k
@@ -257,13 +250,15 @@
      (ccor e m (B x) (\ e m (ccopre e m k)))))))
 
 
+ desug (\ d (li (li '\ (li ', (init d) (last d)))))
  quote (\ x (? (qtd x) x (li '` x)))
  pey (\ e x (: l (look e x)
   (? (= (A l) 'here) (quote (B l)) x)))
  pede (\ e x
-  (: peder (\ e x (? x
-      (X (A x) (X (pev e (AB x)) (peder e (BB x))))))
-   (X ': (? (|| (nilp x) (= 1 (% (len x) 2))) x (peder e x)))))
+  (: peder (\ e x (? x (X (A x) (X (pev e (AB x)) (peder e (BB x))))))
+   (? (nilp (B x)) ()
+      (= 0 (% (len x) 2)) (desug x)
+      (X ': (peder e (B x))))))
  pesq (\ e x (,
   (: pesqr (\ e x (?
    (nilp (B x)) (li (pev e (A x)))
@@ -290,7 +285,7 @@
  pe2 (\ e x (: a (A x) (case a
   '` x
   '\ (pla e x)
-  ': (pede e (B x))
+  ': (pede e x)
   '? (peco e (B x))
   ', (pesq e x)
   (? (thas macros a)
@@ -315,14 +310,15 @@
   (twop x) (pe2 e x)
   (symp x) (pey e x)
   (quote x)))
- prev (\ e x m (cev e m (pev e x) ini))
+ prev (\ e x m (,
+  (scan e x) (resolve e)
+  (cev e m (pev e x) ini)))
 
  ltu (\ e nom l
   (: n (|| (B l) '(()))
      x (last n)
      f (env (init n) e (X nom (tget e 'nom)))
-   (, (scan f x)
-      (resolve f)
+   (,
       (>>= (prev f x 4) (\ k
        (>>= (? (nilp (tget f 'loc)) k
               (emi i-prel (emx (len (tget f 'loc)) k))) (\ k
@@ -338,7 +334,7 @@
        (? (homp i) (, (tset (tget e 'val) k i)
                       (tdel (tget e 'lam) k)
                       (tset e'loc(ldel (tget e 'loc) k)))
-                   (, (!* i (tget (tget e 'lam) k))
+                   (, (B! i (tget (tget e 'lam) k))
                       (tset (tget e 'lam) k i)))
        (precomps e (B ks))))))
 
@@ -368,7 +364,7 @@
       (B x) ((\ r (, (? r (scandefadd e (A x) (AB x))) r))
               (scandef e (BB x)))))
      mcar (\ x (? x (A x)))
-     addloc (\ e y (tset e 'loc (X y (tget e 'loc))))
+     addloc (\ e y (. 'loc (tset e 'loc (X y (tget e 'loc)))))
 
      scandefadd (\ e y x (,
       (? (symp x) (addloc e y)
@@ -394,9 +390,10 @@
   'tbl 5 'sym 6 'nil 7 () 8
   (fail)))
  t-checks (tbl
-  i-tchom 'hom 'hom i-tchom
-  i-tcnum 'num 'num i-tcnum
-  i-tctwo 'two 'two i-tctwo)
+  i-idhom 'hom 'hom i-idhom
+  i-idnum 'num 'num i-idnum
+  i-idtwo 'two 'two i-idtwo
+  i-idtbl 'tbl 'tbl i-idtbl)
 
  ; this function has a lot of arguments sorry...
  ; env, len, type, cont, xpn.
@@ -430,12 +427,13 @@
  forms(tbl '` cqt '? cco ': cde '\ cla ', cse)
  c2 (\ e m x k (: z (tget forms (A x)) ((? z z cap) e m x k)))
  ini (\ e m (insx e m i-ret (tget e'nom) (\ e m (hom m))))
- eval (\ x ((prev (env () () 'ev) x 0)x))
- eval ; comment this line to have compiler internals defined at toplevel
- ))
+ ev (\ x ((prev (env () () 'ev) x 0)x))
+ ev))
 
-(tset ns 'ev ((\ q ((ev q) q)) stage2))
-
-(? (= old-ev ev) (fail "bootstrap failed")
-                 (ev prelude))
-(each local-vars (\ s (tdel ns s)))
+(: s0 ev)
+(ev prelude)
+(: ev (ev egg))
+(ev prelude)
+(: ev (ev egg))
+(? (= s0 ev) (fail "bootstrap failed"))
+(each local-vars (\ v (tdel ns v)))
