@@ -206,9 +206,10 @@
    e m (B x) k)
   (imm e m () k)))
  mat (\ e x (: y (look e x) (? (= (A y) 'here) (li (B y)))))
+
  cde (\ e m x k
-  (:
-     cder (\ e m x k (? (nilp x) (k e m) (?
+ ; the rewrite ensures the : expression is always an even form.
+  (: cder (\ e m x k (? (nilp x) (k e m) (?
       (>>= (\ e m (cder e m (BB x) k)) (\ k
        (? (|| (toplp e) (< -1 (idx (tget e 'loc) (A x))))
            (cev e m (AB x) (\ e m (cdeb e m (A x) k)))
@@ -218,8 +219,7 @@
      cdeb (\ e m x k (?
       (toplp e) (insx e m i-tbind x k)
                 (insx e m i-setl (idx (tget e 'loc) x) k)))
-   (? (nilp (B x)) (imm e m () k)
-      (cder e m (B x) k))))
+    (cder e m (B x) k)))
 
  cco (\ e m x k
   (: ccopreant (\ e m k (>>= (k e (+ m 2)) (\ k
@@ -250,12 +250,21 @@
      (ccor e m (B x) (\ e m (ccopre e m k)))))))
 
 
+ addloc (\ e y (tset e 'loc (X y (tget e 'loc))))
+ sdefa (\ e y x
+  (? (qtd x) (tset (tget e'val) y x)
+     (, (addloc e y)
+        (? (twop x) (? (= '\ (A x)))
+         (tset (tget e'lam) y x)))))
+
  desug (\ d (li (li '\ (li ', (init d) (last d)))))
  quote (\ x (? (qtd x) x (li '` x)))
  pey (\ e x (: l (look e x)
   (? (= (A l) 'here) (quote (B l)) x)))
  pede (\ e x
-  (: peder (\ e x (? x (X (A x) (X (pev e (AB x)) (peder e (BB x))))))
+  (: peder (\ e x (? x (: z (pev e (AB x)) y (A x)
+   (, (sdefa e y z)
+      (X y (X z (peder e (BB x))))))))
    (? (nilp (B x)) ()
       (= 0 (% (len x) 2)) (desug x)
       (X ': (peder e (B x))))))
@@ -278,9 +287,8 @@
      rwlam (\ l (>>= (last l) (\ m (snoc (init l) (li ', (init m) (last m))))))
    (? (trlamp l) (rwlam l) l)))
 
- pure (: pures (li + - * / % homp nilp symp nump tblp strp twop
-                && || scat slen sget ssub str)
-       (\ x (elem pures x)))
+ pures (li + - * / % homp nilp symp nump tblp strp twop
+           && || scat slen sget ssub str)
  all (\ p l (? l (? (p (A l)) (all p (B l))) 0))
  pe2 (\ e x (: a (A x) (case a
   '` x
@@ -290,7 +298,7 @@
   ', (pesq e x)
   (? (thas macros a)
       (pev e (ap (tget macros a) (B x)))
-     (? (all qtd (: z (map (\ x (pev e x)) x))) (? (pure (A z))))
+     (? (all qtd (: z (map (\ x (pev e x)) x))) (? (elem pures (A z))))
       (quote (ap (A z) (map unq (B z))))
      z))))
 
@@ -311,7 +319,8 @@
   (symp x) (pey e x)
   (quote x)))
  prev (\ e x m (,
-  (scan e x) (resolve e)
+;  (scan e x)
+  (resolve e)
   (cev e m (pev e x) ini)))
 
  ltu (\ e nom l
@@ -357,28 +366,6 @@
    (, (precomps e (tkeys (tget e 'lam)))
       (elim e (tkeys (tget e'lam)))
       (: ls (tget e 'lam) (recomps e ls (tset e 'lam (tkeys ls)))))))
-
- scan (\ e x
-  (: scandef (\ e x (?
-      (nilp x) 0
-      (B x) ((\ r (, (? r (scandefadd e (A x) (AB x))) r))
-              (scandef e (BB x)))))
-     mcar (\ x (? x (A x)))
-     addloc (\ e y (. 'loc (tset e 'loc (X y (tget e 'loc)))))
-
-     scandefadd (\ e y x (,
-      (? (symp x) (addloc e y)
-         (twop x) (>>= (A x) (\ z (case z
-          '` (tset (tget e'val) y (mcar (B x)))
-          '\ (, (tset (tget e'lam) y x) (addloc e y))
-          (addloc e y))))
-         (tset (tget e'val) y x))
-      (scan e x)))
-
-   (? (twop x) (: y (A x) (case y
-    ': (scandef e (B x))
-    '\ () '` ()
-    (each x (\ x (scan e x))))))))
 
  t-tag (\ x (?
   (homp x) 'hom (nump x) 'num

@@ -707,7 +707,7 @@ vm_op(lbind) {
 
 // set a global variable
 vm_op(tbind) {
-  printf("tbind %s %lx\n", symnom(GF(ip)), xp);
+//  printf("tbind %s %lx\n", symnom(GF(ip)), xp);
   CallC(tbl_set(v, Dict, (obj) GF(ip), xp));
   Next(2); }
 
