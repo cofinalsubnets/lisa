@@ -59,6 +59,8 @@ typedef obj c1(vm, mem, num),
   _("tblp", tblp_u), _("strp", strp_u),\
   _("nilp", nilp_u), _("homp", homp_u)
 
+#define NO(...) {errp(v,#__VA_ARGS__);Jump(panic);}
+
 ////
 /// bootstrap thread compiler
 //
@@ -87,7 +89,7 @@ typedef obj c1(vm, mem, num),
 // pointer to an object, instead of just an object, so it can
 // be gc-protected once instead of separately by every function.
 // in the other compiler it's just a regular object.
-#define toplp(x) nilp(*x)
+#define toplp(x) !e
 #define arg(x)  AR(x)[0] // argument variables : a list
 #define loc(x)  AR(x)[1] // local variables : a list
 #define clo(x)  AR(x)[2] // closure variables : a list
@@ -173,7 +175,7 @@ static obj asign(vm v, obj a, num i, mem m) {
 static obj scope(vm v, mem e, obj a, obj n) {
   num s = 0;
   with(n, a = asign(v, a, 0, &s));
-  return tupl(v, a, nil, nil, *e, n, N(s), non); }
+  return tupl(v, a, nil, nil, e ? *e : nil, n, N(s), non); }
 
 static obj compose(vm v, mem e, obj x) {
   Push(N(c_ev), x, N(inst), N(ret), N(c_ini));
@@ -197,7 +199,7 @@ static obj ltu(vm v, mem e, obj n, obj l) {
   with(n,
     l = twop(l) ? l : pair(v, l, nil),
     with(y, l = linitp(v, l, &y),
-            with(l, n = pair(v, n, toplp(e) ? nil : name(*e))),
+            with(l, n = pair(v, n, toplp(e) ? nil : e ? name(*e):nil)),
             n = scope(v, e, l, n)),
     l = compose(v, &n, X(y)));
   return l; }
@@ -326,7 +328,7 @@ c2(late, obj d) {
 
 c2(c_sy) {
   obj y, q;
-  with(x, y = X(q = look(v, *e, x)));
+  with(x, y = X(q = look(v, e ? *e:nil, x)));
   switch (Gn(y)) {
     case Here: return c_imm(v, e, m, Y(q));
     case Wait: return late(v, e, m, x, Y(q));
@@ -374,7 +376,7 @@ c1(insx) {
 
 c1(c_ini) {
   obj k = hom_ini(v, m+1);
-  if (!toplp(e)) k = em1((terp*)name(*e), k);
+  k = em1((terp*)(e ? name(*e):Eva), k);
   return k; }
 
 static obj snoc(vm v, obj l, obj x) {
@@ -679,7 +681,7 @@ vm_op(lbind) {
   obj w = (obj) GF(ip),
       d = XY(w), y = X(w);
   w = tbl_get(v, d, xp = YY(w));
-  if (!w) Jump(panic);
+  if (!w) NO("# free variable : %s", symnom(xp));
   xp = w;
   if (getnum(y) != 8) TypeCheck(xp, getnum(y));
   G(ip) = immv;
@@ -811,9 +813,8 @@ vm_op(rd_u) {
   Go(ret, x); }
 
 static obj compile(vm v, obj x) {
-  static obj top = nil;
   Push(N(c_ev), x, N(inst), N(yield), N(c_ini));
-  return ccc(v, &top, 0); }
+  return ccc(v, NULL, 0); }
 
 // eval
 vm_op(ev_u) {
