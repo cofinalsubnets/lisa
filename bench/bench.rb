@@ -44,7 +44,7 @@ class Bench < Hash
     yield (i = new nom)
     A[nom] = proc { i.run n, p } end
   def self.run(a)
-    a.each { |n| A[n][] } end
+    a.map(&A.method(:[])).filter(&:itself).each(&:[]) end
 end
 
 lips = Lang.new "lips", ARGV.shift

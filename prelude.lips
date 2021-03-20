@@ -92,9 +92,9 @@
  cev  (\ e m x k ((? (twop x) c2 (symp x) cy imm) e m x k))
 
  lfem (\ f (\ x . (\ e m (ap f (X e (X m x))))))
- kev (lfem cev)
- jnst (lfem inst)
- jnsx (lfem insx)
+ kev (\ x k (\ e m (cev e m x k)))
+ jnst (\ i k (\ e m (inst e m i k)))
+ jnsx (\ i x k (\ e m (insx e m i x k)))
 
  cy (\ e m x k (:
   addclo (\ e y (tset e'clo(snoc (tget e 'clo) y)))
@@ -119,11 +119,11 @@
  look (\ e y (?
   (thas (tget e 'val) y) (X 'here (tget (tget e 'val) y))
   (toplp e) (?
-    ; if it's already defined then bind early unless we are
-    ; redefining it.
-    (? (thas ns y) (? (= -1 (idx (tget e 'loc) y))))
-     (X 'here (tget ns y))
-    (X 'wait ns))
+   ; if it's already defined then bind early unless we are
+   ; redefining it.
+   (? (thas ns y) (? (= -1 (idx (tget e 'loc) y))))
+    (X 'here (tget ns y))
+   (X 'wait ns))
   (< -1 (idx (tget e 'lam) y)) (X 'wait (tget e 'val))
   (< -1 (idx (tget e 'loc) y)) (X 'loc e)
   (< -1 (idx (tget e 'arg) y)) (X 'arg e)
@@ -131,13 +131,13 @@
   (look (tget e 'par) y)))
 
  >- (\ t k (? (: tc (tget t-checks t)) (jnst tc k) (fail)))
- -> (\ t k (\ e m (produces e m t k)))
+ -> (\ t k (\ e m (assert e m t k)))
 
  jgrp (\ f m id x
   (: jgrpn (\ f m x (? (nilp x) (X m)
             (? (qtd (: y (A x))) (jgrpn f (f m y) (B x))
                                  (: z (jgrpn f m (B x))
-                                  (, (B! z (X y (B z))) z)))))
+                                  (X (A z) (X y (B z)))))))
    (? (= id (A (: j (jgrpn f m x)))) (B j) j)))
 
  bf0 (\ i k x
@@ -164,14 +164,14 @@
   + (\ x k (>>= (jgrp + 0 0 x) (\ x
    (kev (A x) (>- 'num (bf0 i-add k (B x)))))))
   - (\ x k
-  (? (nilp x)
-      ((lfem imm) 0 k)
-     (nilp (B x))
-      (kev (A x) (>- 'num (jnst i-neg (-> 'num k))))
-     (: y (jgrp + 0 0 (B x))
-        z (? (nump (A x)) (jgrp - (A x) 0 y) (X(A x)y))
-      (? z (kev (A z) (>- 'num (bf0 i-sub k (B z))))
-          ((lfem imm) 0 k)))))
+   (? (nilp x)
+       ((lfem imm) 0 k)
+      (nilp (B x))
+       (kev (A x) (>- 'num (jnst i-neg (-> 'num k))))
+      (: y (jgrp + 0 0 (B x))
+         z (? (nump (A x)) (jgrp - (A x) 0 y) (X(A x)y))
+       (? z (kev (A z) (>- 'num (bf0 i-sub k (B z))))
+            ((lfem imm) 0 k)))))
    tget (\ x k
     (kev (AB x) (jnst i-push
      (kev (A x) (>- 'tbl (jnst i-tget k))))))
@@ -199,55 +199,42 @@
        (>>= (hom-seek k 1) (\ k
          (emi i-rec (emx l k))))))))))))))))
 
- cse (\ e m x k (? (B x)
-  ((: cser (\ e m x k (?
-      (nilp x) (k e m)
-               (cev e m (A x) ((lfem cser) (B x) k)))))
-   e m (B x) k)
-  (imm e m () k)))
- mat (\ e x (: y (look e x) (? (= (A y) 'here) (li (B y)))))
+ cse (\ e m x k
+  (((: cser (\ x k (? (nilp x) k (kev (A x) (cser (B x) k)))))
+    (B x) k)
+   e m))
 
  cde (\ e m x k
  ; the rewrite ensures the : expression is always an even form.
-  (: cder (\ e m x k (? (nilp x) (k e m) (?
-      (>>= (\ e m (cder e m (BB x) k)) (\ k
-       (? (|| (toplp e) (< -1 (idx (tget e 'loc) (A x))))
-           (cev e m (AB x) (\ e m (cdeb e m (A x) k)))
-          (: q (mat e (A x)))
-           (imm e m (A q) k)
-           (cev e m (A x) k)))))))
-     cdeb (\ e m x k (?
+  (: cder (\ x k (? (nilp x) k (>>= (cder (BB x) k) (\ k
+     (? (|| (toplp e) (< -1 (idx (tget e 'loc) (A x))))
+         (kev (AB x) (cdeb (A x) k))
+        (kev (A x) k))))))
+     cdeb (\ x k (\ e m (?
       (toplp e) (insx e m i-tbind x k)
-                (insx e m i-setl (idx (tget e 'loc) x) k)))
-    (cder e m (B x) k)))
+                (insx e m i-setl (idx (tget e 'loc) x) k))))
+    ((cder (B x) k) e m)))
 
  cco (\ e m x k
-  (: ccopreant (\ e m k (>>= (k e (+ m 2)) (\ k
+  (: ccopreant (\ k (\ e m (>>= (k e (+ m 2)) (\ k
       (>>= (emi i-branch (emx (A (tget e 's1)) k)) (\ k
-       (, (tset e 's1 (B (tget e 's1))) k))))))
-     ccopre (\ e m k (>>= (k e m) (\ k
-      (A (tset e 's2 (X k (tget e 's2)))))))
-     ccoprecon (\ e m k (>>= (k e (+ m 2)) (\ x
+       (, (tset e 's1 (B (tget e 's1))) k)))))))
+     ccopre (\ k (\ e m (>>= (k e m) (\ k
+      (A (tset e 's2 (X k (tget e 's2))))))))
+     ccoprecon (\ k (\ e m (>>= (k e (+ m 2)) (\ x
       (>>= (A (tget e 's2)) (\ k
        (: i (hom-get-i k) (case i
         (? (= i i-ret) (emi i x)
          (emi i-jump
-          (emx (? (= i i-jump) (hom-get-x (hom-seek k 1)) k) x))))))))))
-     ccopostcon (\ e m k (>>= (k e m) (\ k
-      (A (tset e 's1 (X k (tget e 's1)))))))
-     ; unlike in the bootstrap compiler, here we can
-     ; assume there are an odd number of arguments, ie.
-     ; at least 1. this is assured by peco. thanks peco!
-     ccor (\ e m x k (?
-      (nilp (B x)) (cev e m (A x) ((lfem ccoprecon) k))
-      (cev e m (A x)
-       ((lfem ccopreant)
-        ((lfem ccor) (BB x)
-         ((lfem ccopostcon)
-          (kev (AB x) ((lfem ccoprecon) k))))))))
-   (? (nilp (B x)) (imm e m () k)
+          (emx (? (= i i-jump) (hom-get-x (hom-seek k 1)) k) x)))))))))))
+     ccopostcon (\ k (\ e m (>>= (k e m) (\ k
+      (A (tset e 's1 (X k (tget e 's1))))))))
+     ccor (\ x k (?
+      (nilp (B x)) (kev (A x) (ccoprecon k))
+      (kev (A x) (ccopreant (ccor (BB x)
+       (ccopostcon (kev (AB x) (ccoprecon k))))))))
     ((\ k (, (tset e 's2 (B (tget e 's2))) k))
-     (ccor e m (B x) (\ e m (ccopre e m k)))))))
+     ((ccor (B x) (ccopre k)) e m))))
 
 
  addloc (\ e y (tset e 'loc (X y (tget e 'loc))))
@@ -259,28 +246,30 @@
 
  desug (\ d (li (li '\ (li ', (init d) (last d)))))
  quote (\ x (? (qtd x) x (li '` x)))
- pey (\ e x (: l (look e x)
+ rwy (\ e x (: l (look e x)
   (? (= (A l) 'here) (quote (B l)) x)))
- pede (\ e x
-  (: peder (\ e x (? x (: z (pev e (AB x)) y (A x)
+
+ rwde (\ e x
+  (: rwder (\ e x (? x (: z (rw e (AB x)) y (A x)
    (, (sdefa e y z)
-      (X y (X z (peder e (BB x))))))))
+      (X y (X z (rwder e (BB x))))))))
    (? (nilp (B x)) ()
       (= 0 (% (len x) 2)) (desug x)
-      (X ': (peder e (B x))))))
- pesq (\ e x (,
-  (: pesqr (\ e x (?
-   (nilp (B x)) (li (pev e (A x)))
-   (: y (pev e (A x))
-      z (pesqr e (B x))
-    (? (|| (symp y) (qtd y)) z (X y z))))))
-  (: y (B x) (? y
-   (: z (pesqr e y) (? (B z) (X ', z) (A z)))))))
+      (X ': (rwder e (B x))))))
+
+ rwse (\ e x (:
+  rwser (\ e x (?
+   (nilp (B x)) (li (rw e (A x)))
+    (: y (rw e (A x))
+       z (rwser e (B x))
+     (? (|| (symp y) (qtd y)) z (X y z)))))
+  (? (: y (B x))
+     (: z (rwser e y) (? (B z) (X ', z) (A z))))))
 
  ; this rewrites lambda expressions of the form
  ;   (\ (: a b c)) -> (\ (, (: a b) c))
- ; which is always safe and produces better code.
- pla (\ e l
+ ; which is always safe and assert better code.
+ rwla (\ e l
   (: defp (\ x (? (twop x) (= (A x) ':)))
      deftp (\ x (? (defp x) (= 0 (% (len x) 2))))
      trlamp (\ l (? (B l) (deftp (last l))))
@@ -290,38 +279,37 @@
  pures (li + - * / % homp nilp symp nump tblp strp twop
            && || scat slen sget ssub str)
  all (\ p l (? l (? (p (A l)) (all p (B l))) 0))
- pe2 (\ e x (: a (A x) (case a
+ rw2 (\ e x (: a (A x) (case a
   '` x
-  '\ (pla e x)
-  ': (pede e x)
-  '? (peco e (B x))
-  ', (pesq e x)
+  '\ (rwla e x)
+  ': (rwde e x)
+  '? (rwco e (B x))
+  ', (rwse e x)
   (? (thas macros a)
-      (pev e (ap (tget macros a) (B x)))
-     (? (all qtd (: z (map (\ x (pev e x)) x))) (? (elem pures (A z))))
+      (rw e (ap (tget macros a) (B x)))
+     (? (all qtd (: z (map (\ x (rw e x)) x))) (? (elem pures (A z))))
       (quote (ap (A z) (map unq (B z))))
      z))))
 
  qtd (\ x (? (twop x) (= (A x) '`) (nilp (symp x))))
  unq (\ x (? (twop x) (? (B x) (AB x)) x))
- peco (\ e x
-  (: pecor (\ e x (?
+ rwco (\ e x
+  (: rwcor (\ e x (?
       (nilp x) (li ())
-      (nilp (B x)) (li (pev e (A x)))
-      (: a (pev e (A x))
-       (? (qtd a) (? (unq a) (li (pev e (AB x)))
-                             (pecor e (BB x)))
-        (X a (X (pev e (A (B x))) (pecor e (BB x))))))))
-   (: r (pecor e x) (? r (? (B r) (X '? r) (A r))))))
+      (nilp (B x)) (li (rw e (A x)))
+      (: a (rw e (A x))
+       (? (qtd a) (? (unq a) (li (rw e (AB x)))
+                             (rwcor e (BB x)))
+        (X a (X (rw e (A (B x))) (rwcor e (BB x))))))))
+   (: r (rwcor e x) (? r (? (B r) (X '? r) (A r))))))
 
- pev (\ e x (?
-  (twop x) (pe2 e x)
-  (symp x) (pey e x)
+ rw (\ e x (?
+  (twop x) (rw2 e x)
+  (symp x) (rwy e x)
   (quote x)))
- prev (\ e x m (,
-;  (scan e x)
+ prev (\ e x m (>>= (rw e x) (\ x (,
   (resolve e)
-  (cev e m (pev e x) ini)))
+  (cev e m x ini)))))
 
  ltu (\ e nom l
   (: n (|| (B l) '(()))
@@ -343,8 +331,9 @@
        (? (homp i) (, (tset (tget e 'val) k i)
                       (tdel (tget e 'lam) k)
                       (tset e'loc(ldel (tget e 'loc) k)))
-                   (, (B! i (tget (tget e 'lam) k))
-                      (tset (tget e 'lam) k i)))
+                   (: lams (tget e'lam)
+                         j (X (A i) (tget lams k))
+                       (tset lams k j)))
        (precomps e (B ks))))))
 
      okvs (\ e vs (?
@@ -384,7 +373,7 @@
 
  ; this function has a lot of arguments sorry...
  ; env, len, type, cont, xpn.
- produces (\ e m t k (,
+ assert (\ e m t k (,
    (: type (\ t h
      ((\ t u (case u t (type t (hom-seek h 1))
                    () h
@@ -405,7 +394,7 @@
          k (\ e m (emi i-take (emx (len arg) (hom (+ m 2)))))
        ((clacloin e arg k) e 0)))
 
-   (>>= (produces e (+ m 2) 'hom k) (\ k
+   (>>= (assert e (+ m 2) 'hom k) (\ k
     (>>= (ltu e (gnom e k) x) (\ x (?
      (homp x) (emi i-immv (emx x k))
      (emi (? (tget e'loc) i-encll i-encln)

@@ -16,13 +16,12 @@ typedef obj c1(vm, mem, num),
   _(dqv),    _(mod),    _(neg),     _(lt),     _(lteq),\
   _(eq),     _(gteq),   _(gt),      _(twopp),  _(numpp),\
   _(nilpp),  _(strpp),  _(tblpp),   _(sympp),  _(hompp),\
-  _(car),    _(cdr),    _(setcar),  _(setcdr), _(cons),\
+  _(car),    _(cdr),   _(cons),\
   _(add_u),  _(sub_u),  _(mul_u),   _(div_u),  _(mod_u),\
   _(lt_u),   _(lteq_u), _(eq_u),    _(gteq_u), _(gt_u),\
   _(twop_u), _(nump_u), _(homp_u),  _(tblp_u), _(strp_u),\
   _(nilp_u), _(car_u),  _(cdr_u),   _(cons_u),\
   _(strmk),  _(strg),   _(strl),_(strs),_(strc),_(hom_fin_u),\
-  _(setcar_u), _(setcdr_u),\
   _(symp_u), _(emse), _(hom_u), _(pc_u),\
   _(or_u), _(and_u), _(zzz),\
   _(tbll), _(tblmk),_(tblg),_(tblc),_(tbls),_(tbld),_(tblks),\
@@ -35,7 +34,6 @@ typedef obj c1(vm, mem, num),
   _("hom-fin", hom_fin_u),\
   _("read", rd_u),   _(".", em_u),\
   _("A", car_u),    _("B", cdr_u),\
-  _("A!", setcar_u), _("B!", setcdr_u),\
   _("X", cons_u),   _("=", eq_u),\
   _("<", lt_u),      _("<=", lteq_u),\
   _(">", gt_u),      _(">=", gteq_u),\
@@ -595,20 +593,10 @@ typedef struct fr { obj clos, retp, subd, argc, argv[]; } *fr;
 static Inline void perrarg(vm v, mem fp) {
   num argc = fp == Pool + Len ? 0 : getnum(Argc), i = 0;
   if (argc == 0) return;
-  for (fputs(" at (", stderr);;fputc(' ', stderr)) {
+  for (fputs(" at ", stderr);;fputc(' ', stderr)) {
     obj x = Argv[i++];
     emit(v, x, stderr);
-    if (i == argc) { fputc(')', stderr); break; } } }
-static Inline void pfxpn(vm v, hom ip, mem fp) {
-  fputc('(', stderr), emit(v, puthom(ip), stderr);
-  num argc = fp == Pool + Len ? 0 : getnum(Argc);
-  if (argc) {
-    num i = 0;
-    for (fputc(' ', stderr);;fputc(' ', stderr)) {
-      obj x = Argv[i++];
-      emit(v, x, stderr);
-      if (i == argc) break; } }
-  fputc(')', stderr); }
+    if (i == argc) break; } }
 
 // this is for runtime errors from the interpreter, it prints
 // a backtrace and everything.
@@ -1174,8 +1162,6 @@ vm_op(cons) {
   xp = puttwo(hp); hp += 2; Next(1); }
 vm_op(car) { Ap(ip+1, X(xp)); }
 vm_op(cdr) { Ap(ip+1, Y(xp)); }
-vm_op(setcar) { obj x = *sp++; X(xp) = x; xp = x; Next(1); }
-vm_op(setcdr) { obj x = *sp++; Y(xp) = x; xp = x; Next(1); }
 
 vm_op(cons_u) {
   num aa = getnum(Argc);
@@ -1188,14 +1174,6 @@ vm_op(car_u) {
 vm_op(cdr_u) {
   ArityCheck(1); TypeCheck(*Argv, Two);
   Go(ret, Y(*Argv)); }
-vm_op(setcar_u) {
-  ArityCheck(2);
-  TypeCheck(Argv[0], Two);
-  Go(ret, X(Argv[0]) = Argv[1]); }
-vm_op(setcdr_u) {
-  ArityCheck(2);
-  TypeCheck(Argv[0], Two);
-  Go(ret, Y(Argv[0]) = Argv[1]); }
 
 // arithmetic
 #define ok putnum(0)
