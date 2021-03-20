@@ -130,11 +130,6 @@ static Inline obj em1(terp *i, obj k) {
 static Inline obj em2(terp *i, obj j, obj k) {
   return em1(i, em1((terp*)j, k)); }
 
-static obj compile(vm v, obj x) {
-  static obj top = nil;
-  Push(N(c_ev), x, N(inst), N(yield), N(c_ini));
-  return ccc(v, &top, 0); }
-
 static obj apply(vm v, obj f, obj x) {
   Push(f, x);
   hom h = cells(v, 5);
@@ -606,7 +601,7 @@ static Inline void perrarg(vm v, mem fp) {
 
 // this is for runtime errors from the interpreter, it prints
 // a backtrace and everything.
-vm_op(interpret_error) {
+vm_op(panic) {
   // an error is expressed as the failure of the current function
   // to be defined for its arguments.
   fputs("# ", stderr), emit(v, puthom(ip), stderr),
@@ -626,8 +621,8 @@ obj restart(vm v) {
 
 // vm instructions for different errors. the compiler will
 // never emit these.
-#define TypeCheck(x,t) if(kind(x)!=t)Jump(interpret_error)
-#define Arity(n) if(n>Argc)Jump(interpret_error)
+#define TypeCheck(x,t) if(kind(x)!=t)Jump(panic)
+#define Arity(n) if(n>Argc)Jump(panic)
 #define ArityCheck(n) Arity(putnum(n))
 
 // this is the garbage collector interface used
@@ -684,7 +679,7 @@ vm_op(lbind) {
   obj w = (obj) GF(ip),
       d = XY(w), y = X(w);
   w = tbl_get(v, d, xp = YY(w));
-  if (!w) Jump(interpret_error);
+  if (!w) Jump(panic);
   xp = w;
   if (getnum(y) != 8) TypeCheck(xp, getnum(y));
   G(ip) = immv;
@@ -815,6 +810,11 @@ vm_op(rd_u) {
   obj x; CallC(x = parse(v, stdin), x = x ? pair(v, x, nil) : nil);
   Go(ret, x); }
 
+static obj compile(vm v, obj x) {
+  static obj top = nil;
+  Push(N(c_ev), x, N(inst), N(yield), N(c_ini));
+  return ccc(v, &top, 0); }
+
 // eval
 vm_op(ev_u) {
   ArityCheck(1);
@@ -864,9 +864,6 @@ vm_op(tset) {
   obj x = *sp++, y = *sp++;
   CallC(x = tbl_set(v, xp, x, y));
   Ap(ip+1, x); }
-vm_op(tget) {
-  xp = tbl_get(v, xp, *sp++);
-  Ap(ip+1, xp ? xp : nil); }
 vm_op(emx) {
   hom h = gethom(*sp++) - 1;
   G(h) = (terp*) xp;
@@ -908,6 +905,9 @@ vm_op(tblg) {
   TypeCheck(Argv[0], Tbl);
   xp = tbl_get(v, Argv[0], Argv[1]);
   Go(ret, xp ? xp : nil); }
+vm_op(tget) {
+  xp = tbl_get(v, xp, *sp++);
+  Ap(ip+1, xp ? xp : nil); }
 vm_op(tblc) {
   ArityCheck(2);
   TypeCheck(Argv[0], Tbl);
@@ -1158,7 +1158,7 @@ vm_op(setcdr) { obj x = *sp++; Y(xp) = x; xp = x; Next(1); }
 
 vm_op(cons_u) {
   num aa = getnum(Argc);
-  if (!aa) Jump(interpret_error);
+  if (!aa) Jump(panic);
   Have(2); hp[0] = Argv[0], hp[1] = aa == 1 ? nil : Argv[1];
   xp = puttwo(hp), hp += 2; Jump(ret); }
 vm_op(car_u) {
@@ -1189,11 +1189,11 @@ vm_op(mul) {
   xp = putnum(getnum(xp) * getnum(*sp++));
   Next(1); }
 vm_op(dqv) {
-  if (xp == putnum(0)) Jump(interpret_error);
+  if (xp == putnum(0)) Jump(panic);
   xp = putnum(getnum(*sp++) / getnum(xp));
   Next(1); }
 vm_op(mod) {
-  if (xp == putnum(0)) Jump(interpret_error);
+  if (xp == putnum(0)) Jump(panic);
   xp = putnum(getnum(*sp++) % getnum(xp));
   Next(1); }
 
@@ -1206,7 +1206,7 @@ vm_op(mod) {
   obj x,m=_z,*xs=_v,*l=xs+_c;\
   if (_c) for(;xs<l;m=m op getnum(x)){\
     x = *xs++; TypeCheck(x, Num);\
-    if (x == putnum(0)) Jump(interpret_error);}\
+    if (x == putnum(0)) Jump(panic);}\
   Go(ret, putnum(m));}
 
 vm_op(add_u) {
@@ -1335,7 +1335,7 @@ vm_op(tuck) { Have(1); sp--, sp[0] = sp[1], sp[1] = xp; Next(1); }
 vm_op(drop) { sp++; Next(1); }
 
 // errors
-vm_op(fail) { Jump(interpret_error); }
+vm_op(fail) { Jump(panic); }
 vm_op(zzz) { exit(EXIT_SUCCESS); }
 vm_op(gsym_u) {
   Have(Size(sym));

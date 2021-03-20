@@ -164,11 +164,6 @@
      (jnst i-emx (-> 'hom k)))))))
   + (\ x k (>>= (jgrp + 0 0 x) (\ x
    (kev (A x) (>- 'num (bf0 i-add k (B x)))))))
-#  - (\ x k 
-#  (? (nilp x) ((lfem imm) 0 k)
-#   (kev (A x) (>- 'num (?
-#    (B x) (bf0 i-sub k (zgrp + 0 0 (B x)))
-#    (jnst i-neg (-> 'num k)))))))
   - (\ x k
   (? (nilp x)
       ((lfem imm) 0 k)
@@ -178,9 +173,9 @@
         z (? (nump (A x)) (jgrp - (A x) 0 y) (X(A x)y))
       (? z (kev (A z) (>- 'num (bf0 i-sub k (B z))))
           ((lfem imm) 0 k)))))
-#   tget (\ x k
-#    (kev (AB x) (jnst i-push
-#     (kev (A x) (>- 'tbl (jnst i-tget k))))))
+   tget (\ x k
+    (kev (AB x) (jnst i-push
+     (kev (A x) (>- 'tbl (jnst i-tget k))))))
 
 #    tset (\ x k
 #     (kev (A (BB x))
