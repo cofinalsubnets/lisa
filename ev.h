@@ -10,11 +10,11 @@
   _(dqv),    _(mod),    _(neg),     _(lt),     _(lteq),\
   _(eq),     _(gteq),   _(gt),      _(twopp),  _(numpp),\
   _(nilpp),  _(strpp),  _(tblpp),   _(sympp),  _(hompp),\
-  _(car),    _(cdr),   _(cons),\
+  _(car),    _(cdr),   _(cons), _(vecpp),\
   _(add_u),  _(sub_u),  _(mul_u),   _(div_u),  _(mod_u),\
   _(lt_u),   _(lteq_u), _(eq_u),    _(gteq_u), _(gt_u),\
   _(twop_u), _(nump_u), _(homp_u),  _(tblp_u), _(strp_u),\
-  _(nilp_u), _(car_u),  _(cdr_u),   _(cons_u),\
+  _(nilp_u), _(car_u),  _(cdr_u),   _(cons_u), _(vecp_u),\
   _(strmk),  _(strg),   _(strl),_(strs),_(strc),_(hom_fin_u),\
   _(symp_u), _(emse), _(hom_u), _(pc_u),\
   _(zzz),\
@@ -45,7 +45,8 @@
   _("hom", hom_u),   _("hom-seek", hom_seek_u),\
   _("emx", emx_u),     _("hom-get-x", hom_getx_u),\
   _("emi", emi_u),     _("hom-get-i", hom_geti_u),\
-  _("zzz", zzz),     _("nump", nump_u),\
+  _("zzz", zzz),\
+  _("vecp", vecp_u), _("nump", nump_u),\
   _("symp", symp_u), _("twop", twop_u),\
   _("tblp", tblp_u), _("strp", strp_u),\
   _("nilp", nilp_u), _("homp", homp_u)

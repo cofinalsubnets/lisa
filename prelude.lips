@@ -94,7 +94,6 @@
  lfem (\ f (\ x . (\ e m (ap f (X e (X m x))))))
  kev (\ x k (\ e m (cev e m x k)))
  jnst (\ i k (\ e m (inst e m i k)))
- jnsx (\ i x k (\ e m (insx e m i x k)))
 
  cy (\ e m x k (:
   addclo (\ e y (tset e'clo(snoc (tget e 'clo) y)))
@@ -114,7 +113,7 @@
        (addclo e x)
        (insx e m i-clon l k)))))
 
- cqt (\ e m x k (: y (B x) (imm e m (? y (A y)) k)))
+ cqt (\ e m x k (imm e m (AB x) k))
  toplp (\ e (nilp (tget e'par)))
  look (\ e y (?
   (thas (tget e 'val) y) (X 'here (tget (tget e 'val) y))
@@ -248,45 +247,46 @@
 
  desug (\ d (li (li '\ (li ', (init d) (last d)))))
  quote (\ x (? (qtd x) x (li '` x)))
- rwy (\ e x (: l (look e x)
+ rw-sym (\ e x (: l (look e x)
   (? (= (A l) 'here) (quote (B l)) x)))
 
- rwde (\ e x
-  (: rwder (\ e x (? x (: z (rw e (AB x)) y (A x)
+ rw-: (\ e x
+  (: rw-:r (\ e x (? x (: z (rw e (AB x)) y (A x)
    (, (sdefa e y z)
-      (X y (X z (rwder e (BB x))))))))
+      (X y (X z (rw-:r e (BB x))))))))
    (? (nilp (B x)) ()
       (= 0 (% (len x) 2)) (desug x)
-      (X ': (rwder e (B x))))))
+      (X ': (rw-:r e (B x))))))
 
- rwse (\ e x (:
-  rwser (\ e x (?
+ rw-, (\ e x (:
+  rw-,r (\ e x (?
    (nilp (B x)) (li (rw e (A x)))
     (: y (rw e (A x))
-       z (rwser e (B x))
+       z (rw-,r e (B x))
      (? (|| (symp y) (qtd y)) z (X y z)))))
   (? (: y (B x))
-     (: z (rwser e y) (? (B z) (X ', z) (A z))))))
+     (: z (rw-,r e y) (? (B z) (X ', z) (A z))))))
 
  ; this rewrites lambda expressions of the form
  ;   (\ (: a b c)) -> (\ (, (: a b) c))
  ; which is always safe and assert better code.
- rwla (\ e l
+ rw-\ (\ e l
   (: defp (\ x (? (twop x) (= (A x) ':)))
      deftp (\ x (? (defp x) (= 0 (% (len x) 2))))
      trlamp (\ l (? (B l) (deftp (last l))))
-     rwlam (\ l (>>= (last l) (\ m (snoc (init l) (li ', (init m) (last m))))))
-   (? (trlamp l) (rwlam l) l)))
+     rw-\m (\ l (>>= (last l) (\ m (snoc (init l) (li ', (init m) (last m))))))
+   (? (trlamp l) (rw-\m l) l)))
 
- pures (li + - * / % homp nilp symp nump tblp strp twop
+ pures (li li X A B + - * / %
+           homp nilp symp nump tblp strp twop
            && || scat slen sget ssub str)
  all (\ p l (? l (? (p (A l)) (all p (B l))) 0))
- rw2 (\ e x (: a (A x) (case a
-  '` x
-  '\ (rwla e x)
-  ': (rwde e x)
-  '? (rwco e (B x))
-  ', (rwse e x)
+ rw-list (\ e x (: a (A x) (case a
+  '` (? (B x) x)
+  '\ (rw-\ e x)
+  ': (rw-: e x)
+  '? (rw-? e (B x))
+  ', (rw-, e x)
   (? (thas macros a)
       (rw e (ap (tget macros a) (B x)))
      (? (all qtd (: z (map (\ x (rw e x)) x)))
@@ -295,22 +295,23 @@
      z))))
 
  qtd (\ x (? (twop x) (= (A x) '`) (nilp (symp x))))
- unq (\ x (? (twop x) (? (B x) (AB x)) x))
- rwco (\ e x
-  (: rwcor (\ e x (?
+ unq (\ x (? (twop x) (AB x) x))
+ rw-? (\ e x
+  (: rw-?r (\ e x (?
       (nilp x) (li ())
       (nilp (B x)) (li (rw e (A x)))
       (: a (rw e (A x))
        (? (qtd a) (? (unq a) (li (rw e (AB x)))
-                             (rwcor e (BB x)))
-        (X a (X (rw e (A (B x))) (rwcor e (BB x))))))))
-   (: r (rwcor e x) (? r (? (B r) (X '? r) (A r))))))
+                             (rw-?r e (BB x)))
+        (X a (X (rw e (A (B x))) (rw-?r e (BB x))))))))
+   (: r (rw-?r e x) (? r (? (B r) (X '? r) (A r))))))
 
  rw (\ e x (?
-  (twop x) (rw2 e x)
-  (symp x) (rwy e x)
+  (twop x) (rw-list e x)
+  (symp x) (rw-sym e x)
   (quote x)))
- prev (\ e x m (>>= (rw e x) (\ x (,
+
+ ev-part (\ e x m (>>= (rw e x) (\ x (,
   (resolve e)
   (cev e m x ini)))))
 
@@ -319,7 +320,7 @@
      x (last n)
      f (env (init n) e (X nom (tget e 'nom)))
    (,
-      (>>= (prev f x 4) (\ k
+      (>>= (ev-part f x 4) (\ k
        (>>= (? (nilp (tget f 'loc)) k
               (emi i-prel (emx (len (tget f 'loc)) k))) (\ k
         (>>= (hom-fin (?
@@ -406,7 +407,7 @@
  forms(tbl '` cqt '? cco ': cde '\ cla ', cse)
  c2 (\ e m x k (: z (tget forms (A x)) ((? z z cap) e m x k)))
  ini (\ e m (insx e m i-ret (tget e'nom) (\ e m (hom m))))
- ev (\ x ((prev (env () () 'ev) x 0)x))
+ ev (\ x ((ev-part (env () () 'ev) x 0)x))
  ev))
 
 (: s0 ev)

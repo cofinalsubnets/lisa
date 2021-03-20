@@ -46,9 +46,7 @@ class Bench < Hash
     A.keys.map(&A.method(:[])).filter(&:itself).each(&:[]) end
 end
 
-pp = ARGV.shift.split
-p pp
-lips = Lang.new "lips", *pp
+lips = Lang.new "lips", *ARGV.shift.split
 ruby = Lang.new "ruby", "ruby"
 mruby = Lang.new "mruby", "mruby"
 chez = Lang.new "chez", "chez-scheme", "--script"

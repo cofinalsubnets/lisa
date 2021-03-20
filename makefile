@@ -76,7 +76,7 @@ sloc:
 bins: $o $n $b
 	@stat -c "%n %sB" $^
 bench: $b
-	ruby ./bench.rb "./lips -_ prelude.lips"
+	ruby ./bench.rb "$(run)"
 repl: $n
 	@which rlwrap >/dev/null && rlwrap $(rcmd) || $(rcmd)
 
