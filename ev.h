@@ -25,7 +25,7 @@
   _(drop),_(hom_getx_u),_(emx_u),_(emi_u),_(emx),_(em_u),_(ev_u),_(ap_u)
 #define prims(_)\
   _("gensym", gsym_u),\
-  _("hom-fin", hom_fin_u),\
+  _("hfin", hom_fin_u),\
   _("read", rd_u),   _(".", em_u),\
   _("A", car_u),    _("B", cdr_u),\
   _("X", cons_u),   _("=", eq_u),\
@@ -42,9 +42,9 @@
   _("slen", strl),   _("sget", strg),\
   _("scat", strc),   _("ssub", strs),\
   _("str", strmk),   _(".c", pc_u),\
-  _("hom", hom_u),   _("hom-seek", hom_seek_u),\
-  _("emx", emx_u),     _("hom-get-x", hom_getx_u),\
-  _("emi", emi_u),     _("hom-get-i", hom_geti_u),\
+  _("hom", hom_u),   _("hseek", hom_seek_u),\
+  _("emx", emx_u),     _("hgetx", hom_getx_u),\
+  _("emi", emi_u),     _("hgeti", hom_geti_u),\
   _("zzz", zzz),\
   _("vecp", vecp_u), _("nump", nump_u),\
   _("symp", symp_u), _("twop", twop_u),\

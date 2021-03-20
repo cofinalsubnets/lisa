@@ -12,11 +12,11 @@
 NoInline const char *tnom(enum type t) { switch (t) {
   case Hom: return "hom";
   case Num: return "num";
-  case Tbl: return "table";
-  case Two: return "pair";
-  case Tup: return "tuple";
-  case Oct: return "string";
-  case Sym: return "symbol";
+  case Tbl: return "tbl";
+  case Two: return "two";
+  case Tup: return "vec";
+  case Oct: return "str";
+  case Sym: return "sym";
   default:  return "nil"; } }
 
 typedef obj P(vm, FILE*);

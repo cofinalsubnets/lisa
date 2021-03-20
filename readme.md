@@ -1,8 +1,11 @@
 # lips
-## usage
-`make install` installs files into the `~/.local` hierarchy.
-assuming `~/.local/bin` is in your `$PATH` `lips` should start
-a repl.
+low-level virtual lisp machine and self-hosting compiler.
+tested on x86 and ARM.
+
+## build / install
+are you on linux? `make` should work. otherwise consult the
+makefile for the C compiler invocation. `make install`
+puts the binary and prelude under `~/.local` by default.
 
 ## special forms
 with scheme equivalents
@@ -52,7 +55,7 @@ bad, sorry, you know what they say about naming things!
 - `ev = eval`, `ap = apply`, `ccc = call/cc`
 - `.` print arguments separated by spaces, print newline, return
   last argument; useful for debugging.
-- `A = car` `B = cdr` `X = cons` `li = list`. `AA`-`BB` are
+- `A = car` `B = cdr` `X = cons` `L = list`. `AA`-`BB` are
   defined as macros.
 - `homp` `nump` `twop` `symp` `nilp` `tblp` `strp` `vecp` type predicates
 - hash functions: `tbl tset tget thas tkeys tlen tdel` ; see prelude.lips for usage
@@ -80,10 +83,9 @@ the thread compiler and built-in functions are in `prelude.lisp`.
 
 ### a quine
 ```lisp
-((\ i (li i (li '` i))) '(\ i (li i (li '` i))))
+((\ i (L i (L '` i))) '(\ i (L i (L '` i))))
 ```
 ## missing features
-- exceptions
 - arrays, floats and many other types
 - unicode
 - useful i/o
