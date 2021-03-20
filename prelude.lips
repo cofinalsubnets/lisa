@@ -87,28 +87,43 @@
   i-call (\ i h (>>= (hom-get-i (hom-seek h 1)) (\ j (case j
    i-ret (emi i-rec (emx (hom-get-x h) (hom-seek h 1)))
    (emi i h)))))
+  i-immv (\ i h (>>= (hom-get-i (hom-seek h 1)) (\ j (?
+   (? (? (= j i-call) 0 (= j i-rec))
+      (? (: a (hom-get-x h)
+          (? (homp a) (? (= (hom-get-i a) i-arity) (?
+            (<= (hom-get-x (hom-seek a 1))
+                (hom-get-x (hom-seek h 2)))))))))
+       (,
+    (emi i (emx (hom-seek (hom-get-x h) 2)
+     (hom-seek h 1))))
+    (emi i h)))))
+
   )
+
  emif (\ i h ((? (: q (tget fuse i)) q emi) i h))
 
  inst (\ e m i k (emif i (k e (+ m 1))))
  insx (\ e m i x k (emif i (emx x (k e (+ m 2)))))
  imm  (\ e m x k (insx e m i-immv x (-> (t-tag x) k)))
- cev  (\ e m x k ((? (twop x) c2 (symp x) cy imm) e m x k))
+ immk (\ x k (code i-immv (data x (-> (t-tag x) k))))
+ cev  (\ e m x k (((? (twop x) (lfem c2)
+                      (symp x) cy
+                      immk) x k) e m))
 
  lfem (\ f (\ x . (\ e m (ap f (X e (X m x))))))
  kev (\ x k (\ e m (cev e m x k)))
- jnst (\ i k (\ e m (inst e m i k)))
+ code (\ i k (\ e m (inst e m i k)))
  data (\ x k (\ e m (emx x (k e (+ m 1)))))
- code jnst
 
- cy (\ e m x k (:
-  t-c (\ x (case x
-   'hom 0 'num 1 'two 2 'vec 3 'oct 4
-   'tbl 5 'sym 6 'nil 7 () 8 (fail)))
-  late (\ e m x d k (>>= (k e (+ m 2)) (\ h
-   (>>= (consumes h) (\ t
-    (>>= (? t (hom-seek h 1) h) (\ h
-     (emi i-lbind (emx (X (t-c t) (X d x)) h)))))))))
+t-c (\ x (case x
+ 'hom 0 'num 1 'two 2 'vec 3 'oct 4
+ 'tbl 5 'sym 6 'nil 7 () 8 (fail)))
+late (\ e m x d k (>>= (k e (+ m 2)) (\ h
+ (>>= (consumes h) (\ t
+  (>>= (? t (hom-seek h 1) h) (\ h
+   (emi i-lbind (emx (X (t-c t) (X d x)) h)))))))))
+
+ cy (\ x k (\ e m (:
   r (look e x)
   s (A r)
   (? (= s 'here)  (imm e m (B r) k)
@@ -119,7 +134,7 @@
       'clo (insx e m i-clon (idx (tget e'clo) x) k))
      (,(: l (len (tget e'clo)))
        (tset e'clo(snoc (tget e'clo) x))
-       (insx e m i-clon l k)))))
+       (insx e m i-clon l k))))))
 
  cqt (\ e m x k (imm e m (AB x) k))
  toplp (\ e (nilp (tget e'par)))
@@ -137,7 +152,7 @@
   (< -1 (idx (tget e 'clo) y)) (X 'clo e)
   (look (tget e 'par) y)))
 
- >- (\ t k (? (: tc (tget t-checks t)) (jnst tc k) (fail)))
+ >- (\ t k (? (: tc (tget t-checks t)) (code tc k) (fail)))
  -> (\ t k (\ e m (assert e m t k)))
 
  group (\ f m id x
@@ -149,7 +164,7 @@
 
  bf0 (\ i k x
   (: bf (\ i k x xs
-      (jnst i-push (kev x (>- 'num (jnst i (bf0 i k xs))))))
+      (code i-push (kev x (>- 'num (code i (bf0 i k xs))))))
    (? x (bf i k (A x) (B x)) (-> 'num k))))
 
  inliners (tbl
@@ -162,12 +177,12 @@
   ;; be nice to the compiler
   emi (\ x k
    (kev (AB x) (>- 'hom
-    (jnst i-push (kev (A x) (>- 'num
-     (jnst i-emi (-> 'hom k))))))))
+    (code i-push (kev (A x) (>- 'num
+     (code i-emi (-> 'hom k))))))))
   emx (\ x k
    (kev (AB x) (>- 'hom
-    (jnst i-push (kev (A x)
-     (jnst i-emx (-> 'hom k)))))))
+    (code i-push (kev (A x)
+     (code i-emx (-> 'hom k)))))))
   + (\ x k (>>= (group + 0 0 x) (\ x
    (kev (A x) (>- 'num (bf0 i-add k (B x)))))))
   * (\ x k (>>= (group * 1 1 x) (\ x
@@ -176,7 +191,7 @@
    (? (nilp x)
        ((lfem imm) 0 k)
       (nilp (B x))
-       (kev (A x) (>- 'num (jnst i-neg (-> 'num k))))
+       (kev (A x) (>- 'num (code i-neg (-> 'num k))))
       (: y (group + 0 0 (B x))
          z (? (nump (A x)) (group - (A x) 0 y) (X(A x)y))
        (? z (kev (A z) (>- 'num (bf0 i-sub k (B z))))
@@ -187,12 +202,12 @@
 
    tset (\ x k
     (kev (A (BB x))
-     (jnst i-push (kev (AB x)
-      (jnst i-push (kev (A x) (>- 'tbl
-       (jnst i-tset k))))))))
+     (code i-push (kev (AB x)
+      (code i-push (kev (A x) (>- 'tbl
+       (code i-tset k))))))))
 
-  nilp (\ x k (kev (A x) (jnst i-nilpp k)))
-  fail (\ x k (jnst i-fail k)))
+  nilp (\ x k (kev (A x) (code i-nilpp k)))
+  fail (\ x k (code i-fail k)))
 
  cap (\ e m x k (:
   capi(\ x k (? (nilp x) (k e m)
@@ -240,45 +255,44 @@
      ((ccor (B x) (ccopre k)) e m))))
 
 
- addloc (\ e y (tset e 'loc (X y (tget e 'loc))))
  sdefa (\ e y x
   (? (qtd x) (tset (tget e'val) y (unq x))
-     (, (addloc e y)
+     (, (tset e'loc(X y (tget e'loc)))
         (? (twop x) (? (= '\ (A x))
          (tset (tget e'lam) y x))))))
 
- desug (\ d (li (li '\ (li ', (init d) (last d)))))
  quote (\ x (? (qtd x) x (li '` x)))
  rw-sym (\ e x (: l (look e x)
   (? (= (A l) 'here) (quote (B l)) x)))
 
- rw-: (\ e x
-  (: loop (\ e x (? x
+ rw-let (\ e x
+  (: desug (\ d (li (li '\ (li ', (init d) (last d)))))
+     loop (\ e x (? x
       (: z (rw e (AB x)) y (A x)
        (, (sdefa e y z)
           (X y (X z (loop e (BB x))))))))
-   (? (nilp (B x)) ()
-      (= 0 (% (len x) 2)) (desug x)
-      (X ': (loop e (B x))))))
+   (? (B x) (?
+    (= 0 (% (len x) 2)) (desug x)
+    (X ': (loop e (B x)))))))
 
- rw-, (\ e x (:
-  rw-,r (\ e x (?
+ rw-seq (\ e x (:
+  rw-seqr (\ e x (?
    (nilp (B x)) (li (rw e (A x)))
     (: y (rw e (A x))
-       z (rw-,r e (B x))
+       z (rw-seqr e (B x))
      (? (|| (symp y) (qtd y)) z (X y z)))))
   (? (: y (B x))
-     (: z (rw-,r e y) (? (B z) (X ', z) (A z))))))
+     (: z (rw-seqr e y) (? (B z) (X ', z) (A z))))))
 
  ; this rewrites lambda expressions of the form
  ;   (\ (: a b c)) -> (\ (, (: a b) c))
  ; which is always safe and assert better code.
- rw-\ (\ e l
+ rw-lam (\ e l
   (: defp (\ x (? (twop x) (= (A x) ':)))
      deftp (\ x (? (defp x) (= 0 (% (len x) 2))))
      trlamp (\ l (? (B l) (deftp (last l))))
-     rw-\m (\ l (>>= (last l) (\ m (snoc (init l) (li ', (init m) (last m))))))
-   (? (trlamp l) (rw-\m l) l)))
+     rw-lamm (\ l (>>= (last l) (\ m (snoc (init l) (li ', (init m) (last m))))))
+   (? (trlamp l) (rw-lamm l) l)))
 
  pures (li li X A B + - * / %
            homp nilp symp nump tblp strp twop
@@ -286,10 +300,10 @@
  all (\ p l (? l (? (p (A l)) (all p (B l))) 0))
  rw-list (\ e x (: a (A x) (case a
   '` (? (B x) x)
-  '\ (rw-\ e x)
-  ': (rw-: e x)
-  '? (rw-? e (B x))
-  ', (rw-, e x)
+  '\ (rw-lam e x)
+  ': (rw-let e x)
+  '? (rw-if e (B x))
+  ', (rw-seq e x)
   (? (thas macros a)
       (rw e (ap (tget macros a) (B x)))
      (? (all qtd (: z (map (\ x (rw e x)) x)))
@@ -299,15 +313,15 @@
 
  qtd (\ x (? (twop x) (= (A x) '`) (nilp (symp x))))
  unq (\ x (? (twop x) (AB x) x))
- rw-? (\ e x
-  (: rw-?r (\ e x (?
+ rw-if (\ e x
+  (: rw-ifr (\ e x (?
       (nilp x) (li ())
       (nilp (B x)) (li (rw e (A x)))
       (: a (rw e (A x))
        (? (qtd a) (? (unq a) (li (rw e (AB x)))
-                             (rw-?r e (BB x)))
-        (X a (X (rw e (A (B x))) (rw-?r e (BB x))))))))
-   (: r (rw-?r e x) (? r (? (B r) (X '? r) (A r))))))
+                             (rw-ifr e (BB x)))
+        (X a (X (rw e (A (B x))) (rw-ifr e (BB x))))))))
+   (: r (rw-ifr e x) (? r (? (B r) (X '? r) (A r))))))
 
  rw (\ e x (?
   (twop x) (rw-list e x)
@@ -393,7 +407,7 @@
      claclo (\ e arg
       (: clacloin (\ e arg k (? (nilp arg) k
           (clacloin e (B arg) (\ e m
-           (cev e m (A arg) (jnst i-push k))))))
+           (cev e m (A arg) (code i-push k))))))
          k (\ e m (emi i-take (emx (len arg) (hom (+ m 2)))))
        ((clacloin e arg k) e 0)))
 

@@ -52,12 +52,11 @@ bad, sorry, you know what they say about naming things!
 - `ev = eval`, `ap = apply`, `ccc = call/cc`
 - `.` print arguments separated by spaces, print newline, return
   last argument; useful for debugging.
-- `&&` `||` left-to-right, shortcut eval when bound early.
-- there's no built-in `list` but `list = (\ x . x)`
-- `A = car` `B = cdr` `X = cons`.
-- `homp` `nump` `twop` `symp` `nilp` type predicates
-- hash functions: `tbl tbl-set tbl-get tbl-has tbl-keys tbl-len tbl-del` ; see prelude.lips for usage
-- string functions: n-ary constructor `(str 97 97 97) = "aaa"` ; `str-len str-get`
+- `A = car` `B = cdr` `X = cons` `li = list`. `AA`-`BB` are
+  defined as macros.
+- `homp` `nump` `twop` `symp` `nilp` `tblp` `strp` `vecp` type predicates
+- hash functions: `tbl tset tget thas tkeys tlen tdel` ; see prelude.lips for usage
+- string functions: n-ary constructor `(str 97 97 97) = "aaa"` ; `slen sget ssub scat`
 
 ## macros
 these are defined in `prelude.lips`, `make repl` imports them automatically

@@ -134,6 +134,11 @@ vm_op(lbind) {
   if (!w) NO("free variable : %s", symnom(xp));
   xp = w;
   if (getnum(y) != 8) TypeCheck(xp, getnum(y));
+  terp *q = G(FF(ip));
+  if ((q == call || q == rec) && homp(xp)) {
+    obj aa = (obj)GF(FF(ip));
+    if (G(xp) == arity && aa >= (obj)GF(xp))
+      xp += 2*Word; }
   G(ip) = immv;
   GF(ip) = (terp*) xp;
   Next(2); }
