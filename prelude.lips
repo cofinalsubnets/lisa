@@ -1,8 +1,10 @@
-(: local-vars '(local-vars old-ev prelude egg s0 s1 s2 macros ns emi emx hom hom-seek hom-get-i hom-get-x hom-fin)
-   prelude '(,
+(: local-vars '(local-vars old-ev lib egg s0 s1 s2 macros ns emi emx hom hom-seek hom-get-i hom-get-x hom-fin)
+   lib '(,
   ;; here's some data constructors
-  (: and (\ l . (: & (\ l (? l (? (A l) (& (B l))) 0)) (& l)))
-     or (\ l . (: | (\ l (? l (? (A l) 0 (| (B l))))) (| l)))
+  (: and (\ l (? l (? (A l) (and (B l))) 0))
+     && (\ l . (and l))
+     or (\ l (? l (: a (A l) (? a a (or (B l))))))
+     || (\ l . (or l))
      li (\ . . .) ; dot only has special meaning following another argument, which can be dot
      ++ (\ a b(?(twop a)(X(A a)(++(B a)b))b)) ; append
      iota (\ n x .
@@ -63,8 +65,6 @@
                      (A a))))) x a)))))
 
 
-; ok now let's bootstrap a lisp compiler!
-; we can do this by redefining ev at toplevel.
 (: egg '(:
  env (\ a p n (>>=
   ((: asig (\ a n
@@ -133,12 +133,12 @@
  >- (\ t k (? (: tc (tget t-checks t)) (jnst tc k) (fail)))
  -> (\ t k (\ e m (assert e m t k)))
 
- jgrp (\ f m id x
-  (: jgrpn (\ f m x (? (nilp x) (X m)
-            (? (qtd (: y (A x))) (jgrpn f (f m y) (B x))
-                                 (: z (jgrpn f m (B x))
+ ngrp (\ f m id x
+  (: ngrpn (\ f m x (? (nilp x) (X m)
+            (? (qtd (: y (A x))) (ngrpn f (f m (unq y)) (B x))
+                                 (: z (ngrpn f m (B x))
                                   (X (A z) (X y (B z)))))))
-   (? (= id (A (: j (jgrpn f m x)))) (B j) j)))
+   (? (= id (A (: j (ngrpn f m x)))) (B j) j)))
 
  bf0 (\ i k x
   (: bf (\ i k x xs
@@ -161,15 +161,17 @@
    (kev (AB x) (>- 'hom
     (jnst i-push (kev (A x)
      (jnst i-emx (-> 'hom k)))))))
-  + (\ x k (>>= (jgrp + 0 0 x) (\ x
+  + (\ x k (>>= (ngrp + 0 0 x) (\ x
    (kev (A x) (>- 'num (bf0 i-add k (B x)))))))
+  * (\ x k (>>= (ngrp * 1 1 x) (\ x
+   (kev (A x) (>- 'num (bf0 i-mul k (B x)))))))
   - (\ x k
    (? (nilp x)
        ((lfem imm) 0 k)
       (nilp (B x))
        (kev (A x) (>- 'num (jnst i-neg (-> 'num k))))
-      (: y (jgrp + 0 0 (B x))
-         z (? (nump (A x)) (jgrp - (A x) 0 y) (X(A x)y))
+      (: y (ngrp + 0 0 (B x))
+         z (? (nump (A x)) (ngrp - (A x) 0 y) (X(A x)y))
        (? z (kev (A z) (>- 'num (bf0 i-sub k (B z))))
             ((lfem imm) 0 k)))))
    tget (\ x k
@@ -287,8 +289,9 @@
   ', (rwse e x)
   (? (thas macros a)
       (rw e (ap (tget macros a) (B x)))
-     (? (all qtd (: z (map (\ x (rw e x)) x))) (? (elem pures (A z))))
-      (quote (ap (A z) (map unq (B z))))
+     (? (all qtd (: z (map (\ x (rw e x)) x)))
+      (? (elem pures (A z))))
+       (quote (ap (A z) (map unq (B z))))
      z))))
 
  qtd (\ x (? (twop x) (= (A x) '`) (nilp (symp x))))
@@ -375,9 +378,9 @@
  ; env, len, type, cont, xpn.
  assert (\ e m t k (,
    (: type (\ t h
-     ((\ t u (case u t (type t (hom-seek h 1))
-                   () h
-                   (fail)))
+     ((\ t u (case u () h
+                     t (type t (hom-seek h 1))
+                     (fail)))
       t (consumes h))))
   (type t (k e m))))
  consumes (\ h (? (: c (tget t-checks (hom-get-i h))) c))
@@ -407,9 +410,6 @@
  ev))
 
 (: s0 ev)
-(ev prelude)
-(: ev (ev egg))
-(ev prelude)
-(: ev (ev egg))
+(, (ev lib) (: ev ((ev egg) egg)) (ev lib))
 (? (= s0 ev) (fail "bootstrap failed"))
 (each local-vars (\ v (tdel ns v)))

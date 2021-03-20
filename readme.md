@@ -54,7 +54,7 @@ bad, sorry, you know what they say about naming things!
   last argument; useful for debugging.
 - `&&` `||` left-to-right, shortcut eval when bound early.
 - there's no built-in `list` but `list = (\ x . x)`
-- `*: = car` `:* = cdr` `:: = cons` `*! = set-car!` `!* = set-cdr!`
+- `A = car` `B = cdr` `X = cons`.
 - `homp` `nump` `twop` `symp` `nilp` type predicates
 - hash functions: `tbl tbl-set tbl-get tbl-has tbl-keys tbl-len tbl-del` ; see prelude.lips for usage
 - string functions: n-ary constructor `(str 97 97 97) = "aaa"` ; `str-len str-get`

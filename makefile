@@ -7,8 +7,9 @@ h=$(wildcard *.h)
 s=$(wildcard *.c)
 o=$(s:.c=.o)
 v="`git rev-parse HEAD`-git"
-tcmd=./$b -_ $p $t
-rcmd = ./$b -_i $p
+run=./$b -_ $p
+tcmd=$(run) $t
+rcmd=$(run) -i
 
 # C compiler
 # gcc and clang both work. other compilers, tcc etc., don't.
@@ -24,7 +25,7 @@ c=gcc -g -O2 -flto -std=gnu17\
 	-fno-inline -fno-stack-protector
 
 test: $n
-	@/usr/bin/env TIMEFORMAT="in %Rs" bash -c "time $(tcmd)"
+	/usr/bin/env TIMEFORMAT="in %Rs" bash -c "time $(tcmd)"
 
 # build
 $n: $b
@@ -75,7 +76,7 @@ sloc:
 bins: $o $n $b
 	@stat -c "%n %sB" $^
 bench: $b
-	@make -sC bench
+	ruby ./bench.rb "./lips -_ prelude.lips"
 repl: $n
 	@which rlwrap >/dev/null && rlwrap $(rcmd) || $(rcmd)
 
