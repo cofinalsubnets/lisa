@@ -145,8 +145,6 @@ static obj ltu(vm v, mem e, obj n, obj l) {
     l = compose(v, &n, X(y)));
   return l; }
 
-c1(c_ev) { return c_eval(v, e, m, *Sp++); }
-c2(c_eval) { return (symp(x) ? c_sy : twop(x) ? c_2 : c_imm)(v, e, m, x); }
 
 c2(c_la) {
   terp *j = immv;
@@ -201,10 +199,7 @@ c1(c_co_pre) {
 // the top of stack 2
 c1(c_co_pre_con) {
   obj x = ccc(v, e, m+2), k = X(S2);
-  terp *i = G(k);
-  return
-    i == ret ? em1(i, x) :
-    em2(jump, i == jump ? (obj) GF(k) : k, x); }
+  return G(k) == ret ? em1(ret, x) : em2(jump, k, x); }
 
 // after generating a branch store its address
 // in stack 1
@@ -282,8 +277,13 @@ c2(c_sy) {
       with(x, q = snoc(v, clo(*e), x)), clo(*e) = q;
       return imx(v, e, m, clon, N(y)); } }
 
-c2(c_qt) { return c_imm(v, e, m, twop(x = Y(x)) ? X(x) : x); }
 
+c1(c_ev) { return c_eval(v, e, m, *Sp++); }
+c2(c_eval) { return (symp(x) ? c_sy :
+                     twop(x) ? c_2 :
+                               c_imm)(v, e, m, x); }
+
+c2(c_qt) { return c_imm(v, e, m, twop(x = Y(x)) ? X(x) : x); }
 c2(c_2) {
   obj z = X(x);
   return (z == Qt ? c_qt :
@@ -348,25 +348,27 @@ num llen(obj l) {
   for (num i = 0;; l = Y(l), i++) if (!twop(l)) return i; }
 
 static tup tuplr(vm v, num i, va_list xs) {
-  tup t; obj x = va_arg(xs, obj);
-  return x ?
+  tup t; obj x = va_arg(xs, obj); return x ?
     (with(x, t = tuplr(v, i+1, xs)), t->xs[i] = x, t) :
     ((t = cells(v, Size(tup) + i))->len = i, t); }
 
 static obj tupl(vm v, ...) {
-  tup t; va_list xs;
-  return va_start(xs, v), t = tuplr(v, 0, xs), va_end(xs), puttup(t); }
+  tup t; va_list xs; return
+    va_start(xs, v),
+    t = tuplr(v, 0, xs),
+    va_end(xs),
+    puttup(t); }
 
 static void pushss(vm v, num i, va_list xs) {
-  obj x = va_arg(xs, obj);
-  if (x) with(x, pushss(v, i, xs)), *--Sp = x;
-  else reqsp(v, i); }
+  obj x; (x = va_arg(xs, obj)) ?
+    (with(x, pushss(v, i, xs)), *--Sp = x) :
+    reqsp(v, i); }
 
 static void pushs(vm v, ...) {
   num i = 0;
   va_list xs; va_start(xs, v);
   while (va_arg(xs, obj)) i++;
-  va_end(xs); va_start(xs, v);
+  va_end(xs), va_start(xs, v);
   if (Avail < i) pushss(v, i, xs);
   else for (mem sp = Sp -= i; i--; *sp++ = va_arg(xs, obj));
   va_end(xs); }
@@ -406,9 +408,9 @@ static void rin(vm v, mem d, const char *n, terp *u) {
 #define RPR(a,b) rpr(v,&d,a,b)
 #define RIN(x) rin(v,&d,"i-"#x,x)
 static Inline obj code_dictionary(vm v) {
-  obj d = table(v);
-  with(d, prims(RPR), insts(RIN));
-  return d; }
+  obj d; return d = table(v),
+                with(d, prims(RPR), insts(RIN)),
+                d; }
 #undef RPR
 #undef RIN
 
@@ -431,7 +433,7 @@ static Inline void init_globals_array(vm v) {
 static int seekp(const char *p) {
   int b, c;
   b = open(getenv("HOME"), O_RDONLY);
-  c = openat(b,USR_PATH, O_RDONLY), close(b);
+  c = openat(b, USR_PATH, O_RDONLY), close(b);
   b = openat(c, p, O_RDONLY), close(c);
   if (-1 < b) return b;
   b = open(SYS_PATH, O_RDONLY);
@@ -485,6 +487,7 @@ vm_op(hom_fin_u) {
   TypeCheck(*Argv, Hom);
   obj x; CallC(x = hom_fin(v, *Argv));
   Go(ret, x); }
+
 vm_op(ev_u) {
   ArityCheck(1);
   obj x; hom h;

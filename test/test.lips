@@ -34,8 +34,7 @@
 (T (= "hollow world" (scat "hol" "low " "wor" "ld")))
 (T (= "bidden" (ssub "forbidden planet" 3 9)))
 (T (= "a" (str 97)))
-(T (= "asdf" "asdf"))
-(T (nilp (= "asdf" "asd")))
+(T (nilp (= "xxx" "yyy")))
 (T (= "asdf" (ap str (de-str "asdf"))))
 
 (T (= 1 (ccc (\ k (, (k 1) 2)))))

@@ -306,19 +306,6 @@ static void tbl_resize(vm v, obj t, num ns) {
     e->next = b[u],
     b[u] = e; }
 
-static Inline num tbl_k_elen(tble e, num i) {
-  while (e) e = e->next, i++;
-  return i; }
-// simple hashing performance metric. will be > 1 if keys are
-// sufficiently unevenly distributed.
-static num tbl_k(obj t) {
-  tbl o = gettbl(t);
-  num i = 0, j = 0, k;
-  for (; j < o->cap; j++)
-    k = tbl_k_elen(o->tab[j], 0),
-    i += k * k;
-  return i / o->cap; }
-
 static void tbl_add_entry(vm v, obj t, obj k, obj x, num b) {
   tble e;
   with(t, with(k, with(x, e = cells(v, Size(tble)))));
@@ -334,7 +321,8 @@ obj tbl_set(vm v, obj t, obj k, obj val) {
     if (e->key == k) return e->val = val;
   mm(&t); mm(&val);
   tbl_add_entry(v, t, k, val, b);
-  if (tbl_k(t) > 2) tbl_resize(v, t, gettbl(t)->cap * 2) ;
+  if (gettbl(t)->len / gettbl(t)->cap > 2)
+    tbl_resize(v, t, gettbl(t)->cap * 2);
   return um, um, val; }
 
 static obj tbl_keys_j(vm v, tble e, obj l) {
