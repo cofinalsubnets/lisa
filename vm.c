@@ -697,8 +697,15 @@ vm_op(vecpp) { xp = tupp(xp) ? ok : nil; Next(1); }
 
 // comparison
 int eql(obj, obj);
+
+// lists are immutable, so we can opportunistically
+// deduplicate them.
 static int twoeq(obj a, obj b) {
-  return eql(X(a), X(b)) && eql(Y(a), Y(b)); }
+  if (!eql(X(a), X(b))) return 0;
+  X(a) = X(b);
+  if (!eql(Y(a), Y(b))) return 0;
+  Y(a) = Y(b);
+  return 1; }
 
 static int tupeq(obj a, obj b) {
   tup t = gettup(a), u = gettup(b);

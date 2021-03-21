@@ -15,7 +15,8 @@
         (?(> n 0)(rho.l n xs)))))
 
   ;; here's some of your standard Functinal Progming stuf
-  (: map (\ f x (? x (X (f (A x)) (map f (B x)))))
+  (: map (\ f x (? x ((\ f x y (X (f (A x)) y))
+                      f x (map f (B x)))))
      foldl(\ z f x (? x (foldl (f z (A x)) f (B x)) z))
      foldr (\ z f x (? x (f (A x) (foldr z f (B x))) z))
      foldl1 (\ f x (foldl (A x) f (B x)))
@@ -328,9 +329,10 @@
             (? (twop x) (? (= '\ (A x))
              (tset (tget e'lam) y x))))))
      loop (\ e x (? x
-      (: z (rw e (AB x)) y (A x)
-       (, (sdefa e y z)
-          (X y (X z (loop e (BB x))))))))
+      (: ll (loop e (BB x))
+         z (rw e (AB x))
+         y (A x)
+       (, (sdefa e y z) (X y (X z ll))))))
    (? (B x) (?
     (= 0 (% (len x) 2)) (desug x)
     (X ': (loop e (B x)))))))
@@ -338,8 +340,8 @@
  rw-seq (\ e x (:
   rw-seqr (\ e x (?
    (nilp (B x)) (L (rw e (A x)))
-    (: y (rw e (A x))
-       z (rw-seqr e (B x))
+    (: z (rw-seqr e (B x))
+       y (rw e (A x))
      (? (|| (symp y) (qtd y)) z (X y z)))))
   (? (: y (B x))
      (: z (rw-seqr e y) (? (B z) (X ', z) (A z))))))
@@ -386,18 +388,18 @@
   ', (rw-seq e x)
   (? (thas macros a)
       (rw e (ap (tget macros a) (B x)))
-     (: z (rw-arity (map (\ x (rw e x)) x)) q (A z) (?
+     (: z (rw-arity (map (\ x (rw e x)) x)) q (A z) r (B z) (?
       (nilp (thas pures q)) z
-      (? (all qtd z)
-          (quote (ap q (map unq (B z))))
-         (thas abelians q)
-          (: ff (partition qtd (B z))
-             fg (ap q (A ff))
-             (X q (? (= fg (tget abelians q))
-                     (B ff) (X fg (B ff)))))
-         (thas monoids q)
-          (monofold q (tget monoids q) (B z))
-         z)))))))
+      (all qtd r)
+        (quote (ap q (map unq r)))
+      (thas monoids q)
+       (monofold q (tget monoids q) r)
+      (thas abelians q)
+        (: ff (partition qtd r)
+           fg (ap q (map unq (A ff)))
+           (X q (? (= fg (tget abelians q))
+                   (B ff) (X fg (B ff)))))
+      z))))))
 
  rw-if (\ e x
   (: rw-ifr (\ e x (?
