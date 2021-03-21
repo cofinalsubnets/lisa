@@ -84,8 +84,10 @@ int eql(obj, obj);
 const char *tnom(enum type);
 
 #define kind(x) ((x)&7)
-#define gethom(x) ((hom)((x)-Hom))
-#define puthom(x) ((obj)(x)+Hom)
+#define Gh(x) ((hom)((x)-Hom))
+#define Ph(x) ((obj)(x)+Hom)
+#define Gn getnum
+#define Pn putnum
 #define gettwo(x) ((two)((x)-Two))
 #define puttwo(x) ((obj)(x)+Two)
 #define getnum(n) ((num)(n)>>3)
@@ -112,8 +114,8 @@ const char *tnom(enum type);
 #define XY(x) X(Y(x))
 #define YX(x) Y(X(x))
 #define YY(x) Y(Y(x))
-#define F(x) (gethom(x)+1)
-#define G(x) gethom(x)->g
+#define F(x) (Gh(x)+1)
+#define G(x) Gh(x)->g
 #define FF(x) F(F(x))
 #define FG(x) F(G(x))
 #define GF(x) G(F(x))

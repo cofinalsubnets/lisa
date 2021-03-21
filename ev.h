@@ -59,8 +59,8 @@ terp insts(ninl);
 #undef ninl
 #define vm_op(n,...) NoInline obj n(vm v,hom ip,mem fp,mem sp,mem hp,obj xp,##__VA_ARGS__)
 vm_op(panic, const char*, ...);
-#define Pack() (Ip=puthom(ip),Sp=sp,Hp=hp,Fp=fp,Xp=xp)
-#define Unpack() (fp=Fp,hp=Hp,sp=Sp,ip=gethom(Ip),xp=Xp)
+#define Pack() (Ip=Ph(ip),Sp=sp,Hp=hp,Fp=fp,Xp=xp)
+#define Unpack() (fp=Fp,hp=Hp,sp=Sp,ip=Gh(Ip),xp=Xp)
 #define Jump(f,...) return (f)(v,ip,fp,sp,hp,xp,##__VA_ARGS__)
 #define Have(n) if (avail < n) Jump((Xp=n,gc))
 #define CallC(...)(Pack(),(__VA_ARGS__),Unpack())

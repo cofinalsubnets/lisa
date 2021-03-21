@@ -56,8 +56,6 @@ static obj tupl(vm, ...),
            hom_ini(vm, num);
 static num idx(obj, obj);
 
-#define N(x) putnum(x)
-#define Gn(x) getnum(x)
 enum location { Here, Loc, Arg, Clo, Wait };
 #define c1(nom,...) static obj nom(vm v,mem e,num m,##__VA_ARGS__)
 #define c2(nom,...) static obj nom(vm v,mem e,num m,obj x,##__VA_ARGS__)
@@ -77,7 +75,7 @@ static obj apply(vm v, obj f, obj x) {
   Push(f, x);
   hom h = cells(v, 5);
   h[0].g = call;
-  h[1].g = (terp*) N(2);
+  h[1].g = (terp*) Pn(2);
   h[2].g = yield;
   h[3].g = NULL;
   h[4].g = (terp*) h;
@@ -116,16 +114,16 @@ static obj asign(vm v, obj a, num i, mem m) {
 static obj scope(vm v, mem e, obj a, obj n) {
   num s = 0;
   with(n, a = asign(v, a, 0, &s));
-  return tupl(v, a, nil, nil, e ? *e : nil, n, N(s), non); }
+  return tupl(v, a, nil, nil, e ? *e : nil, n, Pn(s), non); }
 
 static obj compose(vm v, mem e, obj x) {
-  Push(N(c_ev), x, N(inst), N(ret), N(c_ini));
+  Push(Pn(c_ev), x, Pn(inst), Pn(ret), Pn(c_ini));
   scan(v, e, Sp[1]);
   obj i; x = ccc(v, e, 4); // 4 = 2 + 2
-  if ((i = llen(loc(*e)))) x = em2(prel,  N(i), x);
+  if ((i = llen(loc(*e)))) x = em2(prel,  Pn(i), x);
   i = Gn(asig(*e));
-  if (i > 0) x = em2(arity, N(i), x);
-  else if (i < 0) x = em2(vararg, N(-i-1), x);
+  if (i > 0) x = em2(arity, Pn(i), x);
+  else if (i < 0) x = em2(vararg, Pn(-i-1), x);
   x = hom_fin(v, x);
   return twop(clo(*e)) ? pair(v, clo(*e), x) : x; }
 
@@ -148,7 +146,7 @@ static obj ltu(vm v, mem e, obj n, obj l) {
 
 c2(c_la) {
   terp *j = immv;
-  obj k, nom = *Sp == N(c_d_bind) ? Sp[1] : nil;
+  obj k, nom = *Sp == Pn(c_d_bind) ? Sp[1] : nil;
   with(nom, with(x, k = ccc(v, e, m+2)));
   with(k,
     x = homp(x = ltu(v, e, nom, x)) ? x :
@@ -156,25 +154,25 @@ c2(c_la) {
      c_la_clo(v, e, X(x), Y(x))));
   return em2(j, x, k); }
 
-c2(c_imm) { return Push(N(immv), x), insx(v, e, m); }
+c2(c_imm) { return Push(Pn(immv), x), insx(v, e, m); }
 
 static obj c_la_clo(vm v, mem e, obj arg, obj seq) {
   num i = llen(arg);
   mm(&arg), mm(&seq);
-  for (Push(N(insx), N(take), N(i), N(c_ini));
+  for (Push(Pn(insx), Pn(take), Pn(i), Pn(c_ini));
        twop(arg);
-       Push(N(c_ev), X(arg), N(inst), N(push)), arg = Y(arg));
+       Push(Pn(c_ev), X(arg), Pn(inst), Pn(push)), arg = Y(arg));
   return arg = ccc(v, e, 0), um, um, pair(v, seq, arg); }
 
 c1(c_d_bind) {
   obj y = *Sp++;
   return toplp(e) ? imx(v, e, m, tbind, y) :
-                    imx(v, e, m, setl, N(idx(loc(*e), y))); }
+                    imx(v, e, m, setl, Pn(idx(loc(*e), y))); }
 
 static void c_de_r(vm v, mem e, obj x) {
   if (twop(x))
     with(x, c_de_r(v, e, YY(x))),
-    Push(N(c_ev), XY(x), N(c_d_bind), X(x)); }
+    Push(Pn(c_ev), XY(x), Pn(c_d_bind), X(x)); }
 
 c2(c_de) {
   return !twop(Y(x)) ? c_imm(v, e, m, nil) :
@@ -217,21 +215,21 @@ c1(c_co_pre_ant) {
 static void c_co_r(vm v, mem e, obj x) {
   if (!twop(x)) x = pair(v, nil, nil);
   if (!twop(Y(x)))
-    Push(N(c_ev), X(x), N(c_co_pre_con));
+    Push(Pn(c_ev), X(x), Pn(c_co_pre_con));
   else
     with(x,
-      Push(N(c_co_post_con), N(c_ev), XY(x), N(c_co_pre_con)),
+      Push(Pn(c_co_post_con), Pn(c_ev), XY(x), Pn(c_co_pre_con)),
       c_co_r(v, e, YY(x))),
-    Push(N(c_ev), X(x), N(c_co_pre_ant)); }
+    Push(Pn(c_ev), X(x), Pn(c_co_pre_ant)); }
 
 c2(c_co) {
-  return with(x, Push(N(c_co_pre))),
+  return with(x, Push(Pn(c_co_pre))),
          c_co_r(v, e, Y(x)),
          x = ccc(v, e, m), S2 = Y(S2), x; }
 
 static void c_se_r(vm v, mem e, obj x) {
   if (twop(x)) with(x, c_se_r(v, e, Y(x))),
-               Push(N(c_ev), X(x)); }
+               Push(Pn(c_ev), X(x)); }
 c2(c_se) {
   if (!twop(x = Y(x))) x = pair(v, nil, nil);
   return c_se_r(v, e, x), ccc(v, e, m); }
@@ -241,7 +239,7 @@ c1(c_call) {
   return G(k) != ret ? em2(call, a, k) :
          em2(rec, a, k); }
 
-#define L(n,x) pair(v, N(n), x)
+#define L(n,x) pair(v, Pn(n), x)
 static obj look(vm v, obj e, obj y) {
   obj q;
   if (nilp(e)) return (q = tbl_get(v, Dict, y)) ?
@@ -253,13 +251,13 @@ static obj look(vm v, obj e, obj y) {
 #undef L
 
 static obj imx(vm v, mem e, num m, terp *i, obj x) {
-  return Push(N(i), x), insx(v, e, m); }
+  return Push(Pn(i), x), insx(v, e, m); }
 
 c2(late, obj d) {
   obj k;
   x = pair(v, d, x);
   with(x, k = ccc(v, e, m+2));
-  with(k, x = pair(v, N(8), x));
+  with(k, x = pair(v, Pn(8), x));
   return em2(lbind, x, k); }
 
 c2(c_sy) {
@@ -270,12 +268,12 @@ c2(c_sy) {
     case Wait: return late(v, e, m, x, Y(q));
     default:
       if (Y(q) == *e) switch (Gn(y)) {
-        case Loc: return imx(v, e, m, locn, N(idx(loc(*e), x)));
-        case Arg: return imx(v, e, m, argn, N(idx(arg(*e), x)));
-        case Clo: return imx(v, e, m, clon, N(idx(clo(*e), x))); }
+        case Loc: return imx(v, e, m, locn, Pn(idx(loc(*e), x)));
+        case Arg: return imx(v, e, m, argn, Pn(idx(arg(*e), x)));
+        case Clo: return imx(v, e, m, clon, Pn(idx(clo(*e), x))); }
       y = llen(clo(*e));
       with(x, q = snoc(v, clo(*e), x)), clo(*e) = q;
-      return imx(v, e, m, clon, N(y)); } }
+      return imx(v, e, m, clon, Pn(y)); } }
 
 
 c1(c_ev) { return c_eval(v, e, m, *Sp++); }
@@ -299,10 +297,10 @@ c2(c_ap) {
     Rec(x = apply(v, y, Y(x)));
     return c_eval(v, e, m, x); }
   for (mm(&x),
-       Push(N(c_ev), X(x), N(inst), N(idhom),
-            N(c_call), N(llen(Y(x))));
+       Push(Pn(c_ev), X(x), Pn(inst), Pn(idhom),
+            Pn(c_call), Pn(llen(Y(x))));
        twop(x = Y(x));
-       Push(N(c_ev), X(x), N(inst), N(push)));
+       Push(Pn(c_ev), X(x), Pn(inst), Pn(push)));
   return um, ccc(v, e, m); }
 
 c1(inst) {
@@ -378,17 +376,17 @@ obj hom_ini(vm v, num n) {
   return G(a+n) = NULL,
          GF(a+n) = (terp*) a,
          memset(a, -1, w2b(n)),
-         puthom(a+n); }
+         Ph(a+n); }
 
 static obj hom_fin(vm v, obj a) {
-  for (hom b = gethom(a);;) if (!b++->g)
+  for (hom b = Gh(a);;) if (!b++->g)
     return (obj) (b->g = (terp*) a); }
 
 obj homnom(vm v, obj x) {
   terp *k = G(x);
   if (k == clos || k == pc0 || k == pc1)
     return homnom(v, (obj) G(FF(x)));
-  mem h = (mem) gethom(x);
+  mem h = (mem) Gh(x);
   while (*h) h++;
   x = h[-1];
   return (mem)x >= Pool && (mem)x < Pool+Len ? x :
@@ -403,7 +401,7 @@ static void rpr(vm v, mem d, const char *n, terp *u) {
 
 static void rin(vm v, mem d, const char *n, terp *u) {
   obj y = interns(v, n);
-  tbl_set(v, *d, y, putnum(u)); }
+  tbl_set(v, *d, y, Pn(u)); }
 
 #define RPR(a,b) rpr(v,&d,a,b)
 #define RIN(x) rin(v,&d,"i-"#x,x)
@@ -492,7 +490,7 @@ vm_op(ev_u) {
   ArityCheck(1);
   obj x; hom h;
   CallC(
-   Push(N(c_ev), *Argv, N(inst), N(yield), N(c_ini)),
-   h = gethom(ccc(v, NULL, 0)),
+   Push(Pn(c_ev), *Argv, Pn(inst), Pn(yield), Pn(c_ini)),
+   h = Gh(ccc(v, NULL, 0)),
    x = G(h)(v, h, Fp, Sp, Hp, nil));
   Go(ret, x); }

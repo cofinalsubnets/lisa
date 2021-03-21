@@ -123,11 +123,11 @@ static void emtwo(vm v, two w, FILE *o) {
 static void emnum(vm v, num n, FILE *o) {
   fprintf(o, "%ld", n); }
 static void emhom(vm v, hom h, FILE *o) {
-  fputc('\\', o), phomn(v, homnom(v, puthom(h)), o); }
+  fputc('\\', o), phomn(v, homnom(v, Ph(h)), o); }
 void emit(vm v, obj x, FILE *o) {
   switch (kind(x)) {
-    case Hom: return emhom(v, gethom(x), o);
-    case Num: return emnum(v, getnum(x), o);
+    case Hom: return emhom(v, Gh(x), o);
+    case Num: return emnum(v, Gn(x), o);
     case Sym: return emsym(v, getsym(x), o);
     case Two: return emtwo(v, gettwo(x), o);
     case Oct: return emoct(v, getoct(x), o);

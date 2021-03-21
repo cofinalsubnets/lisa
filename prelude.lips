@@ -233,7 +233,7 @@
    X (\ x k (eval (? (: y (B x)) (A y))
              (code i-push (eval (A x)
               (code i-cons (-> 'two k))))))
- 
+
    ;; be nice to the compiler
    emi (\ x k
     (eval (AB x) (>- 'hom
@@ -246,7 +246,7 @@
     tget (\ x k
      (eval (AB x) (code i-push
       (eval (A x) (>- 'tbl (code i-tget k))))))
- 
+
     tset (\ x k
      (eval (A (BB x))
       (code i-push (eval (AB x)
@@ -265,11 +265,11 @@
         k)))))
       (pop2 (fold (push2 k) (AB x) (BB x))))
      (eval (AB x) (code i-eq k)))))))
- 
+
     && (\ x k (?
      (nilp x) (immk 0 k)
      (any nilp x) (immk () k)
-     (: fold (\ x y k 
+     (: fold (\ x y k
        (eval x (? (nilp y) k (code i-barnch
         (peek2 (fold (A y) (B y) k))))))
       (pop2 (fold (A x) (B x) (push2 k))))))
