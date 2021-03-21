@@ -51,7 +51,7 @@ bad, sorry, you know what they say about naming things!
 - `<` `<=` `>=` `>` variadic, test each successive pair of
   arguments, works on numbers.
 - `=` variadic, works on anything, recursive on pairs so
-  `(= (li 1 2 3) (li 1 2 3)).
+  `(= (L 1 2 3) (L 1 2 3))`.
 - `ev = eval`, `ap = apply`, `ccc = call/cc`
 - `.` print arguments separated by spaces, print newline, return
   last argument; useful for debugging.
