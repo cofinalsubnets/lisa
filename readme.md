@@ -68,7 +68,7 @@ these are defined in `prelude.lips`, `make repl` imports them automatically
 - `(>>= x y z f) = (f x y z)` bind ; `(let ((a x) (b y) (c z)) q) = (>>= x y z (\ a b c q))`
 
 ## code examples
-the thread compiler and built-in functions are in `prelude.lisp`.
+the thread compiler and built-in functions are in `prelude.lips`.
 
 ### fizzbuzz
 ```lisp
