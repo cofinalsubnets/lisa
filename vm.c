@@ -146,7 +146,7 @@ vm_op(lbind) {
   terp *q = G(FF(ip));
   if ((q == call || q == rec) && homp(xp)) {
     obj aa = (obj)GF(FF(ip));
-    if (G(xp) == id_xxx && aa >= (obj)GF(xp))
+    if (G(xp) == arity && aa >= (obj)GF(xp))
       xp += 2*Word; }
   G(ip) = immv;
   GF(ip) = (terp*) xp;
@@ -238,11 +238,11 @@ vm_op(rec) {
   Ap(gethom(xp), nil); }
 
 // type/arity checking
-vm_op(id_xxx) { Arity((obj)GF(ip)); Next(2); }
-vm_op(id_num) { TypeCheck(xp, Num); Next(1); }
-vm_op(id_two) { TypeCheck(xp, Two); Next(1); }
-vm_op(id_hom) { TypeCheck(xp, Hom); Next(1); }
-vm_op(id_tbl) { TypeCheck(xp, Tbl); Next(1); }
+vm_op(arity) { Arity((obj)GF(ip)); Next(2); }
+vm_op(idnum) { TypeCheck(xp, Num); Next(1); }
+vm_op(idtwo) { TypeCheck(xp, Two); Next(1); }
+vm_op(idhom) { TypeCheck(xp, Hom); Next(1); }
+vm_op(idtbl) { TypeCheck(xp, Tbl); Next(1); }
 
 // continuations
 //

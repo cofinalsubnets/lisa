@@ -105,7 +105,7 @@
    (>>= (hgeti q) (hgetx h) (\ j x (?
     (? (? (= j i-call) 0 (= j i-rec))
        (? ((: arity-check (\ a
-           (? (homp a) (? (= (hgeti a) i-id_xxx) (?
+           (? (homp a) (? (= (hgeti a) i-arity) (?
              (<= (hgetx (hseek a 1))
                  (hgetx (hseek q 1))) 0
              (fail)))))) (hgetx h))))
@@ -388,7 +388,7 @@
        (>>= (? (nilp (tget f 'loc)) k
               (emif i-prel (emx (len (tget f 'loc)) k))) (\ k
         (>>= (hfin (?
-             (> (: i (tget f 'sig)) 0) (emif i-id_xxx (emx i k))
+             (> (: i (tget f 'sig)) 0) (emif i-arity (emx i k))
              (< i 0) (emif i-vararg (emx (- (- i) 1) k))
              k)) (\ k
          (? (tget f 'clo) (X (tget f 'clo) k) k))))))))))
@@ -430,10 +430,10 @@
   (symp x) 'sym (strp x) 'oct
   (tblp x) 'tbl (nilp x) 'nil))
  t-checks (tbl
-  i-id_hom 'hom 'hom i-id_hom
-  i-id_num 'num 'num i-id_num
-  i-id_two 'two 'two i-id_two
-  i-id_tbl 'tbl 'tbl i-id_tbl)
+  i-idhom 'hom 'hom i-idhom
+  i-idnum 'num 'num i-idnum
+  i-idtwo 'two 'two i-idtwo
+  i-idtbl 'tbl 'tbl i-idtbl)
 
  ; this function has a lot of arguments sorry...
  ; env, len, type, cont, xpn.

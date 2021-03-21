@@ -4,7 +4,6 @@
 typedef obj c1(vm, mem, num),
             c2(vm, mem, num, obj),
             c3(vm, mem, num, obj, obj);
-#define NO(...) Jump(panic,__VA_ARGS__)
 
 ////
 /// bootstrap thread compiler
@@ -125,7 +124,7 @@ static obj compose(vm v, mem e, obj x) {
   obj i; x = ccc(v, e, 4); // 4 = 2 + 2
   if ((i = llen(loc(*e)))) x = em2(prel,  N(i), x);
   i = Gn(asig(*e));
-  if (i > 0) x = em2(id_xxx, N(i), x);
+  if (i > 0) x = em2(arity, N(i), x);
   else if (i < 0) x = em2(vararg, N(-i-1), x);
   x = hom_fin(v, x);
   return twop(clo(*e)) ? pair(v, clo(*e), x) : x; }
@@ -300,7 +299,7 @@ c2(c_ap) {
     Rec(x = apply(v, y, Y(x)));
     return c_eval(v, e, m, x); }
   for (mm(&x),
-       Push(N(c_ev), X(x), N(inst), N(id_hom),
+       Push(N(c_ev), X(x), N(inst), N(idhom),
             N(c_call), N(llen(Y(x))));
        twop(x = Y(x));
        Push(N(c_ev), X(x), N(inst), N(push)));
