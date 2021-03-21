@@ -60,6 +60,7 @@ bad, sorry, you know what they say about naming things!
 - `homp` `nump` `twop` `symp` `nilp` `tblp` `strp` `vecp` type predicates
 - hash functions: `tbl tset tget thas tkeys tlen tdel` ; see prelude.lips for usage
 - string functions: n-ary constructor `(str 97 97 97) = "aaa"` ; `slen sget ssub scat`
+- symbol functions: `gensym`
 
 ## macros
 these are defined in `prelude.lips`, `make repl` imports them automatically
