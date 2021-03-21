@@ -86,6 +86,9 @@
   1 (emi _1 (hseek h 1))
   (emi i h))))))
  fuse (tbl
+  i-argn (argr i-arg0 i-arg1)
+  i-locn (argr i-loc0 i-loc1)
+  i-clon (argr i-clo0 i-clo1)
   i-nilpp (\ i h (>>= (hgeti h) (\ j (case j
    i-branch (emi i-barnch (hseek h 1))
    i-barnch (emi i-branch (hseek h 1))
@@ -102,12 +105,9 @@
                  (hgetx (hseek q 1))) 0
              (fail)))))) (hgetx h))))
      (emi i (emx (hseek (hgetx h) 2) q))
-    (case x () (emi i-unit q) 0 (emi i-zero q) 1 (emi i-one q)
-     (emi i h))))))))
-  i-argn (argr i-arg0 i-arg1)
-  i-locn (argr i-loc0 i-loc1)
-  i-clon (argr i-clo0 i-clo1)
-  )
+    (case x
+     () (emi i-unit q) 0 (emi i-zero q)
+     1 (emi i-one q) (emi i h)))))))))
 
  emif (\ i h ((? (: q (tget fuse i)) q emi) i h))
 
