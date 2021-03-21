@@ -107,3 +107,8 @@ the thread compiler and built-in functions are in `prelude.lips`.
 - unicode
 - useful i/o
 - namespaces / module system
+
+## further reading / inspiration
+- [Lambda: The Ultimate Imperative](https://dspace.mit.edu/handle/1721.1/5790)
+- [Partial Computation of Programs](https://repository.kulib.kyoto-u.ac.jp/dspace/handle/2433/103401)
+- [Physics, Topology, Logic and Computation: A Rosetta Stone](https://math.ucr.edu/home/baez/rosetta.pdf)
