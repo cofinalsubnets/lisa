@@ -81,6 +81,8 @@
        'lam (tbl)  'nom n
        'val (tbl)  'sig (A b)))))
 
+ brr (\ b (\ i h (>>= (hgeti h) (\ j (case j
+  i-branch (emi b (hseek h 1)) (emi i h))))))
  argr (\ _0 _1 (\ i h (>>= (hgetx h) (\ x (case x
   0 (emi _0 (hseek h 1))
   1 (emi _1 (hseek h 1))
@@ -89,6 +91,9 @@
   i-argn (argr i-arg0 i-arg1)
   i-locn (argr i-loc0 i-loc1)
   i-clon (argr i-clo0 i-clo1)
+  i-lt (brr i-brlt) i-lteq (brr i-brlteq)
+  i-gt (brr i-brgt) i-gteq (brr i-brgteq)
+  i-eq (brr i-breq)
   i-nilpp (\ i h (>>= (hgeti h) (\ j (case j
    i-branch (emi i-barnch (hseek h 1))
    i-barnch (emi i-branch (hseek h 1))
@@ -474,7 +479,8 @@
  ev (\ x ((ev-part (env () () 'ev) x 0)x))
  ev))
 
-(: s0 ev)
-(, (ev lib) (: ev ((ev egg) egg)) (ev lib) (: ev (ev egg)))
-(? (= s0 ev) (fail "bootstrap failed"))
+(ev lib)
+(: ev (ev egg))
+(ev lib)
+(: ev (ev egg))
 (each local-vars (\ v (tdel ns v)))
