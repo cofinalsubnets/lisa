@@ -55,10 +55,11 @@
   _("nilp", nilp_u), _("homp", homp_u)
 
 #define ninl(x) x NoInline
-terp insts(ninl);
+terp insts(ninl), err_arity, err_type, err_div0;
 #undef ninl
 #define vm_op(n,...) NoInline obj n(vm v,hom ip,mem fp,mem sp,mem hp,obj xp,##__VA_ARGS__)
 vm_op(panic, const char*, ...);
+
 #define Pack() (Ip=Ph(ip),Sp=sp,Hp=hp,Fp=fp,Xp=xp)
 #define Unpack() (fp=Fp,hp=Hp,sp=Sp,ip=Gh(Ip),xp=Xp)
 #define Jump(f,...) return (f)(v,ip,fp,sp,hp,xp,##__VA_ARGS__)
@@ -79,6 +80,7 @@ vm_op(panic, const char*, ...);
 typedef struct fr { obj clos, retp, subd, argc, argv[]; } *fr;
 #define E_TYPE  "wrong type : %s for %s"
 #define E_ARITY "wrong arity : %ld of %ld"
-#define TypeCheck(x,t) if(kind(x)!=t)Jump(panic,E_TYPE, tnom(kind(x)), tnom(t))
-#define Arity(n) if(n>Argc)Jump(panic,E_ARITY, getnum(Argc), getnum(n))
+#define E_ZERO  "%ld / 0"
+#define TypeCheck(x,t) if(kind(x)!=t){xp=x;Xp=t;Jump(err_type);}
+#define Arity(n) if(n>Argc){xp=Gn(Argc),Xp=Gn(n);Jump(err_arity);}
 #define ArityCheck(n) Arity(putnum(n))

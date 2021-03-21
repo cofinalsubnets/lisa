@@ -10,6 +10,7 @@
 ## lisp qualities
 - strict lexically scoped lisp-1 with short function words
   and no superfluous parentheses
+- annotation-free hybrid static/dynamic typing
 - lists and definitions (except at toplevel) are immutable
 - lax eval semantics eg. `(ev (L + 1 2 3)) = (ev '(+ 1 2 3))`
 - `()` is self-quoting and false

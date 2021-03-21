@@ -46,7 +46,7 @@ int main(int argc, char**argv) {
     case 'h': fprintf(stdout, help, argv[0]); break; }
 
   args = argc - optind;
-  if (args == 0 && !F&takka) return OK;
+  if (args == 0 && !(F&takka)) return OK;
 
   v = initialize(argc, argv);
   v = F&nprel ? v : bootstrap(v);

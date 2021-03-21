@@ -6,7 +6,8 @@
      or (\ l (? l (: a (A l) (? a a (or (B l))))))
      || (\ l . (or l))
      L (\ . . .) ; dot only has special meaning following another argument, which can be dot
-     ++ (\ a b(?(twop a)(X(A a)(++(B a)b))b)) ; append
+     ++ (: append (\ a b (? a(X(A a)(append(B a)b))b))
+      (\ a . (foldr () append a)))
      iota (\ n x .
       (: iota.l (\ m n (? (< m n) (X m (iota.l (+ m 1) n))))
        (? (nilp x) (iota.l 0 n) (iota.l n (A x)))))
@@ -36,28 +37,25 @@
      at (\ l n (? (< n 1) (A l) (at (B l) (- n 1))))
      atn (\ n (\ l (at l n)))
      flip (\ f (\ x y (f y x)))
-     set (\ x . (: d (tbl) (, (each x (\ y (tset d y ()))) d)))
+     {set} (\ x . (: d (tbl) (, (each x (\ y (tset d y ()))) d)))
      curry (\ f (\ x (\ y . (ap f (X x y))))))
   ;; and some list functions
-  (: snoc  (\ l x (? (twop l) (X (A l) (snoc (B l) x))
-                              (X x l)))
+  (: snoc  (\ l x (? l (X (A l) (snoc (B l) x))
+                       (X x)))
      init (\ l (? (B l) (X (A l) (init (B l)))))
      last (\ l (? (B l) (last (B l)) (A l)))
 
-     rev (\ l (,
-      (: rev.i (\ l m (? l (rev.i (B l) (X (A l) m)) m)))
-      (rev.i l ())))
+     rev (\ l
+      ((: rev.i (\ l m (? l (rev.i (B l) (X (A l) m)) m))) l()))
      ldel (\ l k (? l
       ((? (= k (A l)) id (\ m (X (A l) m)))
        (ldel (B l) k))))
      elem (\ l x (< -1 (idx l x)))
-     ldiff (\ l m (?
-      (nilp m) l
-      (ldiff (ldel l (A m)) (B m))))
+     ldiff (\ l m (? m (ldiff (ldel l (A m)) (B m)) l))
      idx (\ l x
       ((: .l (\ l x n (? (twop l) (? (= x (A l)) n (.l (B l) x (+ n 1))) -1)))
        l x 0))
-     len (\ l (? (twop l) (+ 1 (len (B l))) 0)))
+     len (\ l (? l (+ 1 (len (B l))) 0)))
 
   ;; and some marcos
   (tset macros
@@ -78,8 +76,8 @@
 (: egg '(:
  env (\ a p n (>>=
   ((: asig (\ a n
-       (? (twop a)
-        (? (? (twop (B a)) (= '. (AB a)))
+       (? a
+        (? (? (B a) (= '. (AB a)))
          (X (- (+ n 1)) (L (A a)))
          (>>= (asig (B a) (+ n 1)) (\ r
           (X (A r) (X (A a) (B r))))))
@@ -356,10 +354,10 @@
      rw-lamm (\ l (>>= (last l) (\ m (snoc (init l) (L ', (init m) (last m))))))
    (? (trlamp l) (rw-lamm l) l)))
 
- pures (immediate (set
-  L X A B + - * / % id flip curry ++ iota rho partition
-  snoc init last rev ldel elem at atn idx ldiff len
-  homp nilp symp nump tblp strp twop
+ pures (immediate ({set}
+  L X A B + - * / % id flip curry ++ iota rho
+  snoc init last rev ldel elem at idx ldiff len
+  homp nilp symp nump tblp strp twop vecp
   && || scat slen sget ssub str))
  abelians (immediate (tbl && 0 || () + 0 * 1))
  monoids (immediate (tbl scat "" ++ ()))

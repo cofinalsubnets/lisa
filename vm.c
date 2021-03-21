@@ -1,9 +1,6 @@
 #include "lips.h"
 #include "ev.h"
 
-#define NO(...) Jump(panic,__VA_ARGS__)
-
-
 // "the interpreter"
 // it's a stack machine with one free register (xp)
 // that's implemented on top of the C compiler's calling
@@ -90,12 +87,15 @@ vm_op(prel) {
   *--sp = puttup(t);
   Next(2); }
 
+static vm_op(err_free) {
+  Jump(panic, "free variable : %s", symnom(xp)); }
+
 // late bind
 vm_op(lbind) {
   obj w = (obj) GF(ip),
       d = XY(w), y = X(w);
   w = tbl_get(v, d, xp = YY(w));
-  if (!w) NO("free variable : %s", symnom(xp));
+  if (!w) Go(err_free, xp);
   xp = w;
   if (Gn(y) != 8) TypeCheck(xp, Gn(y));
   terp *q = G(FF(ip));
@@ -552,9 +552,12 @@ vm_op(cons) {
 vm_op(car) { Ap(ip+1, X(xp)); }
 vm_op(cdr) { Ap(ip+1, Y(xp)); }
 
+vm_op(err_arity) { Jump(panic, E_ARITY, xp, Xp); }
+vm_op(err_type) { Jump(panic, E_TYPE, tnom(xp), tnom(Xp)); }
+vm_op(err_div0) { Jump(panic, E_ZERO, xp); }
 vm_op(cons_u) {
   num aa = Gn(Argc);
-  if (!aa) Jump(panic, E_ARITY, 0, 1);
+  if (!aa) {xp = 0, Xp = 1; Jump(err_arity); }
   Have(2); hp[0] = Argv[0], hp[1] = aa == 1 ? nil : Argv[1];
   xp = puttwo(hp), hp += 2; Jump(ret); }
 vm_op(car_u) {
@@ -577,11 +580,11 @@ vm_op(mul) {
   xp = Pn(Gn(xp) * Gn(*sp++));
   Next(1); }
 vm_op(dqv) {
-  if (xp == Pn(0)) Jump(panic, "divide by zero");
+  if (xp == Pn(0)) Go(err_div0, *sp);
   xp = Pn(Gn(*sp++) / Gn(xp));
   Next(1); }
 vm_op(mod) {
-  if (xp == Pn(0)) Jump(panic, "divide by zero");
+  if (xp == Pn(0)) Go(err_div0, *sp);
   xp = Pn(Gn(*sp++) % Gn(xp));
   Next(1); }
 
@@ -594,7 +597,7 @@ vm_op(mod) {
   obj x,m=_z,*xs=_v,*l=xs+_c;\
   if (_c) for(;xs<l;m=m op Gn(x)){\
     x = *xs++; TypeCheck(x, Num);\
-    if (x == Pn(0)) Jump(panic, "divide by zero");}\
+    if (x == Pn(0)) Go(err_div0, m);}\
   Go(ret, Pn(m));}
 
 vm_op(add_u) {
