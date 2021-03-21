@@ -98,14 +98,14 @@
      (emi i p)))) xs)))))
 
   argr (\ a b (f1 hgetx 0 a 1 b))
-  brr (\ b (f1 hgeti i-branch b))
+  br2 (\ b c (f1 hgeti i-branch b i-barnch c))
   (tbl
    i-argn (argr i-arg0 i-arg1)
    i-locn (argr i-loc0 i-loc1)
    i-clon (argr i-clo0 i-clo1)
-   i-lt (brr i-brlt) i-lteq (brr i-brlteq)
-   i-gt (brr i-brgt) i-gteq (brr i-brgteq)
-   i-eq (brr i-breq)
+   i-lt (br2 i-brlt i-brgteq) i-lteq (br2 i-brlteq i-brgt)
+   i-gt (br2 i-brgt i-brlteq) i-gteq (br2 i-brgteq i-brlt)
+   i-eq (br2 i-breq i-brne)
    i-nilpp (f1 hgeti i-branch i-barnch i-barnch i-branch)
    i-call (\ i h (>>= (hgeti (hseek h 1)) (\ j (case j
     i-ret (emi i-rec (emx (hgetx h) (hseek h 1)))

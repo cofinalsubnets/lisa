@@ -19,7 +19,7 @@
   _(symp_u), _(emse), _(hom_u), _(pc_u),\
   _(arg0), _(arg1), _(loc0),_(loc1),_(clo0),_(clo1),\
   _(unit),_(one),_(zero),\
-  _(brlt),_(brlteq),_(breq),_(brgteq),_(brgt),\
+  _(brlt),_(brlteq),_(breq),_(brgteq),_(brgt),_(brne),\
   _(zzz),\
   _(tbll), _(tblmk),_(tblg),_(tblc),_(tbls),_(tbld),_(tblks),\
   _(hom_seek_u),_(hom_geti_u),_(emi),\

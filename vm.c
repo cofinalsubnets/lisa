@@ -191,6 +191,9 @@ vm_op(brgteq) {
 vm_op(breq) {
   ip = gethom(eql(*sp++, xp) ? gethom(GF(ip)) : FF(ip));
   Next(0); }
+vm_op(brne) {
+  ip = gethom(eql(*sp++, xp) ? FF(ip) : gethom(GF(ip)));
+  Next(0); }
 // opposite conditional
 vm_op(barnch) {
   ip = gethom(xp != nil ? FF(ip) : gethom(GF(ip)));
