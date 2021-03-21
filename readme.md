@@ -1,11 +1,24 @@
 # lips
-low-level virtual lisp machine and self-hosting compiler.
-tested on x86 and ARM.
+64-bit lisp dialect tested on x86 and ARM.
+
+## fun features
+- interactive self-hosting partially-evaluating
+  threaded code compiler
+- tiny fast copying garbage collector
+- opportunistic list deduplication
+
+## lisp qualities
+- strict lexically scoped lisp-1 with short function words
+  and no superfluous parentheses
+- lists and definitions (except at toplevel) are immutable
+- lax eval semantics eg. `(ev (L + 1 2 3)) = (ev '(+ 1 2 3))`
+- `()` is self-quoting and false
+- `.` is a regular symbol
 
 ## build / install
 are you on linux? `make` should work. otherwise consult the
-makefile for the C compiler invocation. `make install`
-puts the binary and prelude under `~/.local` by default.
+makefile for the C compiler invocation. `make install` puts
+the binary and prelude under `~/.local` by default.
 
 ## special forms
 with scheme equivalents
@@ -54,7 +67,7 @@ bad, sorry, you know what they say about naming things!
   `(= (L 1 2 3) (L 1 2 3))`.
 - `ev = eval`, `ap = apply`, `ccc = call/cc`
 - `.` print arguments separated by spaces, print newline, return
-  last argument; useful for debugging.
+  last argument; great for debugging.
 - `A = car` `B = cdr` `X = cons` `L = list`. `AA`-`BB` are
   defined as macros.
 - `homp` `nump` `twop` `symp` `nilp` `tblp` `strp` `vecp` type predicates
@@ -65,7 +78,9 @@ bad, sorry, you know what they say about naming things!
 ## macros
 these are defined in `prelude.lips`, `make repl` imports them automatically
 - `(::: nom0 def0 nom1 def1 ...)` define macro
-- `(>>= x y z f) = (f x y z)` bind ; `(let ((a x) (b y) (c z)) q) = (>>= x y z (\ a b c q))`
+- `(>>= x y z f) = (f x y z)` useful for explicit control of
+   evaluation order and also good end-weight coding.
+  `(let ((a x) (b y) (c z)) q) = (>>= x y z (\ a b c q))`
 
 ## code examples
 the thread compiler and built-in functions are in `prelude.lips`.
