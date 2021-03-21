@@ -17,10 +17,13 @@
   _(nilp_u), _(car_u),  _(cdr_u),   _(cons_u), _(vecp_u),\
   _(strmk),  _(strg),   _(strl),_(strs),_(strc),_(hom_fin_u),\
   _(symp_u), _(emse), _(hom_u), _(pc_u),\
+  _(arg0), _(arg1), _(loc0),_(loc1),_(clo0),_(clo1),\
+  _(unit),_(one),_(zero),\
+  _(brlt),_(brlteq),_(breq),_(brgteq),_(brgt),\
   _(zzz),\
   _(tbll), _(tblmk),_(tblg),_(tblc),_(tbls),_(tbld),_(tblks),\
   _(hom_seek_u),_(hom_geti_u),_(emi),\
-  _(fail),_(ccc_u),_(cont),_(vararg),_(tuck),\
+  _(fail),_(ccc_u),_(cont),_(vararg),_(tuck),_(dupl),\
   _(rd_u),\
   _(drop),_(hom_getx_u),_(emx_u),_(emi_u),_(emx),_(em_u),_(ev_u),_(ap_u)
 #define prims(_)\

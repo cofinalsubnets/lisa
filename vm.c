@@ -97,10 +97,19 @@ static vm_op(gc) { num n = Xp; CallC(reqsp(v, n)); Next(0); }
 //
 // load immediate value
 vm_op(immv) { xp = (obj) GF(ip); Next(2); }
+vm_op(unit) { xp = nil; Next(1); }
+vm_op(one)  { xp = putnum(1); Next(1); }
+vm_op(zero) { xp = putnum(0); Next(1); }
 // simple variable reference
 vm_op(argn) { xp = fast_ref(Argv);     Next(2); }
 vm_op(locn) { xp = fast_ref(AR(Locs)); Next(2); }
 vm_op(clon) { xp = fast_ref(AR(Clos)); Next(2); }
+vm_op(arg0) { xp = Argv[0]; Next(1); }
+vm_op(arg1) { xp = Argv[1]; Next(1); }
+vm_op(clo0) { xp = AR(Clos)[0]; Next(1); }
+vm_op(clo1) { xp = AR(Clos)[1]; Next(1); }
+vm_op(loc0) { xp = AR(Locs)[0]; Next(1); }
+vm_op(loc1) { xp = AR(Locs)[1]; Next(1); }
 // special functions for eg. the first 4
 // arguments in each location, and special values
 // like 0 and nil, and functions that combine
@@ -166,6 +175,21 @@ vm_op(jump) { Ap(gethom(GF(ip)), xp); }
 // conditional
 vm_op(branch) {
   ip = gethom(xp == nil ? FF(ip) : gethom(GF(ip)));
+  Next(0); }
+vm_op(brlt) {
+  ip = gethom(*sp++ < xp ? gethom(GF(ip)) : FF(ip));
+  Next(0); }
+vm_op(brlteq) {
+  ip = gethom(*sp++ <= xp ? gethom(GF(ip)) : FF(ip));
+  Next(0); }
+vm_op(brgt) {
+  ip = gethom(*sp++ > xp ? gethom(GF(ip)) : FF(ip));
+  Next(0); }
+vm_op(brgteq) {
+  ip = gethom(*sp++ >= xp ? gethom(GF(ip)) : FF(ip));
+  Next(0); }
+vm_op(breq) {
+  ip = gethom(eql(*sp++, xp) ? gethom(GF(ip)) : FF(ip));
   Next(0); }
 // opposite conditional
 vm_op(barnch) {
@@ -697,10 +721,10 @@ int eql(obj a, obj b) {
     case Oct: return streq(a, b);
     default: return 0; } }
 
-vm_op(lt)    { xp = *sp++ <  xp ? ok : nil; Next(1); }
-vm_op(lteq)  { xp = *sp++ <= xp ? ok : nil; Next(1); }
-vm_op(gteq)  { xp = *sp++ >= xp ? ok : nil; Next(1); }
-vm_op(gt)    { xp = *sp++ >  xp ? ok : nil; Next(1); }
+vm_op(lt)    { xp = *sp++ <  xp ? xp : nil; Next(1); }
+vm_op(lteq)  { xp = *sp++ <= xp ? xp : nil; Next(1); }
+vm_op(gteq)  { xp = *sp++ >= xp ? xp : nil; Next(1); }
+vm_op(gt)    { xp = *sp++ >  xp ? xp : nil; Next(1); }
 // there should be a separate instruction for simple equality.
 vm_op(eq)   {
   obj y = *sp++;
@@ -749,6 +773,7 @@ vm_op(vecp_u) { typpp(Tup); }
 // stack manipulation
 vm_op(tuck) { Have(1); sp--, sp[0] = sp[1], sp[1] = xp; Next(1); }
 vm_op(drop) { sp++; Next(1); }
+vm_op(dupl) { Have(1); --sp; sp[0] = sp[1]; Next(1); }
 
 // errors
 vm_op(fail) { Jump(panic, NULL); }

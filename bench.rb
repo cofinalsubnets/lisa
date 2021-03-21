@@ -72,7 +72,7 @@ bash = Lang.new "bash", "bash"
 
 # startup time benchmark. perl does well on this
 # one. ruby is near the bottom of the pack here.
-Bench.mark("start/stop", 16, 4) do |bye|
+Bench.mark("start/stop", 8, 4) do |bye|
   bye.add lips, "bye.lips"
   bye.add luajit, "bye.lua"
   bye.add sbcl, "bye.lisp"
@@ -93,9 +93,9 @@ end
 Bench.mark("fib(32)") do |fib|
   fib.add lips, "fib.lips"
   fib.add luajit, "fib.lua"
+#  fib.add ljoff, "fib.lua"
   fib.add sbcl, "fib.lisp"
   fib.add chez, "fib.scm"
-  fib.add ljoff, "fib.lua"
   fib.add petite, "fib.scm"
   fib.add guile, "fib.scm"
   fib.add pico, "fib.l"
@@ -111,8 +111,8 @@ Bench.mark("fib(32)") do |fib|
   fib.add ecl, "fib.lisp"
   fib.add clisp, "fib.lisp"
   fib.add perl5, "fib.pl"
-  fib.add ghc, "fib.hs"
-  fib.add hugs, "fib.hs"
+#  fib.add ghc, "fib.hs"
+#  fib.add hugs, "fib.hs"
 end
 
 Bench.mark("ack(3,9)") do |ack|
