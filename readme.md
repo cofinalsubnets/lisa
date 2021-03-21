@@ -1,5 +1,5 @@
 # lips
-64-bit lisp dialect tested on x86 and ARM.
+64-bit scheme haskell perl
 
 ## fun features
 - interactive self-hosting partially-evaluating
@@ -101,6 +101,7 @@ the thread compiler and built-in functions are in `prelude.lips`.
 ```lisp
 ((\ i (L i (L '` i))) '(\ i (L i (L '` i))))
 ```
+
 ## missing features
 - arrays, floats and many other types
 - unicode
