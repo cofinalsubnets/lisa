@@ -644,23 +644,17 @@ static int twoeq(obj a, obj b) {
   Y(a) = Y(b);
   return 1; }
 
-static int tupeq(obj a, obj b) {
-  tup t = gettup(a), u = gettup(b);
-  if (t->len != u->len) return 0;
-  for (num i = 0; i < t->len; i++)
-    if (!eql(t->xs[i], u->xs[i])) return 0;
-  return 1; }
 static int streq(obj a, obj b) {
   oct o = getoct(a), m = getoct(b);
   if (o->len != m->len) return 0;
   for (num i = 0; i < o->len; i++)
     if (o->text[i] != m->text[i]) return 0;
   return 1; }
+
 int eql(obj a, obj b) {
   if (a == b) return 1;
   if (kind(a) != kind(b)) return 0;
   switch (kind(a)) {
-    case Tup: return tupeq(a, b);
     case Two: return twoeq(a, b);
     case Oct: return streq(a, b);
     default: return 0; } }

@@ -25,7 +25,7 @@ c=gcc -g -O2 -flto -std=gnu17\
 	-fno-inline -fno-stack-protector
 
 test: $n
-	/usr/bin/env TIMEFORMAT="in %Rs" bash -c "time $(tcmd)"
+	@/usr/bin/env TIMEFORMAT="in %Rs" bash -c "time $(tcmd)"
 
 # build
 $n: $b
@@ -76,7 +76,7 @@ sloc:
 bins: $o $n $b
 	@stat -c "%n %sB" $^
 bench: $b
-	ruby ./bench.rb "$(run)"
+	@ruby ./bench.rb "$(run)"
 repl: $n
 	@which rlwrap >/dev/null && rlwrap $(rcmd) || $(rcmd)
 
