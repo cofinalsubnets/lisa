@@ -554,7 +554,7 @@ vm_op(cdr) { Ap(ip+1, Y(xp)); }
 
 vm_op(err_arity) { Jump(panic, E_ARITY, xp, Xp); }
 vm_op(err_type) { Jump(panic, E_TYPE, tnom(xp), tnom(Xp)); }
-vm_op(err_div0) { Jump(panic, E_ZERO, xp); }
+vm_op(err_div0) { Jump(panic, E_ZERO, Gn(xp)); }
 vm_op(cons_u) {
   num aa = Gn(Argc);
   if (!aa) {xp = 0, Xp = 1; Jump(err_arity); }
@@ -597,7 +597,7 @@ vm_op(mod) {
   obj x,m=_z,*xs=_v,*l=xs+_c;\
   if (_c) for(;xs<l;m=m op Gn(x)){\
     x = *xs++; TypeCheck(x, Num);\
-    if (x == Pn(0)) Go(err_div0, m);}\
+    if (x == Pn(0)) Go(err_div0, Pn(m));}\
   Go(ret, Pn(m));}
 
 vm_op(add_u) {
