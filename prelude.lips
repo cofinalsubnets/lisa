@@ -210,21 +210,23 @@
    + (abel + 0 i-add)
    * (abel * 1 i-mul)
    - (\ x k
-    (? (nilp x)
-        (immk 0 k)
-       (nilp (B x))
-        (eval (A x) (>- 'num (code i-neg (-> 'num k))))
+    (? (nilp x) (immk 0 k)
+       (nilp (B x)) (eval (A x) (>- 'num (code i-neg (-> 'num k))))
        (: y (grp + 0 0 (B x))
           z (? (nump (A x)) (grp - (A x) 0 y) (X(A x)y))
         (? z (eval (A z) (>- 'num (bf0 i-sub k (B z))))
              (immk 0 k)))))
+   id (\ x k (eval (A x) k))
+   L (\ x k (: l (\ x k (? x (l (B x) (code i-push (eval (A x) (code i-cons (-> 'two k))))) k))
+    (immk () (l x k))))
+                
    / (\ x k
     (? (nilp x) (immk 1 k)
        (nilp (B x)) (eval (A x) (>- 'num k))
-      (: b (grp * 1 1 (B x))
-         c (? (nump (A x)) (grp / (A x) 1 b) (X (A x) b))
-       (? c (eval (A c) (>- 'num (bf0 i-dqv k (B c))))
-            (immk 1 k)))))
+       (: b (grp * 1 1 (B x))
+          c (? (nump (A x)) (grp / (A x) 1 b) (X (A x) b))
+        (? c (eval (A c) (>- 'num (bf0 i-dqv k (B c))))
+             (immk 1 k)))))
    <  (ordr i-lt) <= (ordr i-lteq) >= (ordr i-gteq) > (ordr i-gt)
    A (\ x k (eval (A x) (>- 'two (code i-car k))))
    B (\ x k (eval (A x) (>- 'two (code i-cdr k))))
@@ -289,9 +291,9 @@
  cde (\ e m x k
  ; the rewrite ensures the : expression is always an even form.
   (: cder (\ x k (? (nilp x) k (>>= (cder (BB x) k) (\ k
-     (? (|| (toplp e) (< -1 (idx (tget e 'loc) (A x))))
-         (eval (AB x) (cdeb (A x) k))
-        (eval (A x) k))))))
+   (>>= (? (|| (toplp e) (< -1 (idx (tget e'loc)(A x))))
+         (cdeb (A x) k) k) (\ k (? (= 'here (A (: v (look e (A x)))))
+          (immk (B v) k) (eval (AB x) k))))))))
      cdeb (\ x k (\ e m (?
       (toplp e) (insx e m i-tbind x k)
                 (insx e m i-setl (idx (tget e 'loc) x) k))))
