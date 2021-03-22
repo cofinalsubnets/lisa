@@ -319,35 +319,6 @@
  rw-sym (\ e x (: l (look e x)
   (? (= (A l) 'here) (quote (B l)) x)))
 
-;     mcar (\ x (? x (A x)))
-;     scandefadd (\ e y x (,
-;      (? (symp x) (addloc e y)
-;         (twop x) (>>= (A x) (\ z (case z
-;          '` (tset (tget e'val) y (mcar (B x)))
-;          '\ (, (tset (tget e'lam) y x) (addloc e y))
-;          (addloc e y))))
-;         (tset (tget e'val) y x))
-;      (scan e x)))
-
- scan (\ e x (:
-  sdef (\ e x (?
-   (nilp x) 0
-   (B x) (>>= (sdef e (BB x)) (\ r (,
-          (? r (sdefa e (A x) (AB x)))
-          r)))))
-
-  sdefa (\ e y x (,
-   (? (qtd x) (tset (tget e'val) y (unq x))
-      (, (tset e'loc(X y (tget e'loc)))
-         (? (twop x) (? (= '\ (A x))
-          (tset (tget e'lam) y x)))))
-   (scan e x)))
-
-  (? (twop x) (: y (A x) (case y
-   '\ () '` ()
-   ': (sdef e (B x))
-   (each x (\ x (scan e x))))))))
-
  rw-let (\ e x
   (: desug (\ d (L (L '\ (L ', (init d) (last d)))))
      loop (\ e x (? x
@@ -370,7 +341,7 @@
 
  ; this rewrites lambda expressions of the form
  ;   (\ (: a b c)) -> (\ (, (: a b) c))
- ; which is always safe and assert better code.
+ ; which is always safe and produces better code.
  rw-lam (\ e l
   (: defp (\ x (? (twop x) (= (A x) ':)))
      deftp (\ x (? (defp x) (= 0 (% (len x) 2))))
@@ -438,11 +409,6 @@
   (symp x) (rw-sym e x)
   (quote x)))
 
- ev-part (\ e x m (,
-  (scan e x)
-  (resolve e)
-  ((eval (rw e x) ini)e m)))
-
  ltu (\ e nom l
   (: n (|| (B l) '(()))
      x (last n)
@@ -456,6 +422,30 @@
              (< i 0) (emif i-vararg (emx (- (- i) 1) k))
              k)) (\ k
          (? (tget f 'clo) (X (tget f 'clo) k) k))))))))))
+
+ ev-part (\ e x m (,
+  (scan e x)
+  (resolve e)
+  ((eval (rw e x) ini)e m)))
+
+ scan (\ e x (:
+  sdef (\ e x (?
+   (nilp x) 0
+   (B x) (>>= (sdef e (BB x)) (\ r (,
+          (? r (sdefa e (A x) (AB x)))
+          r)))))
+
+  sdefa (\ e y x (,
+   (? (qtd x) (tset (tget e'val) y (unq x))
+      (, (tset e'loc(X y (tget e'loc)))
+         (? (twop x) (? (= '\ (A x))
+          (tset (tget e'lam) y (rw-lam e x))))))
+   (scan e x)))
+
+  (? (twop x) (: y (A x) (case y
+   '\ () '` ()
+   ': (sdef e (B x))
+   (each x (\ x (scan e x))))))))
 
  resolve (\ e
   (: precomps (\ e ks (? ks
