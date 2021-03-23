@@ -55,32 +55,5 @@
   _("nilp", nilp_u), _("homp", homp_u)
 
 #define ninl(x) x NoInline
-terp insts(ninl), err_arity, err_type, err_div0;
+terp insts(ninl);
 #undef ninl
-#define vm_op(n,...) NoInline obj n(vm v,hom ip,mem fp,mem sp,mem hp,obj xp,##__VA_ARGS__)
-vm_op(panic, const char*, ...);
-
-#define Pack() (Ip=Ph(ip),Sp=sp,Hp=hp,Fp=fp,Xp=xp)
-#define Unpack() (fp=Fp,hp=Hp,sp=Sp,ip=Gh(Ip),xp=Xp)
-#define Jump(f,...) return (f)(v,ip,fp,sp,hp,xp,##__VA_ARGS__)
-#define Have(n) if (avail < n) Jump((Xp=n,gc))
-#define CallC(...)(Pack(),(__VA_ARGS__),Unpack())
-#define Cont(n, x) return ip+=n,xp=x,G(ip)(v,ip,fp,sp,hp,xp)
-#define Ap(f,x) return G(f)(v,f,fp,sp,hp,x)
-#define Go(f,x) return f(v,ip,fp,sp,hp,x)
-#define Next(n) Ap(ip+n,xp)
-
-#define ff(x)((fr)(x))
-#define Locs fp[-1]
-#define Clos ff(fp)->clos
-#define Retp ff(fp)->retp
-#define Subd ff(fp)->subd
-#define Argc ff(fp)->argc
-#define Argv ff(fp)->argv
-typedef struct fr { obj clos, retp, subd, argc, argv[]; } *fr;
-#define E_TYPE  "wrong type : %s for %s"
-#define E_ARITY "wrong arity : %ld of %ld"
-#define E_ZERO  "%ld / 0"
-#define TypeCheck(x,t) if(kind(x)!=t){xp=x;Xp=t;Jump(err_type);}
-#define Arity(n) if(n>Argc){xp=Gn(Argc),Xp=Gn(n);Jump(err_arity);}
-#define ArityCheck(n) Arity(putnum(n))

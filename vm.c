@@ -1,6 +1,30 @@
 #include "lips.h"
 #include "ev.h"
 
+#define vm_op(n,...) NoInline obj n(vm v,hom ip,mem fp,mem sp,mem hp,obj xp,##__VA_ARGS__)
+static vm_op(nope, const char*, ...);
+
+#define Pack() (Ip=Ph(ip),Sp=sp,Hp=hp,Fp=fp,Xp=xp)
+#define Unpack() (fp=Fp,hp=Hp,sp=Sp,ip=Gh(Ip),xp=Xp)
+#define Jump(f,...) return (f)(v,ip,fp,sp,hp,xp,##__VA_ARGS__)
+#define Have(n) if (avail < n) Jump((Xp=n,gc))
+#define CallC(...)(Pack(),(__VA_ARGS__),Unpack())
+#define Cont(n, x) return ip+=n,xp=x,G(ip)(v,ip,fp,sp,hp,xp)
+#define Ap(f,x) return G(f)(v,f,fp,sp,hp,x)
+#define Go(f,x) return f(v,ip,fp,sp,hp,x)
+#define Next(n) Ap(ip+n,xp)
+
+#define ff(x)((fr)(x))
+#define Locs fp[-1]
+#define Clos ff(fp)->clos
+#define Retp ff(fp)->retp
+#define Subd ff(fp)->subd
+#define Argc ff(fp)->argc
+#define Argv ff(fp)->argv
+typedef struct fr { obj clos, retp, subd, argc, argv[]; } *fr;
+#define TypeCheck(x,t) if(kind(x)!=t){xp=x;Xp=t;Jump(err_type);}
+#define Arity(n) if(n>Argc){xp=Gn(Argc),Xp=Gn(n);Jump(err_arity);}
+#define ArityCheck(n) Arity(putnum(n))
 // "the interpreter"
 // it's a stack machine with one free register (xp)
 // that's implemented on top of the C compiler's calling
@@ -88,7 +112,13 @@ vm_op(prel) {
   Next(2); }
 
 static vm_op(err_free) {
-  Jump(panic, "free variable : %s", symnom(xp)); }
+  Jump(nope, "free variable : %s", symnom(xp)); }
+static vm_op(err_arity) {
+  Jump(nope, "wrong arity : %ld of %ld", xp, Xp); }
+static vm_op(err_type) {
+  Jump(nope, "wrong type : %s for %s", tnom(xp), tnom(Xp)); }
+static vm_op(err_div0) {
+  Jump(nope, "%ld / 0", Gn(xp)); }
 
 // late bind
 vm_op(lbind) {
@@ -552,9 +582,6 @@ vm_op(cons) {
 vm_op(car) { Ap(ip+1, X(xp)); }
 vm_op(cdr) { Ap(ip+1, Y(xp)); }
 
-vm_op(err_arity) { Jump(panic, E_ARITY, xp, Xp); }
-vm_op(err_type) { Jump(panic, E_TYPE, tnom(xp), tnom(Xp)); }
-vm_op(err_div0) { Jump(panic, E_ZERO, Gn(xp)); }
 vm_op(cons_u) {
   num aa = Gn(Argc);
   if (!aa) {xp = 0, Xp = 1; Jump(err_arity); }
@@ -714,7 +741,7 @@ vm_op(drop) { sp++; Next(1); }
 vm_op(dupl) { Have(1); --sp; sp[0] = sp[1]; Next(1); }
 
 // errors
-vm_op(fail) { Jump(panic, NULL); }
+vm_op(fail) { Jump(nope, NULL); }
 vm_op(zzz) { exit(EXIT_SUCCESS); }
 vm_op(gsym_u) {
   Have(Size(sym));
@@ -733,13 +760,7 @@ static Inline void perrarg(vm v, mem fp) {
     emit(v, x, stderr);
     if (i == argc) break; } }
 
-static Inline hom button(hom h) {
-  while (h->g) h++;
-  return h; }
-
-vm_op(panic, const char *msg, ...) {
-  // an error proves that the function that failed is
-  // undefined at its arguments.
+vm_op(nope, const char *msg, ...) {
   fputs("# ", stderr), emit(v, Ph(ip), stderr),
   fputs(" does not exist", stderr), perrarg(v, fp);
   if (msg) {
@@ -761,4 +782,17 @@ obj restart(vm v) {
   //reqsp(v, 0);
   longjmp(v->restart, 1); }
 
+vm_op(hom_fin_u) {
+  ArityCheck(1);
+  TypeCheck(*Argv, Hom);
+  obj a = *Argv;
+  GF(button(Gh(a))) = (terp*) a;
+  Go(ret, a); }
 
+vm_op(ev_u) {
+  ArityCheck(1);
+  obj x; hom h;
+  CallC(
+   h = compile(v, *Argv),
+   x = G(h)(v, h, Fp, Sp, Hp, nil));
+  Go(ret, x); }

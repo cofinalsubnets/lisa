@@ -160,3 +160,8 @@ const char *tnom(enum type);
 #define NOM "lips"
 #endif
 extern const uint64_t mix;
+
+static Inline hom button(hom h) {
+  while (h->g) h++;
+  return h; }
+hom compile(vm v, obj x);

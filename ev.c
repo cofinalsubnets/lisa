@@ -81,6 +81,10 @@ static obj apply(vm v, obj f, obj x) {
   h[4].g = (terp*) h;
   return call(v, h, Fp, Sp, Hp, tbl_get(v, Dict, App)); }
 
+hom compile(vm v, obj x) {
+  Push(Pn(c_ev), x, Pn(inst), Pn(yield), Pn(c_ini));
+  return Gh(ccc(v, NULL, 0)); }
+
 /// evaluate an expression
 obj eval(vm v, obj x) {
   x = pair(v, x, nil);
@@ -379,8 +383,7 @@ obj hom_ini(vm v, num n) {
          Ph(a+n); }
 
 static obj hom_fin(vm v, obj a) {
-  for (hom b = Gh(a);;) if (!b++->g)
-    return (obj) (b->g = (terp*) a); }
+  return (obj) (GF(button(Gh(a))) = (terp*) a); }
 
 obj homnom(vm v, obj x) {
   terp *k = G(x);
@@ -479,18 +482,3 @@ vm initialize(int argc, const char **argv) {
 vm finalize(vm v) {
   if (v) free(v->mem_pool), free(v);
   return NULL; }
-
-vm_op(hom_fin_u) {
-  ArityCheck(1);
-  TypeCheck(*Argv, Hom);
-  obj x; CallC(x = hom_fin(v, *Argv));
-  Go(ret, x); }
-
-vm_op(ev_u) {
-  ArityCheck(1);
-  obj x; hom h;
-  CallC(
-   Push(Pn(c_ev), *Argv, Pn(inst), Pn(yield), Pn(c_ini)),
-   h = Gh(ccc(v, NULL, 0)),
-   x = G(h)(v, h, Fp, Sp, Hp, nil));
-  Go(ret, x); }
