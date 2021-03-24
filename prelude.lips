@@ -1,7 +1,9 @@
 (: local-vars '(local-vars old-ev lib egg s0 s1 s2 macros ns emi emx hom hseek hgeti hom-get-x hfin)
    lib '(,
   ;; here's some data constructors
-  (: and (\ l (? l (? (A l) (and (B l))) 0))
+  (:
+     Tg tget Ts tset
+     and (\ l (? l (? (A l) (and (B l))) 0))
      && (\ l . (and l))
      or (\ l (? l (: a (A l) (? a a (or (B l))))))
      || (\ l . (or l))
@@ -23,6 +25,11 @@
      foldl1 (\ f x (foldl (A x) f (B x)))
      foldr1  (\ f x (? (B x) (f (A x) (foldr1 f (B x)))
                              (A x)))
+
+     curry (\ f x . (\ y . (ap f (++ x y))))
+     |-> (\ xs . (: t (ap tbl xs)
+                    @ (\ x (? (thas t x) (tget t x)
+                              (fail)))))
      uniq (\ l (:
       u.l (\ x l (?
        (nilp l) x
@@ -44,8 +51,7 @@
      at (\ l n (? (< n 1) (A l) (at (B l) (- n 1))))
      atn (\ n (\ l (at l n)))
      flip (\ f (\ x y (f y x)))
-     {set} (\ x . (: d (tbl) (, (each x (\ y (tset d y ()))) d)))
-     curry (\ f (\ x (\ y . (ap f (X x y))))))
+     {set} (\ x . (: d (tbl) (, (each x (\ y (tset d y ()))) d))))
   ;; and some list functions
   (: snoc  (\ l x (? l (X (A l) (snoc (B l) x))
                        (X x)))
@@ -71,9 +77,9 @@
                            (? (B x) (ap defm (B x)) v))))
    'AA (\ x (X A (X (X A (X x))))) 'AB (\ x (X A (X (X B (X x)))))
    'BA (\ x (X B (X (X A (X x))))) 'BB (\ x (X B (X (X B (X x)))))
-   'immediate (\ x (L '` (ev x)))
-   '&& (\ x . (.((: & (\ x
-     (? (B x) (L '? (A x) (& (B x))) (A x)))) x)))
+   'immediate (\ x (ev x))
+   '&& (\ x . ((: & (\ x
+     (? (B x) (L '? (A x) (& (B x))) (A x)))) x))
    '>>= (\ x . (X (last x) (init x)))
    'case (\ x a .
     ((: case.i (\ x a
@@ -93,7 +99,13 @@
   (tbl 'arg (B b) 'loc ()
        'clo ()     'par p
        'lam (tbl)  'nom n
-       'val (tbl)  'sig (A b)))))
+       'val (tbl)  'sig (A b)
+       'def (tbl)))))
+
+  t-c (|->
+   'hom 0 'num 1 'two 2 'vec 3 'oct 4
+   'tbl 5 'sym 6 'nil 7 () 8)
+
 
  qtd (\ x (? (twop x) (= (A x) '`) (nilp (symp x))))
  unq (\ x (? (twop x) (AB x) x))
@@ -129,10 +141,6 @@
  code (\ i k (\ e m (inst e m i k)))
  data (\ x k (\ e m (emx x (k e (+ m 1)))))
 
- t-c (\ x (case x
-  'hom 0 'num 1 'two 2 'vec 3 'oct 4
-  'tbl 5 'sym 6 'nil 7 () 8 (fail)))
-
 
  ev-sym (\ x k (\ e m (:
 
@@ -156,7 +164,8 @@
 
  toplp (\ e (nilp (tget e'par)))
  look (\ e y (?
-  (thas (tget e 'val) y) (X 'here (tget (tget e 'val) y))
+  (thas (tget e 'val) y)
+   (X 'here (tget (tget e'val) y))
   (toplp e) (?
    ; if it's already defined then bind early unless we are
    ; redefining it.
@@ -176,6 +185,12 @@
           t (type (hseek h 1))
           (fail)))))))
 
+ t-checks (tbl
+  i-idhom 'hom 'hom i-idhom
+  i-idnum 'num 'num i-idnum
+  i-idtwo 'two 'two i-idtwo
+  i-idtbl 'tbl 'tbl i-idtbl)
+
  consumes (\ h (? (: c (tget t-checks (hgeti h))) c))
  >- (\ t k (? (: tc (tget t-checks t)) (code tc k) (fail)))
  -> (\ t k (\ e m (assert e m t k)))
@@ -190,6 +205,136 @@
  push1 (pushr 's1) push2 (pushr 's2)
  pop1 (popr 's1) pop2 (popr 's2)
  peek1 (peekr 's1) peek2 (peekr 's2)
+
+ ev-ap (\ x k (:
+  ev-api (\ x k (? (nilp x) k
+   (ev-api (B x) (eval (A x) (code i-push k)))))
+  (>>= (A x) (B x) (\ z x (?
+   (? (qtd z) (: q (tget inliners (unq z))))
+    (q x k)
+   (ev-api x (eval z (>- 'hom
+    (code i-call (data (len x) k))))))))))
+
+ ev-seq (\ x k
+  ((: ev-seqr (\ x k (? (nilp x) k (eval (A x) (ev-seqr (B x) k)))))
+    (B x) k))
+
+ cde (\ e m x k
+ ; the rewrite ensures the : expression is always an even form.
+  (: cder (\ x k (? (nilp x) k (>>= (cder (BB x) k) (\ k
+   (>>= (? (|| (toplp e) (< -1 (idx (tget e'loc)(A x))))
+         (cdeb (A x) k) k) (\ k (? (= 'here (A (: v (look e (A x)))))
+          (immk (B v) k) (eval (AB x) k))))))))
+     cdeb (\ x k (\ e m (?
+      (toplp e) (insx e m i-tbind x k)
+                (insx e m i-setl (idx (tget e 'loc) x) k))))
+    ((cder (B x) k) e m)))
+
+ ev-if (\ x k (:
+
+  ccoprecon (\ k (\ e m
+   (>>= (k e (+ m 2)) (\ x
+    (>>= (A (tget e 's2)) (\ brx
+     (: i (hgeti brx) (case i
+      (? (= i i-ret) (emif i x)
+       (emif i-jump
+        (emx (? (= i i-jump) (hgetx (hseek brx 1)) brx) x)))))))))))
+
+  ccor (\ x k (?
+   (nilp (B x)) (eval (A x) (ccoprecon k))
+   (eval (A x) (pop1 (code i-branch (peek1
+     (ccor (BB x) (push1 (eval (AB x) (ccoprecon k))))))))))
+
+  (pop2 (ccor (B x) (push2 k)))))
+
+
+ quote (\ x (? (qtd x) x (L '` x)))
+ rw-sym (\ e x (: l (look e x)
+  (? (= (A l) 'here)
+      (quote (B l))
+     (thas (: defs (tget e'def)) x)
+      (: dd (rw e (: de (tdel defs x)))
+       (, (tset defs x de)
+          (? (nilp (qtd dd)) x
+           (, (loc-del e x)
+              (tset (tget e'val) x (unq dd))
+              dd))))
+     x)))
+
+ rw-let (\ e x (:
+  desug (\ d (L (L '\ (L ', (init d) (last d)))))
+  loop (\ e x (? x
+   (: ll (loop e (BB x))
+    (X (A x) (X (tget (tget e'def) (A x)) ll)))))
+  (? (B x) (? (= 0 (% (len x) 2)) (desug x)
+              (X ': (loop e (B x)))))))
+
+ rw-seq (\ e x (:
+  rw-seqr (\ e x (?
+   (nilp (B x)) (L (rw e (A x)))
+    (: z (rw-seqr e (B x))
+       y (rw e (A x))
+     (? (|| (symp y) (qtd y)) z (X y z)))))
+  (? (: y (B x))
+     (: z (rw-seqr e y) (? (B z) (X ', z) (A z))))))
+
+ l-exp? (\ x (? (twop x) (= '\ (A x))))
+ ; this rewrites lambda expressions of the form
+ ;   (\ (: a b c)) -> (\ (, (: a b) c))
+ ; which is always safe and produces better code.
+ rw-lam (\ e l (:
+  defp (\ x (? (twop x) (= (A x) ':)))
+  deftp (\ x (? (defp x) (= 0 (% (len x) 2))))
+  trlamp (\ l (? (B l) (deftp (last l))))
+  rw-lamm (\ l (>>= (last l) (\ m (snoc (init l) (L ', (init m) (last m))))))
+  (? (trlamp l) (rw-lamm l) l)))
+
+ abelians (immediate (tbl && 1 || () + 0 * 1))
+ monoids (immediate (tbl
+  scat ""
+  ++ ()))
+ pures (immediate ({set}
+  L X A B + - * / % id flip ++ iota rho |->
+  snoc init last rev ldel elem at idx ldiff len
+  homp nilp symp nump tblp strp twop vecp
+  && || scat slen sget ssub str))
+
+ monofold (\ f i l (:
+  mfold (\ f i j x y
+   (? y (? (qtd x) (mfold f i (f j (unq x)) (A y) (B y))
+                   (: z (X x (mfold f i i (A y) (B y)))
+                    (? (= i j) z (X j z))))
+      (qtd x) (>>= (f j (unq x)) (\ x (? (= i x)()(L x))))
+      (= i j) (L x)
+      (L j x)))
+  (? l (X f (mfold f i i (A l) (B l))) (quote i))))
+
+ rws (tbl
+  id (\ e x (A x))
+  ap (\ e x (?
+   (qtd (: b (AB x))) 
+    (rw-list e (X (A x) (map quote (unq b))))
+   (? (twop b) (= L (A b))) (X (A x) (B b))
+   (X ap x))))
+
+ ev-la (\ x k (:
+  gnom (\ e k (: i (hgeti k) (case i
+   i-tbind (hgetx (hseek k 1))
+   i-setl  (at (tget e'loc) (hgetx (hseek k 1))))))
+
+  claclo (\ e arg (:
+   clacloin (\ e arg k (?
+    (nilp arg) k
+    (clacloin e (B arg)
+     (eval (A arg) (code i-push k)))))
+   ((clacloin e arg (\ e m
+     (emif i-take (emx (len arg) (hom (+ m 2))))))
+    e 0)))
+  (\ e m (>>= (assert e (+ m 2) 'hom k) (\ k
+   (>>= (ltu e (gnom e k) x) (\ x (?
+    (homp x) (emif i-immv (emx x k))
+    (emif (? (tget e'loc) i-encll i-encln)
+     (emx (X (B x) (claclo e (A x))) k))))))))))
 
  inliners (:
   grp (\ f m id x
@@ -216,6 +361,7 @@
    (eval (A x) (>- 'num (bf0 i k (B x))))))))
 
   (tbl
+   '\ ev-la
    + (abel + 0 i-add)
    * (abel * 1 i-mul)
    - (\ x k
@@ -285,101 +431,15 @@
    nilp (\ x k (eval (A x) (code i-nilpp k)))
    fail (\ x k (code i-fail k))))
 
- ev-ap (\ x k (:
-  ev-api (\ x k (? (nilp x) k
-   (ev-api (B x) (eval (A x) (code i-push k)))))
-  (>>= (A x) (B x) (\ z x
-   (? (: q (tget inliners z))
-    (q x k)
-   (ev-api x (eval z (>- 'hom (code i-call (data (len x) k))))))))))
-
- ev-seq (\ x k
-  ((: ev-seqr (\ x k (? (nilp x) k (eval (A x) (ev-seqr (B x) k)))))
-    (B x) k))
-
- cde (\ e m x k
- ; the rewrite ensures the : expression is always an even form.
-  (: cder (\ x k (? (nilp x) k (>>= (cder (BB x) k) (\ k
-   (>>= (? (|| (toplp e) (< -1 (idx (tget e'loc)(A x))))
-         (cdeb (A x) k) k) (\ k (? (= 'here (A (: v (look e (A x)))))
-          (immk (B v) k) (eval (AB x) k))))))))
-     cdeb (\ x k (\ e m (?
-      (toplp e) (insx e m i-tbind x k)
-                (insx e m i-setl (idx (tget e 'loc) x) k))))
-    ((cder (B x) k) e m)))
-
- ev-if (\ x k (:
-
-  ccoprecon (\ k (\ e m
-   (>>= (k e (+ m 2)) (\ x
-    (>>= (A (tget e 's2)) (\ brx
-     (: i (hgeti brx) (case i
-      (? (= i i-ret) (emif i x)
-       (emif i-jump
-        (emx (? (= i i-jump) (hgetx (hseek brx 1)) brx) x)))))))))))
-
-  ccor (\ x k (?
-   (nilp (B x)) (eval (A x) (ccoprecon k))
-   (eval (A x) (pop1 (code i-branch (peek1
-     (ccor (BB x) (push1 (eval (AB x) (ccoprecon k))))))))))
-
-  (pop2 (ccor (B x) (push2 k)))))
-
-
- quote (\ x (? (qtd x) x (L '` x)))
- rw-sym (\ e x (: l (look e x)
-  (? (= (A l) 'here) (quote (B l)) x)))
-
- rw-let (\ e x (:
-  desug (\ d (L (L '\ (L ', (init d) (last d)))))
-  loop (\ e x (? x
-   (: ll (loop e (BB x)) (X (A x) (X (rw e (AB x)) ll)))))
-  (? (B x) (? (= 0 (% (len x) 2)) (desug x)
-              (X ': (loop e (B x)))))))
-
- rw-seq (\ e x (:
-  rw-seqr (\ e x (?
-   (nilp (B x)) (L (rw e (A x)))
-    (: z (rw-seqr e (B x))
-       y (rw e (A x))
-     (? (|| (symp y) (qtd y)) z (X y z)))))
-  (? (: y (B x))
-     (: z (rw-seqr e y) (? (B z) (X ', z) (A z))))))
-
- ; this rewrites lambda expressions of the form
- ;   (\ (: a b c)) -> (\ (, (: a b) c))
- ; which is always safe and produces better code.
- rw-lam (\ e l
-  (: defp (\ x (? (twop x) (= (A x) ':)))
-     deftp (\ x (? (defp x) (= 0 (% (len x) 2))))
-     trlamp (\ l (? (B l) (deftp (last l))))
-     rw-lamm (\ l (>>= (last l) (\ m (snoc (init l) (L ', (init m) (last m))))))
-   (? (trlamp l) (rw-lamm l) l)))
-
- pures (immediate ({set}
-  L X A B + - * / % id flip curry ++ iota rho
-  snoc init last rev ldel elem at idx ldiff len
-  homp nilp symp nump tblp strp twop vecp
-  && || scat slen sget ssub str))
- abelians (immediate (tbl && 0 || () + 0 * 1))
- monoids (immediate (tbl scat "" ++ ()))
-
- monofold (\ f i l (:
-  mfold (\ f i j x y
-   (? y (? (qtd x) (mfold f i (f j (unq x)) (A y) (B y))
-                   (: z (X x (mfold f i i (A y) (B y)))
-                    (? (= i j) z (X j z))))
-      (qtd x) (>>= (f j (unq x)) (\ x (? (= i x)()(L x))))
-      (= i j) (L x)
-      (L j x)))
-  (? l (X f (mfold f i i (A l) (B l))) (quote i))))
-
  rw-list (\ e x (:
   rw-arity (\ x (: z (A x) (?
    (nilp (? (homp z) (= i-arity (hgeti z)))) x
    (? (>= (len (B x)) (hgetx (hseek z 1)))
     (X (hseek z 2) (B x))
-    (ap z (B x))))))
+    (ap z (B x)); this causes an arity error.
+    ))))
+
+  apqp (\ f x (ap f (map unq x)))
 
   a (A x)
   (case a
@@ -390,16 +450,17 @@
    ', (rw-seq e x)
    (? (thas macros a)
        (rw e (ap (tget macros a) (B x)))
-      (: z (rw-arity (map (\ x (rw e x)) x)) q (A z) r (B z) (?
-       (nilp (thas pures q)) z
-       (all qtd r) (quote (ap q (map unq r)))
+      (: z (map (\ x (rw e x)) x) q (A z) r (B z) (?
+       (: rwr (tget rws q)) (rwr e r)
+       (nilp (thas pures q)) (rw-arity z)
+       (all qtd r) (quote (apqp q r))
        (thas monoids q) (monofold q (tget monoids q) r)
-       (thas abelians q)
-         (: ff (partition qtd r)
-            fg (ap q (map unq (A ff)))
-            (X q (? (= fg (tget abelians q))
-                    (B ff) (X fg (B ff)))))
-       z))))))
+       (thas abelians q) (:
+        ff (partition qtd r)
+        fg (ap q (map unq (A ff)))
+        (X q (? (= fg (tget abelians q)) (B ff)
+              (X fg (B ff)))))
+       (rw-arity z)))))))
 
  rw-if (\ e x (:
   rw-ifr (\ e x (?
@@ -423,16 +484,18 @@
    (< i 0) (emif i-vararg (emx (- (- i) 1) k))
    k))
   n (|| (B l) '(()))
-  f (env (init n) e (X nom (tget e 'nom)))
-  ((\ k (? (tget f 'clo) (X (tget f 'clo) k) k))
-   (hfin (with-arity f (with-locals f (ev-part f (last n) 4)))))))
+  arg (init n)
+  f (env arg e (X nom (tget e 'nom)))
+  x (rewrite f (last n))
+  (? (&& (twop x) (homp (A x))
+      (>= (tget f 'sig) 0) (= (B  x) arg))
+   (A x) ; in this case the function is an alias for (A x)
+   (>>= (hfin (with-arity f (with-locals f
+         ((eval x ini) f 4)))) (\ k
+    (? (tget f 'clo) (X (tget f 'clo) k) k))))))
 
 
- ev-part (\ e x m (,
-  (scan e x)
-  (resolve e)
-  ((eval (rw e x) ini)e m)))
-
+ rewrite (\ e x (, (scan e x) (resolve e) (rw e x)))
  scan (\ e x (:
   sdef (\ e x (?
    (nilp x) 0
@@ -443,8 +506,8 @@
   sdefa (\ e y x (,
    (? (qtd x) (tset (tget e'val) y (unq x))
       (, (tset e'loc(X y (tget e'loc)))
-         (? (twop x) (? (= '\ (A x))
-          (tset (tget e'lam) y (rw-lam e x))))))
+         (tset (tget e'def) y x)
+         (? (l-exp? x)(tset (tget e'lam) y (rw-lam e x)))))
    (scan e x)))
 
   (? (twop x) (: y (A x) (case y
@@ -452,20 +515,21 @@
    ': (sdef e (B x))
    (each x (\ x (scan e x))))))))
 
+ loc-del (\ e k (tset e'loc (ldel (tget e'loc) k)))
  resolve (\ e (:
 
   precomps (\ e ks (? ks
    (: k (A ks) i (ltu e k (tget (tget e 'lam) k)) (,
     (? (homp i) (, (tset (tget e 'val) k i)
                    (tdel (tget e 'lam) k)
-                   (tset e 'loc (ldel (tget e 'loc) k)))
+                   (loc-del e k))
                 (: lams (tget e 'lam)
                    j    (X (A i) (tget lams k))
                   (tset lams k j)))
     (precomps e (B ks))))))
 
   okvs (\ e vs (?
-   (nilp vs) 0
+   (nilp vs) 1
    (: v (A vs)
     (? (|| (thas (tget e 'lam) v) (thas (tget e'val) v))
        (okvs e (B vs))))))
@@ -480,7 +544,16 @@
    (tset (tget e 'val) k (ltu e k (B (tget d k))))
    (recomps e d (B ks))))))
 
-  (, (precomps e (tkeys (tget e 'lam)))
+  prevals (\ e
+   (: dd (tget e'def) vv (tget e'val)
+    (each (tkeys dd) (\ k
+     (? (nilp (thas vv k))
+      (? (qtd (tset dd k (: qq (rw e (tget dd k)))))
+        (, (tset vv k (unq qq))
+           (loc-del e k))))))))
+
+  (, (prevals e)
+     (precomps e (tkeys (tget e 'lam)))
      (elim e (tkeys (tget e'lam)))
      (: ls (tget e 'lam) (recomps e ls (tset e 'lam (tkeys ls)))))))
 
@@ -490,47 +563,20 @@
   (symp x) 'sym (strp x) 'oct
   (tblp x) 'tbl          'nil))
 
- t-checks (tbl
-  i-idhom 'hom 'hom i-idhom
-  i-idnum 'num 'num i-idnum
-  i-idtwo 'two 'two i-idtwo
-  i-idtbl 'tbl 'tbl i-idtbl)
-
- ev-la (\ x k (:
-  gnom (\ e k (: i (hgeti k) (case i
-   i-tbind (hgetx (hseek k 1))
-   i-setl  (at (tget e'loc) (hgetx (hseek k 1))))))
-
-  claclo (\ e arg (:
-   clacloin (\ e arg k (?
-    (nilp arg) k
-    (clacloin e (B arg)
-     (eval (A arg) (code i-push k)))))
-   ((clacloin e arg (\ e m
-     (emif i-take (emx (len arg) (hom (+ m 2))))))
-    e 0)))
-  (\ e m (>>= (assert e (+ m 2) 'hom k) (\ k
-   (>>= (ltu e (gnom e k) x) (\ x (?
-    (homp x) (emif i-immv (emx x k))
-    (emif (? (tget e'loc) i-encll i-encln)
-     (emx (X (B x) (claclo e (A x))) k))))))))))
-
- ; this unifies two types to produce a new type that is
- ; consistent with both, if that's possible; otherwise
- ; it's a static type error.
- ; the type of types is the union of
- ; - type symbols (num, hom, sym, etc), representing a
- ;   specific fundamental type
- ; - a list of type symbols, representing the intersection
- ;   of the complements of the fundamental types
- ; an empty list of negations, ie. nil, represents no
- ; inferred type.
+ ; this refines two types into a new type that's consistent
+ ; with both, if that's possible; otherwise it's a static type
+ ; error. the type of types is either:
+ ; - a symbol (num, hom, sym, etc), representing the values
+ ;   of a specific fundamental type
+ ; - a list of type symbols, representing the complement of
+ ;   the union of the values of each type in the list.
  uni-type (\ a b (?
   (symp a) (? (symp b) (? (= a b) a (fail))
               (twop b) (? (elem b a) (fail) a)
               a)
   (symp b) (? (twop a) (? (elem a b) (fail) b) b)
   (uniq (++ a b))))
+
  tdup (\ t (: d (tbl) (,
   (each (tkeys t) (\ k (tset d k (tget t k)))) d)))
 
@@ -538,8 +584,6 @@
   (each (uniq (++ (tkeys a) (tkeys b))) (\ k
    (tset d k (uni-type (tget a k) (tget b k)))))
   d)))
-   
-
 
  ev-qt (\ x k (immk (AB x) k))
  ev-de (\ x k (\ e m (cde e m x k)))
@@ -551,7 +595,9 @@
   ', ev-seq
   ev-ap) x k)))
  ini (\ e m (insx e m i-ret (tget e'nom) (\ e m (hom m))))
- ev (\ x ((ev-part (env () () 'ev) x 0)x))
+ ev (\ x (: e (env () () 'ev)
+  (((eval (rewrite e x) ini) e 0) x)))
+
  ev))
 
 (ev lib)
