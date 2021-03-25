@@ -1,15 +1,14 @@
 (: local-vars '(local-vars old-ev lib egg s0 s1 s2 macros ns emi emx hom hseek hgeti hom-get-x hfin)
    lib '(,
   ;; here's some data constructors
-  (:
-     Tg tget Ts tset
+  (: Tg tget Ts tset
      and (\ l (? l (? (A l) (and (B l))) 0))
      && (\ l . (and l))
      or (\ l (? l (: a (A l) (? a a (or (B l))))))
      || (\ l . (or l))
      L (\ . . .) ; dot only has special meaning following another argument, which can be dot
      ++ (: append (\ a b (? a(X(A a)(append(B a)b))b))
-      (\ a . (foldr () append a)))
+      (\ a . (foldr a () append)))
      iota (\ n x .
       (: iota.l (\ m n (? (< m n) (X m (iota.l (+ m 1) n))))
        (? (nilp x) (iota.l 0 n) (iota.l n (A x)))))
@@ -18,13 +17,11 @@
         (?(> n 0)(rho.l n xs)))))
 
   ;; here's some of your standard Functinal Progming stuf
-  (: map (\ f x (? x ((\ f x y (X (f (A x)) y))
-                      f x (map f (B x)))))
-     foldl(\ z f x (? x (foldl (f z (A x)) f (B x)) z))
-     foldr (\ z f x (? x (f (A x) (foldr z f (B x))) z))
-     foldl1 (\ f x (foldl (A x) f (B x)))
-     foldr1  (\ f x (? (B x) (f (A x) (foldr1 f (B x)))
-                             (A x)))
+  (: map (\ x f (? x (X (f (A x)) (map (B x) f))))
+     foldl(\ x z f (? x (foldl (f z (A x)) f (B x)) z))
+     foldr (\ x z f (? x (f (A x) (foldr z f (B x))) z))
+     foldl1 (\ x f (foldl (B x) (A x) f))
+     foldr1  (\ x f (? (B x) (f (A x) (foldr1 (B x) f)) (A x)))
 
      curry (\ f x . (\ y . (ap f (++ x y))))
      |-> (\ xs . (: t (ap tbl xs)
@@ -365,7 +362,7 @@
         (code i-tset k))))))))
 
    = (\ x k (?
-    (? (: q (map unq (filter qtd x))) (: r (A q)
+    (? (: q (map (filter qtd x) unq)) (: r (A q)
       (any (\ v (nilp (= v r))) (B q))))
      (immk () k)
     (? x (nilp (B x)) 0) (immk 0 k)
@@ -394,8 +391,7 @@
     (nilp (? (homp z) (= i-arity (hgeti z)))) x
     (? (>= (len (B x)) (hgetx (hseek z 1)))
      (X (hseek z 2) (B x))
-     (ap z (B x)); this immediately causes an arity error.
-     ))))
+     (ap z (B x)))))) ; purposely cause an arity error
    rw-let (\ e x (:
     desug (\ d (L (L '\ (L ', (init d) (last d)))))
     loop (\ e x (? x
@@ -419,13 +415,13 @@
     ', (rw-seq e x)
     (? (thas macros a)
         (rw e (ap (tget macros a) (B x)))
-       (: z (map (\ x (rw e x)) x) q (A z) r (B z) (?
+       (: z (map x (\ x (rw e x))) q (A z) r (B z) (?
         (nilp (thas pures q)) (rw-arity z)
-        (all qtd r) (quote (ap q (map unq r)))
+        (all qtd r) (quote (ap q (map r unq)))
         (thas monoids q) (monofold q (tget monoids q) r)
         (thas abelians q) (:
          ff (partition qtd r)
-         fg (ap q (map unq (A ff)))
+         fg (ap q (map (A ff) unq))
          (X q (? (= fg (tget abelians q)) (B ff)
                (X fg (B ff)))))
         (rw-arity z)))))))
@@ -476,10 +472,12 @@
         (, (loc-del e x)
            (tset (tget e'val) x (unq rr))))
        d2)))))
- rwl (\ e x (: a (.'a (A x)) (case a
+ rwl (\ e x (: a (A x) (case a
   ', (rwsq e x)
-  (foldr '(()) (\ x m
-   (rwX (rw2 e x) m)) x))))
+  (thas macros a)
+   (rw2 e (ap (tget macros a) (B x)))
+  (foldr x '(()) (\ x m
+   (rwX (rw2 e x) m))))))
   rwsq (\ e x (:
    rwsqr (\ e x (: y (rw2 e (A x)) (?
     (nilp (B x)) (rwmap L y)
@@ -581,12 +579,12 @@
      (X (X k qq) bb)
     bb))))))))
 
-  tkvs (\ t (map (\ k (X k (tget t k))) (tkeys t)))
+  tkvs (\ t (map (tkeys t) (\ k (X k (tget t k)))))
 
   (? (> (tlen (: def (tget e'def))) 0) (,
    (rc2 e (: pcs (pc2 e (pvs e (map
-                  (\ k (X k (tget def k)))
-                  (tset e'loc (tkeys def)))))
+                  (tset e'loc (tkeys def))
+                  (\ k (X k (tget def k))))))
            (elis e pcs pcs ())))
    (tset e'loc (tkeys def))))))
 
