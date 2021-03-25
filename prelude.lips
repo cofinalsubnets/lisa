@@ -74,21 +74,16 @@
    '&& (\ x . ((: & (\ x
      (? (B x) (L '? (A x) (& (B x))) (A x)))) x))
    '>>= (\ x . (X (last x) (init x)))
-   'case (\ x a .
-    ((: case.i (\ x a
-      (? a (? (B a) (L '? (L '= x (A a)) (A (B a))
-                      (case.i x (B (B a))))
-                     (A a))))) x a))
-   'module (\ exp ks . (.'module (: vars (tkeys ns)
-    (L ', (X ', ks)
-          (L each (L tkeys ns) (L '\ 'v
-           (L '?  (L && (L nilp (L memq (L '` vars) 'v))
-                        (L nilp (L memq (L '` exp) 'v)))
-                   (L tdel ns 'v))))))))
+   'case (\ x a . (: y (gensym)
+    (L ': y x ((: case.i (\ a
+      (? a (? (B a) (L '? (L '= y (A a)) (A (B a))
+                      (case.i (B (B a))))
+                     (A a))))) a))))
+
    )))
 
-(: egg '(, (:
- env (\ a p n (>>=
+(: egg '(: ev (ev 
+'(: env (\ a p n (>>=
   ((: asig (\ a n
        (? a
         (? (? (B a) (= '. (AB a)))
@@ -124,9 +119,9 @@
    i-gt (br2 i-brgt i-brlteq) i-gteq (br2 i-brgteq i-brlt)
    i-eq (br2 i-breq i-brne)
    i-nilpp (f1 hgeti i-branch i-barnch i-barnch i-branch)
-   i-call (\ i h (>>= (hgeti (hseek h 1)) (\ j (case j
+   i-call (\ i h (case (hgeti (hseek h 1))
     i-ret (emi i-rec (emx (hgetx h) (hseek h 1)))
-    (emi i h)))))
+    (emi i h)))
    i-immv (f1 hgetx () i-unit 0 i-zero 1 i-one)))
 
  emif (\ i h ((? (: q (tget fuse i)) q emi) i h))
@@ -177,11 +172,12 @@
   (memq (tget e'arg) y) (X 'arg e)
   (look (tget e'par) y)))
 
- assert (\ e m t k (>>= (k e m) (: type (\ h (:
-  u (consumes h)
-  (case u () h
-          t (type (hseek h 1))
-          (fail)))))))
+ value-of-type (\ e m t k (:
+  match-for (\ t h (>>= t (consumes h) h (\ t u h
+   (case u () h
+         t (match-for t (hseek h 1))
+         (fail)))))
+  (match-for t (k e m))))
 
  t-checks (tbl
   i-idhom 'hom 'hom i-idhom
@@ -191,7 +187,7 @@
 
  consumes (\ h (? (: c (tget t-checks (hgeti h))) c))
  >- (\ t k (? (: tc (tget t-checks t)) (code tc k) (fail)))
- -> (\ t k (\ e m (assert e m t k)))
+ -> (\ t k (\ e m (value-of-type e m t k)))
 
  pushr (\ s (\ k (\ e m (>>= (k e m) (\ k
   (A (tset e s (X k (tget e s)))))))))
@@ -222,27 +218,24 @@
  ; the rewrite ensures the : expression is always an even form.
   cder (\ x k (? (nilp x) k (:
    l (cder (BB x) k)
-   m (? (|| (toplp e)
-            (< -1 (idx (tget e'loc)(A x))))
-      (cdeb (A x) l)
-      l)
+   m (? (nilp (|| (toplp e) (< -1 (idx (tget e'loc)(A x))))) l
+      (\ e m (? (toplp e) (insx e m i-tbind (A x) l)
+                          (insx e m i-setl (idx (tget e'loc) (A x)) l))))
    (? (= 'here (A (: v (look e (A x)))))
     (immk (B v) m) (eval (AB x) m)))))
 
-  cdeb (\ x k (\ e m (?
-   (toplp e) (insx e m i-tbind x k)
-             (insx e m i-setl (idx (tget e 'loc) x) k))))
  ((cder (B x) k) e m)))
 
  ev-if (\ x k (:
 
-  ccoprecon (\ k (\ e m
-   (>>= (k e (+ m 2)) (\ x
-    (>>= (A (tget e 's2)) (\ brx
-     (: i (hgeti brx) (case i
-      (? (= i i-ret) (emif i x)
-       (emif i-jump
-        (emx (? (= i i-jump) (hgetx (hseek brx 1)) brx) x)))))))))))
+  ccoprecon (\ k (\ e m (:
+   x (k e (+ m 2))
+   brx (A (tget e's2))
+   i (hgeti brx)
+   (case i
+    (? (= i i-ret) (emif i x)
+     (emif i-jump
+      (emx (? (= i i-jump) (hgetx (hseek brx 1)) brx) x)))))))
 
   ccor (\ x k (?
    (nilp (B x)) (eval (A x) (ccoprecon k))
@@ -289,7 +282,7 @@
    ((clacloin e arg (\ e m
      (emif i-take (emx (len arg) (hom (+ m 2))))))
     e 0)))
-  (\ e m (>>= (assert e (+ m 2) 'hom k) (\ k
+  (\ e m (>>= (value-of-type e (+ m 2) 'hom k) (\ k
    (>>= (ltu e (gnom e k) x) (\ x (?
     (homp x) (emif i-immv (emx x k))
     (emif (? (tget e'loc) i-encll i-encln)
@@ -609,9 +602,9 @@
   ', ev-seq
   ev-ap) x k)))
  ini (\ e m (insx e m i-ret (tget e'nom) (\ e m (hom m))))
- Ev (\ x (: e (env () () 'ev)
-  (((eval (, (scan e x) (rw e x)) ini) e 0) x))))
- (tset ns 'ev Ev)))
+ ev (\ x (: e (env () () 'ev)
+  (((eval (, (scan e x) (rw e x)) ini) e 0) x)))
+ ))))
 
 ; bootstrap
 (ev lib) (ev egg) ; C -> prelips
