@@ -754,15 +754,16 @@ vm_op(gsym_u) {
 // a backtrace and everything.
 static Inline void perrarg(vm v, mem fp) {
   num argc = fp == Pool + Len ? 0 : Gn(Argc), i = 0;
-  if (argc == 0) return;
-  for (fputs(" at ", stderr);;fputc(' ', stderr)) {
+  if (argc) for (fputc(' ', stderr);;fputc(' ', stderr)) {
     obj x = Argv[i++];
     emit(v, x, stderr);
-    if (i == argc) break; } }
+    if (i == argc) break; }
+  fputc(')', stderr); }
 
 vm_op(nope, const char *msg, ...) {
-  fputs("# ", stderr), emit(v, Ph(ip), stderr),
-  fputs(" does not exist", stderr), perrarg(v, fp);
+  fputs("# (", stderr), emit(v, Ph(ip), stderr),
+  perrarg(v, fp);
+  fputs(" does not exist", stderr);
   if (msg) {
     fputs(" : ", stderr);
     va_list xs; va_start(xs, msg);

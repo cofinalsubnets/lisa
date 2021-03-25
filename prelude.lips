@@ -1,4 +1,5 @@
-(: local-vars '(local-vars old-ev lib egg s0 s1 s2 macros ns emi emx hom hseek hgeti hom-get-x hfin)
+(: local-vars '(local-vars sig0 old-ev lib egg s0 s1 s2 macros ns emi emx hom hseek hgeti hom-get-x hfin)
+   sig0 (gensym)
    lib '(,
   ;; here's some data constructors
   (: Tg tget Ts tset
@@ -6,7 +7,7 @@
      && (\ l . (and l))
      or (\ l (? l (: a (A l) (? a a (or (B l))))))
      || (\ l . (or l))
-     L (\ . . .) ; dot only has special meaning following another argument, which can be dot
+     L (\ . . .)
      ++ (: append (\ a b (? a(X(A a)(append(B a)b))b))
       (\ a . (foldr a () append)))
      iota (\ n x .
@@ -17,11 +18,11 @@
         (?(> n 0)(rho.l n xs)))))
 
   ;; here's some of your standard Functinal Progming stuf
-  (: map (\ x f (? x (X (f (A x)) (map (B x) f))))
-     foldl(\ x z f (? x (foldl (f z (A x)) f (B x)) z))
-     foldr (\ x z f (? x (f (A x) (foldr z f (B x))) z))
+  (: foldl(\ x z f (? x (foldl (B x) (f z (A x)) f) z))
+     foldr (\ x z f (? x (f (A x) (foldr (B x) z f)) z))
      foldl1 (\ x f (foldl (B x) (A x) f))
      foldr1  (\ x f (? (B x) (f (A x) (foldr1 (B x) f)) (A x)))
+     map (\ x f (foldr x () (\ x m (X (f x) m))))
 
      curry (\ f x . (\ y . (ap f (++ x y))))
      |-> (\ xs . (: t (ap tbl xs)
@@ -30,21 +31,19 @@
      uniq (\ l (:
       u.l (\ x l (?
        (nilp l) x
-       (elem x (A l)) (u.l x (B l))
+       (memq x (A l)) (u.l x (B l))
        (u.l (X (A l) x) (B l))))
       (u.l () l)))
 
      id (\ x x)
      each (\ x f (? x (,(f (A x)) (each (B x) f))))
-     all (\ p l (? l (? (p (A l)) (all p (B l))) 0))
-     any (\ p l (? l (? (p (A l)) 0 (any p (B l)))))
-     partition (\ p l (? (nilp l) '(())
-      (: a (A l) m (partition p (B l))
-       (? (p a) (X (X a (A m)) (B m))
-                (X (A m) (X a (B m)))))))
+     all (\ l p (? l (? (p (A l)) (all (B l) p)) 0))
+     any (\ l p (? l (? (p (A l)) 0 (any (B l) p))))
+     part (\ l p (foldr l '(()) (\ a m
+      (? (p a) (X (X a (A m)) (B m))
+               (X (A m) (X a (B m)))))))
 
-     filter (\ f x (? x ((\ a y
-      (? (f a) (X a y) y)) (A x) (filter f (B x)) )))
+     filter (\ x p (foldr x () (\ x m (? (p x) (X x m) m))))
      at (\ l n (? (< n 1) (A l) (at (B l) (- n 1))))
      atn (\ n (\ l (at l n)))
      flip (\ f (\ x y (f y x)))
@@ -55,12 +54,9 @@
      init (\ l (? (B l) (X (A l) (init (B l)))))
      last (\ l (? (B l) (last (B l)) (A l)))
 
-     rev (\ l
-      ((: rev.i (\ l m (? l (rev.i (B l) (X (A l) m)) m))) l()))
-     ldel (\ l k (? l
-      ((? (= k (A l)) id (\ m (X (A l) m)))
-       (ldel (B l) k))))
-     elem (\ l x (< -1 (idx l x)))
+     memq (\ x k (? x (? (= k (A x)) x (memq (B x) k))))
+     rev (\ l (foldl l () (\ r x (X x r))))
+     ldel (\ l k (filter l (\ x (nilp (= x k)))))
      ldiff (\ l m (? m (ldiff (ldel l (A m)) (B m)) l))
      idx (\ l x
       ((: .l (\ l x n (? l (? (= x (A l)) n (.l (B l) x (+ n 1))) -1)))
@@ -82,12 +78,16 @@
     ((: case.i (\ x a
       (? a (? (B a) (L '? (L '= x (A a)) (A (B a))
                       (case.i x (B (B a))))
-                     (A a))))) x a)))
+                     (A a))))) x a))
+   'module (\ exp ks . (.'module (: vars (tkeys ns)
+    (L ', (X ', ks)
+          (L each (L tkeys ns) (L '\ 'v
+           (L '?  (L && (L nilp (L memq (L '` vars) 'v))
+                        (L nilp (L memq (L '` exp) 'v)))
+                   (L tdel ns 'v))))))))
+   )))
 
-
-  ))
-
-(: egg '(: ev (:
+(: egg '(, (:
  env (\ a p n (>>=
   ((: asig (\ a n
        (? a
@@ -171,10 +171,10 @@
    (? (thas ns y) (nilp (thas (tget e'def) y)))
     (X 'here (tget ns y))
    (X 'wait ns))
-  (elem (tget e'clo) y) (X 'clo e)
-  (elem (tget e'dfr) y) (X 'wait (tget e'val))
+  (memq (tget e'clo) y) (X 'clo e)
+  (memq (tget e'dfr) y) (X 'wait (tget e'val))
   (thas (tget e'def) y) (X 'loc e)
-  (elem (tget e'arg) y) (X 'arg e)
+  (memq (tget e'arg) y) (X 'arg e)
   (look (tget e'par) y)))
 
  assert (\ e m t k (>>= (k e m) (: type (\ h (:
@@ -213,21 +213,26 @@
    (ev-api x (eval z (>- 'hom
     (code i-call (data (len x) k))))))))))
 
- ev-seq (\ x k
-  ((: ev-seqr (\ x k
-       (? (nilp x) k (eval (A x) (ev-seqr (B x) k)))))
-    (B x) k))
+ ev-seq (\ x k (:
+  ev-seqr (\ x k
+   (? (nilp x) k (eval (A x) (ev-seqr (B x) k))))
+  (ev-seqr (B x) k)))
 
- cde (\ e m x k
+ cde (\ e m x k (:
  ; the rewrite ensures the : expression is always an even form.
-  (: cder (\ x k (? (nilp x) k (>>= (cder (BB x) k) (\ k
-   (>>= (? (|| (toplp e) (< -1 (idx (tget e'loc)(A x))))
-         (cdeb (A x) k) k) (\ k (? (= 'here (A (: v (look e (A x)))))
-          (immk (B v) k) (eval (AB x) k))))))))
-     cdeb (\ x k (\ e m (?
-      (toplp e) (insx e m i-tbind x k)
-                (insx e m i-setl (idx (tget e 'loc) x) k))))
-    ((cder (B x) k) e m)))
+  cder (\ x k (? (nilp x) k (:
+   l (cder (BB x) k)
+   m (? (|| (toplp e)
+            (< -1 (idx (tget e'loc)(A x))))
+      (cdeb (A x) l)
+      l)
+   (? (= 'here (A (: v (look e (A x)))))
+    (immk (B v) m) (eval (AB x) m)))))
+
+  cdeb (\ x k (\ e m (?
+   (toplp e) (insx e m i-tbind x k)
+             (insx e m i-setl (idx (tget e 'loc) x) k))))
+ ((cder (B x) k) e m)))
 
  ev-if (\ x k (:
 
@@ -257,7 +262,7 @@
  monoids (immediate (tbl scat "" ++ ()))
  pures (immediate ({set}
   L X A B + - * / % id flip ++ iota rho |->
-  snoc init last rev ldel elem at idx ldiff len
+  snoc init last rev ldel memq at idx ldiff len
   homp nilp symp nump tblp strp twop vecp
   && || scat slen sget ssub str))
 
@@ -294,8 +299,8 @@
   grp (\ f m id x
    (: fold (\ f m x (? (nilp x) (X m)
              (? (qtd (: y (A x))) (fold f (f m (unq y)) (B x))
-                                  (>>= (fold f m (B x)) (\ z
-                                   (X (A z) (X y (B z))))))))
+                                  (: z (fold f m (B x))
+                                   (X (A z) (X y (B z)))))))
     (? (= id (A (: j (fold f m x)))) (B j) j)))
 
   ordr (\ i (\ x k (?
@@ -351,19 +356,19 @@
     (eval (AB x) (>- 'hom
      (code i-push (eval (A x)
       (code i-emx (-> 'hom k)))))))
-    tget (\ x k
-     (eval (AB x) (code i-push
-      (eval (A x) (>- 'tbl (code i-tget k))))))
+   tget (\ x k
+    (eval (AB x) (code i-push
+     (eval (A x) (>- 'tbl (code i-tget k))))))
 
-    tset (\ x k
-     (eval (A (BB x))
-      (code i-push (eval (AB x)
-       (code i-push (eval (A x) (>- 'tbl
-        (code i-tset k))))))))
+   tset (\ x k
+    (eval (A (BB x))
+     (code i-push (eval (AB x)
+      (code i-push (eval (A x) (>- 'tbl
+       (code i-tset k))))))))
 
    = (\ x k (?
-    (? (: q (map (filter qtd x) unq)) (: r (A q)
-      (any (\ v (nilp (= v r))) (B q))))
+    (? (: q (map (filter x qtd) unq)) (: r (A q)
+      (any (B q) (\ v (nilp (= v r))))))
      (immk () k)
     (? x (nilp (B x)) 0) (immk 0 k)
     (eval (A x) (code i-push (? (BB x)
@@ -376,7 +381,7 @@
 
     && (\ x k (?
      (nilp x) (immk 0 k)
-     (any nilp x) (immk () k)
+     (any x nilp) (immk () k)
      (: fold (\ x y k
        (eval x (? (nilp y) k (code i-barnch
         (peek2 (fold (A y) (B y) k))))))
@@ -400,9 +405,8 @@
     (? (B x) (? (= 0 (% (len x) 2)) (desug x)
                 (X ': (loop e (B x)))))))
    rw-lam (\ e l (:
-    defp (\ x (? (twop x) (= (A x) ':)))
-    deftp (\ x (? (defp x) (= 0 (% (len x) 2))))
-    trlamp (\ l (? (B l) (deftp (last l))))
+    trlamp (\ l (&& (B l) (: x (last l)
+     (&& (twop x) (= (A x) ':) (= 0 (% (len x) 2))))))
     rw-lamm (\ l (>>= (last l) (\ m (snoc (init l) (L ', (init m) (last m))))))
     (? (trlamp l) (rw-lamm l) l)))
 
@@ -417,10 +421,10 @@
         (rw e (ap (tget macros a) (B x)))
        (: z (map x (\ x (rw e x))) q (A z) r (B z) (?
         (nilp (thas pures q)) (rw-arity z)
-        (all qtd r) (quote (ap q (map r unq)))
+        (all r qtd) (quote (ap q (map r unq)))
         (thas monoids q) (monofold q (tget monoids q) r)
         (thas abelians q) (:
-         ff (partition qtd r)
+         ff (part r qtd)
          fg (ap q (map (A ff) unq))
          (X q (? (= fg (tget abelians q)) (B ff)
                (X fg (B ff)))))
@@ -548,7 +552,7 @@
   pkvs (\ e i vs (?
    (nilp vs) 1
    (: v (A vs) (?
-    (|| (any (\ j (= (A j) v)) i) (thas (tget e'val) v))
+    (|| (any i (\ j (= (A j) v))) (thas (tget e'val) v))
      (pkvs e i (B vs))))))
 
   elis (\ e i kvs q (?
@@ -601,14 +605,13 @@
   '? ev-if
   ': ev-de
   '\ ev-la
+  sig0 ev-lar
   ', ev-seq
   ev-ap) x k)))
  ini (\ e m (insx e m i-ret (tget e'nom) (\ e m (hom m))))
- ev (\ x (: e (env () () 'ev)
-  (((eval (, (scan e x) (rw e x)) ini) e 0) x)))
-
-; ev
- )))
+ Ev (\ x (: e (env () () 'ev)
+  (((eval (, (scan e x) (rw e x)) ini) e 0) x))))
+ (tset ns 'ev Ev)))
 
 ; bootstrap
 (ev lib) (ev egg) ; C -> prelips
