@@ -96,10 +96,9 @@
          (>>= (asig (B a) (+ n 1)) (\ r
           (X (A r) (X (A a) (B r))))))
         (X n a)))) a 0) (\ b
-  (tbl 'arg (B b) 'loc ()
-       'clo ()     'par p
-       'lam (tbl)  'nom n
-       'val (tbl)  'sig (A b)
+  (tbl 'arg (B b) 'par p
+       'nom n
+       'val (tbl) 'sig (A b)
        'def (tbl)))))
 
   t-c (|->
@@ -172,8 +171,7 @@
    (? (thas ns y) (nilp (elem (tget e'loc) y)))
     (X 'here (tget ns y))
    (X 'wait ns))
-  (? (twop (: z (tget e'lam))) (elem z y))
-   (X 'wait (tget e 'val))
+  (elem (tget e'dfr) y) (X 'wait (tget e'val))
   (elem (tget e'loc) y) (X 'loc e)
   (elem (tget e'arg) y) (X 'arg e)
   (elem (tget e'clo) y) (X 'clo e)
@@ -249,35 +247,6 @@
 
 
  quote (\ x (? (qtd x) x (L '` x)))
- rw-sym (\ e x (: l (look e x)
-  (? (= (A l) 'here)
-      (quote (B l))
-     (thas (: defs (tget e'def)) x)
-      (: dd (rw e (: de (tdel defs x)))
-       (, (tset defs x de)
-          (? (nilp (qtd dd)) x
-           (, (loc-del e x)
-              (tset (tget e'val) x (unq dd))
-              dd))))
-     x)))
-
- rw-let (\ e x (:
-  desug (\ d (L (L '\ (L ', (init d) (last d)))))
-  loop (\ e x (? x
-   (: ll (loop e (BB x))
-    (X (A x) (X (tget (tget e'def) (A x)) ll)))))
-  (? (B x) (? (= 0 (% (len x) 2)) (desug x)
-              (X ': (loop e (B x)))))))
-
- rw-seq (\ e x (:
-  rw-seqr (\ e x (?
-   (nilp (B x)) (L (rw e (A x)))
-    (: z (rw-seqr e (B x))
-       y (rw e (A x))
-     (? (|| (symp y) (qtd y)) z (X y z)))))
-  (? (: y (B x))
-     (: z (rw-seqr e y) (? (B z) (X ', z) (A z))))))
-
  l-exp? (\ x (? (twop x) (= '\ (A x))))
  ; this rewrites lambda expressions of the form
  ;   (\ (: a b c)) -> (\ (, (: a b) c))
@@ -308,14 +277,6 @@
       (= i j) (L x)
       (L j x)))
   (? l (X f (mfold f i i (A l) (B l))) (quote i))))
-
- rws (tbl
-  id (\ e x (A x))
-  ap (\ e x (?
-   (qtd (: b (AB x))) 
-    (rw-list e (X (A x) (map quote (unq b))))
-   (? (twop b) (= L (A b))) (X (A x) (B b))
-   (X ap x))))
 
  ev-la (\ x k (:
   gnom (\ e k (: i (hgeti k) (case i
@@ -431,50 +392,79 @@
    nilp (\ x k (eval (A x) (code i-nilpp k)))
    fail (\ x k (code i-fail k))))
 
- rw-list (\ e x (:
-  rw-arity (\ x (: z (A x) (?
-   (nilp (? (homp z) (= i-arity (hgeti z)))) x
-   (? (>= (len (B x)) (hgetx (hseek z 1)))
-    (X (hseek z 2) (B x))
-    (ap z (B x)); this causes an arity error.
-    ))))
+ rw (\ e x  (:
 
-  apqp (\ f x (ap f (map unq x)))
+  rw-list (\ e x (:
+   rw-arity (\ x (: z (A x) (?
+    (nilp (? (homp z) (= i-arity (hgeti z)))) x
+    (? (>= (len (B x)) (hgetx (hseek z 1)))
+     (X (hseek z 2) (B x))
+     (ap z (B x)); this causes an arity error.
+     ))))
+   rw-let (\ e x (:
+    desug (\ d (L (L '\ (L ', (init d) (last d)))))
+    loop (\ e x (? x
+     (: ll (loop e (BB x))
+      (X (A x) (X (tget (tget e'def) (A x)) ll)))))
+    (? (B x) (? (= 0 (% (len x) 2)) (desug x)
+                (X ': (loop e (B x)))))))
 
-  a (A x)
-  (case a
-   '` (? (B x) x)
-   '\ (rw-lam e x)
-   ': (rw-let e x)
-   '? (rw-if e (B x))
-   ', (rw-seq e x)
-   (? (thas macros a)
-       (rw e (ap (tget macros a) (B x)))
-      (: z (map (\ x (rw e x)) x) q (A z) r (B z) (?
-       (: rwr (tget rws q)) (rwr e r)
-       (nilp (thas pures q)) (rw-arity z)
-       (all qtd r) (quote (apqp q r))
-       (thas monoids q) (monofold q (tget monoids q) r)
-       (thas abelians q) (:
-        ff (partition qtd r)
-        fg (ap q (map unq (A ff)))
-        (X q (? (= fg (tget abelians q)) (B ff)
-              (X fg (B ff)))))
-       (rw-arity z)))))))
+   a (A x)
+   (case a
+    '` (? (B x) x)
+    '\ (rw-lam e x)
+    ': (rw-let e x)
+    '? (rw-if e (B x))
+    ', (rw-seq e x)
+    (? (thas macros a)
+        (rw e (ap (tget macros a) (B x)))
+       (: z (map (\ x (rw e x)) x) q (A z) r (B z) (?
+        (nilp (thas pures q)) (rw-arity z)
+        (all qtd r) (quote (ap q (map unq r)))
+        (thas monoids q) (monofold q (tget monoids q) r)
+        (thas abelians q) (:
+         ff (partition qtd r)
+         fg (ap q (map unq (A ff)))
+         (X q (? (= fg (tget abelians q)) (B ff)
+               (X fg (B ff)))))
+        (rw-arity z)))))))
 
- rw-if (\ e x (:
-  rw-ifr (\ e x (?
-   (nilp x) (L ())
-   (nilp (B x)) (L (rw e (A x)))
-   (: a (rw e (A x))
-    (? (qtd a) (? (unq a) (L (rw e (AB x)))
-                          (rw-ifr e (BB x)))
-     (X a (X (rw e (A (B x))) (rw-ifr e (BB x))))))))
-  (: r (rw-ifr e x) (? r (? (B r) (X '? r) (A r))))))
+  rw-if (\ e x (:
+   rw-ifr (\ e x (?
+    (nilp x) (L ())
+    (nilp (B x)) (L (rw e (A x)))
+    (: a (rw e (A x))
+     (? (qtd a) (? (unq a) (L (rw e (AB x)))
+                           (rw-ifr e (BB x)))
+      (X a (X (rw e (A (B x))) (rw-ifr e (BB x))))))))
+   (: r (rw-ifr e x) (? r (? (B r) (X '? r) (A r))))))
+  rw-sym (\ e x (: l (look e x)
+   (? (= (A l) 'here)
+       (quote (B l))
+      (thas (: defs (tget e'def)) x)
+       (: dd (rw e (: de (tdel defs x)))
+        (, (tset defs x de)
+           (? (nilp (qtd dd)) x
+            (, (loc-del e x)
+               (tset (tget e'val) x (unq dd))
+               dd))))
+      x)))
 
- rw (\ e x (? (twop x) (rw-list e x)
+
+  rw-seq (\ e x (:
+   rw-seqr (\ e x (?
+    (nilp (B x)) (L (rw e (A x)))
+     (: z (rw-seqr e (B x))
+        y (rw e (A x))
+      (? (|| (symp y) (qtd y)) z (X y z)))))
+   (? (: y (B x))
+      (: z (rw-seqr e y) (? (B z) (X ', z) (A z))))))
+
+
+
+ (? (twop x) (rw-list e x)
               (symp x) (rw-sym e x)
-              (quote x)))
+              (quote x))))
 
  ltu (\ e nom l (:
   with-locals (\ e k (? (: loc (tget e 'loc))
@@ -506,8 +496,7 @@
   sdefa (\ e y x (,
    (? (qtd x) (tset (tget e'val) y (unq x))
       (, (tset e'loc(X y (tget e'loc)))
-         (tset (tget e'def) y x)
-         (? (l-exp? x)(tset (tget e'lam) y (rw-lam e x)))))
+         (tset (tget e'def) y x)))
    (scan e x)))
 
   (? (twop x) (: y (A x) (case y
@@ -518,72 +507,81 @@
  loc-del (\ e k (tset e'loc (ldel (tget e'loc) k)))
  resolve (\ e (:
 
-  precomps (\ e ks (? ks
-   (: k (A ks) i (ltu e k (tget (tget e 'lam) k)) (,
-    (? (homp i) (, (tset (tget e 'val) k i)
-                   (tdel (tget e 'lam) k)
-                   (loc-del e k))
-                (: lams (tget e 'lam)
-                   j    (X (A i) (tget lams k))
-                  (tset lams k j)))
-    (precomps e (B ks))))))
+  precomps (\ e ks (? ks (:
+   k (A ks)
+   rr (precomps e (B ks))
+   i (ltu e k (tget (tget e 'def) k))
+   (? (homp i)
+       (, (tset (tget e 'val) k i)
+          (tdel (tget e 'lam) k)
+          (loc-del e k)
+          rr)
+       (X (X k (tset (tget e'lam) k
+                (X (A i) (tget (tget e'def) k))))
+        rr)))))
+
 
   okvs (\ e vs (?
    (nilp vs) 1
    (: v (A vs)
     (? (|| (thas (tget e 'lam) v) (thas (tget e'val) v))
        (okvs e (B vs))))))
+  pkvs (\ e i vs (?
+   (nilp vs) 1
+   (: v (A vs) (?
+    (|| (any i (\ j (= (A j) v))) (thas (tget e'val) v))
+     (pkvs e i (B vs))))))
 
-  elim (\ e ks (? ks (>>= (A ks) (\ k (?
-   (nilp (okvs e (A (tget (tget e 'lam) k))))
-    (, (tdel (tget e'lam) k) (elim e (tkeys (tget e'lam))))
-   (elim e (B ks)))))))
+  elis (\ e i kvs q (?
+   (nilp kvs) q
+   (: kv (A kvs) (?
+    (nilp (okvs e (AB kv)))
+     (, (tdel (tget e'lam) (A kv))
+        (>>= (ldel i kv) (\ j (elis e j j ()))))
+    (elis e i (B kvs) (X kv q))))))
 
-  recomps (\ e d ks (? ks (: k (A ks) (,
-   (tset e 'loc (ldel (tget e 'loc) k))
-   (tset (tget e 'val) k (ltu e k (B (tget d k))))
-   (recomps e d (B ks))))))
+  dfr-add (\ e k (tset e'dfr (X k (tget e'dfr))))
+  rc2 (\ e kvs (? kvs (: kv (A kvs) k (A kv) (,
+   (loc-del e k)
+   (dfr-add e k)
+   (rc2 e (B kvs))
+   (tset (tget e'val) k (ltu e k (BB kv)))))))
 
-  prevals (\ e
-   (: dd (tget e'def) vv (tget e'val)
-    (each (tkeys dd) (\ k
-     (? (nilp (thas vv k))
-      (? (qtd (tset dd k (: qq (rw e (tget dd k)))))
-        (, (tset vv k (unq qq))
-           (loc-del e k))))))))
+  prevals (\ e (:
+   dd (tget e'def)
+   vv (tget e'val)
+   (each (tkeys dd) (\ k
+    (? (nilp (thas vv k)) (?
+     (qtd (tset dd k (: qq (rw e (tget dd k)))))
+      (, (tset vv k (unq qq))
+         (loc-del e k))
+     (l-exp? qq)
+      (tset (tget e'lam) k qq)))))))
 
-  (, (prevals e)
-     (precomps e (tkeys (tget e 'lam)))
-     (elim e (tkeys (tget e'lam)))
-     (: ls (tget e 'lam) (recomps e ls (tset e 'lam (tkeys ls)))))))
+  pvs (\ e kvs (? kvs (: kv (A kvs) k (A kv) (?
+   (thas (tget e'val) k)
+    (pvs e (B kvs))
+   (>>= (rw e (B kv)) (\ qq (: bb (pvs e (B kvs)) (?
+    (qtd (tset (tget e'def) k qq))
+     (, (tset (tget e'val) k (unq qq))
+        (loc-del e k)
+        bb)
+    (l-exp? qq)
+     (X (X k qq) bb)
+    bb))))))))
+
+
+  (? (tget e 'loc) (,
+   (tset e 'lam (: lams (tbl)))
+   (prevals e)
+   (rc2 e (: pcs (precomps e (tkeys lams))
+    (elis e pcs pcs ())))))))
 
  t-tag (\ x (?
   (homp x) 'hom (nump x) 'num
   (twop x) 'two (vecp x) 'vec
   (symp x) 'sym (strp x) 'oct
   (tblp x) 'tbl          'nil))
-
- ; this refines two types into a new type that's consistent
- ; with both, if that's possible; otherwise it's a static type
- ; error. the type of types is either:
- ; - a symbol (num, hom, sym, etc), representing the values
- ;   of a specific fundamental type
- ; - a list of type symbols, representing the complement of
- ;   the union of the values of each type in the list.
- uni-type (\ a b (?
-  (symp a) (? (symp b) (? (= a b) a (fail))
-              (twop b) (? (elem b a) (fail) a)
-              a)
-  (symp b) (? (twop a) (? (elem a b) (fail) b) b)
-  (uniq (++ a b))))
-
- tdup (\ t (: d (tbl) (,
-  (each (tkeys t) (\ k (tset d k (tget t k)))) d)))
-
- merge-ontologies (\ a b (: d (tbl) (,
-  (each (uniq (++ (tkeys a) (tkeys b))) (\ k
-   (tset d k (uni-type (tget a k) (tget b k)))))
-  d)))
 
  ev-qt (\ x k (immk (AB x) k))
  ev-de (\ x k (\ e m (cde e m x k)))
