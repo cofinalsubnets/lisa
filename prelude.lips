@@ -85,9 +85,12 @@
     ((: case.i (\ x a
       (? a (? (B a) (L '? (L '= x (A a)) (A (B a))
                       (case.i x (B (B a))))
-                     (A a))))) x a)))))
+                     (A a))))) x a)))
 
-(: egg '(:
+
+  ))
+
+(: egg '(: ev (:
  env (\ a p n (>>=
   ((: asig (\ a n
        (? a
@@ -101,9 +104,9 @@
        'val (tbl) 'sig (A b)
        'def (tbl)))))
 
-  t-c (|->
+  t-c (immediate (|->
    'hom 0 'num 1 'two 2 'vec 3 'oct 4
-   'tbl 5 'sym 6 'nil 7 () 8)
+   'tbl 5 'sym 6 'nil 7 () 8))
 
 
  qtd (\ x (? (twop x) (= (A x) '`) (nilp (symp x))))
@@ -168,13 +171,13 @@
   (toplp e) (?
    ; if it's already defined then bind early unless we are
    ; redefining it.
-   (? (thas ns y) (nilp (elem (tget e'loc) y)))
+   (? (thas ns y) (nilp (thas (tget e'def) y)))
     (X 'here (tget ns y))
    (X 'wait ns))
-  (elem (tget e'dfr) y) (X 'wait (tget e'val))
-  (elem (tget e'loc) y) (X 'loc e)
-  (elem (tget e'arg) y) (X 'arg e)
   (elem (tget e'clo) y) (X 'clo e)
+  (elem (tget e'dfr) y) (X 'wait (tget e'val))
+  (thas (tget e'def) y) (X 'loc e)
+  (elem (tget e'arg) y) (X 'arg e)
   (look (tget e'par) y)))
 
  assert (\ e m t k (>>= (k e m) (: type (\ h (:
@@ -259,9 +262,7 @@
   (? (trlamp l) (rw-lamm l) l)))
 
  abelians (immediate (tbl && 1 || () + 0 * 1))
- monoids (immediate (tbl
-  scat ""
-  ++ ()))
+ monoids (immediate (tbl scat "" ++ ()))
  pures (immediate ({set}
   L X A B + - * / % id flip ++ iota rho |->
   snoc init last rev ldel elem at idx ldiff len
@@ -322,7 +323,6 @@
    (eval (A x) (>- 'num (bf0 i k (B x))))))))
 
   (tbl
-   '\ ev-la
    + (abel + 0 i-add)
    * (abel * 1 i-mul)
    - (\ x k
@@ -399,7 +399,7 @@
     (nilp (? (homp z) (= i-arity (hgeti z)))) x
     (? (>= (len (B x)) (hgetx (hseek z 1)))
      (X (hseek z 2) (B x))
-     (ap z (B x)); this causes an arity error.
+     (ap z (B x)); this immediately causes an arity error.
      ))))
    rw-let (\ e x (:
     desug (\ d (L (L '\ (L ', (init d) (last d)))))
@@ -438,18 +438,15 @@
                            (rw-ifr e (BB x)))
       (X a (X (rw e (A (B x))) (rw-ifr e (BB x))))))))
    (: r (rw-ifr e x) (? r (? (B r) (X '? r) (A r))))))
-  rw-sym (\ e x (: l (look e x)
-   (? (= (A l) 'here)
-       (quote (B l))
-      (thas (: defs (tget e'def)) x)
-       (: dd (rw e (: de (tdel defs x)))
-        (, (tset defs x de)
-           (? (nilp (qtd dd)) x
-            (, (loc-del e x)
-               (tset (tget e'val) x (unq dd))
-               dd))))
-      x)))
 
+  rw-sym (\ e x (: l (look e x) (?
+   (= (A l) 'here) (quote (B l))
+   (nilp (thas (: defs (tget e'def)) x)) x
+   (: dd (rw e (tdel defs x))
+    (? (nilp (qtd (tset defs x dd))) x
+     (, (loc-del e x)
+        (tset (tget e'val) x (unq dd))
+        dd))))))
 
   rw-seq (\ e x (:
    rw-seqr (\ e x (?
@@ -495,8 +492,7 @@
 
   sdefa (\ e y x (,
    (? (qtd x) (tset (tget e'val) y (unq x))
-      (, (tset e'loc(X y (tget e'loc)))
-         (tset (tget e'def) y x)))
+         (tset (tget e'def) y x))
    (scan e x)))
 
   (? (twop x) (: y (A x) (case y
@@ -504,17 +500,14 @@
    ': (sdef e (B x))
    (each x (\ x (scan e x))))))))
 
- loc-del (\ e k (tset e'loc (ldel (tget e'loc) k)))
+ loc-del (\ e k (, (tdel (tget e'def) k)))
  resolve (\ e (:
+
   pc2 (\ e kvs (? kvs (:
-   kv (A kvs) k (A kv) v (B kv)
-   rr (pc2 e (B kvs))
-   i (ltu e k v)
-   (? (homp i)
-       (, (tset (tget e 'val) k i)
-          (loc-del e k)
-          rr)
-       (X (X k (X (A i) v)) rr)))))
+   kv (A kvs) rr (pc2 e (B kvs))
+   (? (homp (: i (ltu e (: k (A kv)) (: v (B kv)))))
+    (, (tset (tget e 'val) k i) (loc-del e k) rr)
+    (X (X k (X (A i) v)) rr)))))
 
   pkvs (\ e i vs (?
    (nilp vs) 1
@@ -552,9 +545,12 @@
 
   tkvs (\ t (map (\ k (X k (tget t k))) (tkeys t)))
 
-  (? (tget e 'loc)
-   (rc2 e (: pcs (pc2 e (pvs e (tkvs (tget e'def))))
-    (elis e pcs pcs ()))))))
+  (? (> (tlen (: def (tget e'def))) 0) (,
+   (rc2 e (: pcs (pc2 e (pvs e (map
+                  (\ k (X k (tget def k)))
+                  (tset e'loc (tkeys def)))))
+           (elis e pcs pcs ())))
+   (tset e'loc (tkeys def))))))
 
  t-tag (\ x (?
   (homp x) 'hom (nump x) 'num
@@ -575,10 +571,9 @@
  ev (\ x (: e (env () () 'ev)
   (((eval (rewrite e x) ini) e 0) x)))
 
- ev))
+ ev)))
 
-(ev lib)
-(: ev (ev egg))
-(ev lib)
-(: ev (ev egg))
+; bootstrap
+(ev lib) (ev egg) ; C -> prelips
+(ev lib) (ev egg) ; prelips -> lips
 (each local-vars (\ v (tdel ns v)))

@@ -202,7 +202,7 @@ cpcc(cptbl) {
 // XXX data constructors
 
 const uint64_t mix = 2708237354241864315;
-static uint64_t hc(obj);
+static uint64_t hc(vm, obj);
 // internal memory allocator
 Inline void *bump(vm v, num n) {
   void *x = v->hp; v->hp += n; return x; }
@@ -252,7 +252,7 @@ static obj sseek(vm v, obj y, obj x) {
 static obj sseekc(vm v, mem y, obj x) {
   if (!nilp(*y)) return sseek(v, *y, x);
   sym u = bump(v, Size(sym));
-  u->nom = x, u->code = hc(x);
+  u->nom = x, u->code = hc(v, x);
   u->l = nil, u->r = nil;
   return *y = putsym(u); }
 
@@ -268,14 +268,14 @@ static Inline uint64_t hash_bytes(num len, char *us) {
   for (; len--; h *= mix, h ^= *us++);
   return mix * h; }
 
-static uint64_t hc(obj x) {
+static uint64_t hc(vm v, obj x) {
   uint64_t r;
   switch (kind(x)) {
     case Sym: r = getsym(x)->code; break;
     case Oct: r = hash_bytes(getoct(x)->len, getoct(x)->text); break;
-    case Two: r = hc(X(x)) ^ hc(Y(x)); break;
+    case Two: r = hc(v, X(x)) ^ hc(v, Y(x)); break;
     // you can use functions as hash keys but the performance won't necessarily be great...
-    case Hom: r = mix * (uint64_t) G(x); break;
+    case Hom: r = hc(v, homnom(v, x)) ^ (mix * (uintptr_t) G(x)); break;
     default:  r = mix * x; } 
 #define bits (Word*8)
 #define shr 16
@@ -302,7 +302,7 @@ static void tbl_resize(vm v, obj t, num ns) {
   while (n--) for (ch = d[n]; ch;)
     e = ch,
     ch = ch->next,
-    u = hb_idx(ns, hc(e->key)),
+    u = hb_idx(ns, hc(v, e->key)),
     e->next = b[u],
     b[u] = e; }
 
@@ -315,7 +315,7 @@ static void tbl_add_entry(vm v, obj t, obj k, obj x, num b) {
   ++y->len; }
 
 obj tbl_set(vm v, obj t, obj k, obj val) {
-  num b = hb_idx(gettbl(t)->cap, hc(k));
+  num b = hb_idx(gettbl(t)->cap, hc(v, k));
   tble e = gettbl(t)->tab[b];
   for (;e; e = e->next)
     if (e->key == k) return e->val = val;
@@ -343,7 +343,7 @@ obj tbl_keys(vm v, obj t) {
 obj tbl_del(vm v, obj t, obj k) {
   tbl y = gettbl(t);
   obj r = nil;
-  num b = hb_idx(y->cap, hc(k));
+  num b = hb_idx(y->cap, hc(v, k));
   tble e = y->tab[b];
   struct tble _v = {0,0,e};
   for (tble l = &_v; l && l->next; l = l->next)
@@ -358,7 +358,7 @@ obj tbl_del(vm v, obj t, obj k) {
   return r; }
 
 obj tbl_get(vm v, obj t, obj k) {
-  tble e = hb(t, hc(k));
+  tble e = hb(t, hc(v, k));
   for (;e; e = e->next) if (eql(e->key, k)) return e->val;
   return 0; }
 
