@@ -255,12 +255,6 @@
  ; this rewrites lambda expressions of the form
  ;   (\ (: a b c)) -> (\ (, (: a b) c))
  ; which is always safe and produces better code.
- rw-lam (\ e l (:
-  defp (\ x (? (twop x) (= (A x) ':)))
-  deftp (\ x (? (defp x) (= 0 (% (len x) 2))))
-  trlamp (\ l (? (B l) (deftp (last l))))
-  rw-lamm (\ l (>>= (last l) (\ m (snoc (init l) (L ', (init m) (last m))))))
-  (? (trlamp l) (rw-lamm l) l)))
 
  abelians (immediate (tbl && 1 || () + 0 * 1))
  monoids (immediate (tbl scat "" ++ ()))
@@ -409,6 +403,12 @@
       (X (A x) (X (tget (tget e'def) (A x)) ll)))))
     (? (B x) (? (= 0 (% (len x) 2)) (desug x)
                 (X ': (loop e (B x)))))))
+   rw-lam (\ e l (:
+    defp (\ x (? (twop x) (= (A x) ':)))
+    deftp (\ x (? (defp x) (= 0 (% (len x) 2))))
+    trlamp (\ l (? (B l) (deftp (last l))))
+    rw-lamm (\ l (>>= (last l) (\ m (snoc (init l) (L ', (init m) (last m))))))
+    (? (trlamp l) (rw-lamm l) l)))
 
    a (A x)
    (case a
@@ -461,8 +461,39 @@
 
 
  (? (twop x) (rw-list e x)
-              (symp x) (rw-sym e x)
-              (quote x))))
+             (symp x) (rw-sym e x)
+             (quote x))))
+
+ rwmap (\ f x (X (A x) (f (B x))))
+ rwX (\ a b (X (uniq (++ (A a) (A b))) (X (B a) (B b))))
+
+ rw2 (\ e x (:
+  rwy (\ e x (: l (look e x) (?
+   (= (A l) 'here) (rwq e (B l))
+   (nilp (thas (: defs (tget e'def)) x)) (X (L x) x)
+   (: d2 (rw2 e (tdel defs x)) rr (B d2)
+    (, (? (qtd (tset defs x rr))
+        (, (loc-del e x)
+           (tset (tget e'val) x (unq rr))))
+       d2)))))
+ rwl (\ e x (: a (.'a (A x)) (case a
+  ', (rwsq e x)
+  (foldr '(()) (\ x m
+   (rwX (rw2 e x) m)) x))))
+  rwsq (\ e x (:
+   rwsqr (\ e x (: y (rw2 e (A x)) (?
+    (nilp (B x)) (rwmap L y)
+    (: z (rwsqr e (B x))
+     (? (|| (symp (B y)) (qtd (B y))) z (rwX y z))))))
+   (? (: y (B x))
+      (: z (rwsqr e y) (rwmap (\ q (? q (X', q))) z)))))
+  rwq (\ e x (X () (quote x)))
+
+  (? (twop x) (rwl e x)
+     (symp x) (rwy e x)
+     (rwq e x))))
+
+
 
  ltu (\ e nom l (:
   with-locals (\ e k (? (: loc (tget e 'loc))
@@ -471,7 +502,7 @@
    (> (: i (tget f 'sig)) 0) (emif i-arity (emx i k))
    (< i 0) (emif i-vararg (emx (- (- i) 1) k))
    k))
-  fx (rewr e nom l)
+  fx (rewrl e nom l)
   f (A fx) x (B fx) arg (tget f'arg)
   (? (&& (twop x) (homp (A x))
       (>= (tget f 'sig) 0) (= (B x) arg))
@@ -481,29 +512,31 @@
     (? (tget f 'clo) (X (tget f 'clo) k) k))))))
 
 
- rewr (\ e nom l (:
+ rewrl (\ e nom l (:
   n (|| (B l) '(()))
   arg (init n)
-  f (env (init n)e (X nom (? e (tget e'nom))))
+  f (env (init n)e (X nom (tget e'nom)) nom)
   x (last n)
-  (, (scan f x) (resolve f) (X f (rw f x)))))
+  (, (scan f x) (X f (rw f x)))))
 
  scan (\ e x (:
-  sdef (\ e x (?
-   (nilp x) 0
-   (B x) (>>= (sdef e (BB x)) (\ r (,
-          (? r (sdefa e (A x) (AB x)))
-          r)))))
+  scanr (\ e x (:
+   sdef (\ e x (?
+    (nilp x) 0
+    (B x) (>>= (sdef e (BB x)) (\ r (,
+           (? r (sdefa e (A x) (AB x)))
+           r)))))
 
-  sdefa (\ e y x (,
-   (? (qtd x) (tset (tget e'val) y (unq x))
-         (tset (tget e'def) y x))
-   (scan e x)))
+   sdefa (\ e y x (,
+    (? (qtd x) (tset (tget e'val) y (unq x))
+          (tset (tget e'def) y x))
+    (scanr e x)))
 
-  (? (twop x) (: y (A x) (case y
-   '\ () '` ()
-   ': (sdef e (B x))
-   (each x (\ x (scan e x))))))))
+   (? (twop x) (: y (A x) (case y
+    '\ () '` ()
+    ': (sdef e (B x))
+    (each x (\ x (scanr e x))))))))
+  (, (scanr e x) (resolve e))))
 
  loc-del (\ e k (, (tdel (tget e'def) k)))
  resolve (\ e (:
@@ -574,9 +607,10 @@
   ev-ap) x k)))
  ini (\ e m (insx e m i-ret (tget e'nom) (\ e m (hom m))))
  ev (\ x (: e (env () () 'ev)
-  (((eval (, (scan e x) (resolve e) (rw e x)) ini) e 0) x)))
+  (((eval (, (scan e x) (rw e x)) ini) e 0) x)))
 
- ev)))
+; ev
+ )))
 
 ; bootstrap
 (ev lib) (ev egg) ; C -> prelips
