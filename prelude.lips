@@ -506,57 +506,37 @@
 
  loc-del (\ e k (tset e'loc (ldel (tget e'loc) k)))
  resolve (\ e (:
-
-  precomps (\ e ks (? ks (:
-   k (A ks)
-   rr (precomps e (B ks))
-   i (ltu e k (tget (tget e 'def) k))
+  pc2 (\ e kvs (? kvs (:
+   kv (A kvs) k (A kv) v (B kv)
+   rr (pc2 e (B kvs))
+   i (ltu e k v)
    (? (homp i)
        (, (tset (tget e 'val) k i)
-          (tdel (tget e 'lam) k)
           (loc-del e k)
           rr)
-       (X (X k (tset (tget e'lam) k
-                (X (A i) (tget (tget e'def) k))))
-        rr)))))
+       (X (X k (X (A i) v)) rr)))))
 
-
-  okvs (\ e vs (?
-   (nilp vs) 1
-   (: v (A vs)
-    (? (|| (thas (tget e 'lam) v) (thas (tget e'val) v))
-       (okvs e (B vs))))))
   pkvs (\ e i vs (?
    (nilp vs) 1
    (: v (A vs) (?
-    (|| (any i (\ j (= (A j) v))) (thas (tget e'val) v))
+    (|| (any (\ j (= (A j) v)) i) (thas (tget e'val) v))
      (pkvs e i (B vs))))))
 
   elis (\ e i kvs q (?
    (nilp kvs) q
    (: kv (A kvs) (?
-    (nilp (okvs e (AB kv)))
-     (, (tdel (tget e'lam) (A kv))
-        (>>= (ldel i kv) (\ j (elis e j j ()))))
+    (nilp (pkvs e i (AB kv)))
+     (>>= (ldel i kv) (\ j (elis e j j ())))
     (elis e i (B kvs) (X kv q))))))
 
   dfr-add (\ e k (tset e'dfr (X k (tget e'dfr))))
+
   rc2 (\ e kvs (? kvs (: kv (A kvs) k (A kv) (,
    (loc-del e k)
    (dfr-add e k)
    (rc2 e (B kvs))
    (tset (tget e'val) k (ltu e k (BB kv)))))))
 
-  prevals (\ e (:
-   dd (tget e'def)
-   vv (tget e'val)
-   (each (tkeys dd) (\ k
-    (? (nilp (thas vv k)) (?
-     (qtd (tset dd k (: qq (rw e (tget dd k)))))
-      (, (tset vv k (unq qq))
-         (loc-del e k))
-     (l-exp? qq)
-      (tset (tget e'lam) k qq)))))))
 
   pvs (\ e kvs (? kvs (: kv (A kvs) k (A kv) (?
    (thas (tget e'val) k)
@@ -570,12 +550,11 @@
      (X (X k qq) bb)
     bb))))))))
 
+  tkvs (\ t (map (\ k (X k (tget t k))) (tkeys t)))
 
-  (? (tget e 'loc) (,
-   (tset e 'lam (: lams (tbl)))
-   (prevals e)
-   (rc2 e (: pcs (precomps e (tkeys lams))
-    (elis e pcs pcs ())))))))
+  (? (tget e 'loc)
+   (rc2 e (: pcs (pc2 e (pvs e (tkvs (tget e'def))))
+    (elis e pcs pcs ()))))))
 
  t-tag (\ x (?
   (homp x) 'hom (nump x) 'num
