@@ -484,10 +484,10 @@
  rewr (\ e nom l (:
   n (|| (B l) '(()))
   arg (init n)
-  f (env (init n)e (X nom (tget e'nom)))
+  f (env (init n)e (X nom (? e (tget e'nom))))
   x (last n)
   (, (scan f x) (resolve f) (X f (rw f x)))))
- rewrite (\ e x (, (scan e x) (resolve e) (rw e x)))
+
  scan (\ e x (:
   sdef (\ e x (?
    (nilp x) 0
@@ -574,7 +574,7 @@
   ev-ap) x k)))
  ini (\ e m (insx e m i-ret (tget e'nom) (\ e m (hom m))))
  ev (\ x (: e (env () () 'ev)
-  (((eval (rewrite e x) ini) e 0) x)))
+  (((eval (, (scan e x) (resolve e) (rw e x)) ini) e 0) x)))
 
  ev)))
 
