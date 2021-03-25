@@ -217,7 +217,8 @@
     (code i-call (data (len x) k))))))))))
 
  ev-seq (\ x k
-  ((: ev-seqr (\ x k (? (nilp x) k (eval (A x) (ev-seqr (B x) k)))))
+  ((: ev-seqr (\ x k
+       (? (nilp x) k (eval (A x) (ev-seqr (B x) k)))))
     (B x) k))
 
  cde (\ e m x k
@@ -470,18 +471,22 @@
    (> (: i (tget f 'sig)) 0) (emif i-arity (emx i k))
    (< i 0) (emif i-vararg (emx (- (- i) 1) k))
    k))
-  n (|| (B l) '(()))
-  arg (init n)
-  f (env arg e (X nom (tget e 'nom)))
-  x (rewrite f (last n))
+  fx (rewr e nom l)
+  f (A fx) x (B fx) arg (tget f'arg)
   (? (&& (twop x) (homp (A x))
-      (>= (tget f 'sig) 0) (= (B  x) arg))
+      (>= (tget f 'sig) 0) (= (B x) arg))
    (A x) ; in this case the function is an alias for (A x)
    (>>= (hfin (with-arity f (with-locals f
          ((eval x ini) f 4)))) (\ k
     (? (tget f 'clo) (X (tget f 'clo) k) k))))))
 
 
+ rewr (\ e nom l (:
+  n (|| (B l) '(()))
+  arg (init n)
+  f (env (init n)e (X nom (tget e'nom)))
+  x (last n)
+  (, (scan f x) (resolve f) (X f (rw f x)))))
  rewrite (\ e x (, (scan e x) (resolve e) (rw e x)))
  scan (\ e x (:
   sdef (\ e x (?
