@@ -168,7 +168,7 @@
    (X 'wait ns))
   (memq (tget e'clo) y) (X 'clo e)
   (memq (tget e'dfr) y) (X 'wait (tget e'val))
-  (thas (tget e'def) y) (X 'loc e)
+  (memq (tget e'loc) y) (X 'loc e)
   (memq (tget e'arg) y) (X 'arg e)
   (look (tget e'par) y)))
 
@@ -438,7 +438,7 @@
    (nilp (thas (: defs (tget e'def)) x)) x
    (: dd (rw e (tdel defs x))
     (? (nilp (qtd (tset defs x dd))) x
-     (, (loc-del e x)
+     (, (tdel (tget e'def) k)
         (tset (tget e'val) x (unq dd))
         dd))))))
 
@@ -457,41 +457,10 @@
              (symp x) (rw-sym e x)
              (quote x))))
 
- rwmap (\ f x (X (A x) (f (B x))))
- rwX (\ a b (X (uniq (++ (A a) (A b))) (X (B a) (B b))))
-
- rw2 (\ e x (:
-  rwy (\ e x (: l (look e x) (?
-   (= (A l) 'here) (rwq e (B l))
-   (nilp (thas (: defs (tget e'def)) x)) (X (L x) x)
-   (: d2 (rw2 e (tdel defs x)) rr (B d2)
-    (, (? (qtd (tset defs x rr))
-        (, (loc-del e x)
-           (tset (tget e'val) x (unq rr))))
-       d2)))))
- rwl (\ e x (: a (A x) (case a
-  ', (rwsq e x)
-  (thas macros a)
-   (rw2 e (ap (tget macros a) (B x)))
-  (foldr x '(()) (\ x m
-   (rwX (rw2 e x) m))))))
-  rwsq (\ e x (:
-   rwsqr (\ e x (: y (rw2 e (A x)) (?
-    (nilp (B x)) (rwmap L y)
-    (: z (rwsqr e (B x))
-     (? (|| (symp (B y)) (qtd (B y))) z (rwX y z))))))
-   (? (: y (B x))
-      (: z (rwsqr e y) (rwmap (\ q (? q (X', q))) z)))))
-  rwq (\ e x (X () (quote x)))
-
-  (? (twop x) (rwl e x)
-     (symp x) (rwy e x)
-     (rwq e x))))
-
 
 
  ltu (\ e nom l (:
-  with-locals (\ e k (? (: loc (tget e 'loc))
+  with-locals (\ f k (? (: loc (tget f 'loc))
                         (emif i-prel (emx (len loc) k)) k))
   with-arity (\ f k (?
    (> (: i (tget f 'sig)) 0) (emif i-arity (emx i k))
@@ -515,31 +484,28 @@
   (, (scan f x) (X f (rw f x)))))
 
  scan (\ e x (:
-  scanr (\ e x (:
-   sdef (\ e x (?
-    (nilp x) 0
-    (B x) (>>= (sdef e (BB x)) (\ r (,
-           (? r (sdefa e (A x) (AB x)))
-           r)))))
+   sdef (\ e x (? x (,
+    (? (qtd (: a (AB x)))
+     (tset (tget e'val) (A x) (unq a))
+     (tset (tget e'def) (A x) a))
+    (scanr e a)
+    (sdef e (BB x)))))
 
-   sdefa (\ e y x (,
-    (? (qtd x) (tset (tget e'val) y (unq x))
-          (tset (tget e'def) y x))
-    (scanr e x)))
+  scanr (\ e x (? (twop x) (case (A x)
+   '\ () '` ()
+   ': (? (= 1 (% (len x) 2)) (sdef e (B x)))
+   (foldr x () (\ x (scanr e x))))))
 
-   (? (twop x) (: y (A x) (case y
-    '\ () '` ()
-    ': (sdef e (B x))
-    (each x (\ x (scanr e x))))))))
   (, (scanr e x) (resolve e))))
 
- loc-del (\ e k (, (tdel (tget e'def) k)))
  resolve (\ e (:
 
   pc2 (\ e kvs (? kvs (:
    kv (A kvs) rr (pc2 e (B kvs))
    (? (homp (: i (ltu e (: k (A kv)) (: v (B kv)))))
-    (, (tset (tget e 'val) k i) (loc-del e k) rr)
+    (, (tset (tget e 'val) k i)
+       (tdel (tget e'def) k)
+       rr)
     (X (X k (X (A i) v)) rr)))))
 
   pkvs (\ e i vs (?
@@ -555,13 +521,14 @@
      (>>= (ldel i kv) (\ j (elis e j j ())))
     (elis e i (B kvs) (X kv q))))))
 
-  dfr-add (\ e k (tset e'dfr (X k (tget e'dfr))))
 
-  rc2 (\ e kvs (? kvs (: kv (A kvs) k (A kv) (,
-   (loc-del e k)
-   (dfr-add e k)
-   (rc2 e (B kvs))
-   (tset (tget e'val) k (ltu e k (BB kv)))))))
+  rc2 (\ e kvs (? (nilp kvs)
+   (tset e'loc (tkeys (tget e'def)))
+   (: kv (A kvs) k (A kv) (,
+    (tdel (tget e'def) k)
+    (tset e 'dfr (X k (tget e'dfr)))
+    (rc2 e (B kvs))
+    (tset (tget e'val) k (ltu e k (BB kv)))))))
 
 
   pvs (\ e kvs (? kvs (: kv (A kvs) k (A kv) (?
@@ -570,20 +537,17 @@
    (>>= (rw e (B kv)) (\ qq (: bb (pvs e (B kvs)) (?
     (qtd (tset (tget e'def) k qq))
      (, (tset (tget e'val) k (unq qq))
-        (loc-del e k)
+        (tdel (tget e'def) k)
         bb)
     (l-exp? qq)
      (X (X k qq) bb)
     bb))))))))
 
-  tkvs (\ t (map (tkeys t) (\ k (X k (tget t k)))))
-
-  (? (> (tlen (: def (tget e'def))) 0) (,
+  (? (: ks (tkeys (: def (tget e'def))))
    (rc2 e (: pcs (pc2 e (pvs e (map
-                  (tset e'loc (tkeys def))
+                  (tset e'loc ks)
                   (\ k (X k (tget def k))))))
-           (elis e pcs pcs ())))
-   (tset e'loc (tkeys def))))))
+           (elis e pcs pcs ()))))))
 
  t-tag (\ x (?
   (homp x) 'hom (nump x) 'num
