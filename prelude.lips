@@ -1,5 +1,4 @@
-(: local-vars '(local-vars sig0 old-ev lib egg s0 s1 s2 macros ns emi emx hom hseek hgeti hom-get-x hfin)
-   sig0 (gensym)
+(: local-vars '(local-vars old-ev lib egg macros ns emi emx hom hseek hgeti hgetx hfin)
    lib '(,
   ;; here's some data constructors
   (: and (\ l (? l (? (A l) (and (B l))) 0))
@@ -7,13 +6,13 @@
      or (\ l (? l (: a (A l) (? a a (or (B l))))))
      || (\ l . (or l))
      L (\ . . .)
-     ++ (: append (\ a b (? a(X(A a)(append(B a)b))b))
+     cat (: append (\ a b (? a(X(A a)(append(B a)b))b))
       (\ a . (foldr a () append)))
      iota (\ n x .
       (: iota.l (\ m n (? (< m n) (X m (iota.l (+ m 1) n))))
        (? (nilp x) (iota.l 0 n) (iota.l n (A x)))))
       rho (\ n xs .
-       (: rho.l(\ n x(?(= n 1)x(++ x(rho.l(- n 1)x))))
+       (: rho.l(\ n x(?(= n 1)x(cat x(rho.l(- n 1)x))))
         (?(> n 0)(rho.l n xs)))))
 
   ;; here's some of your standard Functinal Progming stuf
@@ -44,7 +43,7 @@
      at (\ l n (? (< n 1) (A l) (at (B l) (- n 1))))
      flip (\ f (\ x y (f y x)))
      diag (\ f (\ x (f x x)))
-     curry (\ f x . (\ y . (ap f (++ x y))))
+     curry (\ f x . (\ y . (ap f (cat x y))))
      {set} (\ x . (: d (tbl) (, (each x (\ y (tset d y ()))) d))))
   ;; and some list functions
   (: snoc  (\ l x (? l (X (A l) (snoc (B l) x))
@@ -199,9 +198,9 @@
  ; which is always safe and produces better code.
 
  abelians (immediate (tbl && 1 || () + 0 * 1))
- monoids (immediate (tbl scat "" ++ ()))
+ monoids (immediate (tbl scat "" cat ()))
  pures (immediate ({set}
-  L X A B + - * / % id flip ++ iota rho |->
+  L X A B + - * / % id flip cat iota rho |->
   snoc init last rev ldel memq at idx ldiff len
   homp nilp symp nump tblp strp twop vecp
   && || scat slen sget ssub str))
@@ -215,24 +214,6 @@
       (= i j) (L x)
       (L j x)))
   (? l (X f (mfold f i i (A l) (B l))) (quote i))))
-
- ev-la (\ x k (:
-  gnom (\ e k (: i (hgeti k) (case i
-   i-tbind (hgetx (hseek k 1))
-   i-setl  (at (tget e'loc) (hgetx (hseek k 1))))))
-
-  closure-thd (\ e arg (:
-   gen (\ e arg k (? (nilp arg) k
-                   (gen e (B arg)
-                    (eval (A arg) (code i-push k)))))
-   k (\ e m (emi i-take (emx (len arg) (hom (+ m 2)))))
-   ((gen e arg k) e 0)))
-
-  (\ e m (>>= ((-> 'hom k) e (+ m 2)) (\ k
-   (>>= (ltu e (gnom e k) x) (\ x (?
-    (homp x) (emif i-immv (emx x k))
-    (emi (? (tget e'loc) i-encll i-encln)
-     (emx (X (B x) (closure-thd e (A x))) k))))))))))
 
  inliners (:
   grp (\ f m id x
@@ -362,11 +343,13 @@
    wev-ifr (\ e x (?
     (nilp x) (L ())
     (nilp (B x)) (L (wev e (A x)))
-    (: a (wev e (A x))
-     (? (qtd a) (? (unq a) (L (wev e (AB x)))
-                           (wev-ifr e (BB x)))
-      (X a (X (wev e (A (B x))) (wev-ifr e (BB x))))))))
-   (: r (wev-ifr e x) (? r (? (B r) (X '? r) (A r))))))
+    (nilp (qtd (: a (wev e (A x)))))
+     (X a (X (wev e (A (B x))) (wev-ifr e (BB x))))
+    (unq a) (L (wev e (AB x)))
+    (wev-ifr e (BB x))))
+
+   r (wev-ifr e x)
+   (? r (? (B r) (X '? r) (A r)))))
 
   wev-sym (\ e x (: l (look e x) (?
    (= (A l) 'here) (quote (B l))
@@ -383,9 +366,8 @@
      (: z (wev-seqr e (B x))
         y (wev e (A x))
       (? (|| (symp y) (qtd y)) z (X y z)))))
-   (? (: y (B x))
-    (: z (wev-seqr e y)
-     (? (B z) (X ', z) (A z))))))
+   (? (: y (B x)) (: z (wev-seqr e y)
+                   (? (B z) (X ', z) (A z))))))
 
 
 
@@ -449,26 +431,21 @@
 
  resolve (\ e (:
 
-  pc2 (\ e kvs (? kvs (:
-   kv (A kvs) rr (pc2 e (B kvs))
-   (? (homp (: i (ltu e (: k (A kv)) (: v (B kv)))))
+  pc2 (\ e kvs (? kvs (: kv (A kvs) rr (pc2 e (B kvs)) (?
+   (homp (: i (ltu e (: k (A kv)) (: v (B kv)))))
     (, (tset (tget e 'val) k i)
        (tdel (tget e'def) k)
        rr)
-    (X (X k (X (A i) v)) rr)))))
+   (X (X k (X (A i) v)) rr)))))
 
-  pkvs (\ e i vs (?
-   (nilp vs) 1
-   (: v (A vs) (?
-    (|| (any i (\ j (= (A j) v))) (thas (tget e'val) v))
-     (pkvs e i (B vs))))))
+  pkvs (\ e i vs (?  (nilp vs) 1 (: v (A vs) (?
+   (|| (any i (\ j (= (A j) v))) (thas (tget e'val) v))
+    (pkvs e i (B vs))))))
 
-  elis (\ e i kvs q (?
-   (nilp kvs) q
-   (: kv (A kvs) (?
-    (nilp (pkvs e i (AB kv)))
-     (>>= (ldel i kv) (\ j (elis e j j ())))
-    (elis e i (B kvs) (X kv q))))))
+  elis (\ e i kvs q (? (nilp kvs) q (: kv (A kvs) (?
+   (nilp (pkvs e i (AB kv)))
+    (>>= (ldel i kv) (\ j (elis e j j ())))
+   (elis e i (B kvs) (X kv q))))))
 
 
   rc2 (\ e kvs (? (nilp kvs)
@@ -511,6 +488,25 @@
    (&& (qtd a) (: q (tget inliners (unq a)))) (q b k)
    (ev-api b (eval a (>- 'hom
     (code i-call (data (len b) k))))))))
+
+ ev-la (\ x k (:
+  guess-nom (\ e k (: i (hgeti k) (case i
+   i-tbind (hgetx (hseek k 1))
+   i-setl  (at (tget e'loc) (hgetx (hseek k 1))))))
+
+  clo-thd (\ e arg (:
+   gen (\ e arg k (? (nilp arg) k
+                   (gen e (B arg)
+                    (eval (A arg) (code i-push k)))))
+   k (\ e m (emi i-take (emx (len arg) (hom (+ m 2)))))
+   ((gen e arg k) e 0)))
+
+  (\ e m (:
+   l ((-> 'hom k) e (+ m 2))
+   y (ltu e (guess-nom e l) x)
+   (? (homp y) (emif i-immv (emx y l))
+    (emi (? (tget e'loc) i-encll i-encln)
+     (emx (X (B y) (clo-thd e (A y))) l)))))))
 
  ev-list (\ x k (:
   >> (\ x k (? (nilp x) k (eval (A x) (>> (B x) k))))

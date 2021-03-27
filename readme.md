@@ -63,6 +63,9 @@ bad, sorry, you know what they say about naming things!
   last argument; great for debugging.
 - `A = car` `B = cdr` `X = cons` `L = list`. `AA`-`BB` are
   defined as macros.
+- apl-like data constructors: `iota` is monadic `ι`; `rho` is
+  a weaked dyadic `ρ`: `(ap rho (X n l))` concatenates n copies
+  of l.
 - `homp` `nump` `twop` `symp` `nilp` `tblp` `strp` `vecp` type predicates
 - hash functions: `tbl tset tget thas tkeys tlen tdel` ; see prelude.lips for usage
 - string functions: n-ary constructor `(str 97 97 97) = "aaa"` ; `slen sget ssub scat`
@@ -71,9 +74,7 @@ bad, sorry, you know what they say about naming things!
 ## macros
 these are defined in `prelude.lips`, `make repl` imports them automatically
 - `(::: nom0 def0 nom1 def1 ...)` define macro
-- `(>>= x y z f) = (f x y z)` useful for explicit control of
-   evaluation order and also good end-weight coding.
-  `(let ((a x) (b y) (c z)) q) = (>>= x y z (\ a b c q))`
+- `(>>= x y z f) = (f x y z)`
 
 ## code examples
 the thread compiler and built-in functions are in `prelude.lips`.
@@ -88,6 +89,12 @@ the thread compiler and built-in functions are in `prelude.lips`.
            m))
      (fb (+ m 1) n))))
    (fb 1 100))
+```
+### hyperoperations
+send n to the nth hyperoperation, with 0 being addition
+```lisp
+(: hy (\ n (? (= n 0) + (\ x y
+ (foldl1 (rho y x) (hy (- n 1)))))))
 ```
 
 ### a quine
