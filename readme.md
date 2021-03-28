@@ -103,8 +103,8 @@ these are defined in `prelude.lips`, `make repl` imports them automatically
    succ (ad ex))       ; 1 = 0**0 = ((K I) (K I)) = I
 
 ; extend this to complex numbers and euler's identity becomes
-;   (tau e) = id
-; where tau = 2*pi
+;   (it e) = id
+; where it = i*tau = 2*pi*i
 
 (: C (\ n (? (= n 0) zero (succ (C (- n 1))))) ; send it to its church numeral
    N (\ c ((c (\ x (+ x 1))) 0)))              ; send it back to N
