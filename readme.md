@@ -94,16 +94,28 @@ these are defined in `prelude.lips`, `make repl` imports them automatically
 ```lisp
 ; using SKI calculus
 (: S (\ x (\ y (\ z ((x z) (y z))))) ; S is "superapplication"
-   K (\ x (\ x))       ; K makes constant functions
+   K (\ x (\ x))       ; K = make a constant function = true
    I id                ; I = ((S K) K) = identity
-   ex I                ; exponentiation is identity! what?
-   mu ((S (K S)) K)    ; multiplication is regular function composition
-   ad ((mu S) (mu mu)) ; addition is constructed from multiplication
-   zero (S K)          ; zero = the usual church code for false
-   succ (ad ex)) ; since 1 = 0**0 = ((ex zero) zero) = (zero zero) = ((K I) (K I)) = I = ex
+   ex I                ; exponentiation is identity
+   mu ((S (K S)) K)    ; multiplication is composition
+   ad ((mu S) (mu mu)) ; addition is made out of multiplication
+   zero (K I)          ; 0 = (K I) = (S K) = false
+   succ (ad ex))       ; 1 = 0**0 = ((K I) (K I)) = I
+
+; extend this to complex numbers and euler's identity becomes
+;   (tau e) = id
+; where tau = 2*pi
 
 (: C (\ n (? (= n 0) zero (succ (C (- n 1))))) ; send it to its church numeral
    N (\ c ((c (\ x (+ x 1))) 0)))              ; send it back to N
+
+; try it if you want!
+(: i 7 j (C i)
+   show-row (\ n (,
+    (: x (\ x (\ n (X x n))))
+    (ap . ((j (x n)) ()))))
+ (, (. i'x i i's)
+    ((j show-row) i)))
 ```
 
 ### fizzbuzz
