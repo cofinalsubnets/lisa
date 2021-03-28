@@ -147,6 +147,7 @@ these are defined in `prelude.lips`, `make repl` imports them automatically
 - namespaces / module system
 
 ## further reading / inspiration
+- [SICP](https://mitpress.mit.edu/sites/default/files/sicp/full-text/book/book.html)
 - [Lambda: The Ultimate Imperative](https://dspace.mit.edu/handle/1721.1/5790)
 - [Partial Computation of Programs](https://repository.kulib.kyoto-u.ac.jp/dspace/handle/2433/103401)
 - [Physics, Topology, Logic and Computation: A Rosetta Stone](https://math.ucr.edu/home/baez/rosetta.pdf)

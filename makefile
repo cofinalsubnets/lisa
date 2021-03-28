@@ -20,7 +20,7 @@ rcmd=$(run) -i
 # - inlining bloats code and GCC even does it for tail calls,
 #   which is silly. turn it off by default.
 # - stack smash protection also hurts tco.
-c=gcc -g -O2 -flto -std=gnu17\
+c=clang -g -O2 -flto -std=gnu17\
 	-Wall -Wno-shift-negative-value\
 	-fno-inline -fno-stack-protector
 

@@ -8,6 +8,7 @@ static vm_op(nope, const char*, ...);
 #define Unpack() (fp=Fp,hp=Hp,sp=Sp,ip=Gh(Ip),xp=Xp)
 #define Jump(f,...) return (f)(v,ip,fp,sp,hp,xp,##__VA_ARGS__)
 #define Have(n) if (avail < n) Jump((Xp=n,gc))
+#define Have1() if (hp == sp) Jump((Xp=1,gc))
 #define CallC(...)(Pack(),(__VA_ARGS__),Unpack())
 #define Cont(n, x) return ip+=n,xp=x,G(ip)(v,ip,fp,sp,hp,xp)
 #define Ap(f,x) return G(f)(v,f,fp,sp,hp,x)
@@ -90,7 +91,7 @@ vm_op(clo1) { xp = AR(Clos)[1]; Next(1); }
 
 // environment operations
 // stack push
-vm_op(push) { Have(1); *--sp = xp; Next(1); }
+vm_op(push) { Have1(); *--sp = xp; Next(1); }
 
 // set a global variable
 vm_op(tbind) {
@@ -444,7 +445,7 @@ vm_op(vararg) {
   // in this case we need to add another argument
   // slot to hold the nil.
   if (!vdicity) {
-    Have(1);
+    Have1();
     sp = --fp;
     for (num i = 0; i < Size(fr) + reqd; i++)
       fp[i] = fp[i+1];
@@ -577,7 +578,7 @@ vm_op(emse) {
 
 // pairs
 vm_op(cons) {
-  Have(1); hp[0] = xp, hp[1] = *sp++;
+  Have1(); hp[0] = xp, hp[1] = *sp++;
   xp = puttwo(hp); hp += 2; Next(1); }
 vm_op(car) { Ap(ip+1, X(xp)); }
 vm_op(cdr) { Ap(ip+1, Y(xp)); }
@@ -736,9 +737,9 @@ vm_op(nilp_u) { typpp(Nil); }
 vm_op(vecp_u) { typpp(Tup); }
 
 // stack manipulation
-vm_op(tuck) { Have(1); sp--, sp[0] = sp[1], sp[1] = xp; Next(1); }
+vm_op(tuck) { Have1(); sp--, sp[0] = sp[1], sp[1] = xp; Next(1); }
 vm_op(drop) { sp++; Next(1); }
-vm_op(dupl) { Have(1); --sp; sp[0] = sp[1]; Next(1); }
+vm_op(dupl) { Have1(); --sp; sp[0] = sp[1]; Next(1); }
 
 // errors
 vm_op(fail) { Jump(nope, NULL); }
