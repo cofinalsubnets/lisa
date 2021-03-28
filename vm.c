@@ -2,7 +2,7 @@
 #include "ev.h"
 
 #define vm_op(n,...) NoInline obj n(vm v,hom ip,mem fp,mem sp,mem hp,obj xp,##__VA_ARGS__)
-static vm_op(nope, const char*, ...);
+static vm_op(nope);
 
 #define Pack() (Ip=Ph(ip),Sp=sp,Hp=hp,Fp=fp,Xp=xp)
 #define Unpack() (fp=Fp,hp=Hp,sp=Sp,ip=Gh(Ip),xp=Xp)
@@ -23,8 +23,8 @@ static vm_op(nope, const char*, ...);
 #define Argc ff(fp)->argc
 #define Argv ff(fp)->argv
 typedef struct fr { obj clos, retp, subd, argc, argv[]; } *fr;
-#define TypeCheck(x,t) if(kind(x)!=t){xp=x;Xp=t;Jump(err_type);}
-#define Arity(n) if(n>Argc){xp=Gn(Argc),Xp=Gn(n);Jump(err_arity);}
+#define TypeCheck(x,t) if(kind(x)!=t)Jump(nope)
+#define Arity(n) if(n>Argc)Jump(nope)
 #define ArityCheck(n) Arity(putnum(n))
 // "the interpreter"
 // it's a stack machine with one free register (xp)
@@ -112,21 +112,12 @@ vm_op(prel) {
   *--sp = puttup(t);
   Next(2); }
 
-static vm_op(err_free) {
-  Jump(nope, "free variable : %s", symnom(xp)); }
-static vm_op(err_arity) {
-  Jump(nope, "wrong arity : %ld of %ld", xp, Xp); }
-static vm_op(err_type) {
-  Jump(nope, "wrong type : %s for %s", tnom(xp), tnom(Xp)); }
-static vm_op(err_div0) {
-  Jump(nope, "%ld / 0", Gn(xp)); }
-
 // late bind
 vm_op(lbind) {
   obj w = (obj) GF(ip),
       d = XY(w), y = X(w);
   w = tbl_get(v, d, xp = YY(w));
-  if (!w) Go(err_free, xp);
+  if (!w) Jump(nope);
   xp = w;
   if (Gn(y) != 8) TypeCheck(xp, Gn(y));
   terp *q = G(FF(ip));
@@ -204,10 +195,11 @@ vm_op(rec) {
 
 // type/arity checking
 vm_op(arity) { Arity((obj)GF(ip)); Next(2); }
-vm_op(idnum) { TypeCheck(xp, Num); Next(1); }
-vm_op(idtwo) { TypeCheck(xp, Two); Next(1); }
-vm_op(idhom) { TypeCheck(xp, Hom); Next(1); }
-vm_op(idtbl) { TypeCheck(xp, Tbl); Next(1); }
+#define tcn(k) {terp*r=kind(xp)==k?G(++ip):nope;Jump(r);}
+vm_op(idnum) { tcn(Num); }
+vm_op(idtwo) { tcn(Two); }
+vm_op(idhom) { tcn(Hom); }
+vm_op(idtbl) { tcn(Tbl); }
 
 // continuations
 //
@@ -585,7 +577,7 @@ vm_op(cdr) { Ap(ip+1, Y(xp)); }
 
 vm_op(cons_u) {
   num aa = Gn(Argc);
-  if (!aa) {xp = 0, Xp = 1; Jump(err_arity); }
+  if (!aa) Jump(nope);
   Have(2); hp[0] = Argv[0], hp[1] = aa == 1 ? nil : Argv[1];
   xp = puttwo(hp), hp += 2; Jump(ret); }
 vm_op(car_u) {
@@ -608,11 +600,11 @@ vm_op(mul) {
   xp = Pn(Gn(xp) * Gn(*sp++));
   Next(1); }
 vm_op(dqv) {
-  if (xp == Pn(0)) Go(err_div0, *sp);
+  if (xp == Pn(0)) Jump(nope);
   xp = Pn(Gn(*sp++) / Gn(xp));
   Next(1); }
 vm_op(mod) {
-  if (xp == Pn(0)) Go(err_div0, *sp);
+  if (xp == Pn(0)) Jump(nope);
   xp = Pn(Gn(*sp++) % Gn(xp));
   Next(1); }
 
@@ -625,7 +617,7 @@ vm_op(mod) {
   obj x,m=_z,*xs=_v,*l=xs+_c;\
   if (_c) for(;xs<l;m=m op Gn(x)){\
     x = *xs++; TypeCheck(x, Num);\
-    if (x == Pn(0)) Go(err_div0, Pn(m));}\
+    if (x == Pn(0)) Jump(nope);}\
   Go(ret, Pn(m));}
 
 vm_op(add_u) {
@@ -742,7 +734,7 @@ vm_op(drop) { sp++; Next(1); }
 vm_op(dupl) { Have1(); --sp; sp[0] = sp[1]; Next(1); }
 
 // errors
-vm_op(fail) { Jump(nope, NULL); }
+vm_op(fail) { Jump(nope); }
 vm_op(zzz) { exit(EXIT_SUCCESS); }
 vm_op(gsym_u) {
   Have(Size(sym));
@@ -761,16 +753,10 @@ static Inline void perrarg(vm v, mem fp) {
     if (i == argc) break; }
   fputc(')', stderr); }
 
-vm_op(nope, const char *msg, ...) {
+vm_op(nope) {
   fputs("# (", stderr), emit(v, Ph(ip), stderr),
   perrarg(v, fp);
-  fputs(" does not exist", stderr);
-  if (msg) {
-    fputs(" : ", stderr);
-    va_list xs; va_start(xs, msg);
-    vfprintf(stderr, msg, xs);
-    va_end(xs); }
-  fputc('\n', stderr);
+  fputs(" does not exist\n", stderr);
   for (;;) {
     ip = Gh(Retp), fp += Size(fr) + Gn(Argc) + Gn(Subd);
     if (button(ip)[-1].g == yield) break;
