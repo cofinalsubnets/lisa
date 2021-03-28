@@ -64,7 +64,7 @@ bad, sorry, you know what they say about naming things!
 - `A = car` `B = cdr` `X = cons` `L = list`. `AA`-`BB` are
   defined as macros.
 - apl-like data constructors: `iota` is monadic `ι`; `rho` is
-  a weaked dyadic `ρ`: `(ap rho (X n l))` concatenates n copies
+  a weaker dyadic `ρ`: `(ap rho (X n l))` concatenates n copies
   of l.
 - `homp` `nump` `twop` `symp` `nilp` `tblp` `strp` `vecp` type predicates
 - hash functions: `tbl tset tget thas tkeys tlen tdel` ; see prelude.lips for usage
@@ -95,6 +95,20 @@ send n to the nth hyperoperation, with 0 being addition
 ```lisp
 (: hy (\ n (? (= n 0) + (\ x y
  (foldl1 (rho y x) (hy (- n 1)))))))
+```
+### church numerals
+```lisp
+(: mu (\ m (\ n (\ f (m (n f)))))     ; multiplication is function composition
+   ?? (\ m (\ n (\ f ((m f) (n f))))) ; i don't know exactly what this is
+   ad ((mu ??) (mu mu))               ; but it lets you construct addition from multiplication
+                                      ; the following identities are kind of weird
+   succ (ad id)                       ; which implies
+   one id                             ; however
+   zero (\ one)                       ; zero is the constant function at one
+   ex (zero))                         ; exponentiation is identity. it's backwards. try it
+
+(: C (\ n (? (= n 0) zero (succ (C (- n 1))))) ; send it to its church numeral
+   N (\ c ((c (\ x (+ x 1))) 0)))              ; send it back to N
 ```
 
 ### a quine

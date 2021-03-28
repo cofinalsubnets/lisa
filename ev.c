@@ -21,10 +21,9 @@ typedef obj c1(vm, mem, num),
 // as stacks for storing code entry points when generating
 // conditionals, which is admittedly kind of sus.
 //
-// this compiler emits runtime type checks for safety but no
-// optimizations or static typing. it only has to compile the
-// lips compiler once, and that version only has to compile
-// itself once, so it seems better to keep the C code minimal.
+// this compiler emits runtime type checks for safety but does
+// (almost) no optimizations or static typing since all it has
+// to do is bootstrap the main compiler.
 
 // " compilation environments "
 // the current lexical environment is passed to compiler
