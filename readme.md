@@ -1,4 +1,5 @@
 # lips
+lisp for angels <3
 
 ## lisp qualities
 - strict lexically scoped lisp-1 with short function words
@@ -111,15 +112,12 @@ these are defined in `prelude.lips`, `make repl` imports them automatically
 ; some thoughts ??
 ; - exponentiation is a number ???
 ; - K and (K I) = zero are SK codes for true and false
-; - if this were extended to the real numbers,then the
-;   groupoid over R with the operation
-;     (x y) |-> y to the power of x
-;   would be a quasigroup with left identity, and there
-;   would be a left adjoint to Field at R
+; - if this were extended to real numbers, then the groupoid
+;   over R with the operation (x y) |-> y to the power of x
+;   would be a quasigroup with left identity, and it would
+;   contain the field over R as a substructure.
 ; - if they extended to the complex numbers, then euler's
-;   identity would be written
-;     (it e) = id
-;   where it = i*tau = 2*pi*i
+;   identity could be written ex = (it e), where it = 2*pi*i.
 
 ; try it if you want!
 (: i 7 j (C i)
