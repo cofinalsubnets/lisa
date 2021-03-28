@@ -92,14 +92,15 @@ these are defined in `prelude.lips`, `make repl` imports them automatically
 
 ### church numerals
 ```lisp
-(: mu (\ m (\ n (\ f (m (n f)))))     ; multiplication is function composition
-   ?? (\ m (\ n (\ f ((m f) (n f))))) ; i don't know exactly what this is
-   ad ((mu ??) (mu mu))               ; but it lets you construct addition from multiplication
-                                      ; the following identities are kind of weird
-   succ (ad id)                       ; which implies
-   one id                             ; however
-   zero (\ one)                       ; zero is the constant function at one
-   ex (zero))                         ; exponentiation is identity. it's backwards. try it
+; using SKI calculus
+(: S (\ x (\ y (\ z ((x z) (y z))))) ; S is "superapplication"
+   K (\ x (\ x))                     ; K makes constant functions
+   I id                              ; I = ((S K) K) = identity
+   ex I                              ; exponentiation is identity! what?
+   mu ((S (K S)) K)                  ; multiplication is regular function composition
+   ad ((mu S) (mu mu))               ; addition is constructed from multiplication
+   zero (S K)                        ; zero = the usual church code for false
+   succ (ad (zero zero)))            ; 1 = 0**0 = ((ex zero) zero) = (zero zero) = ((K I) (K I)) = I
 
 (: C (\ n (? (= n 0) zero (succ (C (- n 1))))) ; send it to its church numeral
    N (\ c ((c (\ x (+ x 1))) 0)))              ; send it back to N
