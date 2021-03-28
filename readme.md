@@ -78,16 +78,16 @@ these are defined in `prelude.lips`, `make repl` imports them automatically
 
 ## fun code examples
 
-### hyperoperations
-send n to the nth hyperoperation, with 0 being addition
-```lisp
-(: hy (\ n (? (= n 0) + (\ x y
- (foldl1 (rho y x) (hy (- n 1)))))))
-```
-
 ### a quine
 ```lisp
 ((\ i (L i (L '` i))) '(\ i (L i (L '` i))))
+```
+
+### hyperoperations
+```lisp
+; send n to the nth hyperoperation, with 0 being addition
+(: hy (\ n (? (= n 0) + (\ x y
+ (foldl1 (rho y x) (hy (- n 1)))))))
 ```
 
 ### church numerals
