@@ -92,22 +92,34 @@ these are defined in `prelude.lips`, `make repl` imports them automatically
 
 ### church numerals
 ```lisp
-; using SKI calculus
-(: S (\ x (\ y (\ z ((x z) (y z))))) ; S is "superapplication"
-   K (\ x (\ x))       ; K = make a constant function = true
-   I id                ; I = ((S K) K) = identity
+; using SKI combinators
+(: S (\ x (\ y (\ z
+      ((x z) (y z))))) ; S is "superapplication"
+   K (\ x (\ x))       ; K makes constant functions
+   I id                ; I = ((S K) K) = identity function
+
+   ; these equations are interesting
    ex I                ; exponentiation is identity
    mu ((S (K S)) K)    ; multiplication is composition
    ad ((mu S) (mu mu)) ; addition is made out of multiplication
-   zero (K I)          ; 0 = (K I) = (S K) = false
+   zero (K I)          ; 0 = (K I) = (S K)
    succ (ad ex))       ; 1 = 0**0 = ((K I) (K I)) = I
-
-; extend this to complex numbers and euler's identity becomes
-;   (it e) = id
-; where it = i*tau = 2*pi*i
 
 (: C (\ n (? (= n 0) zero (succ (C (- n 1))))) ; send it to its church numeral
    N (\ c ((c (\ x (+ x 1))) 0)))              ; send it back to N
+
+; some thoughts ??
+; - exponentiation is a number ???
+; - K and (K I) = zero are SK codes for true and false
+; - if this were extended to the real numbers,then the
+;   groupoid over R with the operation
+;     (x y) |-> y to the power of x
+;   would be a quasigroup with left identity, and there
+;   would be a left adjoint to Field at R
+; - if they extended to the complex numbers, then euler's
+;   identity would be written
+;     (it e) = id
+;   where it = i*tau = 2*pi*i
 
 ; try it if you want!
 (: i 7 j (C i)
