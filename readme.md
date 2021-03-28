@@ -110,7 +110,7 @@ these are defined in `prelude.lips`, `make repl` imports them automatically
    N (\ c ((c (\ x (+ x 1))) 0)))              ; send it back to N
 
 ; some thoughts ??
-; - exponentiation is a number ???
+; - exponentiation is the number one ???
 ; - K and (K I) = zero are SK codes for true and false
 ; - if this were extended to real numbers, then the groupoid
 ;   over R with the operation (x y) |-> y to the power of x
