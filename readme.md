@@ -76,26 +76,20 @@ these are defined in `prelude.lips`, `make repl` imports them automatically
 - `(::: nom0 def0 nom1 def1 ...)` define macro
 - `(>>= x y z f) = (f x y z)`
 
-## code examples
-the thread compiler and built-in functions are in `prelude.lips`.
+## fun code examples
 
-### fizzbuzz
-```lisp
-(: /p (\ m n (= 0 (% m n)))
-   fb (\ m n (? (<= m n) (,
-     (. (? (/p m 15) 'fb
-           (/p m 5)  'b
-           (/p m 3)  'f
-           m))
-     (fb (+ m 1) n))))
-   (fb 1 100))
-```
 ### hyperoperations
 send n to the nth hyperoperation, with 0 being addition
 ```lisp
 (: hy (\ n (? (= n 0) + (\ x y
  (foldl1 (rho y x) (hy (- n 1)))))))
 ```
+
+### a quine
+```lisp
+((\ i (L i (L '` i))) '(\ i (L i (L '` i))))
+```
+
 ### church numerals
 ```lisp
 (: mu (\ m (\ n (\ f (m (n f)))))     ; multiplication is function composition
@@ -111,9 +105,16 @@ send n to the nth hyperoperation, with 0 being addition
    N (\ c ((c (\ x (+ x 1))) 0)))              ; send it back to N
 ```
 
-### a quine
+### fizzbuzz
 ```lisp
-((\ i (L i (L '` i))) '(\ i (L i (L '` i))))
+; now that we have church numerals we can write fizzbuzz.
+(: /p (\ m n (= 0 (% m n)))
+   fb (\ m (, (. (? (/p m 15) 'fizzbuzz
+                    (/p m 5)  'buzz
+                    (/p m 3)  'fizz
+                    m))
+              (+ m 1)))
+ (((C 100) fb) 1))
 ```
 
 ## missing features
