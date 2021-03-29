@@ -93,33 +93,21 @@ these are defined in `prelude.lips`, `make repl` imports them automatically
 
 ### church numerals
 ```lisp
-; using SKI combinators
-(: S (\ x (\ y (\ z
-      ((x z) (y z))))) ; S is "superapplication"
-   K (\ x (\ x))       ; K makes constant functions
-   I id                ; I = ((S K) K) = identity function
-
-   ; these equations are interesting
-   ex I                ; exponentiation is identity
-   mu ((S (K S)) K)    ; multiplication is composition
-   ad ((mu S) (mu mu)) ; addition is made out of multiplication
-   zero (K I)          ; 0 = (K I) = (S K)
-   succ (ad ex))       ; 1 = 0**0 = ((K I) (K I)) = I
+; we're going to use SK combinators!
+(: K const I id
+   ; Z is S abstracted over its means of combination.
+   Z (\ w (\ x (\ y (\ z ((w (x z)) (y z))))))
+   ; now we have
+   S (Z I) ; S is "applicative" Z
+   mu ((S (K S)) K) ; this is equivalent to regular postcomposition
+   ad (Z mu) ; addition is "compositive" Z
+   one I
+   zero (K I)
+   succ (ad one))
 
 (: C (\ n (? (= n 0) zero (succ (C (- n 1))))) ; send it to its church numeral
    N (\ c ((c (\ x (+ x 1))) 0)))              ; send it back to N
 
-; some thoughts ??
-; - exponentiation is the number one ???
-; - K and (K I) = zero are SK codes for true and false
-; - if this were extended to real numbers, then the groupoid
-;   over R with the operation (x y) |-> y to the power of x
-;   would be a quasigroup with left identity, and it would
-;   contain the field over R as a substructure.
-; - if they extended to the complex numbers, then euler's
-;   identity could be written ex = (it e), where it = 2*pi*i.
-
-; try it if you want!
 (: i 7 j (C i)
    show-row (\ n (,
     (: x (\ x (\ n (X x n))))
