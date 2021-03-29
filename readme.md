@@ -93,27 +93,22 @@ these are defined in `prelude.lips`, `make repl` imports them automatically
 
 ### church numerals
 ```lisp
-; we're going to use SK combinators!
-(: K const I id
+(: ; we're going to use SK combinators
+   K const I id
    ; Z is S abstracted over its means of combination.
    Z (\ w (\ x (\ y (\ z ((w (x z)) (y z))))))
-   ; now we have
-   S (Z I) ; S is "applicative" Z
-   mu ((S (K S)) K) ; this is equivalent to regular postcomposition
-   ad (Z mu) ; addition is "compositive" Z
+   S (Z I)           ; S is "applicative" Z
+
+                     ; now we have
+   exp I             ; ((exp i) j) = (i j) = j**i
+   mul ((S (K S)) K) ; ((mul i) j) = (\ x (i (j x))) = i*j
+   add (Z mul)       ; ((add i) j) = (\ x (\ y ((i x) ((j x) y)))) = i+j
    one I
    zero (K I)
-   succ (ad one))
+   succ (add one))
 
 (: C (\ n (? (= n 0) zero (succ (C (- n 1))))) ; send it to its church numeral
    N (\ c ((c (\ x (+ x 1))) 0)))              ; send it back to N
-
-(: i 7 j (C i)
-   show-row (\ n (,
-    (: x (\ x (\ n (X x n))))
-    (ap . ((j (x n)) ()))))
- (, (. i'x i i's)
-    ((j show-row) i)))
 ```
 
 ### fizzbuzz
