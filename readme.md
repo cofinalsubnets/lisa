@@ -86,25 +86,23 @@ these are defined in `prelude.lips`, `make repl` imports them automatically
 
 ### hyperoperations
 ```lisp
-; send n to the nth hyperoperation, with 0 being addition
+; send n to the nth hyperoperation, 0 being addition
 (: hy (\ n (? (= n 0) + (\ x y
- (foldl1 (rho y x) (hy (- n 1)))))))
+ (foldr1 (rho y x) (hy (- n 1)))))))
 ```
 
 ### church numerals
 ```lisp
-(: ; we're going to use SK combinators
-   K const I id
-   ; Z is S abstracted over its means of combination.
-   Z (\ w (\ x (\ y (\ z ((w (x z)) (y z))))))
-   S (Z I)           ; S is "applicative" Z
+(: K const I id
+   P (\ f (\ g (\ x (f (g x))))) ; composition
+   Q (\ m (\ n (\ f ; "supercomposition" ; cf. S combinator
+      ((P (m f)) (n f)))))
 
-                     ; now we have
-   exp I             ; ((exp i) j) = (i j) = j**i
-   mul ((S (K S)) K) ; ((mul i) j) = (\ x (i (j x))) = i*j
-   add (Z mul)       ; ((add i) j) = (\ x (\ y ((i x) ((j x) y)))) = i+j
-   one I
    zero (K I)
+   one I ; ((one f) x) = (f x)
+   exp I ; ((exp i) j) = (i j) = j**i
+   mul P ; ((mul i) j) = (\ x (i (j x))) = i*j
+   add Q ; ((add i) j) = (\ x (\ y ((i x) ((j x) y)))) = i+j
    succ (add one))
 
 (: C (\ n (? (= n 0) zero (succ (C (- n 1))))) ; send it to its church numeral
