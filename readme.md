@@ -1,5 +1,5 @@
 # lips
-lisp for angels <3
+nonverbal lisp
 
 ## lisp qualities
 - strict lexically scoped lisp-1 with short function words
@@ -86,27 +86,29 @@ these are defined in `prelude.lips`, `make repl` imports them automatically
 
 ### hyperoperations
 ```lisp
-; send n to the nth hyperoperation, 0 being addition
+; send n to the nth hyperoperation, 0 being addition.
 (: hy (\ n (? (= n 0) + (\ x y
  (foldr1 (rho y x) (hy (- n 1)))))))
 ```
 
 ### church numerals
 ```lisp
-(: K const I id
-   P (\ f (\ g (\ x (f (g x))))) ; composition
-   Q (\ m (\ n (\ f ; "supercomposition" ; cf. S combinator
-      ((P (m f)) (n f)))))
+; modified SK combinators
+(: K const
+   I id
+   P (\ f (\ g (\ x (f (g x))))) ; just postcomposition
+   Q (\ m (\ n (\ f              ; Q : S :: compose : apply
+    ((P (m f)) (n f)))))
 
    zero (K I)
-   one I ; ((one f) x) = (f x)
-   exp I ; ((exp i) j) = (i j) = j**i
-   mul P ; ((mul i) j) = (\ x (i (j x))) = i*j
-   add Q ; ((add i) j) = (\ x (\ y ((i x) ((j x) y)))) = i+j
-   succ (add one))
+   one I
+   exp I
+   mul P
+   add Q
+   succ (add one)
 
-(: C (\ n (? (= n 0) zero (succ (C (- n 1))))) ; send it to its church numeral
-   N (\ c ((c (\ x (+ x 1))) 0)))              ; send it back to N
+   C (\ n (? (= n 0) zero (succ (C (- n 1))))) ; go to church
+   N (\ c ((c (\ x (+ x 1))) 0)))              ; leave
 ```
 
 ### fizzbuzz

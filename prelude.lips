@@ -95,7 +95,7 @@
   t (? (homp x) 'hom (nump x) 'num
        (twop x) 'two (vecp x) 'vec
        (symp x) 'sym (strp x) 'str
-       (tblp x) 'tbl)
+       (tblp x) 'tbl          'nil)
   (Co i-immv (Da x (-> t k)))))
 
  Co (\ i k (\ e m (emf i (k e (+ m 1)))))
@@ -349,23 +349,22 @@
   (? (&& (qtd a) (: q (tget inliners (unq a)))) (q b k)
    (loop b (eval a (>- 'hom (Co i-call (Da (len b) k))))))))
 
- ev-la (\ x k (:
+ ev-la (\ x k (\ e m (:
   nom (\ e k (: i (hgeti k) (case i
    i-tbind (hgetx (hseek k 1))
    i-setl  (at (tget e'loc) (hgetx (hseek k 1))))))
 
-  clo-thd (\ e x (:
+  clo-thd (\ e x k (:
    loop (\ x k (? (nilp x) k
     (loop (B x) (eval (A x) (Co i-push k)))))
    k (\ e m (emi i-take (emx (len x) (hom (+ m 2)))))
    ((loop x k) e 0)))
 
-  (\ e m (:
-   l ((-> 'hom k) e (+ m 2))
-   y (ltu e (nom e l) x)
-   (? (homp y) (emf i-immv (emx y l))
-    (emi (? (tget e'loc) i-encll i-encln)
-     (emx (X (B y) (clo-thd e (A y))) l)))))))
+  l ((-> 'hom k) e (+ m 2))
+  y (ltu e (nom e l) x)
+  (? (homp y) (emf i-immv (emx y l))
+   (emi (? (tget e'loc) i-encll i-encln)
+    (emx (X (B y) (clo-thd e (A y) k)) l))))))
 
  ev-list (\ x k (:
   ,, (\ x k (? x (eval (A x) (,, (B x) k)) k))
@@ -481,7 +480,7 @@
      (Co i-push (eval (AB x) (>- t1
       (Co i-push (eval (A x) (>- t0
        (Co i-tset (-> t3 k))))))))))))
-  ary (\ l m ((at l (len m)) m))
+
   (tbl
    id (\ x k (eval (A x) k))
    + (abel + 0 i-add)
@@ -536,7 +535,7 @@
 ; bootstrap
 (ev lib) (ev egg) ; C -> prelips
 (ev lib) (ev egg) ; prelips -> lips
-(:     precompose (\ x .
+(: precompose (\ x .
       (ev(L'\'x(foldl x'x(\ m e(L(L'` e)m)))))))
 ; "drop privileges"
 (each '(lib egg macros ns emi emx hom hseek hgeti hgetx hfin)
