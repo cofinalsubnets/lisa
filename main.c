@@ -15,8 +15,8 @@ void scr(vm v, FILE *f) {
 static int scripts(rt v, char**argv) {
   for (char *q; (q = *argv++);) {
     FILE *f = fopen(q, "r");
-    if (!f) return errp(v, 0, "%s : %s", q, strerror(errno)), NO;
-    if (setjmp(v->restart)) return errp(v, 0, "%s : fail", q),
+    if (!f) return errp(v, "%s : %s", q, strerror(errno)), NO;
+    if (setjmp(v->restart)) return errp(v, "%s : fail", q),
                                    fclose(f),
                                    NO;
     scr(v, f);
@@ -30,7 +30,7 @@ int main(int argc, char**argv) {
 #define takka 1
 #define nprel 2
   int opt, args,
-      F = argc == 1 ? takka : 0; // as in you get a
+      F = argc == 1 ? takka : 0;
   const char
     opts[] = "hi_",
     help[] =

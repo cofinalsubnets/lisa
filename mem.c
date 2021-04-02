@@ -49,9 +49,11 @@ void reqsp(vm v, num req) {
     else return; // no size change needed
     // otherwise grow or shrink
     if (copy(v, len)) return;
-    // oh no, that didn't work, maybe we can still return though?
+    // oh no that didn't work
+    // maybe we can still return though if we were only trying
+    // to grow the pool for speed
     if (allocd <= Len) return; }
-  errp(v, "gc : oom");
+  errp(v, "oom"); // this is a bad error
   restart(v); }
 
 // the first step in copying is to allocate
@@ -72,9 +74,9 @@ void reqsp(vm v, num req) {
 //
 //       u = (t2 - t0) / (t2 - t1)
 //
-// t values come from clock(). if t0 < t1 < t2
-// u will always be >= 1. somehow t1 is sometimes
-// equal to t2, so in that case u = 1.
+// t values come from clock(). if t0 < t1 < t2 then
+// u will be >= 1. however, sometimes t1 == t2. in that case
+// u = 1.
 static int copy(vm v, num len) {
   clock_t t1 = clock(), t2, u;
   mem b0 = v->mem_pool, b1 = malloc(w2b(len));
@@ -153,9 +155,9 @@ cpcc(cpoct) {
 cpcc(cpsym) {
   sym src = getsym(x), dst;
   if (fresh(src->nom)) return src->nom;
-  if (nilp(src->nom)) { // anonymous symbol
-    dst = bump(v, Size(sym));
-    memcpy(dst, src, w2b(Size(sym))); }
+  if (nilp(src->nom)) // anonymous symbol
+    dst = bump(v, Size(sym)),
+    memcpy(dst, src, w2b(Size(sym)));
   else dst = getsym(sseekc(v, &Syms, cp(v, src->nom, ln, lp)));
   return src->nom = putsym(dst); }
 
@@ -204,11 +206,9 @@ cpcc(cptbl) {
 
 const uint64_t mix = 2708237354241864315;
 static uint64_t hc(vm, obj);
-// internal memory allocator
+// imemory allocator
 Inline void *bump(vm v, num n) {
   void *x = v->hp; v->hp += n; return x; }
-
-// the public interface (used in other files)
 void *cells(vm v, num n) {
   if (Avail < n) reqsp(v, n);
   return bump(v, n); }
@@ -241,14 +241,14 @@ obj string(vm v, const char *c) {
 // attempt to keep it balanced but it gets rebuilt in somewhat
 // unpredictable order every gc cycle so hopefully that should
 // help keep it from getting too bad. a hash table is probably
-// the way to go but rebuilding that is more difficult; the
+// the way to go but rebuilding that is more difficult. the
 // existing code is unsuitable because it dynamically resizes
 // the table and unpredictable memory allocation isn't safe
 // during garbage collection. 
 static obj sseek(vm v, obj y, obj x) {
   int i = strcmp(symnom(y), chars(x));
-  if (i == 0) return y;
-  return sseekc(v, i<0?&(getsym(y)->r):&(getsym(y)->l), x); }
+  return i == 0 ? y :
+    sseekc(v, i<0?&(getsym(y)->r):&(getsym(y)->l), x); }
 
 static obj sseekc(vm v, mem y, obj x) {
   if (!nilp(*y)) return sseek(v, *y, x);
@@ -258,11 +258,9 @@ static obj sseekc(vm v, mem y, obj x) {
   return *y = putsym(u); }
 
 obj intern(vm v, obj x) {
-  if (Avail < Size(sym)) with(x, reqsp(v, Size(sym)));
+  if (Avail < Size(sym))
+    with(x, reqsp(v, Size(sym)));
   return sseekc(v, &Syms, x); }
-
-obj interns(vm v, const char *c) {
-  return intern(v, string(v, c)); }
 
 static Inline uint64_t hash_bytes(num len, char *us) {
   num h = 1;
@@ -275,21 +273,19 @@ static uint64_t hc(vm v, obj x) {
     case Sym: r = getsym(x)->code; break;
     case Oct: r = hash_bytes(getoct(x)->len, getoct(x)->text); break;
     case Two: r = hc(v, X(x)) ^ hc(v, Y(x)); break;
-    // you can use functions as hash keys but the performance won't necessarily be great...
     case Hom: r = hc(v, homnom(v, x)) ^ (mix * (uintptr_t) G(x)); break;
+    case Tbl: r = mix * mix; // umm this'll do for now ...
     default:  r = mix * x; } 
 #define bits (Word*8)
 #define shr 16
-#define shl (bits-shr)
-  return (r<<shl)|(r>>shr); }
+  return (r<<(bits-shr))|(r>>shr); }
 #undef bits
 #undef shr
-#undef shl
 
-#define hb_idx(a,k)((k)%(a))
+#define hbi(a,k)((k)%(a))
 
 static Inline tble hb(obj t, uint64_t code) {
-  return gettbl(t)->tab[hb_idx(gettbl(t)->cap, code)]; }
+  return gettbl(t)->tab[hbi(gettbl(t)->cap, code)]; }
 
 // tbl_resize(vm, tbl, new_size): destructively resize a hash table.
 // new_size words of memory are allocated for the new bucket array.
@@ -300,12 +296,12 @@ static void tbl_resize(vm v, obj t, num ns) {
   tbl o = gettbl(t);
   num u, n = o->cap;
   d = o->tab; o->tab = b; o->cap = ns;
-  while (n--) for (ch = d[n]; ch;)
+  while (n--) for (ch = d[n]; ch;
     e = ch,
     ch = ch->next,
-    u = hb_idx(ns, hc(v, e->key)),
+    u = hbi(ns, hc(v, e->key)),
     e->next = b[u],
-    b[u] = e; }
+    b[u] = e); }
 
 static void tbl_add_entry(vm v, obj t, obj k, obj x, num b) {
   tble e;
@@ -315,8 +311,8 @@ static void tbl_add_entry(vm v, obj t, obj k, obj x, num b) {
   e->next = y->tab[b], y->tab[b] = e;
   ++y->len; }
 
-obj tbl_set(vm v, obj t, obj k, obj val) {
-  num b = hb_idx(gettbl(t)->cap, hc(v, k));
+obj tblset(vm v, obj t, obj k, obj val) {
+  num b = hbi(gettbl(t)->cap, hc(v, k));
   tble e = gettbl(t)->tab[b];
   for (;e; e = e->next)
     if (e->key == k) return e->val = val;
@@ -326,25 +322,25 @@ obj tbl_set(vm v, obj t, obj k, obj val) {
     tbl_resize(v, t, gettbl(t)->cap * 2);
   return um, um, val; }
 
-static obj tbl_keys_j(vm v, tble e, obj l) {
+static obj tblkeys_j(vm v, tble e, obj l) {
   if (!e) return l;
   obj x = e->key;
-  with(x, l = tbl_keys_j(v, e->next, l));
+  with(x, l = tblkeys_j(v, e->next, l));
   return pair(v, x, l); }
 
-static obj tbl_keys_i(vm v, obj t, num i) {
+static obj tblkeys_i(vm v, obj t, num i) {
   if (i == gettbl(t)->cap) return nil;
   obj k;
-  with(t, k = tbl_keys_i(v, t, i+1));
-  return tbl_keys_j(v, gettbl(t)->tab[i], k); }
+  with(t, k = tblkeys_i(v, t, i+1));
+  return tblkeys_j(v, gettbl(t)->tab[i], k); }
 
-obj tbl_keys(vm v, obj t) {
-  return tbl_keys_i(v, t, 0); }
+obj tblkeys(vm v, obj t) {
+  return tblkeys_i(v, t, 0); }
 
-obj tbl_del(vm v, obj t, obj k) {
+obj tbldel(vm v, obj t, obj k) {
   tbl y = gettbl(t);
   obj r = nil;
-  num b = hb_idx(y->cap, hc(v, k));
+  num b = hbi(y->cap, hc(v, k));
   tble e = y->tab[b];
   struct tble _v = {0,0,e};
   for (tble l = &_v; l && l->next; l = l->next)
@@ -358,7 +354,7 @@ obj tbl_del(vm v, obj t, obj k) {
     with(r, with(t, tbl_resize(v, t, y->cap / 2)));
   return r; }
 
-obj tbl_get(vm v, obj t, obj k) {
+obj tblget(vm v, obj t, obj k) {
   tble e = hb(t, hc(v, k));
   for (;e; e = e->next) if (eql(e->key, k)) return e->val;
   return 0; }

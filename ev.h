@@ -24,12 +24,11 @@
   _(tbll), _(tblmk),_(tblg),_(tblc),_(tbls),_(tbld),_(tblks),\
   _(hom_seek_u),_(hom_geti_u),_(emi),\
   _(fail),_(ccc_u),_(cont),_(vararg),_(tuck),_(dupl),\
-  _(rd_u),\
   _(drop),_(hom_getx_u),_(emx_u),_(emi_u),_(emx),_(em_u),_(ev_u),_(ap_u)
 #define prims(_)\
   _("gensym", gsym_u),\
   _("hfin", hom_fin_u),\
-  _("read", rd_u),   _(".", em_u),\
+  _(".", em_u),\
   _("A", car_u),    _("B", cdr_u),\
   _("X", cons_u),   _("=", eq_u),\
   _("<", lt_u),      _("<=", lteq_u),\

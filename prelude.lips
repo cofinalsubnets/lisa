@@ -476,10 +476,10 @@
     (? x (go i k (A x) (B x)) (-> 'num k))))
 
   3y (\ i t0 t1 t2 t3 (\ x k
-    (eval (A (BB x)) (>- t2
-     (Co i-push (eval (AB x) (>- t1
-      (Co i-push (eval (A x) (>- t0
-       (Co i-tset (-> t3 k))))))))))))
+   (eval (A (BB x)) (>- t2
+    (Co i-push (eval (AB x) (>- t1
+     (Co i-push (eval (A x) (>- t0
+      (Co i-tset (-> t3 k))))))))))))
 
   (tbl
    id (\ x k (eval (A x) k))
@@ -503,7 +503,8 @@
           c (? (nump (A x)) (grp / (A x) 1 b) (X (A x) b))
         (? c (eval (A c) (>- 'num (2f i-dqv k (B c))))
              (Im 1 k)))))
-   <  (ordr i-lt) <= (ordr i-lteq) >= (ordr i-gteq) > (ordr i-gt)
+   < (ordr i-lt) <= (ordr i-lteq)
+   >= (ordr i-gteq) > (ordr i-gt)
    A (1y i-car 'two ())
    B (1y i-cdr 'two ())
    X (2y i-cons () () 'two)

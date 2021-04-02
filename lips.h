@@ -1,3 +1,5 @@
+#ifndef LIPS_H
+#define LIPS_H
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -11,21 +13,44 @@
 #include <sys/stat.h>
 
 // thanks !!
-typedef int64_t obj, num, *mem;
+//
+// first of all, C makes you type too much
+#define In inline __attribute__((always_inline))
+#define Nin __attribute__((noinline))
+#define Inline In
+#define NoInline Nin
+#define St static
+#define Vd void
+#define Ty typedef
+#define Sr struct
+#define Un union
+
+// "obj" is the data supertype. it's synonymous with
+// the pointer integer type on the host platform, but for
+// clarity the two are usually distinguished.
+Ty intptr_t obj, num, *mem;
 #define non ((obj)0)
 #define nil (~non)
 #define Word sizeof(non)
 
-typedef struct root { mem one; struct root *next; } *root;
-// can't just be terp** :( bc C
-typedef union hom *hom;
-typedef struct rt *rt, *vm;
-typedef obj terp(rt, hom, mem, mem, mem, obj);
-union hom { terp *g; };
-typedef struct two { obj x, y; } *two;
-typedef struct tup { num len; obj xs[]; } *tup;
-typedef struct oct { num len; char text[]; } *oct;
-typedef struct sym { obj nom, code, l, r; } *sym;
+// this is the structure responsible for holding runtime
+// state. a pointer to it as an argument to almost every
+// function in lips.
+Ty Sr rt *rt, *vm;
+
+// this is a pointless container around the function type
+Ty Un hom *hom;
+Ty obj terp(rt, hom, mem, mem, mem, obj);
+// unfortunately the function type can't just be terp**
+// because of mandatory type indirection. a case against
+// strong static typing?
+Un hom { terp *g; };
+
+// now some more fundamental data typesj
+Ty Sr two { obj x, y; } *two;
+Ty Sr tup { num len; obj xs[]; } *tup;
+Ty Sr oct { num len; char text[]; } *oct;
+Ty Sr sym { obj nom, code, l, r; } *sym;
 
 typedef struct spec {
   struct spec *sp;
@@ -33,6 +58,7 @@ typedef struct spec {
 typedef struct tble { obj key, val; struct tble *next; } *tble;
 typedef struct tbl { num len, cap; tble *tab; } *tbl;
 
+Ty Sr root { mem one; Sr root *next; } *root;
 struct rt {
   obj ip, xp, *fp, *hp, *sp; // vm state variables
   obj syms, glob; // globals
@@ -56,8 +82,6 @@ rt initialize(),
 
 void scr(vm, FILE*),
      emit(rt, obj, FILE*),
-     phomn(rt, obj, FILE*),
-     vferrp(rt, FILE*, const char*, va_list), // lol
      errp(rt, const char*, ...),
      emsep(rt, obj, FILE*, char),
      reqsp(rt, num),
@@ -70,13 +94,12 @@ obj err(rt, obj, const char*, ...),
     pair(rt, obj, obj),
     parse(rt, FILE*),
     intern(rt, obj),
-    interns(rt, const char*),
     eval(rt, obj),
     table(rt),
-    tbl_set(rt, obj, obj, obj),
-    tbl_get(rt, obj, obj),
-    tbl_del(rt, obj, obj),
-    tbl_keys(rt, obj),
+    tblset(rt, obj, obj, obj),
+    tblget(rt, obj, obj),
+    tbldel(rt, obj, obj),
+    tblkeys(rt, obj),
     string(rt, const char*);
 num llen(obj);
 int eql(obj, obj);
@@ -153,15 +176,25 @@ const char *tnom(enum type);
 #define Eva AR(Glob)[Eval]
 #define App AR(Glob)[Apply]
 #define Avail (Sp-Hp)
-#define Inline inline __attribute__((always_inline))
-#define NoInline __attribute__((noinline))
+
+extern const uint64_t mix;
+
+St In hom button(hom h) {
+  while (h->g) h++;
+  return h; }
+
+hom compile(vm v, obj x);
 
 #ifndef NOM
 #define NOM "lips"
 #endif
-extern const uint64_t mix;
 
-static Inline hom button(hom h) {
-  while (h->g) h++;
-  return h; }
-hom compile(vm v, obj x);
+_Static_assert(
+  sizeof(obj) >= 8,
+  "pointers are less than 64 bits");
+  
+_Static_assert(
+  -9 == (((num)-9<<32)>>32),
+  "opposite bit-shifts on a negative number "
+  "yield a nonidentical result");
+#endif

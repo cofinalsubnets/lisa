@@ -44,7 +44,7 @@ typedef obj c1(vm, mem, num),
 // signature is n; otherwise it's -n-1.
 static void c_de_r(vm, mem, obj),
             scan(vm, mem, obj), pushs(vm, ...);
-static c1  c_ev, c_d_bind, inst, insx, c_ini;
+static c1 c_ev, c_d_bind, inst, insx, c_ini;
 static c2 c_eval, c_sy, c_2, c_imm, ltu, c_ap, c_la_clo;
 static c3 late;
 static obj tupl(vm, ...),
@@ -54,6 +54,7 @@ static obj tupl(vm, ...),
            imx(vm, mem, num, terp*, obj),
            hom_ini(vm, num);
 static num idx(obj, obj);
+#define interns(v,c) intern(v,string(v,c))
 
 enum location { Here, Loc, Arg, Clo, Wait };
 #define c1(nom,...) static obj nom(vm v,mem e,num m,##__VA_ARGS__)
@@ -78,7 +79,7 @@ static obj apply(vm v, obj f, obj x) {
   h[2].g = yield;
   h[3].g = NULL;
   h[4].g = (terp*) h;
-  return call(v, h, Fp, Sp, Hp, tbl_get(v, Dict, App)); }
+  return call(v, h, Fp, Sp, Hp, tblget(v, Dict, App)); }
 
 hom compile(vm v, obj x) {
   Push(Pn(c_ev), x, Pn(inst), Pn(yield), Pn(c_ini));
@@ -87,7 +88,7 @@ hom compile(vm v, obj x) {
 /// evaluate an expression
 obj eval(vm v, obj x) {
   x = pair(v, x, nil);
-  return apply(v, tbl_get(v, Dict, Eva), x); }
+  return apply(v, tblget(v, Dict, Eva), x); }
 
 static void scan_def_add(vm v, mem e, obj y, obj x) {
   with(x, y = pair(v, y, loc(*e)), loc(*e) = y);
@@ -107,10 +108,10 @@ static void scan(vm v, mem e, obj x) {
   um; }
 
 static obj asign(vm v, obj a, num i, mem m) {
+  obj x;
   if (!twop(a)) return *m = i, a;
   if (twop(Y(a)) && XY(a) == Va)
     return *m = -(i+1), pair(v, X(a), nil);
-  obj x;
   with(a, x = asign(v, Y(a), i+1, m));
   return pair(v, X(a), x); }
 
@@ -122,8 +123,9 @@ static obj scope(vm v, mem e, obj a, obj n) {
 static obj compose(vm v, mem e, obj x) {
   Push(Pn(c_ev), x, Pn(inst), Pn(ret), Pn(c_ini));
   scan(v, e, Sp[1]);
-  obj i; x = ccc(v, e, 4); // 4 = 2 + 2
-  if ((i = llen(loc(*e)))) x = em2(prel,  Pn(i), x);
+  x = ccc(v, e, 4); // 4 = 2 + 2
+  obj i = llen(loc(*e));
+  if (i) x = em2(prel,  Pn(i), x);
   i = Gn(asig(*e));
   if (i > 0) x = em2(arity, Pn(i), x);
   else if (i < 0) x = em2(vararg, Pn(-i-1), x);
@@ -172,10 +174,9 @@ c1(c_d_bind) {
   return toplp(e) ? imx(v, e, m, tbind, y) :
                     imx(v, e, m, setl, Pn(idx(loc(*e), y))); }
 
-static void c_de_r(vm v, mem e, obj x) {
-  if (twop(x))
-    with(x, c_de_r(v, e, YY(x))),
-    Push(Pn(c_ev), XY(x), Pn(c_d_bind), X(x)); }
+static void c_de_r(vm v, mem e, obj x) { if (twop(x))
+  with(x, c_de_r(v, e, YY(x))),
+  Push(Pn(c_ev), XY(x), Pn(c_d_bind), X(x)); }
 
 c2(c_de) {
   return !twop(Y(x)) ? c_imm(v, e, m, nil) :
@@ -193,8 +194,7 @@ c2(c_de) {
 // exit address in stack 2
 c1(c_co_pre) {
   obj x = ccc(v, e, m);
-  x = pair(v, x, S2);
-  return X(S2 = x); }
+  return x = pair(v, x, S2), X(S2 = x); }
 
 // before generating a branch emit a jump to
 // the top of stack 2
@@ -206,8 +206,7 @@ c1(c_co_pre_con) {
 // in stack 1
 c1(c_co_post_con) {
   obj x = ccc(v, e, m);
-  x = pair(v, x, S1);
-  return X(S1 = x); }
+  return x = pair(v, x, S1), X(S1 = x); }
 
 // before generating an antecedent emit a branch to
 // the top of stack 1
@@ -238,19 +237,19 @@ c2(c_se) {
   return c_se_r(v, e, x), ccc(v, e, m); }
 
 c1(c_call) {
-  obj a = *Sp++, k = ccc(v, e, m+2);
+  obj a = *Sp++, k = ccc(v, e, m + 2);
   return G(k) != ret ? em2(call, a, k) :
          em2(rec, a, k); }
 
 #define L(n,x) pair(v, Pn(n), x)
 static obj look(vm v, obj e, obj y) {
   obj q;
-  if (nilp(e)) return (q = tbl_get(v, Dict, y)) ?
-    L(Here, q) : L(Wait, Dict);
-  if ((q = idx(loc(e), y)) != -1) return L(Loc, e);
-  if ((q = idx(arg(e), y)) != -1) return L(Arg, e);
-  if ((q = idx(clo(e), y)) != -1) return L(Clo, e);
-  return look(v, par(e), y); }
+  return nilp(e) ?
+    ((q = tblget(v, Dict, y)) ?  L(Here, q) : L(Wait, Dict)) :
+    ((q = idx(loc(e), y)) != -1) ? L(Loc, e) :
+    ((q = idx(arg(e), y)) != -1) ? L(Arg, e) :
+    ((q = idx(clo(e), y)) != -1) ? L(Clo, e) :
+    look(v, par(e), y); }
 #undef L
 
 static obj imx(vm v, mem e, num m, terp *i, obj x) {
@@ -280,22 +279,20 @@ c2(c_sy) {
 
 
 c1(c_ev) { return c_eval(v, e, m, *Sp++); }
-c2(c_eval) { return (symp(x) ? c_sy :
-                     twop(x) ? c_2 :
-                               c_imm)(v, e, m, x); }
+c2(c_eval) { return
+  (symp(x)?c_sy:twop(x)?c_2:c_imm)(v,e,m,x); }
 
 c2(c_qt) { return c_imm(v, e, m, twop(x = Y(x)) ? X(x) : x); }
 c2(c_2) {
   obj z = X(x);
-  return (z == Qt ? c_qt :
-          z == If ? c_co :
-          z == De ? c_de :
-          z == La ? c_la :
-          z == Se ? c_se :
-                    c_ap)(v, e, m, x); }
+  return (z==Qt?c_qt:
+          z==If?c_co:
+          z==De?c_de:
+          z==La?c_la:
+          z==Se?c_se:c_ap)(v,e,m,x); }
 
 c2(c_ap) {
-  obj y = tbl_get(v, Mac, X(x));
+  obj y = tblget(v, Mac, X(x));
   if (y) {
     Rec(x = apply(v, y, Y(x)));
     return c_eval(v, e, m, x); }
@@ -399,11 +396,11 @@ static void rpr(vm v, mem d, const char *n, terp *u) {
   obj x, y = pair(v, interns(v, n), nil);
   with(y, x = hom_ini(v, 2));
   x = em2(u, y, x);
-  tbl_set(v, *d, X(y), x); }
+  tblset(v, *d, X(y), x); }
 
 static void rin(vm v, mem d, const char *n, terp *u) {
   obj y = interns(v, n);
-  tbl_set(v, *d, y, Pn(u)); }
+  tblset(v, *d, y, Pn(u)); }
 
 #define RPR(a,b) rpr(v,&d,a,b)
 #define RIN(x) rin(v,&d,"i-"#x,x)
@@ -443,14 +440,13 @@ static int seekp(const char *p) {
 
 vm bootstrap(vm v) {
   if (v == NULL) return v;
-  // now we can bootstrap ...
   const char *path = "prelude.lips";
   int pre = seekp(path);
-  if (pre == -1) errp(v, "boot : can't find %s", path);
+  if (pre == -1) errp(v, "can't find %s", path);
   else {
     FILE *f = fdopen(pre, "r");
     if (setjmp(v->restart)) return
-      errp(v, "boot : error in %s", path),
+      errp(v, "error in %s", path),
       fclose(f), finalize(v);
     scr(v, f), fclose(f); }
   return v; }
@@ -458,7 +454,7 @@ vm bootstrap(vm v) {
 vm initialize(int argc, const char **argv) {
   vm v = malloc(sizeof(struct rt));
   if (!v || setjmp(v->restart)) return
-    errp(v, "init : oom"), finalize(v);
+    errp(v, "oom"), finalize(v);
   v->t0 = clock(),
   v->ip = v->xp = v->syms = v->glob = nil,
   v->fp = v->hp = v->sp = (mem)w2b(1),
@@ -466,16 +462,16 @@ vm initialize(int argc, const char **argv) {
   v->mem_root = NULL;
   init_globals_array(v);
   obj y = interns(v, "ns");
-  tbl_set(v, Top, y, Top);
+  tblset(v, Top, y, Top);
   y = interns(v, "macros");
-  tbl_set(v, Top, y, Mac);
+  tblset(v, Top, y, Mac);
   y = interns(v, "argv");
   obj a = nil;
   mm(&y); mm(&a);
-  for (obj z; argc--; a = z)
+  for (obj z; argc--;)
     z = string(v, argv[argc]),
-    z = pair(v, z, a);
-  um, um, tbl_set(v, Top, y, a);
+    a = pair(v, z, a);
+  um, um, tblset(v, Top, y, a);
   return v; }
 
 vm finalize(vm v) {

@@ -1,102 +1,120 @@
 #include "lips.h"
 #include "ev.h"
 
-#define vm_op(n,...) NoInline obj n(vm v,hom ip,mem fp,mem sp,mem hp,obj xp,##__VA_ARGS__)
-static vm_op(nope);
+// "the virtual machine"
+// it's a stack machine with one free register (xp)
+// that's implemented on top of the C compiler's calling
+// convention. this allows us to keep the most important
+// state variables in CPU registers at all times while the
+// interpreter is running, without any platform-specific code.
 
+// " the interpreter "
+// the interpreter is the set of functions of type terp,
+// given in the header file and also here:
+#define vm_op(n,...) NoInline \
+  obj n(vm v,hom ip,mem fp,mem sp,mem hp,obj xp,##__VA_ARGS__)
+// the arguments to a terp function collectively represent the
+// runtime state, and the  return value is the result of the
+// program. there are six arguments because that's the number
+// that the prevalent unix calling convention on AMD64 (System
+// V ABI) says should be passed in registers; that's the only
+// reason why there aren't more. but it's not too bad; the six
+// arguments are:
+// - v  : vm instance pointer ; most lips functions take this as the first argument
+// - ip : instruction pointer ; the current vm instruction ; function pointer pointer
+// - fp : frame pointer       ; current function context
+// - sp : stack pointer       ; data/call stack
+// - hp : heap pointer        ; the next free heap location
+// - xp : return value        ; general-purpose register
+
+// when the interpreter isn't running, the state variables that
+// would normally be in registers are stored in slots on the
+// vm structure. however while the interpreter is running it
+// uses these struct slots to pass and return extra values
+// without using the stack. so the interpreter has to be sure
+// to restore the current values in the vm struct before it 
+// makes any "external" function calls.
 #define Pack() (Ip=Ph(ip),Sp=sp,Hp=hp,Fp=fp,Xp=xp)
 #define Unpack() (fp=Fp,hp=Hp,sp=Sp,ip=Gh(Ip),xp=Xp)
-#define Jump(f,...) return (f)(v,ip,fp,sp,hp,xp,##__VA_ARGS__)
-#define Have(n) if (avail < n) Jump((Xp=n,gc))
-#define Have1() if (hp == sp) Jump((Xp=1,gc))
 #define CallC(...)(Pack(),(__VA_ARGS__),Unpack())
+
+// the return value of a terp function is usually a call
+// to another terp function. the C compiler has to optimize
+// these tail calls or else every one will grown the call stack.
+#define Jump(f,...) return (f)(v,ip,fp,sp,hp,xp,##__VA_ARGS__)
 #define Cont(n, x) return ip+=n,xp=x,G(ip)(v,ip,fp,sp,hp,xp)
 #define Ap(f,x) return G(f)(v,f,fp,sp,hp,x)
 #define Go(f,x) return f(v,ip,fp,sp,hp,x)
 #define Next(n) Ap(ip+n,xp)
 
+// a special case is when garbage collection is necessary.
+// this occurs near the beginning of a function. if enough
+// memory is not available the interpret jumps to a specific
+// terp function
+static vm_op(gc) {
+  num n = Xp; // this is the required amount of memory, passed in Xp so as not to spill it
+  CallC(reqsp(v, n)); Next(0); }
+// that stores the state and calls the garbage collector;
+// afterwards it jumps back to the instruction that called it.
+// therefore anything before the Have() macro will be executed
+// twice if garbage collection happens! there should be no side
+// effects before Have() or similar.
+#define avail (sp-hp)
+#define Have(n) if (avail < n) Jump((Xp=n,gc))
+#define Have1() if (hp == sp) Jump((Xp=1,gc)) // common case, faster comparison
+
+// the frame structure holds the current function context.
+typedef struct fr { obj clos, retp, subd, argc, argv[]; } *fr;
 #define ff(x)((fr)(x))
-#define Locs fp[-1]
 #define Clos ff(fp)->clos
 #define Retp ff(fp)->retp
 #define Subd ff(fp)->subd
 #define Argc ff(fp)->argc
 #define Argv ff(fp)->argv
-typedef struct fr { obj clos, retp, subd, argc, argv[]; } *fr;
+// the pointer to the local variables array isn't in the frame struct. it
+// isn't present for all functions, but if it is it's in the word of memory
+// immediately preceding the frame pointer.
+#define Locs fp[-1]
+// if a function has locals, this will have been initialized by the
+// by the time they are referred to. the wrinkle in the representation
+// gives a small but significant benefit to general function call
+// performance and should be extended to the closure pointer, which is often
+// nil.
+
+// these are for when something goes wrong
+static vm_op(nope);
 #define TypeCheck(x,t) if(kind(x)!=t)Jump(nope)
 #define Arity(n) if(n>Argc)Jump(nope)
 #define ArityCheck(n) Arity(putnum(n))
-// "the interpreter"
-// it's a stack machine with one free register (xp)
-// that's implemented on top of the C compiler's calling
-// convention. this allows us to keep all the most important
-// vm state variables in CPU registers at all times while the
-// interpreter is running, without any platform-specific code.
-// basically the interpreter amounts to a set of functions
-// with a shared type that observe certain restrictions
-// concerning memory access, function calls, etc. the C
-// compiler has to tail call optimize these functions,
-// otherwise the call stack will grow every time a
-// nonoptimized instruction is executed.
-
-// the System V AMD64 ABI calling convention passes the
-// first six pointer or integer function arguments in CPU
-// registers; further arguments are passed on the stack
-// which affects the compiler's ability to optimize tail
-// calls. interpreter functions have six arguments for
-// that reason. the six arguments are:
-// - v  : vm instance pointer
-// - ip : instruction pointer
-// - fp : frame pointer
-// - sp : stack pointer
-// - hp : heap pointer
-// - xp : return value
-// variables ip-xp all have corresponding slots in the vm
-// structure that store their state when the interpreter
-// is inactive. these slots are also used by the interpreter
-// in certain cases to pass arguments in excess of 6 without
-// spilling them to the stack.
 
 
-// this is the garbage collector interface used
-// by the interpreter. interpreter functions that
-// allocate memory check the available space and
-// trigger garbage collection when more space is
-// needed than is available.
+// " virtual machine instructions "
+// more or less in ascending order of interpreterness
 //
-// the amount of space required is passed in a
-// register slot on the vm structure in order not
-// to spill function arguments on AMD64, sorry.
-static vm_op(gc) { num n = Xp; CallC(reqsp(v, n)); Next(0); }
-#define avail (sp-hp)
-
-
 // load instructions
-#define fast_ref(b) (*(num*)((num)(b)+(num)GF(ip)-Num))
-// the pointer arithmetic works because fixnums are
-// premultiplied by sizeof(obj)
 vm_op(immv) { xp = (obj) GF(ip); Next(2); }
 vm_op(unit) { xp = nil; Next(1); }
 vm_op(one)  { xp = Pn(1); Next(1); }
 vm_op(zero) { xp = Pn(0); Next(1); }
+
+// indexed instructions
+#define fast_ref(b) (*(num*)((num)(b)+(num)GF(ip)-Num))
+// pointer arithmetic works because fixnums are premultiplied by sizeof(obj)
 vm_op(argn) { xp = fast_ref(Argv); Next(2); }
+vm_op(locn) { xp = fast_ref(AR(Locs)); Next(2); }
+vm_op(clon) { xp = fast_ref(AR(Clos)); Next(2); }
 vm_op(arg0) { xp = Argv[0]; Next(1); }
 vm_op(arg1) { xp = Argv[1]; Next(1); }
-vm_op(locn) { xp = fast_ref(AR(Locs)); Next(2); }
 vm_op(loc0) { xp = AR(Locs)[0]; Next(1); }
 vm_op(loc1) { xp = AR(Locs)[1]; Next(1); }
-vm_op(clon) { xp = fast_ref(AR(Clos)); Next(2); }
 vm_op(clo0) { xp = AR(Clos)[0]; Next(1); }
 vm_op(clo1) { xp = AR(Clos)[1]; Next(1); }
 
 // environment operations
 // stack push
 vm_op(push) { Have1(); *--sp = xp; Next(1); }
-
 // set a global variable
-vm_op(tbind) {
-  CallC(tbl_set(v, Dict, (obj) GF(ip), xp));
-  Next(2); }
+vm_op(tbind) { CallC(tblset(v, Dict, (obj) GF(ip), xp)); Next(2); }
 
 // set a local variable
 vm_op(setl) { fast_ref(AR(Locs)) = xp; Next(2); }
@@ -116,7 +134,7 @@ vm_op(prel) {
 vm_op(lbind) {
   obj w = (obj) GF(ip),
       d = XY(w), y = X(w);
-  w = tbl_get(v, d, xp = YY(w));
+  w = tblget(v, d, xp = YY(w));
   if (!w) Jump(nope);
   xp = w;
   if (Gn(y) != 8) TypeCheck(xp, Gn(y));
@@ -134,13 +152,6 @@ vm_op(lbind) {
 // return to C
 vm_op(yield) { return Pack(), xp; }
 
-// return from a function
-vm_op(ret) {
-  ip = Gh(Retp);
-  sp = (mem) ((num) Argv + Argc - Num);
-  fp = (mem) ((num)   sp + Subd - Num);
-  Next(0); }
-
 // conditional jumps
 vm_op(branch) { ip = Gh(xp == nil ? FF(ip) : Gh(GF(ip)));      Next(0); }
 vm_op(barnch) { ip = Gh(xp == nil ? Gh(GF(ip)) : FF(ip));      Next(0); }
@@ -150,6 +161,7 @@ vm_op(brlteq) { ip = Gh(*sp++ <= xp ? Gh(GF(ip)) : FF(ip));    Next(0); }
 vm_op(brgt)   { ip = Gh(*sp++ <= xp ? FF(ip) : Gh(GF(ip)));    Next(0); }
 vm_op(breq)   { ip = Gh(eql(*sp++, xp) ? Gh(GF(ip)) : FF(ip)); Next(0); }
 vm_op(brne)   { ip = Gh(eql(*sp++, xp) ? FF(ip) : Gh(GF(ip))); Next(0); }
+
 // unconditional jumps
 vm_op(jump) { Ap(Gh(GF(ip)), xp); }
 vm_op(clos) { // with closure
@@ -157,6 +169,12 @@ vm_op(clos) { // with closure
   ip = Gh(G(FF(ip)));
   Next(0); }
 
+// return from a function
+vm_op(ret) {
+  ip = Gh(Retp);
+  sp = (mem) ((num) Argv + Argc - Num);
+  fp = (mem) ((num)   sp + Subd - Num);
+  Next(0); }
 
 // regular function call
 vm_op(call) {
@@ -246,11 +264,6 @@ vm_op(cont) {
   memcpy(sp, t->xs+1, w2b(t->len-1));
   Jump(ret); }
 
-vm_op(rd_u) {
-  obj x; CallC(x = parse(v, stdin), x = x ? pair(v, x, nil) : nil);
-  Go(ret, x); }
-
-// apply
 vm_op(ap_u) {
   ArityCheck(2);
   obj x = Argv[0];
@@ -281,9 +294,10 @@ vm_op(hom_u) {
   h[len-1].g = (terp*) h;
   h[len-2].g = NULL;
   Go(ret, Ph(h+len-2)); }
+
 vm_op(tset) {
   obj x = *sp++, y = *sp++;
-  CallC(x = tbl_set(v, xp, x, y));
+  CallC(x = tblset(v, xp, x, y));
   Ap(ip+1, x); }
 vm_op(emx) {
   hom h = Gh(*sp++) - 1;
@@ -324,21 +338,21 @@ vm_op(hom_seek_u) {
 vm_op(tblg) {
   ArityCheck(2);
   TypeCheck(Argv[0], Tbl);
-  xp = tbl_get(v, Argv[0], Argv[1]);
+  xp = tblget(v, Argv[0], Argv[1]);
   Go(ret, xp ? xp : nil); }
 vm_op(tget) {
-  xp = tbl_get(v, xp, *sp++);
+  xp = tblget(v, xp, *sp++);
   Ap(ip+1, xp ? xp : nil); }
 vm_op(tblc) {
   ArityCheck(2);
   TypeCheck(Argv[0], Tbl);
-  xp = tbl_get(v, Argv[0], Argv[1]);
+  xp = tblget(v, Argv[0], Argv[1]);
   Go(ret, xp ? Pn(0) : nil); }
 
 static obj tblss(vm v, num i, num l) {
   mem fp = Fp;
   return i > l-2 ? Argv[i-1] :
-    (tbl_set(v, Xp, Argv[i], Argv[i+1]),
+    (tblset(v, Xp, Argv[i], Argv[i+1]),
      tblss(v, i+2, l)); }
 
 vm_op(tbls) {
@@ -352,13 +366,13 @@ vm_op(tbld) {
   ArityCheck(2);
   TypeCheck(Argv[0], Tbl);
   obj x = nil;
-  CallC(x = tbl_del(v, Argv[0], Argv[1]));
+  CallC(x = tbldel(v, Argv[0], Argv[1]));
   Go(ret, x); }
 vm_op(tblks) {
   ArityCheck(1);
   TypeCheck(Argv[0], Tbl);
   obj x;
-  CallC(x = tbl_keys(v, Argv[0]));
+  CallC(x = tblkeys(v, Argv[0]));
   Go(ret, x); }
 vm_op(tbll) {
   ArityCheck(1);
@@ -753,7 +767,7 @@ static Inline void perrarg(vm v, mem fp) {
     if (i == argc) break; }
   fputc(')', stderr); }
 
-vm_op(nope) {
+static vm_op(nope) {
   fputs("# (", stderr), emit(v, Ph(ip), stderr),
   perrarg(v, fp);
   fputs(" does not exist\n", stderr);

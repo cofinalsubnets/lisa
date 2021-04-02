@@ -6,10 +6,10 @@
 // the string processing primitives are good
 // enough, at which point it can be called the
 // bootstrap parser
-#define err_eof "[parse] unexpected eof"
-#define err_rpar "[parse] unmatched right delimiter"
+#define err_eof "unexpected eof"
+#define err_rpar "unmatched right delimiter"
 
-NoInline const char *tnom(enum type t) { switch (t) {
+Nin const char *tnom(enum type t) { switch (t) {
   case Hom: return "hom";
   case Num: return "num";
   case Tbl: return "tbl";
@@ -95,7 +95,7 @@ static obj str(vm v, FILE *i) {
 void emsep(vm v, obj x, FILE *o, char s) {
   emit(v, x, o), fputc(s, o); }
 
-void phomn(vm v, obj x, FILE *o) {
+static void phomn(vm v, obj x, FILE *o) {
   switch (kind(x)) {
     case Sym: emit(v, x, o); break;
     case Two:
@@ -120,10 +120,11 @@ static void emtwo(vm v, two w, FILE *o) {
   if (w->x == Qt && twop(w->y) && nilp(Y(w->y)))
     fputc('\'', o), emit(v, X(w->y), o);
   else fputc('(', o), emtwo_(v, w, o); }
-static void emnum(vm v, num n, FILE *o) {
+St Vd emnum(vm v, num n, FILE *o) {
   fprintf(o, "%ld", n); }
-static void emhom(vm v, hom h, FILE *o) {
+St Vd emhom(vm v, hom h, FILE *o) {
   fputc('\\', o), phomn(v, homnom(v, Ph(h)), o); }
+
 void emit(vm v, obj x, FILE *o) {
   switch (kind(x)) {
     case Hom: return emhom(v, Gh(x), o);
@@ -134,9 +135,10 @@ void emit(vm v, obj x, FILE *o) {
     case Tbl: return emtbl(v, gettbl(x), o);
     default:  return (void) fputs("()", o); } }
 
-void vferrp(vm v, FILE *o, const char *msg, va_list xs) {
-  fputs("# ", o), vfprintf(o, msg, xs), fputc('\n', o); }
-
 void errp(vm v, const char *msg, ...) {
   va_list xs;
-  va_start(xs, msg), vferrp(v, stderr, msg, xs), va_end(xs); }
+  fputs("# ", stderr);
+  va_start(xs, msg),
+  vfprintf(stderr, msg, xs);
+  va_end(xs);
+  fputc('\n', stderr); }
