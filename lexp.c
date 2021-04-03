@@ -9,62 +9,61 @@
 #define err_eof "unexpected eof"
 #define err_rpar "unmatched right delimiter"
 
-Nin const char *tnom(enum type t) { switch (t) {
-  case Hom: return "hom";
-  case Num: return "num";
-  case Tbl: return "tbl";
-  case Two: return "two";
-  case Tup: return "vec";
-  case Oct: return "str";
-  case Sym: return "sym";
-  default:  return "nil"; } }
+Nin Ko char *tnom(enum type t) { switch (t) {
+  case Hom: R "hom";
+  case Num: R "num";
+  case Tbl: R "tbl";
+  case Two: R "two";
+  case Tup: R "vec";
+  case Oct: R "str";
+  case Sym: R "sym";
+  default:  R "nil"; } }
 
-typedef obj P(vm, FILE*);
-static P atom, reads, quote, str;
+Ty obj P(vm, FILE*);
+St P atom, reads, quote, str;
 
 #define readx(v,m)(errp(v,m),0)
 
-static int read0(FILE *i) {
+St int read0(FILE *i) {
   for (int c;;) switch ((c = getc(i))) {
     case '#':
     case ';': do c = getc(i); while (c != '\n' && c != EOF);
     case ' ': case '\t': case '\n': continue;
-    default: return c; } }
+    default: R c; } }
 
 obj parse(vm v, FILE *i) {
   for (int c;;) switch ((c = read0(i))) {
-    case EOF:  return 0;
-    case ')':  return readx(v, err_rpar);
-    case '(':  return reads(v, i);
-    case '"':  return str(v, i);
-    case '\'': return quote(v, i);
-    default:   return ungetc(c, i), atom(v, i); } }
+    case EOF:  R 0;
+    case ')':  R readx(v, err_rpar);
+    case '(':  R reads(v, i);
+    case '"':  R str(v, i);
+    case '\'': R quote(v, i);
+    default:   R ungetc(c, i), atom(v, i); } }
 
-static obj quote(vm v, FILE *i) {
+St obj quote(vm v, FILE *i) {
   obj r = parse(v, i);
-  return !r ? r :
-   (r = pair(v, r, nil), pair(v, Qt, r)); }
+  R !r ? r : (r = pair(v, r, nil), pair(v, Qt, r)); }
 
-static obj reads(vm v, FILE *i) {
+St obj reads(vm v, FILE *i) {
   obj x, y, c;
   switch ((c = read0(i))) {
-    case EOF: return readx(v, err_eof);
-    case ')': return nil;
+    case EOF: R readx(v, err_eof);
+    case ')': R nil;
     default:  ungetc(c, i);
-              if (!(x = parse(v, i))) return x;
+              if (!(x = parse(v, i))) R x;
               with(x, y = reads(v, i));
-              return y ? pair(v, x, y) : y; } }
+              R y ? pair(v, x, y) : y; } }
 
-static obj rloop(vm v, FILE *i, oct o, num n, num lim,
+St obj rloop(vm v, FILE *i, oct o, num n, num lim,
   obj (*re)(vm, FILE*, oct, num, num)) {
   obj x;
   o->len = n, x = putoct(o);
-  return o->text[n-1] == 0 ? x :
+  R o->text[n-1] == 0 ? x :
     (with(x, o = cells(v, 1 + b2w(2*n))),
      memcpy(o->text, getoct(x)->text, o->len = n),
      re(v, i, o, n, 2 * n)); }
 
-static obj atom_(vm v, FILE *p, oct o, num n, num lim) {
+St obj atom_(vm v, FILE *p, oct o, num n, num lim) {
   obj x;
   while (n < lim) switch (x = fgetc(p)) {
     case ' ': case '\n': case '\t': case ';': case '#':
@@ -73,67 +72,67 @@ static obj atom_(vm v, FILE *p, oct o, num n, num lim) {
       o->text[n++] = 0;
       goto out;
     default: o->text[n++] = x; } out:
-  return rloop(v, p, o, n, lim, atom_); }
+  R rloop(v, p, o, n, lim, atom_); }
 
-static obj str_(vm v, FILE *p, oct o, num n, num lim) {
+St obj str_(vm v, FILE *p, oct o, num n, num lim) {
   obj x;
   while (n < lim) switch (x = fgetc(p)) {
     case '\\': if ((x = fgetc(p)) == EOF) {
     case EOF: case '"': o->text[n++] = 0; goto out; }
     default: o->text[n++] = x; } out:
-  return rloop(v, p, o, n, lim, str_); }
+  R rloop(v, p, o, n, lim, str_); }
 
-static obj atom(vm v, FILE *i) {
+St obj atom(vm v, FILE *i) {
   obj o = atom_(v, i, cells(v, 2), 0, 8);
   char *st = NULL;
   num j = strtol(chars(o), &st, 0);
-  return !st || *st ? intern(v, o) : putnum(j); }
+  R !st || *st ? intern(v, o) : putnum(j); }
 
-static obj str(vm v, FILE *i) {
-  return str_(v, i, cells(v, 2), 0, 8); }
+St obj str(vm v, FILE *i) {
+  R str_(v, i, cells(v, 2), 0, 8); }
 
-void emsep(vm v, obj x, FILE *o, char s) {
+__ emsep(vm v, obj x, FILE *o, char s) {
   emit(v, x, o), fputc(s, o); }
 
-static void phomn(vm v, obj x, FILE *o) {
+St __ phomn(vm v, obj x, FILE *o) {
   switch (kind(x)) {
-    case Sym: emit(v, x, o); break;
+    case Sym: emit(v, x, o); Bk;
     case Two:
       if (symp(X(x))) emit(v, X(x), o);
       if (twop(Y(x))) fputc('\\', o), phomn(v, Y(x), o); } }
 
-static void emoct(vm v, oct s, FILE *o) {
+St __ emoct(vm v, oct s, FILE *o) {
   fputc('"', o);
   for (num i = 0, l = s->len - 1; i < l; i++)
     if (s->text[i] == '"') fputs("\\\"", o);
     else fputc(s->text[i], o);
   fputc('"', o); }
-static void emtbl(vm v, tbl t, FILE *o) {
+St __ emtbl(vm v, tbl t, FILE *o) {
   fprintf(o, "#tbl:%ld/%ld", t->len, t->cap); }
-static void emsym(vm v, sym y, FILE *o) {
+St __ emsym(vm v, sym y, FILE *o) {
   nilp(y->nom) ? fprintf(o, "#sym@%lx", (num) y) :
                  fputs(chars(y->nom), o); }
-static void emtwo_(vm v, two w, FILE *o) {
+St __ emtwo_(vm v, two w, FILE *o) {
   twop(w->y) ? (emsep(v, w->x, o, ' '), emtwo_(v, gettwo(w->y), o)) :
                 emsep(v, w->x, o, ')'); }
-static void emtwo(vm v, two w, FILE *o) {
+St __ emtwo(vm v, two w, FILE *o) {
   if (w->x == Qt && twop(w->y) && nilp(Y(w->y)))
     fputc('\'', o), emit(v, X(w->y), o);
   else fputc('(', o), emtwo_(v, w, o); }
-St Vd emnum(vm v, num n, FILE *o) {
+St __ emnum(vm v, num n, FILE *o) {
   fprintf(o, "%ld", n); }
-St Vd emhom(vm v, hom h, FILE *o) {
+St __ emhom(vm v, hom h, FILE *o) {
   fputc('\\', o), phomn(v, homnom(v, Ph(h)), o); }
 
 void emit(vm v, obj x, FILE *o) {
   switch (kind(x)) {
-    case Hom: return emhom(v, Gh(x), o);
-    case Num: return emnum(v, Gn(x), o);
-    case Sym: return emsym(v, getsym(x), o);
-    case Two: return emtwo(v, gettwo(x), o);
-    case Oct: return emoct(v, getoct(x), o);
-    case Tbl: return emtbl(v, gettbl(x), o);
-    default:  return (void) fputs("()", o); } }
+    case Hom: R emhom(v, Gh(x), o);
+    case Num: R emnum(v, Gn(x), o);
+    case Sym: R emsym(v, getsym(x), o);
+    case Two: R emtwo(v, gettwo(x), o);
+    case Oct: R emoct(v, getoct(x), o);
+    case Tbl: R emtbl(v, gettbl(x), o);
+    default:  R (__) fputs("()", o); } }
 
 void errp(vm v, const char *msg, ...) {
   va_list xs;

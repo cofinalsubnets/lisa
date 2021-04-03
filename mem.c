@@ -77,7 +77,7 @@ void reqsp(vm v, num req) {
 // t values come from clock(). if t0 < t1 < t2 then
 // u will be >= 1. however, sometimes t1 == t2. in that case
 // u = 1.
-static int copy(vm v, num len) {
+St int copy(vm v, num len) {
   clock_t t1 = clock(), t2, u;
   mem b0 = v->mem_pool, b1 = malloc(w2b(len));
   return !b1 ? 0 :
@@ -88,7 +88,7 @@ static int copy(vm v, num len) {
     v->t0 = t2,
     u); }
 
-static Inline void do_copy(vm v, num l0, mem b0, num l1, mem b1) {
+St In Vd do_copy(vm v, num l0, mem b0, num l1, mem b1) {
   v->mem_len = l1;
   v->mem_pool = Hp = b1;
   mem s0 = Sp,
@@ -165,7 +165,7 @@ cpcc(cpsym) {
 cpcc(cphom) {
   hom dst, src = Gh(x), end = src, start;
   if (fresh(G(src))) return (obj) G(src);
-  while (end++->g);
+  while (*end++);
   start = (hom) G(end);
   num i, len = (end+1) - start;
   dst = bump(v, len);
@@ -276,11 +276,7 @@ static uint64_t hc(vm v, obj x) {
     case Hom: r = hc(v, homnom(v, x)) ^ (mix * (uintptr_t) G(x)); break;
     case Tbl: r = mix * mix; // umm this'll do for now ...
     default:  r = mix * x; } 
-#define bits (Word*8)
-#define shr 16
-  return (r<<(bits-shr))|(r>>shr); }
-#undef bits
-#undef shr
+  return (r<<48)|(r>>16); }
 
 #define hbi(a,k)((k)%(a))
 

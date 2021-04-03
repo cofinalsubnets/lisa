@@ -14,65 +14,71 @@
 
 // thanks !!
 //
-// first of all, C makes you type too much
+// first of all C makes you type waaaaaay too much
 #define In inline __attribute__((always_inline))
 #define Nin __attribute__((noinline))
 #define Inline In
 #define NoInline Nin
 #define St static
 #define Vd void
+#define __ void
 #define Ty typedef
 #define Sr struct
 #define Un union
+#define Ko const
+#define En enum
+#define Sz sizeof
+#define R  return
+#define El else
+#define Sw switch
+#define Bk break
+#define Ks case
 
-// "obj" is the data supertype. it's synonymous with
-// the pointer integer type on the host platform, but for
-// clarity the two are usually distinguished.
-Ty intptr_t obj, num, *mem;
-#define non ((obj)0)
+Ty intptr_t // pointer type on the host platform
+  obj,  // data supertype
+  num,  // integers, distinguished for clarity
+  *mem; // data pointer
+#define O (obj)
+#define non (O 0)
 #define nil (~non)
-#define Word sizeof(non)
+#define W Sz(obj)
+#define W2 (2*W)
 
 // this is the structure responsible for holding runtime
 // state. a pointer to it as an argument to almost every
 // function in lips.
 Ty Sr rt *rt, *vm;
+// this is the type of interpreter functions
+Ty obj terp(rt, obj, mem, mem, mem, obj);
+Ty terp **hom; // code pointer ; the internal function type
 
-// this is a pointless container around the function type
-Ty Un hom *hom;
-Ty obj terp(rt, hom, mem, mem, mem, obj);
-// unfortunately the function type can't just be terp**
-// because of mandatory type indirection. a case against
-// strong static typing?
-Un hom { terp *g; };
+// more fundamental data types
+Ty Sr two { obj x, y; } *two; // pairs
+Ty Sr tup { num len; obj xs[]; } *tup; // vectors
+Ty Sr oct { num len; char text[]; } *oct; // byte arrays
+Ty Sr sym { obj nom, code, l, r; } *sym; // symbols
 
-// now some more fundamental data typesj
-Ty Sr two { obj x, y; } *two;
-Ty Sr tup { num len; obj xs[]; } *tup;
-Ty Sr oct { num len; char text[]; } *oct;
-Ty Sr sym { obj nom, code, l, r; } *sym;
+Ty Sr tble { obj key, val; Sr tble *next; } *tble;
+Ty Sr tbl { num len, cap; tble *tab; } *tbl;
 
-typedef struct spec {
-  struct spec *sp;
+Ty Sr spec {
+  Sr spec *sp;
   obj (*cp)(rt, obj), nom; } *spec;
-typedef struct tble { obj key, val; struct tble *next; } *tble;
-typedef struct tbl { num len, cap; tble *tab; } *tbl;
 
 Ty Sr root { mem one; Sr root *next; } *root;
-struct rt {
+Sr rt {
   obj ip, xp, *fp, *hp, *sp; // vm state variables
   obj syms, glob; // globals
   root mem_root; // memory
   num t0, count, mem_len, *mem_pool;
-  // top level restart
-  jmp_buf restart; };
+  jmp_buf restart; }; // top level restart
 
 // the 3 ls bits of each pointer are a type tag
-enum type {
+En type {
   Hom = 0, Num = 1, Two = 2, Tup = 3,
   Oct = 4, Tbl = 5, Sym = 6, Nil = 7 };
 
-enum globl {
+En globl {
   Def, Cond, Lamb, Quote, Seq, Splat, Topl, Macs,
   Eval, Apply, NGlobs };
 
@@ -80,15 +86,15 @@ rt initialize(),
    bootstrap(rt),
    finalize(rt);
 
-void scr(vm, FILE*),
-     emit(rt, obj, FILE*),
-     errp(rt, const char*, ...),
-     emsep(rt, obj, FILE*, char),
-     reqsp(rt, num),
-     *bump(rt, num),
-     *cells(rt, num);
+__ scr(vm, FILE*),
+   emit(rt, obj, FILE*),
+   errp(rt, Ko char*, ...),
+   emsep(rt, obj, FILE*, char),
+   reqsp(rt, num),
+   *bump(rt, num),
+   *cells(rt, num);
 
-obj err(rt, obj, const char*, ...),
+obj err(rt, obj, Ko char*, ...),
     restart(rt),
     homnom(rt, obj),
     pair(rt, obj, obj),
@@ -100,29 +106,29 @@ obj err(rt, obj, const char*, ...),
     tblget(rt, obj, obj),
     tbldel(rt, obj, obj),
     tblkeys(rt, obj),
-    string(rt, const char*);
+    string(rt, Ko char*);
 num llen(obj);
 int eql(obj, obj);
 
-const char *tnom(enum type);
+Ko char *tnom(En type);
 
 #define kind(x) ((x)&7)
-#define Gh(x) ((hom)((x)-Hom))
-#define Ph(x) ((obj)(x)+Hom)
+#define Gh(x) ((hom)((x)))
+#define Ph(x) (O(x))
 #define Gn getnum
 #define Pn putnum
 #define gettwo(x) ((two)((x)-Two))
-#define puttwo(x) ((obj)(x)+Two)
+#define puttwo(x) (O(x)+Two)
 #define getnum(n) ((num)(n)>>3)
-#define putnum(n) (((obj)(n)<<3)+Num)
+#define putnum(n) ((O(n)<<3)+Num)
 #define getsym(x) ((sym)((obj)(x)-Sym))
-#define putsym(x) ((obj)(x)+Sym)
+#define putsym(x) (O(x)+Sym)
 #define gettup(x) ((tup)((x)-Tup))
-#define puttup(x) ((obj)(x)+Tup)
+#define puttup(x) (O(x)+Tup)
 #define getoct(x) ((oct)((obj)(x)-Oct))
-#define putoct(x) ((obj)(x)+Oct)
+#define putoct(x) (O(x)+Oct)
 #define gettbl(x) ((tbl)((obj)(x)-Tbl))
-#define puttbl(x) ((obj)(x)+Tbl)
+#define puttbl(x) (O(x)+Tbl)
 #define homp(x) (kind(x)==Hom)
 #define octp(x) (kind(x)==Oct)
 #define nump(x) (kind(x)==Num)
@@ -137,8 +143,8 @@ const char *tnom(enum type);
 #define XY(x) X(Y(x))
 #define YX(x) Y(X(x))
 #define YY(x) Y(Y(x))
-#define F(x) (Gh(x)+1)
-#define G(x) Gh(x)->g
+#define F(x) ((hom)(x)+1)
+#define G(x) (*(hom)(x))
 #define FF(x) F(F(x))
 #define FG(x) F(G(x))
 #define GF(x) G(F(x))
@@ -147,13 +153,15 @@ const char *tnom(enum type);
 #define symnom(y) chars(getsym(y)->nom)
 #define mm(r) ((Safe=&((struct root){(r),Safe})))
 #define um (Safe=Safe->next)
-#define LEN(x) (sizeof((x))/sizeof(*(x)))
+#define LEN(x) (Sz((x))/Sz(*(x)))
 #define AR(x) gettup(x)->xs
 #define AL(x) gettup(x)->len
-#define with(y,...) (mm(&(y)),(__VA_ARGS__),um)
-#define b2w(n)((n)/Word+((n)%Word&&1))
-#define w2b(n) ((n)*Word)
-#define Size(t) (sizeof(struct t)/Word)
+#define Mm(y,...) (mm(&(y)),(__VA_ARGS__),um)
+#define with(...) Mm(__VA_ARGS__)
+#define b2w(n)((n)/W+((n)%W&&1))
+#define w2b(n) ((n)*W)
+#define Szr(t) (Sz(Sr t)/W)
+#define Size(t) Szr(t)
 #define Ip v->ip
 #define Fp v->fp
 #define Hp v->hp
@@ -177,20 +185,20 @@ const char *tnom(enum type);
 #define App AR(Glob)[Apply]
 #define Avail (Sp-Hp)
 
-extern const uint64_t mix;
+extern Ko uint64_t mix;
 
 St In hom button(hom h) {
-  while (h->g) h++;
-  return h; }
+  while (*h) h++;
+  R h; }
 
-hom compile(vm v, obj x);
+obj compile(vm, obj);
 
 #ifndef NOM
 #define NOM "lips"
 #endif
 
 _Static_assert(
-  sizeof(obj) >= 8,
+  Sz(obj) >= 8,
   "pointers are less than 64 bits");
   
 _Static_assert(

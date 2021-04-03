@@ -11,8 +11,8 @@
 // " the interpreter "
 // the interpreter is the set of functions of type terp,
 // given in the header file and also here:
-#define Vm(n,...) Nin obj \
-  n(vm v,obj ip,mem fp,mem sp,mem hp,obj xp,##__VA_ARGS__)
+#define vm_op(n,...) NoInline \
+  obj n(vm v,obj ip,mem fp,mem sp,mem hp,obj xp,##__VA_ARGS__)
 // the arguments to a terp function collectively represent the
 // runtime state, and the  return value is the result of the
 // program. there are six arguments because that's the number
@@ -41,17 +41,17 @@
 // the return value of a terp function is usually a call
 // to another terp function. the C compiler has to optimize
 // these tail calls or else every one will grown the call stack.
-#define Jump(f,...) R (f)(v,ip,fp,sp,hp,xp,##__VA_ARGS__)
-#define Cont(n, x) R ip+=w2b(n), xp=x, G(ip)(v,ip,fp,sp,hp,xp)
-#define Ap(f,x) R G(f)(v,f,fp,sp,hp,x)
-#define Go(f,x) R f(v,ip,fp,sp,hp,x)
-#define Next(n) Ap(ip+w2b(n),xp)
+#define Jump(f,...) return (f)(v,ip,fp,sp,hp,xp,##__VA_ARGS__)
+#define Cont(n, x) return ip+=n,xp=x,G(ip)(v,ip,fp,sp,hp,xp)
+#define Ap(f,x) return G(f)(v,Ph(f),fp,sp,hp,x)
+#define Go(f,x) return f(v,ip,fp,sp,hp,x)
+#define Next(n) Ap(ip+n,xp)
 
 // a special case is when garbage collection is necessary.
 // this occurs near the beginning of a function. if enough
 // memory is not available the interpret jumps to a specific
 // terp function
-St Vm(gc) {
+static vm_op(gc) {
   num n = Xp; // this is the required amount of memory, passed in Xp so as not to spill it
   CallC(reqsp(v, n)); Next(0); }
 // that stores the state and calls the garbage collector;
@@ -64,7 +64,7 @@ St Vm(gc) {
 #define Have1() if (hp == sp) Jump((Xp=1,gc)) // common case, faster comparison
 
 // the frame structure holds the current function context.
-Ty Sr fr { obj clos, retp, subd, argc, argv[]; } *fr;
+typedef struct fr { obj clos, retp, subd, argc, argv[]; } *fr;
 #define ff(x)((fr)(x))
 #define Clos ff(fp)->clos
 #define Retp ff(fp)->retp
@@ -82,7 +82,7 @@ Ty Sr fr { obj clos, retp, subd, argc, argv[]; } *fr;
 // nil.
 
 // these are for when something goes wrong
-static Vm(nope);
+static vm_op(nope);
 #define TypeCheck(x,t) if(kind(x)!=t)Jump(nope)
 #define Arity(n) if(n>Argc)Jump(nope)
 #define ArityCheck(n) Arity(putnum(n))
@@ -92,35 +92,35 @@ static Vm(nope);
 // more or less in ascending order of interpreterness
 //
 // load instructions
-Vm(immv) { xp = O GF(ip); Next(2); }
-Vm(unit) { xp = nil; Next(1); }
-Vm(one)  { xp = Pn(1); Next(1); }
-Vm(zero) { xp = Pn(0); Next(1); }
+vm_op(immv) { xp = (obj) GF(ip); Next(2); }
+vm_op(unit) { xp = nil; Next(1); }
+vm_op(one)  { xp = Pn(1); Next(1); }
+vm_op(zero) { xp = Pn(0); Next(1); }
 
 // indexed instructions
 #define fast_ref(b) (*(num*)((num)(b)+(num)GF(ip)-Num))
 // pointer arithmetic works because fixnums are premultiplied by sizeof(obj)
-Vm(argn) { xp = fast_ref(Argv); Next(2); }
-Vm(locn) { xp = fast_ref(AR(Locs)); Next(2); }
-Vm(clon) { xp = fast_ref(AR(Clos)); Next(2); }
-Vm(arg0) { xp = Argv[0]; Next(1); }
-Vm(arg1) { xp = Argv[1]; Next(1); }
-Vm(loc0) { xp = AR(Locs)[0]; Next(1); }
-Vm(loc1) { xp = AR(Locs)[1]; Next(1); }
-Vm(clo0) { xp = AR(Clos)[0]; Next(1); }
-Vm(clo1) { xp = AR(Clos)[1]; Next(1); }
+vm_op(argn) { xp = fast_ref(Argv); Next(2); }
+vm_op(locn) { xp = fast_ref(AR(Locs)); Next(2); }
+vm_op(clon) { xp = fast_ref(AR(Clos)); Next(2); }
+vm_op(arg0) { xp = Argv[0]; Next(1); }
+vm_op(arg1) { xp = Argv[1]; Next(1); }
+vm_op(loc0) { xp = AR(Locs)[0]; Next(1); }
+vm_op(loc1) { xp = AR(Locs)[1]; Next(1); }
+vm_op(clo0) { xp = AR(Clos)[0]; Next(1); }
+vm_op(clo1) { xp = AR(Clos)[1]; Next(1); }
 
 // environment operations
 // stack push
-Vm(push) { Have1(); *--sp = xp; Next(1); }
+vm_op(push) { Have1(); *--sp = xp; Next(1); }
 // set a global variable
-Vm(tbind) { CallC(tblset(v, Dict, (obj) GF(ip), xp)); Next(2); }
+vm_op(tbind) { CallC(tblset(v, Dict, (obj) GF(ip), xp)); Next(2); }
 
 // set a local variable
-Vm(setl) { fast_ref(AR(Locs)) = xp; Next(2); }
+vm_op(setl) { fast_ref(AR(Locs)) = xp; Next(2); }
 
 // initialize local variable slots
-Vm(prel) {
+vm_op(prel) {
   num n = Gn(GF(ip));
   Have(n + 2);
   tup t = (tup) hp;
@@ -131,7 +131,7 @@ Vm(prel) {
   Next(2); }
 
 // late bind
-Vm(lbind) {
+vm_op(lbind) {
   obj w = (obj) GF(ip),
       d = XY(w), y = X(w);
   w = tblget(v, d, xp = YY(w));
@@ -142,7 +142,7 @@ Vm(lbind) {
   if ((q == call || q == rec) && homp(xp)) {
     obj aa = (obj)GF(FF(ip));
     if (G(xp) == arity && aa >= (obj)GF(xp))
-      xp += W2; }
+      xp += 2*Word; }
   G(ip) = immv;
   GF(ip) = (terp*) xp;
   Next(2); }
@@ -150,51 +150,51 @@ Vm(lbind) {
 
 // control flow
 // return to C
-Vm(yield) { R Pack(), xp; }
+vm_op(yield) { return Pack(), xp; }
 
 // conditional jumps
-Vm(branch) { ip = xp == nil ? O FF(ip) : O GF(ip);      Next(0); }
-Vm(barnch) { ip = xp == nil ? O GF(ip) : O FF(ip);      Next(0); }
-Vm(brlt)   { ip = *sp++ <  xp ? O GF(ip) : O FF(ip);    Next(0); }
-Vm(brgteq) { ip = *sp++ <  xp ? O FF(ip) : O GF(ip);    Next(0); }
-Vm(brlteq) { ip = *sp++ <= xp ? O GF(ip) : O FF(ip);    Next(0); }
-Vm(brgt)   { ip = *sp++ <= xp ? O FF(ip) : O GF(ip);    Next(0); }
-Vm(breq)   { ip = eql(*sp++, xp) ? O GF(ip) : O FF(ip); Next(0); }
-Vm(brne)   { ip = eql(*sp++, xp) ? O FF(ip) : O GF(ip); Next(0); }
+vm_op(branch) { ip = (obj)(xp == nil ? FF(ip) : Gh(GF(ip)));      Next(0); }
+vm_op(barnch) { ip = (obj)(xp == nil ? Gh(GF(ip)) : FF(ip));      Next(0); }
+vm_op(brlt)   { ip = (obj)(*sp++ <  xp ? Gh(GF(ip)) : FF(ip));    Next(0); }
+vm_op(brgteq) { ip = (obj)(*sp++ <  xp ? FF(ip) : Gh(GF(ip)));    Next(0); }
+vm_op(brlteq) { ip = (obj)(*sp++ <= xp ? Gh(GF(ip)) : FF(ip));    Next(0); }
+vm_op(brgt)   { ip = (obj)(*sp++ <= xp ? FF(ip) : Gh(GF(ip)));    Next(0); }
+vm_op(breq)   { ip = (obj)(eql(*sp++, xp) ? Gh(GF(ip)) : FF(ip)); Next(0); }
+vm_op(brne)   { ip = (obj)(eql(*sp++, xp) ? FF(ip) : Gh(GF(ip))); Next(0); }
 
 // unconditional jumps
-Vm(jump) { Ap(O GF(ip), xp); }
-Vm(clos) { // with closure
-  Clos = O GF(ip);
-  ip = O G(FF(ip));
+vm_op(jump) { Ap(Gh(GF(ip)), xp); }
+vm_op(clos) { // with closure
+  Clos = (obj) GF(ip);
+  ip = (obj)(G(FF(ip)));
   Next(0); }
 
 // return from a function
-Vm(ret) {
-  ip = Retp;
+vm_op(ret) {
+  ip = Gh(Retp);
   sp = (mem) ((num) Argv + Argc - Num);
   fp = (mem) ((num)   sp + Subd - Num);
   Next(0); }
 
 // regular function call
-Vm(call) {
+vm_op(call) {
   Have(Size(fr));
-  obj adic = O GF(ip);
+  obj adic = (obj) GF(ip);
   num off = fp - (mem) ((num) sp + adic - Num);
   fp = sp -= Size(fr);
-  Retp = Ph(ip+W2);
+  Retp = Ph(ip+2);
   Subd = Pn(off);
   Clos = nil;
   Argc = adic;
-  Ap(xp, nil); }
+  Ap(Gh(xp), nil); }
 
 // general tail call
-Vm(rec) {
+vm_op(rec) {
   num adic = Gn(GF(ip));
   if (Argc == (obj)GF(ip)) {
     for (mem p = Argv; adic--; *p++ = *sp++);
     sp = fp;
-    Ap(xp, nil); }
+    Ap(Gh(xp), nil); }
 
 
   obj off = Subd, rp = Retp; // save return info
@@ -209,15 +209,15 @@ Vm(rec) {
   Argc = Pn(adic);
   Subd = off;
   Clos = nil;
-  Ap(xp, nil); }
+  Ap(Gh(xp), nil); }
 
 // type/arity checking
-Vm(arity) { Arity((obj)GF(ip)); Next(2); }
-#define tcn(k) {terp*r=kind(xp)==k?G(ip+=W):nope;Jump(r);}
-Vm(idnum) { tcn(Num); }
-Vm(idtwo) { tcn(Two); }
-Vm(idhom) { tcn(Hom); }
-Vm(idtbl) { tcn(Tbl); }
+vm_op(arity) { Arity((obj)GF(ip)); Next(2); }
+#define tcn(k) {terp*r=kind(xp)==k?G(++ip):nope;Jump(r);}
+vm_op(idnum) { tcn(Num); }
+vm_op(idtwo) { tcn(Two); }
+vm_op(idhom) { tcn(Hom); }
+vm_op(idtbl) { tcn(Tbl); }
 
 // continuations
 //
@@ -228,7 +228,7 @@ Vm(idtbl) { tcn(Tbl); }
 // would be slower. faster continuations at the cost of slower
 // function calls seems like a bad deal given the relative
 // frequency of the two.
-Vm(ccc_u) {
+vm_op(ccc_u) {
   ArityCheck(1);
   obj x = Argv[0];
   TypeCheck(x, Hom);
@@ -246,15 +246,15 @@ Vm(ccc_u) {
   memcpy(t->xs+1, sp, w2b(ht));
   hom c = (hom) hp;
   hp += 4;
-  c[0] = cont;
-  c[1] = (terp*) puttup(t);
-  c[2] = NULL;
-  c[3] = (terp*) c;
+  c[0].g = cont;
+  c[1].g = (terp*) puttup(t);
+  c[2].g = NULL;
+  c[3].g = (terp*) c;
   Argv[0] = Ph(c);
-  Ap(x, nil); }
+  Ap(Gh(x), nil); }
 
 // call a continuation
-Vm(cont) {
+vm_op(cont) {
   tup t = gettup(GF(ip));
   Have(t->len - 1);
   xp = Gn(Argc) == 0 ? nil : *Argv;
@@ -264,7 +264,7 @@ Vm(cont) {
   memcpy(sp, t->xs+1, w2b(t->len-1));
   Jump(ret); }
 
-Vm(ap_u) {
+vm_op(ap_u) {
   ArityCheck(2);
   obj x = Argv[0];
   TypeCheck(x, Hom);
@@ -279,11 +279,11 @@ Vm(ap_u) {
   Argc = Pn(adic);
   Subd = off;
   Clos = nil;
-  Ap(x, nil); }
+  Ap(Gh(x), nil); }
 
 
 // instructions used by the compiler
-Vm(hom_u) {
+vm_op(hom_u) {
   ArityCheck(1);
   TypeCheck(*Argv, Num);
   num len = Gn(*Argv) + 2;
@@ -291,59 +291,59 @@ Vm(hom_u) {
   hom h = (hom) hp;
   hp += len;
   memset(h, -1, w2b(len));
-  h[len-1] = (terp*) h;
-  h[len-2] = NULL;
+  h[len-1].g = (terp*) h;
+  h[len-2].g = NULL;
   Go(ret, Ph(h+len-2)); }
 
-Vm(tset) {
+vm_op(tset) {
   obj x = *sp++, y = *sp++;
   CallC(x = tblset(v, xp, x, y));
-  Ap(ip+W, x); }
-Vm(emx) {
+  Ap(ip+1, x); }
+vm_op(emx) {
   hom h = Gh(*sp++) - 1;
   G(h) = (terp*) xp;
-  Ap(ip+W, Ph(h)); }
-Vm(emi) {
+  Ap(ip+1, Ph(h)); }
+vm_op(emi) {
   hom h = Gh(*sp++) - 1;
   G(h) = (terp*) Gn(xp);
-  Ap(ip+W, Ph(h)); }
-Vm(emx_u) {
+  Ap(ip+1, Ph(h)); }
+vm_op(emx_u) {
   ArityCheck(2);
   TypeCheck(Argv[1], Hom);
   hom h = Gh(Argv[1]) - 1;
   G(h) = (terp*) Argv[0];
   Go(ret, Ph(h)); }
-Vm(emi_u) {
+vm_op(emi_u) {
   ArityCheck(2);
   TypeCheck(Argv[0], Num);
   TypeCheck(Argv[1], Hom);
   hom h = Gh(Argv[1]) - 1;
   G(h) = (terp*) Gn(Argv[0]);
   Go(ret, Ph(h)); }
-Vm(hom_geti_u) {
+vm_op(hom_geti_u) {
   ArityCheck(1);
   TypeCheck(Argv[0], Hom);
   Go(ret, Pn(G(Argv[0]))); }
-Vm(hom_getx_u) {
+vm_op(hom_getx_u) {
   ArityCheck(1);
   TypeCheck(Argv[0], Hom);
   Go(ret, (obj)G(Argv[0])); }
-Vm(hom_seek_u) {
+vm_op(hom_seek_u) {
   ArityCheck(2);
   TypeCheck(Argv[0], Hom);
   TypeCheck(Argv[1], Num);
   Go(ret, Ph(Gh(Argv[0])+Gn(Argv[1]))); }
 
 // hash tables
-Vm(tblg) {
+vm_op(tblg) {
   ArityCheck(2);
   TypeCheck(Argv[0], Tbl);
   xp = tblget(v, Argv[0], Argv[1]);
   Go(ret, xp ? xp : nil); }
-Vm(tget) {
+vm_op(tget) {
   xp = tblget(v, xp, *sp++);
-  Ap(ip+W, xp ? xp : nil); }
-Vm(tblc) {
+  Ap(ip+1, xp ? xp : nil); }
+vm_op(tblc) {
   ArityCheck(2);
   TypeCheck(Argv[0], Tbl);
   xp = tblget(v, Argv[0], Argv[1]);
@@ -355,40 +355,40 @@ static obj tblss(vm v, num i, num l) {
     (tblset(v, Xp, Argv[i], Argv[i+1]),
      tblss(v, i+2, l)); }
 
-Vm(tbls) {
+vm_op(tbls) {
   obj x = nil;
   ArityCheck(1);
   xp = *Argv;
   TypeCheck(xp, Tbl);
   CallC(x = tblss(v, 1, Gn(Argc)));
   Go(ret, x); }
-Vm(tbld) {
+vm_op(tbld) {
   ArityCheck(2);
   TypeCheck(Argv[0], Tbl);
   obj x = nil;
   CallC(x = tbldel(v, Argv[0], Argv[1]));
   Go(ret, x); }
-Vm(tblks) {
+vm_op(tblks) {
   ArityCheck(1);
   TypeCheck(Argv[0], Tbl);
   obj x;
   CallC(x = tblkeys(v, Argv[0]));
   Go(ret, x); }
-Vm(tbll) {
+vm_op(tbll) {
   ArityCheck(1);
   TypeCheck(Argv[0], Tbl);
   Go(ret, Pn(gettbl(*Argv)->len)); }
-Vm(tblmk) {
+vm_op(tblmk) {
   CallC(Xp = table(v),
     tblss(v, 0, Gn(Argc)));
   Go(ret, Xp); }
 
 // string instructions
-Vm(strl) {
+vm_op(strl) {
   ArityCheck(1);
   TypeCheck(*Argv, Oct);
   Go(ret, Pn(getoct(*Argv)->len-1)); }
-Vm(strg) {
+vm_op(strg) {
   ArityCheck(2);
   TypeCheck(Argv[0], Oct);
   TypeCheck(Argv[1], Num);
@@ -396,7 +396,7 @@ Vm(strg) {
     Pn(getoct(Argv[0])->text[Gn(Argv[1])]) :
     nil); }
 
-Vm(strc) {
+vm_op(strc) {
   num l = Gn(Argc), sum = 0, i = 0;
   while (i < l) {
     obj x = Argv[i++];
@@ -414,7 +414,7 @@ Vm(strc) {
 
 #define min(a,b)(a<b?a:b)
 #define max(a,b)(a>b?a:b)
-Vm(strs) {
+vm_op(strs) {
   ArityCheck(3);
   TypeCheck(Argv[0], Oct);
   TypeCheck(Argv[1], Num);
@@ -430,7 +430,7 @@ Vm(strs) {
   memcpy(dst->text, src->text + lb, ub - lb);
   Go(ret, putoct(dst)); }
 
-Vm(strmk) {
+vm_op(strmk) {
   num i, l = Gn(Argc)+1, size = 1 + b2w(l);
   Have(size);
   oct s = (oct) hp;
@@ -444,7 +444,7 @@ Vm(strmk) {
   s->len = i+1;
   Go(ret, putoct(s)); }
 
-Vm(vararg) {
+vm_op(vararg) {
   num reqd = Gn(GF(ip)),
       vdicity = Gn(Argc) - reqd;
   ArityCheck(reqd);
@@ -455,7 +455,7 @@ Vm(vararg) {
     sp = --fp;
     for (num i = 0; i < Size(fr) + reqd; i++)
       fp[i] = fp[i+1];
-    Argc += W;
+    Argc += Word;
     Argv[reqd] = nil; }
   // in this case we just keep the existing slots.
   // the path is knowable at compile time in many cases
@@ -474,7 +474,7 @@ Vm(vararg) {
 
 // the next few functions create and store
 // lexical environments.
-static Vm(encl) {
+static vm_op(encl) {
   num n = Xp;
   obj x = (obj) GF(ip);
   mem block = hp;
@@ -498,23 +498,23 @@ static Vm(encl) {
   t->xs[3] = Y(x);
   t->xs[4] = Ph(at);
 
-  at[0] = pc0;
-  at[1] = (terp*) puttup(t);
-  at[2] = (terp*) X(x);
-  at[3] = 0;
-  at[4] = (terp*) at;
+  at[0].g = pc0;
+  at[1].g = (terp*) puttup(t);
+  at[2].g = (terp*) X(x);
+  at[3].g = 0;
+  at[4].g = (terp*) at;
 
-  Ap(ip+W2, Ph(at)); }
+  Ap(ip+2, Ph(at)); }
 
-Vm(prencl) {
+vm_op(prencl) {
   num n = Gn(Argc);
   n += n ? 12 : 11;
   Have(n);
   Xp = n;
   Jump(encl); }
 
-Vm(encll) { Go(prencl, Locs); }
-Vm(encln) { Go(prencl, nil); }
+vm_op(encll) { Go(prencl, Locs); }
+vm_op(encln) { Go(prencl, nil); }
 
 // this function is run the first time a user
 // function with a closure is called. its
@@ -524,7 +524,7 @@ Vm(encln) { Go(prencl, nil); }
 // it overwrites itself with a special jump
 // instruction that sets the closure and enters
 // the function.
-Vm(pc0) {
+vm_op(pc0) {
   obj ec = (obj) GF(ip),
       arg = AR(ec)[0],
       loc = AR(ec)[1];
@@ -536,22 +536,22 @@ Vm(pc0) {
   for (num z = adic; z--; sp[z] = AR(arg)[z]);
   ec = (obj) GF(ip);
   fp = sp -= Size(fr);
-  Retp = ip;
+  Retp = Ph(ip);
   Subd = Pn(off);
   Argc = Pn(adic);
   Clos = AR(ec)[2];
   if (!nilp(loc)) *--sp = loc;
-  ip = AR(ec)[3];
+  ip = Gh(AR(ec)[3]);
   Next(0); }
 
 // finalize function instance closure
-Vm(pc1) {
+vm_op(pc1) {
   G(ip) = clos;
   GF(ip) = (terp*) xp;
   Next(0); }
 
 // this is used to create closures.
-Vm(take) {
+vm_op(take) {
   num n = Gn((obj)GF(ip));
   Have(n + 1);
   tup t = (tup) hp;
@@ -562,7 +562,7 @@ Vm(take) {
   Go(ret, puttup(t)); }
 
 // print to console
-Vm(em_u) {
+vm_op(em_u) {
   num l = Gn(Argc), i;
   if (l) {
     for (i = 0; i < l - 1; i++)
@@ -571,53 +571,53 @@ Vm(em_u) {
   fputc('\n', stdout);
   Jump(ret); }
 
-Vm(pc_u) {
+vm_op(pc_u) {
   ArityCheck(1);
   xp = *Argv;
   TypeCheck(xp, Num);
   fputc(Gn(xp), stdout);
   Jump(ret); }
 
-Vm(emse) {
+vm_op(emse) {
   emsep(v, xp, stdout, Gn(GF(ip)));
   Next(2); }
 
 // pairs
-Vm(cons) {
+vm_op(cons) {
   Have1(); hp[0] = xp, hp[1] = *sp++;
   xp = puttwo(hp); hp += 2; Next(1); }
-Vm(car) { Ap(ip+W, X(xp)); }
-Vm(cdr) { Ap(ip+W, Y(xp)); }
+vm_op(car) { Ap(ip+1, X(xp)); }
+vm_op(cdr) { Ap(ip+1, Y(xp)); }
 
-Vm(cons_u) {
+vm_op(cons_u) {
   num aa = Gn(Argc);
   if (!aa) Jump(nope);
   Have(2); hp[0] = Argv[0], hp[1] = aa == 1 ? nil : Argv[1];
   xp = puttwo(hp), hp += 2; Jump(ret); }
-Vm(car_u) {
+vm_op(car_u) {
   ArityCheck(1); TypeCheck(*Argv, Two);
   Go(ret, X(*Argv)); }
-Vm(cdr_u) {
+vm_op(cdr_u) {
   ArityCheck(1); TypeCheck(*Argv, Two);
   Go(ret, Y(*Argv)); }
 
 // arithmetic
 #define ok Pn(0)
-Vm(neg) { Ap(ip+W, Pn(-Gn(xp))); }
-Vm(add) {
+vm_op(neg) { Ap(ip+1, Pn(-Gn(xp))); }
+vm_op(add) {
   xp = xp + *sp++ - Num;
   Next(1); }
-Vm(sub) {
+vm_op(sub) {
   xp = *sp++ - xp + Num;
   Next(1); }
-Vm(mul) {
+vm_op(mul) {
   xp = Pn(Gn(xp) * Gn(*sp++));
   Next(1); }
-Vm(dqv) {
+vm_op(dqv) {
   if (xp == Pn(0)) Jump(nope);
   xp = Pn(Gn(*sp++) / Gn(xp));
   Next(1); }
-Vm(mod) {
+vm_op(mod) {
   if (xp == Pn(0)) Jump(nope);
   xp = Pn(Gn(*sp++) % Gn(xp));
   Next(1); }
@@ -634,37 +634,37 @@ Vm(mod) {
     if (x == Pn(0)) Jump(nope);}\
   Go(ret, Pn(m));}
 
-Vm(add_u) {
+vm_op(add_u) {
   mm_u(Gn(Argc), Argv, 0, +); }
-Vm(mul_u) {
+vm_op(mul_u) {
   mm_u(Gn(Argc), Argv, 1, *); }
-Vm(sub_u) {
+vm_op(sub_u) {
   num i = Gn(Argc);
   if (i == 0) Go(ret, Pn(0));
   TypeCheck(*Argv, Num);
   if (i == 1) Go(ret, Pn(-Gn(*Argv)));
   mm_u(i-1,Argv+1,Gn(Argv[0]),-); }
 
-Vm(div_u) {
+vm_op(div_u) {
   num i = Gn(Argc);
   if (i == 0) Go(ret, Pn(1));
   TypeCheck(*Argv, Num);
   mm_u0(i-1,Argv+1,Gn(*Argv),/); }
-Vm(mod_u) {
+vm_op(mod_u) {
   num i = Gn(Argc);
   if (i == 0) Go(ret, Pn(1));
   TypeCheck(*Argv, Num);
   mm_u0(i-1,Argv+1,Gn(*Argv),%); }
 
 // type predicates
-Vm(numpp) { xp = nump(xp) ? ok : nil; Next(1); }
-Vm(hompp) { xp = homp(xp) ? ok : nil; Next(1); }
-Vm(twopp) { xp = twop(xp) ? ok : nil; Next(1); }
-Vm(sympp) { xp = symp(xp) ? ok : nil; Next(1); }
-Vm(strpp) { xp = octp(xp) ? ok : nil; Next(1); }
-Vm(tblpp) { xp = tblp(xp) ? ok : nil; Next(1); }
-Vm(nilpp) { xp = nilp(xp) ? ok : nil; Next(1); }
-Vm(vecpp) { xp = tupp(xp) ? ok : nil; Next(1); }
+vm_op(numpp) { xp = nump(xp) ? ok : nil; Next(1); }
+vm_op(hompp) { xp = homp(xp) ? ok : nil; Next(1); }
+vm_op(twopp) { xp = twop(xp) ? ok : nil; Next(1); }
+vm_op(sympp) { xp = symp(xp) ? ok : nil; Next(1); }
+vm_op(strpp) { xp = octp(xp) ? ok : nil; Next(1); }
+vm_op(tblpp) { xp = tblp(xp) ? ok : nil; Next(1); }
+vm_op(nilpp) { xp = nilp(xp) ? ok : nil; Next(1); }
+vm_op(vecpp) { xp = tupp(xp) ? ok : nil; Next(1); }
 
 // comparison
 int eql(obj, obj);
@@ -693,12 +693,12 @@ int eql(obj a, obj b) {
     case Oct: return streq(a, b);
     default: return 0; } }
 
-Vm(lt)    { xp = *sp++ <  xp ? xp : nil; Next(1); }
-Vm(lteq)  { xp = *sp++ <= xp ? xp : nil; Next(1); }
-Vm(gteq)  { xp = *sp++ >= xp ? xp : nil; Next(1); }
-Vm(gt)    { xp = *sp++ >  xp ? xp : nil; Next(1); }
+vm_op(lt)    { xp = *sp++ <  xp ? xp : nil; Next(1); }
+vm_op(lteq)  { xp = *sp++ <= xp ? xp : nil; Next(1); }
+vm_op(gteq)  { xp = *sp++ >= xp ? xp : nil; Next(1); }
+vm_op(gt)    { xp = *sp++ >  xp ? xp : nil; Next(1); }
 // there should be a separate instruction for simple equality.
-Vm(eq)   {
+vm_op(eq)   {
   obj y = *sp++;
   xp = eql(xp, y) ? ok : nil;
   Next(1); }
@@ -723,34 +723,34 @@ Vm(eq)   {
 
 #define ord_v(r) Go(ret, ord_u(Gn(Argc), Argv, r))
 
-Vm(lt_u)   { ord_w(<); }
-Vm(lteq_u) { ord_w(<=); }
-Vm(eq_u)   { ord_wv(eql); }
-Vm(gteq_u) { ord_w(>=); }
-Vm(gt_u)   { ord_w(>); }
+vm_op(lt_u)   { ord_w(<); }
+vm_op(lteq_u) { ord_w(<=); }
+vm_op(eq_u)   { ord_wv(eql); }
+vm_op(gteq_u) { ord_w(>=); }
+vm_op(gt_u)   { ord_w(>); }
 
 #define typpp(t) {\
   for (obj *xs = Argv, *l=xs+Gn(Argc);xs<l;)\
     if (kind(*xs++)!=t) Go(ret, nil);\
   Go(ret, ok); }
-Vm(nump_u) { typpp(Num); }
-Vm(homp_u) { typpp(Hom); }
-Vm(strp_u) { typpp(Oct); }
-Vm(tblp_u) { typpp(Tbl); }
-Vm(twop_u) { typpp(Two); }
-Vm(symp_u) { typpp(Sym); }
-Vm(nilp_u) { typpp(Nil); }
-Vm(vecp_u) { typpp(Tup); }
+vm_op(nump_u) { typpp(Num); }
+vm_op(homp_u) { typpp(Hom); }
+vm_op(strp_u) { typpp(Oct); }
+vm_op(tblp_u) { typpp(Tbl); }
+vm_op(twop_u) { typpp(Two); }
+vm_op(symp_u) { typpp(Sym); }
+vm_op(nilp_u) { typpp(Nil); }
+vm_op(vecp_u) { typpp(Tup); }
 
 // stack manipulation
-Vm(tuck) { Have1(); sp--, sp[0] = sp[1], sp[1] = xp; Next(1); }
-Vm(drop) { sp++; Next(1); }
-Vm(dupl) { Have1(); --sp; sp[0] = sp[1]; Next(1); }
+vm_op(tuck) { Have1(); sp--, sp[0] = sp[1], sp[1] = xp; Next(1); }
+vm_op(drop) { sp++; Next(1); }
+vm_op(dupl) { Have1(); --sp; sp[0] = sp[1]; Next(1); }
 
 // errors
-Vm(fail) { Jump(nope); }
-Vm(zzz) { exit(EXIT_SUCCESS); }
-Vm(gsym_u) {
+vm_op(fail) { Jump(nope); }
+vm_op(zzz) { exit(EXIT_SUCCESS); }
+vm_op(gsym_u) {
   Have(Size(sym));
   sym y = (sym) hp; hp += Size(sym);
   y->nom = y->l = y->r = nil;
@@ -759,7 +759,7 @@ Vm(gsym_u) {
 
 // this is for runtime errors from the interpreter, it prints
 // a backtrace and everything.
-St In __ perrarg(vm v, mem fp) {
+static Inline void perrarg(vm v, mem fp) {
   num argc = fp == Pool + Len ? 0 : Gn(Argc), i = 0;
   if (argc) for (fputc(' ', stderr);;fputc(' ', stderr)) {
     obj x = Argv[i++];
@@ -767,13 +767,13 @@ St In __ perrarg(vm v, mem fp) {
     if (i == argc) break; }
   fputc(')', stderr); }
 
-St Vm(nope) {
+static vm_op(nope) {
   fputs("# (", stderr), emit(v, Ph(ip), stderr),
   perrarg(v, fp);
   fputs(" does not exist\n", stderr);
   for (;;) {
-    ip = Retp, fp += Size(fr) + Gn(Argc) + Gn(Subd);
-    if (button(Gh(ip))[-1] == yield) break;
+    ip = Gh(Retp), fp += Size(fr) + Gn(Argc) + Gn(Subd);
+    if (button(ip)[-1].g == yield) break;
     fputs("#  in ", stderr), emsep(v, Ph(ip), stderr, '\n'); }
   return Hp = hp, restart(v); }
 
@@ -784,17 +784,17 @@ obj restart(vm v) {
   //reqsp(v, 0);
   longjmp(v->restart, 1); }
 
-Vm(hom_fin_u) {
+vm_op(hom_fin_u) {
   ArityCheck(1);
   TypeCheck(*Argv, Hom);
   obj a = *Argv;
   GF(button(Gh(a))) = (terp*) a;
   Go(ret, a); }
 
-Vm(ev_u) {
+vm_op(ev_u) {
   ArityCheck(1);
-  obj x;
+  obj x; hom h;
   CallC(
-   x = compile(v, *Argv),
-   x = G(x)(v, x, Fp, Sp, Hp, nil));
+   h = compile(v, *Argv),
+   x = G(h)(v, h, Fp, Sp, Hp, nil));
   Go(ret, x); }
