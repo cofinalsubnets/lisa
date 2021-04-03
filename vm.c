@@ -60,7 +60,7 @@ Ty Sr fr { obj clos, retp, subd, argc, argv[]; } *fr;
 // to another terp function.
 #define Jump(f,...) R (f)(v,ip,fp,sp,hp,xp,##__VA_ARGS__)
 #define Cont(n, x) R ip+=w2b(n), xp=x, G(ip)(v,ip,fp,sp,hp,xp)
-#define Ap(f,x) R G(f)(v,f,fp,sp,hp,x)
+#define Ap(f,x) R ip=f,G(ip)(v,ip,fp,sp,hp,x)
 #define Go(f,x) R f(v,ip,fp,sp,hp,x)
 #define N(n) ip+=w2b(n);Ap(ip, xp)
 // the C compiler has to optimize tail calls in terp functions
@@ -151,14 +151,15 @@ Vm(lbind) {
 Vm(yield) { R Pack(), xp; }
 
 // conditional jumps
-Vm(branch) { ip = xp == nil      ? O FF(ip) : O GF(ip); N(0); }
-Vm(barnch) { ip = xp == nil      ? O GF(ip) : O FF(ip); N(0); }
-Vm(brlt)   { ip = *sp++ <  xp    ? O GF(ip) : O FF(ip); N(0); }
-Vm(brgteq) { ip = *sp++ <  xp    ? O FF(ip) : O GF(ip); N(0); }
-Vm(brlteq) { ip = *sp++ <= xp    ? O GF(ip) : O FF(ip); N(0); }
-Vm(brgt)   { ip = *sp++ <= xp    ? O FF(ip) : O GF(ip); N(0); }
-Vm(breq)   { ip = eql(*sp++, xp) ? O GF(ip) : O FF(ip); N(0); }
-Vm(brne)   { ip = eql(*sp++, xp) ? O FF(ip) : O GF(ip); N(0); }
+Vm(branch) { Ap(xp == nil ? O FF(ip) : O GF(ip), xp); }
+Vm(barnch) { Ap(xp == nil ? O GF(ip) : O FF(ip), xp); }
+// relational jumps
+Vm(brlt)   { Ap(*sp++ <  xp    ? O GF(ip) : O FF(ip), xp); }
+Vm(brgteq) { Ap(*sp++ <  xp    ? O FF(ip) : O GF(ip), xp); }
+Vm(brlteq) { Ap(*sp++ <= xp    ? O GF(ip) : O FF(ip), xp); }
+Vm(brgt)   { Ap(*sp++ <= xp    ? O FF(ip) : O GF(ip), xp); }
+Vm(breq)   { Ap(eql(*sp++, xp) ? O GF(ip) : O FF(ip), xp); }
+Vm(brne)   { Ap(eql(*sp++, xp) ? O FF(ip) : O GF(ip), xp); }
 
 // unconditional jumps
 Vm(jump) { Ap(O GF(ip), xp); }
@@ -641,15 +642,16 @@ Vm(mod_u) {
   TyCh(*Argv, Num);
   mm_u0(i-1,Argv+1,Gn(*Argv),%); }
 
+#define Tf(x) ((x)?ok:nil)
 // type predicates
-Vm(numpp) { xp = nump(xp) ? ok : nil; N(1); }
-Vm(hompp) { xp = homp(xp) ? ok : nil; N(1); }
-Vm(twopp) { xp = twop(xp) ? ok : nil; N(1); }
-Vm(sympp) { xp = symp(xp) ? ok : nil; N(1); }
-Vm(strpp) { xp = octp(xp) ? ok : nil; N(1); }
-Vm(tblpp) { xp = tblp(xp) ? ok : nil; N(1); }
-Vm(nilpp) { xp = nilp(xp) ? ok : nil; N(1); }
-Vm(vecpp) { xp = tupp(xp) ? ok : nil; N(1); }
+Vm(numpp) { Ap(ip+W, Tf(nump(xp))); }
+Vm(hompp) { Ap(ip+W, Tf(homp(xp))); }
+Vm(twopp) { Ap(ip+W, Tf(twop(xp))); }
+Vm(sympp) { Ap(ip+W, Tf(symp(xp))); }
+Vm(strpp) { Ap(ip+W, Tf(octp(xp))); }
+Vm(tblpp) { Ap(ip+W, Tf(tblp(xp))); }
+Vm(nilpp) { Ap(ip+W, Tf(nilp(xp))); }
+Vm(vecpp) { Ap(ip+W, Tf(tupp(xp))); }
 
 // comparison
 int eql(obj, obj);
@@ -698,10 +700,10 @@ Vm(eq)   {
 #define ord_wv(r){\
   obj n=Gn(Argc),*xs=Argv,m,*l;\
   switch(n){\
-    case 0: no: Go(ret, nil);\
+    case 0: Go(ret, nil);\
     case 1: break;\
     default: for(l=xs+n-1,m=*xs;xs<l;m=*++xs)\
-               if(!(r(m,xs[1]))) goto no;}\
+               if(!(r(m,xs[1]))) Go(ret, nil);}\
   Go(ret, ok);}
 
 #define ord_v(r) Go(ret, ord_u(Gn(Argc), Argv, r))
@@ -740,13 +742,6 @@ Vm(gsym_u) {
   y->code = v->count++ * mix;
   Go(ret, putsym(y)); }
 
-obj restart(vm v) {
-  Fp = Sp = Pool + Len;
-  Xp = Ip = nil;
-  v->mem_root = NULL;
-  //reqsp(v, 0);
-  longjmp(v->restart, 1); }
-
 Vm(hom_fin_u) {
   ArCh(1);
   TyCh(*Argv, Hom);
@@ -757,9 +752,8 @@ Vm(hom_fin_u) {
 Vm(ev_u) {
   ArCh(1);
   obj x;
-  CallC(
-   x = compile(v, *Argv),
-   x = G(x)(v, x, Fp, Sp, Hp, nil));
+  CallC(x = compile(v, *Argv),
+        x = G(x)(v, x, Fp, Sp, Hp, nil));
   Go(ret, x); }
 
 // this is for runtime errors from the interpreter, it prints
@@ -781,3 +775,14 @@ St Vm(nope) {
     if (button(Gh(ip))[-1] == yield) break;
     fputs("#  in ", stderr), emsep(v, Ph(ip), stderr, '\n'); }
   R Hp = hp, restart(v); }
+
+obj restart(vm v) {
+  Fp = Sp = Pool + Len;
+  Xp = Ip = nil;
+  v->mem_root = NULL;
+  longjmp(v->restart, 1); }
+
+// " meta operations "
+// - arithmetic: + - * / %
+// - relational: < <= = >= >
+//

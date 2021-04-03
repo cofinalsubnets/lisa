@@ -95,6 +95,13 @@ obj eval(vm v, obj x) {
   x = pair(v, x, nil);
   R apply(v, tblget(v, Dict, Eva), x); }
 
+static obj rwlade(vm v, obj x) {
+    obj y; Mm(x,
+     y = snoc(v, YX(x), XY(x)),
+     y = pair(v, La, y),
+     y = pair(v, y, YY(x)));
+    R pair(v, XX(x), y); }
+
 static void scan_def_add(vm v, mem e, obj y, obj x) {
   Mm(x, y = pair(v, y, loc(*e)), loc(*e) = y);
   scan(v, e, x); }
@@ -103,7 +110,9 @@ static int scan_def(vm v, mem e, obj x) {
   if (!twop(x)) R 1; // this is an even case so export all the definitions to the local scope
   if (!twop(Y(x))) R 0; // this is an odd case so ignore these, they'll be imported after the rewrite
   obj r; Mm(x, r = scan_def(v, e, YY(x)));
-  if (r) scan_def_add(v, e, X(x), XY(x));
+  if (r) {
+    if (twop(X(x))) x = rwlade(v, x);
+    scan_def_add(v, e, X(x), XY(x)); }
   R r; }
 
 static void scan(vm v, mem e, obj x) {
@@ -179,7 +188,9 @@ c1(c_d_bind) {
   R toplp(e) ? imx(v, e, m, tbind, y) :
                imx(v, e, m, loc_, Pn(idx(loc(*e), y))); }
 
-static void c_de_r(vm v, mem e, obj x) { if (twop(x))
+static void c_de_r(vm v, mem e, obj x) {
+  if (!twop(x)) R;
+  if (twop(X(x))) R c_de_r(v, e, rwlade(v, x));
   Mm(x, c_de_r(v, e, YY(x))),
   Pu(Pn(c_ev), XY(x), Pn(c_d_bind), X(x)); }
 

@@ -15,18 +15,26 @@ makefile for the C compiler invocation. `make install` puts
 the binary and prelude under `~/.local` by default.
 
 ## special forms
-with scheme equivalents
+with scheme equivalents. degenerate (nullary/unary) cases
+are usually nil or the identity; `\`is an exception to this
+
 ### `,` begin
-- `(,) = '()`
-- `(, a) = a`
-- `(, a b) = (begin a b)`
+- `(, a b c) = (begin a b c)`
+
+### <code>\`</code> quote
+- <code>(\` x) = (quote x)</code>
+`'x` also works.
+
+### `?` cond
+- `(? a b) = (cond (a b) (#t '()))`
+- `(? a b c) = (cond (a b) (#t c))`
+- `(? a b c d) = (cond (a b) (c d) (#t '()))`
 
 ### `:` define / let
-- `(:) = '()`
-- `(: a) = a`
 - `(: a b) = (begin (define a b) a)`
 - `(: a b c d) = (begin (define a b) (define c d) c)`
 - `(: a b c d e) = (letrec ((a b) (c d)) e)`
+- `(: (a b c) (b c)) = (define (a b c) (b c))`
 
 ### `\` lambda
 - `(\) = (lambda () ())`
@@ -36,20 +44,8 @@ with scheme equivalents
 - `(\ a b . (a b)) = (lambda (a . b) (a b))`
 - `(\ a b c (, x y z)) = (lambda (a b c) x y z)`
 
-### `?` cond
-- `(?) = '()`
-- `(? a) = a`
-- `(? a b) = (cond (a b) (#t '()))`
-- `(? a b c) = (cond (a b) (#t c))`
-- `(? a b c d) = (cond (a b) (c d) (#t '()))`
-
 nil is the only false value
 
-### <code>\`</code> quote
-- <code>(\`) = '()</code>
-- <code>(\` x) = (quote x)</code>
-
-`'x` also works.
 
 ## functions
 this whole section is unstable and  some of these names are
