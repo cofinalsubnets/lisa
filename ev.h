@@ -2,8 +2,8 @@
 #define insts(_)\
   _(tget),_(tset),_(gsym_u),\
   _(arity),  _(idnum),  _(idhom),   _(idtwo),  _(idtbl), _(lbind),\
-  _(immv),   _(argn),   _(clon),    _(locn),   _(take),\
-  _(prel),   _(setl),   _(pc0),     _(pc1),    _(clos),\
+  _(imm), _(arg),   _(clo),    _(loc),   _(take),\
+  _(locals),   _(loc_),   _(pc0),     _(pc1),    _(clos),\
   _(encll),  _(encln),  _(yield),   _(ret),    _(jump),\
   _(branch), _(barnch), _(call),    _(rec),\
   _(tbind),  _(push),   _(add),     _(sub),    _(mul),\

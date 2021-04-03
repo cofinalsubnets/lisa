@@ -130,7 +130,7 @@ static obj compose(vm v, mem e, obj x) {
   scan(v, e, Sp[1]);
   x = ccc(v, e, 4); // 4 = 2 + 2
   obj i = llen(loc(*e));
-  if (i) x = em2(prel,  Pn(i), x);
+  if (i) x = em2(locals,  Pn(i), x);
   i = Gn(asig(*e));
   if (i > 0) x = em2(arity, Pn(i), x);
   else if (i < 0) x = em2(vararg, Pn(-i-1), x);
@@ -155,7 +155,7 @@ static obj ltu(vm v, mem e, obj n, obj l) {
 
 
 c2(c_la) {
-  terp *j = immv;
+  terp *j = imm;
   obj k, nom = *Sp == Pn(c_d_bind) ? Sp[1] : nil;
   Mm(nom, Mm(x, k = ccc(v, e, m+2)));
   Mm(k,
@@ -164,7 +164,7 @@ c2(c_la) {
      c_la_clo(v, e, X(x), Y(x))));
   R em2(j, x, k); }
 
-c2(c_imm) { R Pu(Pn(immv), x), insx(v, e, m); }
+c2(c_imm) { R Pu(Pn(imm), x), insx(v, e, m); }
 
 static obj c_la_clo(vm v, mem e, obj arg, obj seq) {
   num i = llen(arg);
@@ -177,7 +177,7 @@ static obj c_la_clo(vm v, mem e, obj arg, obj seq) {
 c1(c_d_bind) {
   obj y = *Sp++;
   R toplp(e) ? imx(v, e, m, tbind, y) :
-               imx(v, e, m, setl, Pn(idx(loc(*e), y))); }
+               imx(v, e, m, loc_, Pn(idx(loc(*e), y))); }
 
 static void c_de_r(vm v, mem e, obj x) { if (twop(x))
   Mm(x, c_de_r(v, e, YY(x))),
@@ -277,12 +277,12 @@ c2(c_sy) {
     case Wait: R late(v, e, m, x, Y(q));
     default:
       if (Y(q) == *e) switch (Gn(y)) {
-        case Loc: R imx(v, e, m, locn, Pn(idx(loc(*e), x)));
-        case Arg: R imx(v, e, m, argn, Pn(idx(arg(*e), x)));
-        case Clo: R imx(v, e, m, clon, Pn(idx(clo(*e), x))); }
+        case Loc: R imx(v, e, m, loc, Pn(idx(loc(*e), x)));
+        case Arg: R imx(v, e, m, arg, Pn(idx(arg(*e), x)));
+        case Clo: R imx(v, e, m, clo, Pn(idx(clo(*e), x))); }
       y = llen(clo(*e));
       Mm(x, q = snoc(v, clo(*e), x)), clo(*e) = q;
-      R imx(v, e, m, clon, Pn(y)); } }
+      R imx(v, e, m, clo, Pn(y)); } }
 
 
 c1(c_ev) { R c_eval(v, e, m, *Sp++); }

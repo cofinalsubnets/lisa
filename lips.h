@@ -41,7 +41,7 @@ Ty intptr_t // pointer type on the host platform
 #define O (obj)
 #define non (O 0)
 #define nil (~non)
-#define W Sz(obj)
+#define W Sz(obj) // pointer arithmetic unit
 #define W2 (2*W)
 
 // this is the structure responsible for holding runtime

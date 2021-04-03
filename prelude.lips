@@ -96,7 +96,7 @@
        (twop x) 'two (vecp x) 'vec
        (symp x) 'sym (strp x) 'str
        (tblp x) 'tbl          'nil)
-  (Co i-immv (Da x (-> t k)))))
+  (Co i-imm (Da x (-> t k)))))
 
  Co (\ i k (\ e m (emf i (k e (+ m 1)))))
  Da (\ x k (\ e m (emx x (k e (+ m 1)))))
@@ -135,7 +135,7 @@
    l (loop (BB x) k)
    m (? (nilp (|| (toplp e) (< -1 (idx (tget e'loc)(A x))))) l
       (\ e m (? (toplp e) ((Co i-tbind (Da (A x) l)) e m)
-                          ((Co i-setl (Da (idx (tget e'loc) (A x)) l)) e m))))
+                          ((Co i-loc_ (Da (idx (tget e'loc) (A x)) l)) e m))))
    (? (= 'here (A (: v (look e (A x)))))
     (Im (B v) m) (eval (AB x) m)))))
 
@@ -254,7 +254,7 @@
 
  ltu (\ e nom l (:
   with-locals (\ f k (? (: loc (tget f 'loc))
-                        (emi i-prel (emx (len loc) k)) k))
+                        (emi i-locals (emx (len loc) k)) k))
   with-arity (\ f k (?
    (> (: i (tget f 'sig)) 0) (emf i-arity (emx i k))
    (< i 0) (emi i-vararg (emx (- (- i) 1) k))
@@ -352,7 +352,7 @@
  ev-la (\ x k (\ e m (:
   nom (\ e k (: i (hgeti k) (case i
    i-tbind (hgetx (hseek k 1))
-   i-setl  (at (tget e'loc) (hgetx (hseek k 1))))))
+   i-loc_  (at (tget e'loc) (hgetx (hseek k 1))))))
 
   clo-thd (\ e x k (:
    loop (\ x k (? (nilp x) k
@@ -362,7 +362,7 @@
 
   l ((-> 'hom k) e (+ m 2))
   y (ltu e (nom e l) x)
-  (? (homp y) (emf i-immv (emx y l))
+  (? (homp y) (emf i-imm (emx y l))
    (emi (? (tget e'loc) i-encll i-encln)
     (emx (X (B y) (clo-thd e (A y) k)) l))))))
 
@@ -388,12 +388,12 @@
    (= s'here) ((Im (B r) k) e m)
    (= s'wait) (late e m x (B r) k)
    (= e (B r)) (case s
-    'arg ((Co i-argn (Da (idx (tget e'arg) x) k)) e m)
-    'loc ((Co i-locn (Da (idx (tget e'loc) x) k)) e m)
-    'clo ((Co i-clon (Da (idx (tget e'clo) x) k)) e m))
+    'arg ((Co i-arg (Da (idx (tget e'arg) x) k)) e m)
+    'loc ((Co i-loc (Da (idx (tget e'loc) x) k)) e m)
+    'clo ((Co i-clo (Da (idx (tget e'clo) x) k)) e m))
    (, (: l (len (tget e'clo)))
       (tset e'clo(snoc (tget e'clo) x))
-      ((Co i-clon (Da l k)) e m))))))
+      ((Co i-clo (Da l k)) e m))))))
 
  eval (\ x k ((? (twop x) ev-list (symp x) ev-sym Im) x k))
  ini (\ e m ((Co i-ret (Da (tget e'nom) (\ e m (hom m)))) e m))
@@ -423,9 +423,9 @@
   argr (\ a b (f1 hgetx 0 a 1 b))
   br2 (\ b c (f1 hgeti i-branch b i-barnch c))
   (tbl
-   i-argn (argr i-arg0 i-arg1)
-   i-locn (argr i-loc0 i-loc1)
-   i-clon (argr i-clo0 i-clo1)
+   i-arg (argr i-arg0 i-arg1)
+   i-loc (argr i-loc0 i-loc1)
+   i-clo (argr i-clo0 i-clo1)
    i-lt (br2 i-brlt i-brgteq) i-lteq (br2 i-brlteq i-brgt)
    i-gt (br2 i-brgt i-brlteq) i-gteq (br2 i-brgteq i-brlt)
    i-eq (br2 i-breq i-brne)
@@ -433,18 +433,19 @@
    i-call (\ i h (case (hgeti (hseek h 1))
     i-ret (emi i-rec (emx (hgetx h) (hseek h 1)))
     (emi i h)))
-   i-immv (f1 hgetx () i-unit 0 i-zero 1 i-one)))
+   i-imm (f1 hgetx () i-unit 0 i-zero 1 i-one)))
 
  inliners (:
   monofold (\ f i l (:
-   fold (\ f i j x y
-    (? y (? (qtd x) (fold f i (f j (unq x)) (A y) (B y))
-                    (: z (X x (fold f i i (A y) (B y)))
-                     (? (= i j) z (X j z))))
-       (qtd x) (>>= (f j (unq x)) (\ x (? (= i x)()(L x))))
-       (= i j) (L x)
-       (L j x)))
-   (? l (X f (fold f i i (A l) (B l))) (quote i))))
+   fold (\ f i j x y (?
+    y (? (qtd x) (fold f i (f j (unq x)) (A y) (B y))
+         (: z (X x (fold f i i (A y) (B y)))
+          (? (= i j) z (X j z))))
+    (qtd x) (>>= (f j (unq x)) (\ x (? (= i x)()(L x))))
+    (= i j) (L x)
+    (L j x)))
+   (? l (X f (fold f i i (A l) (B l)))
+        (quote i))))
 
   grp (\ f m id x (:
    fold (\ f m x (? (nilp x) (L m)
