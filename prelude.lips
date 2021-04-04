@@ -1,10 +1,10 @@
 (: lib '(,
-  (: (and l)  (? l (? (A l) (and (B l))) 0)
+  (: (and l)  (? l (? (A l) (and (B l))) 1)
      (&& l .) (and l)
      (or l)   (? l (: a (A l) (? a a (or (B l)))))
      (|| l .) (or l)
      (L . .) .
-     (cat a) (: (app a b) (? a(X(A a)(app(B a)b))b)
+     (cat a .) (: (app a b) (? a(X(A a)(app(B a)b))b)
       (foldr a () app))
 
      (iota n x .)
@@ -21,8 +21,6 @@
      (foldr1 x f)  (? (B x) (f (A x) (foldr1 (B x) f)) (A x))
      (map x f)     (foldr x () (\ x m (X (f x) m)))
 
-     (|-> xs .) (: t (ap tbl xs) (\ x
-                 (? (thas t x) (tget t x) (fail))))
      (id x) x
      (const x) (\ x)
      (each x f) (? x (,(f (A x)) (each (B x) f)))
@@ -46,9 +44,10 @@
      (memq x k) (? x (? (= k (A x)) x (memq (B x) k)))
      (rev l) (foldl l () (\ r x (X x r)))
      (ldel l k) (filter l (\ x (nilp (= x k))))
-     (idx l x)
-      ((: loop (\ l x n (? l (? (= x (A l)) n (loop (B l) x (+ n 1))) -1)))
-       l x 0)
+     (idx l x) (:
+      (loop l x n)
+       (? l (? (= x (A l)) n (loop (B l) x (+ n 1))))
+      (loop l x 0))
      (len l) (? l (+ 1 (len (B l))) 0))
 
   ;; and some marcos
@@ -59,8 +58,8 @@
    'AA (\ x (X A (L (X A (L x))))) 'AB (\ x (X A (L (X B (L x)))))
    'BA (\ x (X B (L (X A (L x))))) 'BB (\ x (X B (L (X B (L x)))))
    'immediate (\ x (ev x))
-   '&& (\ x . ((: & (\ x
-     (? (B x) (L '? (A x) (& (B x))) (A x)))) x))
+   '&& (\ x . (? x ((: & (\ x
+     (? (B x) (L '? (A x) (& (B x))) (A x)))) x) 1))
    '>>= (\ x . (X (last x) (init x)))
    'case (\ x a . (: y (gensym)
     (L ': y x ((: (loop a)
@@ -69,6 +68,9 @@
                      (A a)))) a)))))))
 
 (: egg '(: ev (ev '(:
+ ; this function creates a new lexical environment.
+ ; if the second argument (the parent scope) is nil,
+ ; then the expression is compiled in the global scope.
  (env a p n)  (:
   (asig a n)
    (? (nilp a) (X n a)
@@ -80,190 +82,10 @@
                             'nom n 'def (tbl)
                             'val (tbl) 'sig (A b)))))
 
-
- ; first compiler moiety : the " weak evaluator "
- ; 1. construct the local scope of the function
- ; 2. desugaring, macro rewriting, and partial evaluation
- ;    (constant folding, dead code elimination, etc) which has
- ;    some preliminary "static type checking" as a side effect
- ; it populates the local variables list and the known values
- ; dictionary in the function environment, and returns an
- ; expression with the same value (under eval) as the input,
- ; but pre-evaluated "as much as possible". to tell if an
- ; expression was fully evaluated, check whether its image is
- ; quoted:
- (qtd x) (? (twop x) (= (A x) '`) (nilp (symp x)))
- (unq x) (? (twop x) (AB x) x)
- (quote x) (? (qtd x) x (L '` x))
- (rwlade x) (X(AA x)(X(X'\(snoc(BA x)(AB x)))(BB x)))
- (weak e x)  (:
-
-  (loop e x) (? x (?
-   (twop (A x)) (loop e (rwlade x))
-   (, (? (qtd (: a (AB x))) (tset (tget e'val) (A x) (unq a))
-                            (tset (tget e'def) (A x) a))
-      (rec e a)
-      (loop e (BB x)))))
-
-  (rec e x) (? (twop x) (case (A x)
-   '\ () '` ()
-   ': (? (= 1 (% (len x) 2)) (loop e (B x)))
-   (each x (\ x (rec e x)))))
-
-  (, (rec e x)
-     (resolve e)
-     (wev e x)))
-
- ; this is a huge complicated procedure for "resolving
- ; the addresses" of sets of mutually recursive functions at
- ; compile time, so they can call each other without closures.
- ; what it actually does is construct the maximum set of
- ; named functions that don't refer to any other functions
- ; that aren't also in the set; then it recompiles these
- ; functions so all the in-set references get resolved (with
- ; optimizations etc) at runtime. simple self-recursive
- ; functions are a special case of this. without this mechanism
- ; everything would still work correctly, but slower.
- (resolve e) (:
-
-  ; step one: pass over each inner def for this function and
-  ; try to rewrite and evaluate it. if this succeeds, add it
-  ; to the known values. otherwise, if the definition is for
-  ; a function, collect it into a list.
-  (coll-fns e kvs) (? kvs (?
-   (thas (tget e'val) (: kv (A kvs) k (A kv)))
-    (coll-fns e (B kvs))
-   (: qq (wev e (B kv)) bb (coll-fns e (B kvs)) (?
-    (qtd (tset (tget e'def) k qq))
-     (, (tset (tget e'val) k (unq qq))
-        (tdel (tget e'def) k)
-        bb)
-    (&& (twop qq) (= '\ (A qq)))
-     (X (X k qq) bb)
-    bb))))
-
-  (pc2 e kvs) (? kvs (: kv (A kvs) rr (pc2 e (B kvs)) (?
-   (homp (: i (ltu e (: k (A kv)) (: v (B kv)))))
-    (, (tset (tget e'val) k i)
-       (tdel (tget e'def) k)
-       rr)
-   (X (X k (X (A i) v)) rr))))
-
-  (pkvs e i vs) (? (nilp vs) 1 (: v (A vs) (?
-   (|| (any i (\ j (= (A j) v))) (thas (tget e'val) v))
-    (pkvs e i (B vs)))))
-
-  (elis e i kvs q) (? (nilp kvs) q (?
-   (pkvs e i (AB (: kv (A kvs))))
-    (elis e i (B kvs) (X kv q))
-   (>>= (ldel i kv) (\ j (elis e j j ())))))
-
-
-  (rc2 e kvs) (? (nilp kvs)
-   (tset e'loc (tkeys (tget e'def)))
-   (, (tdel (tget e'def) (: kv (A kvs) k (A kv)))
-      (tset e 'dfr (X k (tget e'dfr)))
-      (rc2 e (B kvs))
-      (tset (tget e'val) k (ltu e k (BB kv)))))
-
-  ; only bother with this if there are any inner defs
-  (? (: ks (tkeys (: def (tget e'def))))
-   (rc2 e (: pcs (pc2 e (coll-fns e (map
-                  (tset e'loc ks)
-                  (\ k (X k (tget def k))))))
-           (elis e pcs pcs ())))))
-
- (wev e x)  (:
-
-  (wev-list e x) (:
-
-   (wev-arity x) (: z (A x) (?
-    (nilp (? (homp z) (= i-arity (hgeti z)))) x
-    (? (>= (len (B x)) (hgetx (hseek z 1)))
-     (X (hseek z 2) (B x))
-     (ap z (B x))))) ; purposely cause an arity error
-
-   (wev-let e x) (:
-    (suga d) (L (L '\ (L ', (init d) (last d))))
-    (loop e x) (? x (:
-     y (? (twop (A x)) (AA x) (A x))
-     ll (loop e (BB x))
-     (X y (X (tget (tget e'def) y) ll))))
-    (? (B x) (? (= 0 (% (len x) 2)) (suga x)
-                (X ': (loop e (B x))))))
-
-   (wev-lam e l) (:
-    (trlamp l) (&& (B l) (: x (last l)
-     (&& (twop x) (= (A x) ':) (= 0 (% (len x) 2)))))
-    (wev-lamm l) (: m (last l)
-     (snoc (init l) (L ', (init m) (last m))))
-    (? (trlamp l) (wev-lamm l) l))
-
-    (mono f i l) (:
-     (fold f i j x y) (?
-      y (? (qtd x) (fold f i (f j (unq x)) (A y) (B y))
-           (: z (X x (fold f i i (A y) (B y)))
-            (? (= i j) z (X j z))))
-      (qtd x) (>>= (f j (unq x)) (\ x (? (= i x)()(L x))))
-      (= i j) (L x)
-      (L j x))
-     (? l (X f (fold f i i (A l) (B l)))
-          (quote i)))
-
-   a (A x) (case a
-    '` (? (B x) x)
-    '\ (wev-lam e x)
-    ': (wev-let e x)
-    '? (wev-if e (B x))
-    ', (wev-seq e x)
-    (? (thas macros a)
-        (wev e (ap (tget macros a) (B x)))
-       (: z (map x (\ x (wev e x))) q (A z) r (B z) (?
-        (nilp (thas pures q)) (wev-arity z)
-        (all r qtd) (quote (ap q (map r unq)))
-        (thas monoids q) (mono q (tget monoids q) r)
-        (thas abelians q) (:
-         ff (part r qtd)
-         fg (ap q (map (A ff) unq))
-         (X q (? (= fg (tget abelians q)) (B ff)
-               (X fg (B ff)))))
-        (wev-arity z))))))
-
-  (wev-if e x) (:
-   (wev-ifr e x) (?
-    (nilp x) (L ())
-    (nilp (B x)) (L (wev e (A x)))
-    (nilp (qtd (: a (wev e (A x)))))
-     (X a (X (wev e (A (B x))) (wev-ifr e (BB x))))
-    (unq a) (L (wev e (AB x)))
-    (wev-ifr e (BB x)))
-
-   r (wev-ifr e x)
-   (? r (? (B r) (X '? r) (A r))))
-
-  (wev-sym e x) (: l (look e x) (?
-   (= (A l) 'here) (quote (B l))
-   (nilp (thas (: defs (tget e'def)) x)) x
-   (: dd (wev e (tdel defs x))
-    (? (nilp (qtd (tset defs x dd))) x (,
-     (tdel (tget e'def) x)
-     (tset (tget e'val) x (unq dd))
-     dd)))))
-
-  (wev-seq e x) (:
-   (loop e x) (?
-    (nilp (B x)) (L (wev e (A x)))
-    (: z (loop e (B x))
-       y (wev e (A x))
-     (? (|| (symp y) (qtd y)) z (X y z))))
-   (? (: y (B x)) (: z (loop e y)
-                   (? (B z) (X ', z) (A z)))))
-
- (? (twop x) (wev-list e x)
-    (symp x) (wev-sym e x)
-    (quote x)))
-
  (toplp e) (nilp (tget e'par))
+
+ ; this function is used in several places to look for a
+ ; variable's value, or failing that to find where it's bound.
  (look e y) (?
   (thas (tget e 'val) y)
    (X 'here (tget (tget e'val) y))
@@ -280,9 +102,16 @@
   (memq (tget e'arg) y) (X 'arg e)
   (look (tget e'par) y))
 
- ; second moiety
- ; generates code using environment information produced
- ; by the first moiety.
+ ; " lambda the ultimate " : evaluate a lambda expression.
+ ; depending on if it encloses any variables, a lambda
+ ; expression may or may not have a value at compile time. this
+ ; function returns either a function or a pair; in the latter
+ ; case the hd is the list of variables it encloses, and the
+ ; tl is the "prototype" thread that expects those variables
+ ; to have already been assembled in a closure. the enclosing
+ ; scope can then compose the prototype with a constructor
+ ; for its closure in order to produce an "instance" of the
+ ; function at runtime.
  (ltu e nom l) (:
   (with-locals f k) (? (: loc (tget f 'loc))
                        (emi i-locals (emx (len loc) k)) k)
@@ -298,68 +127,204 @@
   (?
    ; if the function is nonvariadic and all it does is apply
    ; another known function to its exact list of arguments,
-   ; then it's an alias for the second function
+   ; then it's an alias for the second function.
    (&& (twop x) (homp (A x)) (>= (tget f 'sig) 0) (= (B x) (tget f'arg)))
     (A x)
    (: k (hfin (with-arity f (with-locals f ((eval x ini) f 4))))
     (? (tget f 'clo) (X (tget f 'clo) k) k))))
 
- (ev-ap a b k) (:
-  (loop x k) (? (nilp x) k
-   (loop (B x) (eval (A x) (Co i-push k))))
-  (? (&& (qtd a) (: q (tget inliners (unq a)))) (q b k)
-   (loop b (eval a (>- 'hom (Co i-call (Da (len b) k)))))))
 
- (ev-la x k) (\ e m (:
-  (nom e k) (: i (hgeti k) (case i
-   i-tbind (hgetx (hseek k 1))
-   i-loc_  (at (tget e'loc) (hgetx (hseek k 1)))))
+ ; first compiler moiety : the " weak evaluator "
+ ; 1. construct the local scope of the function
+ ; 2. desugaring, macroexpansion, and partial evaluation
+ ;    (constant folding, dead code elimination, etc), which has
+ ;    some preliminary "static type checking" as a side effect
+ ; it populates the local variables list and the known values
+ ; dictionary in the function environment, and returns an
+ ; expression with the same value (under eval) as the input,
+ ; but pre-evaluated "as much as possible". to tell if an
+ ; expression was fully evaluated, check whether the image is
+ ; quoted.
+ (qtd x) (? (twop x) (= (A x) '`) (nilp (symp x)))
+ (unq x) (? (twop x) (AB x) x)
+ (quote x) (? (qtd x) x (L '` x))
 
-  (clo-thd e x k) (:
-   (loop x k) (? (nilp x) k
-    (loop (B x) (eval (A x) (Co i-push k))))
-   (k e m) (emi i-take (emx (len x) (hom (+ m 2))))
-   ((loop x k) e 0))
+ (weak e x)  (:
 
-  l ((-> 'hom k) e (+ m 2))
-  y (ltu e (nom e l) x)
-  (? (homp y) (emf i-imm (emx y l))
-   (emi (? (tget e'loc) i-encll i-encln)
-    (emx (X (B y) (clo-thd e (A y) k)) l)))))
+  (rwlade x) (X(AA x)(X(X'\(snoc(BA x)(AB x)))(BB x)))
 
- (ev-list x k) (:
-  ,, (\ x k (? x (eval (A x) (,, (B x) k)) k))
-  z (A x) (case z
-   '` (Im (AB x) k)
-   '? (ev-if (B x) k)
-   ': (\ e m (cde e m (B x) k))
-   '\ (ev-la x k)
-   ', (,, (B x) k)
-   (ev-ap z (B x) k)))
+  (loop e x) (? x (?
+   (twop (A x)) (loop e (rwlade x))
+   (, (? (qtd (: a (AB x))) (tset (tget e'val) (A x) (unq a))
+                            (tset (tget e'def) (A x) a))
+      (rec e a)
+      (loop e (BB x)))))
 
- (ev-sym x k) (\ e m (:
+  (rec e x) (? (twop x) (case (A x)
+   '\ () '` ()
+   ': (? (= 1 (% (len x) 2)) (loop e (B x)))
+   (each x (\ x (rec e x)))))
 
-  (late e m x d k) (:
-   h (k e (+ m 2))
-   t (consumes h)
-   (emf i-lbind (emx (X (t-c t) (X d x))
-                  (? t (hseek h 1) h))))
+  (, (rec e x) (resolve e) (wv e x)))
 
-  s (A (: r (look e x))) (?
-   (= s'here) ((Im (B r) k) e m)
-   (= s'wait) (late e m x (B r) k)
-   (= e (B r)) (case s
-    'arg ((Co i-arg (Da (idx (tget e'arg) x) k)) e m)
-    'loc ((Co i-loc (Da (idx (tget e'loc) x) k)) e m)
-    'clo ((Co i-clo (Da (idx (tget e'clo) x) k)) e m))
-   (, (: l (len (tget e'clo)))
-      (tset e'clo(snoc (tget e'clo) x))
-      ((Co i-clo (Da l k)) e m)))))
+ ; this is a huge complicated procedure for "resolving
+ ; the addresses" of sets of mutually recursive functions at
+ ; compile time, so they can call each other without closures.
+ ; what it actually does is construct the maximum set of
+ ; named functions with no free variables except those
+ ; referring to other functions also in the set; then it
+ ; recompiles these functions so all the in-set references get
+ ; resolved (with optimizations etc) at runtime, which lets
+ ; the compiler generate appropriate code without yet
+ ; knowing the exact value. without this mechanism everything
+ ; would still work correctly, but many functions (including
+ ; simple self-recursive functions) would run more slowly when
+ ; defined elsewhere than in the global scope.
+ (resolve e) (:
 
- t-c (immediate (|->
-  'hom 0 'num 1 'two 2 'vec 3 'str 4
-  'tbl 5 'sym 6 'nil 7 () 8))
+  ; step one: pass over each inner def for this function and
+  ; try to rewrite and evaluate it. if this succeeds, add it
+  ; to the known values. otherwise, if the definition is for
+  ; a function, collect it into a list.
+  (f1 kvs) (? kvs (?
+   (thas (tget e'val) (: kv (A kvs) k (A kv)))
+    (f1 (B kvs))
+   (: qq (wv e (B kv)) bb (f1 (B kvs)) (?
+    (qtd (tset (tget e'def) k qq))
+     (, (tset (tget e'val) k (unq qq))
+        (tdel (tget e'def) k)
+        bb)
+    (&& (twop qq) (= '\ (A qq)))
+     (X (X k qq) bb)
+    bb))))
 
+  (f2 kvs) (? kvs (: kv (A kvs) rr (f2 (B kvs)) (?
+   (homp (: i (ltu e (: k (A kv)) (: v (B kv)))))
+    (, (tset (tget e'val) k i)
+       (tdel (tget e'def) k)
+       rr)
+   (X (X k (X (A i) v)) rr))))
+
+  (f3r i kvs q) (:
+   (chk i vs) (? (nilp vs) 1 (: v (A vs) (?
+    (|| (any i (\ j (= (A j) v))) (thas (tget e'val) v))
+     (chk i (B vs)))))
+
+   (? (nilp kvs) q (?
+    (chk i (AB (: kv (A kvs))))
+     (f3r i (B kvs) (X kv q))
+    (f3 (ldel i kv)))))
+
+  (f3 kvs) (f3r kvs kvs ())
+
+  (f4 kvs) (? (nilp kvs)
+   (tset e'loc (tkeys (tget e'def)))
+   (, (tdel (tget e'def) (: kv (A kvs) k (A kv)))
+      (tset e 'dfr (X k (tget e'dfr)))
+      (f4 (B kvs))
+      (tset (tget e'val) k (ltu e k (BB kv)))))
+
+
+  ; only bother with this if there are any inner defs
+  (? (: ks (tkeys (: def (tget e'def))))
+   (f4 (f3 (f2 (f1 (map (tset e'loc ks) (\ k
+    (X k (tget def k))))))))))
+
+ (wv e x)  (:
+  (list e x) (:
+
+   ; static arity check : we can skip the intrinsic
+   ; check in the called function just by incrementing
+   ; the pointer.
+   (adj-ar x) (: z (A x) (?
+    (nilp (? (homp z) (= i-arity (hgeti z)))) x
+    (? (>= (len (B x)) (hgetx (hseek z 1)))
+     (X (hseek z 2) (B x))
+     (ap z (B x))))) ; but if it fails, purposely cause an arity error
+
+   (defn e x) (:
+    (suga d) (L (L '\ (L ', (init d) (last d))))
+    (loop e x) (? x (:
+     y (? (twop (A x)) (AA x) (A x))
+     ll (loop e (BB x))
+     (X y (X (tget (tget e'def) y) ll))))
+    (? (B x) (? (= 0 (% (len x) 2)) (suga x)
+                (X ': (loop e (B x))))))
+
+   (lamb e l) (:
+    (trlamp l) (&& (B l) (: x (last l)
+     (&& (twop x) (= (A x) ':) (= 0 (% (len x) 2)))))
+    (wv-lamm l) (: m (last l)
+     (snoc (init l) (L ', (init m) (last m))))
+    (? (trlamp l) (wv-lamm l) l))
+
+   (mono f i l) (:
+    (fold f i j x y) (?
+     y (? (qtd x) (fold f i (f j (unq x)) (A y) (B y))
+          (: z (X x (fold f i i (A y) (B y)))
+           (? (= i j) z (X j z))))
+     (qtd x) (>>= (f j (unq x)) (\ x (? (= i x)()(L x))))
+     (= i j) (L x)
+     (L j x))
+    (? l (X f (fold f i i (A l) (B l)))
+         (quote i)))
+
+   (cond e x) (:
+    (rec e x) (?
+     (nilp x) (L ())
+     (nilp (B x)) (L (wv e (A x)))
+     (nilp (qtd (: a (wv e (A x)))))
+      (X a (X (wv e (A (B x))) (rec e (BB x))))
+     (unq a) (L (wv e (AB x)))
+     (rec e (BB x)))
+    r (rec e x)
+    (? r (? (B r) (X '? r) (A r))))
+
+   (seq e x) (:
+    (loop e x) (?
+     (nilp (B x)) (L (wv e (A x)))
+     (: z (loop e (B x))
+        y (wv e (A x))
+      (? (|| (symp y) (qtd y)) z (X y z))))
+    (? (: y (B x)) (: z (loop e y)
+                    (? (B z) (X ', z) (A z)))))
+
+   a (A x) (case a
+    '` (? (B x) x)
+    '\ (lamb e x)
+    ': (defn e x)
+    '? (cond e (B x))
+    ', (seq e x)
+    (? (thas macros a)
+        (wv e (ap (tget macros a) (B x)))
+       (: z (map x (\ x (wv e x))) q (A z) r (B z) (?
+        (nilp (thas pures q)) (adj-ar z)
+        (all r qtd) (quote (ap q (map r unq)))
+        (thas monoids q) (mono q (q) r)
+        (thas abelians q) (:
+         ff (part r qtd)
+         fg (ap q (map (A ff) unq))
+         (X q (? (= fg (q)) (B ff)
+               (X fg (B ff)))))
+        (adj-ar z))))))
+
+  (symb e x) (: l (look e x) (?
+   (= (A l) 'here) (quote (B l))
+   (nilp (thas (: defs (tget e'def)) x)) x
+   (: dd (wv e (tdel defs x))
+    (? (nilp (qtd (tset defs x dd))) x (,
+     (tdel (tget e'def) x)
+     (tset (tget e'val) x (unq dd))
+     dd)))))
+
+ (? (twop x) (list e x) (symp x) (symb e x) x))
+
+ ; second moiety : the " analyzing evaluator "
+ ; generates the code to produce the value of the expression
+ ; produced by the first moiety.
+
+ (xc i k) (\ e m (emf i (k e (+ m 1))))
+ (xd x k) (\ e m (emx x (k e (+ m 1))))
 
  (emf i h) ((? (: q (tget fuse i)) q emi) i h)
  (Im x k) (:
@@ -367,17 +332,14 @@
        (twop x) 'two (vecp x) 'vec
        (symp x) 'sym (strp x) 'str
        (tblp x) 'tbl          'nil)
-  (Co i-imm (Da x (-> t k))))
-
- (Co i k) (\ e m (emf i (k e (+ m 1))))
- (Da x k) (\ e m (emx x (k e (+ m 1))))
+  (xc i-imm (xd x (-> t k))))
 
  ; these functions produce functions to do certain side effects
  ; with per-scope stack structures during code generation: 
  ; either manipulating the stack or embedding the item at the
  ; top into the thread.
  (pushr s) (\ k (\ e m (>>= (k e m) (\ k (A (tset e s (X k (tget e s))))))))
- (popr  s) (\ k (\ e m (>>= (k e m) (\ k (, (tset e s (B (tget e s))) k)))))
+ (popr s)  (\ k (\ e m (>>= (k e m) (\ k (, (tset e s (B (tget e s))) k)))))
  (peekr s) (\ k (\ e m (>>= (k e (+ m 1)) (\ k (emx (A (tget e s)) k)))))
  push1 (pushr 's1) push2 (pushr 's2)
  pop1 (popr 's1) pop2 (popr 's2)
@@ -388,51 +350,108 @@
   tcr (case t 'two i-idtwo 'num i-idnum
               'hom i-idhom 'tbl i-idtbl
               (fail))
-  (Co tcr k)))
+  (xc tcr k)))
 
- (-> t k) (\ e m (? (nilp t) (k e m) (value-of-type e m t k)))
-
- (value-of-type e m t k) (:
-  (match-for t h) (>>= t (consumes h) h (\ t u h (?
-   (nilp u) h
-   (= u t) (match-for t (hseek h 1))
-   (fail))))
-  (match-for t (k e m)))
+ (-> t k) (\ e m (:
+  (type e m t k) (:
+   (== t h) (>>= t (consumes h) h (\ t u h (?
+    (nilp u) h
+    (= u t) (== t (hseek h 1))
+    (fail))))
+   (== t (k e m)))
+  (? (nilp t) (k e m) (type e m t k))))
 
  (consumes h) (: i (hgeti h) (case i
   i-idhom 'hom i-idnum 'num
   i-idtwo 'two i-idtbl 'tbl))
 
- (cde e m x k) (:
- ; the rewrite ensures the : expression is always an even form.
-  (loop x k) (? (nilp x) k (:
-   l (loop (BB x) k)
-   m (? (nilp (|| (toplp e) (< -1 (idx (tget e'loc)(A x))))) l
-      (\ e m (? (toplp e) ((Co i-tbind (Da (A x) l)) e m)
-                          ((Co i-loc_ (Da (idx (tget e'loc) (A x)) l)) e m))))
-   (? (= 'here (A (: v (look e (A x)))))
-    (Im (B v) m) (eval (AB x) m))))
+ (eval x k) (:
+  (list x k) (:
 
- ((loop x k) e m))
+   (cond x k) (:
+    (loop x k) (:
+     (fin e m) (:
+      thd (k e (+ m 2))
+      ex (A (tget e's2))
+      i (hgeti ex)
+      (? (= i i-ret) (emf i thd) ; forward return instructions
+       (emf i-jump ; otherwise jump somewhere ...
+        (emx (? (= i i-jump) (hgetx (hseek ex 1)) ex) thd))))
+     (? (nilp (B x)) (eval (A x) fin)
+      (eval (A x) (pop1 (xc i-branch (peek1
+       (loop (BB x) (push1 (eval (AB x) fin)))))))))
+    (pop2 (loop x (push2 k))))
 
- (ev-if x k) (:
-  (loop x k) (:
-   (fin e m) (:
-    thd (k e (+ m 2))
-    ex (A (tget e's2))
-    i (hgeti ex)
-    (? (= i i-ret) (emf i thd) ; forward return instructions
-     (emf i-jump ; otherwise jump somewhere ...
-      (emx (? (= i i-jump) (hgetx (hseek ex 1)) ex) thd))))
-   (? (nilp (B x)) (eval (A x) fin)
-    (eval (A x) (pop1 (Co i-branch (peek1
-     (loop (BB x) (push1 (eval (AB x) fin)))))))))
-  (pop2 (loop x (push2 k))))
+   (lamb x k) (\ e m (:
+    (nom e k) (: i (hgeti k) (case i
+     i-tbind (hgetx (hseek k 1))
+     i-loc_  (at (tget e'loc) (hgetx (hseek k 1)))))
 
- (eval x k) ((? (twop x) ev-list (symp x) ev-sym Im) x k)
- (ini e m) ((Co i-ret (Da (tget e'nom) (\ e m (hom m)))) e m)
- (ev x) (: e (env () () 'ev)
-  (((eval (weak e x) ini) e 0) x))
+    (clo-thd e x k) (:
+     (loop x k) (? (nilp x) k
+      (loop (B x) (eval (A x) (xc i-push k))))
+     (k e m) (emi i-take (emx (len x) (hom (+ m 2))))
+     ((loop x k) e 0))
+
+    l ((-> 'hom k) e (+ m 2))
+    y (ltu e (nom e l) x)
+    (? (homp y) (emf i-imm (emx y l))
+     (emi (? (tget e'loc) i-encll i-encln)
+      (emx (X (B y) (clo-thd e (A y) k)) l)))))
+
+   (seq x k) (? x (eval (A x) (seq (B x) k)) k)
+   (app a b k) (:
+    (loop x k) (? (nilp x) k
+     (loop (B x) (eval (A x) (xc i-push k))))
+    (? (&& (qtd a) (: q (tget inliners (unq a)))) (q b k)
+     (loop b (eval a (>- 'hom (xc i-call (xd (len b) k)))))))
+
+   (defn x k) (:
+   ; the rewrite ensures the : expression is always an even form.
+    (loop e x k) (? (nilp x) k (:
+     l (loop e (BB x) k)
+     m (? (nilp (|| (toplp e) (memq (tget e'loc) (A x)))) l
+        (\ e m (? (toplp e) ((xc i-tbind (xd (A x) l)) e m)
+                            ((xc i-loc_ (xd (idx (tget e'loc) (A x)) l)) e m))))
+     (? (= 'here (A (: v (look e (A x)))))
+      (Im (B v) m) (eval (AB x) m))))
+
+    (\ e m ((loop e x k) e m)))
+
+   z (A x) (case z
+    '` (Im (AB x) k)
+    '? (cond (B x) k)
+    ': (defn (B x) k)
+    '\ (lamb x k)
+    ', (seq (B x) k)
+    (app z (B x) k)))
+
+  (symb x k) (\ e m (:
+   (late e m x d k) (:
+    ; the runtime encodes fundamental types as specific
+    ; integer values.
+    (t-code x) (case x
+     'hom 0 'num 1 'two 2 'vec 3 'str 4
+     'tbl 5 'sym 6 'nil 7 () 8 (fail))
+
+    h (k e (+ m 2))
+    t (consumes h)
+    (emf i-lbind (emx (X (t-code t) (X d x))
+                   (? t (hseek h 1) h))))
+ 
+   s (A (: r (look e x))) (?
+    (= s'here) ((Im (B r) k) e m)
+    (= s'wait) (late e m x (B r) k)
+    (= e (B r)) (case s
+     'arg ((xc i-arg (xd (idx (tget e'arg) x) k)) e m)
+     'loc ((xc i-loc (xd (idx (tget e'loc) x) k)) e m)
+     'clo ((xc i-clo (xd (idx (tget e'clo) x) k)) e m))
+    (, (: l (len (tget e'clo)))
+       (tset e'clo(snoc (tget e'clo) x))
+       ((xc i-clo (xd l k)) e m)))))
+
+
+  ((? (twop x) list (symp x) symb Im) x k))
 
  ; these data structures encode rules for partially evaluating
  ; different functions. right now the functions eligible for
@@ -440,72 +459,110 @@
  ; be able to infer if a function is pure in many cases, and
  ; users should be able to provide their own monoid instances
  ; (or whatever).
- abelians (immediate (tbl && 1 || () + 0 * 1))
- monoids (immediate (tbl scat "" cat ()))
+
+ ; basically we never want to mess with impure functions here.
+ ; having a hardcoded list is not the best way however.
  pures (immediate ({set}
-  L X A B + - * / % id flip cat iota rho |->
+  L X A B + - * / % id flip cat iota rho
   snoc init last rev ldel memq at idx len
   homp nilp symp nump tblp strp twop vecp
   && || scat slen sget ssub str))
 
- fuse (:
-  (f1 g xs .) (\ i p (>>= (g p) (hseek p 1) (\ a q
-   ((: loop (\ xs (? xs
-     (? (= a (A xs)) (emi (AB xs) q) (loop (BB xs)))
-     (emi i p)))) xs))))
+ ; these enable extra partial evaluation for functions
+ ; with certain algebraic properties. the nullary case for
+ ; any grouplike function has to return its structure's
+ ; identity element.
 
-  (argr a b) (f1 hgetx 0 a 1 b)
+ ; arguments to these functions can be combined freely
+ ; (commutativity holds)
+ abelians (immediate ({set} && || + *))
+ ; pairs of consecutive arguments can be combined in place
+ ; (associativity holds)
+ monoids (immediate ({set} scat cat))
+
+
+ ; this is a table of specialized emitters for specific
+ ; instructions that dynamically rewrite instruction sequences
+ ; into semantically equivalent but lighter forms.
+ fuse (:
+
+  ; a common case is to rewrite the last emitted
+  ; instruction or value according to an exact table
+  ; of values
+  (f1 g xs .) (\ i p (>>= (g p) (hseek p 1) (\ a q
+   (: (loop xs) (? (nilp xs)    (emi i p)
+                   (= a (A xs)) (emi (AB xs) q)
+                   (loop (BB xs)))
+   (loop xs)))))
+
+  ; for specialized indexed instructions
+  (argn a b) (f1 hgetx 0 a 1 b)
+
+  ; for specialized branch instructions ;
+  ; takes an argument for each branch case
   (br2 b c) (f1 hgeti i-branch b i-barnch c)
+
   (tbl
-   i-arg (argr i-arg0 i-arg1)
-   i-loc (argr i-loc0 i-loc1)
-   i-clo (argr i-clo0 i-clo1)
-   i-lt (br2 i-brlt i-brgteq) i-lteq (br2 i-brlteq i-brgt)
-   i-gt (br2 i-brgt i-brlteq) i-gteq (br2 i-brgteq i-brlt)
-   i-eq (br2 i-breq i-brne)
-   i-nilpp (f1 hgeti i-branch i-barnch i-barnch i-branch)
+   ; this along with "return forwarding" in branches is how
+   ; tail calls get optimized.
    i-call (\ i h (case (hgeti (hseek h 1))
     i-ret (emi i-rec (emx (hgetx h) (hseek h 1)))
     (emi i h)))
+   i-arg (argn i-arg0 i-arg1)
+   i-loc (argn i-loc0 i-loc1)
+   i-clo (argn i-clo0 i-clo1)
+   i-lt (br2 i-brlt i-brgteq)
+   i-lteq (br2 i-brlteq i-brgt)
+   i-gt (br2 i-brgt i-brlteq)
+   i-gteq (br2 i-brgteq i-brlt)
+   i-eq (br2 i-breq i-brne)
+   i-nilpp (f1 hgeti i-branch i-barnch i-barnch i-branch)
    i-imm (f1 hgetx () i-unit 0 i-zero 1 i-one)))
 
+ ; this is a table of specialized "subcompilers" for specific
+ ; functions. they preserve the value semantics of an expression
+ ; but may change its side effects by affecting which
+ ; subexpressions are evaluated and in what order. they
+ ; "inline" the function in the sense of replacing the code
+ ; for the function call with a sequence of specialized
+ ; instructions.
  inliners (:
 
   (mono f m x) (:
-   fold (\ f m x (? (nilp x) (L m)
+   (fold f m x) (? (nilp x) (L m)
     (? (qtd (: y (A x))) (fold f (f m (unq y)) (B x))
-     (: z (fold f m (B x)) (X (A z) (X y (B z)))))))
+     (: z (fold f m (B x)) (X (A z) (X y (B z))))))
    (? (= (f) (A (: j (fold f m x)))) (B j) j))
 
   (ordr i) (\ x k (?
    (nilp x) (Im () k)
    (nilp (B x)) (Im 1 k)
    (eval (A x)
-    (: fold (\ k x y
-      (eval x (Co i (? (nilp y) (push2 k)
-       (Co i-barnch (peek2 (Co i-push
-        (fold k (A y) (B y)))))))))
-     (Co i-push (pop2 (fold k (AB x) (BB x))))))))
+    (: (fold k x y)
+      (eval x (xc i (? (nilp y) (push2 k)
+       (xc i-barnch (peek2 (xc i-push
+        (fold k (A y) (B y))))))))
+     (xc i-push (pop2 (fold k (AB x) (BB x))))))))
 
   (abel f i) (\ x k (>>= (mono f (f) x) (\ x
    (eval (A x) (>- 'num (2f i k (B x)))))))
 
-  (0y i t0) (\ _ k (Co i (-> t0 k)))
+  (0y i t0) (\ _ k (xc i (-> t0 k)))
   (1y i t0 t1) (\ x k
-   (eval (A x) (>- t0 (Co i (-> t1 k)))))
+   (eval (A x) (>- t0 (xc i (-> t1 k)))))
   (2y i t0 t1 t2) (\ x k
-   (eval (AB x) (>- t1 (Co i-push
-    (eval (A x) (>- t0 (Co i (-> t2 k))))))))
+   (eval (AB x) (>- t1 (xc i-push
+    (eval (A x) (>- t0 (xc i (-> t2 k))))))))
   (2f i k x)
    (: (2g i k x xs)
-       (Co i-push (eval x (>- 'num (Co i (2f i k xs)))))
+       (xc i-push (eval x (>- 'num (xc i (2f i k xs)))))
     (? x (2g i k (A x) (B x)) (-> 'num k)))
 
   (3y i t0 t1 t2 t3) (\ x k
    (eval (A (BB x)) (>- t2
-    (Co i-push (eval (AB x) (>- t1
-     (Co i-push (eval (A x) (>- t0
-      (Co i-tset (-> t3 k)))))))))))
+    (xc i-push (eval (AB x) (>- t1
+     (xc i-push (eval (A x) (>- t0
+      (xc i-tset (-> t3 k)))))))))))
 
   (tbl
    id (\ x k (eval (A x) k))
@@ -519,7 +576,7 @@
         (? z (eval (A z) (>- 'num (2f i-sub k (B z))))
              (Im 0 k)))))
    L (\ x k (:
-    loop (\ x k (? x (loop (B x) (Co i-push (eval (A x) (Co i-cons (-> 'two k))))) k))
+    loop (\ x k (? x (loop (B x) (xc i-push (eval (A x) (xc i-cons (-> 'two k))))) k))
     (Im () (loop x k))))
                 
    / (\ x k
@@ -547,18 +604,22 @@
     (? (: q (map (filter x qtd) unq)) (: r (A q)
       (any (B q) (\ v (nilp (= v r))))))
      (Im () k)
-    (eval (A x) (Co i-push (? (BB x)
+    (eval (A x) (xc i-push (? (BB x)
      (: fold (\ k x y
-       (Co i-dupl (eval x (Co i-eq (? y
-        (Co i-barnch (peek2 (fold k (A y) (B y))))
+       (xc i-dupl (eval x (xc i-eq (? y
+        (xc i-barnch (peek2 (fold k (A y) (B y))))
         k)))))
       (pop2 (fold (push2 k) (AB x) (BB x))))
-     (eval (AB x) (Co i-eq k)))))))
+     (eval (AB x) (xc i-eq k)))))))
 
    nilp (1y i-nilpp () ())
    fail (0y i-fail ())))
- ev ; comment this line to define internals at toplevel
- ))))
+
+  (ini e m) ((xc i-ret (xd (tget e'nom) (\ e m (hom m)))) e m)
+  (ev x) (: e (env () () 'ev) (((eval (weak e x) ini) e 0) x))
+  ;; end of compiler namespace ; now return the eval function
+  ev ; comment this line to define internals at toplevel
+  ))))
 
 ; bootstrap
 (ev lib) (ev egg) ; C -> prelips

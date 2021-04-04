@@ -96,10 +96,11 @@ __ emsep(vm v, obj x, FILE *o, char s) {
 
 St __ phomn(vm v, obj x, FILE *o) {
   switch (kind(x)) {
-    case Sym: emit(v, x, o); Bk;
+    default: fputc('\\', o); Bk;
+    case Sym: fputc('\\', o), emit(v, x, o); Bk;
     case Two:
-      if (symp(X(x))) emit(v, X(x), o);
-      if (twop(Y(x))) fputc('\\', o), phomn(v, Y(x), o); } }
+      if (symp(X(x))) fputc('\\', o), emit(v, X(x), o);
+      if (twop(Y(x))) phomn(v, Y(x), o); } }
 
 St __ emoct(vm v, oct s, FILE *o) {
   fputc('"', o);
@@ -122,7 +123,7 @@ St __ emtwo(vm v, two w, FILE *o) {
 St __ emnum(vm v, num n, FILE *o) {
   fprintf(o, "%ld", n); }
 St __ emhom(vm v, hom h, FILE *o) {
-  fputc('\\', o), phomn(v, homnom(v, Ph(h)), o); }
+  phomn(v, homnom(v, Ph(h)), o); }
 
 void emit(vm v, obj x, FILE *o) {
   switch (kind(x)) {

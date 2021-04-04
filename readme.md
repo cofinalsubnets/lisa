@@ -23,6 +23,7 @@ are usually nil or identity, but `\`is an exception
 
 ### <code>\`</code> quote
 - <code>(\` x) = (quote x)</code>
+
 `'x` also works.
 
 ### `?` cond
