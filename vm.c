@@ -1,6 +1,8 @@
 #include "lips.h"
 #include "ev.h"
 
+#define ok Pn(1)
+
 // "the virtual machine"
 // it's a stack machine with one free register (xp)
 // that's implemented on top of the C compiler's calling
@@ -339,6 +341,16 @@ Vm(tblg) {
 Vm(tget) {
   xp = tblget(v, xp, *sp++);
   Ap(ip+W, xp ? xp : nil); }
+Vm(thas) {
+  xp = tblget(v, xp, *sp++) ? ok : nil;
+  N(1); }
+Vm(tlen) {
+  xp = putnum(gettbl(xp)->len);
+  N(1); }
+Vm(tkeys) {
+  obj x; CallC(x = tblkeys(v, xp));
+  xp = x; N(1); }
+
 Vm(tblc) {
   ArCh(2);
   TyCh(Argv[0], Tbl);
@@ -569,15 +581,6 @@ Vm(em_u) {
   fputc('\n', stdout);
   Jump(ret); }
 
-Vm(pc_u) {
-  ArCh(1);
-  xp = *Argv;
-  TyCh(xp, Num);
-  fputc(Gn(xp), stdout);
-  Jump(ret); }
-
-Vm(emse) { emsep(v, xp, stdout, Gn(GF(ip))); N(2); }
-
 // pairs
 Vm(cons) {
   Have1(); hp[0] = xp, hp[1] = *sp++;
@@ -594,7 +597,6 @@ Vm(car_u) { ArCh(1); TyCh(*Argv, Two); Go(ret, X(*Argv)); }
 Vm(cdr_u) { ArCh(1); TyCh(*Argv, Two); Go(ret, Y(*Argv)); }
 
 // arithmetic
-#define ok Pn(0)
 Vm(neg) { Ap(ip+W, Pn(-Gn(xp))); }
 Vm(add) { xp = xp + *sp++ - Num; N(1); }
 Vm(sub) { xp = *sp++ - xp + Num; N(1); }

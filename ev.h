@@ -1,6 +1,6 @@
 // here is some "static data". this idea came from luajit.
 #define insts(_)\
-  _(tget),_(tset),_(gsym_u),\
+  _(tget),_(tset),_(thas),_(tlen),_(gsym_u),\
   _(arity),  _(idnum),  _(idhom),   _(idtwo),  _(idtbl), _(lbind),\
   _(imm), _(arg),   _(clo),    _(loc),   _(take),\
   _(locals),   _(loc_),   _(pc0),     _(pc1),    _(clos),\
@@ -16,7 +16,7 @@
   _(twop_u), _(nump_u), _(homp_u),  _(tblp_u), _(strp_u),\
   _(nilp_u), _(car_u),  _(cdr_u),   _(cons_u), _(vecp_u),\
   _(strmk),  _(strg),   _(strl),_(strs),_(strc),_(hom_fin_u),\
-  _(symp_u), _(emse), _(hom_u), _(pc_u),\
+  _(symp_u), _(hom_u),\
   _(arg0), _(arg1), _(loc0),_(loc1),_(clo0),_(clo1),\
   _(unit),_(one),_(zero),\
   _(brlt),_(brlteq),_(breq),_(brgteq),_(brgt),_(brne),\
@@ -43,7 +43,7 @@
   _("tkeys", tblks), _("tlen", tbll),\
   _("slen", strl),   _("sget", strg),\
   _("scat", strc),   _("ssub", strs),\
-  _("str", strmk),   _(".c", pc_u),\
+  _("str", strmk),\
   _("hom", hom_u),   _("hseek", hom_seek_u),\
   _("emx", emx_u),     _("hgetx", hom_getx_u),\
   _("emi", emi_u),     _("hgeti", hom_geti_u),\

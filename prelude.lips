@@ -113,12 +113,12 @@
  ; for its closure in order to produce an "instance" of the
  ; function at runtime.
  (ltu e nom l) (:
-  (with-locals f k) (? (: loc (tget f 'loc))
-                       (emi i-locals (emx (len loc) k)) k)
-  (with-arity f k) (?
-   (> (: i (tget f 'sig)) 0) (emf i-arity (emx i k))
+  (loc k) (? (nilp (: loc (tget f 'loc))) k
+           (emi i-locals (emx (len loc) k)))
+  (ar k) (: i (tget f 'sig) (?
+   (> i 0) (emf i-arity (emx i k))
    (< i 0) (emi i-vararg (emx (- (- i) 1) k))
-   k)
+   k))
 
   n (|| (B l) '(()))
   f (env (init n) e (X nom (tget e'nom)) nom)
@@ -130,8 +130,10 @@
    ; then it's an alias for the second function.
    (&& (twop x) (homp (A x)) (>= (tget f 'sig) 0) (= (B x) (tget f'arg)))
     (A x)
-   (: k (hfin (with-arity f (with-locals f ((eval x ini) f 4))))
-    (? (tget f 'clo) (X (tget f 'clo) k) k))))
+   ; otherwise we should probably compile it ...
+   (: k (hfin (ar (loc ((eval x ini) f 4))))
+    ; free variables or not ?
+    (? (: clo (tget f 'clo)) (X clo k) k))))
 
 
  ; first compiler moiety : the " weak evaluator "
@@ -186,10 +188,10 @@
   ; try to rewrite and evaluate it. if this succeeds, add it
   ; to the known values. otherwise, if the definition is for
   ; a function, collect it into a list.
-  (f1 kvs) (? kvs (?
+  (f1 e kvs) (? kvs (?
    (thas (tget e'val) (: kv (A kvs) k (A kv)))
-    (f1 (B kvs))
-   (: qq (wv e (B kv)) bb (f1 (B kvs)) (?
+    (f1 e (B kvs))
+   (: qq (wv e (B kv)) bb (f1 e (B kvs)) (?
     (qtd (tset (tget e'def) k qq))
      (, (tset (tget e'val) k (unq qq))
         (tdel (tget e'def) k)
@@ -198,36 +200,36 @@
      (X (X k qq) bb)
     bb))))
 
-  (f2 kvs) (? kvs (: kv (A kvs) rr (f2 (B kvs)) (?
+  (f2 e kvs) (? kvs (: kv (A kvs) rr (f2 e (B kvs)) (?
    (homp (: i (ltu e (: k (A kv)) (: v (B kv)))))
     (, (tset (tget e'val) k i)
        (tdel (tget e'def) k)
        rr)
    (X (X k (X (A i) v)) rr))))
 
-  (f3r i kvs q) (:
-   (chk i vs) (? (nilp vs) 1 (: v (A vs) (?
+  (f3r e i kvs q) (:
+   (chk e i vs) (? (nilp vs) 1 (: v (A vs) (?
     (|| (any i (\ j (= (A j) v))) (thas (tget e'val) v))
-     (chk i (B vs)))))
+     (chk e i (B vs)))))
 
    (? (nilp kvs) q (?
-    (chk i (AB (: kv (A kvs))))
-     (f3r i (B kvs) (X kv q))
-    (f3 (ldel i kv)))))
+    (chk e i (AB (: kv (A kvs))))
+     (f3r e i (B kvs) (X kv q))
+    (f3 e (ldel i kv)))))
 
-  (f3 kvs) (f3r kvs kvs ())
+  (f3 e kvs) (f3r e kvs kvs ())
 
-  (f4 kvs) (? (nilp kvs)
+  (f4 e kvs) (? (nilp kvs)
    (tset e'loc (tkeys (tget e'def)))
    (, (tdel (tget e'def) (: kv (A kvs) k (A kv)))
       (tset e 'dfr (X k (tget e'dfr)))
-      (f4 (B kvs))
+      (f4 e (B kvs))
       (tset (tget e'val) k (ltu e k (BB kv)))))
 
 
   ; only bother with this if there are any inner defs
   (? (: ks (tkeys (: def (tget e'def))))
-   (f4 (f3 (f2 (f1 (map (tset e'loc ks) (\ k
+   (f4 e (f3 e (f2 e (f1 e (map (tset e'loc ks) (\ k
     (X k (tget def k))))))))))
 
  (wv e x)  (:
@@ -480,7 +482,6 @@
  ; (associativity holds)
  monoids (immediate ({set} scat cat))
 
-
  ; this is a table of specialized emitters for specific
  ; instructions that dynamically rewrite instruction sequences
  ; into semantically equivalent but lighter forms.
@@ -537,12 +538,12 @@
   (ordr i) (\ x k (?
    (nilp x) (Im () k)
    (nilp (B x)) (Im 1 k)
-   (eval (A x)
-    (: (fold k x y)
-      (eval x (xc i (? (nilp y) (push2 k)
-       (xc i-barnch (peek2 (xc i-push
-        (fold k (A y) (B y))))))))
-     (xc i-push (pop2 (fold k (AB x) (BB x))))))))
+   (eval (A x) (:
+    (fold k x y)
+     (eval x (xc i (? (nilp y) (push2 k)
+      (xc i-barnch (peek2 (xc i-push
+       (fold k (A y) (B y))))))))
+    (xc i-push (pop2 (fold k (AB x) (BB x))))))))
 
   (abel f i) (\ x k (>>= (mono f (f) x) (\ x
    (eval (A x) (>- 'num (2f i k (B x)))))))
@@ -597,6 +598,8 @@
    emx  (2y i-emx () 'hom 'hom)
    tget (2y i-tget 'tbl () ())
    tset (3y i-tset 'tbl () () ())
+   tlen (1y i-tlen 'tbl 'num)
+   thas (2y i-thas 'tbl () ())
 
    = (\ x k (?
     (nilp x) (Im () k)
@@ -618,14 +621,14 @@
   (ini e m) ((xc i-ret (xd (tget e'nom) (\ e m (hom m)))) e m)
   (ev x) (: e (env () () 'ev) (((eval (weak e x) ini) e 0) x))
   ;; end of compiler namespace ; now return the eval function
-  ev ; comment this line to define internals at toplevel
+;  ev ; comment this line to define internals at toplevel
   ))))
 
 ; bootstrap
 (ev lib) (ev egg) ; C -> prelips
 (ev lib) (ev egg) ; prelips -> lips
-(: precompose (\ x .
-      (ev(L'\'x(foldl x'x(\ m e(L(L'` e)m)))))))
+(: comp (\ x .
+ (ev(L'\'x(foldl x'x(\ m e(L(L'` e)m)))))))
 ; "drop privileges"
 (each '(lib egg macros ns emi emx hom hseek hgeti hgetx hfin)
       (\ v (tdel ns v)))

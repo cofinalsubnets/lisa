@@ -40,7 +40,7 @@ static obj sseekc(vm, mem, obj);
 #define shrink() (len/=2,vit/=2)
 #define growp (allocd > len || vit < lb)
 #define shrinkp (allocd < len/2 && vit >= ub)
-void reqsp(vm v, num req) {
+__ reqsp(vm v, num req) {
   num len = v->mem_len, vit = copy(v, len);
   if (vit) { // copy succeeded
     num allocd = len - (Avail - req);
@@ -88,7 +88,7 @@ St int copy(vm v, num len) {
     v->t0 = t2,
     u); }
 
-St In Vd do_copy(vm v, num l0, mem b0, num l1, mem b1) {
+St In __ do_copy(vm v, num l0, mem b0, num l1, mem b1) {
   v->mem_len = l1;
   v->mem_pool = Hp = b1;
   mem s0 = Sp,
@@ -278,7 +278,8 @@ static uint64_t hc(vm v, obj x) {
     default:  r = mix * x; } 
   return (r<<48)|(r>>16); }
 
-#define hbi(a,k)((k)%(a))
+static Inline num hbi(num cap, uint64_t co) {
+  return co % cap; }
 
 static Inline tble hb(obj t, uint64_t code) {
   return gettbl(t)->tab[hbi(gettbl(t)->cap, code)]; }
