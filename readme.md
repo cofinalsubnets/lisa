@@ -4,7 +4,7 @@ nonverbal lisp
 ## lisp qualities
 - strict lexically scoped lisp-1 with short function words
   and no superfluous parentheses
-- annotation-free hybrid static/dynamic typing
+- some kind of weak static type concept
 - lists and definitions (except at toplevel) are immutable
 - `()` is self-quoting and false
 - `.` is a regular symbol
@@ -16,7 +16,7 @@ the binary and prelude under `~/.local` by default.
 
 ## special forms
 with scheme equivalents. degenerate (nullary/unary) cases
-are usually nil or the identity; `\`is an exception to this
+are usually nil or identity, but `\`is an exception
 
 ### `,` begin
 - `(, a b c) = (begin a b c)`
@@ -34,7 +34,7 @@ are usually nil or the identity; `\`is an exception to this
 - `(: a b) = (begin (define a b) a)`
 - `(: a b c d) = (begin (define a b) (define c d) c)`
 - `(: a b c d e) = (letrec ((a b) (c d)) e)`
-- `(: (a b c) (b c)) = (define (a b c) (b c))`
+- `(: (a b c) (b c)) = (: a (\ b c (b c)))`
 
 ### `\` lambda
 - `(\) = (lambda () ())`
@@ -83,39 +83,35 @@ these are defined in `prelude.lips`, `make repl` imports them automatically
 ### hyperoperations
 ```lisp
 ; send n to the nth hyperoperation, 0 being addition.
-(: hy (\ n (? (= n 0) + (\ x y
- (foldr1 (rho y x) (hy (- n 1)))))))
+(: (hy n) (? (= n 0) + (\ x y
+ (foldr1 (rho y x) (hy (- n 1))))))
 ```
 
 ### church numerals
 ```lisp
-; modified SK combinators
-(: K const
+(: K const ; these are just slightly modified SK combinators
    I id
-   P (\ f (\ g (\ x (f (g x))))) ; just postcomposition
-   Q (\ m (\ n (\ f              ; Q : S :: compose : apply
-    ((P (m f)) (n f)))))
+   (P f) (\ g (\ x (f (g x))))         ; postcomposition
+   (Q x) (\ y (\ z ((P (x z)) (y z)))) ; Q : S :: compose : apply
 
    zero (K I)
-   one I
-   exp I
-   mul P
-   add Q
+   one I exp I
+   mul P add Q
    succ (add one)
 
-   C (\ n (? (= n 0) zero (succ (C (- n 1))))) ; go to church
-   N (\ c ((c (\ x (+ x 1))) 0)))              ; leave
+   (C n) (? (= n 0) zero (succ (C (- n 1)))) ; go to church
+   (N c) ((c (\ x (+ x 1))) 0))              ; leave
 ```
 
 ### fizzbuzz
 ```lisp
 ; now that we have church numerals we can write fizzbuzz.
-(: /p (\ m n (= 0 (% m n)))
-   fb (\ m (, (. (? (/p m 15) 'fizzbuzz
-                    (/p m 5)  'buzz
-                    (/p m 3)  'fizz
-                    m))
-              (+ m 1)))
+(: (/p m n) (= 0 (% m n))
+   (fb m) (, (. (? (/p m 15) 'fizzbuzz
+                   (/p m 5)  'buzz
+                   (/p m 3)  'fizz
+                   m))
+             (+ m 1))
  (((C 100) fb) 1))
 ```
 
