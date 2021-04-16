@@ -316,7 +316,7 @@ c2(c_ap) {
     Rec(x = apply(v, y, Y(x)));
     R c_eval(v, e, m, x); }
   for (mm(&x),
-       Pu(Pn(c_ev), X(x), Pn(inst), Pn(idhom),
+       Pu(Pn(c_ev), X(x), Pn(inst), Pn(idH),
             Pn(c_call), Pn(llen(Y(x))));
        twop(x = Y(x));
        Pu(Pn(c_ev), X(x), Pn(inst), Pn(push)));
@@ -443,34 +443,34 @@ St In Vd init_globals_array(vm v) {
 
 #define USR_PATH ".local/lib/"NOM"/"
 #define SYS_PATH "/usr/lib/"NOM"/"
-static int seekp(const char *p) {
+St int seekp(Ko Ch* p) {
   int b, c;
   b = open(getenv("HOME"), O_RDONLY);
   c = openat(b, USR_PATH, O_RDONLY), close(b);
   b = openat(c, p, O_RDONLY), close(c);
-  if (-1 < b) return b;
+  if (-1 < b) R b;
   b = open(SYS_PATH, O_RDONLY);
   c = openat(b, p, O_RDONLY), close(b);
-  return c; }
+  R c; }
 
 
-vm bootstrap(vm v) {
-  if (v == NULL) return v;
+V bootstrap(V v) {
+  if (v == NULL) R v;
   const char *path = "prelude.lips";
   int pre = seekp(path);
   if (pre == -1) errp(v, "can't find %s", path);
-  else {
+  El {
     FILE *f = fdopen(pre, "r");
-    if (setjmp(v->restart)) return
+    if (setjmp(v->restart)) R
       errp(v, "error in %s", path),
       fclose(f), finalize(v);
     scr(v, f), fclose(f); }
-  return v; }
+  R v; }
 
-vm initialize(int argc, const char **argv) {
-  vm v = malloc(sizeof(struct rt));
-  if (!v || setjmp(v->restart)) return
-    errp(v, "oom"), finalize(v);
+vm initialize(int argc, Ko Ch **argv) {
+  vm v = malloc(sizeof(Sr V));
+  if (!v || setjmp(v->restart))
+    R errp(v, "oom"), finalize(v);
   v->t0 = clock(),
   v->ip = v->xp = v->syms = v->glob = nil,
   v->fp = v->hp = v->sp = (mem)w2b(1),
@@ -488,7 +488,7 @@ vm initialize(int argc, const char **argv) {
     z = string(v, argv[argc]),
     a = pair(v, z, a);
   um, um, tblset(v, Top, y, a);
-  return v; }
+  R v; }
 
 vm finalize(vm v) {
   if (v) free(v->mem_pool), free(v);

@@ -1,7 +1,7 @@
 // here is some "static data". this idea came from luajit.
 #define insts(_)\
   _(tget),_(tset),_(thas),_(tlen),_(gsym_u),\
-  _(arity),  _(idnum),  _(idhom),   _(idtwo),  _(idtbl), _(lbind),\
+  _(arity),  _(idZ),  _(idH),   _(id2),  _(idT), _(lbind),\
   _(imm), _(arg),   _(clo),    _(loc),   _(take),\
   _(locals),   _(loc_),   _(pc0),     _(pc1),    _(clos),\
   _(encll),  _(encln),  _(yield),   _(ret),    _(jump),\

@@ -20,8 +20,6 @@
 #define Inline In
 #define NoInline Nin
 #define St static
-#define Vd void
-#define __ void
 #define Ty typedef
 #define Sr struct
 #define Un union
@@ -32,103 +30,103 @@
 #define El else
 #define Sw switch
 #define Bk break
+#define Cu continue
 #define Ks case
+#define Df default
+#define Wh while
+#define Fo for
 
-Ty intptr_t // pointer type on the host platform
-  obj,  // data supertype
-  num,  // integers, distinguished for clarity
-  *mem; // data pointer
-#define O (obj)
-#define non (O 0)
+Ty intptr_t
+ obj, num, *mem, O, Z, *M;
+Ty uintptr_t N;
+Ty void _, Vd;
+Ty char Ch;
+Ty FILE *Io;
+#define Ob (O)
+#define non (Ob 0)
 #define nil (~non)
 #define W Sz(obj) // pointer arithmetic unit
 #define W2 (2*W)
 
+// more fundamental data types
+Ty Sr two { O x, y; } *Tw, *two; // pairs
+Ty Sr tup { Z len; O xs[]; } *Ve, *tup; // vectors
+Ty Sr oct { Z len; Ch text[]; } *By, *oct; // byte arrays
+Ty Sr sym { O nom, code, l, r; } *Sy, *sym; // symbols
+
+Ty Sr tble { O key, val; Sr tble *next; } *tble;
+Ty Sr tbl { Z len, cap; tble *tab; } *Ht, *tbl;
+
+Ty Sr root { mem one; Sr root *next; } *root;
+// the 3 ls bits of each pointer are a type tag
+En type {
+ Hom = 0, Num = 1, Two = 2, Tup = 3,
+ Oct = 4, Tbl = 5, Sym = 6, Nil = 7 };
+
+En globl {
+ Def, Cond, Lamb, Quote, Seq,
+ Splat, Topl, Macs, Eval, Apply, NGlobs };
+
 // this is the structure responsible for holding runtime
 // state. a pointer to it as an argument to almost every
 // function in lips.
-Ty Sr rt *rt, *vm;
-// this is the type of interpreter functions
-Ty obj terp(rt, obj, mem, mem, mem, obj);
-Ty terp **hom; // code pointer ; the internal function type
-
-// more fundamental data types
-Ty Sr two { obj x, y; } *two; // pairs
-Ty Sr tup { num len; obj xs[]; } *tup; // vectors
-Ty Sr oct { num len; char text[]; } *oct; // byte arrays
-Ty Sr sym { obj nom, code, l, r; } *sym; // symbols
-
-Ty Sr tble { obj key, val; Sr tble *next; } *tble;
-Ty Sr tbl { num len, cap; tble *tab; } *tbl;
-
-Ty Sr spec {
-  Sr spec *sp;
-  obj (*cp)(rt, obj), nom; } *spec;
-
-Ty Sr root { mem one; Sr root *next; } *root;
-Sr rt {
-  obj ip, xp, *fp, *hp, *sp; // vm state variables
-  obj syms, glob; // globals
+Ty Sr V {
+  O ip, xp, *fp, *hp, *sp; // vm state variables
+  O syms, glob; // globals
   root mem_root; // memory
-  num t0, count, mem_len, *mem_pool;
-  jmp_buf restart; }; // top level restart
+  Z t0, count, mem_len, *mem_pool;
+  jmp_buf restart; } // top level restart
+ *rt, *vm, *V;
 
-// the 3 ls bits of each pointer are a type tag
-En type {
-  Hom = 0, Num = 1, Two = 2, Tup = 3,
-  Oct = 4, Tbl = 5, Sym = 6, Nil = 7 };
+// this is the type of interpreter functions
+Ty O terp(V, O, M, M, M, O);
+Ty terp **hom, **H; // code pointer ; the internal function type
 
-En globl {
-  Def, Cond, Lamb, Quote, Seq, Splat, Topl, Macs,
-  Eval, Apply, NGlobs };
+V initialize(int, Ko Ch**),
+  bootstrap(V),
+  finalize(V);
 
-rt initialize(),
-   bootstrap(rt),
-   finalize(rt);
+_ scr(V, FILE*),
+  emit(V, obj, FILE*),
+  errp(V, Ko Ch*, ...),
+  emsep(V, obj, FILE*, Ch),
+  reqsp(V, num);
 
-__ scr(vm, FILE*),
-   emit(rt, obj, FILE*),
-   errp(rt, Ko char*, ...),
-   emsep(rt, obj, FILE*, char),
-   reqsp(rt, num),
-   *bump(rt, num),
-   *cells(rt, num);
-
-obj err(rt, obj, Ko char*, ...),
-    restart(rt),
-    homnom(rt, obj),
-    pair(rt, obj, obj),
-    parse(rt, FILE*),
-    intern(rt, obj),
-    eval(rt, obj),
-    table(rt),
-    tblset(rt, obj, obj, obj),
-    tblget(rt, obj, obj),
-    tbldel(rt, obj, obj),
-    tblkeys(rt, obj),
-    string(rt, Ko char*);
-num llen(obj);
+O err(V, obj, Ko Ch*, ...),
+  restart(rt),
+  homnom(V, obj),
+  pair(V, obj, obj),
+  parse(V, FILE*),
+  intern(V, obj),
+  eval(V, obj),
+  table(rt),
+  tblset(V, obj, obj, obj),
+  tblget(V, obj, obj),
+  tbldel(V, obj, obj),
+  tblkeys(V, obj),
+  string(V, Ko char*);
+Z llen(obj);
 int eql(obj, obj);
 
-Ko char *tnom(En type);
+Ko Ch* tnom(En type);
 
 #define kind(x) ((x)&7)
 #define Gh(x) ((hom)((x)))
-#define Ph(x) (O(x))
+#define Ph(x) (Ob(x))
 #define Gn getnum
 #define Pn putnum
 #define gettwo(x) ((two)((x)-Two))
-#define puttwo(x) (O(x)+Two)
+#define puttwo(x) (Ob(x)+Two)
 #define getnum(n) ((num)(n)>>3)
-#define putnum(n) ((O(n)<<3)+Num)
+#define putnum(n) ((Ob(n)<<3)+Num)
 #define getsym(x) ((sym)((obj)(x)-Sym))
-#define putsym(x) (O(x)+Sym)
+#define putsym(x) (Ob(x)+Sym)
 #define gettup(x) ((tup)((x)-Tup))
-#define puttup(x) (O(x)+Tup)
+#define puttup(x) (Ob(x)+Tup)
 #define getoct(x) ((oct)((obj)(x)-Oct))
-#define putoct(x) (O(x)+Oct)
+#define putoct(x) (Ob(x)+Oct)
 #define gettbl(x) ((tbl)((obj)(x)-Tbl))
-#define puttbl(x) (O(x)+Tbl)
+#define puttbl(x) (Ob(x)+Tbl)
 #define homp(x) (kind(x)==Hom)
 #define octp(x) (kind(x)==Oct)
 #define nump(x) (kind(x)==Num)
@@ -185,24 +183,28 @@ Ko char *tnom(En type);
 #define App AR(Glob)[Apply]
 #define Avail (Sp-Hp)
 
-extern Ko uint64_t mix;
+#define mix 2708237354241864315ul
 
 St In hom button(hom h) {
-  while (*h) h++;
-  R h; }
+ Wh (*h) h++;
+ R h; }
 
-obj compile(vm, obj);
+St In _* bump(V v, Z n) { _* x;
+ R x = v->hp, v->hp += n, x; }
 
-#ifndef NOM
+St In _* cells(V v, Z n) {
+ R Avail < n ? reqsp(v, n):0, bump(v, n); }
+
+O compile(vm, obj);
+
 #define NOM "lips"
-#endif
 
 _Static_assert(
-  Sz(obj) >= 8,
-  "pointers are less than 64 bits");
+  Sz(O) >= 8,
+  "pointers are smaller than 64 bits");
   
 _Static_assert(
-  -9 == (((num)-9<<32)>>32),
+  -9 == (((Ob-9)<<32)>>32),
   "opposite bit-shifts on a negative number "
   "yield a nonidentical result");
 #endif

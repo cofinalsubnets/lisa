@@ -1,8 +1,6 @@
 #include "lips.h"
 #include "ev.h"
 
-#define ok Pn(1)
-
 // "the virtual machine"
 // it's a stack machine with one free register (xp)
 // that's implemented on top of the C compiler's calling
@@ -92,7 +90,7 @@ St Vm(nope);
 // " virtual machine instructions "
 //
 // load instructions
-Vm(imm) { xp = O GF(ip); N(2); }
+Vm(imm) { xp = Ob GF(ip); N(2); }
  // common constants
  Vm(unit) { xp = nil;   N(1); }
  Vm(one)  { xp = Pn(1); N(1); }
@@ -116,7 +114,7 @@ Vm(clo)  { xp = fast_idx(AR(Clos)); N(2); }
 Vm(push) { Have1(); *--sp = xp; N(1); } // stack push
 Vm(loc_) { fast_idx(AR(Locs)) = xp; N(2); } // set a local variable
 Vm(tbind) { // set a global variable
-  CallC(tblset(v, Dict, O GF(ip), xp)); N(2); }
+  CallC(tblset(v, Dict, Ob GF(ip), xp)); N(2); }
 
 // initialize local variable slots
 Vm(locals) {
@@ -134,15 +132,15 @@ Vm(locals) {
 // the "static" type and arity checking that would have been
 // done by the compiler if the function had been bound early.
 Vm(lbind) {
-  obj w = O GF(ip),
+  obj w = Ob GF(ip),
       d = XY(w), y = X(w);
   if (!(w = tblget(v, d, xp = YY(w)))) Jump(nope);
   xp = w;
   if (Gn(y) != 8) TyCh(xp, Gn(y)); // type check elision
   terp *q = G(FF(ip));
   if (q == call || q == rec) {
-    obj aa = O GF(FF(ip));
-    if (G(xp) == arity && aa >= O GF(xp))
+    obj aa = Ob GF(FF(ip));
+    if (G(xp) == arity && aa >= Ob GF(xp))
       xp += W2; }
   G(ip) = imm;
   GF(ip) = (terp*) xp;
@@ -153,19 +151,19 @@ Vm(lbind) {
 Vm(yield) { R Pack(), xp; }
 
 // conditional jumps
-Vm(branch) { Ap(xp == nil ? O FF(ip) : O GF(ip), xp); }
-Vm(barnch) { Ap(xp == nil ? O GF(ip) : O FF(ip), xp); }
+Vm(branch) { Ap(xp == nil ? Ob FF(ip) : Ob GF(ip), xp); }
+Vm(barnch) { Ap(xp == nil ? Ob GF(ip) : Ob FF(ip), xp); }
 // relational jumps
-Vm(brlt)   { Ap(*sp++ <  xp    ? O GF(ip) : O FF(ip), xp); }
-Vm(brgteq) { Ap(*sp++ <  xp    ? O FF(ip) : O GF(ip), xp); }
-Vm(brlteq) { Ap(*sp++ <= xp    ? O GF(ip) : O FF(ip), xp); }
-Vm(brgt)   { Ap(*sp++ <= xp    ? O FF(ip) : O GF(ip), xp); }
-Vm(breq)   { Ap(eql(*sp++, xp) ? O GF(ip) : O FF(ip), xp); }
-Vm(brne)   { Ap(eql(*sp++, xp) ? O FF(ip) : O GF(ip), xp); }
+Vm(brlt)   { Ap(*sp++ <  xp    ? Ob GF(ip) : Ob FF(ip), xp); }
+Vm(brgteq) { Ap(*sp++ <  xp    ? Ob FF(ip) : Ob GF(ip), xp); }
+Vm(brlteq) { Ap(*sp++ <= xp    ? Ob GF(ip) : Ob FF(ip), xp); }
+Vm(brgt)   { Ap(*sp++ <= xp    ? Ob FF(ip) : Ob GF(ip), xp); }
+Vm(breq)   { Ap(eql(*sp++, xp) ? Ob GF(ip) : Ob FF(ip), xp); }
+Vm(brne)   { Ap(eql(*sp++, xp) ? Ob FF(ip) : Ob GF(ip), xp); }
 
 // unconditional jumps
-Vm(jump) { Ap(O GF(ip), xp); }
-Vm(clos) { Clos = O GF(ip); Ap(O G(FF(ip)), xp); }
+Vm(jump) { Ap(Ob GF(ip), xp); }
+Vm(clos) { Clos = Ob GF(ip); Ap(Ob G(FF(ip)), xp); }
 
 // return from a function
 Vm(ret) {
@@ -177,7 +175,7 @@ Vm(ret) {
 // regular function call
 Vm(call) {
   Have(Size(fr));
-  obj adic = O GF(ip);
+  obj adic = Ob GF(ip);
   num off = fp - (mem) ((num) sp + adic - Num);
   fp = sp -= Size(fr);
   Retp = Ph(ip+W2);
@@ -189,7 +187,7 @@ Vm(call) {
 // general tail call
 Vm(rec) {
   num adic = Gn(GF(ip));
-  if (Argc == O GF(ip)) {
+  if (Argc == Ob GF(ip)) {
     for (mem p = Argv; adic--; *p++ = *sp++);
     sp = fp;
     Ap(xp, nil); }
@@ -209,12 +207,12 @@ Vm(rec) {
   Ap(xp, nil); }
 
 // type/arity checking
-Vm(arity) { Arity(O GF(ip)); N(2); }
+Vm(arity) { Arity(Ob GF(ip)); N(2); }
 #define tcn(k) {if(kind(xp-k))Jump(nope);}
-Vm(idnum) { tcn(Num); N(1); }
-Vm(idtwo) { tcn(Two); N(1); }
-Vm(idhom) { tcn(Hom); N(1); }
-Vm(idtbl) { tcn(Tbl); N(1); }
+Vm(idZ) { tcn(Num); N(1); }
+Vm(id2) { tcn(Two); N(1); }
+Vm(idH) { tcn(Hom); N(1); }
+Vm(idT) { tcn(Tbl); N(1); }
 
 // continuations
 //
@@ -325,7 +323,7 @@ Vm(hom_geti_u) {
 Vm(hom_getx_u) {
   ArCh(1);
   TyCh(Argv[0], Hom);
-  Go(ret, O G(Argv[0])); }
+  Go(ret, Ob G(Argv[0])); }
 Vm(hom_seek_u) {
   ArCh(2);
   TyCh(Argv[0], Hom);
@@ -342,6 +340,7 @@ Vm(tget) {
   xp = tblget(v, xp, *sp++);
   Ap(ip+W, xp ? xp : nil); }
 Vm(thas) {
+#define ok Pn(1)
   xp = tblget(v, xp, *sp++) ? ok : nil;
   N(1); }
 Vm(tlen) {
@@ -486,7 +485,7 @@ Vm(vararg) {
 // lexical environments.
 St Vm(encl) {
   num n = Xp;
-  obj x = O GF(ip);
+  obj x = Ob GF(ip);
   mem block = hp;
   hp += n;
   obj arg = nil; // optional argument array
@@ -535,7 +534,7 @@ Vm(encln) { Go(prencl, nil); }
 // instruction that sets the closure and enters
 // the function.
 Vm(pc0) {
-  obj ec = O GF(ip),
+  obj ec = Ob GF(ip),
       arg = AR(ec)[0],
       loc = AR(ec)[1];
   num adic = nilp(arg) ? 0 : AL(arg);
@@ -544,7 +543,7 @@ Vm(pc0) {
   G(ip) = pc1;
   sp -= adic;
   for (num z = adic; z--; sp[z] = AR(arg)[z]);
-  ec = O GF(ip);
+  ec = Ob GF(ip);
   fp = sp -= Size(fr);
   Retp = ip;
   Subd = Pn(off);
@@ -562,7 +561,7 @@ Vm(pc1) {
 
 // this is used to create closures.
 Vm(take) {
-  num n = Gn(O GF(ip));
+  num n = Gn(Ob GF(ip));
   Have(n + 1);
   tup t = (tup) hp;
   hp += n + 1;
@@ -760,7 +759,7 @@ Vm(ev_u) {
 
 // this is for runtime errors from the interpreter, it prints
 // a backtrace and everything.
-St In __ perrarg(vm v, mem fp) {
+St In _ perrarg(vm v, mem fp) {
   num argc = fp == Pool + Len ? 0 : Gn(Argc), i = 0;
   if (argc) for (fputc(' ', stderr);;fputc(' ', stderr)) {
     obj x = Argv[i++];
@@ -783,8 +782,3 @@ obj restart(vm v) {
   Xp = Ip = nil;
   v->mem_root = NULL;
   longjmp(v->restart, 1); }
-
-// " meta operations "
-// - arithmetic: + - * / %
-// - relational: < <= = >= >
-//

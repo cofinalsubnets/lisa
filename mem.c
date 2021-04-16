@@ -2,7 +2,7 @@
 static int copy(vm, num);
 static obj cp(vm, obj, num, mem);
 static Inline void do_copy(vm, num, mem, num, mem);
-static obj sseekc(vm, mem, obj);
+static obj sskc(vm, mem, obj);
 
 // a simple copying garbage collector
 
@@ -30,29 +30,27 @@ static obj sseekc(vm, mem, obj);
 // per unit garbage collection time:
 #define lb 32
 #define ub 128
-// in theory these bounds control the overall time spent in
-// garbage collection (3-6% at nonzero allocation). actual
-// results may vary, but in an ideal (high-memory) environment
-// anything we do to make gc "faster" (other than adjusting the
-// limits) will have the actual effect of improving memory
-// efficiency.
+// in theory these bounds limit the overall time spent in
+// garbage collection to no more than about 6%, at the cost
+// of higher memory use under pressure. anything we do to make
+// gc "faster" (other than adjusting the bounds) will have the
+// actual effect of improving memory efficiency.
 #define grow() (len*=2,vit*=2)
 #define shrink() (len/=2,vit/=2)
 #define growp (allocd > len || vit < lb)
 #define shrinkp (allocd < len/2 && vit >= ub)
-__ reqsp(vm v, num req) {
-  num len = v->mem_len, vit = copy(v, len);
+_ reqsp(vm v, num req) {
+  Z len = v->mem_len, vit = copy(v, len);
   if (vit) { // copy succeeded
-    num allocd = len - (Avail - req);
-    if (growp) do grow(); while (growp);
-    else if (shrinkp) do shrink(); while (shrinkp);
-    else return; // no size change needed
+    Z allocd = len - (Avail - req);
+       if (growp)   do grow();   Wh (growp);
+    El if (shrinkp) do shrink(); Wh (shrinkp);
+    El R; // no size change needed
     // otherwise grow or shrink
-    if (copy(v, len)) return;
+    if (copy(v, len)) R;
     // oh no that didn't work
-    // maybe we can still return though if we were only trying
-    // to grow the pool for speed
-    if (allocd <= Len) return; }
+    // maybe we can still return though
+    if (allocd <= Len) R; } // aww darn
   errp(v, "oom"); // this is a bad error
   restart(v); }
 
@@ -79,8 +77,8 @@ __ reqsp(vm v, num req) {
 // u = 1.
 St int copy(vm v, num len) {
   clock_t t1 = clock(), t2, u;
-  mem b0 = v->mem_pool, b1 = malloc(w2b(len));
-  return !b1 ? 0 :
+  M b0 = v->mem_pool, b1 = malloc(w2b(len));
+  R !b1 ? 0 :
    (do_copy(v, v->mem_len, b0, len, b1),
     free(b0),
     t2 = clock(),
@@ -88,19 +86,19 @@ St int copy(vm v, num len) {
     v->t0 = t2,
     u); }
 
-St In __ do_copy(vm v, num l0, mem b0, num l1, mem b1) {
+St In _ do_copy(vm v, num l0, mem b0, num l1, mem b1) {
   v->mem_len = l1;
   v->mem_pool = Hp = b1;
-  mem s0 = Sp,
-      t0 = b0 + l0,
-      t1 = b1 + l1;
-  num ro = t1 - t0;
+  M s0 = Sp,
+    t0 = b0 + l0,
+    t1 = b1 + l1;
+  Z ro = t1 - t0;
   Sp += ro, Fp += ro;
   Syms = nil;
-  while (t0-- > s0) Sp[t0 - s0] = cp(v, *t0, l0, b0);
+  Wh (t0-- > s0) Sp[t0 - s0] = cp(v, *t0, l0, b0);
 #define CP(x) x=cp(v,x,l0,b0)
   CP(Ip), CP(Xp), CP(Glob);
-  for (root r = Safe; r; r = r->next) CP(*(r->one)); }
+  Fo (root r = Safe; r; r = r->next) CP(*(r->one)); }
 #undef CP
 
 // the exact method for copying an object into
@@ -108,33 +106,33 @@ St In __ do_copy(vm v, num l0, mem b0, num l1, mem b1) {
 // objects are used to store pointers to their
 // new locations, which effectively destroys the
 // old data.
-typedef obj cp_(vm, obj, num, mem);
-static cp_ cphom, cptup, cptwo, cpsym, cpoct, cptbl;
-#define cpcc(n) static obj n(vm v, obj x, num ln, mem lp)
+Ty O cp_(V, O, Z, M);
+St cp_ cphom, cptup, cptwo, cpsym, cpoct, cptbl;
+#define cpcc(n) static obj n(V v, O x, Z ln, M lp)
 
-cpcc(cp) {  switch (kind(x)) {
-  case Hom: return cphom(v, x, ln, lp);
-  case Tup: return cptup(v, x, ln, lp);
-  case Oct: return cpoct(v, x, ln, lp);
-  case Two: return cptwo(v, x, ln, lp);
-  case Sym: return cpsym(v, x, ln, lp);
-  case Tbl: return cptbl(v, x, ln, lp);
-  default:  return x; } }
+cpcc(cp) {  Sw (kind(x)) {
+  Ks Hom: R cphom(v, x, ln, lp);
+  Ks Tup: R cptup(v, x, ln, lp);
+  Ks Oct: R cpoct(v, x, ln, lp);
+  Ks Two: R cptwo(v, x, ln, lp);
+  Ks Sym: R cpsym(v, x, ln, lp);
+  Ks Tbl: R cptbl(v, x, ln, lp);
+  Df:  R x; } }
 
 #define inb(o,l,u) (o>=l&&o<u)
 #define fresh(o) inb((mem)(o),Pool,Pool+Len)
 cpcc(cptwo) {
-  two dst, src = gettwo(x);
-  return fresh(src->x) ? src->x :
-    (dst = bump(v, Size(two)),
-     dst->x = src->x, src->x = (obj) puttwo(dst),
-     dst->y = cp(v, src->y, ln, lp),
-     dst->x = cp(v, dst->x, ln, lp),
-     puttwo(dst)); }
+  Tw dst, src = gettwo(x);
+  R fresh(src->x) ? src->x :
+   (dst = bump(v, Size(two)),
+    dst->x = src->x, src->x = (obj) puttwo(dst),
+    dst->y = cp(v, src->y, ln, lp),
+    dst->x = cp(v, dst->x, ln, lp),
+    puttwo(dst)); }
 
 cpcc(cptup) {
-  tup dst, src = gettup(x);
-  if (fresh(*src->xs)) return *src->xs;
+  Ve dst, src = gettup(x);
+  if (fresh(*src->xs)) R *src->xs;
   dst = bump(v, Size(tup) + src->len);
   num l = dst->len = src->len;
   dst->xs[0] = src->xs[0];
@@ -142,11 +140,11 @@ cpcc(cptup) {
   dst->xs[0] = cp(v, dst->xs[0], ln, lp);
   for (num i = 1; i < l; ++i)
     dst->xs[i] = cp(v, src->xs[i], ln, lp);
-  return puttup(dst); }
+  R puttup(dst); }
 
 cpcc(cpoct) {
-  oct dst, src = getoct(x);
-  return src->len == 0 ? *(mem)src->text :
+  By dst, src = getoct(x);
+  R src->len == 0 ? *(mem)src->text :
     (dst = bump(v, Size(oct) + b2w(src->len)),
      memcpy(dst->text, src->text, dst->len = src->len),
      src->len = 0,
@@ -154,18 +152,18 @@ cpcc(cpoct) {
 
 cpcc(cpsym) {
   sym src = getsym(x), dst;
-  if (fresh(src->nom)) return src->nom;
+  if (fresh(src->nom)) R src->nom;
   if (nilp(src->nom)) // anonymous symbol
     dst = bump(v, Size(sym)),
     memcpy(dst, src, w2b(Size(sym)));
-  else dst = getsym(sseekc(v, &Syms, cp(v, src->nom, ln, lp)));
-  return src->nom = putsym(dst); }
+  El dst = getsym(sskc(v, &Syms, cp(v, src->nom, ln, lp)));
+  R src->nom = putsym(dst); }
 
 #define stale(o) inb((mem)(o),lp,lp+ln)
 cpcc(cphom) {
   hom dst, src = Gh(x), end = src, start;
-  if (fresh(G(src))) return (obj) G(src);
-  while (*end++);
+  if (fresh(G(src))) R (obj) G(src);
+  Wh (*end++);
   start = (hom) G(end);
   num i, len = (end+1) - start;
   dst = bump(v, len);
@@ -177,60 +175,51 @@ cpcc(cphom) {
   for (obj u; i--;)
     u = (obj) G(dst+i),
     G(dst+i) = (terp*) (stale(u) ? cp(v, u, ln, lp) : u);
-  return Ph(dst += src - start); }
+  R Ph(dst += src - start); }
 
-static tble cptble(vm v, tble src, num ln, mem lp) {
-  if (!src) return NULL;
+St tble cptble(vm v, tble src, num ln, mem lp) {
+  if (!src) R NULL;
   tble dst = (tble) bump(v, 3);
   dst->next = cptble(v, src->next, ln, lp);
   dst->key = cp(v, src->key, ln, lp);
   dst->val = cp(v, src->val, ln, lp);
-  return dst; }
+  R dst; }
 
 cpcc(cptbl) {
   tbl src = gettbl(x);
-  if (fresh(src->tab)) return (obj) src->tab;
-  num src_cap = src->cap;
+  if (fresh(src->tab)) R (obj) src->tab;
+  Z src_cap = src->cap;
   tbl dst = bump(v, 3 + src_cap);
   dst->len = src->len;
   dst->cap = src_cap;
   dst->tab = (tble*) (dst + 1);
   tble *src_tab = src->tab;
   src->tab = (tble*) puttbl(dst);
-  while (src_cap--)
+  Wh (src_cap--)
     dst->tab[src_cap] = cptble(v, src_tab[src_cap], ln, lp);
-  return puttbl(dst); }
+  R puttbl(dst); }
 
 
 // XXX data constructors
 
-const uint64_t mix = 2708237354241864315;
-static uint64_t hc(vm, obj);
-// imemory allocator
-Inline void *bump(vm v, num n) {
-  void *x = v->hp; v->hp += n; return x; }
-void *cells(vm v, num n) {
-  if (Avail < n) reqsp(v, n);
-  return bump(v, n); }
+St N hc(vm, obj);
 
 ////
 /// data constructors and utility functions
 //
 
-static NoInline obj pair_gc(vm v, obj a, obj b) {
-  with(a, with(b, reqsp(v, 2)));
-  two t = bump(v, 2);
-  return t->x = a, t->y = b, puttwo(t); }
-
 // pairs
-obj pair(vm v, obj a, obj b) {
-  if (Avail < 2) return pair_gc(v, a, b);
-  two t = bump(v, 2);
-  return t->x = a, t->y = b, puttwo(t); }
+O pair(V v, O a, O b) { Tw t;
+ R Avail >= 2 ?
+  (t = bump(v, 2),
+   t->x = a, t->y = b,
+   puttwo(t)) :
+  (with(a, with(b, reqsp(v, 2))),
+   pair(v, a, b)); }
 
 // strings
-obj string(vm v, const char *c) {
-  num bs = 1 + strlen(c);
+obj string(vm v, Ko Ch* c) {
+  Z bs = 1 + strlen(c);
   oct o = cells(v, Size(oct) + b2w(bs));
   memcpy(o->text, c, o->len = bs);
   return putoct(o); }
@@ -245,62 +234,62 @@ obj string(vm v, const char *c) {
 // existing code is unsuitable because it dynamically resizes
 // the table and unpredictable memory allocation isn't safe
 // during garbage collection. 
-static obj sseek(vm v, obj y, obj x) {
-  int i = strcmp(symnom(y), chars(x));
-  return i == 0 ? y :
-    sseekc(v, i<0?&(getsym(y)->r):&(getsym(y)->l), x); }
+St O ssk(V v, O y, O x) {
+ int i = strcmp(symnom(y), chars(x));
+ R i == 0 ? y :
+  sskc(v, i < 0 ? &(getsym(y)->r) : &(getsym(y)->l), x); }
 
-static obj sseekc(vm v, mem y, obj x) {
-  if (!nilp(*y)) return sseek(v, *y, x);
-  sym u = bump(v, Size(sym));
+St O sskc(V v, M y, O x) {
+  if (!nilp(*y)) return ssk(v, *y, x);
+  Sy u = bump(v, Size(sym));
   u->nom = x, u->code = hc(v, x);
   u->l = nil, u->r = nil;
   return *y = putsym(u); }
 
-obj intern(vm v, obj x) {
+O intern(V v, O x) {
   if (Avail < Size(sym))
     with(x, reqsp(v, Size(sym)));
-  return sseekc(v, &Syms, x); }
+  return sskc(v, &Syms, x); }
 
-static Inline uint64_t hash_bytes(num len, char *us) {
-  num h = 1;
+St In N hash_bytes(Z len, char *us) {
+  Z h = 1;
   for (; len--; h *= mix, h ^= *us++);
   return mix * h; }
 
-static uint64_t hc(vm v, obj x) {
-  uint64_t r;
-  switch (kind(x)) {
-    case Sym: r = getsym(x)->code; break;
-    case Oct: r = hash_bytes(getoct(x)->len, getoct(x)->text); break;
-    case Two: r = hc(v, X(x)) ^ hc(v, Y(x)); break;
-    case Hom: r = hc(v, homnom(v, x)) ^ (mix * (uintptr_t) G(x)); break;
-    case Tbl: r = mix * mix; // umm this'll do for now ...
-    default:  r = mix * x; } 
-  return (r<<48)|(r>>16); }
+St N hc(vm v, obj x) {
+  N r;
+  Sw (kind(x)) {
+   Ks Sym: r = getsym(x)->code; Bk;
+   Ks Oct: r = hash_bytes(getoct(x)->len, getoct(x)->text); Bk;
+   Ks Two: r = hc(v, X(x)) ^ hc(v, Y(x)); Bk;
+   Ks Hom: r = hc(v, homnom(v, x)) ^ (mix * (uintptr_t) G(x)); Bk;
+   Ks Tbl: r = mix * mix; // umm this'll do for now ...
+   Df:     r = mix * x; } 
+  R (r<<48)|(r>>16); }
 
-static Inline num hbi(num cap, uint64_t co) {
+St In Z hbi(Z cap, N co) {
   return co % cap; }
 
-static Inline tble hb(obj t, uint64_t code) {
+St In tble hb(O t, N code) {
   return gettbl(t)->tab[hbi(gettbl(t)->cap, code)]; }
 
-// tbl_resize(vm, tbl, new_size): destructively resize a hash table.
+// tblrsz(vm, tbl, new_size): destructively resize a hash table.
 // new_size words of memory are allocated for the new bucket array.
 // the old table entries are reused to populate the modified table.
-static void tbl_resize(vm v, obj t, num ns) {
+St _ tblrsz(V v, O t, Z ns) {
   tble e, ch, *b, *d;
-  with(t, b = memset(cells(v, ns), 0, w2b(ns)));
-  tbl o = gettbl(t);
-  num u, n = o->cap;
+  Mm(t, b = memset(cells(v, ns), 0, w2b(ns)));
+  Ht o = gettbl(t);
+  Z u, n = o->cap;
   d = o->tab; o->tab = b; o->cap = ns;
-  while (n--) for (ch = d[n]; ch;
+  Wh (n--) Fo (ch = d[n]; ch;
     e = ch,
     ch = ch->next,
     u = hbi(ns, hc(v, e->key)),
     e->next = b[u],
     b[u] = e); }
 
-static void tbl_add_entry(vm v, obj t, obj k, obj x, num b) {
+St _ tblade(V v, O t, O k, O x, Z b) {
   tble e;
   with(t, with(k, with(x, e = cells(v, Size(tble)))));
   tbl y = gettbl(t);
@@ -308,24 +297,24 @@ static void tbl_add_entry(vm v, obj t, obj k, obj x, num b) {
   e->next = y->tab[b], y->tab[b] = e;
   ++y->len; }
 
-obj tblset(vm v, obj t, obj k, obj val) {
-  num b = hbi(gettbl(t)->cap, hc(v, k));
+O tblset(V v, O t, O k, O val) {
+  Z b = hbi(gettbl(t)->cap, hc(v, k));
   tble e = gettbl(t)->tab[b];
   for (;e; e = e->next)
     if (e->key == k) return e->val = val;
   mm(&t); mm(&val);
-  tbl_add_entry(v, t, k, val, b);
+  tblade(v, t, k, val, b);
   if (gettbl(t)->len / gettbl(t)->cap > 2)
-    tbl_resize(v, t, gettbl(t)->cap * 2);
+    tblrsz(v, t, gettbl(t)->cap * 2);
   return um, um, val; }
 
-static obj tblkeys_j(vm v, tble e, obj l) {
+St O tblkeys_j(V v, tble e, O l) {
   if (!e) return l;
   obj x = e->key;
   with(x, l = tblkeys_j(v, e->next, l));
   return pair(v, x, l); }
 
-static obj tblkeys_i(vm v, obj t, num i) {
+St O tblkeys_i(V v, O t, Z i) {
   if (i == gettbl(t)->cap) return nil;
   obj k;
   with(t, k = tblkeys_i(v, t, i+1));
@@ -334,10 +323,10 @@ static obj tblkeys_i(vm v, obj t, num i) {
 obj tblkeys(vm v, obj t) {
   return tblkeys_i(v, t, 0); }
 
-obj tbldel(vm v, obj t, obj k) {
-  tbl y = gettbl(t);
-  obj r = nil;
-  num b = hbi(y->cap, hc(v, k));
+O tbldel(vm v, obj t, obj k) {
+  Ht y = gettbl(t);
+  O r = nil;
+  Z b = hbi(y->cap, hc(v, k));
   tble e = y->tab[b];
   struct tble _v = {0,0,e};
   for (tble l = &_v; l && l->next; l = l->next)
@@ -348,15 +337,15 @@ obj tbldel(vm v, obj t, obj k) {
       break; }
   y->tab[b] = _v.next;
   if (y->len && y->cap / y->len > 2)
-    with(r, with(t, tbl_resize(v, t, y->cap / 2)));
+    with(r, with(t, tblrsz(v, t, y->cap / 2)));
   return r; }
 
-obj tblget(vm v, obj t, obj k) {
+O tblget(vm v, obj t, obj k) {
   tble e = hb(t, hc(v, k));
-  for (;e; e = e->next) if (eql(e->key, k)) return e->val;
-  return 0; }
+  Fo (;e; e = e->next) if (eql(e->key, k)) R e->val;
+  R 0; }
 
-obj table(vm v) {
+O table(vm v) {
   tbl t = cells(v, sizeof(struct tbl)/w2b(1) + 1);
   tble *b = (tble*)(t+1);
   *b = NULL;

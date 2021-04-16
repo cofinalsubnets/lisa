@@ -22,8 +22,9 @@ rcmd=$(run) -i
 # - stack smash protection also hurts tco.
 c=gcc -g -O2 -flto -std=gnu17\
 	-Wall -Wno-shift-negative-value\
+	-Wstrict-prototypes\
 	-fno-inline -fno-stack-protector\
-	-fno-unroll-loops
+	-fno-unroll-loops -fpie
 
 test: $n
 	@/usr/bin/env TIMEFORMAT="in %Rs" bash -c "time $(tcmd)"
