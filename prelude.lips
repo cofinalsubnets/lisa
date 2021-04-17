@@ -62,7 +62,7 @@
                           (? (B x) (ap defm (B x)) v)))
    'AA (\ x (X A (L (X A (L x))))) 'AB (\ x (X A (L (X B (L x)))))
    'BA (\ x (X B (L (X A (L x))))) 'BB (\ x (X B (L (X B (L x)))))
-   'immediate (\ x (ev x))
+   'imm (\ x (ev x))
    '&& (\ x . (? x ((: & (\ x
      (? (B x) (L '? (A x) (& (B x))) (A x)))) x) 1))
    '>>= (\ x . (X (last x) (init x)))
@@ -296,6 +296,27 @@
     (? (: y (B x)) (: z (loop e y)
                     (? (B z) (X ', z) (A z)))))
 
+   ; these data structures encode rules for partially evaluating
+   ; different functions. right now the functions eligible for
+   ; partial evaluation are hardcoded. but the compiler should
+   ; be able to infer if a function is pure in many cases, and
+   ; users should be able to provide their own monoid instances
+   ; (or whatever).
+
+   ; having a hardcoded list is not ideal ...
+   pures (imm ({set}
+    L X A B + - * / % id flip cat iota rho const
+    snoc init last rev ldel memq at idx len
+    homp nilp symp nump tblp strp twop vecp
+    && || scat slen sget ssub str))
+
+   ; these enable extra partial evaluation for functions
+   ; with certain algebraic properties. the nullary case for
+   ; any grouplike function has to return its structure's
+   ; identity element.
+   monoids (imm ({set} scat cat))   ; pairs of consecutive arguments can be combined in place
+   abelians (imm ({set} && || + *)) ; arguments can be combined freely
+
    a (A x) (case a
     '` (? (B x) x)
     '\ (lamb e x)
@@ -461,26 +482,6 @@
 
   ((? (twop x) list (symp x) symb Im) x k))
 
- ; these data structures encode rules for partially evaluating
- ; different functions. right now the functions eligible for
- ; partial evaluation are hardcoded. but the compiler should
- ; be able to infer if a function is pure in many cases, and
- ; users should be able to provide their own monoid instances
- ; (or whatever).
-
- ; having a hardcoded list is not ideal ...
- pures (immediate ({set}
-  L X A B + - * / % id flip cat iota rho const
-  snoc init last rev ldel memq at idx len
-  homp nilp symp nump tblp strp twop vecp
-  && || scat slen sget ssub str))
-
- ; these enable extra partial evaluation for functions
- ; with certain algebraic properties. the nullary case for
- ; any grouplike function has to return its structure's
- ; identity element.
- monoids (immediate ({set} scat cat))   ; pairs of consecutive arguments can be combined in place
- abelians (immediate ({set} && || + *)) ; arguments can be combined freely
 
  ; this is a table of specialized emitters for specific
  ; instructions that dynamically rewrite instruction sequences

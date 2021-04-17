@@ -155,7 +155,7 @@ cpcc(cpsym) {
   if (fresh(src->nom)) R src->nom;
   if (nilp(src->nom)) // anonymous symbol
     dst = bump(v, Size(sym)),
-    memcpy(dst, src, w2b(Size(sym)));
+    cpy((M) dst, (M) src, Size(sym));
   El dst = getsym(sskc(v, &Syms, cp(v, src->nom, ln, lp)));
   R src->nom = putsym(dst); }
 
@@ -278,7 +278,7 @@ St In tble hb(O t, N code) {
 // the old table entries are reused to populate the modified table.
 St _ tblrsz(V v, O t, Z ns) {
   tble e, ch, *b, *d;
-  Mm(t, b = memset(cells(v, ns), 0, w2b(ns)));
+  Mm(t, fill((M) (b = cells(v, ns)), 0, ns));
   Ht o = gettbl(t);
   Z u, n = o->cap;
   d = o->tab; o->tab = b; o->cap = ns;

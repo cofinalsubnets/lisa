@@ -183,7 +183,7 @@ Ko Ch* tnom(En type);
 #define App AR(Glob)[Apply]
 #define Avail (Sp-Hp)
 
-#define mix 2708237354241864315ul
+#define mix ((N)2708237354241864315)
 
 St In hom button(hom h) {
  Wh (*h) h++;
@@ -195,16 +195,22 @@ St In _* bump(V v, Z n) { _* x;
 St In _* cells(V v, Z n) {
  R Avail < n ? reqsp(v, n):0, bump(v, n); }
 
+St In _ fill(M d, O i, Z n) {
+ Fo (M l = d + n; d < l; *d++ = i); }
+
+St In _ cpy(M d, M s, Z n) {
+ Fo (M l = d + n; d < l; *d++ = *s++); }
+
 O compile(vm, obj);
 
 #define NOM "lips"
 
 _Static_assert(
-  Sz(O) >= 8,
-  "pointers are smaller than 64 bits");
+ Sz(O) >= 8,
+ "pointers are smaller than 64 bits");
   
 _Static_assert(
-  -9 == (((Ob-9)<<32)>>32),
-  "opposite bit-shifts on a negative number "
-  "yield a nonidentical result");
+ -9 == (((Ob-9)<<32)>>32),
+ "opposite bit-shifts on a negative integer "
+ "yield a nonidentical result");
 #endif
