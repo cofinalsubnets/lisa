@@ -761,7 +761,6 @@ O table(vm v) {
   t->cap = 1;
   return puttbl(t); }
 
-
 // here is some "static data". this idea came from luajit.
 #define insts(_)\
   _(tget),_(tset),_(thas),_(tlen),_(gsym_u),\

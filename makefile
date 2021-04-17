@@ -74,7 +74,7 @@ perf.data: $b $t $p
 valg: $b $t
 	@valgrind $(tcmd)
 sloc:
-	@which cloc >/dev/null && cloc --by-file --force-lang=Lisp,$n *.{c,h,$n} || cat $s $h $m | grep -v ' *//.*' | grep -v '^$$' | wc -l
+	@which cloc >/dev/null && cloc --by-file --force-lang=Lisp,$n *.{c,$n} || cat $s $h $m | grep -v ' *//.*' | grep -v '^$$' | wc -l
 bins: $o $n $b
 	@stat -c "%n %sB" $^
 bench: $b
