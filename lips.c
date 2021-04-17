@@ -1,4 +1,766 @@
-#include "lips.h"
+#include <stdlib.h>
+#include <stdio.h>
+#include <stdint.h>
+#include <stdarg.h>
+#include <setjmp.h>
+#include <string.h>
+#include <time.h>
+#include <errno.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+
+// thanks !!
+//
+// first of all C makes you type waaaaaay too much
+#define In inline __attribute__((always_inline))
+#define Nin __attribute__((noinline))
+#define Inline In
+#define NoInline Nin
+#define St static
+#define Ty typedef
+#define Sr struct
+#define Un union
+#define Ko const
+#define En enum
+#define Sz sizeof
+#define R  return
+#define El else
+#define Sw switch
+#define Bk break
+#define Cu continue
+#define Ks case
+#define Df default
+#define Wh while
+#define Fo for
+
+Ty intptr_t
+ obj, num, *mem, O, Z, *M;
+Ty uintptr_t N;
+Ty void _, Vd;
+Ty char Ch;
+Ty FILE *Io;
+#define Ob (O)
+#define non (Ob 0)
+#define nil (~non)
+#define W Sz(obj) // pointer arithmetic unit
+#define W2 (2*W)
+
+// more fundamental data types
+Ty Sr two { O x, y; } *Tw, *two; // pairs
+Ty Sr tup { Z len; O xs[]; } *Ve, *tup; // vectors
+Ty Sr oct { Z len; Ch text[]; } *By, *oct; // byte arrays
+Ty Sr sym { O nom, code, l, r; } *Sy, *sym; // symbols
+
+Ty Sr tble { O key, val; Sr tble *next; } *tble;
+Ty Sr tbl { Z len, cap; tble *tab; } *Ht, *tbl;
+
+Ty Sr root { mem one; Sr root *next; } *root;
+// the 3 ls bits of each pointer are a type tag
+En type {
+ Hom = 0, Num = 1, Two = 2, Tup = 3,
+ Oct = 4, Tbl = 5, Sym = 6, Nil = 7 };
+
+En globl {
+ Def, Cond, Lamb, Quote, Seq,
+ Splat, Topl, Macs, Eval, Apply, NGlobs };
+
+// this is the structure responsible for holding runtime
+// state. a pointer to it as an argument to almost every
+// function in lips.
+Ty Sr V {
+  O ip, xp, *fp, *hp, *sp; // vm state variables
+  O syms, glob; // globals
+  root mem_root; // memory
+  Z t0, count, mem_len, *mem_pool;
+  jmp_buf restart; } // top level restart
+ *rt, *vm, *V;
+
+// this is the type of interpreter functions
+Ty O terp(V, O, M, M, M, O);
+Ty terp **hom, **H; // code pointer ; the internal function type
+
+V initialize(int, Ko Ch**),
+  bootstrap(V),
+  finalize(V);
+
+_ scr(V, FILE*),
+  emit(V, obj, FILE*),
+  errp(V, Ko Ch*, ...),
+  emsep(V, obj, FILE*, Ch),
+  reqsp(V, num);
+
+O err(V, obj, Ko Ch*, ...),
+  restart(rt),
+  homnom(V, obj),
+  pair(V, obj, obj),
+  parse(V, FILE*),
+  intern(V, obj),
+  eval(V, obj),
+  table(rt),
+  tblset(V, obj, obj, obj),
+  tblget(V, obj, obj),
+  tbldel(V, obj, obj),
+  tblkeys(V, obj),
+  string(V, Ko char*);
+Z llen(obj);
+int eql(obj, obj);
+
+Ko Ch* tnom(En type);
+
+#define kind(x) ((x)&7)
+#define Gh(x) ((hom)((x)))
+#define Ph(x) (Ob(x))
+#define Gn getnum
+#define Pn putnum
+#define gettwo(x) ((two)((x)-Two))
+#define puttwo(x) (Ob(x)+Two)
+#define getnum(n) ((num)(n)>>3)
+#define putnum(n) ((Ob(n)<<3)+Num)
+#define getsym(x) ((sym)((obj)(x)-Sym))
+#define putsym(x) (Ob(x)+Sym)
+#define gettup(x) ((tup)((x)-Tup))
+#define puttup(x) (Ob(x)+Tup)
+#define getoct(x) ((oct)((obj)(x)-Oct))
+#define putoct(x) (Ob(x)+Oct)
+#define gettbl(x) ((tbl)((obj)(x)-Tbl))
+#define puttbl(x) (Ob(x)+Tbl)
+#define homp(x) (kind(x)==Hom)
+#define octp(x) (kind(x)==Oct)
+#define nump(x) (kind(x)==Num)
+#define twop(x) (kind(x)==Two)
+#define symp(x) (kind(x)==Sym)
+#define tupp(x) (kind(x)==Tup)
+#define tblp(x) (kind(x)==Tbl)
+#define nilp(x) ((x)==nil)
+#define X(o) gettwo(o)->x
+#define Y(o) gettwo(o)->y
+#define XX(x) X(X(x))
+#define XY(x) X(Y(x))
+#define YX(x) Y(X(x))
+#define YY(x) Y(Y(x))
+#define F(x) ((hom)(x)+1)
+#define G(x) (*(hom)(x))
+#define FF(x) F(F(x))
+#define FG(x) F(G(x))
+#define GF(x) G(F(x))
+#define GG(x) G(G(x))
+#define chars(x) getoct(x)->text
+#define symnom(y) chars(getsym(y)->nom)
+#define mm(r) ((Safe=&((struct root){(r),Safe})))
+#define um (Safe=Safe->next)
+#define LEN(x) (Sz((x))/Sz(*(x)))
+#define AR(x) gettup(x)->xs
+#define AL(x) gettup(x)->len
+#define Mm(y,...) (mm(&(y)),(__VA_ARGS__),um)
+#define with(...) Mm(__VA_ARGS__)
+#define b2w(n)((n)/W+((n)%W&&1))
+#define w2b(n) ((n)*W)
+#define Szr(t) (Sz(Sr t)/W)
+#define Size(t) Szr(t)
+#define Ip v->ip
+#define Fp v->fp
+#define Hp v->hp
+#define Sp v->sp
+#define Safe v->mem_root
+#define Xp v->xp
+#define Pool v->mem_pool
+#define Len v->mem_len
+#define Dict Top
+#define Syms (v->syms)
+#define Glob v->glob
+#define If AR(Glob)[Cond]
+#define De AR(Glob)[Def]
+#define La AR(Glob)[Lamb]
+#define Qt AR(Glob)[Quote]
+#define Se AR(Glob)[Seq]
+#define Va AR(Glob)[Splat]
+#define Top AR(Glob)[Topl]
+#define Mac AR(Glob)[Macs]
+#define Eva AR(Glob)[Eval]
+#define App AR(Glob)[Apply]
+#define Avail (Sp-Hp)
+
+#define mix ((N)2708237354241864315)
+
+St In hom button(hom h) {
+ Wh (*h) h++;
+ R h; }
+
+St In _* bump(V v, Z n) { _* x;
+ R x = v->hp, v->hp += n, x; }
+
+St In _* cells(V v, Z n) {
+ R Avail < n ? reqsp(v, n):0, bump(v, n); }
+
+St In _ fill(M d, O i, Z n) {
+ Fo (M l = d + n; d < l; *d++ = i); }
+
+St In _ cpy(M d, M s, Z n) {
+ Fo (M l = d + n; d < l; *d++ = *s++); }
+
+O compile(vm, obj);
+
+#define NOM "lips"
+
+_Static_assert(
+ Sz(O) >= 8,
+ "pointers are smaller than 64 bits");
+  
+_Static_assert(
+ -9 == (((Ob-9)<<32)>>32),
+ "opposite bit-shifts on a negative integer "
+ "yield a nonidentical result");
+
+////
+/// lisp parser
+//
+// this should be portable to lisp as soon as
+// the string processing primitives are good
+// enough, at which point it can be called the
+// bootstrap parser
+#define err_eof "unexpected eof"
+#define err_rpar "unmatched right delimiter"
+
+Nin Ko Ch* tnom(En type t) { Sw (t) {
+ Ks Hom: R "hom";
+ Ks Num: R "num";
+ Ks Tbl: R "tbl";
+ Ks Two: R "two";
+ Ks Tup: R "vec";
+ Ks Oct: R "str";
+ Ks Sym: R "sym";
+ Df:     R "nil"; } }
+
+Ty O P(vm, FILE*);
+St P atom, r1s, qt, str;
+
+#define readx(v,m)(errp(v,m),0)
+
+St int r0(Io i) { Fo (Z c;;) Sw ((c = getc(i))) {
+ Ks '#': Ks ';': do c = getc(i); Wh (c != '\n' && c != EOF);
+ Ks ' ': Ks '\t': Ks '\n': Cu;
+ Df: R c; } }
+
+O parse(vm v, Io i) { Z c; Sw ((c = r0(i))) {
+ Ks EOF:  R 0;
+ Ks ')':  R readx(v, err_rpar);
+ Ks '(':  R r1s(v, i);
+ Ks '"':  R str(v, i);
+ Ks '\'': R qt(v, i);
+ Df:      R ungetc(c, i), atom(v, i); } }
+
+St O qt(vm v, FILE *i) { O r;
+ R !(r = parse(v, i)) ? r :
+  (r = pair(v, r, nil),
+   pair(v, Qt, r)); }
+
+St O r1s(vm v, FILE *i) { O x, y, c;
+ R (c = r0(i)) == EOF ? readx(v, err_eof) :
+  c == ')' ? nil :
+   (ungetc(c, i),
+    !(x = parse(v, i)) ? x :
+     (Mm(x, y = r1s(v, i)),
+      y ? pair(v, x, y) : y)); }
+
+St O rloop(V v, Io i, By o, Z n, Z lim,
+           O (*re)(V, Io, By, Z, Z)) { O x;
+ R o->len = n, x = putoct(o),
+  o->text[n-1] == 0 ? x :
+   (Mm(x, o = cells(v, 1 + b2w(2*n))),
+    memcpy(o->text, getoct(x)->text, o->len = n),
+    re(v, i, o, n, 2 * n)); }
+
+St O atom_(V v, Io p, By o, Z n, Z lim) { O x;
+ Wh (n < lim) Sw (x = fgetc(p)) {
+  Ks ' ': Ks '\n': Ks '\t': Ks ';': Ks '#':
+  Ks '(': Ks ')': Ks '\'': Ks '"':
+   ungetc(x, p); Ks EOF:
+   o->text[n++] = 0;
+   goto out;
+  Df: o->text[n++] = x; } out:
+ R rloop(v, p, o, n, lim, atom_); }
+
+St O str_(V v, Io p, By o, Z n, Z lim) { O x;
+ Wh (n < lim) Sw (x = fgetc(p)) {
+  Ks '\\': if ((x = fgetc(p)) == EOF) {
+  Ks EOF: Ks '"': o->text[n++] = 0; goto out; }
+  Df: o->text[n++] = x; } out:
+ R rloop(v, p, o, n, lim, str_); }
+
+St O atom(V v, Io i) {
+ O o = atom_(v, i, cells(v, 2), 0, 8);
+ Ch *st = NULL;
+ Z j = strtol(chars(o), &st, 0);
+ R !st || *st ? intern(v, o) : putnum(j); }
+
+St O str(V v, Io i) {
+ R str_(v, i, cells(v, 2), 0, 8); }
+
+_ emsep(V v, O x, Io o, Ch s) {
+ emit(v, x, o), fputc(s, o); }
+
+St _ emoct(V v, By s, Io o) {
+ fputc('"', o);
+ Fo (num i = 0, l = s->len - 1; i < l; i++)
+  if (s->text[i] == '"') fputs("\\\"", o);
+  El fputc(s->text[i], o);
+ fputc('"', o); }
+
+St _ emtbl(V v, Ht t, Io o) {
+ fprintf(o, "#tbl:%ld/%ld", t->len, t->cap); }
+
+St _ emsym(V v, Sy y, Io o) {
+ nilp(y->nom) ?
+  fprintf(o, "#sym@%lx", (num) y) :
+  fputs(chars(y->nom), o); }
+
+St _ emtwo_(V v, Tw w, Io o) {
+ twop(w->y) ?
+  (emsep(v, w->x, o, ' '), emtwo_(v, gettwo(w->y), o)) :
+  emsep(v, w->x, o, ')'); }
+
+St _ emtwo(V v, Tw w, Io o) {
+ w->x == Qt && twop(w->y) && nilp(Y(w->y)) ?
+  (fputc('\'', o), emit(v, X(w->y), o)) :
+  (fputc('(', o), emtwo_(v, w, o)); }
+
+St _ emnum(V v, Z n, Io o) {
+ fprintf(o, "%ld", n); }
+
+St _ phomn(V v, O x, Io o) {
+ fputc('\\', o); 
+ Sw (kind(x)) {
+  Ks Sym: emit(v, x, o); Bk;
+  Ks Two:
+   if (symp(X(x))) emit(v, X(x), o);
+   if (twop(Y(x))) phomn(v, Y(x), o); } }
+
+St _ emhom(V v, H h, Io o) {
+ phomn(v, homnom(v, Ph(h)), o); }
+
+_ emit(V v, O x, Io o) { Sw (kind(x)) {
+ Ks Hom: R emhom(v, Gh(x), o);
+ Ks Num: R emnum(v, Gn(x), o);
+ Ks Sym: R emsym(v, getsym(x), o);
+ Ks Two: R emtwo(v, gettwo(x), o);
+ Ks Oct: R emoct(v, getoct(x), o);
+ Ks Tbl: R emtbl(v, gettbl(x), o);
+ Df:     R (_) fputs("()", o); } }
+
+_ errp(V v, Ko Ch *msg, ...) { va_list xs;
+ fputs("# ", stderr);
+ va_start(xs, msg), vfprintf(stderr, msg, xs), va_end(xs);
+ fputc('\n', stderr); }
+#define OK EXIT_SUCCESS
+#define NO EXIT_FAILURE
+
+St int repl(V v, Io i, Io o) {
+  O x;
+  Fo (setjmp(v->restart);;)
+    if ((x = parse(v, i))) emsep(v, eval(v, x), o, '\n');
+    El if (feof(i)) Bk;
+  R OK; }
+
+_ scr(vm v, Io f) {
+  Fo (O x; (x = parse(v, f)); eval(v, x)); }
+
+St int scripts(V v, Ch**argv) {
+ Fo (char *q; (q = *argv++);) {
+  Io f = fopen(q, "r");
+  if (!f) R errp(v, "%s : %s", q, strerror(errno)), NO;
+  if (setjmp(v->restart)) R
+   errp(v, "%s : fail", q),
+   fclose(f),
+   NO;
+  scr(v, f);
+  int ok = feof(f);
+  fclose(f);
+  if (!ok) R NO; }
+ R OK; }
+
+int main(int argc, char**argv) {
+#define takka 1
+#define nprel 2
+ Ko Ch
+  opts[] = "hi_",
+  help[] =
+   "usage: %s [options and scripts]\n"
+   "options:\n"
+   "  -_ don't bootstrap\n"
+   "  -i interact unconditionally\n"
+   "  -h print this message\n";
+
+ int opt, args,
+  F = argc == 1 ? takka : 0;
+
+ Wh ((opt = getopt(argc, argv, opts)) != -1) Sw (opt) {
+  Ks '?': R NO;
+  Ks '_': F|=nprel; Bk;
+  Ks 'i': F|=takka; Bk;
+  Ks 'h': fprintf(stdout, help, argv[0]); Bk; }
+
+ args = argc - optind;
+ if (args == 0 && !(F&takka)) R OK;
+
+ V v = initialize(argc, (Ko Ch**) argv);
+ v = F&nprel ? v : bootstrap(v);
+ if (!v) R NO;
+
+ int r = OK;
+ if (args) r = scripts(v, argv + optind);
+ if (r == OK && F&takka) repl(v, stdin, stdout);
+ R finalize(v), r; }
+
+static int copy(vm, num);
+static obj cp(vm, obj, num, mem);
+static Inline void do_copy(vm, num, mem, num, mem);
+static obj sskc(vm, mem, obj);
+
+// a simple copying garbage collector
+
+// gc entry point reqsp : vm x num -> bool
+//
+// try to return with at least req words of available memory.
+// return true on success, false otherwise. this function also
+// manages the size of the memory pool. here is the procedure
+// in a nutshell:
+//
+// - copy into a new pool of the same size. if this fails,
+//   the request fails (oom).
+// - if there's enough space and the garbage collector
+//   is running fast enough, return success.
+// - otherwise adjust the size and copy again. if this fails,
+//   we can still succeed if the first copy left us with
+//   enough free space (ie. we tried to grow for performance
+//   reasons). but otherwise the request fails (oom).
+//
+// at a constant rate of allocation, doubling the size of the
+// heap halves the amount of time spent in garbage collection.
+// the memory manager uses this relation to automatically trade
+// space for time to keep the time spent in garbage collection
+// under a certain proportion of total running time: amortized
+// time in garbage collection should e than about 6%, at the cost of
+// less efficient memory use under pressure.
+#define grow() (len*=2,vit*=2)
+#define shrink() (len/=2,vit/=2)
+#define growp (allocd > len || vit < 32) // lower bound
+#define shrinkp (allocd < len/2 && vit >= 128) // upper bound
+_ reqsp(vm v, num req) {
+  Z len = v->mem_len, vit = copy(v, len);
+  if (vit) { // copy succeeded
+    Z allocd = len - (Avail - req);
+       if (growp)   do grow();   Wh (growp);
+    El if (shrinkp) do shrink(); Wh (shrinkp);
+    El R; // no size change needed
+    // otherwise grow or shrink
+    if (copy(v, len)) R;
+    // oh no that didn't work
+    // maybe we can still return though
+    if (allocd <= Len) R; } // aww darn
+  errp(v, "oom"); // this is a bad error
+  restart(v); }
+
+// the first step in copying is to allocate
+// a new pool of the given length, which must
+// be at least enough to support the actual
+// amount of reachable memory. if this fails
+// then return 0. otherwise swap the pools,
+// reset internal symbols, copy the stack,
+// global variables, and any user saved
+// locations, and free the old pool. then
+// return u:
+//
+//     non-gc running time     t1    t2
+// ,.........................,/      |
+// -----------------------------------
+// |                          `------'
+// t0                  gc time (this cycle)
+//
+//       u = (t2 - t0) / (t2 - t1)
+//
+// t values come from clock(). if t0 < t1 < t2 then
+// u will be >= 1. however, sometimes t1 == t2. in that case
+// u = 1.
+St int copy(V v, Z len) {
+  clock_t t1 = clock(), t2, u;
+  M b0 = v->mem_pool, b1 = malloc(w2b(len));
+  R !b1 ? 0 :
+   (do_copy(v, v->mem_len, b0, len, b1),
+    free(b0),
+    t2 = clock(),
+    u = t1 == t2 ? 1 : (t2 - v->t0) / (t2 - t1),
+    v->t0 = t2,
+    u); }
+
+St In _ do_copy(V v, Z l0, M b0, Z l1, M b1) {
+ v->mem_len = l1;
+ v->mem_pool = Hp = b1;
+ M s0 = Sp,
+   t0 = b0 + l0,
+   t1 = b1 + l1;
+ Z ro = t1 - t0;
+ Sp += ro, Fp += ro;
+ Syms = nil;
+ Wh (t0-- > s0) Sp[t0 - s0] = cp(v, *t0, l0, b0);
+#define CP(x) x=cp(v,x,l0,b0)
+ CP(Ip), CP(Xp), CP(Glob);
+ Fo (root r = Safe; r; r = r->next) CP(*(r->one)); }
+#undef CP
+
+// the exact method for copying an object into
+// the new pool depends on its type. copied
+// objects are used to store pointers to their
+// new locations, which effectively destroys the
+// old data.
+Ty O cp_(V, O, Z, M);
+St cp_ cphom, cptup, cptwo, cpsym, cpoct, cptbl;
+#define cpcc(n) static obj n(V v, O x, Z ln, M lp)
+
+cpcc(cp) {  Sw (kind(x)) {
+ Ks Hom: R cphom(v, x, ln, lp);
+ Ks Tup: R cptup(v, x, ln, lp);
+ Ks Oct: R cpoct(v, x, ln, lp);
+ Ks Two: R cptwo(v, x, ln, lp);
+ Ks Sym: R cpsym(v, x, ln, lp);
+ Ks Tbl: R cptbl(v, x, ln, lp);
+ Df:  R x; } }
+
+#define inb(o,l,u) (o>=l&&o<u)
+#define fresh(o) inb((mem)(o),Pool,Pool+Len)
+cpcc(cptwo) {
+ Tw dst, src = gettwo(x);
+ R fresh(src->x) ? src->x :
+  (dst = bump(v, Size(two)),
+   dst->x = src->x, src->x = (obj) puttwo(dst),
+   dst->y = cp(v, src->y, ln, lp),
+   dst->x = cp(v, dst->x, ln, lp),
+   puttwo(dst)); }
+
+cpcc(cptup) {
+ Ve dst, src = gettup(x);
+ if (fresh(*src->xs)) R *src->xs;
+ dst = bump(v, Size(tup) + src->len);
+ num l = dst->len = src->len;
+ dst->xs[0] = src->xs[0];
+ src->xs[0] = puttup(dst);
+ dst->xs[0] = cp(v, dst->xs[0], ln, lp);
+ for (num i = 1; i < l; ++i)
+   dst->xs[i] = cp(v, src->xs[i], ln, lp);
+ R puttup(dst); }
+
+cpcc(cpoct) {
+ By dst, src = getoct(x);
+ R src->len == 0 ? *(mem)src->text :
+   (dst = bump(v, Size(oct) + b2w(src->len)),
+    memcpy(dst->text, src->text, dst->len = src->len),
+    src->len = 0,
+    *(mem)src->text = putoct(dst)); }
+
+cpcc(cpsym) {
+ sym src = getsym(x), dst;
+ if (fresh(src->nom)) R src->nom;
+ if (nilp(src->nom)) // anonymous symbol
+   dst = bump(v, Size(sym)),
+   cpy((M) dst, (M) src, Size(sym));
+ El dst = getsym(sskc(v, &Syms, cp(v, src->nom, ln, lp)));
+ R src->nom = putsym(dst); }
+
+#define stale(o) inb((mem)(o),lp,lp+ln)
+cpcc(cphom) {
+ H dst, src = Gh(x), end = src, start;
+ if (fresh(G(src))) R (obj) G(src);
+ Wh (*end++);
+ start = (hom) G(end);
+ num i, len = (end+1) - start;
+ dst = bump(v, len);
+ G(dst+len-2) = NULL;
+ G(dst+len-1) = (terp*) dst;
+ for (i = 0; i < len - 2; i++)
+  G(dst+i) = G(start+i),
+  G(start+i) = (terp*) Ph(dst+i);
+ for (obj u; i--;)
+  u = (obj) G(dst+i),
+  G(dst+i) = (terp*) (stale(u) ? cp(v, u, ln, lp) : u);
+ R Ph(dst += src - start); }
+
+St tble cptble(vm v, tble src, num ln, mem lp) {
+  if (!src) R NULL;
+  tble dst = (tble) bump(v, 3);
+  dst->next = cptble(v, src->next, ln, lp);
+  dst->key = cp(v, src->key, ln, lp);
+  dst->val = cp(v, src->val, ln, lp);
+  R dst; }
+
+cpcc(cptbl) {
+  tbl src = gettbl(x);
+  if (fresh(src->tab)) R (obj) src->tab;
+  Z src_cap = src->cap;
+  tbl dst = bump(v, 3 + src_cap);
+  dst->len = src->len;
+  dst->cap = src_cap;
+  dst->tab = (tble*) (dst + 1);
+  tble *src_tab = src->tab;
+  src->tab = (tble*) puttbl(dst);
+  Wh (src_cap--)
+    dst->tab[src_cap] = cptble(v, src_tab[src_cap], ln, lp);
+  R puttbl(dst); }
+
+
+// XXX data constructors
+
+St N hc(vm, obj);
+
+////
+/// data constructors and utility functions
+//
+
+// pairs
+O pair(V v, O a, O b) { Tw t;
+ R Avail >= 2 ?
+  (t = bump(v, 2),
+   t->x = a, t->y = b,
+   puttwo(t)) :
+  (with(a, with(b, reqsp(v, 2))),
+   pair(v, a, b)); }
+
+// strings
+obj string(vm v, Ko Ch* c) {
+  Z bs = 1 + strlen(c);
+  oct o = cells(v, Size(oct) + b2w(bs));
+  memcpy(o->text, c, o->len = bs);
+  return putoct(o); }
+
+//symbols
+
+// symbols are interned into a binary search tree. we make no
+// attempt to keep it balanced but it gets rebuilt in somewhat
+// unpredictable order every gc cycle so hopefully that should
+// help keep it from getting too bad. a hash table is probably
+// the way to go but rebuilding that is more difficult. the
+// existing code is unsuitable because it dynamically resizes
+// the table and unpredictable memory allocation isn't safe
+// during garbage collection. 
+St O ssk(V v, O y, O x) {
+ int i = strcmp(symnom(y), chars(x));
+ R i == 0 ? y :
+  sskc(v, i < 0 ? &(getsym(y)->r) : &(getsym(y)->l), x); }
+
+St O sskc(V v, M y, O x) {
+  if (!nilp(*y)) return ssk(v, *y, x);
+  Sy u = bump(v, Size(sym));
+  u->nom = x, u->code = hc(v, x);
+  u->l = nil, u->r = nil;
+  return *y = putsym(u); }
+
+O intern(V v, O x) {
+  if (Avail < Size(sym))
+    with(x, reqsp(v, Size(sym)));
+  return sskc(v, &Syms, x); }
+
+St In N hash_bytes(Z len, char *us) {
+  Z h = 1;
+  for (; len--; h *= mix, h ^= *us++);
+  return mix * h; }
+
+St N hc(vm v, obj x) {
+  N r;
+  Sw (kind(x)) {
+   Ks Sym: r = getsym(x)->code; Bk;
+   Ks Oct: r = hash_bytes(getoct(x)->len, getoct(x)->text); Bk;
+   Ks Two: r = hc(v, X(x)) ^ hc(v, Y(x)); Bk;
+   Ks Hom: r = hc(v, homnom(v, x)) ^ (mix * (uintptr_t) G(x)); Bk;
+   Ks Tbl: r = mix * mix; // umm this'll do for now ...
+   Df:     r = mix * x; } 
+  R (r<<48)|(r>>16); }
+
+St In Z hbi(Z cap, N co) {
+  return co % cap; }
+
+St In tble hb(O t, N code) {
+  return gettbl(t)->tab[hbi(gettbl(t)->cap, code)]; }
+
+// tblrsz(vm, tbl, new_size): destructively resize a hash table.
+// new_size words of memory are allocated for the new bucket array.
+// the old table entries are reused to populate the modified table.
+St _ tblrsz(V v, O t, Z ns) {
+  tble e, ch, *b, *d;
+  Mm(t, fill((M) (b = cells(v, ns)), 0, ns));
+  Ht o = gettbl(t);
+  Z u, n = o->cap;
+  d = o->tab; o->tab = b; o->cap = ns;
+  Wh (n--) Fo (ch = d[n]; ch;
+    e = ch,
+    ch = ch->next,
+    u = hbi(ns, hc(v, e->key)),
+    e->next = b[u],
+    b[u] = e); }
+
+St _ tblade(V v, O t, O k, O x, Z b) {
+  tble e;
+  with(t, with(k, with(x, e = cells(v, Size(tble)))));
+  tbl y = gettbl(t);
+  e->key = k, e->val = x;
+  e->next = y->tab[b], y->tab[b] = e;
+  ++y->len; }
+
+O tblset(V v, O t, O k, O val) {
+  Z b = hbi(gettbl(t)->cap, hc(v, k));
+  tble e = gettbl(t)->tab[b];
+  for (;e; e = e->next)
+    if (e->key == k) return e->val = val;
+  mm(&t); mm(&val);
+  tblade(v, t, k, val, b);
+  if (gettbl(t)->len / gettbl(t)->cap > 2)
+    tblrsz(v, t, gettbl(t)->cap * 2);
+  return um, um, val; }
+
+St O tblkeys_j(V v, tble e, O l) {
+  if (!e) return l;
+  obj x = e->key;
+  with(x, l = tblkeys_j(v, e->next, l));
+  return pair(v, x, l); }
+
+St O tblkeys_i(V v, O t, Z i) {
+  if (i == gettbl(t)->cap) return nil;
+  obj k;
+  with(t, k = tblkeys_i(v, t, i+1));
+  return tblkeys_j(v, gettbl(t)->tab[i], k); }
+
+obj tblkeys(vm v, obj t) {
+  return tblkeys_i(v, t, 0); }
+
+O tbldel(vm v, obj t, obj k) {
+  Ht y = gettbl(t);
+  O r = nil;
+  Z b = hbi(y->cap, hc(v, k));
+  tble e = y->tab[b];
+  struct tble _v = {0,0,e};
+  for (tble l = &_v; l && l->next; l = l->next)
+    if (l->next->key == k) {
+      r = l->next->val;
+      l->next = l->next->next;
+      y->len--;
+      break; }
+  y->tab[b] = _v.next;
+  if (y->len && y->cap / y->len > 2)
+    with(r, with(t, tblrsz(v, t, y->cap / 2)));
+  return r; }
+
+O tblget(vm v, obj t, obj k) {
+  tble e = hb(t, hc(v, k));
+  Fo (;e; e = e->next) if (eql(e->key, k)) R e->val;
+  R 0; }
+
+O table(vm v) {
+  tbl t = cells(v, sizeof(struct tbl)/w2b(1) + 1);
+  tble *b = (tble*)(t+1);
+  *b = NULL;
+  t->tab = b;
+  t->len = 0;
+  t->cap = 1;
+  return puttbl(t); }
+
 
 // here is some "static data". this idea came from luajit.
 #define insts(_)\
