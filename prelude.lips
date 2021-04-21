@@ -39,7 +39,7 @@
      (at l n) (? (< n 1) (A l) (at (B l) (- n 1)))
      (flip f) (\ x y (f y x))
      (diag f) (\ x (f x x))
-     (curry f x .) (\ y . (ap f (cat x y)))
+     (cu f x .) (\ y . (ap f (cat x y)))
      ({set} x .) (: d (tbl) (, (each x (\ y (Ts d y ()))) d))
 
      (snoc l x) (? l (X (A l) (snoc (B l) x)) (L x))
@@ -135,7 +135,7 @@
    ; then it's an alias for the second function.
    (&& (2p x) (Hp (A x)) (>= (Tg f 'sig) 0) (= (B x) (Tg f'arg)))
     (A x)
-   ; otherwise we should probably compile it ...
+   ; otherwise compile it
    (: k (hfin (ar (loc ((eval x ini) f 4))))
     ; free variables or not ?
     (? (: clo (Tg f 'clo)) (X clo k) k))))
@@ -465,18 +465,19 @@
 
     h (k e (+ m 2))
     t (consumes h)
-    (emf i-lbind (emx (X (t-code t) (X d x))
-                   (? t (hseek h 1) h))))
+    (emf i-lbind
+     (emx (X (t-code t) (X d x))
+      (? t (hseek h 1) h))))
 
    s (A (: r (look e x))) (?
     (= s'here) ((Im (B r) k) e m)
     (= s'wait) (late e m x (B r) k)
     (= e (B r)) (case s
-     'arg ((xc i-arg (xd (idx (tget e'arg) x) k)) e m)
-     'loc ((xc i-loc (xd (idx (tget e'loc) x) k)) e m)
-     'clo ((xc i-clo (xd (idx (tget e'clo) x) k)) e m))
-    (, (: l (len (tget e'clo)))
-       (tset e'clo(snoc (tget e'clo) x))
+     'arg ((xc i-arg (xd (idx (Tg e'arg) x) k)) e m)
+     'loc ((xc i-loc (xd (idx (Tg e'loc) x) k)) e m)
+     'clo ((xc i-clo (xd (idx (Tg e'clo) x) k)) e m))
+    (, (: l (len (Tg e'clo)))
+       (Ts e'clo(snoc (Tg e'clo) x))
        ((xc i-clo (xd l k)) e m)))))
 
 
@@ -619,17 +620,18 @@
    nilp (1y i-nilpp () ())
    fail (0y i-fail ())))
 
-  (ini e m) ((xc i-ret (xd (tget e'nom) (\ e m (hom m)))) e m)
+  (ini e m) ((xc i-ret (xd (Tg e'nom) (\ e m (hom m)))) e m)
   (ev x) (: e (env () () 'ev) (((eval (weak e x) ini) e 0) x))
   ;; end of compiler namespace ; now return the eval function
 ;  ev ; comment this line to define internals at toplevel
   ))))
 
 ; bootstrap
-(ev lib) (ev egg) ; C -> prelips
-(ev lib) (ev egg) ; prelips -> lips
-(: comp (\ x .
- (ev(L'\'x(foldl x'x(\ m e(L(L'` e)m)))))))
+(ev lib) (ev egg) (ev lib) (ev egg)
 ; "drop privileges"
 (each '(lib egg macros ns emi emx hom hseek hgeti hgetx hfin)
       (\ v (tdel ns v)))
+
+; now prelude functions using ev
+(: co (\ x .
+ (ev(L'\'x(foldl x'x(\ m e(L(L'` e)m)))))))

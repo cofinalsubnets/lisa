@@ -1,37 +1,30 @@
 # lips
-trivial lisp
-
-## qualities
-- strict lexically scoped lisp-1 with short function words
-  and no superfluous parentheses
-- self-hosting threaded code compiler targets a vm/runtime
-  written in somewhat portable C (64-bit only, etc.)
-- some kind of weak static type concept
+ambient lisp
 
 ## build / install
 are you on linux? `make` should work. otherwise consult the
 makefile for the C compiler invocation. `make install` puts
-the binary and prelude under `~/.local` by default.
+the binary and prelude under `~/.local` by default
 
 ## special forms
-with scheme equivalents. degenerate (nullary/unary) cases
-are usually nil or identity, but `\`is an exception
+nullary/unary cases are usually nil or identity, but `\`is an
+exception. equivalents are in scheme
 
 ### `,` begin
 - `(, a b c) = (begin a b c)`
 
-like scheme.
+like scheme
 
 ### <code>\`</code> quote
 - <code>(\` x) = (quote x)</code>
 
-like scheme. `'x` also works.
+like scheme. `'x` also works
 
 ### `?` cond
 - `(? a b) = (cond (a b) (#t '()))` even case : default value is nil
 - `(? a b c) = (cond (a b) (#t c))` odd case : default branch is given
 
-etc. `()` is the only false value & it's self-quoting.
+etc. `()` is the only false value & it's self-quoting
 
 ### `:` define / let
 - `(: a0 b0 ... an bn) = (begin (define a b) ... (define an bn) an)` even arguments : define variables in the current scope
@@ -44,7 +37,7 @@ etc. `()` is the only false value & it's self-quoting.
 - `(\ a0 ... an x) = (lambda (a0 ... an) x)` many arguments, one expression
 - `(\ a b . (a b)) = (lambda (a . b) (a b))`  vararg syntax ; `.` is just a symbol
 
-use `,` to sequence multiple expressions in one function body.
+use `,` to sequence multiple expressions in one function body
 
 ## predefined functions / macros
 this whole section is unstable and  some of these names are
@@ -58,8 +51,10 @@ many of these, and others not listed here, are defined in
 - `=` variadic, works on anything, recursive on pairs so
   `(= (L 1 2 3) (L 1 2 3))`.
 - `ev = eval`, `ap = apply`, `ccc = call/cc`
+- `cu` partial application : `((cu + 3) 7) = 10` ;
+  `co` sequential composition : `((co (cu + 3) (cu * 9) -) 1) = -36`
 - `.` print arguments separated by spaces, print newline, return
-  last argument; great for debugging.
+  last argument; good for debugging
 - `A = car` `B = cdr` `X = cons` `L = list`. `AA`-`BB` are
   defined as macros.
 - apl-lite data constructors: `iota` is monadic `ι`; `rho` is
@@ -74,6 +69,11 @@ many of these, and others not listed here, are defined in
 
 ## code examples
 
+### a quine
+```lisp
+((\ i (L i (L '` i))) '(\ i (L i (L '` i))))
+```
+
 ### hyperoperations
 ```lisp
 ; send n to the nth hyperoperation, 0 being addition.
@@ -83,32 +83,23 @@ many of these, and others not listed here, are defined in
 
 ### church numerals
 ```lisp
-(: K const ; these are just slightly modified SK combinators
-   I id
-   (P f) (\ g (\ x (f (g x))))         ; postcomposition
+(: K const I id ; as in SKI combinators
+   (P f) (\ g (\ x (f (g x))))
    (Q x) (\ y (\ z ((P (x z)) (y z)))) ; Q : S :: compose : apply
 
-   zero (K I) one I exp I mul P add Q succ (add one) ; okie dokie
+   zero (K I) one I exp I mul P add Q succ (add one)
 
    (C n) (? (= n 0) zero (succ (C (- n 1)))) ; send it to its church numeral
    (N c) ((c (\ x (+ x 1))) 0))              ; send it back
-```
 
-### fizzbuzz
-```lisp
-; now that we have church numerals we can write fizzbuzz.
 (: (/p m n) (= 0 (% m n))
-   (fb m) (, (. (? (/p m 15) 'fizzbuzz
-                   (/p m 5)  'buzz
-                   (/p m 3)  'fizz
-                   m))
-             (+ m 1))
- (((C 100) fb) 1))
-```
-
-### a quine
-```lisp
-((\ i (L i (L '` i))) '(\ i (L i (L '` i))))
+   (fizzbuzz m)
+    ((K (+ m 1)) (. (?
+     (/p m 15) 'fizzbuzz
+     (/p m 5)  'buzz
+     (/p m 3)  'fizz
+     m)))
+ (((C 100) fizzbuzz) 1))
 ```
 
 ## missing features

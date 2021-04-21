@@ -57,7 +57,7 @@ Ty Sr tbl { Z len, cap; tble *tab; } *Ht, *tbl;
 
 Ty Sr root { mem one; Sr root *next; } *root;
 // the 3 ls bits of each pointer are a type tag
-En type {
+En T {
  Hom = 0, Num = 1, Two = 2, Tup = 3,
  Oct = 4, Tbl = 5, Sym = 6, Nil = 7 };
 
@@ -103,10 +103,9 @@ O err(V, obj, Ko Ch*, ...),
   tbldel(V, obj, obj),
   tblkeys(V, obj),
   string(V, Ko char*);
-Z llen(obj);
 int eql(obj, obj);
 
-Ko Ch* tnom(En type);
+Ko Ch* tnom(En T);
 
 #define kind(x) ((x)&7)
 #define Gh(x) ((hom)((x)))
@@ -199,7 +198,11 @@ St In _ fill(M d, O i, Z n) {
 St In _ cpy(M d, M s, Z n) {
  Fo (M l = d + n; d < l; *d++ = *s++); }
 
-O compile(vm, obj);
+St In Z hbi(Z cap, N co) { R co % cap; }
+
+St In tble hb(O t, N code) {
+  R gettbl(t)->tab[hbi(gettbl(t)->cap, code)]; }
+
 
 #define NOM "lips"
 
@@ -222,7 +225,7 @@ _Static_assert(
 #define err_eof "unexpected eof"
 #define err_rpar "unmatched right delimiter"
 
-Nin Ko Ch* tnom(En type t) { Sw (t) {
+Nin Ko Ch* tnom(En T t) { Sw (t) {
  Ks Hom: R "hom";
  Ks Num: R "num";
  Ks Tbl: R "tbl";
@@ -232,7 +235,7 @@ Nin Ko Ch* tnom(En type t) { Sw (t) {
  Ks Sym: R "sym";
  Df:     R "nil"; } }
 
-Ty O P(vm, FILE*);
+Ty O P(V, Io);
 St P atom, r1s, qt, str;
 
 #define readx(v,m)(errp(v,m),0)
@@ -412,10 +415,10 @@ int main(int argc, char**argv) {
  if (r == OK && F&takka) repl(v, stdin, stdout);
  R finalize(v), r; }
 
-static int copy(vm, num);
-static obj cp(vm, obj, num, mem);
-static Inline void do_copy(vm, num, mem, num, mem);
-static obj sskc(vm, mem, obj);
+St int copy(V, Z);
+St O cp(V, O, Z, M);
+St In _ do_copy(V, Z, M, Z, M);
+St O sskc(V, M, O);
 
 // a simple copying garbage collector
 
@@ -447,19 +450,19 @@ static obj sskc(vm, mem, obj);
 #define growp (allocd > len || vit < 32) // lower bound
 #define shrinkp (allocd < len/2 && vit >= 128) // upper bound
 _ reqsp(vm v, num req) {
-  Z len = v->mem_len, vit = copy(v, len);
-  if (vit) { // copy succeeded
-    Z allocd = len - (Avail - req);
-       if (growp)   do grow();   Wh (growp);
-    El if (shrinkp) do shrink(); Wh (shrinkp);
-    El R; // no size change needed
-    // otherwise grow or shrink
-    if (copy(v, len)) R;
-    // oh no that didn't work
-    // maybe we can still return though
-    if (allocd <= Len) R; } // aww darn
-  errp(v, "oom"); // this is a bad error
-  restart(v); }
+ Z len = v->mem_len, vit = copy(v, len);
+ if (vit) { // copy succeeded
+  Z allocd = len - (Avail - req);
+     if (growp)   do grow();   Wh (growp);
+  El if (shrinkp) do shrink(); Wh (shrinkp);
+  El R; // no size change needed
+  // otherwise grow or shrink
+  if (copy(v, len)) R;
+  // oh no that didn't work
+  // maybe we can still return though
+  if (allocd <= Len) R; } // aww darn
+ errp(v, "oom"); // this is a bad error
+ restart(v); }
 
 // the first step in copying is to allocate
 // a new pool of the given length, which must
@@ -483,23 +486,21 @@ _ reqsp(vm v, num req) {
 // u will be >= 1. however, sometimes t1 == t2. in that case
 // u = 1.
 St int copy(V v, Z len) {
-  clock_t t1 = clock(), t2, u;
-  M b0 = v->mem_pool, b1 = malloc(w2b(len));
-  R !b1 ? 0 :
-   (do_copy(v, v->mem_len, b0, len, b1),
-    free(b0),
-    t2 = clock(),
-    u = t1 == t2 ? 1 : (t2 - v->t0) / (t2 - t1),
-    v->t0 = t2,
-    u); }
+ clock_t t1 = clock(), t2, u;
+ M b0 = v->mem_pool, b1 = malloc(w2b(len));
+ R !b1 ? 0 :
+  (do_copy(v, v->mem_len, b0, len, b1),
+   free(b0),
+   t2 = clock(),
+   u = t1 == t2 ? 1 : (t2 - v->t0) / (t2 - t1),
+   v->t0 = t2,
+   u); }
 
 St In _ do_copy(V v, Z l0, M b0, Z l1, M b1) {
+ M s0 = Sp, t0 = b0 + l0, t1 = b1 + l1;
+ Z ro = t1 - t0;
  v->mem_len = l1;
  v->mem_pool = Hp = b1;
- M s0 = Sp,
-   t0 = b0 + l0,
-   t1 = b1 + l1;
- Z ro = t1 - t0;
  Sp += ro, Fp += ro;
  Syms = nil;
  Wh (t0-- > s0) Sp[t0 - s0] = cp(v, *t0, l0, b0);
@@ -515,7 +516,7 @@ St In _ do_copy(V v, Z l0, M b0, Z l1, M b1) {
 // old data.
 Ty O cp_(V, O, Z, M);
 St cp_ cphom, cptup, cptwo, cpsym, cpoct, cptbl;
-#define cpcc(n) static obj n(V v, O x, Z ln, M lp)
+#define cpcc(n) St O n(V v, O x, Z ln, M lp)
 
 cpcc(cp) {  Sw (kind(x)) {
  Ks Hom: R cphom(v, x, ln, lp);
@@ -541,70 +542,71 @@ cpcc(cptup) {
  Ve dst, src = gettup(x);
  if (fresh(*src->xs)) R *src->xs;
  dst = bump(v, Size(tup) + src->len);
- num l = dst->len = src->len;
+ Z l = dst->len = src->len;
  dst->xs[0] = src->xs[0];
  src->xs[0] = puttup(dst);
  dst->xs[0] = cp(v, dst->xs[0], ln, lp);
- for (num i = 1; i < l; ++i)
+ Fo (num i = 1; i < l; ++i)
    dst->xs[i] = cp(v, src->xs[i], ln, lp);
  R puttup(dst); }
 
 cpcc(cpoct) {
  By dst, src = getoct(x);
  R src->len == 0 ? *(mem)src->text :
-   (dst = bump(v, Size(oct) + b2w(src->len)),
-    memcpy(dst->text, src->text, dst->len = src->len),
-    src->len = 0,
-    *(mem)src->text = putoct(dst)); }
+  (dst = bump(v, Size(oct) + b2w(src->len)),
+   memcpy(dst->text, src->text, dst->len = src->len),
+   src->len = 0,
+   *(mem)src->text = putoct(dst)); }
 
 cpcc(cpsym) {
- sym src = getsym(x), dst;
+ Sy src = getsym(x), dst;
  if (fresh(src->nom)) R src->nom;
  if (nilp(src->nom)) // anonymous symbol
-   dst = bump(v, Size(sym)),
-   cpy((M) dst, (M) src, Size(sym));
+  dst = bump(v, Size(sym)),
+  cpy((M) dst, (M) src, Size(sym));
  El dst = getsym(sskc(v, &Syms, cp(v, src->nom, ln, lp)));
  R src->nom = putsym(dst); }
 
+#include <assert.h>
 #define stale(o) inb((mem)(o),lp,lp+ln)
 cpcc(cphom) {
  H dst, src = Gh(x), end = src, start;
  if (fresh(G(src))) R (obj) G(src);
- Wh (*end++);
- start = (hom) G(end);
- num i, len = (end+1) - start;
+ Wh (*end) end++;
+ start = (hom) G(end+1);
+ Z len = (end+2) - start;
  dst = bump(v, len);
- G(dst+len-2) = NULL;
- G(dst+len-1) = (terp*) dst;
- for (i = 0; i < len - 2; i++)
-  G(dst+i) = G(start+i),
-  G(start+i) = (terp*) Ph(dst+i);
- for (obj u; i--;)
-  u = (obj) G(dst+i),
-  G(dst+i) = (terp*) (stale(u) ? cp(v, u, ln, lp) : u);
+ H j = dst;
+ Fo (H k = start; k < end; j++, k++ )
+  G(j) = G(k), G(k) = (terp*) Ph(j);
+ G(j) = NULL;
+ G(j+1) = (terp*) dst;
+ Fo (obj u; j-- > dst;)
+  u = (obj) G(j),
+  G(j) = (terp*) (stale(u) ? cp(v, u, ln, lp) : u);
  R Ph(dst += src - start); }
 
 St tble cptble(vm v, tble src, num ln, mem lp) {
-  if (!src) R NULL;
-  tble dst = (tble) bump(v, 3);
-  dst->next = cptble(v, src->next, ln, lp);
-  dst->key = cp(v, src->key, ln, lp);
-  dst->val = cp(v, src->val, ln, lp);
-  R dst; }
+ if (!src) R NULL;
+ tble dst = (tble) bump(v, 3);
+ dst->next = cptble(v, src->next, ln, lp);
+ dst->key = cp(v, src->key, ln, lp);
+ dst->val = cp(v, src->val, ln, lp);
+ R dst; }
 
 cpcc(cptbl) {
-  tbl src = gettbl(x);
-  if (fresh(src->tab)) R (obj) src->tab;
-  Z src_cap = src->cap;
-  tbl dst = bump(v, 3 + src_cap);
-  dst->len = src->len;
-  dst->cap = src_cap;
-  dst->tab = (tble*) (dst + 1);
-  tble *src_tab = src->tab;
-  src->tab = (tble*) puttbl(dst);
-  Wh (src_cap--)
-    dst->tab[src_cap] = cptble(v, src_tab[src_cap], ln, lp);
-  R puttbl(dst); }
+ tbl src = gettbl(x);
+ if (fresh(src->tab)) R (obj) src->tab;
+ Z src_cap = src->cap;
+ tbl dst = bump(v, 3 + src_cap);
+ dst->len = src->len;
+ dst->cap = src_cap;
+ dst->tab = (tble*) (dst + 1);
+ tble *src_tab = src->tab;
+ src->tab = (tble*) puttbl(dst);
+ Wh (src_cap--)
+  dst->tab[src_cap] = cptble(v, src_tab[src_cap], ln, lp);
+ R puttbl(dst); }
 
 
 // XXX data constructors
@@ -624,12 +626,33 @@ O pair(V v, O a, O b) { Tw t;
   (with(a, with(b, reqsp(v, 2))),
    pair(v, a, b)); }
 
+// list functions
+St Z idx(O l, O x) {
+ Fo (Z i = 0; twop(l); l = Y(l), i++)
+  if (x == X(l)) R i;
+ R -1; }
+
+St Z llen(O l) {
+ Fo (Z i = 0;; l = Y(l), i++)
+  if (!twop(l)) R i; }
+
+St obj snoc(V v, O l, O x) {
+ if (!twop(l)) R pair(v, x, l);
+ Mm(l, x = snoc(v, Y(l), x));
+ R pair(v, X(l), x); }
+
+St O linitp(V v, O x, M d) { O y;
+ if (!twop(Y(x))) R *d = x, nil;
+ Mm(x, y = linitp(v, Y(x), d));
+ R pair(v, X(x), y); }
+
+
 // strings
 obj string(vm v, Ko Ch* c) {
-  Z bs = 1 + strlen(c);
-  oct o = cells(v, Size(oct) + b2w(bs));
-  memcpy(o->text, c, o->len = bs);
-  return putoct(o); }
+ Z bs = 1 + strlen(c);
+ oct o = cells(v, Size(oct) + b2w(bs));
+ memcpy(o->text, c, o->len = bs);
+ R putoct(o); }
 
 //symbols
 
@@ -647,95 +670,85 @@ St O ssk(V v, O y, O x) {
   sskc(v, i < 0 ? &(getsym(y)->r) : &(getsym(y)->l), x); }
 
 St O sskc(V v, M y, O x) {
-  if (!nilp(*y)) return ssk(v, *y, x);
+  if (!nilp(*y)) R ssk(v, *y, x);
   Sy u = bump(v, Size(sym));
   u->nom = x, u->code = hc(v, x);
   u->l = nil, u->r = nil;
-  return *y = putsym(u); }
+  R *y = putsym(u); }
 
 O intern(V v, O x) {
-  if (Avail < Size(sym))
-    with(x, reqsp(v, Size(sym)));
-  return sskc(v, &Syms, x); }
+ if (Avail < Size(sym))
+  with(x, reqsp(v, Size(sym)));
+ R sskc(v, &Syms, x); }
 
-St In N hash_bytes(Z len, char *us) {
-  Z h = 1;
-  for (; len--; h *= mix, h ^= *us++);
-  return mix * h; }
+St In N hash_bytes(Z len, char *us) { Z h = 1;
+  Fo (; len--; h *= mix, h ^= *us++);
+  R mix * h; }
 
-St N hc(vm v, obj x) {
-  N r;
-  Sw (kind(x)) {
-   Ks Sym: r = getsym(x)->code; Bk;
-   Ks Oct: r = hash_bytes(getoct(x)->len, getoct(x)->text); Bk;
-   Ks Two: r = hc(v, X(x)) ^ hc(v, Y(x)); Bk;
-   Ks Hom: r = hc(v, homnom(v, x)) ^ (mix * (uintptr_t) G(x)); Bk;
-   Ks Tbl: r = mix * mix; // umm this'll do for now ...
-   Df:     r = mix * x; } 
-  R (r<<48)|(r>>16); }
-
-St In Z hbi(Z cap, N co) {
-  return co % cap; }
-
-St In tble hb(O t, N code) {
-  return gettbl(t)->tab[hbi(gettbl(t)->cap, code)]; }
+St N hc(vm v, obj x) { N r;
+ Sw (kind(x)) {
+  Ks Sym: r = getsym(x)->code; Bk;
+  Ks Oct: r = hash_bytes(getoct(x)->len, getoct(x)->text); Bk;
+  Ks Two: r = hc(v, X(x)) ^ hc(v, Y(x)); Bk;
+  Ks Hom: r = hc(v, homnom(v, x)) ^ (mix * (uintptr_t) G(x)); Bk;
+  Ks Tbl: r = mix * mix; // umm this'll do for now ...
+  Df:     r = mix * x; } 
+ R (r<<48)|(r>>16); }
 
 // tblrsz(vm, tbl, new_size): destructively resize a hash table.
 // new_size words of memory are allocated for the new bucket array.
 // the old table entries are reused to populate the modified table.
 St _ tblrsz(V v, O t, Z ns) {
-  tble e, ch, *b, *d;
-  Mm(t, fill((M) (b = cells(v, ns)), 0, ns));
-  Ht o = gettbl(t);
-  Z u, n = o->cap;
-  d = o->tab; o->tab = b; o->cap = ns;
-  Wh (n--) Fo (ch = d[n]; ch;
-    e = ch,
-    ch = ch->next,
-    u = hbi(ns, hc(v, e->key)),
-    e->next = b[u],
-    b[u] = e); }
+ tble e, ch, *b, *d;
+ Mm(t, fill((M) (b = cells(v, ns)), 0, ns));
+ Ht o = gettbl(t);
+ Z u, n = o->cap;
+ d = o->tab; o->tab = b; o->cap = ns;
+ Wh (n--) Fo (ch = d[n]; ch;
+  e = ch,
+  ch = ch->next,
+  u = hbi(ns, hc(v, e->key)),
+  e->next = b[u],
+  b[u] = e); }
 
-St _ tblade(V v, O t, O k, O x, Z b) {
-  tble e;
-  with(t, with(k, with(x, e = cells(v, Size(tble)))));
-  tbl y = gettbl(t);
-  e->key = k, e->val = x;
-  e->next = y->tab[b], y->tab[b] = e;
-  ++y->len; }
+St _ tblade(V v, O t, O k, O x, Z b) { tble e; tbl y;
+ Mm(t, Mm(k, Mm(x, e = cells(v, Size(tble)))));
+ y = gettbl(t);
+ e->key = k, e->val = x;
+ e->next = y->tab[b], y->tab[b] = e;
+ ++y->len; }
 
 O tblset(V v, O t, O k, O val) {
-  Z b = hbi(gettbl(t)->cap, hc(v, k));
-  tble e = gettbl(t)->tab[b];
-  for (;e; e = e->next)
-    if (e->key == k) return e->val = val;
-  mm(&t); mm(&val);
-  tblade(v, t, k, val, b);
-  if (gettbl(t)->len / gettbl(t)->cap > 2)
-    tblrsz(v, t, gettbl(t)->cap * 2);
-  return um, um, val; }
+ Z b = hbi(gettbl(t)->cap, hc(v, k));
+ tble e = gettbl(t)->tab[b];
+ Fo (;e; e = e->next)
+  if (e->key == k) R e->val = val;
+ R Mm(t, Mm(val,
+    tblade(v,t,k,val,b),
+    gettbl(t)->len / gettbl(t)->cap > 2 ?
+     tblrsz(v, t, gettbl(t)->cap*2) : 0)),
+   val; }
 
-St O tblkeys_j(V v, tble e, O l) {
-  if (!e) return l;
-  obj x = e->key;
-  with(x, l = tblkeys_j(v, e->next, l));
-  return pair(v, x, l); }
+St O tblkeys_j(V v, tble e, O l) { O x;
+ if (!e) R l;
+ x = e->key;
+ Mm(x, l = tblkeys_j(v, e->next, l));
+ R pair(v, x, l); }
 
-St O tblkeys_i(V v, O t, Z i) {
-  if (i == gettbl(t)->cap) return nil;
-  obj k;
-  with(t, k = tblkeys_i(v, t, i+1));
-  return tblkeys_j(v, gettbl(t)->tab[i], k); }
+St O tblkeys_i(V v, O t, Z i) { O k;
+  if (i == gettbl(t)->cap) R nil;
+  Mm(t, k = tblkeys_i(v, t, i+1));
+  R tblkeys_j(v, gettbl(t)->tab[i], k); }
 
 obj tblkeys(vm v, obj t) {
-  return tblkeys_i(v, t, 0); }
+  R tblkeys_i(v, t, 0); }
 
-O tbldel(vm v, obj t, obj k) {
+O tbldel(V v, O t, O k) {
   Ht y = gettbl(t);
   O r = nil;
   Z b = hbi(y->cap, hc(v, k));
   tble e = y->tab[b];
-  struct tble _v = {0,0,e};
+  Sr tble _v = {0,0,e};
   for (tble l = &_v; l && l->next; l = l->next)
     if (l->next->key == k) {
       r = l->next->val;
@@ -747,47 +760,46 @@ O tbldel(vm v, obj t, obj k) {
     with(r, with(t, tblrsz(v, t, y->cap / 2)));
   return r; }
 
-O tblget(vm v, obj t, obj k) {
+O tblget(V v, O t, O k) {
   tble e = hb(t, hc(v, k));
   Fo (;e; e = e->next) if (eql(e->key, k)) R e->val;
   R 0; }
 
-O table(vm v) {
-  tbl t = cells(v, sizeof(struct tbl)/w2b(1) + 1);
+O table(V v) {
+  tbl t = cells(v, sizeof(Sr tbl)/w2b(1) + 1);
   tble *b = (tble*)(t+1);
   *b = NULL;
   t->tab = b;
   t->len = 0;
   t->cap = 1;
-  return puttbl(t); }
+  R puttbl(t); }
 
-// here is some "static data". this idea came from luajit.
 #define insts(_)\
-  _(tget),_(tset),_(thas),_(tlen),_(gsym_u),\
-  _(arity),  _(idZ),  _(idH),   _(id2),  _(idT), _(lbind),\
-  _(imm), _(arg),   _(clo),    _(loc),   _(take),\
-  _(locals),   _(loc_),   _(pc0),     _(pc1),    _(clos),\
-  _(encll),  _(encln),  _(yield),   _(ret),    _(jump),\
-  _(branch), _(barnch), _(call),    _(rec),\
-  _(tbind),  _(push),   _(add),     _(sub),    _(mul),\
-  _(dqv),    _(mod),    _(neg),     _(lt),     _(lteq),\
-  _(eq),     _(gteq),   _(gt),      _(twopp),  _(numpp),\
-  _(nilpp),  _(strpp),  _(tblpp),   _(sympp),  _(hompp),\
-  _(car),    _(cdr),   _(cons), _(vecpp),\
-  _(add_u),  _(sub_u),  _(mul_u),   _(div_u),  _(mod_u),\
-  _(lt_u),   _(lteq_u), _(eq_u),    _(gteq_u), _(gt_u),\
-  _(twop_u), _(nump_u), _(homp_u),  _(tblp_u), _(strp_u),\
-  _(nilp_u), _(car_u),  _(cdr_u),   _(cons_u), _(vecp_u),\
-  _(strmk),  _(strg),   _(strl),_(strs),_(strc),_(hom_fin_u),\
-  _(symp_u), _(hom_u),\
-  _(arg0), _(arg1), _(loc0),_(loc1),_(clo0),_(clo1),\
-  _(unit),_(one),_(zero),\
-  _(brlt),_(brlteq),_(breq),_(brgteq),_(brgt),_(brne),\
-  _(zzz),\
-  _(tbll), _(tblmk),_(tblg),_(tblc),_(tbls),_(tbld),_(tblks),\
-  _(hom_seek_u),_(hom_geti_u),_(emi),\
-  _(fail),_(ccc_u),_(cont),_(vararg),_(tuck),_(dupl),\
-  _(drop),_(hom_getx_u),_(emx_u),_(emi_u),_(emx),_(em_u),_(ev_u),_(ap_u)
+  _(tget),   _(tset),   _(thas),   _(tlen),   _(gsym_u),\
+  _(arity),  _(idZ),    _(idH),    _(id2),    _(idT),\
+  _(imm),    _(arg),    _(clo),    _(loc),    _(take),\
+  _(locals), _(loc_),   _(pc0),    _(pc1),    _(clos),\
+  _(encll),  _(encln),  _(yield),  _(ret),    _(jump),\
+  _(branch), _(barnch), _(call),   _(rec),    _(lbind),\
+  _(tbind),  _(push),   _(add),    _(sub),    _(mul),\
+  _(dqv),    _(mod),    _(neg),    _(lt),     _(lteq),\
+  _(eq),     _(gteq),   _(gt),     _(twopp),  _(numpp),\
+  _(nilpp),  _(strpp),  _(tblpp),  _(sympp),  _(hompp),\
+  _(car),    _(cdr),    _(cons),   _(vecpp),  _(hom_u),\
+  _(add_u),  _(sub_u),  _(mul_u),  _(div_u),  _(mod_u),\
+  _(lt_u),   _(lteq_u), _(eq_u),   _(gteq_u), _(gt_u),\
+  _(twop_u), _(nump_u), _(homp_u), _(tblp_u), _(strp_u),\
+  _(nilp_u), _(car_u),  _(cdr_u),  _(cons_u), _(vecp_u),\
+  _(strmk),  _(strg),   _(strl),   _(strs),   _(strc),\
+  _(symp_u), _(unit),   _(one),    _(zero),   _(hom_fin_u),\
+  _(arg0),   _(arg1),   _(loc0),   _(loc1),   _(clo0),\
+  _(clo1),   _(brlt),   _(brlteq), _(breq),   _(brgteq),\
+  _(brgt),   _(brne),   _(zzz),    _(tbll),   _(tblmk),\
+  _(tblg),   _(tblc),   _(tbls),   _(tbld),   _(tblks),\
+  _(hom_seek_u), _(hom_geti_u), _(hom_getx_u),\
+  _(fail),   _(ccc_u),  _(cont),   _(vararg), _(tuck),\
+  _(dupl),   _(emi),    _(drop),   _(emx_u),  _(emi_u),\
+  _(emx),    _(em_u),   _(ev_u),   _(ap_u)
 #define prims(_)\
   _("gensym", gsym_u),\
   _("hfin", hom_fin_u),\
@@ -818,7 +830,6 @@ O table(vm v) {
 
 #define ninl(x) x NoInline
 terp insts(ninl);
-#undef ninl
 
 typedef obj c1(vm, mem, num),
             c2(vm, mem, num, obj),
@@ -869,8 +880,7 @@ St Vd c_de_r(vm, mem, obj),
 St c1 c_ev, c_d_bind, inst, insx, c_ini;
 St c2 c_eval, c_sy, c_2, c_imm, ltu, c_ap, c_la_clo;
 St c3 late;
-St obj tupl(vm, ...),
-       def_sug(vm, obj),
+St obj def_sug(vm, obj),
        snoc(vm, obj, obj),
        look(vm, obj, obj),
        linitp(vm, obj, mem),
@@ -881,23 +891,18 @@ St num idx(obj, obj);
 #define interns(v,c) intern(v,string(v,c))
 
 En { Here, Loc, Arg, Clo, Wait };
-#define c1(nom,...) St obj nom(vm v,mem e,num m,##__VA_ARGS__)
-#define c2(nom,...) St obj nom(vm v,mem e,num m,obj x,##__VA_ARGS__)
-
-#define Rec(...) {\
-  obj _s1 = S1, _s2 = S2;\
-  Mm(_s1, Mm(_s2,__VA_ARGS__));\
-  S1 = _s1, S2 = _s2; }
+#define c1(nom,...) St O nom(V v,M e,Z m,##__VA_ARGS__)
+#define c2(nom,...) St O nom(V v,M e,Z m,O x,##__VA_ARGS__)
 
 // emit code backwards like cons
-St In obj em1(terp *i, obj k) {
+St In obj em1(terp *i, O k) {
   R k -= W, G(k) = i, k; }
-St In obj em2(terp *i, obj j, obj k) {
+St In O em2(terp *i, O j, O k) {
   R em1(i, em1((terp*)j, k)); }
 
-St obj apply(vm v, obj f, obj x) {
+St O apply(V v, O f, O x) {
   Pu(f, x);
-  hom h = cells(v, 5);
+  H h = cells(v, 5);
   h[0] = call;
   h[1] = (terp*) Pn(2);
   h[2] = yield;
@@ -905,63 +910,71 @@ St obj apply(vm v, obj f, obj x) {
   h[4] = (terp*) h;
   R call(v, Ph(h), Fp, Sp, Hp, tblget(v, Dict, App)); }
 
-obj compile(vm v, obj x) {
-  Pu(Pn(c_ev), x, Pn(inst), Pn(yield), Pn(c_ini));
-  R ccc(v, NULL, 0); }
+St O compile(V v, O x) {
+ Pu(Pn(c_ev), x, Pn(inst), Pn(yield), Pn(c_ini));
+ R ccc(v, NULL, 0); }
 
 /// evaluate an expression
-obj eval(vm v, obj x) {
-  x = pair(v, x, nil);
-  R apply(v, tblget(v, Dict, Eva), x); }
+O eval(V v, O x) { R
+ x = pair(v, x, nil),
+ apply(v, tblget(v, Dict, Eva), x); }
 
-static obj rwlade(vm v, obj x) {
-    obj y; Mm(x,
-     y = snoc(v, YX(x), XY(x)),
-     y = pair(v, La, y),
-     y = pair(v, y, YY(x)));
-    R pair(v, XX(x), y); }
+St O rwlade(V v, O x) { O y; R
+ Mm(x, y = snoc(v, YX(x), XY(x)),
+       y = pair(v, La, y),
+       y = pair(v, y, YY(x))),
+ pair(v, XX(x), y); }
 
-static void scan_def_add(vm v, mem e, obj y, obj x) {
+St _ scan_def_add(V v, M e, O y, O x) {
   Mm(x, y = pair(v, y, loc(*e)), loc(*e) = y);
   scan(v, e, x); }
 
-static int scan_def(vm v, mem e, obj x) {
-  if (!twop(x)) R 1; // this is an even case so export all the definitions to the local scope
-  if (!twop(Y(x))) R 0; // this is an odd case so ignore these, they'll be imported after the rewrite
-  obj r; Mm(x, r = scan_def(v, e, YY(x)));
-  if (r) {
-    if (twop(X(x))) x = rwlade(v, x);
-    scan_def_add(v, e, X(x), XY(x)); }
-  R r; }
+St int scan_def(V v, M e, O x) { O r;
+ if (!twop(x)) R 1; // this is an even case so export all the definitions to the local scope
+ if (!twop(Y(x))) R 0; // this is an odd case so ignore these, they'll be imported after the rewrite
+ Mm(x, r = scan_def(v, e, YY(x)));
+ if (r) {
+  if (twop(X(x))) x = rwlade(v, x);
+  scan_def_add(v, e, X(x), XY(x)); }
+ R r; }
 
-static void scan(vm v, mem e, obj x) {
-  if (!twop(x) || X(x) == La || X(x) == Qt) R;
-  if (X(x) == De) R (void) scan_def(v, e, Y(x));
-  for (mm(&x); twop(x); x = Y(x)) scan(v, e, X(x));
-  um; }
+St _ scan(V v, M e, O x) {
+ if (!twop(x) || X(x) == La || X(x) == Qt) R;
+ if (X(x) == De) R (void) scan_def(v, e, Y(x));
+ Fo (mm(&x); twop(x); x = Y(x)) scan(v, e, X(x));
+ um; }
 
-static obj asign(vm v, obj a, num i, mem m) {
-  obj x;
-  if (!twop(a)) R *m = i, a;
-  if (twop(Y(a)) && XY(a) == Va)
-    R *m = -(i+1), pair(v, X(a), nil);
-  Mm(a, x = asign(v, Y(a), i+1, m));
-  R pair(v, X(a), x); }
+St O asign(V v, O a, Z i, M m) { O x;
+ if (!twop(a)) R *m = i, a;
+ if (twop(Y(a)) && XY(a) == Va)
+  R *m = -(i+1), pair(v, X(a), nil);
+ Mm(a, x = asign(v, Y(a), i+1, m));
+ R pair(v, X(a), x); }
 
-static obj scope(vm v, mem e, obj a, obj n) {
-  num s = 0;
-  Mm(n, a = asign(v, a, 0, &s));
-  R tupl(v, a, nil, nil, e ? *e : nil, n, Pn(s), non); }
+St Ve tuplr(V v, Z i, va_list xs) { Ve t; O x;
+ R (x = va_arg(xs, obj)) ?
+  (Mm(x, t = tuplr(v, i+1, xs)), t->xs[i] = x, t) :
+  ((t = cells(v, Size(tup) + i))->len = i, t); }
 
-static obj compose(vm v, mem e, obj x) {
+St obj tupl(vm v, ...) { Ve t; va_list xs;
+ R va_start(xs, v),
+  t = tuplr(v, 0, xs),
+  va_end(xs),
+  puttup(t); }
+
+St O scope(V v, M e, O a, O n) { Z s = 0;
+  R Mm(n, a = asign(v, a, 0, &s)),
+    tupl(v, a, nil, nil, e ? *e : nil, n, Pn(s), non); }
+
+St O compose(V v, M e, O x) {
   Pu(Pn(c_ev), x, Pn(inst), Pn(ret), Pn(c_ini));
   scan(v, e, Sp[1]);
   x = ccc(v, e, 4); // 4 = 2 + 2
   obj i = llen(loc(*e));
   if (i) x = em2(locals,  Pn(i), x);
   i = Gn(asig(*e));
-  if (i > 0) x = em2(arity, Pn(i), x);
-  else if (i < 0) x = em2(vararg, Pn(-i-1), x);
+     if (i > 0) x = em2(arity, Pn(i), x);
+  El if (i < 0) x = em2(vararg, Pn(-i-1), x);
   x = hom_fin(v, x);
   R twop(clo(*e)) ? pair(v, clo(*e), x) : x; }
 
@@ -970,8 +983,7 @@ static obj compose(vm v, mem e, obj x) {
 // (in the former case the car is the list of free variables
 // and the cdr is a hom that assumes the missing variables
 // are available in the closure).
-static obj ltu(vm v, mem e, obj n, obj l) {
-  obj y;
+St O ltu(V v, M e, O n, O l) { O y;
   l = Y(l);
   Mm(n,
     l = twop(l) ? l : pair(v, l, nil),
@@ -984,7 +996,7 @@ static obj ltu(vm v, mem e, obj n, obj l) {
 
 c2(c_la) {
   terp *j = imm;
-  obj k, nom = *Sp == Pn(c_d_bind) ? Sp[1] : nil;
+  O k, nom = *Sp == Pn(c_d_bind) ? Sp[1] : nil;
   Mm(nom, Mm(x, k = ccc(v, e, m+2)));
   Mm(k,
     x = homp(x = ltu(v, e, nom, x)) ? x :
@@ -994,29 +1006,30 @@ c2(c_la) {
 
 c2(c_imm) { R Pu(Pn(imm), x), insx(v, e, m); }
 
-static obj c_la_clo(vm v, mem e, obj arg, obj seq) {
-  num i = llen(arg);
+St O c_la_clo(V v, M e, O arg, O seq) {
+  Z i = llen(arg);
   mm(&arg), mm(&seq);
-  for (Pu(Pn(insx), Pn(take), Pn(i), Pn(c_ini));
-       twop(arg);
-       Pu(Pn(c_ev), X(arg), Pn(inst), Pn(push)), arg = Y(arg));
-  R arg = ccc(v, e, 0), um, um, pair(v, seq, arg); }
+  Fo (Pu(Pn(insx), Pn(take), Pn(i), Pn(c_ini));
+      twop(arg);
+      Pu(Pn(c_ev), X(arg), Pn(inst), Pn(push)), arg = Y(arg));
+  R arg = ccc(v, e, 0), um, um,
+    pair(v, seq, arg); }
 
 c1(c_d_bind) {
-  obj y = *Sp++;
-  R toplp(e) ? imx(v, e, m, tbind, y) :
-               imx(v, e, m, loc_, Pn(idx(loc(*e), y))); }
+ O y = *Sp++;
+ R toplp(e) ? imx(v, e, m, tbind, y) :
+              imx(v, e, m, loc_, Pn(idx(loc(*e), y))); }
 
-static void c_de_r(vm v, mem e, obj x) {
-  if (!twop(x)) R;
-  if (twop(X(x))) R c_de_r(v, e, rwlade(v, x));
-  Mm(x, c_de_r(v, e, YY(x))),
-  Pu(Pn(c_ev), XY(x), Pn(c_d_bind), X(x)); }
+St _ c_de_r(V v, M e, O x) {
+ if (!twop(x)) R;
+ if (twop(X(x))) R c_de_r(v, e, rwlade(v, x));
+ Mm(x, c_de_r(v, e, YY(x))),
+ Pu(Pn(c_ev), XY(x), Pn(c_d_bind), X(x)); }
 
 c2(c_de) {
-  R !twop(Y(x)) ? c_imm(v, e, m, nil) :
-    llen(Y(x)) % 2 ?  c_eval(v, e, m, def_sug(v, x)) :
-    (c_de_r(v, e, Y(x)), ccc(v, e, m)); }
+ R !twop(Y(x)) ? c_imm(v, e, m, nil) :
+  llen(Y(x)) % 2 ? c_eval(v, e, m, def_sug(v, x)) :
+  (c_de_r(v, e, Y(x)), ccc(v, e, m)); }
 
 // the following functions are "post" or "pre"
 // the antecedent/consequent in the sense of
@@ -1024,7 +1037,7 @@ c2(c_de) {
 // before the consequent code is generated.
 #define S1 Xp
 #define S2 Ip
-//
+
 // before generating anything, store the
 // exit address in stack 2
 c1(c_co_pre) {
@@ -1049,15 +1062,14 @@ c1(c_co_pre_ant) {
   obj x = ccc(v, e, m+2);
   R x = em2(branch, X(S1), x), S1 = Y(S1), x; }
 
-static void c_co_r(vm v, mem e, obj x) {
+St _ c_co_r(V v, M e, O x) {
   if (!twop(x)) x = pair(v, nil, nil);
   if (!twop(Y(x)))
     Pu(Pn(c_ev), X(x), Pn(c_co_pre_con));
-  else
-    Mm(x,
-      Pu(Pn(c_co_post_con), Pn(c_ev), XY(x), Pn(c_co_pre_con)),
-      c_co_r(v, e, YY(x))),
-    Pu(Pn(c_ev), X(x), Pn(c_co_pre_ant)); }
+  El Mm(x, Pu(Pn(c_co_post_con), Pn(c_ev), XY(x),
+              Pn(c_co_pre_con)),
+           c_co_r(v, e, YY(x))),
+     Pu(Pn(c_ev), X(x), Pn(c_co_pre_ant)); }
 
 c2(c_co) { R
   Mm(x, Pu(Pn(c_co_pre))),
@@ -1066,134 +1078,101 @@ c2(c_co) { R
   S2 = Y(S2),
   x; }
 
-static void c_se_r(vm v, mem e, obj x) {
-  if (twop(x)) Mm(x, c_se_r(v, e, Y(x))),
-               Pu(Pn(c_ev), X(x)); }
+St _ c_se_r(V v, M e, O x) {
+ if (twop(x)) Mm(x, c_se_r(v, e, Y(x))),
+              Pu(Pn(c_ev), X(x)); }
 c2(c_se) {
-  if (!twop(x = Y(x))) x = pair(v, nil, nil);
-  R c_se_r(v, e, x), ccc(v, e, m); }
+ if (!twop(x = Y(x))) x = pair(v, nil, nil);
+ R c_se_r(v, e, x), ccc(v, e, m); }
 
 c1(c_call) {
-  obj a = *Sp++, k = ccc(v, e, m + 2);
-  R G(k) != ret ? em2(call, a, k) :
-    em2(rec, a, k); }
+ O a = *Sp++, k = ccc(v, e, m + 2);
+ R em2(G(k) == ret ? rec : call, a, k); }
 
 #define L(n,x) pair(v, Pn(n), x)
-static obj look(vm v, obj e, obj y) {
-  obj q;
-  R nilp(e) ?
-    ((q = tblget(v, Dict, y)) ?  L(Here, q) : L(Wait, Dict)) :
-    ((q = idx(loc(e), y)) != -1) ? L(Loc, e) :
-    ((q = idx(arg(e), y)) != -1) ? L(Arg, e) :
-    ((q = idx(clo(e), y)) != -1) ? L(Clo, e) :
-    look(v, par(e), y); }
+St O look(V v, O e, O y) { O q; R
+ nilp(e) ?
+  ((q = tblget(v, Dict, y)) ?  L(Here, q) : L(Wait, Dict)) :
+ ((q = idx(loc(e), y)) != -1) ?
+  L(Loc, e) :
+ ((q = idx(arg(e), y)) != -1) ?
+  L(Arg, e) :
+ ((q = idx(clo(e), y)) != -1) ?
+  L(Clo, e) :
+ look(v, par(e), y); }
 #undef L
 
-static obj imx(vm v, mem e, num m, terp *i, obj x) {
+St O imx(V v, M e, Z m, terp *i, O x) {
   R Pu(Pn(i), x), insx(v, e, m); }
 
-c2(late, obj d) {
-  obj k;
-  x = pair(v, d, x);
-  Mm(x, k = ccc(v, e, m+2));
-  Mm(k, x = pair(v, Pn(8), x));
-  R em2(lbind, x, k); }
+c2(late, O d) { O k; R
+ x = pair(v, d, x),
+ Mm(x, k = ccc(v, e, m+2)),
+ Mm(k, x = pair(v, Pn(8), x)),
+ em2(lbind, x, k); }
 
-c2(c_sy) {
-  obj y, q;
-  Mm(x, y = X(q = look(v, e ? *e:nil, x)));
-  switch (Gn(y)) {
-    case Here: R c_imm(v, e, m, Y(q));
-    case Wait: R late(v, e, m, x, Y(q));
-    default:
-      if (Y(q) == *e) switch (Gn(y)) {
-        case Loc: R imx(v, e, m, loc, Pn(idx(loc(*e), x)));
-        case Arg: R imx(v, e, m, arg, Pn(idx(arg(*e), x)));
-        case Clo: R imx(v, e, m, clo, Pn(idx(clo(*e), x))); }
+c2(c_sy) { O y, q;
+ Mm(x, y = X(q = look(v, e ? *e:nil, x)));
+ Sw (Gn(y)) {
+  Ks Here: R c_imm(v, e, m, Y(q));
+  Ks Wait: R late(v, e, m, x, Y(q));
+  Df: if (Y(q) == *e) Sw (Gn(y)) {
+       Ks Loc: R imx(v, e, m, loc, Pn(idx(loc(*e), x)));
+       Ks Arg: R imx(v, e, m, arg, Pn(idx(arg(*e), x)));
+       Ks Clo: R imx(v, e, m, clo, Pn(idx(clo(*e), x))); }
       y = llen(clo(*e));
       Mm(x, q = snoc(v, clo(*e), x)), clo(*e) = q;
       R imx(v, e, m, clo, Pn(y)); } }
 
 
 c1(c_ev) { R c_eval(v, e, m, *Sp++); }
-c2(c_eval) { R
-  (symp(x)?c_sy:twop(x)?c_2:c_imm)(v,e,m,x); }
+c2(c_eval) { R (symp(x)?c_sy:twop(x)?c_2:c_imm)(v,e,m,x); }
 
 c2(c_qt) { R c_imm(v, e, m, twop(x = Y(x)) ? X(x) : x); }
-c2(c_2) {
-  obj z = X(x);
-  R (z==Qt?c_qt:
-    z==If?c_co:
-    z==De?c_de:
-    z==La?c_la:
-    z==Se?c_se:c_ap
-   )(v,e,m,x); }
+c2(c_2) { obj z = X(x); R
+ (z==Qt?c_qt:
+  z==If?c_co:
+  z==De?c_de:
+  z==La?c_la:
+  z==Se?c_se:c_ap)(v,e,m,x); }
+
+#define Rec(...) {\
+  obj _s1 = S1, _s2 = S2;\
+  Mm(_s1, Mm(_s2,__VA_ARGS__));\
+  S1 = _s1, S2 = _s2; }
 
 c2(c_ap) {
-  obj y = tblget(v, Mac, X(x));
-  if (y) {
-    Rec(x = apply(v, y, Y(x)));
-    R c_eval(v, e, m, x); }
-  for (mm(&x),
-       Pu(Pn(c_ev), X(x), Pn(inst), Pn(idH),
-            Pn(c_call), Pn(llen(Y(x))));
-       twop(x = Y(x));
-       Pu(Pn(c_ev), X(x), Pn(inst), Pn(push)));
-  R um, ccc(v, e, m); }
+ O y = tblget(v, Mac, X(x));
+ if (y) {
+  Rec(x = apply(v, y, Y(x)));
+  R c_eval(v, e, m, x); }
+ Fo (mm(&x),
+     Pu(Pn(c_ev), X(x), Pn(inst), Pn(idH),
+        Pn(c_call), Pn(llen(Y(x))));
+     twop(x = Y(x));
+     Pu(Pn(c_ev), X(x), Pn(inst), Pn(push)));
+ R um, ccc(v, e, m); }
 
 c1(inst) {
-  terp *i = (terp*) Gn(*Sp++);
-  R em1(i, ccc(v, e, m+1)); }
+ terp *i = (terp*) Gn(*Sp++);
+ R em1(i, ccc(v, e, m+1)); }
 
 c1(insx) {
-  terp *i = (terp*) Gn(*Sp++);
-  obj x = *Sp++, k;
-  Mm(x, k = ccc(v, e, m+2));
-  R em2(i, x, k); }
+ terp *i = (terp*) Gn(*Sp++);
+ O x = *Sp++, k;
+ Mm(x, k = ccc(v, e, m+2));
+ R em2(i, x, k); }
 
 c1(c_ini) {
-  obj k = hom_ini(v, m+1);
-  k = em1((terp*)(e ? name(*e):Eva), k);
-  R k; }
-
-static obj snoc(vm v, obj l, obj x) {
-  if (!twop(l)) R pair(v, x, l);
-  Mm(l, x = snoc(v, Y(l), x));
-  R pair(v, X(l), x); }
-
-static obj linitp(vm v, obj x, mem d) {
-  if (!twop(Y(x))) R *d = x, nil;
-  obj y; Mm(x, y = linitp(v, Y(x), d));
-  R pair(v, X(x), y); }
+ O k = hom_ini(v, m+1);
+ R em1((terp*)(e ? name(*e):Eva), k); }
 
 // syntactic sugar for define
-static obj def_sug(vm v, obj x) {
-  obj y = nil;
-  Mm(y, x = linitp(v, x, &y));
-  x = pair(v, x, y),   x = pair(v, Se, x);
-  x = pair(v, x, nil), x = pair(v, La, x);
-  R pair(v, x, nil); }
-
-// list functions
-St num idx(obj l, obj x) {
-  for (num i = 0; twop(l); l = Y(l), i++)
-    if (x == X(l)) R i;
-  R -1; }
-
-num llen(obj l) {
-  for (num i = 0;; l = Y(l), i++) if (!twop(l)) R i; }
-
-St tup tuplr(vm v, num i, va_list xs) {
-  tup t; obj x = va_arg(xs, obj); R x ?
-    (Mm(x, t = tuplr(v, i+1, xs)), t->xs[i] = x, t) :
-    ((t = cells(v, Size(tup) + i))->len = i, t); }
-
-St obj tupl(vm v, ...) {
-  tup t; va_list xs; R
-    va_start(xs, v),
-    t = tuplr(v, 0, xs),
-    va_end(xs),
-    puttup(t); }
+St O def_sug(V v, O x) { O y = nil; R
+ Mm(y, x = linitp(v, x, &y)),
+ x = pair(v, x, y),   x = pair(v, Se, x),
+ x = pair(v, x, nil), x = pair(v, La, x),
+ pair(v, x, nil); }
 
 St Vd pushss(vm v, num i, va_list xs) {
   obj x; (x = va_arg(xs, obj)) ?
@@ -1437,9 +1416,8 @@ Vm(locals) {
   num n = Gn(GF(ip));
   Have(n + 2);
   tup t = (tup) hp;
+  fill(t->xs, nil, t->len = n);
   hp += n + 1;
-  t->len = n;
-  while (n--) t->xs[n] = nil;
   *--sp = puttup(t);
   N(2); }
 
