@@ -567,7 +567,6 @@ cpcc(cpsym) {
  El dst = getsym(sskc(v, &Syms, cp(v, src->nom, ln, lp)));
  R src->nom = putsym(dst); }
 
-#include <assert.h>
 #define stale(o) inb((mem)(o),lp,lp+ln)
 cpcc(cphom) {
  H dst, src = Gh(x), end = src, start;

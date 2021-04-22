@@ -33,7 +33,7 @@ etc. `()` is the only false value & it's self-quoting
 
 ### `\` lambda
 - `(\) = (lambda () '())` nullary case is an empty function
-- `(\ a) = (lambda () a)` unary case is a constant function
+- `(\ (f x)) = (lambda () (f x))` unary case is a nullary function
 - `(\ a0 ... an x) = (lambda (a0 ... an) x)` many arguments, one expression
 - `(\ a b . (a b)) = (lambda (a . b) (a b))`  vararg syntax ; `.` is just a symbol
 
