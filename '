@@ -93,13 +93,13 @@
  ; this function is used in several places to look for a
  ; variable's value, or failing that to find where it's bound.
  (look e y) (?
-  (Th (Tg e 'val) y)
+  (thas (Tg e 'val) y)
    (X 'here (Tg (Tg e'val) y))
-  ; toplevel bindings are special. if it's already defined
-  ; we usually want to bind early, but we also want to allow
-  ; redefinition, so in that case bind late.
   (toplp e)
-   (? (&& (Th ns y) (~ (Th (Tg e'def) y)))
+   ; toplevel bindings are special. if it's already defined
+   ; we usually want to bind early, but we also want to allow
+   ; redefinition, so in that case bind late.
+   (? (&& (thas ns y) (~ (thas (Tg e'def) y)))
     (X 'here (Tg ns y))
     (X 'wait ns))
   (memq (Tg e'clo) y) (X 'clo e)
@@ -158,11 +158,11 @@
  (quote x) (? (qtd x) x (L '` x))
 
  (weak e x)  (:
-  ; function symbol sugar
-  (sug x) (X (AA x) (X (X '\ (snoc (BA x) (AB x))) (BB x)))
+
+  (rwlade x) (X(AA x)(X(X'\(snoc(BA x)(AB x)))(BB x)))
 
   (loop e x) (? x (?
-   (2p (A x)) (loop e (sug x))
+   (2p (A x)) (loop e (rwlade x))
    (, (? (qtd (: a (AB x))) (Ts (Tg e'val) (A x) (unq a))
                             (Ts (Tg e'def) (A x) a))
       (rec e a)
@@ -176,14 +176,18 @@
   (, (rec e x) (resolve e) (wv e x)))
 
  ; this is a huge complicated procedure for "resolving
- ; the addresses" of sets of mutually recursive inner functions
- ; at compile time, so they can be compiled as efficiently as
- ; toplevel definitions whenever that's possible. it constructs
- ; the maximum set S of function variables whose definitions
- ; have no free variables not in S. then it arranges for
- ; references to functions in S to get resolved (with
- ; optimizations etc) later, which lets the compiler generate
- ; appropriate code without yet knowing the exact value.
+ ; the addresses" of sets of mutually recursive functions at
+ ; compile time, so they can call each other without closures.
+ ; what it actually does is construct the maximum set of
+ ; named functions with no free variables except those
+ ; referring to other functions also in the set; then it
+ ; recompiles these functions so all the in-set references get
+ ; resolved (with optimizations etc) at runtime, which lets
+ ; the compiler generate appropriate code without yet
+ ; knowing the exact value. without this mechanism everything
+ ; would still work correctly, but many functions (including
+ ; simple self-recursive functions) would run more slowly when
+ ; defined elsewhere than in the global scope.
  (resolve e) (:
 
   ; step one: pass over each inner def for this function and
@@ -191,7 +195,7 @@
   ; to the known values. otherwise, if the definition is for
   ; a function, collect it into a list.
   (f1 e kvs) (? kvs (?
-   (Th (Tg e'val) (: kv (A kvs) k (A kv)))
+   (thas (Tg e'val) (: kv (A kvs) k (A kv)))
     (f1 e (B kvs))
    (: qq (wv e (B kv)) bb (f1 e (B kvs)) (?
     (qtd (Ts (Tg e'def) k qq))
@@ -202,10 +206,6 @@
      (X (X k qq) bb)
     bb))))
 
-  ; step two: now we have a list of function name/definition
-  ; pairs. try and compile each one; if it succeeds, add it to
-  ; the known values. otherwise collect the name, definition,
-  ; and list of free variables into a list.
   (f2 e kvs) (? kvs (: kv (A kvs) rr (f2 e (B kvs)) (?
    (Hp (: i (ltu e (: k (A kv)) (: v (B kv)))))
     (, (Ts (Tg e'val) k i)
@@ -213,29 +213,18 @@
        rr)
    (X (X k (X (A i) v)) rr))))
 
-  ; step three: reject from the list all definitions that
-  ; depend on values that won't be available until runtime.
-  ; membership in the list is regarded as proof that the
-  ; function will be available now, so any time a function is
-  ; rejected we start over again.
-  (f3 e kvs) (f3r e kvs kvs ())
   (f3r e i kvs q) (:
    (chk e i vs) (? (~ vs) 1 (: v (A vs) (?
-    (|| (any i (\ j (= (A j) v))) (Th (Tg e'val) v))
+    (|| (any i (\ j (= (A j) v))) (thas (Tg e'val) v))
      (chk e i (B vs)))))
+
    (? (~ kvs) q (?
     (chk e i (AB (: kv (A kvs))))
      (f3r e i (B kvs) (X kv q))
     (f3 e (ldel i kv)))))
 
+  (f3 e kvs) (f3r e kvs kvs ())
 
-  ; step four ( the last one ) : now we have the desired
-  ; set of functions. remove them from the scope's local
-  ; variables and add them to a list of deferred values, then
-  ; recompile them. since we know each of these functions has
-  ; no free variables that aren't being deferred, this time
-  ; ltu will definitely return a function, which is stored in
-  ; the known value set.
   (f4 e kvs) (? (~ kvs)
    (Ts e'loc (tkeys (Tg e'def)))
    (, (Td (Tg e'def) (: kv (A kvs) k (A kv)))
@@ -244,7 +233,7 @@
       (Ts (Tg e'val) k (ltu e k (BB kv)))))
 
 
-  ; only bother with any of this if there are inner defs
+  ; only bother with this if there are any inner defs
   (? (: ks (tkeys (: def (Tg e'def))))
    (f4 e (f3 e (f2 e (f1 e (map (Ts e'loc ks) (\ k
     (X k (Tg def k))))))))))
@@ -262,12 +251,12 @@
      (ap z (B x))))) ; but if it fails, purposely cause an arity error
 
    (defn e x) (:
-    (sug d) (L (L '\ (L ', (init d) (last d))))
+    (suga d) (L (L '\ (L ', (init d) (last d))))
     (loop e x) (? x (:
      y (? (2p (A x)) (AA x) (A x))
      ll (loop e (BB x))
      (X y (X (Tg (Tg e'def) y) ll))))
-    (? (B x) (? (= 0 (% (len x) 2)) (sug x)
+    (? (B x) (? (= 0 (% (len x) 2)) (suga x)
                 (X ': (loop e (B x))))))
 
    (lamb e l) (:
@@ -300,10 +289,11 @@
      (? (B r) (X '? r) (A r))))
 
    (seq e x) (:
-    (loop e x) (? (~ (B x)) (L (wv e (A x))) (:
-     z (loop e (B x))
-     y (wv e (A x))
-     (? (|| (symp y) (qtd y)) z (X y z))))
+    (loop e x) (?
+     (nilp (B x)) (L (wv e (A x)))
+     (: z (loop e (B x))
+        y (wv e (A x))
+      (? (|| (symp y) (qtd y)) z (X y z))))
     (? (: y (B x)) (: z (loop e y)
                     (? (B z) (X ', z) (A z)))))
 
@@ -365,14 +355,13 @@
  (xc i k) (\ e m (emf i (k e (+ m 1))))
  (xd x k) (\ e m (emx x (k e (+ m 1))))
 
- (emf i h) ((? (: q (Tg fuse i)) q emi) i h)
- (Im x k) (xc i-imm (xd x (-> 
-  (? (homp x) 'hom (nump x) 'num
-     (twop x) 'two (vecp x) 'vec
-     (symp x) 'sym (strp x) 'str
-     (tblp x) 'tbl          'nil)
-  k)))
-  
+ (emf i h) ((? (: q (tget fuse i)) q emi) i h)
+ (Im x k) (:
+  t (? (homp x) 'hom (nump x) 'num
+       (twop x) 'two (vecp x) 'vec
+       (symp x) 'sym (strp x) 'str
+       (tblp x) 'tbl          'nil)
+  (xc i-imm (xd x (-> t k))))
 
  ; these functions produce functions to do certain side effects
  ; with per-scope stack structures during code generation:
@@ -383,22 +372,24 @@
  (peekr s) (\ k (\ e m (>>= (k e (+ m 1)) (\ k (emx (A (Tg e s)) k)))))
 
  push1 (pushr 's1) push2 (pushr 's2)
- pop1  (popr 's1)  pop2  (popr 's2)
+ pop1 (popr 's1) pop2 (popr 's2)
  peek1 (peekr 's1) peek2 (peekr 's2)
 
  ; these functions are for type checking
- (>- t k) (? (~ t) k (:
+ (>- t k) (? (nilp t) k (:
   tcr (case t 'two i-id2 'num i-idZ
               'hom i-idH 'tbl i-idT
               (fail))
   (xc tcr k)))
 
  (-> t k) (\ e m (:
-  (tc h) (: u (consumes h) (?
-   (~ u) h
-   (= u t) (tc (hseek h 1))
-   (fail)))
-  ((? t tc id) (k e m))))
+  (type e m t k) (:
+   (== t h) (>>= t (consumes h) h (\ t u h (?
+    (~ u) h
+    (= u t) (== t (hseek h 1))
+    (fail))))
+   (== t (k e m)))
+  (? (nilp t) (k e m) (type e m t k))))
 
  (consumes h) (: i (hgeti h) (case i
   i-idH 'hom i-idZ 'num
@@ -435,14 +426,14 @@
     l ((-> 'hom k) e (+ m 2))
     y (ltu e (nom e l) x)
     (? (homp y) (emf i-imm (emx y l))
-     (emi (? (Tg e'loc) i-encll i-encln)
+     (emi (? (tget e'loc) i-encll i-encln)
       (emx (X (B y) (clo-thd e (A y) k)) l)))))
 
    (seq x k) (? x (eval (A x) (seq (B x) k)) k)
    (app a b k) (:
-    (loop x k) (? (~ x) k
+    (loop x k) (? (nilp x) k
      (loop (B x) (eval (A x) (xc i-push k))))
-    (? (&& (qtd a) (: q (Tg inliners (unq a)))) (q b k)
+    (? (&& (qtd a) (: q (tget inliners (unq a)))) (q b k)
      (loop b (eval a (>- 'hom (xc i-call (xd (len b) k)))))))
 
    (defn x k) (:
@@ -639,16 +630,15 @@
 ; bootstrap
 (ev lib) (ev egg) (ev lib) (ev egg)
 ; "drop privileges"
-(: loc '(lib egg macros ns emi emx hom hseek hgeti hgetx hfin)
- (each loc (\ v (Td ns v))))
+(each '(lib egg macros ns emi emx hom hseek hgeti hgetx hfin)
+      (\ v (Td ns v)))
 
 ; now define prelude functions that use ev.
-; these are function constructors that produce more efficient
-; code by invoking the compiler with eval than by using
-; closures, although instantiation becomes more expensive.
-; ev is safe in terms of side effects as long as all the user
-; data are quoted to stop them from being re-evaluated.
+; invoking the compiler through eval in this way produces more
+; efficient code compared to relying on closures, although
+; instantiation becomes slightly more expensive. using ev
+; here is safe since the arguments are quoted.
 (: ; sequential composition : ((co f g h) x) = (h (g (f x)))
    (co x .) (ev (L '\ 'x (foldl x 'x (\ m e (L (L '` e) m)))))
-   ; constant functions
+   ; constant function
    (const x) (ev (L '\ (L '` x))))

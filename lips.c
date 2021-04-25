@@ -1123,7 +1123,6 @@ c2(c_sy) { O y, q;
       Mm(x, q = snoc(v, clo(*e), x)), clo(*e) = q;
       R imx(v, e, m, clo, Pn(y)); } }
 
-
 c1(c_ev) { R c_eval(v, e, m, *Sp++); }
 c2(c_eval) { R (symp(x)?c_sy:twop(x)?c_2:c_imm)(v,e,m,x); }
 
@@ -1173,62 +1172,62 @@ St O def_sug(V v, O x) { O y = nil; R
  x = pair(v, x, nil), x = pair(v, La, x),
  pair(v, x, nil); }
 
-St Vd pushss(vm v, num i, va_list xs) {
-  obj x; (x = va_arg(xs, obj)) ?
+St Vd pushss(V v, Z i, va_list xs) {
+  O x; (x = va_arg(xs, obj)) ?
     (Mm(x, pushss(v, i, xs)), *--Sp = x) :
     reqsp(v, i); }
 
-St Vd pushs(vm v, ...) {
-  num i = 0;
+St Vd pushs(V v, ...) {
+  Z i = 0;
   va_list xs; va_start(xs, v);
-  while (va_arg(xs, obj)) i++;
+  Wh (va_arg(xs, obj)) i++;
   va_end(xs), va_start(xs, v);
   if (Avail < i) pushss(v, i, xs);
-  else for (mem sp = Sp -= i; i--; *sp++ = va_arg(xs, obj));
+  El Fo (mem sp = Sp -= i; i--; *sp++ = va_arg(xs, obj));
   va_end(xs); }
 
-obj hom_ini(vm v, num n) {
-  hom a = cells(v, n + 2);
-  return G(a+n) = NULL,
-         GF(a+n) = (terp*) a,
-         fill((M) a, nil, n),
-         Ph(a+n); }
+O hom_ini(V v, Z n) {
+  H a = cells(v, n + 2);
+  R G(a+n) = NULL,
+    GF(a+n) = (terp*) a,
+    fill((M) a, nil, n),
+    Ph(a+n); }
 
-St obj hom_fin(vm v, obj a) {
-  return (obj) (GF(button(Gh(a))) = (terp*) a); }
+St O hom_fin(V v, O a) {
+  R Ob (GF(button(Gh(a))) = (terp*) a); }
 
-obj homnom(vm v, obj x) {
+O homnom(V v, O x) {
   terp *k = G(x);
   if (k == clos || k == pc0 || k == pc1)
-    return homnom(v, (obj) G(FF(x)));
-  mem h = (mem) Gh(x);
-  while (*h) h++;
+    R homnom(v, (obj) G(FF(x)));
+  M h = (mem) Gh(x);
+  Wh (*h) h++;
   x = h[-1];
-  return (mem)x >= Pool && (mem)x < Pool+Len ? x :
-    x == (obj)yield ? Eva :
+  R (M) x >= Pool && (M) x < Pool+Len ? x :
+    x == Ob yield ? Eva :
     nil; }
 
-St Vd rpr(vm v, mem d, Ko char *n, terp *u) {
-  obj x, y = pair(v, interns(v, n), nil);
+St Vd rpr(V v, M d, Ko Ch *n, terp *u) {
+  O x, y = pair(v, interns(v, n), nil);
   Mm(y, x = hom_ini(v, 2));
   x = em2(u, y, x);
   tblset(v, *d, X(y), x); }
 
-St Vd rin(vm v, mem d, Ko char *n, terp *u) {
-  obj y = interns(v, n);
+St Vd rin(V v, M d, Ko Ch *n, terp *u) {
+  O y = interns(v, n);
   tblset(v, *d, y, Pn(u)); }
 
 #define RPR(a,b) rpr(v,&d,a,b)
 #define RIN(x) rin(v,&d,"i-"#x,x)
 St In obj code_dictionary(vm v) {
-  obj d; R d = table(v), Mm(d, prims(RPR), insts(RIN)), d; }
+  O d; R d = table(v), Mm(d, prims(RPR), insts(RIN)), d; }
 #undef RPR
 #undef RIN
 
 St In Vd init_globals_array(vm v) {
-  tup t = cells(v, Size(tup) + NGlobs);
+  Ve t = cells(v, Size(tup) + NGlobs);
   fill(t->xs, nil, t->len = NGlobs);
-  obj z, y = Glob = puttup(t);
+  O z, y = Glob = puttup(t);
   Mm(y, z = code_dictionary(v), Top = z,
         z = table(v),           Mac = z,
 #define bsym(i,s)(z=interns(v,s),AR(y)[i]=z)
@@ -1253,7 +1252,7 @@ St int seekp(Ko Ch* p) {
 
 V bootstrap(V v) {
   if (v == NULL) R v;
-  const char *path = "prelude.lips";
+  Ko Ch *path = "prelude.lips";
   int pre = seekp(path);
   if (pre == -1) errp(v, "can't find %s", path);
   El {
@@ -1303,10 +1302,9 @@ vm finalize(vm v) {
 // running, without any platform-specific code.
 
 // " the interpreter "
-// is all the functions of type terp, defined in the header
-// and also here:
-#define Vm(n,...) Nin obj \
-  n(vm v,obj ip,mem fp,mem sp,mem hp,obj xp,##__VA_ARGS__)
+// is all the functions of type terp:
+#define Vm(n,...) Nin O \
+  n(V v, O ip, M fp, M sp, M hp, O xp, ##__VA_ARGS__)
 // the arguments to a terp function collectively represent the
 // runtime state, and the  return value is the result of the
 // program. there are six arguments because that's the number
@@ -1333,7 +1331,7 @@ vm finalize(vm v) {
 #define CallC(...)(Pack(),(__VA_ARGS__),Unpack())
 
 // the frame structure holds the current function context.
-Ty Sr fr { obj clos, retp, subd, argc, argv[]; } *fr;
+Ty Sr fr { O clos, retp, subd, argc, argv[]; } *fr;
 #define ff(x)((fr)(x))
 #define Clos ff(fp)->clos
 #define Retp ff(fp)->retp
@@ -1364,7 +1362,7 @@ Ty Sr fr { obj clos, retp, subd, argc, argv[]; } *fr;
 // this occurs near the beginning of a function. if enough
 // memory is not available the interpret jumps to a specific
 // terp function
-St Vm(gc) { num n = Xp; CallC(reqsp(v, n)); N(0); }
+St Vm(gc) { Z n = Xp; CallC(reqsp(v, n)); N(0); }
 // that stores the state and calls the garbage collector;
 // afterwards it jumps back to the instruction that called it.
 // therefore anything before the Have() macro will be executed
@@ -1395,20 +1393,19 @@ Vm(imm) { xp = Ob GF(ip); N(2); }
 // premultiplied by W
 #define fast_idx(b) (*(num*)((num)(b)+(num)GF(ip)-Num))
 Vm(arg)  { xp = fast_idx(Argv);     N(2); }
- Vm(arg0) { xp = Argv[0];            N(1); }
- Vm(arg1) { xp = Argv[1];            N(1); }
+Vm(arg0) { xp = Argv[0];            N(1); }
+Vm(arg1) { xp = Argv[1];            N(1); }
 Vm(loc)  { xp = fast_idx(AR(Locs)); N(2); }
- Vm(loc0) { xp = AR(Locs)[0];        N(1); }
- Vm(loc1) { xp = AR(Locs)[1];        N(1); }
+Vm(loc0) { xp = AR(Locs)[0];        N(1); }
+Vm(loc1) { xp = AR(Locs)[1];        N(1); }
 Vm(clo)  { xp = fast_idx(AR(Clos)); N(2); }
- Vm(clo0) { xp = AR(Clos)[0];        N(1); }
- Vm(clo1) { xp = AR(Clos)[1];        N(1); }
+Vm(clo0) { xp = AR(Clos)[0];        N(1); }
+Vm(clo1) { xp = AR(Clos)[1];        N(1); }
 
 // store instructions
 Vm(push) { Have1(); *--sp = xp; N(1); } // stack push
 Vm(loc_) { fast_idx(AR(Locs)) = xp; N(2); } // set a local variable
-Vm(tbind) { // set a global variable
-  CallC(tblset(v, Dict, Ob GF(ip), xp)); N(2); }
+Vm(tbind) { CallC(tblset(v, Dict, Ob GF(ip), xp)); N(2); }
 
 // initialize local variable slots
 Vm(locals) {
