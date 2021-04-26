@@ -18,7 +18,9 @@
        (?(> n 0)(loop n xs)))
 
      (id x) x
+     ; these get redefined later
      (const x) (\ x)
+     (co xs .) (foldl xs id (\ m f (\ x (f (m x)))))
 
      (foldr x z f) (? x (f (A x) (foldr (B x) z f)) z)
      (foldl x z f) (? x (foldl (B x) (f z (A x)) f) z)
@@ -142,7 +144,7 @@
     (? (: clo (Tg f 'clo)) (X clo k) k))))
 
 
- ; first compiler moiety : the " weak evaluator "
+ ; first compiler moiety : " the weak evaluator "
  ; 1. construct the local scope of the function
  ; 2. desugaring, macroexpansion, and partial evaluation
  ;    (constant folding, dead code elimination, etc), which has
@@ -151,11 +153,11 @@
  ; dictionary in the function environment, and returns an
  ; expression with the same value (under eval) as the input,
  ; but pre-evaluated "as much as possible". to tell if an
- ; expression was fully evaluated, check whether the image is
+ ; expression was fully evaluated, check if the image is
  ; quoted.
  (qtd x) (? (2p x) (= (A x) '`) (~ (symp x)))
  (unq x) (? (2p x) (AB x) x)
- (quote x) (? (qtd x) x (L '` x))
+ (quote x) (? (|| (symp x) (twop x)) (L '` x) x)
 
  (weak e x)  (:
   ; function symbol sugar
@@ -314,10 +316,9 @@
    ; users should be able to provide their own monoid instances
    ; (or whatever).
 
-   ; having a hardcoded list is not ideal ...
-   pures (imm ({set}
+   pure (imm ({set}
     L X A B + - * / % id flip cat iota rho const
-    snoc init last rev ldel memq at idx len
+    co cu const snoc init last rev ldel memq at idx len
     homp nilp symp nump tblp strp twop vecp
     && || scat slen sget ssub str))
 
@@ -325,8 +326,8 @@
    ; with certain algebraic properties. the nullary case for
    ; any grouplike function has to return its structure's
    ; identity element.
-   monoids (imm ({set} scat cat))   ; pairs of consecutive arguments can be combined in place
    abelians (imm ({set} && || + *)) ; arguments can be combined freely
+   monoids (imm ({set} scat cat))   ; pairs of consecutive arguments can be combined in place
 
    a (A x) (case a
     '` (? (B x) x)
@@ -334,18 +335,17 @@
     ': (defn e x)
     '? (cond e (B x))
     ', (seq e x)
-    (? (thas macros a)
-        (wv e (ap (tget macros a) (B x)))
-       (: z (map x (\ x (wv e x))) q (A z) r (B z) (?
-        (nilp (thas pures q)) (adj-ar z)
-        (all r qtd) (quote (ap q (map r unq)))
-        (thas monoids q) (mono q (q) r)
-        (thas abelians q) (:
-         ff (part r qtd)
-         fg (ap q (map (A ff) unq))
-         (X q (? (= fg (q)) (B ff)
-               (X fg (B ff)))))
-        (adj-ar z))))))
+    (? (Th macros a) (wv e (ap (Tg macros a) (B x)))
+     (: z (map x (\ x (wv e x))) q (A z) r (B z) (?
+      (~ (Th pure q)) (adj-ar z)
+      (all r qtd) (quote (ap q (map r unq)))
+      (Th monoids q) (mono q (q) r)
+      (Th abelians q) (:
+       ff (part r qtd)
+       fg (ap q (map (A ff) unq))
+       (X q (? (= fg (q)) (B ff)
+             (X fg (B ff)))))
+      (adj-ar z))))))
 
   (symb e x) (: l (look e x) (?
    (= (A l) 'here) (quote (B l))
@@ -356,9 +356,9 @@
      (Ts (Tg e'val) x (unq dd))
      dd)))))
 
- (? (twop x) (list e x) (symp x) (symb e x) x))
+ (? (2p x) (list e x) (symp x) (symb e x) x))
 
- ; second moiety : the " analyzing evaluator "
+ ; second moiety : " the analyzing evaluator "
  ; generates code to produce the value of the expression
  ; produced by the first moiety.
 
@@ -366,13 +366,13 @@
  (xd x k) (\ e m (emx x (k e (+ m 1))))
 
  (emf i h) ((? (: q (Tg fuse i)) q emi) i h)
- (Im x k) (xc i-imm (xd x (-> 
+ (Im x k) (xc i-imm (xd x (->
   (? (homp x) 'hom (nump x) 'num
      (twop x) 'two (vecp x) 'vec
      (symp x) 'sym (strp x) 'str
      (tblp x) 'tbl          'nil)
   k)))
-  
+
 
  ; these functions produce functions to do certain side effects
  ; with per-scope stack structures during code generation:
