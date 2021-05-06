@@ -1178,44 +1178,44 @@ St Vd pushss(V v, Z i, va_list xs) {
     reqsp(v, i); }
 
 St Vd pushs(V v, ...) {
-  Z i = 0;
-  va_list xs; va_start(xs, v);
-  Wh (va_arg(xs, obj)) i++;
-  va_end(xs), va_start(xs, v);
-  if (Avail < i) pushss(v, i, xs);
-  El Fo (mem sp = Sp -= i; i--; *sp++ = va_arg(xs, obj));
-  va_end(xs); }
+ Z i = 0;
+ va_list xs; va_start(xs, v);
+ Wh (va_arg(xs, obj)) i++;
+ va_end(xs), va_start(xs, v);
+ if (Avail < i) pushss(v, i, xs);
+ El Fo (mem sp = Sp -= i; i--; *sp++ = va_arg(xs, obj));
+ va_end(xs); }
 
 O hom_ini(V v, Z n) {
-  H a = cells(v, n + 2);
-  R G(a+n) = NULL,
-    GF(a+n) = (terp*) a,
-    fill((M) a, nil, n),
-    Ph(a+n); }
+ H a = cells(v, n + 2);
+ R G(a+n) = NULL,
+   GF(a+n) = (terp*) a,
+   fill((M) a, nil, n),
+   Ph(a+n); }
 
 St O hom_fin(V v, O a) {
-  R Ob (GF(button(Gh(a))) = (terp*) a); }
+ R Ob (GF(button(Gh(a))) = (terp*) a); }
 
 O homnom(V v, O x) {
-  terp *k = G(x);
-  if (k == clos || k == pc0 || k == pc1)
-    R homnom(v, (obj) G(FF(x)));
-  M h = (mem) Gh(x);
-  Wh (*h) h++;
-  x = h[-1];
-  R (M) x >= Pool && (M) x < Pool+Len ? x :
-    x == Ob yield ? Eva :
-    nil; }
+ terp *k = G(x);
+ if (k == clos || k == pc0 || k == pc1)
+  R homnom(v, (obj) G(FF(x)));
+ M h = (mem) Gh(x);
+ Wh (*h) h++;
+ x = h[-1];
+ R (M) x >= Pool && (M) x < Pool+Len ? x :
+   x == Ob yield ? Eva :
+   nil; }
 
 St Vd rpr(V v, M d, Ko Ch *n, terp *u) {
-  O x, y = pair(v, interns(v, n), nil);
-  Mm(y, x = hom_ini(v, 2));
-  x = em2(u, y, x);
-  tblset(v, *d, X(y), x); }
+ O x, y = pair(v, interns(v, n), nil);
+ Mm(y, x = hom_ini(v, 2));
+ x = em2(u, y, x);
+ tblset(v, *d, X(y), x); }
 
 St Vd rin(V v, M d, Ko Ch *n, terp *u) {
-  O y = interns(v, n);
-  tblset(v, *d, y, Pn(u)); }
+ O y = interns(v, n);
+ tblset(v, *d, y, Pn(u)); }
 
 #define RPR(a,b) rpr(v,&d,a,b)
 #define RIN(x) rin(v,&d,"i-"#x,x)
@@ -1225,15 +1225,16 @@ St In obj code_dictionary(vm v) {
 #undef RIN
 
 St In Vd init_globals_array(vm v) {
-  Ve t = cells(v, Size(tup) + NGlobs);
-  fill(t->xs, nil, t->len = NGlobs);
-  O z, y = Glob = puttup(t);
-  Mm(y, z = code_dictionary(v), Top = z,
-        z = table(v),           Mac = z,
+ Ve t = cells(v, Size(tup) + NGlobs);
+ fill(t->xs, nil, t->len = NGlobs);
+ O z, y = Glob = puttup(t);
+ Mm(y,
+  z = code_dictionary(v), Top = z,
+  z = table(v), Mac = z,
 #define bsym(i,s)(z=interns(v,s),AR(y)[i]=z)
-    bsym(Eval, "ev"), bsym(Apply, "ap"),
-    bsym(Def, ":"),   bsym(Cond, "?"), bsym(Lamb, "\\"),
-    bsym(Quote, "`"), bsym(Seq, ","),  bsym(Splat, ".")); }
+  bsym(Eval, "ev"), bsym(Apply, "ap"),
+  bsym(Def, ":"),   bsym(Cond, "?"), bsym(Lamb, "\\"),
+  bsym(Quote, "`"), bsym(Seq, ","),  bsym(Splat, ".")); }
 #undef bsym
 
 
@@ -1264,7 +1265,7 @@ V bootstrap(V v) {
   R v; }
 
 vm initialize(int argc, Ko Ch **argv) {
-  vm v = malloc(sizeof(Sr V));
+  V v = malloc(sizeof(Sr V));
   if (!v || setjmp(v->restart))
     R errp(v, "oom"), finalize(v);
   v->t0 = clock(),
@@ -1273,12 +1274,12 @@ vm initialize(int argc, Ko Ch **argv) {
   v->count = 0, v->mem_len = 1, v->mem_pool = NULL,
   v->mem_root = NULL;
   init_globals_array(v);
-  obj y = interns(v, "ns");
+  O y = interns(v, "ns");
   tblset(v, Top, y, Top);
   y = interns(v, "macros");
   tblset(v, Top, y, Mac);
   y = interns(v, "argv");
-  obj a = nil;
+  O a = nil;
   mm(&y); mm(&a);
   for (obj z; argc--;)
     z = string(v, argv[argc]),
@@ -1288,7 +1289,7 @@ vm initialize(int argc, Ko Ch **argv) {
 
 vm finalize(vm v) {
   if (v) free(v->mem_pool), free(v);
-  return NULL; }
+  R NULL; }
 
 #undef arg
 #undef loc
@@ -1383,10 +1384,10 @@ St Vm(nope);
 //
 // load instructions
 Vm(imm) { xp = Ob GF(ip); N(2); }
- // common constants
- Vm(unit) { xp = nil;   N(1); }
- Vm(one)  { xp = Pn(1); N(1); }
- Vm(zero) { xp = Pn(0); N(1); }
+// common constants
+Vm(unit) { xp = nil;   N(1); }
+Vm(one)  { xp = Pn(1); N(1); }
+Vm(zero) { xp = Pn(0); N(1); }
 
 // indexed load instructions
 // this pointer arithmetic works because fixnums are
@@ -1457,44 +1458,44 @@ Vm(clos) { Clos = Ob GF(ip); Ap(Ob G(FF(ip)), xp); }
 
 // return from a function
 Vm(ret) {
-  ip = Retp;
-  sp = (mem) ((num) Argv + Argc - Num);
-  fp = (mem) ((num)   sp + Subd - Num);
-  N(0); }
+ ip = Retp;
+ sp = (M) ((Z) Argv + Argc - Num);
+ fp = (M) ((Z)   sp + Subd - Num);
+ N(0); }
 
 // regular function call
 Vm(call) {
-  Have(Size(fr));
-  obj adic = Ob GF(ip);
-  num off = fp - (mem) ((num) sp + adic - Num);
-  fp = sp -= Size(fr);
-  Retp = Ph(ip+W2);
-  Subd = Pn(off);
-  Clos = nil;
-  Argc = adic;
-  Ap(xp, nil); }
+ Have(Size(fr));
+ O adic = Ob GF(ip);
+ Z off = fp - (M) ((Z) sp + adic - Num);
+ fp = sp -= Size(fr);
+ Retp = Ph(ip+W2);
+ Subd = Pn(off);
+ Clos = nil;
+ Argc = adic;
+ Ap(xp, nil); }
 
 // general tail call
 Vm(rec) {
-  num adic = Gn(GF(ip));
-  if (Argc == Ob GF(ip)) {
-    for (mem p = Argv; adic--; *p++ = *sp++);
-    sp = fp;
-    Ap(xp, nil); }
-
-  obj off = Subd, rp = Retp; // save return info
-  mem src = sp + adic;
-  // overwrite current frame with new frame
-  sp = Argv + Gn(Argc);
-  // important to copy in reverse order since they
-  // may overlap
-  for (num i = adic; i--; *--sp = *--src);
-  fp = sp -= Size(fr);
-  Retp = rp;
-  Argc = Pn(adic);
-  Subd = off;
-  Clos = nil;
+ Z adic = Gn(GF(ip));
+ if (Argc == Ob GF(ip)) {
+  Fo (mem p = Argv; adic--; *p++ = *sp++);
+  sp = fp;
   Ap(xp, nil); }
+
+ O off = Subd, rp = Retp; // save return info
+ M src = sp + adic;
+ // overwrite current frame with new frame
+ sp = Argv + Gn(Argc);
+ // important to copy in reverse order since they
+ // may overlap
+ Fo (num i = adic; i--; *--sp = *--src);
+ fp = sp -= Size(fr);
+ Retp = rp;
+ Argc = Pn(adic);
+ Subd = off;
+ Clos = nil;
+ Ap(xp, nil); }
 
 // type/arity checking
 Vm(arity) { Arity(Ob GF(ip)); N(2); }
@@ -1514,33 +1515,33 @@ Vm(idT) { tcn(Tbl); N(1); }
 // function calls seems like a bad deal given the relative
 // frequency of the two.
 Vm(ccc_u) {
-  obj x;
-  ArCh(1);
-  TyCh(x = Argv[0], Hom);
-  // we need space for:
-  // the entire stack
-  // the frame offset
-  // the length (to put it all in a tuple)
-  // the continuation thread (4 words)
-  num ht = Pool + Len - sp;
-  Have(ht + 6);
-  tup t = (tup) hp;
-  hp += ht + 2;
-  t->len = ht + 1;
-  t->xs[0] = Pn(fp - sp);
-  cpy(t->xs+1, sp, ht);
-  hom c = (hom) hp;
-  hp += 4;
-  c[0] = cont;
-  c[1] = (terp*) puttup(t);
-  c[2] = NULL;
-  c[3] = (terp*) c;
-  Argv[0] = Ph(c);
-  Ap(x, nil); }
+ O x;
+ ArCh(1);
+ TyCh(x = Argv[0], Hom);
+ // we need space for:
+ // the entire stack
+ // the frame offset
+ // the length (to put it all in a tuple)
+ // the continuation thread (4 words)
+ Z ht = Pool + Len - sp;
+ Have(ht + 6);
+ Ve t = (Ve) hp;
+ hp += ht + 2;
+ t->len = ht + 1;
+ t->xs[0] = Pn(fp - sp);
+ cpy(t->xs+1, sp, ht);
+ H c = (H) hp;
+ hp += 4;
+ c[0] = cont;
+ c[1] = (terp*) puttup(t);
+ c[2] = NULL;
+ c[3] = (terp*) c;
+ Argv[0] = Ph(c);
+ Ap(x, nil); }
 
 // call a continuation
 Vm(cont) {
-  tup t = gettup(GF(ip));
+  Ve t = gettup(GF(ip));
   Have(t->len - 1);
   xp = Gn(Argc) == 0 ? nil : *Argv;
   num off = Gn(t->xs[0]);
@@ -1551,11 +1552,11 @@ Vm(cont) {
 
 Vm(ap_u) {
   ArCh(2);
-  obj x = Argv[0], y = Argv[1];
+  O x = Argv[0], y = Argv[1];
   TyCh(x, Hom);
-  num adic = llen(y);
+  Z adic = llen(y);
   Have(adic);
-  obj off = Subd, rp = Retp;
+  O off = Subd, rp = Retp;
   sp = Argv + Gn(Argc) - adic;
   for (num j = 0; j < adic; y = Y(y))
     sp[j++] = X(y);
@@ -1569,7 +1570,7 @@ Vm(ap_u) {
 
 // instructions used by the compiler
 Vm(hom_u) {
-  obj x;
+  O x;
   ArCh(1);
   TyCh(x = *Argv, Num);
   num len = Gn(x) + 2;
@@ -1699,17 +1700,17 @@ Vm(strg) {
 Vm(strc) {
   Z l = Gn(Argc), sum = 0, i = 0;
   Wh (i < l) {
-    obj x = Argv[i++];
+    O x = Argv[i++];
     TyCh(x, Oct);
     sum += getoct(x)->len - 1; }
   Z words = b2w(sum+1) + 1;
   Have(words);
-  oct d = (oct) hp;
+  By d = (oct) hp;
   hp += words;
   d->len = sum + 1;
   d->text[sum] = 0;
   Wh (i) {
-    oct x = getoct(Argv[--i]);
+    By x = getoct(Argv[--i]);
     sum -= x->len - 1;
     memcpy(d->text+sum, x->text, x->len - 1); }
   Go(ret, putoct(d)); }
@@ -1722,13 +1723,13 @@ Vm(strs) {
   TyCh(Argv[1], Num);
   TyCh(Argv[2], Num);
 
-  oct src = getoct(Argv[0]);
-  num lb = Gn(Argv[1]), ub = Gn(Argv[2]);
+  By src = getoct(Argv[0]);
+  Z lb = Gn(Argv[1]), ub = Gn(Argv[2]);
   lb = max(lb, 0), ub = max(min(ub, src->len-1), lb);
-  num words = 1 + b2w(ub - lb + 1);
+  Z words = 1 + b2w(ub - lb + 1);
   Have(words);
 
-  oct dst = (oct) hp; hp += words;
+  By dst = (By) hp; hp += words;
   dst->len = ub - lb + 1;
   dst->text[ub - lb] = 0;
   memcpy(dst->text, src->text + lb, ub - lb);
@@ -1737,24 +1738,24 @@ Vm(strs) {
 Vm(strmk) {
   num i, l = Gn(Argc)+1, size = 1 + b2w(l);
   Have(size);
-  oct s = (oct) hp;
+  By s = (oct) hp;
   hp += size;
-  for (i = 0; i < l-1; i++) {
-    obj x = Argv[i];
+  Fo (i = 0; i < l-1; i++) {
+    O x = Argv[i];
     TyCh(x, Num);
-    if (x == Pn(0)) break;
+    if (x == Pn(0)) Bk;
     s->text[i] = Gn(x); }
   s->text[i] = 0;
   s->len = i+1;
   Go(ret, putoct(s)); }
 
 Vm(vararg) {
-  num reqd = Gn(GF(ip)),
-      vdicity = Gn(Argc) - reqd;
+  Z reqd = Gn(GF(ip)),
+    vdic = Gn(Argc) - reqd;
   ArCh(reqd);
   // in this case we need to add another argument
   // slot to hold the nil.
-  if (!vdicity) {
+  if (!vdic) {
     Have1();
     sp = --fp;
     for (num i = 0; i < Size(fr) + reqd; i++)
@@ -1766,34 +1767,34 @@ Vm(vararg) {
   // so maybe vararg should be two or more different
   // functions.
   else {
-    Have(2 * vdicity);
+    Have(2 * vdic);
     two t = (two) hp;
-    hp += 2 * vdicity;
-    for (num i = vdicity; i--;)
+    hp += 2 * vdic;
+    for (num i = vdic; i--;)
       t[i].x = Argv[reqd + i],
       t[i].y = puttwo(t+i+1);
-    t[vdicity-1].y = nil;
+    t[vdic-1].y = nil;
     Argv[reqd] = puttwo(t); }
   N(2); }
 
 // the next few functions create and store
 // lexical environments.
 St Vm(encl) {
-  num n = Xp;
-  obj x = Ob GF(ip);
-  mem block = hp;
+  Z n = Xp;
+  O x = Ob GF(ip);
+  M block = hp;
   hp += n;
-  obj arg = nil; // optional argument array
+  O arg = nil; // optional argument array
   if (n > 11) {
     n -= 12;
-    tup t = (tup) block;
+    Ve t = (Ve) block;
     block += 1 + n;
     t->len = n;
-    while (n--) t->xs[n] = Argv[n];
+    Wh (n--) t->xs[n] = Argv[n];
     arg = puttup(t); }
 
-  tup t = (tup) block; // compiler thread closure array (1 length 5 elements)
-  hom at = (hom) (block+6); // compiler thread (1 instruction 2 data 2 tag)
+  Ve t = (Ve) block; // compiler thread closure array (1 length 5 elements)
+  H at = (H) (block+6); // compiler thread (1 instruction 2 data 2 tag)
 
   t->len = 5; // initialize alpha closure
   t->xs[0] = arg;
@@ -1811,7 +1812,7 @@ St Vm(encl) {
   Ap(ip+W2, Ph(at)); }
 
 Vm(prencl) {
-  num n = Gn(Argc);
+  Z n = Gn(Argc);
   n += n ? 12 : 11;
   Have(n);
   Xp = n;
@@ -1829,15 +1830,15 @@ Vm(encln) { Go(prencl, nil); }
 // instruction that sets the closure and enters
 // the function.
 Vm(pc0) {
-  obj ec = Ob GF(ip),
-      arg = AR(ec)[0],
-      loc = AR(ec)[1];
-  num adic = nilp(arg) ? 0 : AL(arg);
+  O ec = Ob GF(ip),
+    arg = AR(ec)[0],
+    loc = AR(ec)[1];
+  Z adic = nilp(arg) ? 0 : AL(arg);
   Have(Size(fr) + adic + 1);
-  num off = (mem) fp - sp;
+  Z off = (mem) fp - sp;
   G(ip) = pc1;
   sp -= adic;
-  for (num z = adic; z--; sp[z] = AR(arg)[z]);
+  Fo (num z = adic; z--; sp[z] = AR(arg)[z]);
   ec = Ob GF(ip);
   fp = sp -= Size(fr);
   Retp = ip;
@@ -1869,7 +1870,7 @@ Vm(take) {
 Vm(em_u) {
   num l = Gn(Argc), i;
   if (l) {
-    for (i = 0; i < l - 1; i++)
+    Fo (i = 0; i < l - 1; i++)
       emsep(v, Argv[i], stdout, ' ');
     emit(v, xp = Argv[i], stdout); }
   fputc('\n', stdout);
@@ -1955,24 +1956,24 @@ int eql(obj, obj);
 // lists are immutable, so we can opportunistically
 // deduplicate them.
 St int twoeq(obj a, obj b) {
-  if (!eql(X(a), X(b))) R 0; else X(a) = X(b);
-  if (!eql(Y(a), Y(b))) R 0; else Y(a) = Y(b);
+  if (!eql(X(a), X(b))) R 0; El X(a) = X(b);
+  if (!eql(Y(a), Y(b))) R 0; El Y(a) = Y(b);
   R 1; }
 
 St int streq(obj a, obj b) {
-  oct o = getoct(a), m = getoct(b);
+  By o = getoct(a), m = getoct(b);
   if (o->len != m->len) R 0;
-  for (num i = 0; i < o->len; i++)
+  Fo (num i = 0; i < o->len; i++)
     if (o->text[i] != m->text[i]) R 0;
   R 1; }
 
 int eql(obj a, obj b) {
   if (a == b) R 1;
   if (kind(a) != kind(b)) R 0;
-  switch (kind(a)) {
-    case Two: R twoeq(a, b);
-    case Oct: R streq(a, b);
-    default: R 0; } }
+  Sw (kind(a)) {
+    Ks Two: R twoeq(a, b);
+    Ks Oct: R streq(a, b);
+    Df: R 0; } }
 
 Vm(lt)    { xp = *sp++ <  xp ? xp : nil; N(1); }
 Vm(lteq)  { xp = *sp++ <= xp ? xp : nil; N(1); }
@@ -2068,7 +2069,7 @@ St Vm(nope) {
   fputs(" does not exist\n", stderr);
   for (;;) {
     ip = Retp, fp += Size(fr) + Gn(Argc) + Gn(Subd);
-    if (button(Gh(ip))[-1] == yield) break;
+    if (button(Gh(ip))[-1] == yield) Bk;
     fputs("#  in ", stderr), emsep(v, Ph(ip), stderr, '\n'); }
   R Hp = hp, restart(v); }
 

@@ -1,5 +1,5 @@
 # lips
-ambient lisp
+lisp playground
 
 ## build / install
 are you on linux? `make` should work. otherwise consult the
@@ -40,10 +40,8 @@ etc. `()` is the only false value & it's self-quoting
 use `,` to sequence multiple expressions in one function body
 
 ## predefined functions / macros
-this whole section is unstable and  some of these names are
-bad, sorry, you know what they say about naming things!
-many of these, and others not listed here, are defined in
-`prelude.lips`
+some of these are primitives in lips.c and some are defined in
+prelude.lips. the names are just kind of guesses, sorry
 
 - `+` `-` `*` `/` `%` what you probably think!
 - `<` `<=` `>=` `>` variadic, test each successive pair of
@@ -54,12 +52,10 @@ many of these, and others not listed here, are defined in
 - `cu` partial application : `((cu + 3) 7) = 10` ;
   `co` sequential composition : `((co (cu + 3) (cu * 9) -) 1) = -36`
 - `.` print arguments separated by spaces, print newline, return
-  last argument; good for debugging
+  last argument
 - `A = car` `B = cdr` `X = cons` `L = list`. `AA`-`BB` are
   defined as macros.
-- apl-lite data constructors: `iota` is monadic `ι`; `rho` is
-  a weaker dyadic `ρ`: `(ap rho (X n l))` concatenates n copies
-  of l.
+- `iota` and `rho` are kind of like in apl but not as good.
 - `homp` `nump` `twop` `symp` `nilp` `tblp` `strp` `vecp` type predicates
 - hash functions: `tbl tset tget thas tkeys tlen tdel` ; see prelude.lips for usage
 - string functions: n-ary constructor `(str 97 97 97) = "aaa"` ; `slen sget ssub scat`
@@ -76,7 +72,7 @@ many of these, and others not listed here, are defined in
 
 ### hyperoperations
 ```lisp
-; send n to the nth hyperoperation, 0 being addition.
+; send n to the nth hyperoperation where 0 is +
 (: (hy n) (? (= n 0) + (\ x y
  (foldr1 (rho y x) (hy (- n 1))))))
 ```
@@ -104,6 +100,7 @@ many of these, and others not listed here, are defined in
 
 ## missing features
 - arrays, floats and many other types
+- type inference
 - unicode
 - useful i/o
 - namespaces / module system
