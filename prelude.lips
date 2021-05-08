@@ -151,7 +151,7 @@
     (? (: clo (Tg f 'clo)) (X clo k) k))))
 
 
- ; first compiler moiety : " the weak evaluator "
+ ; first compiler moiety : " weak evaluator "
  ; 1. construct the local scope of the function
  ; 2. desugaring, macroexpansion, and partial evaluation
  ;    (constant folding, dead code elimination, etc), which has
@@ -168,15 +168,14 @@
 
  (weak e x)  (:
   ; function symbol sugar
-  (sug x)
-   (? (2p (A x)) (sug (X (AA x) (X (X '\ (snoc (BA x) (AB x)))(BB x)))) x)
+  (sug x) (? (~ (2p (A x))) x
+   (sug (X (AA x) (X (X '\ (snoc (BA x) (AB x)))(BB x)))))
 
-  (loop x) (? x (?
-   (2p (A x)) (loop (sug x))
-   (, (? (qtd (: a (AB x))) (Ts (Tg e'val) (A x) (unq a))
-                            (Ts (Tg e'def) (A x) a))
-      (rec a)
-      (loop (BB x)))))
+  (loop y) (? y (,
+   (? (qtd (: x (sug y) a (AB x)))
+    (Ts (Tg e'val) (A x) (unq a))
+    (, (Ts (Tg e'def) (A x) a) (rec a)))
+   (loop (BB x))))
 
   (rec x) (? (2p x) (case (A x)
    '\ () '` ()
@@ -262,7 +261,7 @@
     (~ (? (Hp z) (= i-arity (hgeti z)))) x
     (? (>= (len (B x)) (hgetx (hseek z 1)))
      (X (hseek z 2) (B x)) ; skip the check
-     (fail)))) ; oops
+     (fail)))) ; oops wrong arity
 
    (defn e x) (:
     (nom s) (? (2p s) (nom (A s)) s)
@@ -360,7 +359,7 @@
 
  (? (2p x) (list e x) (symp x) (symb e x) x))
 
- ; second moiety : " the analyzing evaluator "
+ ; second moiety : " analyzing evaluator "
  ; generates code to produce the value of the expression
  ; produced by the first moiety.
 
@@ -470,40 +469,20 @@
 
   ((symb x k) e m) (:
    (late d) (:
-    ; the runtime encodes fundamental types as specific
-    ; integer values.
-    (t-code x) (case x
-     'hom 0 'num 1 'two 2 'vec 3 'str 4
-     'tbl 5 'sym 6 'nil 7 () 8 (fail))
-
     h (k e (+ m 2))
     t (consumes h)
-    (emf i-lbind
-     (emx (X (t-code t) (X d x))
-      (? t (hseek h 1) h))))
+    c (idx '(hom num two vec str tbl sym nil ()) t) ; runtime dependent type code
+    (emf i-lbind (emx (X c (X d x)) (? t (hseek h 1) h))))
 
    s (A (: r (look e x))) (?
-    (= s'here) ((Im (B r) k) e m)
-
-    (= s 'wait) (: ; late bind
-     h (k e (+ m 2))
-     t (consumes h)
-     ; the runtime encodes fundamental types as specific
-     ; integer values.
-     code (case t
-      'hom 0 'num 1 'two 2 'vec 3 'str 4
-      'tbl 5 'sym 6 'nil 7 () 8 (fail))
-     (emf i-lbind
-      (emx (X code (X (B r) x))
-       (? t (hseek h 1) h))))
-
+    (= s 'here) ((Im (B r) k) e m)
+    (= s 'wait) (late (B r))
     (= e (B r)) (>>= e m
      (xc (case s 'arg i-arg 'loc i-loc 'clo i-clo)
       (xd (idx (Tg e s) x) k)))
     (, (: l (len (Tg e'clo)))
        (Ts e'clo(snoc (Tg e'clo) x))
        ((xc i-clo (xd l k)) e m))))
-
 
   ((? (twop x) list (symp x) symb Im) x k))
 
