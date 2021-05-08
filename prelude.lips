@@ -172,7 +172,7 @@
    (? (2p (A x)) (sug (X (AA x) (X (X '\ (snoc (BA x) (AB x)))(BB x)))) x)
 
   (loop x) (? x (?
-   (2p (A x)) (loop (.'sug(sug x)))
+   (2p (A x)) (loop (sug x))
    (, (? (qtd (: a (AB x))) (Ts (Tg e'val) (A x) (unq a))
                             (Ts (Tg e'def) (A x) a))
       (rec a)
