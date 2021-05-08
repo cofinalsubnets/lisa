@@ -50,11 +50,9 @@ Ty Sr two { O x, y; } *Tw, *two; // pairs
 Ty Sr tup { Z len; O xs[]; } *Ve, *tup; // vectors
 Ty Sr oct { Z len; Ch text[]; } *By, *oct; // byte arrays
 Ty Sr sym { O nom, code, l, r; } *Sy, *sym; // symbols
-
-Ty Sr tble { O key, val; Sr tble *next; } *tble;
+Ty Sr tble { O key, val; Sr tble *next; } *tble; // tables
 Ty Sr tbl { Z len, cap; tble *tab; } *Ht, *tbl;
 
-Ty Sr root { M one; Sr root *next; } *root;
 // the 3 ls bits of each pointer are a type tag
 En T {
  Hom = 0, Num = 1, Two = 2, Tup = 3,
@@ -63,6 +61,8 @@ En T {
 En globl {
  Def, Cond, Lamb, Quote, Seq,
  Splat, Topl, Macs, Eval, Apply, NGlobs };
+
+Ty Sr root { M one; Sr root *next; } *root; // for memory management
 
 // this is the structure responsible for holding runtime
 // state. a pointer to it as an argument to almost every
@@ -83,17 +83,16 @@ V initialize(int, Ko Ch**),
   bootstrap(V),
   finalize(V);
 
-_ scr(V, FILE*),
-  emit(V, O, FILE*),
+_ emit(V, O, Io),
   errp(V, Ko Ch*, ...),
-  emsep(V, O, FILE*, Ch),
+  emsep(V, O, Io, Ch),
   reqsp(V, Z);
 
 O err(V, O, Ko Ch*, ...),
   restart(V),
   homnom(V, O),
   pair(V, O, O),
-  parse(V, FILE*),
+  parse(V, Io),
   intern(V, O),
   eval(V, O),
   table(V),
@@ -101,7 +100,7 @@ O err(V, O, Ko Ch*, ...),
   tblget(V, O, O),
   tbldel(V, O, O),
   tblkeys(V, O),
-  string(V, Ko char*);
+  string(V, Ko Ch*);
 int eql(O, O);
 
 Ko Ch* tnom(En T);
@@ -151,7 +150,6 @@ Ko Ch* tnom(En T);
 #define AR(x) gettup(x)->xs
 #define AL(x) gettup(x)->len
 #define Mm(y,...) (mm(&(y)),(__VA_ARGS__),um)
-#define with(...) Mm(__VA_ARGS__)
 #define b2w(n)((n)/W+((n)%W&&1))
 #define w2b(n) ((n)*W)
 #define Szr(t) (Sz(Sr t)/W)
@@ -249,12 +247,12 @@ O parse(V v, Io i) { Z c; Sw ((c = r0(i))) {
  Ks '\'': R qt(v, i);
  Df:      R ungetc(c, i), atom(v, i); } }
 
-St O qt(V v, FILE *i) { O r;
+St O qt(V v, Io i) { O r;
  R !(r = parse(v, i)) ? r :
   (r = pair(v, r, nil),
    pair(v, Qt, r)); }
 
-St O r1s(V v, FILE *i) { O x, y, c;
+St O r1s(V v, Io i) { O x, y, c;
  R (c = r0(i)) == EOF ? readx(v, err_eof) :
   c == ')' ? nil :
    (ungetc(c, i),
@@ -360,10 +358,10 @@ St int repl(V v, Io i, Io o) {
   El if (feof(i)) Bk;
  R OK; }
 
-_ scr(V v, Io f) {
+St _ scr(V v, Io f) {
  Fo (O x; (x = parse(v, f)); eval(v, x)); }
 
-St int scripts(V v, Ch**argv) {
+St int scripts(V v, Ch** argv) {
  Fo (char *q; (q = *argv++);) {
   Io f = fopen(q, "r");
   if (!f) R errp(v, "%s : %s", q, strerror(errno)), NO;
@@ -377,7 +375,7 @@ St int scripts(V v, Ch**argv) {
   if (!ok) R NO; }
  R OK; }
 
-int main(int argc, char**argv) {
+int main(int argc, Ch** argv) {
 #define takka 1
 #define nprel 2
  Ko Ch
@@ -572,12 +570,12 @@ cpcc(cphom) {
  dst = bump(v, len);
  H j = dst;
  Fo (H k = start; k < end; j++, k++ )
-  G(j) = G(k), G(k) = (terp*) Ph(j);
+  G(j) = G(k), G(k) = (T) Ph(j);
  G(j) = NULL;
- G(j+1) = (terp*) dst;
+ G(j+1) = (T) dst;
  Fo (O u; j-- > dst;)
   u = (O) G(j),
-  G(j) = (terp*) (stale(u) ? cp(v, u, ln, lp) : u);
+  G(j) = (T) (stale(u) ? cp(v, u, ln, lp) : u);
  R Ph(dst += src - start); }
 
 St tble cptble(V v, tble src, Z ln, M lp) {
@@ -617,7 +615,7 @@ O pair(V v, O a, O b) { Tw t;
   (t = bump(v, 2),
    t->x = a, t->y = b,
    puttwo(t)) :
-  (with(a, with(b, reqsp(v, 2))),
+  (Mm(a, Mm(b, reqsp(v, 2))),
    pair(v, a, b)); }
 
 // list functions
@@ -664,20 +662,20 @@ St O ssk(V v, O y, O x) {
   sskc(v, i < 0 ? &(getsym(y)->r) : &(getsym(y)->l), x); }
 
 St O sskc(V v, M y, O x) {
-  if (!nilp(*y)) R ssk(v, *y, x);
-  Sy u = bump(v, Size(sym));
-  u->nom = x, u->code = hc(v, x);
-  u->l = nil, u->r = nil;
-  R *y = putsym(u); }
+ if (!nilp(*y)) R ssk(v, *y, x);
+ Sy u = bump(v, Size(sym));
+ u->nom = x, u->code = hc(v, x);
+ u->l = nil, u->r = nil;
+ R *y = putsym(u); }
 
 O intern(V v, O x) {
  if (Avail < Size(sym))
-  with(x, reqsp(v, Size(sym)));
+  Mm(x, reqsp(v, Size(sym)));
  R sskc(v, &Syms, x); }
 
 St In N hash_bytes(Z len, char *us) { Z h = 1;
-  Fo (; len--; h *= mix, h ^= *us++);
-  R mix * h; }
+ Fo (; len--; h *= mix, h ^= *us++);
+ R mix * h; }
 
 St N hc(V v, O x) { N r;
  Sw (kind(x)) {
@@ -743,16 +741,16 @@ O tbldel(V v, O t, O k) {
   Z b = hbi(y->cap, hc(v, k));
   tble e = y->tab[b];
   Sr tble _v = {0,0,e};
-  for (tble l = &_v; l && l->next; l = l->next)
+  Fo (tble l = &_v; l && l->next; l = l->next)
     if (l->next->key == k) {
       r = l->next->val;
       l->next = l->next->next;
       y->len--;
-      break; }
+      Bk; }
   y->tab[b] = _v.next;
   if (y->len && y->cap / y->len > 2)
-    with(r, with(t, tblrsz(v, t, y->cap / 2)));
-  return r; }
+   Mm(r, Mm(t, tblrsz(v, t, y->cap / 2)));
+  R r; }
 
 O tblget(V v, O t, O k) {
   tble e = hb(t, hc(v, k));
@@ -760,7 +758,7 @@ O tblget(V v, O t, O k) {
   R 0; }
 
 O table(V v) {
-  tbl t = cells(v, sizeof(Sr tbl)/w2b(1) + 1);
+  tbl t = cells(v, Sz(Sr tbl)/w2b(1) + 1);
   tble *b = (tble*)(t+1);
   *b = NULL;
   t->tab = b;
@@ -785,7 +783,7 @@ O table(V v) {
   _(twop_u), _(nump_u), _(homp_u), _(tblp_u), _(strp_u),\
   _(nilp_u), _(car_u),  _(cdr_u),  _(cons_u), _(vecp_u),\
   _(strmk),  _(strg),   _(strl),   _(strs),   _(strc),\
-  _(symp_u), _(unit),   _(one),    _(zero),   _(hom_fin_u),\
+  _(symp_u), _(unit),   _(one),    _(zero),   _(hfin_u),\
   _(arg0),   _(arg1),   _(loc0),   _(loc1),   _(clo0),\
   _(clo1),   _(brlt),   _(brlteq), _(breq),   _(brgteq),\
   _(brgt),   _(brne),   _(zzz),    _(tbll),   _(tblmk),\
@@ -795,32 +793,18 @@ O table(V v) {
   _(dupl),   _(emi),    _(drop),   _(emx_u),  _(emi_u),\
   _(emx),    _(em_u),   _(ev_u),   _(ap_u)
 #define prims(_)\
-  _("gensym", gsym_u),\
-  _("hfin", hom_fin_u),\
-  _(".", em_u),\
-  _("A", car_u),    _("B", cdr_u),\
-  _("X", cons_u),   _("=", eq_u),\
-  _("<", lt_u),      _("<=", lteq_u),\
-  _(">", gt_u),      _(">=", gteq_u),\
-  _("+", add_u),     _("-", sub_u),\
-  _("*", mul_u),     _("/", div_u),\
-  _("%", mod_u),     _("ap", ap_u),\
-  _("ccc", ccc_u),   _("ev", ev_u),\
-  _("fail", fail),   _("tbl", tblmk),\
-  _("tget", tblg),   _("tset", tbls),\
-  _("thas", tblc),   _("tdel", tbld),\
-  _("tkeys", tblks), _("tlen", tbll),\
-  _("slen", strl),   _("sget", strg),\
-  _("scat", strc),   _("ssub", strs),\
-  _("str", strmk),\
-  _("hom", hom_u),   _("hseek", hom_seek_u),\
-  _("emx", emx_u),     _("hgetx", hom_getx_u),\
-  _("emi", emi_u),     _("hgeti", hom_geti_u),\
-  _("zzz", zzz),\
-  _("vecp", vecp_u), _("nump", nump_u),\
-  _("symp", symp_u), _("twop", twop_u),\
-  _("tblp", tblp_u), _("strp", strp_u),\
-  _("nilp", nilp_u), _("homp", homp_u)
+  _("A", car_u),     _("B", cdr_u),          _("X", cons_u),    _("=", eq_u),\
+  _("<", lt_u),      _("<=", lteq_u),        _(">", gt_u),      _(">=", gteq_u),\
+  _("+", add_u),     _("-", sub_u),          _("*", mul_u),     _("/", div_u),\
+  _("%", mod_u),     _("ap", ap_u),          _("ccc", ccc_u),   _("ev", ev_u),\
+  _("fail", fail),   _("tbl", tblmk),        _("tget", tblg),   _("tset", tbls),\
+  _("thas", tblc),   _("tdel", tbld),        _("tkeys", tblks), _("tlen", tbll),\
+  _("slen", strl),   _("sget", strg),        _("scat", strc),   _("ssub", strs),\
+  _("str", strmk),   _("gensym", gsym_u),    _("zzz", zzz),     _(".", em_u),\
+  _("vecp", vecp_u), _("nump", nump_u),      _("symp", symp_u), _("twop", twop_u),\
+  _("tblp", tblp_u), _("strp", strp_u),      _("nilp", nilp_u), _("homp", homp_u),\
+  _("hom", hom_u),   _("hseek", hom_seek_u), _("emx", emx_u),   _("hgetx", hom_getx_u),\
+  _("emi", emi_u),   _("hgeti", hom_geti_u), _("hfin", hfin_u)
 
 #define ninl(x) x NoInline
 terp insts(ninl);
@@ -874,13 +858,11 @@ St Vd c_de_r(V, M, O),
 St c1 c_ev, c_d_bind, inst, insx, c_ini;
 St c2 c_eval, c_sy, c_2, c_imm, ltu, c_ap, c_la_clo;
 St c3 late;
-St O def_sug(V,O),
-     snoc(V,O,O),
+St O snoc(V,O,O),
      look(V,O,O),
      linitp(V,O,M),
-     hom_fin(V,O),
-     imx(V,M,Z, terp*,O),
-     hom_ini(V,Z);
+     hfin(V,O),
+     hini(V,Z);
 St Z idx(O, O);
 #define interns(v,c) intern(v,string(v,c))
 
@@ -889,19 +871,22 @@ En { Here, Loc, Arg, Clo, Wait };
 #define c2(nom,...) St O nom(V v,M e,Z m,O x,##__VA_ARGS__)
 
 // emit code backwards like cons
-St In O em1(terp *i, O k) {
+St In O em1(T i, O k) {
   R k -= W, G(k) = i, k; }
-St In O em2(terp *i, O j, O k) {
-  R em1(i, em1((terp*)j, k)); }
+St In O em2(T i, O j, O k) {
+  R em1(i, em1((T)j, k)); }
+
+St O imx(V v, M e, Z m, T i, O x) {
+ R Pu(Pn(i), x), insx(v, e, m); }
 
 St O apply(V v, O f, O x) {
   Pu(f, x);
   H h = cells(v, 5);
   h[0] = call;
-  h[1] = (terp*) Pn(2);
+  h[1] = (T) Pn(2);
   h[2] = yield;
   h[3] = NULL;
-  h[4] = (terp*) h;
+  h[4] = (T) h;
   R call(v, Ph(h), Fp, Sp, Hp, tblget(v, Dict, App)); }
 
 St O compile(V v, O x) {
@@ -968,7 +953,7 @@ St O compose(V v, M e, O x) {
   i = Gn(asig(*e));
      if (i > 0) x = em2(arity, Pn(i), x);
   El if (i < 0) x = em2(vararg, Pn(-i-1), x);
-  x = hom_fin(v, x);
+  x = hfin(v, x);
   R twop(clo(*e)) ? pair(v, clo(*e), x) : x; }
 
 // takes a lambda expression, returns either a pair or or a
@@ -988,7 +973,7 @@ St O ltu(V v, M e, O n, O l) { O y;
 
 
 c2(c_la) {
-  terp *j = imm;
+  T j = imm;
   O k, nom = *Sp == Pn(c_d_bind) ? Sp[1] : nil;
   Mm(nom, Mm(x, k = ccc(v, e, m+2)));
   Mm(k,
@@ -1018,6 +1003,13 @@ St _ c_de_r(V v, M e, O x) {
  if (twop(X(x))) R c_de_r(v, e, rwlade(v, x));
  Mm(x, c_de_r(v, e, YY(x))),
  Pu(Pn(c_ev), XY(x), Pn(c_d_bind), X(x)); }
+
+// syntactic sugar for define
+St O def_sug(V v, O x) { O y = nil; R
+ Mm(y, x = linitp(v, x, &y)),
+ x = pair(v, x, y),   x = pair(v, Se, x),
+ x = pair(v, x, nil), x = pair(v, La, x),
+ pair(v, x, nil); }
 
 c2(c_de) {
  R !twop(Y(x)) ? c_imm(v, e, m, nil) :
@@ -1095,9 +1087,6 @@ St O look(V v, O e, O y) { O q; R
  look(v, par(e), y); }
 #undef L
 
-St O imx(V v, M e, Z m, terp *i, O x) {
- R Pu(Pn(i), x), insx(v, e, m); }
-
 c2(late, O d) { O k; R
  x = pair(v, d, x),
  Mm(x, k = ccc(v, e, m+2)),
@@ -1146,25 +1135,18 @@ c2(c_ap) {
  R um, ccc(v, e, m); }
 
 c1(inst) {
- terp *i = (terp*) Gn(*Sp++);
+ T i = (T) Gn(*Sp++);
  R em1(i, ccc(v, e, m+1)); }
 
 c1(insx) {
- terp *i = (terp*) Gn(*Sp++);
+ T i = (T) Gn(*Sp++);
  O x = *Sp++, k;
  Mm(x, k = ccc(v, e, m+2));
  R em2(i, x, k); }
 
 c1(c_ini) {
- O k = hom_ini(v, m+1);
- R em1((terp*)(e ? name(*e):Eva), k); }
-
-// syntactic sugar for define
-St O def_sug(V v, O x) { O y = nil; R
- Mm(y, x = linitp(v, x, &y)),
- x = pair(v, x, y),   x = pair(v, Se, x),
- x = pair(v, x, nil), x = pair(v, La, x),
- pair(v, x, nil); }
+ O k = hini(v, m+1);
+ R em1((T)(e ? name(*e):Eva), k); }
 
 St Vd pushss(V v, Z i, va_list xs) {
  O x; (x = va_arg(xs, O)) ?
@@ -1180,18 +1162,18 @@ St Vd pushs(V v, ...) {
  El Fo (M sp = Sp -= i; i--; *sp++ = va_arg(xs, O));
  va_end(xs); }
 
-O hom_ini(V v, Z n) {
+O hini(V v, Z n) {
  H a = cells(v, n + 2);
  R G(a+n) = NULL,
-   GF(a+n) = (terp*) a,
+   GF(a+n) = (T) a,
    fill((M) a, nil, n),
    Ph(a+n); }
 
-St O hom_fin(V v, O a) {
- R Ob (GF(button(Gh(a))) = (terp*) a); }
+St O hfin(V v, O a) {
+ R Ob (GF(button(Gh(a))) = (T) a); }
 
 O homnom(V v, O x) {
- terp *k = G(x);
+ T k = G(x);
  if (k == clos || k == pc0 || k == pc1)
   R homnom(v, (O) G(FF(x)));
  M h = (M) Gh(x);
@@ -1201,13 +1183,13 @@ O homnom(V v, O x) {
    x == Ob yield ? Eva :
    nil; }
 
-St Vd rpr(V v, M d, Ko Ch *n, terp *u) {
+St Vd rpr(V v, M d, Ko Ch *n, T u) {
  O x, y = pair(v, interns(v, n), nil);
- Mm(y, x = hom_ini(v, 2));
+ Mm(y, x = hini(v, 2));
  x = em2(u, y, x);
  tblset(v, *d, X(y), x); }
 
-St Vd rin(V v, M d, Ko Ch *n, terp *u) {
+St Vd rin(V v, M d, Ko Ch *n, T u) {
  O y = interns(v, n);
  tblset(v, *d, y, Pn(u)); }
 
@@ -1252,7 +1234,7 @@ V bootstrap(V v) {
   int pre = seekp(path);
   if (pre == -1) errp(v, "can't find %s", path);
   El {
-    FILE *f = fdopen(pre, "r");
+    Io f = fdopen(pre, "r");
     if (setjmp(v->restart)) R
       errp(v, "error in %s", path),
       fclose(f), finalize(v);
@@ -1423,13 +1405,13 @@ Vm(lbind) {
  if (!(w = tblget(v, d, xp = YY(w)))) Jump(nope);
  xp = w;
  if (Gn(y) != 8) TyCh(xp, Gn(y)); // type check elision
- terp *q = G(FF(ip));
+ T q = G(FF(ip));
  if (q == call || q == rec) {
   O aa = Ob GF(FF(ip));
   if (G(xp) == arity && aa >= Ob GF(xp))
    xp += W2; }
  G(ip) = imm;
- GF(ip) = (terp*) xp;
+ GF(ip) = (T) xp;
  N(2); }
 
 // control flow instructions
@@ -1528,9 +1510,9 @@ Vm(ccc_u) {
  H c = (H) hp;
  hp += 4;
  c[0] = cont;
- c[1] = (terp*) puttup(t);
+ c[1] = (T) puttup(t);
  c[2] = NULL;
- c[3] = (terp*) c;
+ c[3] = (T) c;
  Argv[0] = Ph(c);
  Ap(x, nil); }
 
@@ -1573,7 +1555,7 @@ Vm(hom_u) {
  H h = (H) hp;
  hp += len;
  fill((M) h, nil, len);
- h[len-1] = (terp*) h;
+ h[len-1] = (T) h;
  h[len-2] = NULL;
  Go(ret, Ph(h+len-2)); }
 
@@ -1584,234 +1566,234 @@ Vm(tset) {
 
 Vm(emx) {
  O h = *sp++ - W;
- G(h) = (terp*) xp;
+ G(h) = (T) xp;
  Ap(ip+W, h); }
 
 Vm(emi) {
-  O h = *sp++ - W;
-  G(h) = (terp*) Gn(xp);
-  Ap(ip+W, h); }
+ O h = *sp++ - W;
+ G(h) = (T) Gn(xp);
+ Ap(ip+W, h); }
 Vm(emx_u) {
-  ArCh(2);
-  TyCh(Argv[1], Hom);
-  O h = Argv[1] - W;
-  G(h) = (terp*) Argv[0];
-  Go(ret, h); }
+ ArCh(2);
+ TyCh(Argv[1], Hom);
+ O h = Argv[1] - W;
+ G(h) = (T) Argv[0];
+ Go(ret, h); }
 Vm(emi_u) {
-  ArCh(2);
-  TyCh(Argv[0], Num);
-  TyCh(Argv[1], Hom);
-  O h = Argv[1] - W;
-  G(h) = (terp*) Gn(Argv[0]);
-  Go(ret, h); }
+ ArCh(2);
+ TyCh(Argv[0], Num);
+ TyCh(Argv[1], Hom);
+ O h = Argv[1] - W;
+ G(h) = (T) Gn(Argv[0]);
+ Go(ret, h); }
 Vm(hom_geti_u) {
-  ArCh(1);
-  TyCh(Argv[0], Hom);
-  Go(ret, Pn(G(Argv[0]))); }
+ ArCh(1);
+ TyCh(Argv[0], Hom);
+ Go(ret, Pn(G(Argv[0]))); }
 Vm(hom_getx_u) {
-  ArCh(1);
-  TyCh(Argv[0], Hom);
-  Go(ret, Ob G(Argv[0])); }
+ ArCh(1);
+ TyCh(Argv[0], Hom);
+ Go(ret, Ob G(Argv[0])); }
 Vm(hom_seek_u) {
-  ArCh(2);
-  TyCh(Argv[0], Hom);
-  TyCh(Argv[1], Num);
-  Go(ret, Ph(Gh(Argv[0])+Gn(Argv[1]))); }
+ ArCh(2);
+ TyCh(Argv[0], Hom);
+ TyCh(Argv[1], Num);
+ Go(ret, Ph(Gh(Argv[0])+Gn(Argv[1]))); }
 
 // hash tables
 Vm(tblg) {
-  ArCh(2);
-  TyCh(Argv[0], Tbl);
-  xp = tblget(v, Argv[0], Argv[1]);
-  Go(ret, xp ? xp : nil); }
+ ArCh(2);
+ TyCh(Argv[0], Tbl);
+ xp = tblget(v, Argv[0], Argv[1]);
+ Go(ret, xp ? xp : nil); }
 Vm(tget) {
-  xp = tblget(v, xp, *sp++);
-  Ap(ip+W, xp ? xp : nil); }
+ xp = tblget(v, xp, *sp++);
+ Ap(ip+W, xp ? xp : nil); }
 Vm(thas) {
 #define ok Pn(1)
-  xp = tblget(v, xp, *sp++) ? ok : nil;
-  N(1); }
+ xp = tblget(v, xp, *sp++) ? ok : nil;
+ N(1); }
 Vm(tlen) {
-  xp = putnum(gettbl(xp)->len);
-  N(1); }
+ xp = putnum(gettbl(xp)->len);
+ N(1); }
 Vm(tkeys) { O x;
-  CallC(x = tblkeys(v, xp));
-  xp = x;
-  N(1); }
+ CallC(x = tblkeys(v, xp));
+ xp = x;
+ N(1); }
 
 Vm(tblc) {
-  ArCh(2);
-  TyCh(Argv[0], Tbl);
-  xp = tblget(v, Argv[0], Argv[1]);
-  Go(ret, xp ? Pn(0) : nil); }
+ ArCh(2);
+ TyCh(Argv[0], Tbl);
+ xp = tblget(v, Argv[0], Argv[1]);
+ Go(ret, xp ? Pn(0) : nil); }
 
 St O tblss(V v, Z i, Z l) {
-  M fp = Fp;
-  R i > l-2 ? Argv[i-1] :
-    (tblset(v, Xp, Argv[i], Argv[i+1]),
-     tblss(v, i+2, l)); }
+ M fp = Fp;
+ R i > l-2 ? Argv[i-1] :
+  (tblset(v, Xp, Argv[i], Argv[i+1]),
+   tblss(v, i+2, l)); }
 
 Vm(tbls) {
-  O x = nil;
-  ArCh(1);
-  TyCh(xp = *Argv, Tbl);
-  CallC(x = tblss(v, 1, Gn(Argc)));
-  Go(ret, x); }
+ O x = nil;
+ ArCh(1);
+ TyCh(xp = *Argv, Tbl);
+ CallC(x = tblss(v, 1, Gn(Argc)));
+ Go(ret, x); }
 
 Vm(tblmk) {
-  CallC(Xp = table(v), tblss(v, 0, Gn(Argc)));
-  Go(ret, Xp); }
+ CallC(Xp = table(v), tblss(v, 0, Gn(Argc)));
+ Go(ret, Xp); }
 
 Vm(tbld) {
-  O x = nil;
-  ArCh(2);
-  TyCh(Argv[0], Tbl);
-  CallC(x = tbldel(v, Argv[0], Argv[1]));
-  Go(ret, x); }
+ O x = nil;
+ ArCh(2);
+ TyCh(Argv[0], Tbl);
+ CallC(x = tbldel(v, Argv[0], Argv[1]));
+ Go(ret, x); }
 Vm(tblks) {
-  ArCh(1);
-  TyCh(Argv[0], Tbl);
-  O x;
-  CallC(x = tblkeys(v, Argv[0]));
-  Go(ret, x); }
+ ArCh(1);
+ TyCh(Argv[0], Tbl);
+ O x;
+ CallC(x = tblkeys(v, Argv[0]));
+ Go(ret, x); }
 Vm(tbll) {
-  ArCh(1);
-  TyCh(Argv[0], Tbl);
-  Go(ret, Pn(gettbl(*Argv)->len)); }
+ ArCh(1);
+ TyCh(Argv[0], Tbl);
+ Go(ret, Pn(gettbl(*Argv)->len)); }
 
 // string instructions
 Vm(strl) {
-  ArCh(1);
-  TyCh(*Argv, Oct);
-  Go(ret, Pn(getoct(*Argv)->len-1)); }
+ ArCh(1);
+ TyCh(*Argv, Oct);
+ Go(ret, Pn(getoct(*Argv)->len-1)); }
 Vm(strg) {
-  ArCh(2);
-  TyCh(Argv[0], Oct);
-  TyCh(Argv[1], Num);
-  Go(ret, Gn(Argv[1]) < getoct(Argv[0])->len-1 ?
-    Pn(getoct(Argv[0])->text[Gn(Argv[1])]) :
-    nil); }
+ ArCh(2);
+ TyCh(Argv[0], Oct);
+ TyCh(Argv[1], Num);
+ Go(ret, Gn(Argv[1]) < getoct(Argv[0])->len-1 ?
+  Pn(getoct(Argv[0])->text[Gn(Argv[1])]) :
+  nil); }
 
 Vm(strc) {
-  Z l = Gn(Argc), sum = 0, i = 0;
-  Wh (i < l) {
-    O x = Argv[i++];
-    TyCh(x, Oct);
-    sum += getoct(x)->len - 1; }
-  Z words = b2w(sum+1) + 1;
-  Have(words);
-  By d = (oct) hp;
-  hp += words;
-  d->len = sum + 1;
-  d->text[sum] = 0;
-  Wh (i) {
-    By x = getoct(Argv[--i]);
-    sum -= x->len - 1;
-    memcpy(d->text+sum, x->text, x->len - 1); }
-  Go(ret, putoct(d)); }
+ Z l = Gn(Argc), sum = 0, i = 0;
+ Wh (i < l) {
+  O x = Argv[i++];
+  TyCh(x, Oct);
+  sum += getoct(x)->len - 1; }
+ Z words = b2w(sum+1) + 1;
+ Have(words);
+ By d = (oct) hp;
+ hp += words;
+ d->len = sum + 1;
+ d->text[sum] = 0;
+ Wh (i) {
+  By x = getoct(Argv[--i]);
+  sum -= x->len - 1;
+  memcpy(d->text+sum, x->text, x->len - 1); }
+ Go(ret, putoct(d)); }
 
 #define min(a,b)(a<b?a:b)
 #define max(a,b)(a>b?a:b)
 Vm(strs) {
-  ArCh(3);
-  TyCh(Argv[0], Oct);
-  TyCh(Argv[1], Num);
-  TyCh(Argv[2], Num);
+ ArCh(3);
+ TyCh(Argv[0], Oct);
+ TyCh(Argv[1], Num);
+ TyCh(Argv[2], Num);
 
-  By src = getoct(Argv[0]);
-  Z lb = Gn(Argv[1]), ub = Gn(Argv[2]);
-  lb = max(lb, 0), ub = max(min(ub, src->len-1), lb);
-  Z words = 1 + b2w(ub - lb + 1);
-  Have(words);
+ By src = getoct(Argv[0]);
+ Z lb = Gn(Argv[1]), ub = Gn(Argv[2]);
+ lb = max(lb, 0), ub = max(min(ub, src->len-1), lb);
+ Z words = 1 + b2w(ub - lb + 1);
+ Have(words);
 
-  By dst = (By) hp; hp += words;
-  dst->len = ub - lb + 1;
-  dst->text[ub - lb] = 0;
-  memcpy(dst->text, src->text + lb, ub - lb);
-  Go(ret, putoct(dst)); }
+ By dst = (By) hp; hp += words;
+ dst->len = ub - lb + 1;
+ dst->text[ub - lb] = 0;
+ memcpy(dst->text, src->text + lb, ub - lb);
+ Go(ret, putoct(dst)); }
 
 Vm(strmk) {
-  Z i, l = Gn(Argc)+1, size = 1 + b2w(l);
-  Have(size);
-  By s = (oct) hp;
-  hp += size;
-  Fo (i = 0; i < l-1; i++) {
-    O x = Argv[i];
-    TyCh(x, Num);
-    if (x == Pn(0)) Bk;
-    s->text[i] = Gn(x); }
-  s->text[i] = 0;
-  s->len = i+1;
-  Go(ret, putoct(s)); }
+ Z i, l = Gn(Argc)+1, size = 1 + b2w(l);
+ Have(size);
+ By s = (oct) hp;
+ hp += size;
+ Fo (i = 0; i < l-1; i++) {
+  O x = Argv[i];
+  TyCh(x, Num);
+  if (x == Pn(0)) Bk;
+  s->text[i] = Gn(x); }
+ s->text[i] = 0;
+ s->len = i+1;
+ Go(ret, putoct(s)); }
 
 Vm(vararg) {
-  Z reqd = Gn(GF(ip)),
-    vdic = Gn(Argc) - reqd;
-  ArCh(reqd);
-  // in this case we need to add another argument
-  // slot to hold the nil.
-  if (!vdic) {
-    Have1();
-    sp = --fp;
-    Fo (Z i = 0; i < Size(fr) + reqd; i++)
-      fp[i] = fp[i+1];
-    Argc += W;
-    Argv[reqd] = nil; }
-  // in this case we just keep the existing slots.
-  // the path is knowable at compile time in many cases
-  // so maybe vararg should be two or more different
-  // functions.
-  El {
-    Have(2 * vdic);
-    Tw t = (two) hp;
-    hp += 2 * vdic;
-    Fo (Z i = vdic; i--;)
-      t[i].x = Argv[reqd + i],
-      t[i].y = puttwo(t+i+1);
-    t[vdic-1].y = nil;
-    Argv[reqd] = puttwo(t); }
-  N(2); }
+ Z reqd = Gn(GF(ip)),
+   vdic = Gn(Argc) - reqd;
+ ArCh(reqd);
+ // in this case we need to add another argument
+ // slot to hold the nil.
+ if (!vdic) {
+  Have1();
+  sp = --fp;
+  Fo (Z i = 0; i < Size(fr) + reqd; i++)
+    fp[i] = fp[i+1];
+  Argc += W;
+  Argv[reqd] = nil; }
+ // in this case we just keep the existing slots.
+ // the path is knowable at compile time in many cases
+ // so maybe vararg should be two or more different
+ // functions.
+ El {
+  Have(2 * vdic);
+  Tw t = (two) hp;
+  hp += 2 * vdic;
+  Fo (Z i = vdic; i--;)
+   t[i].x = Argv[reqd + i],
+   t[i].y = puttwo(t+i+1);
+  t[vdic-1].y = nil;
+  Argv[reqd] = puttwo(t); }
+ N(2); }
 
 // the next few functions create and store
 // lexical environments.
 St Vm(encl) {
-  Z n = Xp;
-  O x = Ob GF(ip);
-  M block = hp;
-  hp += n;
-  O arg = nil; // optional argument array
-  if (n > 11) {
-    n -= 12;
-    Ve t = (Ve) block;
-    block += 1 + n;
-    t->len = n;
-    Wh (n--) t->xs[n] = Argv[n];
-    arg = puttup(t); }
+ Z n = Xp;
+ O x = Ob GF(ip);
+ M block = hp;
+ hp += n;
+ O arg = nil; // optional argument array
+ if (n > 11) {
+  n -= 12;
+  Ve t = (Ve) block;
+  block += 1 + n;
+  t->len = n;
+  Wh (n--) t->xs[n] = Argv[n];
+  arg = puttup(t); }
 
-  Ve t = (Ve) block; // compiler thread closure array (1 length 5 elements)
-  H at = (H) (block+6); // compiler thread (1 instruction 2 data 2 tag)
+ Ve t = (Ve) block; // compiler thread closure array (1 length 5 elements)
+ H at = (H) (block+6); // compiler thread (1 instruction 2 data 2 tag)
 
-  t->len = 5; // initialize alpha closure
-  t->xs[0] = arg;
-  t->xs[1] = xp; // Locs or nil
-  t->xs[2] = Clos;
-  t->xs[3] = Y(x);
-  t->xs[4] = Ph(at);
+ t->len = 5; // initialize alpha closure
+ t->xs[0] = arg;
+ t->xs[1] = xp; // Locs or nil
+ t->xs[2] = Clos;
+ t->xs[3] = Y(x);
+ t->xs[4] = Ph(at);
 
-  at[0] = pc0;
-  at[1] = (terp*) puttup(t);
-  at[2] = (terp*) X(x);
-  at[3] = 0;
-  at[4] = (terp*) at;
+ at[0] = pc0;
+ at[1] = (T) puttup(t);
+ at[2] = (T) X(x);
+ at[3] = 0;
+ at[4] = (T) at;
 
-  Ap(ip+W2, Ph(at)); }
+ Ap(ip+W2, Ph(at)); }
 
 Vm(prencl) {
-  Z n = Gn(Argc);
-  n += n ? 12 : 11;
-  Have(n);
-  Xp = n;
-  Jump(encl); }
+ Z n = Gn(Argc);
+ n += n ? 12 : 11;
+ Have(n);
+ Xp = n;
+ Jump(encl); }
 
 Vm(encll) { Go(prencl, Locs); }
 Vm(encln) { Go(prencl, nil); }
@@ -1847,7 +1829,7 @@ Vm(pc0) {
 // finalize function instance closure
 Vm(pc1) {
  G(ip) = clos;
- GF(ip) = (terp*) xp;
+ GF(ip) = (T) xp;
  N(0); }
 
 // this is used to create closures.
@@ -1901,16 +1883,16 @@ Vm(mod) {
  N(1); }
 
 #define mm_u(_c,_v,_z,op){\
-  O x,m=_z,*xs=_v,*l=xs+_c;\
-  if (_c) for(;xs<l;m=m op Gn(x)){\
-    x = *xs++; TyCh(x, Num);}\
-  Go(ret, Pn(m));}
+ O x,m=_z,*xs=_v,*l=xs+_c;\
+ if (_c) Fo(;xs<l;m=m op Gn(x)){\
+  x = *xs++; TyCh(x, Num);}\
+ Go(ret, Pn(m));}
 #define mm_u0(_c,_v,_z,op){\
-  O x,m=_z,*xs=_v,*l=xs+_c;\
-  if (_c) for(;xs<l;m=m op Gn(x)){\
-    x = *xs++; TyCh(x, Num);\
-    if (x == Pn(0)) Jump(nope);}\
-  Go(ret, Pn(m));}
+ O x,m=_z,*xs=_v,*l=xs+_c;\
+ if (_c) Fo(;xs<l;m=m op Gn(x)){\
+  x = *xs++; TyCh(x, Num);\
+  if (x == Pn(0)) Jump(nope);}\
+ Go(ret, Pn(m));}
 
 Vm(add_u) {
  mm_u(Gn(Argc), Argv, 0, +); }
@@ -1978,22 +1960,22 @@ Vm(gt)    { xp = *sp++ >  xp ? xp : nil; N(1); }
 Vm(eq)    { xp = eql(xp, *sp++) ? ok : nil; N(1); }
 
 #define ord_w(r){\
-  O n=Gn(Argc),*xs=Argv,m,*l;\
-  switch(n){\
-    case 0: no: Go(ret, nil);\
-    case 1: break;\
-    default: for(l=xs+n-1,m=*xs;xs<l;m=*++xs)\
-               if(!(m r xs[1])) goto no;}\
-  Go(ret, ok);}
+ O n=Gn(Argc),*xs=Argv,m,*l;\
+ Sw(n){\
+  Ks 0: no: Go(ret, nil);\
+  Ks 1: Bk;\
+  Df: Fo (l=xs+n-1,m=*xs;xs<l;m=*++xs)\
+       if(!(m r xs[1])) goto no;}\
+ Go(ret, ok);}
 
 #define ord_wv(r){\
-  O n=Gn(Argc),*xs=Argv,m,*l;\
-  switch(n){\
-    case 0: Go(ret, nil);\
-    case 1: break;\
-    default: for(l=xs+n-1,m=*xs;xs<l;m=*++xs)\
-               if(!(r(m,xs[1]))) Go(ret, nil);}\
-  Go(ret, ok);}
+ O n=Gn(Argc),*xs=Argv,m,*l;\
+ Sw(n){\
+  Ks 0: Go(ret, nil);\
+  Ks 1: Bk;\
+  Df: Fo(l=xs+n-1,m=*xs;xs<l;m=*++xs)\
+       if(!(r(m,xs[1]))) Go(ret, nil);}\
+ Go(ret, ok);}
 
 #define ord_v(r) Go(ret, ord_u(Gn(Argc), Argv, r))
 
@@ -2004,9 +1986,9 @@ Vm(gteq_u) { ord_w(>=); }
 Vm(gt_u)   { ord_w(>); }
 
 #define typpp(t) {\
-  for (O *xs = Argv, *l=xs+Gn(Argc);xs<l;)\
-    if (kind(*xs++)!=t) Go(ret, nil);\
-  Go(ret, ok); }
+ Fo (O *xs = Argv, *l=xs+Gn(Argc);xs<l;)\
+  if (kind(*xs++)!=t) Go(ret, nil);\
+ Go(ret, ok); }
 Vm(nump_u) { typpp(Num); }
 Vm(homp_u) { typpp(Hom); }
 Vm(strp_u) { typpp(Oct); }
@@ -2032,11 +2014,11 @@ Vm(gsym_u) {
  y->code = v->count++ * mix;
  Go(ret, putsym(y)); }
 
-Vm(hom_fin_u) {
+Vm(hfin_u) {
  ArCh(1);
  TyCh(*Argv, Hom);
  O a = *Argv;
- GF(button(Gh(a))) = (terp*) a;
+ GF(button(Gh(a))) = (T) a;
  Go(ret, a); }
 
 Vm(ev_u) {

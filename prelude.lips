@@ -449,9 +449,9 @@
    ; the rewrite ensures the : expression is always an even form.
     (loop e x k) (? (~ x) k (:
      l (loop e (BB x) k)
-     m (? (~ (|| (toplp e) (memq (tget e'loc) (A x)))) l
-        (\ e m (? (toplp e) ((xc i-tbind (xd (A x) l)) e m)
-                            ((xc i-loc_ (xd (idx (tget e'loc) (A x)) l)) e m))))
+     m (? (~ (|| (toplp e) (memq (Tg e'loc) (A x)))) l
+          (toplp e) (xc i-tbind (xd (A x) l))
+          (xc i-loc_ (xd (idx (Tg e'loc) (A x)) l)))
      (? (= 'here (A (: v (look e (A x)))))
       (Im (B v) m) (eval (AB x) m))))
 
@@ -618,18 +618,16 @@
 ;  ev ; comment this line to define internals at toplevel
   )))))
 
-; now bootstrap:
+; now bootstrap
 ((ev egg) egg)
 
-; now some functions and macros using ev
+; functions and macros using ev
 (Ts macros
    '::: (: (defm n x .) (,(Ts macros n (: v (ev (A x))))
                           (? (B x) (ap defm (B x)) v)))
    'imm (\ x (ev x)))
 
-(: ; sequential composition : ((co f g h) x) = (h (g (f x)))
-   (co x .) (ev (L '\ 'x (foldl x 'x (\ m e (L (L '` e) m)))))
-   ; constant functions
+(: (co x .) (ev (L '\ 'x (foldl x 'x (\ m e (L (L '` e) m)))))
    (const x) (ev (L '\ (L '` x))))
 
 ; "drop privileges"
