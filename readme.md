@@ -1,7 +1,7 @@
 # lips
 lips is a lisp variant for recreational programming. it has a
 runtime written in C and a self-hosting threaded code compiler
-that makes it faster than most interpreted languages.
+that makes it faster than most interpreted languages
 
 ## build / install
 are you on linux? `make` should work. otherwise consult the
@@ -10,12 +10,13 @@ the binary and prelude under `~/.local` by default
 
 ## special forms
 nullary/unary cases are usually nil or identity, but `\`is an
-exception. equivalents are in scheme
+exception. examples have equivalents in scheme
 
 ### `,` begin
 - `(, a b c) = (begin a b c)`
 
-like scheme
+like scheme; unlike scheme functions have no implicit begin
+so use this for sequencing
 
 ### <code>\`</code> quote
 - <code>(\` x) = (quote x)</code>
@@ -26,24 +27,25 @@ like scheme, `'x` also works
 - `(? a b) = (cond (a b) (#t '()))` if then
 - `(? a b c) = (cond (a b) (#t c))` if then else
 
-up to any number of branches. `()` is the only false value
+any number of branches with implicit fallthough `()`which is
+the only false value and evaluates to itself
 
 ### `:` define / letrec
 - `(: a0 b0 ... an bn) = (begin (define a b) ... (define an bn) an)` even arguments : define variables in the current scope
 - `(: a0 b0 ... an bn c) = (letrec ((a0 b0) ... (an bn)) c)` odd arguments : define variables and evaluate an expression in an inner scope
-- `(: ((a b) c) (b c)) = (begin (define (a b) (lambda (c) (b c))) a)` sugar for function defs, nestable for exact currying
+- `(: ((f g) x y) (g x y)) = (begin (define (f g) (lambda (x y) (g x y))) f)` nestable sugar for function defs
 
-the most complicated form, naming things is literally hard
+even : define :: odd : letrec
 
 ### `\` lambda
-- `(\) = (lambda () '())` nullary case is an empty function
-- `(\ (f x)) = (lambda () (f x))` unary case is a nullary function
-- `(\ a0 ... an x) = (lambda (a0 ... an) x)` many arguments, one expression
+- `(\) = (lambda () '())` nullary -> empty function
+- `(\ (f x)) = (lambda () (f x))` unary -> a thunk
+- `(\ a0 ... an x) = (lambda (a0 ... an) x)` however many arguments and one expression
 - `(\ a b . (a b)) = (lambda (a . b) (a b))`  vararg syntax
 
-use `,` to sequence multiple expressions in one function body.
-`.` in the vararg syntax is a normal symbol, lips doesn't have
-improper list literals
+`.` in the vararg syntax is a normal symbol with no special
+meaning elsewhere (there are no pair literals). calling a
+function with extra arguments is ok (not enough is an error)
 
 ## some predefined functions / macros
 some of these are primitives in lips.c and some are defined in
@@ -51,22 +53,18 @@ prelude.lips.
 
 - `L = list` `X = cons` `A = car` `B = cdr`.  `AA`-`BB` are macros.
 - `+` `-` `*` `/` `%` what you think
-- `<` `<=` `>=` `>` variadic, test each successive pair of
-  arguments, works on numbers.
-- `=` variadic, works on anything, recursive on pairs so
-  `(= (L 1 2 3) (L 1 2 3))`.
+- `<` `<=` `>=` `>` variadic, test each successive pair of arguments, works on numbers.
+- `=` variadic, works on anything, recursive on pairs so `(= (L 1 2 3) (L 1 2 3))`.
 - `ev = eval`, `ap = apply`, `ccc = call/cc`
-- `cu` partial apply : `((cu f a b) c d) = (f a b c d)`
-  `co` compose : `((co f g h) x) = (h (g (f x)))`
-- `.` print arguments separated by spaces, print newline, return
-  last argument
-- `iota` and `rho` are kind of like in APL but not as good.
+- `cu` partial apply : `((cu f a b) c d) = (f a b c d)` `co` compose : `((co f g h) x) = (h (g (f x)))`
+- `.` print arguments separated by spaces, print newline, return last argument
+- `iota` and `rho` are kind of like in APL but not as good
 - `homp` `nump` `twop` `symp` `nilp` `tblp` `strp` `vecp` type predicates
-- hash functions: `tbl tset tget thas tkeys tlen tdel` ; see prelude.lips for usage
+- hash functions: `tbl tset tget thas tkeys tlen tdel` ; tbl / tset take any number of key/value pairs
 - string functions: n-ary constructor `(str 97 97 97) = "aaa"` ; `slen sget ssub scat`
 - symbol functions: `gensym`
 - `(::: nom0 def0 nom1 def1 ...)` define macro
-- `(>>= x y z f) = (f x y z)`
+- `(>>= x y z f) = (f x y z)` for readability
 
 ## code examples
 
@@ -105,12 +103,11 @@ prelude.lips.
 ## missing features
 ### type inference
 under a weak type system suitable for dynamic languages.
-this will catch many errors statically and reduce runtime
-type checks
+this will catch many errors and reduce runtime checks
 
 ### polymorphism / overloading
-of functions like `+`, etc. this will need to fit into the
-type system somehow
+of functions like `+`, etc. this will need to fit in with the
+type system
 
 ### general purpose programming
 wide characters, floats, arrays, files, networking, ...
