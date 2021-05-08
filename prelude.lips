@@ -3,7 +3,7 @@
 ; explicitly execute later.
 
 ; " standard library "
-(: lib '(,
+(: egg '(,
   (: ~ nilp 2p twop Hp homp Tg tget Ts tset Td tdel Th thas
      (and l)  (? l (? (A l) (and (B l))) 1)
      (&& l .) (and l)
@@ -78,24 +78,22 @@
     (L ': y x ((: (loop a)
       (? a (? (B a) (L '? (L '= y (A a)) (A (B a))
                       (loop (B (B a))))
-                     (A a)))) a)))))))
+                     (A a)))) a)))))
 
-; the compiler
-(: egg '(: ev (ev '(:
+  (: ev (ev '(: ; eval the compiler & redefine eval
  ; this function creates a new lexical environment.
  ; if the second argument (the parent scope) is nil,
  ; then the expression is compiled in the global scope.
  (env a p n)  (:
-  (asig a n)
-   (? (~ a) (X n a)
-    (? (? (B a) (= '. (AB a)))
-     (X (- (+ n 1)) (L (A a)))
-      (>>= (asig (B a) (+ n 1)) (\ r
-       (X (A r) (X (A a) (B r)))))))
-  (>>= (asig a 0) (\ b (tbl 'arg (B b) 'par p
-                            'nom n 'def (tbl)
-                          ;  'ty (L (L (tbl)))
-                            'val (tbl) 'sig (A b)))))
+  (asig a n) (?
+   (~ a) (X n a)
+   (&& (B a) (= '. (AB a))) (X (- (+ n 1)) (L (A a)))
+   (, (: r (asig (B a) (+ n 1))) (X (A r) (X (A a) (B r)))))
+  b (asig a 0)
+  (tbl 'arg (B b) 'par p
+       'nom n 'def (tbl)
+    ;  'ty (L (L (tbl)))
+       'val (tbl) 'sig (A b)))
 
  (toplp e) (~ (Tg e'par))
 
@@ -618,11 +616,10 @@
   (ev x) (: e (env () () 'ev) (((eval (weak e x) ini) e 0) x))
   ;; end of compiler namespace ; now return the eval function
 ;  ev ; comment this line to define internals at toplevel
-  ))))
+  )))))
 
-; end of source definitions.
 ; now bootstrap:
-(ev lib) (ev egg) (ev lib) (ev egg)
+((ev egg) egg)
 
 ; now some functions and macros using ev
 (Ts macros
@@ -636,5 +633,5 @@
    (const x) (ev (L '\ (L '` x))))
 
 ; "drop privileges"
-(: loc '(lib egg macros ns emi emx hom hseek hgeti hgetx hfin)
+(: loc '(egg macros ns emi emx hom hseek hgeti hgetx hfin)
  (each loc (\ v (Td ns v))))
