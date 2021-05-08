@@ -29,35 +29,36 @@ up to any number of branches. `()` is the only false value
 ### `:` define / letrec
 - `(: a0 b0 ... an bn) = (begin (define a b) ... (define an bn) an)` even arguments : define variables in the current scope
 - `(: a0 b0 ... an bn c) = (letrec ((a0 b0) ... (an bn)) c)` odd arguments : define variables and evaluate an expression in an inner scope
-- `(: ((a b) c) (b c)) = (begin (define (a b) (lambda (c) (b c))) a)` sugar for function defs, nestable for precise currying
+- `(: ((a b) c) (b c)) = (begin (define (a b) (lambda (c) (b c))) a)` sugar for function defs, nestable for exact currying
 
-this is the most complicated form bc naming things is literally hard
+the most complicated form, naming things is literally hard
 
 ### `\` lambda
 - `(\) = (lambda () '())` nullary case is an empty function
 - `(\ (f x)) = (lambda () (f x))` unary case is a nullary function
 - `(\ a0 ... an x) = (lambda (a0 ... an) x)` many arguments, one expression
-- `(\ a b . (a b)) = (lambda (a . b) (a b))`  vararg syntax ; `.` is just a symbol
+- `(\ a b . (a b)) = (lambda (a . b) (a b))`  vararg syntax
 
-use `,` to sequence multiple expressions in one function body
+use `,` to sequence multiple expressions in one function body.
+`.` in the vararg syntax is a normal symbol, lips doesn't have
+improper list literals
 
-## predefined functions / macros
+## some predefined functions / macros
 some of these are primitives in lips.c and some are defined in
-prelude.lips. not an exhaustive list. names are guesses, sorry
+prelude.lips.
 
-- `+` `-` `*` `/` `%` what you probably think!
+- `L = list` `X = cons` `A = car` `B = cdr`.  `AA`-`BB` are macros.
+- `+` `-` `*` `/` `%` what you think
 - `<` `<=` `>=` `>` variadic, test each successive pair of
   arguments, works on numbers.
 - `=` variadic, works on anything, recursive on pairs so
   `(= (L 1 2 3) (L 1 2 3))`.
 - `ev = eval`, `ap = apply`, `ccc = call/cc`
-- `cu` partial application : `((cu + 3) 7) = 10` ;
-  `co` sequential composition : `((co (cu + 3) (cu * 9) -) 1) = -36`
+- `cu` partial apply : `((cu f a b) c d) = (f a b c d)`
+  `co` compose : `((co f g h) x) = (h (g (f x)))`
 - `.` print arguments separated by spaces, print newline, return
   last argument
-- `A = car` `B = cdr` `X = cons` `L = list`. `AA`-`BB` are
-  defined as macros.
-- `iota` and `rho` are kind of like in apl but not as good.
+- `iota` and `rho` are kind of like in APL but not as good.
 - `homp` `nump` `twop` `symp` `nilp` `tblp` `strp` `vecp` type predicates
 - hash functions: `tbl tset tget thas tkeys tlen tdel` ; see prelude.lips for usage
 - string functions: n-ary constructor `(str 97 97 97) = "aaa"` ; `slen sget ssub scat`
