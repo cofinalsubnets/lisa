@@ -1,5 +1,5 @@
 # lips
-fun lisp
+lisp dialect for recreational programming on 64-bit hardware
 
 ## build / install
 are you on linux? `make` should work. otherwise consult the
@@ -21,15 +21,17 @@ like scheme
 like scheme, `'x` also works
 
 ### `?` cond
-- `(? a b) = (cond (a b) (#t '()))` even case : default value is nil
-- `(? a b c) = (cond (a b) (#t c))` odd case : default branch is given
+- `(? a b) = (cond (a b) (#t '()))` if then
+- `(? a b c) = (cond (a b) (#t c))` if then else
 
-and so on. `()` is false and self-quoting and generally the "default" value
+up to any number of branches. `()` is the only false value
 
-### `:` define / let
+### `:` define / letrec
 - `(: a0 b0 ... an bn) = (begin (define a b) ... (define an bn) an)` even arguments : define variables in the current scope
 - `(: a0 b0 ... an bn c) = (letrec ((a0 b0) ... (an bn)) c)` odd arguments : define variables and evaluate an expression in an inner scope
-- `(: (a b c) (b c)) = (begin (define (a b c) (b c)) a)` function symbols : scheme-like syntactic sugar for defining functions
+- `(: ((a b) c) (b c)) = (begin (define (a b) (lambda (c) (b c))) a)` sugar for function defs, nestable for precise currying
+
+this is the most complicated form bc naming things is literally hard
 
 ### `\` lambda
 - `(\) = (lambda () '())` nullary case is an empty function
@@ -37,11 +39,11 @@ and so on. `()` is false and self-quoting and generally the "default" value
 - `(\ a0 ... an x) = (lambda (a0 ... an) x)` many arguments, one expression
 - `(\ a b . (a b)) = (lambda (a . b) (a b))`  vararg syntax ; `.` is just a symbol
 
-calling a function with extra arguments is not an error. use `,` to sequence multiple expressions in one function body
+use `,` to sequence multiple expressions in one function body
 
 ## predefined functions / macros
 some of these are primitives in lips.c and some are defined in
-prelude.lips. not an exhaustive list. the names are just kind of guesses, sorry
+prelude.lips. not an exhaustive list. names are guesses, sorry
 
 - `+` `-` `*` `/` `%` what you probably think!
 - `<` `<=` `>=` `>` variadic, test each successive pair of
@@ -79,8 +81,8 @@ prelude.lips. not an exhaustive list. the names are just kind of guesses, sorry
 ### church numerals
 ```lisp
 (: K const I id ; kind of like SK combinators
-   (P f) (\ g (\ x (f (g x)))) ; normal composition
-   (Q f) (\ g (\ x ((P (f x)) (g x)))) ; with an argument
+   (((P f) g) x) (f (g x)) ; normal composition
+   (((Q f) g) x) ((P (f x)) (g x)) ; with an argument
 
    zero (K I) one I exp I mul P add Q succ (add one)
 
@@ -98,8 +100,8 @@ prelude.lips. not an exhaustive list. the names are just kind of guesses, sorry
 ```
 
 ## missing features
-- arrays, floats and many other types
 - type inference
+- arrays, floats and many other types
 - unicode
 - useful i/o
 - namespaces / module system

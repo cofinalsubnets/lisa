@@ -364,8 +364,8 @@
  ; generates code to produce the value of the expression
  ; produced by the first moiety.
 
- (xc i k) (\ e m (emf i (k e (+ m 1))))
- (xd x k) (\ e m (emx x (k e (+ m 1))))
+ ((xc i k) e m) (emf i (k e (+ m 1)))
+ ((xd x k) e m) (emx x (k e (+ m 1)))
 
  (emf i h) ((? (: q (Tg fuse i)) q emi) i h)
  (Im x k) (xc i-imm (xd x (->
@@ -380,9 +380,9 @@
  ; with env stack structures during code generation:
  ; either manipulate the stack or embed the item at the
  ; top into the thread.
- (pushr s) (\ k (\ e m (>>= (k e m)       (\ k (A (Ts e s (X k (Tg e s))))))))
- (popr s)  (\ k (\ e m (>>= (k e m)       (\ k (, (Ts e s (B (Tg e s))) k)))))
- (peekr s) (\ k (\ e m (>>= (k e (+ m 1)) (\ k (emx (A (Tg e s)) k)))))
+ (((pushr s) k) e m) (>>= (k e m)       (\ k (A (Ts e s (X k (Tg e s))))))
+ (((popr s) k) e m)  (>>= (k e m)       (\ k (, (Ts e s (B (Tg e s))) k)))
+ (((peekr s) k) e m) (>>= (k e (+ m 1)) (\ k (emx (A (Tg e s)) k)))
 
  push1 (pushr 's1) push2 (pushr 's2)
  pop1  (popr 's1)  pop2  (popr 's2)
@@ -396,12 +396,12 @@
               (fail))
   (xc tcr k)))
 
- (-> t k) (\ e m (:
+ ((-> t k) e m) (:
   (tc h) (case (consumes h)
    () h
    t (tc (hseek h 1))
    (fail))
-  ((? t tc id) (k e m))))
+  ((? t tc id) (k e m)))
 
  (consumes h) (case (hgeti h)
   i-idH 'hom i-idZ 'num
@@ -424,7 +424,7 @@
        (loop (BB x) (push1 (eval (AB x) fin)))))))))
     (pop2 (loop x (push2 k))))
 
-   (lamb x k) (\ e m (:
+   ((lamb x k) e m) (:
     (nom e k) (case (hgeti k)
      i-tbind (hgetx (hseek k 1))
      i-loc_  (at (Tg e'loc) (hgetx (hseek k 1))))
@@ -439,7 +439,7 @@
     y (ltu e (nom e l) x)
     (? (homp y) (emf i-imm (emx y l))
      (emi (? (Tg e'loc) i-encll i-encln)
-      (emx (X (B y) (clo-thd e (A y) k)) l)))))
+      (emx (X (B y) (clo-thd e (A y) k)) l))))
 
    (seq x k) (? x (eval (A x) (seq (B x) k)) k)
    (app a b k) (:
@@ -468,7 +468,7 @@
     ', (seq (B x) k)
     (app z (B x) k)))
 
-  (symb x k) (\ e m (:
+  ((symb x k) e m) (:
    (late d) (:
     ; the runtime encodes fundamental types as specific
     ; integer values.
@@ -502,7 +502,7 @@
       (xd (idx (Tg e s) x) k)))
     (, (: l (len (Tg e'clo)))
        (Ts e'clo(snoc (Tg e'clo) x))
-       ((xc i-clo (xd l k)) e m)))))
+       ((xc i-clo (xd l k)) e m))))
 
 
   ((? (twop x) list (symp x) symb Im) x k))
@@ -514,11 +514,11 @@
   ; a common case is to rewrite the last emitted
   ; instruction or value according to an exact table
   ; of values
-  (f1 g xs .) (\ i p (>>= (g p) (hseek p 1) (\ a q
+  ((f1 g xs .) i p) (>>= (g p) (hseek p 1) (\ a q
    (: (loop xs) (? (~ xs) (emi i p)
                    (= a (A xs)) (emi (AB xs) q)
                    (loop (BB xs)))
-   (loop xs)))))
+   (loop xs))))
 
   ; for specialized indexed instructions
   (argn a b) (f1 hgetx 0 a 1 b)
@@ -553,7 +553,7 @@
      (: z (fold f m (B x)) (X (A z) (X y (B z))))))
    (? (= (f) (A (: j (fold f m x)))) (B j) j))
 
-  (ordr i) (\ x k (?
+  ((ordr i) x k) (?
    (~ x) (Im () k)
    (~ (B x)) (Im 1 k)
    (eval (A x) (:
@@ -561,27 +561,27 @@
      (eval x (xc i (? (~ y) (push2 k)
       (xc i-barnch (peek2 (xc i-push
        (fold k (A y) (B y))))))))
-    (xc i-push (pop2 (fold k (AB x) (BB x))))))))
+    (xc i-push (pop2 (fold k (AB x) (BB x)))))))
 
-  (abel f i) (\ x k (>>= (mono f (f) x) (\ x
-   (eval (A x) (>- 'num (2f i k (B x)))))))
+  ((abel f i) x k) (>>= (mono f (f) x) (\ x
+   (eval (A x) (>- 'num (2f i k (B x))))))
 
-  (0y i t0) (\ _ k (xc i (-> t0 k)))
-  (1y i t0 t1) (\ x k
-   (eval (A x) (>- t0 (xc i (-> t1 k)))))
-  (2y i t0 t1 t2) (\ x k
+  ((0y i t0) _ k) (xc i (-> t0 k))
+  ((1y i t0 t1) x k)
+   (eval (A x) (>- t0 (xc i (-> t1 k))))
+  ((2y i t0 t1 t2) x k)
    (eval (AB x) (>- t1 (xc i-push
-    (eval (A x) (>- t0 (xc i (-> t2 k))))))))
+    (eval (A x) (>- t0 (xc i (-> t2 k)))))))
   (2f i k x)
    (: (2g i k x xs)
        (xc i-push (eval x (>- 'num (xc i (2f i k xs)))))
     (? x (2g i k (A x) (B x)) (-> 'num k)))
 
-  (3y i t0 t1 t2 t3) (\ x k
+  ((3y i t0 t1 t2 t3) x k)
    (eval (A (BB x)) (>- t2
     (xc i-push (eval (AB x) (>- t1
      (xc i-push (eval (A x) (>- t0
-      (xc i-tset (-> t3 k)))))))))))
+      (xc i-tset (-> t3 k))))))))))
 
   (tbl
    id (\ x k (eval (A x) k))

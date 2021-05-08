@@ -919,18 +919,17 @@ St O rwlade(V v, O x) { O y; R
        y = pair(v, y, YY(x))),
  pair(v, XX(x), y); }
 
-St _ scan_def_add(V v, M e, O y, O x) {
-  Mm(x, y = pair(v, y, loc(*e)), loc(*e) = y);
-  scan(v, e, x); }
-
-St int scan_def(V v, M e, O x) { O r;
+St int scan_def(V v, M e, O x) {
  if (!twop(x)) R 1; // this is an even case so export all the definitions to the local scope
  if (!twop(Y(x))) R 0; // this is an odd case so ignore these, they'll be imported after the rewrite
- Mm(x, r = scan_def(v, e, YY(x)));
+ mm(&x);
+ int r = scan_def(v, e, YY(x));
  if (r) {
-  if (twop(X(x))) x = rwlade(v, x);
-  scan_def_add(v, e, X(x), XY(x)); }
- R r; }
+  while (twop(X(x))) x = rwlade(v, x);
+  O y = pair(v, X(x), loc(*e));
+  loc(*e) = y;
+  scan(v, e, XY(x)); }
+ R um, r; }
 
 St _ scan(V v, M e, O x) {
  if (!twop(x) || X(x) == La || X(x) == Qt) R;
