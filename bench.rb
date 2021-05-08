@@ -118,11 +118,11 @@ end
 Bench.mark("ack(3,9)") do |ack|
   ack.add lips, "ack.lips"
   ack.add luajit, "ack.lua"
+#  ack.add ljoff, "ack.lua"
   ack.add sbcl, "ack.lisp"
   ack.add chez, "ack.scm"
   ack.add petite, "ack.scm"
   ack.add node, "ack.js"
-  ack.add ljoff, "ack.lua"
   ack.add petite, "ack.scm"
   ack.add guile, "ack.scm"
   ack.add ruby, "ack.rb"

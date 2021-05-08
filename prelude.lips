@@ -168,10 +168,11 @@
 
  (weak e x)  (:
   ; function symbol sugar
-  (sug x) (X (AA x) (X (X '\ (snoc (BA x) (AB x))) (BB x)))
+  (sug x)
+   (? (2p (A x)) (sug (X (AA x) (X (X '\ (snoc (BA x) (AB x)))(BB x)))) x)
 
   (loop x) (? x (?
-   (2p (A x)) (loop (sug x))
+   (2p (A x)) (loop (.'sug(sug x)))
    (, (? (qtd (: a (AB x))) (Ts (Tg e'val) (A x) (unq a))
                             (Ts (Tg e'def) (A x) a))
       (rec a)
@@ -264,9 +265,10 @@
      (fail)))) ; oops
 
    (defn e x) (:
+    (nom s) (? (2p s) (nom (A s)) s)
     (sug d) (L (L '\ (L ', (init d) (last d))))
     (loop e x) (? x (:
-     y (? (2p (A x)) (AA x) (A x))
+     y (nom (A x))
      ll (loop e (BB x))
      (X y (X (Tg (Tg e'def) y) ll))))
     (? (B x) (? (= 0 (% (len x) 2)) (sug x)

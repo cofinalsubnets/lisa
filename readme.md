@@ -1,5 +1,5 @@
 # lips
-lisp playground
+fun lisp
 
 ## build / install
 are you on linux? `make` should work. otherwise consult the
@@ -18,13 +18,13 @@ like scheme
 ### <code>\`</code> quote
 - <code>(\` x) = (quote x)</code>
 
-like scheme. `'x` also works
+like scheme, `'x` also works
 
 ### `?` cond
 - `(? a b) = (cond (a b) (#t '()))` even case : default value is nil
 - `(? a b c) = (cond (a b) (#t c))` odd case : default branch is given
 
-etc. `()` is the only false value & it's self-quoting
+and so on. `()` is false and self-quoting and generally the "default" value
 
 ### `:` define / let
 - `(: a0 b0 ... an bn) = (begin (define a b) ... (define an bn) an)` even arguments : define variables in the current scope
@@ -37,11 +37,11 @@ etc. `()` is the only false value & it's self-quoting
 - `(\ a0 ... an x) = (lambda (a0 ... an) x)` many arguments, one expression
 - `(\ a b . (a b)) = (lambda (a . b) (a b))`  vararg syntax ; `.` is just a symbol
 
-use `,` to sequence multiple expressions in one function body
+calling a function with extra arguments is not an error. use `,` to sequence multiple expressions in one function body
 
 ## predefined functions / macros
 some of these are primitives in lips.c and some are defined in
-prelude.lips. the names are just kind of guesses, sorry
+prelude.lips. not an exhaustive list. the names are just kind of guesses, sorry
 
 - `+` `-` `*` `/` `%` what you probably think!
 - `<` `<=` `>=` `>` variadic, test each successive pair of
@@ -73,15 +73,14 @@ prelude.lips. the names are just kind of guesses, sorry
 ### hyperoperations
 ```lisp
 ; send n to the nth hyperoperation where 0 is +
-(: (hy n) (? (= n 0) + (\ x y
- (foldr1 (rho y x) (hy (- n 1))))))
+(: (hy n) (? (= n 0) + (\ x y (foldr1 (rho y x) (hy (- n 1))))))
 ```
 
 ### church numerals
 ```lisp
-(: K const I id ; as in SKI combinators
-   (P f) (\ g (\ x (f (g x))))
-   (Q x) (\ y (\ z ((P (x z)) (y z)))) ; Q : S :: compose : apply
+(: K const I id ; kind of like SK combinators
+   (P f) (\ g (\ x (f (g x)))) ; normal composition
+   (Q f) (\ g (\ x ((P (f x)) (g x)))) ; with an argument
 
    zero (K I) one I exp I mul P add Q succ (add one)
 
