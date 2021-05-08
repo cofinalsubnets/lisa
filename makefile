@@ -3,60 +3,42 @@ n=lips
 b=$n.bin
 p=prelude.lips
 t=$(wildcard test/*)
-h=$(wildcard *.h)
 s=$(wildcard *.c)
-o=$(s:.c=.o)
 v="`git rev-parse HEAD`-git"
 run=./$b -_ $p
 tcmd=$(run) $t
 rcmd=$(run) -i
 
-# C compiler
-# gcc and clang both work. other compilers, tcc etc., don't.
-# gcc generates faster and smaller code on x86 and ARM.
-#
-# why these compiler flags :
-# - fixnums need sign-extended bit shifting.
-# - inlining bloats code and GCC even does it for tail calls,
-#   which is silly. turn it off by default.
-# - stack smash protection also hurts tco.
-c=gcc -g -O2 -flto -std=gnu17\
+c=gcc -std=gnu17 -g -O2 -flto\
 	-Wall -Wno-shift-negative-value\
 	-Wstrict-prototypes\
-	-fno-inline -fno-stack-protector\
-	-fno-unroll-loops -fweb -fpie
+	-fno-stack-protector\
+	-fno-unroll-loops
 
 test: $n
 	@/usr/bin/env TIMEFORMAT="in %Rs" bash -c "time $(tcmd)"
 
 # build
 $n: $b
-	@strip -o $@ $b
-	@stat -c "$@ %sB" $@
-$b: $m $h $o
-	@$c -o $@ $o
-	@stat -c "$@ %sB" $@
-.c.o:
-	@$c -c $<
-	@stat -c "$@ %sB" $@
+	strip -o $n $b
+$b: $m $s
+	$c -o $b $s
 
 # install
-pref=~/.local
-bins=$(pref)/bin
-libs=$(pref)/lib/lips
-b0=$(bins)/$n
-l0=$(libs)/prelude.lips
+pref=~/.local/
+bins=$(pref)bin/
+libs=$(pref)lib/lips/
+b0=$(bins)$n
+l0=$(libs)prelude.lips
 
 $(bins):
-	@mkdir -p $(bins)
+	mkdir -p $(bins)
 $(libs):
-	@mkdir -p $(libs)
+	mkdir -p $(libs)
 $(b0): $n $(bins)
-	@cp $^
-	@echo $@
+	cp $^
 $(l0): $p $(libs)
-	@cp $^
-	@echo $@
+	cp $^
 
 install: $(b0) $(l0)
 
@@ -74,12 +56,10 @@ perf.data: $b $t $p
 valg: $b $t
 	@valgrind $(tcmd)
 sloc:
-	@which cloc >/dev/null && cloc --by-file --force-lang=Lisp,$n *.{c,$n} || cat $s $h $m | grep -v ' *//.*' | grep -v '^$$' | wc -l
-bins: $o $n $b
+	@which cloc >/dev/null && cloc --by-file --force-lang=Lisp,$n *.{c,$n} || cat $s | grep -v ' *//.*' | grep -v '^$$' | wc -l
+bins: $n $b
 	@stat -c "%n %sB" $^
-bench: $b
-	@ruby ./bench.rb "$(run)"
 repl: $n
 	@which rlwrap >/dev/null && rlwrap $(rcmd) || $(rcmd)
 
-.PHONY: test clean perf valg sloc bins install vim bench repl
+.PHONY: test clean perf valg sloc bins install vim repl
