@@ -1,51 +1,47 @@
 # lips
-lips is a lisp variant for recreational programming. it has a
-runtime written in C and a self-hosting threaded code compiler
-that makes it faster than most interpreted languages
+lips is a simple lisp variant with a runtime written in C and
+a self-hosting threaded code compiler that makes it faster than
+most interpreted languages.
 
 ## build / install
 are you on linux? `make` should work. otherwise consult the
 makefile for the C compiler invocation. `make install` puts
-the binary and prelude under `~/.local` by default
+files under `~/.local/{bin,lib}/`.
 
 ## special forms
 nullary/unary cases are usually nil or identity, but `\`is an
-exception. examples have equivalents in scheme
+exception. equivalents to examples are in scheme.
 
 ### `,` begin
 - `(, a b c) = (begin a b c)`
 
-like scheme; unlike scheme functions have no implicit begin
-so use this for sequencing
-
 ### <code>\`</code> quote
 - <code>(\` x) = (quote x)</code>
 
-like scheme, `'x` also works
+`'x` works too.
 
 ### `?` cond
-- `(? a b) = (cond (a b) (#t '()))` if then
 - `(? a b c) = (cond (a b) (#t c))` if then else
+- `(? a b) = (cond (a b) (#t #f))` if then
 
-any number of branches with implicit fallthough `()`which is
-the only false value and evaluates to itself
+takes any number of branches. with no fallthrough branch the
+implicit value is nil (`()`). nil evals to itself and is the
+only false value.
 
 ### `:` define / letrec
 - `(: a0 b0 ... an bn) = (begin (define a b) ... (define an bn) an)` even arguments : define variables in the current scope
 - `(: a0 b0 ... an bn c) = (letrec ((a0 b0) ... (an bn)) c)` odd arguments : define variables and evaluate an expression in an inner scope
 - `(: ((f g) x y) (g x y)) = (begin (define (f g) (lambda (x y) (g x y))) f)` nestable sugar for function defs
 
-even : define :: odd : letrec
-
 ### `\` lambda
-- `(\) = (lambda () '())` nullary -> empty function
+- `(\) = (lambda () #f)` nullary -> empty function
 - `(\ (f x)) = (lambda () (f x))` unary -> a thunk
 - `(\ a0 ... an x) = (lambda (a0 ... an) x)` however many arguments and one expression
 - `(\ a b . (a b)) = (lambda (a . b) (a b))`  vararg syntax
 
 `.` in the vararg syntax is a normal symbol with no special
 meaning elsewhere (there are no pair literals). calling a
-function with extra arguments is ok (not enough is an error)
+function with extra arguments is ok (not enough is an error).
 
 ## some predefined functions / macros
 some of these are primitives in lips.c and some are defined in
@@ -103,15 +99,15 @@ prelude.lips.
 ## missing features
 ### type inference
 under a weak type system suitable for dynamic languages.
-this will catch many errors and reduce runtime checks
+this will catch many errors and reduce runtime checks.
 
 ### polymorphism / overloading
 of functions like `+`, etc. this will need to fit in with the
-type system
+type system.
 
 ### general purpose programming
 wide characters, floats, arrays, files, networking, ...
 
 ### namespace / module system
-important for ease of use and has practical benefits also
-for compiling
+important for ease of use and has practical benefits for
+compiling.
