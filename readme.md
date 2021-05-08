@@ -1,5 +1,7 @@
 # lips
-lisp dialect for recreational programming on 64-bit hardware
+lips is a lisp variant for recreational programming. it has a
+runtime written in C and a self-hosting threaded code compiler
+that makes it faster than most interpreted languages.
 
 ## build / install
 are you on linux? `make` should work. otherwise consult the
@@ -101,8 +103,18 @@ prelude.lips.
 ```
 
 ## missing features
-- type inference
-- arrays, floats and many other types
-- unicode
-- useful i/o
-- namespaces / module system
+### type inference
+under a weak type system suitable for dynamic languages.
+this will catch many errors statically and reduce runtime
+type checks
+
+### polymorphism / overloading
+of functions like `+`, etc. this will need to fit into the
+type system somehow
+
+### general purpose programming
+wide characters, floats, arrays, files, networking, ...
+
+### namespace / module system
+important for ease of use and has practical benefits also
+for compiling
