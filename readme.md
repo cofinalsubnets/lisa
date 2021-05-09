@@ -15,6 +15,7 @@ exception. equivalents to examples are in scheme.
 ### `,` begin
 - `(, a b c) = (begin a b c)`
 
+
 ### <code>\`</code> quote
 - <code>(\` x) = (quote x)</code>
 
@@ -26,7 +27,7 @@ exception. equivalents to examples are in scheme.
 
 takes any number of branches. with no fallthrough branch the
 implicit value is nil (`()`). nil evals to itself and is the
-only false value.
+only false value, hence `#f` in scheme.
 
 ### `:` define / letrec
 - `(: a0 b0 ... an bn) = (begin (define a b) ... (define an bn) an)` even arguments : define variables in the current scope

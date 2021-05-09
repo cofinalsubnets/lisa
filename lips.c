@@ -809,7 +809,6 @@ O table(V v) {
 #define ninl(x) x NoInline
 terp insts(ninl);
 
-
 ////
 /// bootstrap thread compiler
 //
@@ -1218,55 +1217,55 @@ St In Vd init_globals_array(V v) {
 #define USR_PATH ".local/lib/"NOM"/"
 #define SYS_PATH "/usr/lib/"NOM"/"
 St int seekp(Ko Ch* p) {
-  int b, c;
-  b = open(getenv("HOME"), O_RDONLY);
-  c = openat(b, USR_PATH, O_RDONLY), close(b);
-  b = openat(c, p, O_RDONLY), close(c);
-  if (-1 < b) R b;
-  b = open(SYS_PATH, O_RDONLY);
-  c = openat(b, p, O_RDONLY), close(b);
-  R c; }
+ int b, c;
+ b = open(getenv("HOME"), O_RDONLY);
+ c = openat(b, USR_PATH, O_RDONLY), close(b);
+ b = openat(c, p, O_RDONLY), close(c);
+ if (-1 < b) R b;
+ b = open(SYS_PATH, O_RDONLY);
+ c = openat(b, p, O_RDONLY), close(b);
+ R c; }
 
 
 V bootstrap(V v) {
-  if (v == NULL) R v;
-  Ko Ch *path = "prelude.lips";
-  int pre = seekp(path);
-  if (pre == -1) errp(v, "can't find %s", path);
-  El {
-    Io f = fdopen(pre, "r");
-    if (setjmp(v->restart)) R
-      errp(v, "error in %s", path),
-      fclose(f), finalize(v);
-    scr(v, f), fclose(f); }
-  R v; }
+ if (v == NULL) R v;
+ Ko Ch *path = "prelude.lips";
+ int pre = seekp(path);
+ if (pre == -1) errp(v, "can't find %s", path);
+ El {
+  Io f = fdopen(pre, "r");
+  if (setjmp(v->restart)) R
+   errp(v, "error in %s", path),
+   fclose(f), finalize(v);
+  scr(v, f), fclose(f); }
+ R v; }
 
 V initialize(int argc, Ko Ch **argv) {
-  V v = malloc(sizeof(Sr V));
-  if (!v || setjmp(v->restart))
-    R errp(v, "oom"), finalize(v);
-  v->t0 = clock(),
-  v->ip = v->xp = v->syms = v->glob = nil,
-  v->fp = v->hp = v->sp = (M) w2b(1),
-  v->count = 0, v->mem_len = 1, v->mem_pool = NULL,
-  v->mem_root = NULL;
-  init_globals_array(v);
-  O y = interns(v, "ns");
-  tblset(v, Top, y, Top);
-  y = interns(v, "macros");
-  tblset(v, Top, y, Mac);
-  y = interns(v, "argv");
-  O a = nil;
-  mm(&y); mm(&a);
-  Fo (O z; argc--;)
-    z = string(v, argv[argc]),
-    a = pair(v, z, a);
-  um, um, tblset(v, Top, y, a);
-  R v; }
+ V v = malloc(Sz(Sr V));
+ if (!v || setjmp(v->restart))
+  R errp(v, "oom"), finalize(v);
+ v->t0 = clock(),
+ v->ip = v->xp = v->syms = v->glob = nil,
+ v->fp = v->hp = v->sp = (M) w2b(1),
+ v->count = 0, v->mem_len = 1, v->mem_pool = NULL,
+ v->mem_root = NULL;
+ init_globals_array(v);
+ O y = interns(v, "ns");
+ tblset(v, Top, y, Top);
+ y = interns(v, "macros");
+ tblset(v, Top, y, Mac);
+ y = interns(v, "argv");
+ O a = nil;
+ mm(&y); mm(&a);
+ Fo (O z; argc--;)
+  z = string(v, argv[argc]),
+  a = pair(v, z, a);
+ um, um, tblset(v, Top, y, a);
+ R v; }
 
 V finalize(V v) {
-  if (v) free(v->mem_pool), free(v);
-  R NULL; }
+ if (v) free(v->mem_pool), free(v);
+ R NULL; }
 
 #undef arg
 #undef loc
@@ -1543,7 +1542,6 @@ Vm(ap_u) {
  Subd = off;
  Clos = nil;
  Ap(x, nil); }
-
 
 // instructions used by the compiler
 Vm(hom_u) {

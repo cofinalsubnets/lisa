@@ -443,7 +443,9 @@
     (loop x k) (? (~ x) k
      (loop (B x) (eval (A x) (xc i-push k))))
     (? (&& (qtd a) (: q (Tg inliners (unq a)))) (q b k)
-     (loop b (eval a (>- 'hom (xc i-call (xd (len b) k)))))))
+     (loop b (eval a (>- 'hom
+      ; tail call optimization is handled by instruction fusion
+      (xc i-call (xd (len b) k))))))) ; here is where you would do it instead
 
    (defn x k) (:
    ; the rewrite ensures the : expression is always an even form.
@@ -491,11 +493,10 @@
   ; a common case is to rewrite the last emitted
   ; instruction or value according to an exact table
   ; of values
-  ((f1 g xs .) i p) (>>= (g p) (hseek p 1) (\ a q
-   (: (loop xs) (? (~ xs) (emi i p)
-                   (= a (A xs)) (emi (AB xs) q)
-                   (loop (BB xs)))
-   (loop xs))))
+  ((f1 g xs .) i p) (>>= (g p) (hseek p 1) (\ a q (>>= xs (:
+   (loop x) (? (~ x) (emi i p)
+               (= a (A x)) (emi (AB x) q)
+               (loop (BB x)))))))
 
   ; for specialized indexed instructions
   (argn a b) (f1 hgetx 0 a 1 b)
