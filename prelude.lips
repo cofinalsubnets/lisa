@@ -97,6 +97,10 @@
 
  (toplp e) (~ (Tg e'par))
 
+ ; type representation for inference
+ nhom 2 nnum 3 ntwo 5 nvec 7 nsym 11 nstr 13 ntbl 17 nnil 19
+ nbot 1 ntop (* nhom nnum ntwo nvec nsym nstr ntbl nnil)
+
  ; this function is used in several places to look for a
  ; variable's value, or failing that to find where it's bound.
  (look e y) (?
@@ -115,16 +119,15 @@
   (memq (Tg e'arg) y) (X 'arg e)
   (look (Tg e'par) y))
 
- ; ltu : evaluate a lambda expression.
+ ; ltu : compile a lambda expression.
  ; depending on if it encloses any variables, a lambda
  ; expression may or may not have a value at compile time. this
- ; function returns either a function or a pair; in the latter
- ; case the hd is the list of variables it encloses, and the
- ; tl is the "prototype" thread that expects those variables
- ; to have already been assembled in a closure. the enclosing
- ; scope can then compose the prototype with a constructor
- ; for its closure in order to produce an "instance" of the
- ; function at runtime.
+ ; function returns either a function or a pair. in the latter
+ ; case A is the list of variables it encloses and B is the
+ ; "prototype" thread that expects those variables to be
+ ; available in the closure. the enclosing scope generates a
+ ; constructor for the closure, which is composed with the
+ ; prototype to create an "instance".
  (ltu e nom l) (:
   (loc k) (? (~ (: loc (Tg f 'loc))) k
            (emi i-locals (emx (len loc) k)))
@@ -145,7 +148,7 @@
     (A x)
    ; otherwise compile it
    (: k (hfin (ar (loc ((eval x ini) f 4))))
-    ; free variables or not ?
+    ; free variables or no ?
     (? (: clo (Tg f 'clo)) (X clo k) k))))
 
 
@@ -372,13 +375,12 @@
      (tblp x) 'tbl          'nil)
   k)))
 
-
  ; these make functions that do certain side effects
  ; with env stack structures during code generation:
  ; either manipulate the stack or embed the item at the
  ; top into the thread.
  (((pushr s) k) e m) (>>= (k e m)       (\ k (A (Ts e s (X k (Tg e s))))))
- (((popr s) k) e m)  (>>= (k e m)       (\ k (, (Ts e s (B (Tg e s))) k)))
+ (((popr s)  k) e m) (>>= (k e m)       (\ k (, (Ts e s (B (Tg e s))) k)))
  (((peekr s) k) e m) (>>= (k e (+ m 1)) (\ k (emx (A (Tg e s)) k)))
 
  push1 (pushr 's1) push2 (pushr 's2)
@@ -387,11 +389,11 @@
 
  (ev-t x t k) (eval x (>- t k))
  ; these functions are for type checking
- (>- t k) (? (~ t) k (:
-  tcr (case t 'two i-id2 'num i-idZ
+ (>- t k) (? (~ t) k
+  (xc (case t 'two i-id2 'num i-idZ
               'hom i-idH 'tbl i-idT
               (fail))
-  (xc tcr k)))
+      k))
 
  ((-> t k) e m) (:
   (tc h) (case (consumes h)

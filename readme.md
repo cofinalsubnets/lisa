@@ -15,6 +15,8 @@ exception. equivalents to examples are in scheme.
 ### `,` begin
 - `(, a b c) = (begin a b c)`
 
+more useful than in scheme because functions have no implicit
+begin.
 
 ### <code>\`</code> quote
 - <code>(\` x) = (quote x)</code>
@@ -33,6 +35,9 @@ only false value, hence `#f` in scheme.
 - `(: a0 b0 ... an bn) = (begin (define a b) ... (define an bn) an)` even arguments : define variables in the current scope
 - `(: a0 b0 ... an bn c) = (letrec ((a0 b0) ... (an bn)) c)` odd arguments : define variables and evaluate an expression in an inner scope
 - `(: ((f g) x y) (g x y)) = (begin (define (f g) (lambda (x y) (g x y))) f)` nestable sugar for function defs
+
+a define form is an expression with the value of the last
+variable it defines.
 
 ### `\` lambda
 - `(\) = (lambda () #f)` nullary -> empty function
@@ -106,7 +111,7 @@ this will catch many errors and reduce runtime checks.
 of functions like `+`, etc. this will need to fit in with the
 type system.
 
-### general purpose programming
+### general purpose functionality
 wide characters, floats, arrays, files, networking, ...
 
 ### namespace / module system
