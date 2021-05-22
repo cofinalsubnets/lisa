@@ -53,25 +53,25 @@ Ty Sr sym { O nom, code, l, r; } *Sy, *sym; // symbols
 Ty Sr tble { O key, val; Sr tble *next; } *tble; // tables
 Ty Sr tbl { Z len, cap; tble *tab; } *Ht, *tbl;
 
-// the 3 ls bits of each pointer are a type tag
-En T {
+En T { // the 3 ls bits of each pointer are a type tag
  Hom = 0, Num = 1, Two = 2, Tup = 3,
  Oct = 4, Tbl = 5, Sym = 6, Nil = 7 };
 
-En globl {
+En globl { // indices into a table of global constants
  Def, Cond, Lamb, Quote, Seq,
  Splat, Topl, Macs, Eval, Apply, NGlobs };
 
-Ty Sr root { M one; Sr root *next; } *root; // for memory management
+// a linked list of stack addresses containing live values
+// that need to be preserved by garbage collection.
+Ty Sr Mp { M one; Sr Mp *next; } *Mp;
 
-// this is the structure responsible for holding runtime
-// state. a pointer to it as an argument to almost every
-// function in lips.
+// this structure is responsible for holding runtime state.
+// most functions take a pointer to it as the first argument.
 Ty Sr V {
  O ip, xp, *fp, *hp, *sp; // vm state variables
- O syms, glob; // globals
- root mem_root; // memory
- Z t0, count, mem_len, *mem_pool;
+ O syms, glob; // symbols and globals
+ Mp mem_root; // gc protection list
+ Z t0, count, mem_len, *mem_pool; // memory data
  jmp_buf restart; // top level restart
 } *V;
 
@@ -144,7 +144,7 @@ Ko Ch* tnom(En T);
 #define GG(x) G(G(x))
 #define chars(x) getoct(x)->text
 #define symnom(y) chars(getsym(y)->nom)
-#define mm(r) ((Safe=&((Sr root){(r),Safe})))
+#define mm(r) ((Safe=&((Sr Mp){(r),Safe})))
 #define um (Safe=Safe->next)
 #define LEN(x) (Sz((x))/Sz(*(x)))
 #define AR(x) gettup(x)->xs
@@ -189,21 +189,27 @@ St In _* bump(V v, Z n) { _* x;
 St In _* cells(V v, Z n) {
  R Avail < n ? reqsp(v, n):0, bump(v, n); }
 
-St In _ fill(M d, O i, Z n) {
- Fo (M l = d + n; d < l; *d++ = i); }
-
-St In _ cpy(M d, M s, Z n) {
- Fo (M l = d + n; d < l; *d++ = *s++); }
-
 St In Z hbi(Z cap, N co) { R co % cap; }
 
 St In tble hb(O t, N code) {
  R gettbl(t)->tab[hbi(gettbl(t)->cap, code)]; }
 
+// subs for some libc functions: memset, memcpy, strlen
+St _ fill(_*_d, O i, N l) { // fill with a word
+ Fo (M d = _d; l--; *d++=i); }
+St _ wcpy(_*_d, Ko _*_s, N l) { // copy words
+ M d = _d; Ko O *s = _s;
+ Wh (l--) *d++=*s++; }
+St _ bcpy(_*_d, Ko _*_s, N l) { // copy bytes
+ Ch *d = _d; Ko Ch *s = _s;
+ Wh (l--) *d++=*s++; }
+St N slen(Ko Ch*s) {
+ Fo (N i=0;;s++,i++) if (!*s) R i; }
+
 _Static_assert(
  Sz(O) >= 8,
  "pointers are smaller than 64 bits");
-  
+
 _Static_assert(
  -9 == (((-9)<<12)>>12),
  "opposite bit-shifts on a negative integer "
@@ -265,7 +271,7 @@ St O rloop(V v, Io i, By o, Z n, Z lim,
  R o->len = n, x = putoct(o),
   o->text[n-1] == 0 ? x :
    (Mm(x, o = cells(v, 1 + b2w(2*n))),
-    memcpy(o->text, getoct(x)->text, o->len = n),
+    bcpy(o->text, getoct(x)->text, o->len = n),
     re(v, i, o, n, 2 * n)); }
 
 St O atom_(V v, Io p, By o, Z n, Z lim) { O x;
@@ -499,7 +505,7 @@ St In _ do_copy(V v, Z l0, M b0, Z l1, M b1) {
  Wh (t0-- > s0) Sp[t0 - s0] = cp(v, *t0, l0, b0);
 #define CP(x) x=cp(v,x,l0,b0)
  CP(Ip), CP(Xp), CP(Glob);
- Fo (root r = Safe; r; r = r->next) CP(*(r->one)); }
+ Fo (Mp r = Safe; r; r = r->next) CP(*(r->one)); }
 #undef CP
 
 // the exact method for copying an object into
@@ -547,8 +553,8 @@ cpcc(cpoct) {
  By dst, src = getoct(x);
  R src->len == 0 ? *(M)src->text :
   (dst = bump(v, Size(oct) + b2w(src->len)),
-   memcpy(dst->text, src->text, dst->len = src->len),
-   src->len = 0,
+   wcpy(dst->text, src->text, b2w(src->len)),
+   dst->len = src->len, src->len = 0,
    *(M)src->text = putoct(dst)); }
 
 cpcc(cpsym) {
@@ -556,7 +562,7 @@ cpcc(cpsym) {
  if (fresh(src->nom)) R src->nom;
  if (nilp(src->nom)) // anonymous symbol
   dst = bump(v, Size(sym)),
-  cpy((M) dst, (M) src, Size(sym));
+  wcpy(dst, src, Size(sym));
  El dst = getsym(sskc(v, &Syms, cp(v, src->nom, ln, lp)));
  R src->nom = putsym(dst); }
 
@@ -641,9 +647,9 @@ St O linitp(V v, O x, M d) { O y;
 
 // strings
 O string(V v, Ko Ch* c) {
- Z bs = 1 + strlen(c);
+ Z bs = 1 + slen(c);
  By o = cells(v, Size(oct) + b2w(bs));
- memcpy(o->text, c, o->len = bs);
+ bcpy(o->text, c, o->len = bs);
  R putoct(o); }
 
 //symbols
@@ -766,6 +772,7 @@ O table(V v) {
   t->cap = 1;
   R puttbl(t); }
 
+// this is a cool way to do "static data", i got it from luajit :)
 #define insts(_)\
   _(tget),   _(tset),   _(thas),   _(tlen),   _(gsym_u),\
   _(arity),  _(idZ),    _(idH),    _(id2),    _(idT),\
@@ -791,7 +798,7 @@ O table(V v) {
   _(hom_seek_u), _(hom_geti_u), _(hom_getx_u),\
   _(fail),   _(ccc_u),  _(cont),   _(vararg), _(tuck),\
   _(dupl),   _(emi),    _(drop),   _(emx_u),  _(emi_u),\
-  _(emx),    _(em_u),   _(ev_u),   _(ap_u)
+  _(emx),    _(em_u),   _(ev_u),   _(ap_u), _(rnd_u)
 #define prims(_)\
   _("A", car_u),     _("B", cdr_u),          _("X", cons_u),    _("=", eq_u),\
   _("<", lt_u),      _("<=", lteq_u),        _(">", gt_u),      _(">=", gteq_u),\
@@ -804,7 +811,7 @@ O table(V v) {
   _("vecp", vecp_u), _("nump", nump_u),      _("symp", symp_u), _("twop", twop_u),\
   _("tblp", tblp_u), _("strp", strp_u),      _("nilp", nilp_u), _("homp", homp_u),\
   _("hom", hom_u),   _("hseek", hom_seek_u), _("emx", emx_u),   _("hgetx", hom_getx_u),\
-  _("emi", emi_u),   _("hgeti", hom_geti_u), _("hfin", hfin_u)
+  _("emi", emi_u),   _("hgeti", hom_geti_u), _("hfin", hfin_u), _("rand", rnd_u)
 
 #define ninl(x) x NoInline
 terp insts(ninl);
@@ -1261,6 +1268,7 @@ V initialize(int argc, Ko Ch **argv) {
   z = string(v, argv[argc]),
   a = pair(v, z, a);
  um, um, tblset(v, Top, y, a);
+ srand(clock());
  R v; }
 
 V finalize(V v) {
@@ -1352,9 +1360,8 @@ St Vm(gc) { Z n = Xp; CallC(reqsp(v, n)); N(0); }
 // the interpreter takes a very basic approach to error
 // handling: something is wrong? jump to nope().
 St Vm(nope);
-#define TyCh(x,t) if(kind(x)!=t)Jump(nope) // type check
-#define Arity(n) if(n>Argc)Jump(nope) // arity check
-#define ArCh(n) if (n>Gn(Argc))Jump(nope)
+#define TyCh(x,t) if(kind((x)-(t)))Jump(nope) // type check
+#define ArCh(n) if(Pn(n)>Argc)Jump(nope)
 
 // " virtual machine instructions "
 //
@@ -1401,10 +1408,10 @@ Vm(locals) {
 Vm(lbind) {
  O w = Ob GF(ip),
    d = XY(w), y = X(w);
- if (!(w = tblget(v, d, xp = YY(w)))) Jump(nope);
+ if (!(w = tblget(v, d, xp = YY(w)))) Jump(nope); // free variable
  xp = w;
- if (Gn(y) != 8) TyCh(xp, Gn(y)); // type check elision
- T q = G(FF(ip));
+ if (Gn(y) != 8) TyCh(xp, Gn(y)); // do the type check
+ T q = G(FF(ip)); // omit the arity check if possible
  if (q == call || q == rec) {
   O aa = Ob GF(FF(ip));
   if (G(xp) == arity && aa >= Ob GF(xp))
@@ -1474,12 +1481,13 @@ Vm(rec) {
  Ap(xp, nil); }
 
 // type/arity checking
-Vm(arity) { Arity(Ob GF(ip)); N(2); }
+#define arn(n) if(n>Argc)Jump(nope)
 #define tcn(k) {if(kind(xp-k))Jump(nope);}
 Vm(idZ) { tcn(Num); N(1); }
 Vm(id2) { tcn(Two); N(1); }
 Vm(idH) { tcn(Hom); N(1); }
 Vm(idT) { tcn(Tbl); N(1); }
+Vm(arity) { arn(Ob GF(ip)); N(2); }
 
 // continuations
 //
@@ -1505,7 +1513,7 @@ Vm(ccc_u) {
  hp += ht + 2;
  t->len = ht + 1;
  t->xs[0] = Pn(fp - sp);
- cpy(t->xs+1, sp, ht);
+ wcpy(t->xs+1, sp, ht);
  H c = (H) hp;
  hp += 4;
  c[0] = cont;
@@ -1523,7 +1531,7 @@ Vm(cont) {
  Z off = Gn(t->xs[0]);
  sp = Pool + Len - (t->len - 1);
  fp = sp + off;
- cpy(sp, t->xs+1, t->len-1);
+ wcpy(sp, t->xs+1, t->len-1);
  Jump(ret); }
 
 Vm(ap_u) {
@@ -1687,7 +1695,7 @@ Vm(strc) {
  Wh (i) {
   By x = getoct(Argv[--i]);
   sum -= x->len - 1;
-  memcpy(d->text+sum, x->text, x->len - 1); }
+  bcpy(d->text+sum, x->text, x->len - 1); }
  Go(ret, putoct(d)); }
 
 #define min(a,b)(a<b?a:b)
@@ -1707,7 +1715,7 @@ Vm(strs) {
  By dst = (By) hp; hp += words;
  dst->len = ub - lb + 1;
  dst->text[ub - lb] = 0;
- memcpy(dst->text, src->text + lb, ub - lb);
+ bcpy(dst->text, src->text + lb, ub - lb);
  Go(ret, putoct(dst)); }
 
 Vm(strmk) {
@@ -1837,7 +1845,7 @@ Vm(take) {
  Ve t = (Ve) hp;
  hp += n + 1;
  t->len = n;
- cpy(t->xs, sp, n);
+ wcpy(t->xs, sp, n);
  sp += n;
  Go(ret, puttup(t)); }
 
@@ -2025,6 +2033,9 @@ Vm(ev_u) {
  CallC(x = compile(v, *Argv),
        x = G(x)(v, x, Fp, Sp, Hp, nil));
  Go(ret, x); }
+
+Vm(rnd_u) { Go(ret, Pn(rand())); }
+
 
 // this is for runtime errors from the interpreter, it prints
 // a backtrace and everything.

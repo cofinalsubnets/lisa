@@ -66,8 +66,8 @@
   ;; and some marcos
   (tset macros
    ; a macro for defining macros
-   '::: (: (defm n x .) (,(Ts macros n (: v (ev (A x))))
-                          (? (B x) (ap defm (B x)) v)))
+   '::: (: (defm n x .) (, (Ts macros n (: v (ev (A x))))
+                           (? (B x) (ap defm (B x)) v)))
    'imm (\ x (ev x))
    'AA (\ x (X A (L (X A (L x))))) 'AB (\ x (X A (L (X B (L x)))))
    'BA (\ x (X B (L (X A (L x))))) 'BB (\ x (X B (L (X B (L x)))))
@@ -88,7 +88,7 @@
   (asig a n) (?
    (~ a) (X n a)
    (&& (B a) (= '. (AB a))) (X (- (+ n 1)) (L (A a)))
-   (, (: r (asig (B a) (+ n 1))) (X (A r) (X (A a) (B r)))))
+   (: r (asig (B a) (+ n 1)) (X (A r) (X (A a) (B r)))))
   b (asig a 0)
   (tbl 'arg (B b) 'par p
        'nom n 'def (tbl)
@@ -98,8 +98,18 @@
  (toplp e) (~ (Tg e'par))
 
  ; type representation for inference
- nhom 2 nnum 3 ntwo 5 nvec 7 nsym 11 nstr 13 ntbl 17 nnil 19
- nbot 1 ntop (* nhom nnum ntwo nvec nsym nstr ntbl nnil)
+ ; the total space of lips values is partitioned into finitely
+ ; many elementary types. an inferred type is a union of these
+ ; nonoverlapping sets. elementary types are function, number,
+ ; pair, etc.
+ nbot 1 nhom 2 nnum 3 ntwo 5 nvec 7 nsym 11 nstr 13 ntbl 17 nnil 19
+ types (L nhom nnum ntwo nvec nsym nstr ntbl nnil)
+ ntop  (* nhom nnum ntwo nvec nsym nstr ntbl nnil)
+
+ (/p a b) (= 0 (% a b))
+ (refine t c) (? (/p t c) c (fail))
+ (relax t c) (? (/p t c) t (* t c))
+ (tnorm t) (foldl types 1 (\ m n (* m (? (/p t n) n 1))))
 
  ; this function is used in several places to look for a
  ; variable's value, or failing that to find where it's bound.
@@ -129,8 +139,8 @@
  ; constructor for the closure, which is composed with the
  ; prototype to create an "instance".
  (ltu e nom l) (:
-  (loc k) (? (~ (: loc (Tg f 'loc))) k
-           (emi i-locals (emx (len loc) k)))
+  (loc k) (: loc (Tg f 'loc)
+   (? (~ loc) k (emi i-locals (emx (len loc) k))))
   (ar k) (: i (Tg f 'sig) (?
    (> i 0) (emf i-arity (emx i k))
    (< i 0) (emi i-vararg (emx (- (- i) 1) k))
@@ -168,7 +178,7 @@
  (quote x) (? (|| (symp x) (twop x)) (L '` x) x)
 
  (weak e x)  (:
-  ; function symbol sugar
+  ; function symbol sugar ; handles any level of nesting
   (sug x) (? (~ (2p (A x))) x
    (sug (X (AA x) (X (X '\ (snoc (BA x) (AB x)))(BB x)))))
 
@@ -193,9 +203,8 @@
  ; have no free variables not in S. then it arranges for
  ; references to functions in S to get resolved (with
  ; optimizations etc) later, which lets the compiler generate
- ; appropriate code without yet knowing the exact value.
+ ; appropriate code without having a function address yet.
  (resolve e) (:
-
   ; step one: pass over each inner def for this function and
   ; try to rewrite and evaluate it. if this succeeds, add it
   ; to the known values. otherwise, if the definition is for
@@ -222,8 +231,9 @@
   ; step three: reject from the list all definitions that
   ; depend on values that won't be available until runtime.
   ; membership in the list is regarded as proof that the
-  ; function will be available now, so any time a function is
-  ; rejected we start over again.
+  ; function is available now, so any time a function is
+  ; rejected we start over again as it may have been
+  ; referenced by a previously accepted function.
   (f3 kvs) (f3r kvs kvs ())
   (f3r i kvs q) (:
    (chk i vs) (? (~ vs) 1 (: v (A vs) (?
@@ -251,8 +261,7 @@
 
   ; only bother with any of this if there are inner defs
   (? (: ks (tkeys (: def (Tg e'def))))
-   (f4 (f3 (f2 (f1 (map (Ts e'loc ks) (\ k
-    (X k (Tg def k))))))))))
+   (f4 (f3 (f2 (f1 (map (Ts e'loc ks) (\ k (X k (Tg def k))))))))))
 
  (wv e x)  (:
   (list e x) (:
@@ -261,8 +270,8 @@
    (adj-ar x) (: z (A x) (?
     (~ (? (Hp z) (= i-arity (hgeti z)))) x
     (? (>= (len (B x)) (hgetx (hseek z 1)))
-     (X (hseek z 2) (B x)) ; skip the check
-     (fail)))) ; oops wrong arity
+     (X (hseek z 2) (B x)) ; we're good, skip the check
+     (fail)))) ; oops wrong arity, good thing we caught it at compile time !
 
    (defn e x) (:
     (nom s) (? (2p s) (nom (A s)) s)
@@ -284,13 +293,12 @@
    (mono f i l) (:
     (fold j x y) (?
      y (? (qtd x) (fold (f j (unq x)) (A y) (B y))
-          (: z (X x (fold i (A y) (B y)))
-           (? (= i j) z (X j z))))
-     (qtd x) (>>= (f j (unq x)) (\ x (? (= i x)()(L x))))
+        (: z (X x (fold i (A y) (B y)))
+         (? (= i j) z (X j z))))
+     (qtd x) (>>= (f j (unq x)) (\ x (? (= i x) () (L x))))
      (= i j) (L x)
      (L j x))
-    (? l (X f (fold i (A l) (B l)))
-         (quote i)))
+    (? l (X f (fold i (A l) (B l))) (quote i)))
 
    (cond e x) (:
     (rec e x) (?
@@ -328,7 +336,7 @@
    ; with certain algebraic properties. the nullary case for
    ; any grouplike function has to return its structure's
    ; identity element.
-   abelians (imm ({set} && || + *)) ; arguments can be combined freely
+   abelians (imm ({set} && || + *)) ; arguments can be comgined freely
    monoids (imm ({set} scat cat))   ; pairs of consecutive arguments can be combined in place
 
    a (A x) (case a
