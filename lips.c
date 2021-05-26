@@ -291,11 +291,38 @@ St O str_(V v, Io p, By o, Z n, Z lim) { O x;
   Df: o->text[n++] = x; } out:
  R rloop(v, p, o, n, lim, str_); }
 
+St In Z chidx(Ch c, Ko Ch *s) {
+  Fo (Z i = 0; *s; s++, i++) if (*s == c) R i;
+  R -1; }
+
+St Nin O readz_2(Ko Ch *s, Z rad) {
+  St Ko Ch *dig = "0123456789abcdef";
+  if (!*s) R nil;
+  Z a = 0;
+  int c;
+  Fo (;;) {
+    if (!(c = *s++)) Bk;
+    a *= rad;
+    int i = chidx(c, dig);
+    if (i < 0 || i >= rad) R nil;
+    a += i; }
+  R Pn(a); }
+
+St O readz(Ko Ch *s) {
+  if (*s == '-') {
+    O q = readz(s+1);
+    R nump(q) ? Pn(-Gn(q)) : q; }
+  if (*s == '0') switch (s[1]) {
+    case 'b': R readz_2(s+2, 2);
+    case 'o': R readz_2(s+2, 8);
+    case 'd': R readz_2(s+2, 10);
+    case 'z': R readz_2(s+2, 12);
+    case 'x': R readz_2(s+2, 16); }
+  R readz_2(s, 10); }
+
 St O atom(V v, Io i) {
- O o = atom_(v, i, cells(v, 2), 0, 8);
- Ch *st = NULL;
- Z j = strtol(chars(o), &st, 0);
- R !st || *st ? intern(v, o) : putnum(j); }
+ O o = atom_(v, i, cells(v, 2), 0, 8), q = readz(chars(o));
+ R nump(q) ? q : intern(v, o); }
 
 St O str(V v, Io i) {
  R str_(v, i, cells(v, 2), 0, 8); }
