@@ -308,10 +308,7 @@ St Nin O readz_2(Ko Ch *s, Z rad) {
     a += i; }
   R Pn(a); }
 
-St O readz(Ko Ch *s) {
-  if (*s == '-') {
-    O q = readz(s+1);
-    R nump(q) ? Pn(-Gn(q)) : q; }
+St O readz_1(Ko Ch *s) {
   if (*s == '0') switch (s[1]) {
     case 'b': R readz_2(s+2, 2);
     case 'o': R readz_2(s+2, 8);
@@ -319,6 +316,13 @@ St O readz(Ko Ch *s) {
     case 'z': R readz_2(s+2, 12);
     case 'x': R readz_2(s+2, 16); }
   R readz_2(s, 10); }
+
+St O readz(Ko Ch *s) {
+  if (*s == '-') {
+    O q = readz_1(s+1);
+    R nump(q) ? Pn(-Gn(q)) : q; }
+  if (*s == '+') R readz_1(s+1);
+  R readz_1(s); }
 
 St O atom(V v, Io i) {
  O o = atom_(v, i, cells(v, 2), 0, 8), q = readz(chars(o));
