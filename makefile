@@ -4,6 +4,7 @@ b=$n.bin
 p=prelude.lips
 t=$(wildcard test/*)
 s=$(wildcard *.c)
+o=$(s:.c=.o)
 v="`git rev-parse HEAD`-git"
 run=./$b -_ $p
 tcmd=$(run) $t
@@ -21,8 +22,10 @@ test: $n
 # build
 $n: $b
 	strip -o $n $b
-$b: $m $s
-	$c -o $b $s
+$b: $m $o
+	$c -o $b $o
+.c.o:
+	$c -c $^
 
 # install
 pref=~/.local/
@@ -44,22 +47,22 @@ install: $(b0) $(l0)
 
 # vim stuff
 install-vim:
-	@make -sC vim
+	make -sC vim
 
 # tasks
 clean:
-	@rm -rf `git check-ignore *`
+	rm -rf `git check-ignore *`
 perf: perf.data
-	@perf report
+	perf report
 perf.data: $b $t $p
-	@perf record ./$(tcmd)
+	perf record ./$(tcmd)
 valg: $b $t
-	@valgrind $(tcmd)
+	valgrind $(tcmd)
 sloc:
-	@which cloc >/dev/null && cloc --by-file --force-lang=Lisp,$n *.{c,$n} || cat $s | grep -v ' *//.*' | grep -v '^$$' | wc -l
+	which cloc >/dev/null && cloc --by-file --force-lang=Lisp,$n *.{c,$n} || cat $s | grep -v ' *//.*' | grep -v '^$$' | wc -l
 bins: $n $b
-	@stat -c "%n %sB" $^
+	stat -c "%n %sB" $^
 repl: $n
-	@which rlwrap >/dev/null && rlwrap $(rcmd) || $(rcmd)
+	which rlwrap >/dev/null && rlwrap $(rcmd) || $(rcmd)
 
 .PHONY: test clean perf valg sloc bins install vim repl
