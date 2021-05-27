@@ -118,6 +118,7 @@ obj
  parse(V, Io),
  intern(V, O),
  eval(V, O),
+ compile(lips, obj),
  table(V),
  tblset(V, O, O, O),
  tblget(V, O, O),
