@@ -42,7 +42,7 @@ obj linitp(lips v, obj x, mem d) {
 obj string(lips v, const char* c) {
  i64 bs = 1;
  for (const char *d = c; *d++; bs++);
- str o = cells(v, Size(oct) + b2w(bs));
+ str o = cells(v, sizeof(struct oct)/W + b2w(bs));
  bcpy(o->text, c, o->len = bs);
  return putoct(o); }
 
@@ -161,7 +161,7 @@ obj tblget(lips v, obj t, obj k) {
  for (;e; e = e->next) if (eql(e->key, k)) return e->val;
  return 0; }
 
-obj table(V v) {
+obj table(lips v) {
  tbl t = cells(v, sizeof(struct tbl)/W + 1);
  tble *b = (tble*)(t+1);
  *b = NULL;

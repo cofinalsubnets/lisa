@@ -20,31 +20,35 @@ NoInline const char* tnom(enum tag t) {
   case Sym: return "sym";
   default:  return "nil"; } }
 
-Ty O P(V, Io);
-St P atom, r1s, qt, stri;
+typedef obj par(lips, FILE*);
+static par atom, r1s, qt, stri;
 
 #define readx(v,m)(errp(v,m),0)
 
-St int r0(Io i) { Fo (Z c;;) Sw ((c = getc(i))) {
- Ks '#': Ks ';': do c = getc(i); Wh (c != '\n' && c != EOF);
- Ks ' ': Ks '\t': Ks '\n': Cu;
- Df: R c; } }
+static int r0(Io i) { for (Z c;;) switch ((c = getc(i))) {
+ case '#': case ';': do c = getc(i); while (c != '\n' && c != EOF);
+ case ' ': case '\t': case '\n': continue;
+ default: return c; } }
 
-O parse(V v, Io i) { Z c; Sw ((c = r0(i))) {
- Ks EOF:  R 0;
- Ks ')':  R readx(v, err_rpar);
- Ks '(':  R r1s(v, i);
- Ks '"':  R stri(v, i);
- Ks '\'': R qt(v, i);
- Df:      R ungetc(c, i), atom(v, i); } }
+obj parse(lips v, FILE* i) {
+ int c;
+ switch ((c = r0(i))) {
+  case EOF:  return 0;
+  case ')':  return readx(v, err_rpar);
+  case '(':  return r1s(v, i);
+  case '"':  return stri(v, i);
+  case '\'': return qt(v, i);
+  default:   return ungetc(c, i), atom(v, i); } }
 
-St O qt(V v, Io i) { O r;
- R !(r = parse(v, i)) ? r :
+static obj qt(lips v, FILE *i) {
+ obj r;
+ return !(r = parse(v, i)) ? r :
   (r = pair(v, r, nil),
    pair(v, Qt, r)); }
 
-St O r1s(V v, Io i) { O x, y, c;
- R (c = r0(i)) == EOF ? readx(v, err_eof) :
+static obj r1s(lips v, FILE *i) {
+ O x, y, c;
+ return (c = r0(i)) == EOF ? readx(v, err_eof) :
   c == ')' ? nil :
    (ungetc(c, i),
     !(x = parse(v, i)) ? x :
@@ -113,7 +117,7 @@ static Inline obj readz(const char *s) {
  if (*s == '-') {
   obj q = readz_1(s+1);
   return nump(q) ? Pn(-Gn(q)) : q; }
- if (*s == '+') R readz_1(s+1);
+ if (*s == '+') return readz_1(s+1);
  return readz_1(s); }
 
 static obj atom(lips v, FILE *i) {
@@ -167,12 +171,12 @@ static u0 emhom(lips v, hom h, FILE *o) {
 
 u0 emit(lips v, obj x, FILE *o) {
  switch (kind(x)) {
-  Ks Hom:  return emhom(v, Gh(x), o);
-  Ks Num:  return emnum(v, Gn(x), o);
-  Ks Sym:  return emsym(v, getsym(x), o);
-  Ks Two:  return emtwo(v, gettwo(x), o);
-  Ks Oct:  return emoct(v, getoct(x), o);
-  Ks Tbl:  return emtbl(v, gettbl(x), o);
+  case Hom:  return emhom(v, Gh(x), o);
+  case Num:  return emnum(v, Gn(x), o);
+  case Sym:  return emsym(v, getsym(x), o);
+  case Two:  return emtwo(v, gettwo(x), o);
+  case Oct:  return emoct(v, getoct(x), o);
+  case Tbl:  return emtbl(v, gettbl(x), o);
   default: return (u0) fputs("()", o); } }
 
 u0 errp(lips v, const char *msg, ...) {

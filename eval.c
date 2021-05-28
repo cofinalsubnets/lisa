@@ -3,8 +3,8 @@
 // subs for some libc functions: memset, memcpy, strlen
 u0 fill(_*_d, O i, N l) { // fill with a word
  for (M d = _d; l--; *d++=i); }
-u0 wcpy(_*_d, Ko _*_s, N l) { // copy words
- mem d = _d; Ko O *s = _s;
+u0 wcpy(_*_d, const _*_s, N l) { // copy words
+ mem d = _d; const obj *s = _s;
  while (l--) *d++=*s++; }
 void bcpy(void*_d, const void*_s, u64 l) { // copy bytes
  char *d = _d; const char *s = _s;
@@ -52,25 +52,26 @@ void bcpy(void*_d, const void*_s, u64 l) { // copy bytes
 //
 
 typedef obj
- c1(lips, mem, i64),
- c2(lips, mem, i64, obj),
- c3(lips, mem, i64, obj, obj);
+ c1(lips, mem, u64),
+ c2(lips, mem, u64, obj),
+ c3(lips, mem, u64, obj, obj);
 static u0
  c_de_r(lips, mem, obj),
  scan(lips, mem, obj),
  pushs(lips, ...);
 static c1 c_ev, c_d_bind, inst, insx, c_ini;
-static c2 c_eval, c_sy, c_2, c_imm, ltu, c_ap, c_la_clo;
+static c2 c_eval, c_sy, c_2, c_imm, c_ap;
+static obj c_la_clo(lips, mem, obj, obj), ltu(lips, mem, obj, obj);
 static c3 late;
 static obj
  look(lips, obj, obj),
  hfin(lips, obj),
- hini(lips, i64);
+ hini(lips, u64);
 #define interns(v,c) intern(v,string(v,c))
 
-En { Here, Loc, Arg, Clo, Wait };
-#define c1(nom,...) static O nom(V v,M e,Z m,##__VA_ARGS__)
-#define c2(nom,...) static O nom(V v,M e,Z m,O x,##__VA_ARGS__)
+enum { Here, Loc, Arg, Clo, Wait };
+#define c1(nom,...) static obj nom(lips v, mem e, u64 m, ##__VA_ARGS__)
+#define c2(nom,...) static obj nom(lips v, mem e, u64 m, obj x, ##__VA_ARGS__)
 
 // emit code backwards like cons
 static Inline obj em1(terp *i, obj k) {
@@ -110,8 +111,8 @@ static obj rwlade(lips v, obj x) {
  return um, x; }
 
 static int scan_def(lips v, mem e, obj x) {
- if (!twop(x)) R 1; // this is an even case so export all the definitions to the local scope
- if (!twop(Y(x))) R 0; // this is an odd case so ignore these, they'll be imported after the rewrite
+ if (!twop(x)) return 1; // this is an even case so export all the definitions to the local scope
+ if (!twop(Y(x))) return 0; // this is an odd case so ignore these, they'll be imported after the rewrite
  mm(&x);
  int r = scan_def(v, e, YY(x));
  if (r) {
@@ -119,54 +120,60 @@ static int scan_def(lips v, mem e, obj x) {
   obj y = pair(v, X(x), loc(*e));
   loc(*e) = y;
   scan(v, e, XY(x)); }
- R um, r; }
+ return um, r; }
 
-St _ scan(V v, M e, O x) {
- if (!twop(x) || X(x) == La || X(x) == Qt) R;
- if (X(x) == De) R (void) scan_def(v, e, Y(x));
- Fo (mm(&x); twop(x); x = Y(x)) scan(v, e, X(x));
+static u0 scan(lips v, mem e, obj x) {
+ if (!twop(x) || X(x) == La || X(x) == Qt) return;
+ if (X(x) == De) return (void) scan_def(v, e, Y(x));
+ for (mm(&x); twop(x); x = Y(x)) scan(v, e, X(x));
  um; }
 
-St O asign(V v, O a, Z i, M m) { O x;
- if (!twop(a)) R *m = i, a;
+static O asign(lips v, obj a, i64 i, mem m) {
+ obj x;
+ if (!twop(a)) return *m = i, a;
  if (twop(Y(a)) && XY(a) == Va)
-  R *m = -(i+1), pair(v, X(a), nil);
+  return *m = -(i+1), pair(v, X(a), nil);
  Mm(a, x = asign(v, Y(a), i+1, m));
- R pair(v, X(a), x); }
+ return pair(v, X(a), x); }
 
-St Ve tuplr(V v, Z i, va_list xs) { Ve t; O x;
- R (x = va_arg(xs, O)) ?
+static vec tuplr(lips v, i64 i, va_list xs) {
+ vec t; obj x;
+ return (x = va_arg(xs, O)) ?
   (Mm(x, t = tuplr(v, i+1, xs)), t->xs[i] = x, t) :
   ((t = cells(v, Size(tup) + i))->len = i, t); }
 
-St O tupl(V v, ...) { Ve t; va_list xs;
- R va_start(xs, v),
+static obj tupl(lips v, ...) {
+ vec t; va_list xs;
+ return
+  va_start(xs, v),
   t = tuplr(v, 0, xs),
   va_end(xs),
   puttup(t); }
 
-St O scope(V v, M e, O a, O n) { Z s = 0;
-  R Mm(n, a = asign(v, a, 0, &s)),
-    tupl(v, a, nil, nil, e ? *e : nil, n, Pn(s), non); }
+static obj scope(lips v, mem e, obj a, obj n) {
+  i64 s = 0;
+  return Mm(n, a = asign(v, a, 0, &s)),
+         tupl(v, a, nil, nil, e ? *e : nil, n, Pn(s), non); }
 
-St O compose(V v, M e, O x) {
+static obj compose(lips v, mem e, obj x) {
   Pu(Pn(c_ev), x, Pn(inst), Pn(ret), Pn(c_ini));
   scan(v, e, Sp[1]);
   x = ccc(v, e, 4); // 4 = 2 + 2
   Z i = llen(loc(*e));
   if (i) x = em2(locals,  Pn(i), x);
   i = Gn(asig(*e));
-     if (i > 0) x = em2(arity, Pn(i), x);
-  El if (i < 0) x = em2(vararg, Pn(-i-1), x);
+  if (i > 0) x = em2(arity, Pn(i), x);
+  else if (i < 0) x = em2(vararg, Pn(-i-1), x);
   x = hfin(v, x);
-  R twop(clo(*e)) ? pair(v, clo(*e), x) : x; }
+  return twop(clo(*e)) ? pair(v, clo(*e), x) : x; }
 
 // takes a lambda expression, returns either a pair or or a
 // hom depending on if the function has free variables or not
 // (in the former case the car is the list of free variables
 // and the cdr is a hom that assumes the missing variables
 // are available in the closure).
-St O ltu(V v, M e, O n, O l) { O y;
+static obj ltu(lips v, mem e, obj n, obj l) {
+  obj y;
   l = Y(l);
   Mm(n,
     l = twop(l) ? l : pair(v, l, nil),
@@ -174,37 +181,37 @@ St O ltu(V v, M e, O n, O l) { O y;
           Mm(l, n = pair(v, n, toplp(e) ? nil : e ? name(*e):nil)),
           n = scope(v, e, l, n)),
     l = compose(v, &n, X(y)));
-  R l; }
+  return l; }
 
 
 c2(c_la) {
-  T j = imm;
+  terp* j = imm;
   O k, nom = *Sp == Pn(c_d_bind) ? Sp[1] : nil;
   Mm(nom, Mm(x, k = ccc(v, e, m+2)));
   Mm(k,
     x = homp(x = ltu(v, e, nom, x)) ? x :
     (j = toplp(e) || !twop(loc(*e)) ? encln : encll,
      c_la_clo(v, e, X(x), Y(x))));
-  R em2(j, x, k); }
+  return em2(j, x, k); }
 
-c2(c_imm) { R Pu(Pn(imm), x), insx(v, e, m); }
+c2(c_imm) { return Pu(Pn(imm), x), insx(v, e, m); }
 
-St O c_la_clo(V v, M e, O arg, O seq) {
-  Z i = llen(arg);
+static obj c_la_clo(lips v, mem e, obj arg, obj seq) {
+  i64 i = llen(arg);
   mm(&arg), mm(&seq);
-  Fo (Pu(Pn(insx), Pn(take), Pn(i), Pn(c_ini));
-      twop(arg);
-      Pu(Pn(c_ev), X(arg), Pn(inst), Pn(push)), arg = Y(arg));
-  R arg = ccc(v, e, 0), um, um,
-    pair(v, seq, arg); }
+  for (Pu(Pn(insx), Pn(take), Pn(i), Pn(c_ini));
+       twop(arg);
+       Pu(Pn(c_ev), X(arg), Pn(inst), Pn(push)), arg = Y(arg));
+  return arg = ccc(v, e, 0), um, um,
+         pair(v, seq, arg); }
 
 c1(c_d_bind) {
  O y = *Sp++;
- R toplp(e) ? imx(v, e, m, tbind, y) :
-              imx(v, e, m, loc_, Pn(idx(loc(*e), y))); }
+ return toplp(e) ? imx(v, e, m, tbind, y) :
+                   imx(v, e, m, loc_, Pn(idx(loc(*e), y))); }
 
-static u0 c_de_r(V v, M e, O x) {
- if (!twop(x)) R;
+static u0 c_de_r(lips v, mem e, obj x) {
+ if (!twop(x)) return;
  x = rwlade(v, x);
  Mm(x, c_de_r(v, e, YY(x))),
  Pu(Pn(c_ev), XY(x), Pn(c_d_bind), X(x)); }
@@ -280,27 +287,32 @@ c1(c_call) {
  return em2(G(k) == ret ? rec : call, a, k); }
 
 #define L(n,x) pair(v, Pn(n), x)
-static obj look(lips v, obj e, obj y) { obj q; return
- nilp(e) ?
-  ((q = tblget(v, Dict, y)) ?  L(Here, q) : L(Wait, Dict)) :
- ((q = idx(loc(e), y)) != -1) ?
-  L(Loc, e) :
- ((q = idx(arg(e), y)) != -1) ?
-  L(Arg, e) :
- ((q = idx(clo(e), y)) != -1) ?
-  L(Clo, e) :
- look(v, par(e), y); }
+static obj look(lips v, obj e, obj y) {
+ obj q;
+ return
+  nilp(e) ?
+   ((q = tblget(v, Dict, y)) ?  L(Here, q) : L(Wait, Dict)) :
+  ((q = idx(loc(e), y)) != -1) ?
+   L(Loc, e) :
+  ((q = idx(arg(e), y)) != -1) ?
+   L(Arg, e) :
+  ((q = idx(clo(e), y)) != -1) ?
+   L(Clo, e) :
+  look(v, par(e), y); }
 #undef L
 
-c2(late, obj d) { obj k; return
- x = pair(v, d, x),
- Mm(x, k = ccc(v, e, m+2)),
- Mm(k, x = pair(v, Pn(8), x)),
- em2(lbind, x, k); }
+c2(late, obj d) {
+ obj k;
+ return
+  x = pair(v, d, x),
+  Mm(x, k = ccc(v, e, m+2)),
+  Mm(k, x = pair(v, Pn(8), x)),
+  em2(lbind, x, k); }
 
-c2(c_sy) { O y, q;
+c2(c_sy) {
+ obj y, q;
  Mm(x, y = X(q = look(v, e ? *e:nil, x)));
- Sw (Gn(y)) {
+ switch (Gn(y)) {
   case Here: return c_imm(v, e, m, Y(q));
   case Wait: return late(v, e, m, x, Y(q));
   default:
@@ -317,15 +329,17 @@ c2(c_eval) {
  return (symp(x)?c_sy:twop(x)?c_2:c_imm)(v,e,m,x); }
 
 c2(c_qt) { return c_imm(v, e, m, twop(x = Y(x)) ? X(x) : x); }
-c2(c_2) { obj z = X(x); return 
- (z==Qt?c_qt:
-  z==If?c_co:
-  z==De?c_de:
-  z==La?c_la:
-  z==Se?c_se:c_ap)(v,e,m,x); }
+c2(c_2) {
+ obj z = X(x);
+ return 
+  (z==Qt?c_qt:
+   z==If?c_co:
+   z==De?c_de:
+   z==La?c_la:
+   z==Se?c_se:c_ap)(v,e,m,x); }
 
 #define Rec(...) {\
-  O _s1 = S1, _s2 = S2;\
+  obj _s1 = S1, _s2 = S2;\
   Mm(_s1, Mm(_s2,__VA_ARGS__));\
   S1 = _s1, S2 = _s2; }
 
@@ -360,7 +374,7 @@ static u0 pushss(lips v, i64 i, va_list xs) {
   (Mm(x, pushss(v, i, xs)), *--Sp = x) :
   reqsp(v, i); }
 
-static u0 pushs(V v, ...) {
+static u0 pushs(lips v, ...) {
  i64 i = 0;
  va_list xs; va_start(xs, v);
  while (va_arg(xs, O)) i++;
@@ -369,7 +383,7 @@ static u0 pushs(V v, ...) {
  else for (mem sp = Sp -= i; i--; *sp++ = va_arg(xs, obj));
  va_end(xs); }
 
-obj hini(V v, Z n) {
+obj hini(lips v, u64 n) {
  hom a = cells(v, n + 2);
  return
   G(a+n) = NULL,
@@ -383,13 +397,13 @@ static obj hfin(lips v, obj a) {
 obj homnom(lips v, obj x) {
  terp *k = G(x);
  if (k == clos || k == pc0 || k == pc1)
-  return homnom(v, (O) G(FF(x)));
- mem h = (M) Gh(x);
+  return homnom(v, (obj) G(FF(x)));
+ mem h = (mem) Gh(x);
  while (*h) h++;
  x = h[-1];
- return (mem) x >= Pool && (M) x < Pool+Len ? x :
-        x == Ob yield                       ? Eva :
-                                              nil; }
+ return (mem) x >= Pool && (mem) x < Pool+Len ? x :
+        x == (obj) yield                      ? Eva :
+                                                nil; }
 
 static u0 rpr(lips v, mem d, const char *n, terp *u) {
  obj x, y = pair(v, interns(v, n), nil);
@@ -403,7 +417,7 @@ static u0 rin(lips v, mem d, const char *n, terp *u) {
 
 #define RPR(a,b) rpr(v,&d,a,b)
 #define RIN(x) rin(v,&d,"i-"#x,x)
-static Inline obj code_dictionary(V v) {
+static Inline obj code_dictionary(lips v) {
  obj d = table(v);;
  Mm(d, prims(RPR), insts(RIN));
  return d; }
@@ -426,7 +440,7 @@ static Inline u0 init_globals_array(lips v) {
 #define NOM "lips"
 #define USR_PATH ".local/lib/"NOM"/"
 #define SYS_PATH "/usr/lib/"NOM"/"
-static int seekp(Ko Ch* p) {
+static int seekp(const char* p) {
  int b, c;
  b = open(getenv("HOME"), O_RDONLY);
  c = openat(b, USR_PATH, O_RDONLY), close(b);
@@ -438,7 +452,7 @@ static int seekp(Ko Ch* p) {
 
 
 lips bootstrap(lips v) {
- if (v == NULL) R v;
+ if (v == NULL) return v;
  const char *path = "prelude.lips";
  int pre = seekp(path);
  if (pre == -1) errp(v, "can't find %s", path);
@@ -450,7 +464,7 @@ lips bootstrap(lips v) {
   script(v, f), fclose(f); }
  return v; }
 
-lips initialize(int argc, const char **argv) {
+lips initialize() {
  lips v = malloc(sizeof(struct lips));
  if (!v || setjmp(v->restart))
   return errp(v, "oom"), finalize(v);
@@ -464,13 +478,6 @@ lips initialize(int argc, const char **argv) {
  tblset(v, Top, y, Top);
  y = interns(v, "macros");
  tblset(v, Top, y, Mac);
- y = interns(v, "argv");
- obj a = nil;
- mm(&y); mm(&a);
- for (obj z; argc--;)
-  z = string(v, argv[argc]),
-  a = pair(v, z, a);
- um, um, tblset(v, Top, y, a);
  srand(clock());
  return v; }
 

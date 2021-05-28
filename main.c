@@ -30,7 +30,6 @@ int main(int argc, char** argv) {
 #define takka 1
 #define nprel 2
  const char
-  opts[] = "hi_",
   help[] =
    "usage: %s [options and scripts]\n"
    "options:\n"
@@ -41,7 +40,7 @@ int main(int argc, char** argv) {
  int opt, args,
   F = argc == 1 ? takka : 0;
 
- while ((opt = getopt(argc, argv, opts)) != -1) switch (opt) {
+ while ((opt = getopt(argc, argv, "hi_")) != -1) switch (opt) {
   case '_': F|=nprel; break;
   case 'i': F|=takka; break;
   case 'h': fprintf(stdout, help, argv[0]); break;
@@ -50,9 +49,15 @@ int main(int argc, char** argv) {
  args = argc - optind;
  if (args == 0 && !(F&takka)) return OK;
 
- lips v = initialize(argc, (const char**) argv);
+ lips v = initialize();
  v = F&nprel ? v : bootstrap(v);
  if (!v) return NO;
+
+ // set up argv
+ obj z, c = argc, a = nil;
+ for (mm(&a); c--; z = string(v, argv[c]), a = pair(v, z, a));
+ z = intern(v, string(v, "argv")), um;
+ tblset(v, Top, z, a);
 
  int r = OK;
  if (args) r = scripts(v, argv + optind);

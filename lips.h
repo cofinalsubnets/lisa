@@ -20,22 +20,6 @@
 #define Nin __attribute__((noinline))
 #define Inline In
 #define NoInline Nin
-#define St static
-#define Ty typedef
-#define Sr struct
-#define Un union
-#define Ko const
-#define En enum
-#define Sz sizeof
-#define R  return
-#define El else
-#define Sw switch
-#define Bk break
-#define Cu continue
-#define Ks case
-#define Df default
-#define Wh while
-#define Fo for
 
 typedef intptr_t O, obj, i64, Z, *M, *mem;
 typedef uintptr_t N, u64;
@@ -63,7 +47,7 @@ typedef struct tble {
   obj key, val;
   struct tble *next; } *tble; // tables
 typedef struct tbl {
-  i64 len, cap;
+  u64 len, cap;
   tble *tab; } *Ht, *tbl;
 
 enum tag { // the 3 ls bits of each pointer are a type tag
@@ -81,50 +65,51 @@ typedef struct root { mem one; struct root *next; } *Mp, *root;
 // this structure is responsible for holding runtime state.
 // most functions take a pointer to it as the first argument.
 typedef struct lips {
- O ip, xp, *fp, *hp, *sp; // vm state variables
- O syms, glob; // symbols and globals
- Mp mem_root; // gc protection list
- Z t0, count, mem_len, *mem_pool; // memory data
+ obj ip, xp, *fp, *hp, *sp; // vm state variables
+ obj syms, glob; // symbols and globals
+ root mem_root; // gc protection list
+ i64 t0, count, mem_len, *mem_pool; // memory data
+ obj (*c_ret)(struct lips *, obj, obj);
  jmp_buf restart; // top level restart
-} *V, *lips;
+} *lips;
 
 // this is the type of interpreter functions
 typedef obj terp(lips, obj, mem, mem, mem, obj);
 typedef terp *T, **H, **hom; // code pointer ; the internal function type
 
 lips
- initialize(int, Ko Ch**),
+ initialize(void),
  bootstrap(lips),
  finalize(lips);
 
 u0
- bcpy(_*, Ko _*, N),
- wcpy(_*, Ko _*, N),
- fill(_*, O, N),
- emit(V, O, Io),
- script(V, Io),
- errp(V, Ko Ch*, ...),
- emsep(V, O, Io, Ch),
- reqsp(V, Z);
+ bcpy(u0*, const u0*, u64),
+ wcpy(u0*, const u0*, u64),
+ fill(u0*, obj, u64),
+ emit(lips, obj, FILE*),
+ script(lips, FILE*),
+ errp(lips, const char*, ...),
+ emsep(lips, obj, FILE*, char),
+ reqsp(lips, u64);
 
 obj
- err(V, O, Ko Ch*, ...),
- linitp(V, O, M),
- snoc(V, O, O),
- sskc(V, M, O),
- restart(V),
- homnom(V, O),
- pair(V, O, O),
- parse(V, Io),
- intern(V, O),
- eval(V, O),
+ err(lips, obj, const char*, ...),
+ linitp(lips, obj, mem),
+ snoc(lips, obj, obj),
+ sskc(lips, mem, obj),
+ restart(lips),
+ homnom(lips, obj),
+ pair(lips, obj, obj),
+ parse(lips, FILE*),
+ intern(lips, obj),
+ eval(lips, obj),
  compile(lips, obj),
- table(V),
- tblset(V, O, O, O),
- tblget(V, O, O),
- tbldel(V, O, O),
- tblkeys(V, O),
- string(V, Ko Ch*);
+ table(lips),
+ tblset(lips, obj, obj, obj),
+ tblget(lips, obj, obj),
+ tbldel(lips, obj, obj),
+ tblkeys(lips, obj),
+ string(lips, const char*);
 
 i64 idx(obj, obj),
     llen(obj);
@@ -133,22 +118,22 @@ int eql(O, O);
 const char* tnom(enum tag);
 
 #define kind(x) ((x)&7)
-#define Gh(x) ((H)((x)))
-#define Ph(x) (Ob(x))
+#define Gh(x) ((hom)((x)))
+#define Ph(x) ((obj)(x))
 #define Gn getnum
 #define Pn putnum
 #define gettwo(x) ((two)((x)-Two))
-#define puttwo(x) (Ob(x)+Two)
-#define getnum(n) ((Z)(n)>>3)
-#define putnum(n) ((Ob(n)<<3)+Num)
+#define puttwo(x) ((obj)(x)+Two)
+#define getnum(n) ((i64)(n)>>3)
+#define putnum(n) (((obj)(n)<<3)+Num)
 #define getsym(x) ((sym)((O)(x)-Sym))
-#define putsym(x) (Ob(x)+Sym)
+#define putsym(x) ((obj)(x)+Sym)
 #define gettup(x) ((tup)((x)-Tup))
-#define puttup(x) (Ob(x)+Tup)
+#define puttup(x) ((obj)(x)+Tup)
 #define getoct(x) ((oct)((O)(x)-Oct))
-#define putoct(x) (Ob(x)+Oct)
+#define putoct(x) ((obj)(x)+Oct)
 #define gettbl(x) ((tbl)((O)(x)-Tbl))
-#define puttbl(x) (Ob(x)+Tbl)
+#define puttbl(x) ((obj)(x)+Tbl)
 #define homp(x) (kind(x)==Hom)
 #define octp(x) (kind(x)==Oct)
 #define nump(x) (kind(x)==Num)
@@ -163,8 +148,8 @@ const char* tnom(enum tag);
 #define XY(x) X(Y(x))
 #define YX(x) Y(X(x))
 #define YY(x) Y(Y(x))
-#define F(x) ((H)(x)+1)
-#define G(x) (*(H)(x))
+#define F(x) ((hom)(x)+1)
+#define G(x) (*(hom)(x))
 #define FF(x) F(F(x))
 #define FG(x) F(G(x))
 #define GF(x) G(F(x))
@@ -173,14 +158,12 @@ const char* tnom(enum tag);
 #define symnom(y) chars(getsym(y)->nom)
 #define mm(r) ((Safe=&((struct root){(r),Safe})))
 #define um (Safe=Safe->next)
-#define LEN(x) (Sz((x))/Sz(*(x)))
 #define AR(x) gettup(x)->xs
 #define AL(x) gettup(x)->len
 #define Mm(y,...) (mm(&(y)),(__VA_ARGS__),um)
 #define b2w(n)((n)/W+((n)%W&&1))
 #define w2b(n) ((n)*W)
-#define Szr(t) (Sz(Sr t)/W)
-#define Size(t) Szr(t)
+#define Size(t) (sizeof(struct t)/W)
 #define Ip v->ip
 #define Fp v->fp
 #define Hp v->hp
@@ -204,25 +187,26 @@ const char* tnom(enum tag);
 #define App AR(Glob)[Apply]
 #define Avail (Sp-Hp)
 
-#define mix ((N)2708237354241864315)
+#define mix ((u64)2708237354241864315)
 
-St In H button(H h) {
- Wh (*h) h++;
- R h; }
+static Inline hom button(hom h) {
+ while (*h) h++;
+ return h; }
 
-St In _* bump(V v, Z n) { _* x;
- R x = v->hp, v->hp += n, x; }
+static Inline u0* bump(lips v, u64 n) {
+ u0* x;
+ return x = v->hp, v->hp += n, x; }
 
-St In _* cells(V v, Z n) {
- R Avail < n ? reqsp(v, n):0, bump(v, n); }
+static Inline u0* cells(lips v, u64 n) {
+ return Avail < n ? reqsp(v, n):0, bump(v, n); }
 
-St In Z hbi(Z cap, N co) { R co % cap; }
+static Inline i64 hbi(u64 cap, u64 co) { return co % cap; }
 
-St In tble hb(O t, N code) {
- R gettbl(t)->tab[hbi(gettbl(t)->cap, code)]; }
+static Inline tble hb(obj t, u64 code) {
+ return gettbl(t)->tab[hbi(gettbl(t)->cap, code)]; }
 
 _Static_assert(
- Sz(O) >= 8,
+ W >= 8,
  "pointers are smaller than 64 bits");
 
 _Static_assert(

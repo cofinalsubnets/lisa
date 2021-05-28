@@ -56,10 +56,10 @@ typedef struct fr { obj clos, retp, subd, argc, argv[]; } *fr;
 
 // the return value of a terp function is usually a call
 // to another terp function.
-#define Jump(f,...) R (f)(v,ip,fp,sp,hp,xp,##__VA_ARGS__)
-#define Cont(n, x) R ip+=w2b(n), xp=x, G(ip)(v,ip,fp,sp,hp,xp)
-#define Ap(f,x) R ip=f,G(ip)(v,ip,fp,sp,hp,x)
-#define Go(f,x) R f(v,ip,fp,sp,hp,x)
+#define Jump(f,...) return (f)(v,ip,fp,sp,hp,xp,##__VA_ARGS__)
+#define Cont(n, x) return ip+=w2b(n), xp=x, G(ip)(v,ip,fp,sp,hp,xp)
+#define Ap(f,x) return ip=f,G(ip)(v,ip,fp,sp,hp,x)
+#define Go(f,x) return f(v,ip,fp,sp,hp,x)
 #define N(n) ip+=w2b(n);Ap(ip, xp)
 // the C compiler has to optimize tail calls in terp functions
 // or the stack will grow every time an instruction happens!
@@ -80,7 +80,7 @@ static Vm(gc) { i64 n = Xp; CallC(reqsp(v, n)); N(0); }
 
 // the interpreter takes a very basic approach to error
 // handling: something is wrong? jump to nope().
-St Vm(nope);
+static Vm(nope);
 #define TyCh(x,t) if(kind((x)-(t)))Jump(nope) // type check
 #define ArCh(n) if(Pn(n)>Argc)Jump(nope)
 
@@ -356,7 +356,7 @@ Vm(tblc) {
 
 static obj tblss(lips v, i64 i, i64 l) {
  mem fp = Fp;
- R i > l-2 ? Argv[i-1] :
+ return i > l-2 ? Argv[i-1] :
   (tblset(v, Xp, Argv[i], Argv[i+1]),
    tblss(v, i+2, l)); }
 
@@ -614,12 +614,12 @@ Vm(mod) {
 
 #define mm_u(_c,_v,_z,op){\
  O x,m=_z,*xs=_v,*l=xs+_c;\
- if (_c) Fo(;xs<l;m=m op Gn(x)){\
+ if (_c) for(;xs<l;m=m op Gn(x)){\
   x = *xs++; TyCh(x, Num);}\
  Go(ret, Pn(m));}
 #define mm_u0(_c,_v,_z,op){\
  O x,m=_z,*xs=_v,*l=xs+_c;\
- if (_c) Fo(;xs<l;m=m op Gn(x)){\
+ if (_c) for(;xs<l;m=m op Gn(x)){\
   x = *xs++; TyCh(x, Num);\
   if (x == Pn(0)) Jump(nope);}\
  Go(ret, Pn(m));}
@@ -660,7 +660,7 @@ Vm(vecpp) { Ap(ip+W, Tf(tupp(xp))); }
 
 // pairs are immutable, so we can take this opportunity to
 // deduplicate them.
-St int twoeq(O a, O b) {
+static int twoeq(O a, O b) {
  if (!eql(X(a), X(b))) return false;
  X(a) = X(b);
  if (!eql(Y(a), Y(b))) return false;
@@ -680,7 +680,7 @@ int eql(obj a, obj b) {
  switch (kind(a)) {
   case Two: return twoeq(a, b);
   case Oct: return streq(a, b);
-  Df:       return false; } }
+  default:  return false; } }
 
 Vm(lt)    { xp = *sp++ <  xp ? xp : nil; N(1); }
 Vm(lteq)  { xp = *sp++ <= xp ? xp : nil; N(1); }
@@ -760,10 +760,9 @@ Vm(ev_u) {
 
 Vm(rnd_u) { Go(ret, Pn(rand())); }
 
-
 // this is for runtime errors from the interpreter, it prints
 // a backtrace and everything.
-static Inline u0 perrarg(V v, M fp) {
+static Inline u0 perrarg(lips v, M fp) {
  i64 i = 0, argc = fp == Pool + Len ? 0 : Gn(Argc);
  if (argc) for (fputc(' ', stderr);;fputc(' ', stderr)) {
   obj x = Argv[i++];
@@ -771,17 +770,17 @@ static Inline u0 perrarg(V v, M fp) {
   if (i == argc) break; }
  fputc(')', stderr); }
 
-St Vm(nope) {
+static Vm(nope) {
  fputs("# (", stderr), emit(v, Ph(ip), stderr),
  perrarg(v, fp);
  fputs(" does not exist\n", stderr);
  for (;;) {
   ip = Retp, fp += Size(fr) + Gn(Argc) + Gn(Subd);
-  if (button(Gh(ip))[-1] == yield) Bk;
+  if (button(Gh(ip))[-1] == yield) break;
   fputs("#  in ", stderr), emsep(v, Ph(ip), stderr, '\n'); }
  return Hp = hp, restart(v); }
 
-obj restart(V v) {
+obj restart(lips v) {
  Fp = Sp = Pool + Len;
  Xp = Ip = nil;
  v->mem_root = NULL;

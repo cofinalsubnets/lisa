@@ -1,7 +1,7 @@
 #include "lips.h"
-static int copy(V, Z);
-static obj cp(lips, obj, i64, mem);
-static Inline u0 do_copy(lips, i64, mem, i64, mem);
+static int copy(lips, u64);
+static obj cp(lips, obj, u64, mem);
+static Inline u0 do_copy(lips, u64, mem, u64, mem);
 
 // a simple copying garbage collector
 
@@ -32,7 +32,7 @@ static Inline u0 do_copy(lips, i64, mem, i64, mem);
 #define shrink() (len/=2,vit/=2)
 #define growp (allocd > len || vit < 32) // lower bound
 #define shrinkp (allocd < len/2 && vit >= 128) // upper bound
-u0 reqsp(lips v, i64 req) {
+u0 reqsp(lips v, u64 req) {
  i64 len = v->mem_len, vit = copy(v, len);
  if (vit) { // copy succeeded
   i64 allocd = len - (Avail - req);
@@ -68,7 +68,7 @@ u0 reqsp(lips v, i64 req) {
 // t values come from clock(). if t0 < t1 < t2 then
 // u will be >= 1. however, sometimes t1 == t2. in that case
 // u = 1.
-static int copy(V v, Z len) {
+static int copy(lips v, u64 len) {
  clock_t t1 = clock(), t2, u;
  mem b0 = v->mem_pool, b1 = malloc(w2b(len));
  return !b1 ? 0 :
@@ -80,17 +80,17 @@ static int copy(V v, Z len) {
    u); }
 
 static Inline u0
-do_copy(lips v, i64 l0, mem b0, i64 l1, mem b1) {
- M s0 = Sp, t0 = b0 + l0, t1 = b1 + l1;
- Z ro = t1 - t0;
+do_copy(lips v, u64 l0, mem b0, u64 l1, mem b1) {
+ mem s0 = Sp, t0 = b0 + l0, t1 = b1 + l1;
+ i64 ro = t1 - t0;
  v->mem_len = l1;
  v->mem_pool = Hp = b1;
  Sp += ro, Fp += ro;
  Syms = nil;
- Wh (t0-- > s0) Sp[t0 - s0] = cp(v, *t0, l0, b0);
+ while (t0-- > s0) Sp[t0 - s0] = cp(v, *t0, l0, b0);
 #define CP(x) x=cp(v,x,l0,b0)
  CP(Ip), CP(Xp), CP(Glob);
- Fo (Mp r = Safe; r; r = r->next) CP(*(r->one)); }
+ for (root r = Safe; r; r = r->next) CP(*(r->one)); }
 #undef CP
 
 // the exact method for copying an object into
@@ -98,9 +98,9 @@ do_copy(lips v, i64 l0, mem b0, i64 l1, mem b1) {
 // objects are used to store pointers to their
 // new locations, which effectively destroys the
 // old data.
-typedef obj cp_(lips, obj, i64, mem);
+typedef obj cp_(lips, obj, u64, mem);
 static cp_ cphom, cptup, cptwo, cpsym, cpoct, cptbl;
-#define cpcc(n) static obj n(lips v, obj x, i64 ln, mem lp)
+#define cpcc(n) static obj n(lips v, obj x, u64 ln, mem lp)
 
 cpcc(cp) {
  switch (kind(x)) {
@@ -110,7 +110,7 @@ cpcc(cp) {
   case Two: return cptwo(v, x, ln, lp);
   case Sym: return cpsym(v, x, ln, lp);
   case Tbl: return cptbl(v, x, ln, lp);
-  Df:       return x; } }
+  default:  return x; } }
 
 #define inb(o,l,u) (o>=l&&o<u)
 #define fresh(o) inb((M)(o),Pool,Pool+Len)
