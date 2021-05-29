@@ -157,17 +157,17 @@ cpcc(cphom) {
  hom dst, src = Gh(x), end = src, start;
  if (fresh(G(src))) return (obj) G(src);
  while (*end) end++;
- start = (H) G(end+1);
+ start = (hom) G(end+1);
  i64 len = (end+2) - start;
  dst = bump(v, len);
  hom j = dst;
- for (H k = start; k < end; j++, k++)
-  G(j) = G(k), G(k) = (T) Ph(j);
+ for (hom k = start; k < end; j++, k++)
+  G(j) = G(k), G(k) = (terp*) Ph(j);
  G(j) = NULL;
- G(j+1) = (T) dst;
+ G(j+1) = (terp*) dst;
  for (obj u; j-- > dst;)
   u = (obj) G(j),
-  G(j) = (T) (stale(u) ? cp(v, u, ln, lp) : u);
+  G(j) = (terp*) (stale(u) ? cp(v, u, ln, lp) : u);
  return Ph(dst += src - start); }
 
 static tble cptble(lips v, tble src, i64 ln, mem lp) {

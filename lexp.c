@@ -25,10 +25,12 @@ static par atom, r1s, qt, stri;
 
 #define readx(v,m)(errp(v,m),0)
 
-static int r0(Io i) { for (Z c;;) switch ((c = getc(i))) {
- case '#': case ';': do c = getc(i); while (c != '\n' && c != EOF);
- case ' ': case '\t': case '\n': continue;
- default: return c; } }
+static int r0(Io i) {
+ for (int c;;) switch ((c = getc(i))) {
+  case '#': case ';':
+   do c = getc(i); while (c != '\n' && c != EOF);
+  case ' ': case '\t': case '\n': continue;
+  default: return c; } }
 
 obj parse(lips v, FILE* i) {
  int c;
@@ -47,7 +49,7 @@ static obj qt(lips v, FILE *i) {
    pair(v, Qt, r)); }
 
 static obj r1s(lips v, FILE *i) {
- O x, y, c;
+ obj x, y, c;
  return (c = r0(i)) == EOF ? readx(v, err_eof) :
   c == ')' ? nil :
    (ungetc(c, i),
@@ -55,7 +57,7 @@ static obj r1s(lips v, FILE *i) {
      (Mm(x, y = r1s(v, i)),
       y ? pair(v, x, y) : y)); }
 
-static obj
+static NoInline obj
 rloop(lips v, FILE *i, str o, i64 n, i64 lim,
       obj (*loop)(lips, FILE*, str, i64, i64)) {
  obj x;
@@ -87,22 +89,22 @@ str_(lips v, FILE *p, str o, i64 n, i64 lim) {
   default: o->text[n++] = x; } out:
  return rloop(v, p, o, n, lim, str_); }
 
-static Inline i64 chidx(char c, const char *s) {
+static char downcase(char c) {
+ return c >= 65 && c <= 90 ? c+32 : c; }
+
+static i64 chidx(const char *s, char c) {
  for (Z i = 0; *s; s++, i++) if (*s == c) return i;
  return -1; }
 
 static NoInline obj readz_2(const char *s, i64 rad) {
-  static const char *dig = "0123456789abcdef";
-  if (!*s) return nil;
-  i64 a = 0;
-  int c;
-  for (;;) {
-    if (!(c = *s++)) break;
-    a *= rad;
-    int i = chidx(c, dig);
-    if (i < 0 || i >= rad) return nil;
-    a += i; }
-  return Pn(a); }
+ static const char *dig = "0123456789abcdef";
+ if (!*s) return nil;
+ i64 a = 0;
+ for (int i, c; (c = *s++); a += i) {
+  a *= rad;
+  i = chidx(dig, downcase(c));
+  if (i < 0 || i >= rad) return nil; }
+ return Pn(a); }
 
 static NoInline obj readz_1(const char *s) {
  if (*s == '0') switch (s[1]) {
@@ -121,7 +123,7 @@ static Inline obj readz(const char *s) {
  return readz_1(s); }
 
 static obj atom(lips v, FILE *i) {
- O o = atom_(v, i, cells(v, 2), 0, 8), q = readz(chars(o));
+ obj o = atom_(v, i, cells(v, 2), 0, 8), q = readz(chars(o));
  return nump(q) ? q : intern(v, o); }
 
 static obj stri(lips v, FILE *i) {

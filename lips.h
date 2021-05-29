@@ -26,9 +26,8 @@ typedef uintptr_t N, u64;
 typedef void _, u0;
 typedef char Ch;
 typedef FILE *Io;
-#define Ob (O)
-#define non (Ob 0)
-#define nil (Ob -1)
+#define non ((obj)0)
+#define nil ((obj)-1)
 #define W sizeof(obj) // pointer arithmetic unit
 #define W2 (2*W)
 
@@ -68,19 +67,17 @@ typedef struct lips {
  obj ip, xp, *fp, *hp, *sp; // vm state variables
  obj syms, glob; // symbols and globals
  root mem_root; // gc protection list
- i64 t0, count, mem_len, *mem_pool; // memory data
- obj (*c_ret)(struct lips *, obj, obj);
+ i64 t0, seed, count, mem_len, *mem_pool; // memory data
  jmp_buf restart; // top level restart
 } *lips;
 
 // this is the type of interpreter functions
 typedef obj terp(lips, obj, mem, mem, mem, obj);
-typedef terp *T, **H, **hom; // code pointer ; the internal function type
+typedef terp **hom; // code pointer ; the internal function type
 
 lips
- initialize(void),
- bootstrap(lips),
- finalize(lips);
+ initialize(lips),
+ bootstrap(lips);
 
 u0
  bcpy(u0*, const u0*, u64),

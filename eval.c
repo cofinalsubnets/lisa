@@ -77,7 +77,7 @@ enum { Here, Loc, Arg, Clo, Wait };
 static Inline obj em1(terp *i, obj k) {
   return k -= W, G(k) = i, k; }
 static Inline obj em2(terp *i, obj j, obj k) {
-  return em1(i, em1((T)j, k)); }
+  return em1(i, em1((terp*)j, k)); }
 
 static obj imx(lips v, mem e, i64 m, terp *i, obj x) {
  return Pu(Pn(i), x), insx(v, e, m); }
@@ -86,10 +86,10 @@ static obj apply(lips v, obj f, obj x) {
   Pu(f, x);
   hom h = cells(v, 5);
   h[0] = call;
-  h[1] = (T) Pn(2);
+  h[1] = (terp*) Pn(2);
   h[2] = yield;
   h[3] = NULL;
-  h[4] = (T) h;
+  h[4] = (terp*) h;
   return call(v, Ph(h), Fp, Sp, Hp, tblget(v, Dict, App)); }
 
 obj compile(lips v, obj x) {
@@ -367,7 +367,7 @@ c1(insx) {
 
 c1(c_ini) {
  obj k = hini(v, m+1);
- return em1((T)(e ? name(*e):Eva), k); }
+ return em1((terp*)(e ? name(*e):Eva), k); }
 
 static u0 pushss(lips v, i64 i, va_list xs) {
  obj x; (x = va_arg(xs, obj)) ?
@@ -387,7 +387,7 @@ obj hini(lips v, u64 n) {
  hom a = cells(v, n + 2);
  return
   G(a+n) = NULL,
-  GF(a+n) = (T) a,
+  GF(a+n) = (terp*) a,
   fill((M) a, nil, n),
   Ph(a+n); }
 
@@ -405,37 +405,6 @@ obj homnom(lips v, obj x) {
         x == (obj) yield                      ? Eva :
                                                 nil; }
 
-static u0 rpr(lips v, mem d, const char *n, terp *u) {
- obj x, y = pair(v, interns(v, n), nil);
- Mm(y, x = hini(v, 2));
- x = em2(u, y, x);
- tblset(v, *d, X(y), x); }
-
-static u0 rin(lips v, mem d, const char *n, terp *u) {
- obj y = interns(v, n);
- tblset(v, *d, y, Pn(u)); }
-
-#define RPR(a,b) rpr(v,&d,a,b)
-#define RIN(x) rin(v,&d,"i-"#x,x)
-static Inline obj code_dictionary(lips v) {
- obj d = table(v);;
- Mm(d, prims(RPR), insts(RIN));
- return d; }
-#undef RPR
-#undef RIN
-
-static Inline u0 init_globals_array(lips v) {
- vec t = cells(v, sizeof (struct tup)/W + NGlobs);
- fill(t->xs, nil, t->len = NGlobs);
- obj z, y = Glob = puttup(t);
- Mm(y,
-  z = code_dictionary(v), Top = z,
-  z = table(v), Mac = z,
-#define bsym(i,s)(z=interns(v,s),AR(y)[i]=z)
-  bsym(Eval, "ev"), bsym(Apply, "ap"),
-  bsym(Def, ":"),   bsym(Cond, "?"), bsym(Lamb, "\\"),
-  bsym(Quote, "`"), bsym(Seq, ","),  bsym(Splat, ".")); }
-#undef bsym
 
 #define NOM "lips"
 #define USR_PATH ".local/lib/"NOM"/"
@@ -460,30 +429,52 @@ lips bootstrap(lips v) {
   FILE *f = fdopen(pre, "r");
   if (setjmp(v->restart)) return
    errp(v, "error in %s", path),
-   fclose(f), finalize(v);
+   fclose(f), free(v->mem_pool), NULL;
   script(v, f), fclose(f); }
  return v; }
 
-lips initialize() {
- lips v = malloc(sizeof(struct lips));
- if (!v || setjmp(v->restart))
-  return errp(v, "oom"), finalize(v);
- v->t0 = clock(),
+obj spush(lips v, obj x) {
+ if (!Avail) Mm(x, reqsp(v, 1));
+ return *--Sp = x; }
+
+obj spop(lips v) {
+ return *Sp++; }
+
+#define repr(a,b)(\
+  z=spush(v, pair(v, interns(v, a), nil)),\
+  x=hini(v, 2),\
+  x=em2(b, z=spop(v), x),\
+  tblset(v, *Sp, X(z), x))
+#define rein(a)(\
+  z=interns(v,"i-"#a),\
+  tblset(v,*Sp,z,Pn(a)))
+
+lips initialize(lips v) {
+ v->seed = mix * (v->t0 = clock()),
  v->ip = v->xp = v->syms = v->glob = nil,
- v->fp = v->hp = v->sp = (M) w2b(1),
+ v->fp = v->hp = v->sp = (mem) W,
  v->count = 0, v->mem_len = 1, v->mem_pool = NULL,
  v->mem_root = NULL;
- init_globals_array(v);
- obj y = interns(v, "ns");
+ vec t = cells(v, sizeof (struct tup)/W + NGlobs);
+ fill(t->xs, nil, t->len = NGlobs);
+ obj x, z, y = Glob = puttup(t);
+ Mm(y,
+  spush(v, table(v)),
+  prims(repr), insts(rein),
+  Top = spop(v),
+  z = table(v), Mac = z,
+#define bsym(i,s)(z=interns(v,s),AR(y)[i]=z)
+  bsym(Eval, "ev"), bsym(Apply, "ap"),
+  bsym(Def, ":"),   bsym(Cond, "?"), bsym(Lamb, "\\"),
+  bsym(Quote, "`"), bsym(Seq, ","),  bsym(Splat, "."));
+#undef bsym
+ y = interns(v, "ns");
  tblset(v, Top, y, Top);
  y = interns(v, "macros");
  tblset(v, Top, y, Mac);
- srand(clock());
  return v; }
-
-lips finalize(lips v) {
- if (v) free(v->mem_pool), free(v);
- return NULL; }
+#undef repr
+#undef rein
 
 #undef arg
 #undef loc

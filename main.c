@@ -27,6 +27,7 @@ static int scripts(lips v, char** argv) {
  return OK; }
 
 int main(int argc, char** argv) {
+ struct lips V;
 #define takka 1
 #define nprel 2
  const char
@@ -49,7 +50,7 @@ int main(int argc, char** argv) {
  args = argc - optind;
  if (args == 0 && !(F&takka)) return OK;
 
- lips v = initialize();
+ lips v = initialize(&V);
  v = F&nprel ? v : bootstrap(v);
  if (!v) return NO;
 
@@ -62,4 +63,4 @@ int main(int argc, char** argv) {
  int r = OK;
  if (args) r = scripts(v, argv + optind);
  if (r == OK && F&takka) repl(v, stdin, stdout);
- return finalize(v), r; }
+ return free(v->mem_pool), r; }
