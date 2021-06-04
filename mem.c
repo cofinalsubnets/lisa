@@ -113,7 +113,7 @@ cpcc(cp) {
   default:  return x; } }
 
 #define inb(o,l,u) (o>=l&&o<u)
-#define fresh(o) inb((M)(o),Pool,Pool+Len)
+#define fresh(o) inb((mem)(o),Pool,Pool+Len)
 cpcc(cptwo) {
  two dst, src = gettwo(x);
  return fresh(src->x) ? src->x :
@@ -131,28 +131,28 @@ cpcc(cptup) {
  dst->xs[0] = src->xs[0];
  src->xs[0] = puttup(dst);
  dst->xs[0] = cp(v, dst->xs[0], ln, lp);
- for (Z i = 1; i < l; ++i)
-   dst->xs[i] = cp(v, src->xs[i], ln, lp);
+ for (i64 i = 1; i < l; ++i)
+  dst->xs[i] = cp(v, src->xs[i], ln, lp);
  return puttup(dst); }
 
 cpcc(cpoct) {
  str dst, src = getoct(x);
- return src->len == 0 ? *(M)src->text :
+ return src->len == 0 ? *(mem)src->text :
   (dst = bump(v, Size(oct) + b2w(src->len)),
-   wcpy(dst->text, src->text, b2w(src->len)),
+   cpy64(dst->text, src->text, b2w(src->len)),
    dst->len = src->len, src->len = 0,
-   *(M)src->text = putoct(dst)); }
+   *(mem)src->text = putoct(dst)); }
 
 cpcc(cpsym) {
  sym src = getsym(x), dst;
  if (fresh(src->nom)) return src->nom;
  if (nilp(src->nom)) // anonymous symbol
   dst = bump(v, Size(sym)),
-  wcpy(dst, src, Size(sym));
+  cpy64(dst, src, Size(sym));
  else dst = getsym(sskc(v, &Syms, cp(v, src->nom, ln, lp)));
  return src->nom = putsym(dst); }
 
-#define stale(o) inb((M)(o),lp,lp+ln)
+#define stale(o) inb((mem)(o),lp,lp+ln)
 cpcc(cphom) {
  hom dst, src = Gh(x), end = src, start;
  if (fresh(G(src))) return (obj) G(src);

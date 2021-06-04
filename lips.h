@@ -2,43 +2,27 @@
 #define LIPS_H
 #include <stdlib.h>
 #include <stdio.h>
-#include <stdint.h>
-#include <stdarg.h>
-#include <stdbool.h>
 #include <setjmp.h>
-#include <string.h>
 #include <time.h>
-#include <errno.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <sys/stat.h>
+#include <stdnoreturn.h>
+#include "cursed.h"
 
 // thanks !!
 //
-// first of all C makes you type waaaaaay too much
-#define In inline __attribute__((always_inline))
-#define Nin __attribute__((noinline))
-#define Inline In
-#define NoInline Nin
-
-typedef intptr_t O, obj, i64, Z, *M, *mem;
-typedef uintptr_t N, u64;
-typedef void _, u0;
-typedef char Ch;
-typedef FILE *Io;
-#define non ((obj)0)
-#define nil ((obj)-1)
-#define W sizeof(obj) // pointer arithmetic unit
-#define W2 (2*W)
+typedef i64 obj, *mem;
+#define non zero64
+#define nil ((obj)~non)
+#define W word64
+#define W2 (word64*2)
 
 // more fundamental data types
 typedef struct two {
   obj x, y; } *Tw, *two; // pairs
 typedef struct tup {
-  i64 len;
+  u64 len;
   obj xs[]; } *Ve, *tup, *vec; // vectors
 typedef struct oct {
-  i64 len;
+  u64 len;
   char text[]; } *By, *oct, *str; // byte arrays
 typedef struct sym {
   obj nom, code, l, r; } *Sy, *sym; // symbols
@@ -75,22 +59,17 @@ typedef struct lips {
 typedef obj terp(lips, obj, mem, mem, mem, obj);
 typedef terp **hom; // code pointer ; the internal function type
 
-lips
- initialize(lips),
- bootstrap(lips);
-
 u0
- bcpy(u0*, const u0*, u64),
- wcpy(u0*, const u0*, u64),
- fill(u0*, obj, u64),
+ reqsp(lips, u64),
+ lips_init(lips),
+ lips_fin(lips),
+ lips_boot(lips),
  emit(lips, obj, FILE*),
  script(lips, FILE*),
- errp(lips, const char*, ...),
- emsep(lips, obj, FILE*, char),
- reqsp(lips, u64);
+ errp(lips, char*, ...),
+ emsep(lips, obj, FILE*, char);
 
 obj
- err(lips, obj, const char*, ...),
  linitp(lips, obj, mem),
  snoc(lips, obj, obj),
  sskc(lips, mem, obj),
@@ -108,9 +87,8 @@ obj
  tblkeys(lips, obj),
  string(lips, const char*);
 
-i64 idx(obj, obj),
-    llen(obj);
-int eql(O, O);
+i64 idx(obj, obj);
+u64 llen(obj), eql(obj, obj);
 
 const char* tnom(enum tag);
 
@@ -123,13 +101,13 @@ const char* tnom(enum tag);
 #define puttwo(x) ((obj)(x)+Two)
 #define getnum(n) ((i64)(n)>>3)
 #define putnum(n) (((obj)(n)<<3)+Num)
-#define getsym(x) ((sym)((O)(x)-Sym))
+#define getsym(x) ((sym)((obj)(x)-Sym))
 #define putsym(x) ((obj)(x)+Sym)
 #define gettup(x) ((tup)((x)-Tup))
 #define puttup(x) ((obj)(x)+Tup)
-#define getoct(x) ((oct)((O)(x)-Oct))
+#define getoct(x) ((oct)((obj)(x)-Oct))
 #define putoct(x) ((obj)(x)+Oct)
-#define gettbl(x) ((tbl)((O)(x)-Tbl))
+#define gettbl(x) ((tbl)((obj)(x)-Tbl))
 #define puttbl(x) ((obj)(x)+Tbl)
 #define homp(x) (kind(x)==Hom)
 #define octp(x) (kind(x)==Oct)
@@ -191,8 +169,8 @@ static Inline hom button(hom h) {
  return h; }
 
 static Inline u0* bump(lips v, u64 n) {
- u0* x;
- return x = v->hp, v->hp += n, x; }
+ u0* x = v->hp;
+ return v->hp += n, x; }
 
 static Inline u0* cells(lips v, u64 n) {
  return Avail < n ? reqsp(v, n):0, bump(v, n); }
@@ -203,12 +181,11 @@ static Inline tble hb(obj t, u64 code) {
  return gettbl(t)->tab[hbi(gettbl(t)->cap, code)]; }
 
 _Static_assert(
- W >= 8,
- "pointers are smaller than 64 bits");
+ sizeof(i64*) == sizeof(i64),
+ "pointers are not 64 bits");
 
 _Static_assert(
- -9 == (((-9)<<12)>>12),
+ -1l == ((-1l<<8)>>8),
  "opposite bit-shifts on a negative integer "
  "yield a nonidentical result");
-
 #endif

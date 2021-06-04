@@ -68,7 +68,7 @@ typedef struct fr { obj clos, retp, subd, argc, argv[]; } *fr;
 // this occurs near the beginning of a function. if enough
 // memory is not available the interpret jumps to a specific
 // terp function
-static interp(gc) { i64 n = Xp; CallC(reqsp(v, n)); N(0); }
+static interp(gc) { u64 n = Xp; CallC(reqsp(v, n)); N(0); }
 // that stores the state and calls the garbage collector;
 // afterwards it jumps back to the instruction that called it.
 // therefore anything before the Have() macro will be executed
@@ -78,11 +78,18 @@ static interp(gc) { i64 n = Xp; CallC(reqsp(v, n)); N(0); }
 #define Have(n) if (avail < n) Jump((Xp=n,gc))
 #define Have1() if (hp == sp) Jump((Xp=1,gc)) // common case, faster comparison
 
+#define arity_err_msg "wrong arity : %d of %d"
+#define type_err_msg "wrong type : %s for %s"
+#define div0_err_msg "%d / 0"
 // the interpreter takes a very basic approach to error
 // handling: something is wrong? jump to nope().
-static interp(nope);
-#define TyCh(x,t) if(kind((x)-(t)))Jump(nope) // type check
-#define ArCh(n) if(Pn(n)>Argc)Jump(nope)
+static noreturn interp(nope, const char *, ...);
+#define TyCh(x,t) if(kind((x)-(t)))\
+ Jump(nope, type_err_msg,\
+  tnom(kind(x)), tnom(kind(t))) // type check
+#define ArCh(n) if(Pn(n)>Argc)\
+ Jump(nope, arity_err_msg,\
+  n, Gn(Argc))
 
 // " virtual machine instructions "
 //
@@ -96,7 +103,7 @@ interp(zero) { xp = Pn(0); N(1); }
 // indexed load instructions
 // this pointer arithmetic works because fixnums are
 // premultiplied by W
-#define fast_idx(b) (*(Z*)((Z)(b)+(Z)GF(ip)-Num))
+#define fast_idx(b) (*(i64*)((i64)(b)+(i64)GF(ip)-Num))
 interp(arg)  { xp = fast_idx(Argv);     N(2); }
 interp(arg0) { xp = Argv[0];            N(1); }
 interp(arg1) { xp = Argv[1];            N(1); }
@@ -117,7 +124,7 @@ interp(locals) {
  i64 n = Gn(GF(ip));
  Have(n + 2);
  vec t = (Ve) hp;
- fill(t->xs, nil, t->len = n);
+ rep64(t->xs, nil, t->len = n);
  hp += n + 1;
  *--sp = puttup(t);
  N(2); }
@@ -129,7 +136,8 @@ interp(locals) {
 interp(lbind) {
  obj w = (obj) GF(ip),
      d = XY(w), y = X(w);
- if (!(w = tblget(v, d, xp = YY(w)))) Jump(nope); // free variable
+ if (!(w = tblget(v, d, xp = YY(w))))
+   Jump(nope, "free variable : %s", symnom(xp)); // free variable
  xp = w;
  if (Gn(y) != 8) TyCh(xp, Gn(y)); // do the type check
  terp *q = G(FF(ip)); // omit the arity check if possible
@@ -163,8 +171,8 @@ interp(clos) { Clos = (obj) GF(ip); Ap((obj) G(FF(ip)), xp); }
 // return from a function
 interp(ret) {
  ip = Retp;
- sp = (M) ((Z) Argv + Argc - Num);
- fp = (M) ((Z)   sp + Subd - Num);
+ sp = (mem) ((i64) Argv + Argc - Num);
+ fp = (mem) ((i64)   sp + Subd - Num);
  N(0); }
 
 // regular function call
@@ -172,7 +180,7 @@ interp(call) {
 #define fwds (sizeof(struct fr)/W)
  Have(fwds);
  obj adic = (obj) GF(ip);
- i64 off = fp - (M) ((Z) sp + adic - Num);
+ i64 off = fp - (mem) ((i64) sp + adic - Num);
  fp = sp -= fwds;
  Retp = Ph(ip+W2);
  Subd = Pn(off);
@@ -203,8 +211,10 @@ interp(rec) {
  Ap(xp, nil); }
 
 // type/arity checking
-#define arn(n) if(n>Argc)Jump(nope)
-#define tcn(k) {if(kind(xp-k))Jump(nope);}
+#define arn(n) if(n>Argc)\
+ Jump(nope, arity_err_msg, Gn(n), Gn(Argc))
+#define tcn(k) if(kind(xp-k))\
+ Jump(nope, type_err_msg, tnom(kind(xp)), tnom(k))
 interp(idZ) { tcn(Num); N(1); }
 interp(id2) { tcn(Two); N(1); }
 interp(idH) { tcn(Hom); N(1); }
@@ -235,7 +245,7 @@ interp(ccc_u) {
  hp += ht + 2;
  t->len = ht + 1;
  t->xs[0] = Pn(fp - sp);
- wcpy(t->xs+1, sp, ht);
+ cpy64(t->xs+1, sp, ht);
  hom c = (hom) hp;
  hp += 4;
  c[0] = cont;
@@ -253,18 +263,18 @@ interp(cont) {
  i64 off = Gn(t->xs[0]);
  sp = Pool + Len - (t->len - 1);
  fp = sp + off;
- wcpy(sp, t->xs+1, t->len-1);
+ cpy64(sp, t->xs+1, t->len-1);
  Jump(ret); }
 
 interp(ap_u) {
  ArCh(2);
  obj x = Argv[0], y = Argv[1];
  TyCh(x, Hom);
- i64 adic = llen(y);
+ u64 adic = llen(y);
  Have(adic);
  obj off = Subd, rp = Retp;
  sp = Argv + Gn(Argc) - adic;
- for (Z j = 0; j < adic; y = Y(y)) sp[j++] = X(y);
+ for (u64 j = 0; j < adic; y = Y(y)) sp[j++] = X(y);
  fp = sp -= Size(fr);
  Retp = rp;
  Argc = Pn(adic);
@@ -281,7 +291,7 @@ interp(hom_u) {
  Have(len);
  hom h = (hom) hp;
  hp += len;
- fill((M) h, nil, len);
+ rep64((mem) h, nil, len);
  h[len-1] = (terp*) h;
  h[len-2] = NULL;
  Go(ret, Ph(h+len-2)); }
@@ -346,7 +356,7 @@ interp(tget) {
 #define ok Pn(1)
 interp(thas)  { xp = tblget(v, xp, *sp++) ? ok : nil; N(1); }
 interp(tlen)  { xp = putnum(gettbl(xp)->len); N(1); }
-interp(tkeys) { O x; CallC(x = tblkeys(v, xp)); xp = x; N(1); }
+interp(tkeys) { obj x; CallC(x = tblkeys(v, xp)); xp = x; N(1); }
 
 interp(tblc) {
  ArCh(2);
@@ -363,7 +373,8 @@ static obj tblss(lips v, i64 i, i64 l) {
 interp(tbls) {
  obj x = nil;
  ArCh(1);
- TyCh(xp = *Argv, Tbl);
+ xp = *Argv;
+ TyCh(xp, Tbl);
  CallC(x = tblss(v, 1, Gn(Argc)));
  Go(ret, x); }
 
@@ -404,7 +415,7 @@ interp(strg) {
   Pn(getoct(Argv[0])->text[Gn(Argv[1])]) :
   nil); }
 
-interp(strc) {
+interp(strconc) {
  i64 l = Gn(Argc), sum = 0, i = 0;
  while (i < l) {
   obj x = Argv[i++];
@@ -419,7 +430,7 @@ interp(strc) {
  while (i) {
   str x = getoct(Argv[--i]);
   sum -= x->len - 1;
-  bcpy(d->text+sum, x->text, x->len - 1); }
+  cpy8(d->text+sum, x->text, x->len - 1); }
  Go(ret, putoct(d)); }
 
 #define min(a,b)(a<b?a:b)
@@ -439,7 +450,7 @@ interp(strs) {
  hp += words;
  dst->len = ub - lb + 1;
  dst->text[ub - lb] = 0;
- bcpy(dst->text, src->text + lb, ub - lb);
+ cpy8(dst->text, src->text + lb, ub - lb);
  Go(ret, putoct(dst)); }
 
 interp(strmk) {
@@ -465,7 +476,7 @@ interp(vararg) {
  if (!vdic) {
   Have1();
   sp = --fp;
-  for (Z i = 0; i < Size(fr) + reqd; i++)
+  for (i64 i = 0; i < Size(fr) + reqd; i++)
    fp[i] = fp[i+1];
   Argc += W;
   Argv[reqd] = nil; }
@@ -477,7 +488,7 @@ interp(vararg) {
   Have(2 * vdic);
   two t = (two) hp;
   hp += 2 * vdic;
-  for (Z i = vdic; i--;)
+  for (i64 i = vdic; i--;)
    t[i].x = Argv[reqd + i],
    t[i].y = puttwo(t+i+1);
   t[vdic-1].y = nil;
@@ -542,10 +553,10 @@ interp(pc0) {
      loc = AR(ec)[1];
  i64 adic = nilp(arg) ? 0 : AL(arg);
  Have(Size(fr) + adic + 1);
- i64 off = (M) fp - sp;
+ i64 off = (mem) fp - sp;
  G(ip) = pc1;
  sp -= adic;
- for (Z z = adic; z--; sp[z] = AR(arg)[z]);
+ for (i64 z = adic; z--; sp[z] = AR(arg)[z]);
  ec = (obj) GF(ip);
  fp = sp -= Size(fr);
  Retp = ip;
@@ -564,12 +575,12 @@ interp(pc1) {
 
 // this is used to create closures.
 interp(take) {
- Z n = Gn((obj) GF(ip));
+ i64 n = Gn((obj) GF(ip));
  Have(n + 1);
  vec t = (vec) hp;
  hp += n + 1;
  t->len = n;
- wcpy(t->xs, sp, n);
+ cpy64(t->xs, sp, n);
  sp += n;
  Go(ret, puttup(t)); }
 
@@ -591,9 +602,8 @@ interp(car) { Ap(ip+W, X(xp)); }
 interp(cdr) { Ap(ip+W, Y(xp)); }
 
 interp(cons_u) {
- i64 aa = Gn(Argc);
- if (!aa) Jump(nope);
- Have(2); hp[0] = Argv[0], hp[1] = aa == 1 ? nil : Argv[1];
+ ArCh(2);
+ Have(2); hp[0] = Argv[0], hp[1] = Argv[1];
  xp = puttwo(hp), hp += 2; Jump(ret); }
 interp(car_u) { ArCh(1); TyCh(*Argv, Two); Go(ret, X(*Argv)); }
 interp(cdr_u) { ArCh(1); TyCh(*Argv, Two); Go(ret, Y(*Argv)); }
@@ -604,24 +614,24 @@ interp(add) { xp = xp + *sp++ - Num; N(1); }
 interp(sub) { xp = *sp++ - xp + Num; N(1); }
 interp(mul) { xp = Pn(Gn(xp) * Gn(*sp++)); N(1); }
 interp(dqv) {
- if (xp == Pn(0)) Jump(nope);
+ if (xp == Pn(0)) Jump(nope, div0_err_msg, Gn(*sp));
  xp = Pn(Gn(*sp++) / Gn(xp));
  N(1); }
 interp(mod) {
- if (xp == Pn(0)) Jump(nope);
+ if (xp == Pn(0)) Jump(nope, div0_err_msg, Gn(*sp));
  xp = Pn(Gn(*sp++) % Gn(xp));
  N(1); }
 
 #define mm_u(_c,_v,_z,op){\
- O x,m=_z,*xs=_v,*l=xs+_c;\
+ obj x,m=_z,*xs=_v,*l=xs+_c;\
  if (_c) for(;xs<l;m=m op Gn(x)){\
   x = *xs++; TyCh(x, Num);}\
  Go(ret, Pn(m));}
 #define mm_u0(_c,_v,_z,op){\
- O x,m=_z,*xs=_v,*l=xs+_c;\
+ obj x,m=_z,*xs=_v,*l=xs+_c;\
  if (_c) for(;xs<l;m=m op Gn(x)){\
   x = *xs++; TyCh(x, Num);\
-  if (x == Pn(0)) Jump(nope);}\
+  if (x == Pn(0)) Jump(nope, div0_err_msg, m);}\
  Go(ret, Pn(m));}
 
 interp(add_u) {
@@ -636,12 +646,12 @@ interp(sub_u) {
  mm_u(i-1,Argv+1,Gn(Argv[0]),-); }
 
 interp(div_u) {
- Z i = Gn(Argc);
+ i64 i = Gn(Argc);
  if (i == 0) Go(ret, Pn(1));
  TyCh(*Argv, Num);
  mm_u0(i-1,Argv+1,Gn(*Argv),/); }
 interp(mod_u) {
- Z i = Gn(Argc);
+ i64 i = Gn(Argc);
  if (i == 0) Go(ret, Pn(1));
  TyCh(*Argv, Num);
  mm_u0(i-1,Argv+1,Gn(*Argv),%); }
@@ -660,21 +670,21 @@ interp(vecpp) { Ap(ip+W, Tf(tupp(xp))); }
 
 // pairs are immutable, so we can take this opportunity to
 // deduplicate them.
-static int twoeq(O a, O b) {
+static u64 twoeq(obj a, obj b) {
  if (!eql(X(a), X(b))) return false;
  X(a) = X(b);
  if (!eql(Y(a), Y(b))) return false;
  Y(a) = Y(b);
  return true; }
 
-static int streq(obj a, obj b) {
+static u64 streq(obj a, obj b) {
  str o = getoct(a), m = getoct(b);
  if (o->len != m->len) return false;
- for (Z i = 0; i < o->len; i++)
+ for (i64 i = 0; i < o->len; i++)
   if (o->text[i] != m->text[i]) return false;
  return true; }
 
-int eql(obj a, obj b) {
+u64 eql(obj a, obj b) {
  if (a == b)             return true;
  if (kind(a) != kind(b)) return false;
  switch (kind(a)) {
@@ -734,7 +744,7 @@ interp(drop) { sp++; N(1); }
 interp(dupl) { Have1(); --sp; sp[0] = sp[1]; N(1); }
 
 // errors
-interp(fail) { Jump(nope); }
+interp(fail) { Jump(nope, "fail"); }
 interp(zzz) { exit(EXIT_SUCCESS); }
 interp(gsym_u) {
  Have(Size(sym));
@@ -762,12 +772,11 @@ interp(ev_u) {
 // Good Multipliers for Congruential Pseudorandom Number
 // Generators" by Steele & Vigna
 interp(rnd_u) {
- i64 r = v->seed * 0xaf251af3b0f025b5 + 1;
- Go(ret, Pn((v->seed = r) >> 8)); }
+ Go(ret, Pn(lcprng(&v->seed))); }
 
 // this is for runtime errors from the interpreter, it prints
 // a backtrace and everything.
-static Inline u0 perrarg(lips v, M fp) {
+static Inline u0 perrarg(lips v, mem fp) {
  i64 i = 0, argc = fp == Pool + Len ? 0 : Gn(Argc);
  if (argc) for (fputc(' ', stderr);;fputc(' ', stderr)) {
   obj x = Argv[i++];
@@ -775,17 +784,23 @@ static Inline u0 perrarg(lips v, M fp) {
   if (i == argc) break; }
  fputc(')', stderr); }
 
-static interp(nope) {
- fputs("# (", stderr), emit(v, Ph(ip), stderr),
+static noreturn interp(nope, const char *msg, ...) {
+ fputs("# (", stderr), emit(v, Ph(ip), stderr);
  perrarg(v, fp);
- fputs(" does not exist\n", stderr);
+ fputs(" does not exist", stderr);
+ if (msg) {
+   va_list xs;
+   fputs(" : ", stderr);
+   va_start(xs, msg); vfprintf(stderr, msg, xs); }
+ fputc('\n', stderr);
  for (;;) {
   ip = Retp, fp += Size(fr) + Gn(Argc) + Gn(Subd);
   if (button(Gh(ip))[-1] == yield) break;
   fputs("#  in ", stderr), emsep(v, Ph(ip), stderr, '\n'); }
- return Hp = hp, restart(v); }
+ Hp = hp;
+ restart(v); }
 
-obj restart(lips v) {
+noreturn obj restart(lips v) {
  Fp = Sp = Pool + Len;
  Xp = Ip = nil;
  v->mem_root = NULL;

@@ -25,7 +25,7 @@ static par atom, r1s, qt, stri;
 
 #define readx(v,m)(errp(v,m),0)
 
-static int r0(Io i) {
+static int r0(FILE *i) {
  for (int c;;) switch ((c = getc(i))) {
   case '#': case ';':
    do c = getc(i); while (c != '\n' && c != EOF);
@@ -65,7 +65,7 @@ rloop(lips v, FILE *i, str o, i64 n, i64 lim,
   o->len = n, x = putoct(o),
   o->text[n-1] == 0 ? x :
    (Mm(x, o = cells(v, 1 + b2w(2*n))),
-    bcpy(o->text, getoct(x)->text, o->len = n),
+    cpy8(o->text, getoct(x)->text, o->len = n),
     loop(v, i, o, n, 2 * n)); }
 
 static obj
@@ -89,20 +89,13 @@ str_(lips v, FILE *p, str o, i64 n, i64 lim) {
   default: o->text[n++] = x; } out:
  return rloop(v, p, o, n, lim, str_); }
 
-static char downcase(char c) {
- return c >= 65 && c <= 90 ? c+32 : c; }
-
-static i64 chidx(const char *s, char c) {
- for (Z i = 0; *s; s++, i++) if (*s == c) return i;
- return -1; }
-
 static NoInline obj readz_2(const char *s, i64 rad) {
  static const char *dig = "0123456789abcdef";
  if (!*s) return nil;
  i64 a = 0;
  for (int i, c; (c = *s++); a += i) {
   a *= rad;
-  i = chidx(dig, downcase(c));
+  i = sidx(dig, cmin(c));
   if (i < 0 || i >= rad) return nil; }
  return Pn(a); }
 
@@ -134,7 +127,7 @@ u0 emsep(lips v, obj x, FILE *o, char s) {
 
 static u0 emoct(lips v, str s, FILE *o) {
  fputc('"', o);
- for (Z i = 0, l = s->len - 1; i < l; i++)
+ for (i64 i = 0, l = s->len - 1; i < l; i++)
   if (s->text[i] == '"') fputs("\\\"", o);
   else fputc(s->text[i], o);
  fputc('"', o); }
@@ -144,7 +137,7 @@ static u0 emtbl(lips v, tbl t, FILE *o) {
 
 static u0 emsym(lips v, sym y, FILE *o) {
  nilp(y->nom) ?
-  fprintf(o, "#sym@%lx", (Z) y) :
+  fprintf(o, "#sym@%lx", (u64) y) :
   fputs(chars(y->nom), o); }
 
 static u0 emtwo_(lips v, two w, FILE *o) {
@@ -181,7 +174,7 @@ u0 emit(lips v, obj x, FILE *o) {
   case Tbl:  return emtbl(v, gettbl(x), o);
   default: return (u0) fputs("()", o); } }
 
-u0 errp(lips v, const char *msg, ...) {
+u0 errp(lips v, char *msg, ...) {
  va_list xs;
  fputs("# ", stderr);
  va_start(xs, msg), vfprintf(stderr, msg, xs), va_end(xs);

@@ -11,7 +11,7 @@ run=./$b -_ $p
 tcmd=$(run) $t
 rcmd=$(run) -i
 
-c=gcc -std=gnu17 -g -O2 -flto\
+c=gcc -std=gnu17 -g -Os -flto\
 	-Wall -Wno-shift-negative-value\
 	-Wstrict-prototypes\
 	-fno-stack-protector\

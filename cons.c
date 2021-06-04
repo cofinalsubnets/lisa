@@ -1,30 +1,21 @@
 #include "lips.h"
-// XXX data constructors
-
-static u64 hc(lips, obj);
-
 ////
 /// data constructors and utility functions
 //
 
-// pairs
+// functions for pairs and lists
 obj pair(lips v, obj a, obj b) {
  two t;
- return Avail >= 2 ?
-  (t = bump(v, 2),
-   t->x = a, t->y = b,
-   puttwo(t)) :
-  (Mm(a, Mm(b, reqsp(v, 2))),
-   pair(v, a, b)); }
+ if (Avail < 2) Mm(a, Mm(b, reqsp(v, 2)));
+ return t = bump(v, 2), t->x = a, t->y = b, puttwo(t); }
 
-// list functions
 i64 idx(obj l, obj x) {
  for (i64 i = 0; twop(l); l = Y(l), i++)
   if (x == X(l)) return i;
  return -1; }
 
-i64 llen(obj l) {
- for (i64 i = 0;; l = Y(l), i++)
+u64 llen(obj l) {
+ for (u64 i = 0;; l = Y(l), i++)
   if (!twop(l)) return i; }
 
 obj snoc(lips v, obj l, obj x) {
@@ -38,14 +29,15 @@ obj linitp(lips v, obj x, mem d) {
  Mm(x, y = linitp(v, Y(x), d));
  return pair(v, X(x), y); }
 
-
+// for strings
 obj string(lips v, const char* c) {
  i64 bs = 1;
  for (const char *d = c; *d++; bs++);
  str o = cells(v, sizeof(struct oct)/W + b2w(bs));
- bcpy(o->text, c, o->len = bs);
+ cpy8(o->text, c, o->len = bs);
  return putoct(o); }
 
+static u64 hc(lips, obj);
 //symbols
 
 // symbols are interned into a binary search tree. we make no
@@ -55,10 +47,9 @@ obj string(lips v, const char* c) {
 // the way to go but rebuilding that is more difficult. the
 // existing code is unsuitable because it dynamically resizes
 // the table and unpredictable memory allocation isn't safe
-// during garbage collection. 
-obj sskc(lips, mem, obj);
+// during garbage collection.
 static obj ssk(lips v, obj y, obj x) {
- int i = strcmp(symnom(y), chars(x));
+ int i = scmp(symnom(y), chars(x));
  return i == 0 ? y :
   sskc(v, i < 0 ? &(getsym(y)->r) : &(getsym(y)->l), x); }
 
@@ -70,11 +61,12 @@ obj sskc(lips v, mem y, obj x) {
  return *y = putsym(u); }
 
 obj intern(lips v, obj x) {
- if (Avail < Size(sym)) Mm(x, reqsp(v, Size(sym)));
+ if (Avail < Size(sym))
+  Mm(x, reqsp(v, Size(sym)));
  return sskc(v, &Syms, x); }
 
 static Inline u64 hash_bytes(i64 len, char *us) {
- Z h = 1;
+ u64 h = 1;
  for (; len--; h *= mix, h ^= *us++);
  return mix * h; }
 
@@ -85,8 +77,8 @@ static u64 hc(lips v, obj x) {
   case Oct: r = hash_bytes(getoct(x)->len, getoct(x)->text); break;
   case Two: r = hc(v, X(x)) ^ hc(v, Y(x)); break;
   case Hom: r = hc(v, homnom(v, x)) ^ (mix * (uintptr_t) G(x)); break;
-  case Tbl: r = mix * mix; // umm this'll do for now ...
-  default:  r = mix * x; } 
+  case Tbl: r = mix; // umm lol
+  default:  r = mix * x; }
  return (r<<48)|(r>>16); }
 
 // tblrsz(vm, tbl, new_size): destructively resize a hash table.
@@ -94,7 +86,7 @@ static u64 hc(lips v, obj x) {
 // the old table entries are reused to populate the modified table.
 static u0 tblrsz(lips v, obj t, i64 ns) {
  tble e, ch, *b, *d;
- Mm(t, fill((M) (b = cells(v, ns)), 0, ns));
+ Mm(t, rep64((mem) (b = cells(v, ns)), 0, ns));
  tbl o = gettbl(t);
  i64 u, n = o->cap;
  d = o->tab; o->tab = b; o->cap = ns;
@@ -157,15 +149,12 @@ obj tbldel(lips v, obj t, obj k) {
  return r; }
 
 obj tblget(lips v, obj t, obj k) {
- tble e = hb(t, hc(v, k));
- for (;e; e = e->next) if (eql(e->key, k)) return e->val;
+ for (tble e = hb(t, hc(v, k)); e; e = e->next)
+   if (eql(e->key, k)) return e->val;
  return 0; }
 
 obj table(lips v) {
  tbl t = cells(v, sizeof(struct tbl)/W + 1);
  tble *b = (tble*)(t+1);
- *b = NULL;
- t->tab = b;
- t->len = 0;
- t->cap = 1;
+ t->len = 0, t->cap = 1, t->tab = b, *b = NULL;
  return puttbl(t); }

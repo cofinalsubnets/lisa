@@ -15,7 +15,7 @@
   _(lt_u),   _(lteq_u), _(eq_u),   _(gteq_u), _(gt_u),\
   _(twop_u), _(nump_u), _(homp_u), _(tblp_u), _(strp_u),\
   _(nilp_u), _(car_u),  _(cdr_u),  _(cons_u), _(vecp_u),\
-  _(strmk),  _(strg),   _(strl),   _(strs),   _(strc),\
+  _(strmk),  _(strg),   _(strl),   _(strs),   _(strconc),\
   _(symp_u), _(unit),   _(one),    _(zero),   _(hfin_u),\
   _(arg0),   _(arg1),   _(loc0),   _(loc1),   _(clo0),\
   _(clo1),   _(brlt),   _(brlteq), _(breq),   _(brgteq),\
@@ -32,7 +32,7 @@
   _("%", mod_u),     _("ap", ap_u),          _("ccc", ccc_u),   _("ev", ev_u),\
   _("fail", fail),   _("tbl", tblmk),        _("tget", tblg),   _("tset", tbls),\
   _("thas", tblc),   _("tdel", tbld),        _("tkeys", tblks), _("tlen", tbll),\
-  _("slen", strl),   _("sget", strg),        _("scat", strc),   _("ssub", strs),\
+  _("slen", strl),   _("sget", strg),        _("scat", strconc),   _("ssub", strs),\
   _("str", strmk),   _("gensym", gsym_u),    _("zzz", zzz),     _(".", em_u),\
   _("vecp", vecp_u), _("nump", nump_u),      _("symp", symp_u), _("twop", twop_u),\
   _("tblp", tblp_u), _("strp", strp_u),      _("nilp", nilp_u), _("homp", homp_u),\

@@ -1,4 +1,7 @@
 #include "lips.h"
+#include <errno.h>
+#include <string.h>
+#include <unistd.h>
 #define OK EXIT_SUCCESS
 #define NO EXIT_FAILURE
 
@@ -26,18 +29,16 @@ static int scripts(lips v, char** argv) {
   if (!ok) return NO; }
  return OK; }
 
-int main(int argc, char** argv) {
- struct lips V;
 #define takka 1
 #define nprel 2
- const char
-  help[] =
-   "usage: %s [options and scripts]\n"
-   "options:\n"
-   "  -_ don't bootstrap\n"
-   "  -i interact unconditionally\n"
-   "  -h print this message\n";
-
+#define help \
+   "usage: %s [options and scripts]\n"\
+   "options:\n"\
+   "  -_ don't bootstrap\n"\
+   "  -i interact unconditionally\n"\
+   "  -h print this message\n"
+struct lips klips;
+int main(int argc, char** argv) {
  int opt, args,
   F = argc == 1 ? takka : 0;
 
@@ -50,9 +51,9 @@ int main(int argc, char** argv) {
  args = argc - optind;
  if (args == 0 && !(F&takka)) return OK;
 
- lips v = initialize(&V);
- v = F&nprel ? v : bootstrap(v);
- if (!v) return NO;
+ lips v = &klips;
+ lips_init(v);
+ if (!(F&nprel)) lips_boot(v);
 
  // set up argv
  obj z, c = argc, a = nil;
@@ -63,4 +64,4 @@ int main(int argc, char** argv) {
  int r = OK;
  if (args) r = scripts(v, argv + optind);
  if (r == OK && F&takka) repl(v, stdin, stdout);
- return free(v->mem_pool), r; }
+ return lips_fin(v), r; }
