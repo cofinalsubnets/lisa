@@ -1,4 +1,6 @@
 #include "lips.h"
+#include <stdlib.h>
+#include <time.h>
 static int copy(lips, u64);
 static obj cp(lips, obj, u64, mem);
 static Inline u0 do_copy(lips, u64, mem, u64, mem);
@@ -90,7 +92,7 @@ do_copy(lips v, u64 l0, mem b0, u64 l1, mem b1) {
  while (t0-- > s0) Sp[t0 - s0] = cp(v, *t0, l0, b0);
 #define CP(x) x=cp(v,x,l0,b0)
  CP(Ip), CP(Xp), CP(Glob);
- for (root r = Safe; r; r = r->next) CP(*(r->one)); }
+ for (mroot r = Safe; r; r = r->next) CP(*(r->one)); }
 #undef CP
 
 // the exact method for copying an object into

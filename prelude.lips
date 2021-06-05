@@ -632,7 +632,7 @@
 ; now bootstrap
 ((ev egg) egg)
 
-; functions and macros using ev
+; re-re-redefine functions and macros that depend on ev
 (Ts macros
    '::: (: (defm n x .) (,(Ts macros n (: v (ev (A x))))
                           (? (B x) (ap defm (B x)) v)))
@@ -641,6 +641,6 @@
 (: (co x .) (ev (L '\ 'x (foldl x 'x (\ m e (L (L '` e) m)))))
    (const x) (ev (L '\ (L '` x))))
 
-; "drop privileges"
+; " drop privileges "
 (: loc '(egg macros ns emi emx hom hseek hgeti hgetx hfin)
  (each loc (\ v (Td ns v))))

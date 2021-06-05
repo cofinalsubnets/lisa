@@ -9,25 +9,9 @@ obj pair(lips v, obj a, obj b) {
  if (Avail < 2) Mm(a, Mm(b, reqsp(v, 2)));
  return t = bump(v, 2), t->x = a, t->y = b, puttwo(t); }
 
-i64 idx(obj l, obj x) {
- for (i64 i = 0; twop(l); l = Y(l), i++)
-  if (x == X(l)) return i;
- return -1; }
-
 u64 llen(obj l) {
  for (u64 i = 0;; l = Y(l), i++)
   if (!twop(l)) return i; }
-
-obj snoc(lips v, obj l, obj x) {
- if (!twop(l)) return pair(v, x, l);
- Mm(l, x = snoc(v, Y(l), x));
- return pair(v, X(l), x); }
-
-obj linitp(lips v, obj x, mem d) {
- obj y;
- if (!twop(Y(x))) return *d = x, nil;
- Mm(x, y = linitp(v, Y(x), d));
- return pair(v, X(x), y); }
 
 // for strings
 obj string(lips v, const char* c) {
@@ -114,22 +98,6 @@ obj tblset(lips v, obj t, obj k, obj val) {
   gettbl(t)->len / gettbl(t)->cap > 2 ?
    tblrsz(v, t, gettbl(t)->cap*2) : 0));
  return val; }
-
-static obj tblkeys_j(lips v, tble e, obj l) {
- obj x;
- if (!e) return l;
- x = e->key;
- Mm(x, l = tblkeys_j(v, e->next, l));
- return pair(v, x, l); }
-
-static obj tblkeys_i(lips v, obj t, i64 i) {
- obj k;
- if (i == gettbl(t)->cap) return nil;
- Mm(t, k = tblkeys_i(v, t, i+1));
- return tblkeys_j(v, gettbl(t)->tab[i], k); }
-
-obj tblkeys(lips v, obj t) {
- return tblkeys_i(v, t, 0); }
 
 obj tbldel(lips v, obj t, obj k) {
  tbl y = gettbl(t);

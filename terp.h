@@ -19,7 +19,7 @@
   _(symp_u), _(unit),   _(one),    _(zero),   _(hfin_u),\
   _(arg0),   _(arg1),   _(loc0),   _(loc1),   _(clo0),\
   _(clo1),   _(brlt),   _(brlteq), _(breq),   _(brgteq),\
-  _(brgt),   _(brne),   _(zzz),    _(tbll),   _(tblmk),\
+  _(brgt),   _(brne),   _(tbll),   _(tblmk),\
   _(tblg),   _(tblc),   _(tbls),   _(tbld),   _(tblks),\
   _(hom_seek_u), _(hom_geti_u), _(hom_getx_u),\
   _(fail),   _(ccc_u),  _(cont),   _(vararg), _(tuck),\
@@ -33,7 +33,7 @@
   _("fail", fail),   _("tbl", tblmk),        _("tget", tblg),   _("tset", tbls),\
   _("thas", tblc),   _("tdel", tbld),        _("tkeys", tblks), _("tlen", tbll),\
   _("slen", strl),   _("sget", strg),        _("scat", strconc),   _("ssub", strs),\
-  _("str", strmk),   _("gensym", gsym_u),    _("zzz", zzz),     _(".", em_u),\
+  _("str", strmk),   _("gensym", gsym_u),    _(".", em_u),\
   _("vecp", vecp_u), _("nump", nump_u),      _("symp", symp_u), _("twop", twop_u),\
   _("tblp", tblp_u), _("strp", strp_u),      _("nilp", nilp_u), _("homp", homp_u),\
   _("hom", hom_u),   _("hseek", hom_seek_u), _("emx", emx_u),   _("hgetx", hom_getx_u),\

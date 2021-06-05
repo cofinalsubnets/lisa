@@ -2,6 +2,7 @@
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdlib.h>
 #define OK EXIT_SUCCESS
 #define NO EXIT_FAILURE
 
@@ -11,9 +12,6 @@ static int repl(lips v, FILE *i, FILE *o) {
   if ((x = parse(v, i))) emsep(v, eval(v, x), o, '\n');
   else if (feof(i)) break;
  return OK; }
-
-u0 script(lips v, FILE *f) {
- for (obj x; (x = parse(v, f)); eval(v, x)); }
 
 static int scripts(lips v, char** argv) {
  for (char *q; (q = *argv++);) {

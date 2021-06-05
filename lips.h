@@ -1,14 +1,10 @@
 #ifndef LIPS_H
 #define LIPS_H
-#include <stdlib.h>
+#include "cursed.h"
 #include <stdio.h>
 #include <setjmp.h>
-#include <time.h>
-#include <stdnoreturn.h>
-#include "cursed.h"
 
 // thanks !!
-//
 typedef i64 obj, *mem;
 #define non zero64
 #define nil ((obj)~non)
@@ -43,14 +39,16 @@ enum globl { // indices into a table of global constants
 
 // a linked list of stack addresses containing live values
 // that need to be preserved by garbage collection.
-typedef struct root { mem one; struct root *next; } *Mp, *root;
+typedef struct mroot {
+  mem one;
+  struct mroot *next; } *Mp, *mroot;
 
 // this structure is responsible for holding runtime state.
 // most functions take a pointer to it as the first argument.
 typedef struct lips {
  obj ip, xp, *fp, *hp, *sp; // vm state variables
  obj syms, glob; // symbols and globals
- root mem_root; // gc protection list
+ mroot mem_root; // gc protection list
  i64 t0, seed, count, mem_len, *mem_pool; // memory data
  jmp_buf restart; // top level restart
 } *lips;
@@ -65,13 +63,10 @@ u0
  lips_fin(lips),
  lips_boot(lips),
  emit(lips, obj, FILE*),
- script(lips, FILE*),
  errp(lips, char*, ...),
  emsep(lips, obj, FILE*, char);
 
 obj
- linitp(lips, obj, mem),
- snoc(lips, obj, obj),
  sskc(lips, mem, obj),
  restart(lips),
  homnom(lips, obj),
@@ -84,11 +79,9 @@ obj
  tblset(lips, obj, obj, obj),
  tblget(lips, obj, obj),
  tbldel(lips, obj, obj),
- tblkeys(lips, obj),
  string(lips, const char*);
 
-i64 idx(obj, obj);
-u64 llen(obj), eql(obj, obj);
+u64 llen(obj) NoInline, eql(obj, obj);
 
 const char* tnom(enum tag);
 
@@ -131,11 +124,12 @@ const char* tnom(enum tag);
 #define GG(x) G(G(x))
 #define chars(x) getoct(x)->text
 #define symnom(y) chars(getsym(y)->nom)
-#define mm(r) ((Safe=&((struct root){(r),Safe})))
+#define mm(r) ((Safe=&((struct mroot){(r),Safe})))
 #define um (Safe=Safe->next)
 #define AR(x) gettup(x)->xs
 #define AL(x) gettup(x)->len
 #define Mm(y,...) (mm(&(y)),(__VA_ARGS__),um)
+#define with(y,...) (mm(&(y)),(__VA_ARGS__),um)
 #define b2w(n)((n)/W+((n)%W&&1))
 #define w2b(n) ((n)*W)
 #define Size(t) (sizeof(struct t)/W)
@@ -179,6 +173,9 @@ static Inline i64 hbi(u64 cap, u64 co) { return co % cap; }
 
 static Inline tble hb(obj t, u64 code) {
  return gettbl(t)->tab[hbi(gettbl(t)->cap, code)]; }
+
+static Inline u0 script(lips v, FILE *f) {
+ for (obj x; (x = parse(v, f)); eval(v, x)); }
 
 _Static_assert(
  sizeof(i64*) == sizeof(i64),

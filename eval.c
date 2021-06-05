@@ -50,6 +50,8 @@ static u0
  scan(lips, mem, obj),
  pushs(lips, ...);
 static obj
+ linitp(lips, obj, mem),
+ snoc(lips, obj, obj),
  look(lips, obj, obj),
  hfin(lips, obj),
  hini(lips, u64);
@@ -57,7 +59,7 @@ static c1 c_ev, c_d_bind, inst, insx, c_ini;
 static c2 c_eval, c_sy, c_2, c_imm, c_ap;
 static obj c_la_clo(lips, mem, obj, obj), ltu(lips, mem, obj, obj);
 static c3 late;
-#define interns(v,c) intern(v,string(v,c))
+static i64 lidx(obj, obj);
 
 enum { Here, Loc, Arg, Clo, Wait };
 #define c1(nom,...) static obj nom(lips v, mem e, u64 m, ##__VA_ARGS__)
@@ -115,13 +117,13 @@ static obj asign(lips v, obj a, i64 i, mem m) {
  if (!twop(a)) return *m = i, a;
  if (twop(Y(a)) && XY(a) == Va)
   return *m = -(i+1), pair(v, X(a), nil);
- Mm(a, x = asign(v, Y(a), i+1, m));
+ with(a, x = asign(v, Y(a), i+1, m));
  return pair(v, X(a), x); }
 
 static vec tuplr(lips v, i64 i, va_list xs) {
  vec t; obj x;
  return (x = va_arg(xs, obj)) ?
-  (Mm(x, t = tuplr(v, i+1, xs)), t->xs[i] = x, t) :
+  (with(x, t = tuplr(v, i+1, xs)), t->xs[i] = x, t) :
   ((t = cells(v, Size(tup) + i))->len = i, t); }
 
 static obj tupl(lips v, ...) {
@@ -134,7 +136,7 @@ static obj tupl(lips v, ...) {
 
 static obj scope(lips v, mem e, obj a, obj n) {
  i64 s = 0;
- return Mm(n, a = asign(v, a, 0, &s)),
+ return with(n, a = asign(v, a, 0, &s)),
         tupl(v, a, nil, nil, e ? *e : nil, n, Pn(s), non); }
 
 static obj compose(lips v, mem e, obj x) {
@@ -157,19 +159,19 @@ static obj compose(lips v, mem e, obj x) {
 static obj ltu(lips v, mem e, obj n, obj l) {
  obj y;
  l = Y(l);
- Mm(n,
+ with(n,
   l = twop(l) ? l : pair(v, l, nil),
-  Mm(y, l = linitp(v, l, &y),
-        Mm(l, n = pair(v, n, toplp(e) ? nil : e ? name(*e):nil)),
-        n = scope(v, e, l, n)),
+  with(y, l = linitp(v, l, &y),
+          with(l, n = pair(v, n, toplp(e) ? nil : e ? name(*e):nil)),
+          n = scope(v, e, l, n)),
   l = compose(v, &n, X(y)));
  return l; }
 
 c2(c_la) {
  terp* j = imm;
  obj k, nom = *Sp == Pn(c_d_bind) ? Sp[1] : nil;
- Mm(nom, Mm(x, k = ccc(v, e, m+2)));
- Mm(k,
+ with(nom, with(x, k = ccc(v, e, m+2)));
+ with(k,
   x = homp(x = ltu(v, e, nom, x)) ? x :
   (j = toplp(e) || !twop(loc(*e)) ? encln : encll,
    c_la_clo(v, e, X(x), Y(x))));
@@ -189,18 +191,18 @@ static obj c_la_clo(lips v, mem e, obj arg, obj seq) {
 c1(c_d_bind) {
  obj y = *Sp++;
  return toplp(e) ? imx(v, e, m, tbind, y) :
-                   imx(v, e, m, loc_, Pn(idx(loc(*e), y))); }
+                   imx(v, e, m, loc_, Pn(lidx(loc(*e), y))); }
 
 static u0 c_de_r(lips v, mem e, obj x) {
  if (!twop(x)) return;
  x = rwlade(v, x);
- Mm(x, c_de_r(v, e, YY(x))),
+ with(x, c_de_r(v, e, YY(x))),
  Pu(Pn(c_ev), XY(x), Pn(c_d_bind), X(x)); }
 
 // syntactic sugar for define
 static obj def_sug(lips v, obj x) {
  obj y = nil;
- Mm(y, x = linitp(v, x, &y));
+ with(y, x = linitp(v, x, &y));
  x = pair(v, x, y),   x = pair(v, Se, x);
  x = pair(v, x, nil), x = pair(v, La, x);
  return pair(v, x, nil); }
@@ -244,20 +246,20 @@ c1(c_co_pre_ant) {
 static u0 c_co_r(lips v, mem e, obj x) {
  if (!twop(x)) x = pair(v, nil, nil);
  if (!twop(Y(x))) Pu(Pn(c_ev), X(x), Pn(c_co_pre_con));
- else Mm(x, Pu(Pn(c_co_post_con), Pn(c_ev), XY(x),
-               Pn(c_co_pre_con)),
-            c_co_r(v, e, YY(x))),
+ else with(x, Pu(Pn(c_co_post_con), Pn(c_ev), XY(x),
+                 Pn(c_co_pre_con)),
+              c_co_r(v, e, YY(x))),
       Pu(Pn(c_ev), X(x), Pn(c_co_pre_ant)); }
 
 c2(c_co) { return
- Mm(x, Pu(Pn(c_co_pre))),
+ with(x, Pu(Pn(c_co_pre))),
  c_co_r(v, e, Y(x)),
  x = ccc(v, e, m),
  S2 = Y(S2),
  x; }
 
 static u0 c_se_r(lips v, mem e, obj x) {
- if (twop(x)) Mm(x, c_se_r(v, e, Y(x))),
+ if (twop(x)) with(x, c_se_r(v, e, Y(x))),
               Pu(Pn(c_ev), X(x)); }
 c2(c_se) {
  if (!twop(x = Y(x))) x = pair(v, nil, nil);
@@ -273,11 +275,11 @@ static obj look(lips v, obj e, obj y) {
  return
   nilp(e) ?
    ((q = tblget(v, Dict, y)) ?  L(Here, q) : L(Wait, Dict)) :
-  ((q = idx(loc(e), y)) != -1) ?
+  ((q = lidx(loc(e), y)) != -1) ?
    L(Loc, e) :
-  ((q = idx(arg(e), y)) != -1) ?
+  ((q = lidx(arg(e), y)) != -1) ?
    L(Arg, e) :
-  ((q = idx(clo(e), y)) != -1) ?
+  ((q = lidx(clo(e), y)) != -1) ?
    L(Clo, e) :
   look(v, par(e), y); }
 #undef L
@@ -286,23 +288,23 @@ c2(late, obj d) {
  obj k;
  return
   x = pair(v, d, x),
-  Mm(x, k = ccc(v, e, m+2)),
-  Mm(k, x = pair(v, Pn(8), x)),
+  with(x, k = ccc(v, e, m+2)),
+  with(k, x = pair(v, Pn(8), x)),
   em2(lbind, x, k); }
 
 c2(c_sy) {
  obj y, q;
- Mm(x, y = X(q = look(v, e ? *e:nil, x)));
+ with(x, y = X(q = look(v, e ? *e:nil, x)));
  switch (Gn(y)) {
   case Here: return c_imm(v, e, m, Y(q));
   case Wait: return late(v, e, m, x, Y(q));
   default:
    if (Y(q) == *e) switch (Gn(y)) {
-    case Loc: return imx(v, e, m, loc, Pn(idx(loc(*e), x)));
-    case Arg: return imx(v, e, m, arg, Pn(idx(arg(*e), x)));
-    case Clo: return imx(v, e, m, clo, Pn(idx(clo(*e), x))); }
+    case Loc: return imx(v, e, m, loc, Pn(lidx(loc(*e), x)));
+    case Arg: return imx(v, e, m, arg, Pn(lidx(arg(*e), x)));
+    case Clo: return imx(v, e, m, clo, Pn(lidx(clo(*e), x))); }
    y = llen(clo(*e));
-   Mm(x, q = snoc(v, clo(*e), x)), clo(*e) = q;
+   with(x, q = snoc(v, clo(*e), x)), clo(*e) = q;
    return imx(v, e, m, clo, Pn(y)); } }
 
 c1(c_ev) { return c_eval(v, e, m, *Sp++); }
@@ -321,7 +323,7 @@ c2(c_2) {
 
 #define Rec(...) {\
   obj _s1 = S1, _s2 = S2;\
-  Mm(_s1, Mm(_s2,__VA_ARGS__));\
+  with(_s1, with(_s2,__VA_ARGS__));\
   S1 = _s1, S2 = _s2; }
 
 c2(c_ap) {
@@ -343,7 +345,7 @@ c1(inst) {
 c1(insx) {
  terp* i = (terp*) Gn(*Sp++);
  obj x = *Sp++, k;
- Mm(x, k = ccc(v, e, m+2));
+ with(x, k = ccc(v, e, m+2));
  return em2(i, x, k); }
 
 c1(c_ini) {
@@ -352,7 +354,7 @@ c1(c_ini) {
 
 static u0 pushss(lips v, i64 i, va_list xs) {
  obj x = va_arg(xs, obj);
- x ? (Mm(x, pushss(v, i, xs)), *--Sp = x) :
+ x ? (with(x, pushss(v, i, xs)), *--Sp = x) :
      reqsp(v, i); }
 
 static u0 pushs(lips v, ...) {
@@ -364,7 +366,7 @@ static u0 pushs(lips v, ...) {
  else for (mem sp = Sp -= i; i--; *sp++ = va_arg(xs, obj));
  va_end(xs); }
 
-static obj hini(lips v, u64 n) {
+static NoInline obj hini(lips v, u64 n) {
  hom a = cells(v, n + 2);
  return
   G(a+n) = NULL,
@@ -386,22 +388,22 @@ NoInline obj homnom(lips v, obj x) {
         x == (obj) yield                      ? Eva :
                                                 nil; }
 
-
+#include <stdlib.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <time.h>
 #define NOM "lips"
 #define USR_PATH ".local/lib/"NOM"/"
 #define SYS_PATH "/usr/lib/"NOM"/"
-static int seekp(const char* p) {
+static Inline int seekp(const char* p) {
  int b, c;
- b = open(getenv("HOME"), O_RDONLY);
+ b = openat(AT_FDCWD, getenv("HOME"), O_RDONLY);
  c = openat(b, USR_PATH, O_RDONLY), close(b);
  b = openat(c, p, O_RDONLY), close(c);
  if (-1 < b) return b;
- b = open(SYS_PATH, O_RDONLY);
+ b = openat(AT_FDCWD, SYS_PATH, O_RDONLY);
  c = openat(b, p, O_RDONLY), close(b);
  return c; }
-
 
 u0 lips_boot(lips v) {
  const char *path = "prelude.lips";
@@ -417,21 +419,22 @@ u0 lips_boot(lips v) {
 u0 lips_fin(lips v) {
  free(v->mem_pool); }
 
-obj spush(lips v, obj x) {
- if (!Avail) Mm(x, reqsp(v, 1));
+static NoInline obj spush(lips v, obj x) {
+ if (!Avail) with(x, reqsp(v, 1));
  return *--Sp = x; }
 
-obj spop(lips v) {
- return *Sp++; }
+static Inline obj spop(lips v) { return *Sp++; }
 
-#define repr(a,b)(\
-  z=spush(v, pair(v, interns(v, a), nil)),\
-  x=hini(v, 2),\
-  x=em2(b, z=spop(v), x),\
-  tblset(v, *Sp, X(z), x))
-#define rein(a)(\
-  z=interns(v,"i-"#a),\
-  tblset(v,*Sp,z,Pn(a)))
+#define interns(v,c) intern(v,string(v,c))
+static NoInline u0 rpr(lips v, const char *a, terp *b) {
+ obj z = spush(v, pair(v, interns(v, a), nil)), x = hini(v, 2);
+ x = em2(b, z = spop(v), x);
+ tblset(v, *Sp, X(z), x); }
+static NoInline u0 rin(lips v, const char *a, terp *b) {
+ obj z = interns(v, a);
+ tblset(v, *Sp, z, Pn(b)); }
+#define repr(a,b)rpr(v,a,b)
+#define rein(a)rin(v, "i-"#a,a)
 
 u0 lips_init(lips v) {
  v->seed = v->t0 = clock(),
@@ -441,8 +444,8 @@ u0 lips_init(lips v) {
  v->mem_root = NULL;
  vec t = cells(v, sizeof (struct tup)/W + NGlobs);
  rep64(t->xs, nil, t->len = NGlobs);
- obj x, z, y = Glob = puttup(t);
- Mm(y,
+ obj z, y = Glob = puttup(t);
+ with(y,
   spush(v, table(v)),
   prims(repr), insts(rein),
   Top = spop(v),
@@ -464,3 +467,20 @@ obj compile(lips v, obj x) {
 obj eval(lips v, obj x) {
  x = pair(v, x, nil);
  return apply(v, tblget(v, Dict, Eva), x); }
+
+static i64 lidx(obj l, obj x) {
+ for (i64 i = 0; twop(l); l = Y(l), i++)
+  if (x == X(l)) return i;
+ return -1; }
+
+static obj linitp(lips v, obj x, mem d) {
+ obj y;
+ if (!twop(Y(x))) return *d = x, nil;
+ with(x, y = linitp(v, Y(x), d));
+ return pair(v, X(x), y); }
+
+static obj snoc(lips v, obj l, obj x) {
+ if (!twop(l)) return pair(v, x, l);
+ with(l, x = snoc(v, Y(l), x));
+ return pair(v, X(l), x); }
+

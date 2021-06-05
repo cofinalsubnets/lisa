@@ -29,15 +29,12 @@ begin.
 
 takes any number of branches. with no fallthrough branch the
 implicit value is nil (`()`). nil evals to itself and is the
-only false value, hence `#f` in scheme.
+only false value (as in common lisp; hence `#f` in scheme).
 
 ### `:` define / letrec
 - `(: a0 b0 ... an bn) = (begin (define a b) ... (define an bn) an)` even arguments : define variables in the current scope
 - `(: a0 b0 ... an bn c) = (letrec ((a0 b0) ... (an bn)) c)` odd arguments : define variables and evaluate an expression in an inner scope
 - `(: ((f g) x y) (g x y)) = (begin (define (f g) (lambda (x y) (g x y))) f)` nestable sugar for function defs
-
-a define form is an expression with the value of the last
-variable it defines.
 
 ### `\` lambda
 - `(\) = (lambda () #f)` nullary -> empty function

@@ -81,9 +81,10 @@ static interp(gc) { u64 n = Xp; CallC(reqsp(v, n)); N(0); }
 #define arity_err_msg "wrong arity : %d of %d"
 #define type_err_msg "wrong type : %s for %s"
 #define div0_err_msg "%d / 0"
-// the interpreter takes a very basic approach to error
-// handling: something is wrong? jump to nope().
-static noreturn interp(nope, const char *, ...);
+
+// jump to nope() when an error happens.
+static interp(nope, const char *, ...);
+
 #define TyCh(x,t) if(kind((x)-(t)))\
  Jump(nope, type_err_msg,\
   tnom(kind(x)), tnom(kind(t))) // type check
@@ -211,15 +212,15 @@ interp(rec) {
  Ap(xp, nil); }
 
 // type/arity checking
-#define arn(n) if(n>Argc)\
+#define arn(n) if(n<=Argc){N(2);}\
  Jump(nope, arity_err_msg, Gn(n), Gn(Argc))
-#define tcn(k) if(kind(xp-k))\
+#define tcn(k) if(!kind(xp-k)){N(1);}\
  Jump(nope, type_err_msg, tnom(kind(xp)), tnom(k))
-interp(idZ) { tcn(Num); N(1); }
-interp(id2) { tcn(Two); N(1); }
-interp(idH) { tcn(Hom); N(1); }
-interp(idT) { tcn(Tbl); N(1); }
-interp(arity) { arn((obj) GF(ip)); N(2); }
+interp(idZ) { tcn(Num); }
+interp(id2) { tcn(Two); }
+interp(idH) { tcn(Hom); }
+interp(idT) { tcn(Tbl); }
+interp(arity) { arn((obj) GF(ip)); }
 
 // continuations
 //
@@ -352,6 +353,22 @@ interp(tblg) {
 interp(tget) {
  xp = tblget(v, xp, *sp++);
  Ap(ip+W, xp ? xp : nil); }
+
+static obj tblkeys_j(lips v, tble e, obj l) {
+ obj x;
+ if (!e) return l;
+ x = e->key;
+ Mm(x, l = tblkeys_j(v, e->next, l));
+ return pair(v, x, l); }
+
+static obj tblkeys_i(lips v, obj t, i64 i) {
+ obj k;
+ if (i == gettbl(t)->cap) return nil;
+ Mm(t, k = tblkeys_i(v, t, i+1));
+ return tblkeys_j(v, gettbl(t)->tab[i], k); }
+
+static Inline obj tblkeys(lips v, obj t) {
+ return tblkeys_i(v, t, 0); }
 
 #define ok Pn(1)
 interp(thas)  { xp = tblget(v, xp, *sp++) ? ok : nil; N(1); }
@@ -745,7 +762,6 @@ interp(dupl) { Have1(); --sp; sp[0] = sp[1]; N(1); }
 
 // errors
 interp(fail) { Jump(nope, "fail"); }
-interp(zzz) { exit(EXIT_SUCCESS); }
 interp(gsym_u) {
  Have(Size(sym));
  sym y = (sym) hp;
@@ -756,8 +772,8 @@ interp(gsym_u) {
 
 interp(hfin_u) {
  ArCh(1);
- TyCh(*Argv, Hom);
  obj a = *Argv;
+ TyCh(a, Hom);
  GF(button(Gh(a))) = (terp*) a;
  Go(ret, a); }
 
@@ -784,21 +800,20 @@ static Inline u0 perrarg(lips v, mem fp) {
   if (i == argc) break; }
  fputc(')', stderr); }
 
-static noreturn interp(nope, const char *msg, ...) {
+static interp(nope, const char *msg, ...) {
  fputs("# (", stderr), emit(v, Ph(ip), stderr);
  perrarg(v, fp);
  fputs(" does not exist", stderr);
- if (msg) {
-   va_list xs;
-   fputs(" : ", stderr);
-   va_start(xs, msg); vfprintf(stderr, msg, xs); }
+ va_list xs;
+ fputs(" : ", stderr);
+ va_start(xs, msg); vfprintf(stderr, msg, xs);
  fputc('\n', stderr);
  for (;;) {
   ip = Retp, fp += Size(fr) + Gn(Argc) + Gn(Subd);
   if (button(Gh(ip))[-1] == yield) break;
   fputs("#  in ", stderr), emsep(v, Ph(ip), stderr, '\n'); }
  Hp = hp;
- restart(v); }
+ return restart(v); }
 
 noreturn obj restart(lips v) {
  Fp = Sp = Pool + Len;

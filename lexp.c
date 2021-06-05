@@ -23,7 +23,10 @@ NoInline const char* tnom(enum tag t) {
 typedef obj par(lips, FILE*);
 static par atom, r1s, qt, stri;
 
-#define readx(v,m)(errp(v,m),0)
+
+static obj readx(lips v, char *msg) {
+ errp(v, msg);
+ return restart(v); }
 
 static int r0(FILE *i) {
  for (int c;;) switch ((c = getc(i))) {
@@ -43,19 +46,17 @@ obj parse(lips v, FILE* i) {
   default:   return ungetc(c, i), atom(v, i); } }
 
 static obj qt(lips v, FILE *i) {
- obj r;
- return !(r = parse(v, i)) ? r :
-  (r = pair(v, r, nil),
-   pair(v, Qt, r)); }
+ obj r = pair(v, parse(v, i), nil);
+ return pair(v, Qt, r); }
 
 static obj r1s(lips v, FILE *i) {
  obj x, y, c;
  return (c = r0(i)) == EOF ? readx(v, err_eof) :
   c == ')' ? nil :
    (ungetc(c, i),
-    !(x = parse(v, i)) ? x :
-     (Mm(x, y = r1s(v, i)),
-      y ? pair(v, x, y) : y)); }
+    x = parse(v, i),
+    with(x, y = r1s(v, i)),
+    pair(v, x, y)); }
 
 static NoInline obj
 rloop(lips v, FILE *i, str o, i64 n, i64 lim,
