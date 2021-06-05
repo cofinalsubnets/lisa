@@ -90,7 +90,7 @@ static interp(nope, const char *, ...);
   tnom(kind(x)), tnom(kind(t))) // type check
 #define ArCh(n) if(Pn(n)>Argc)\
  Jump(nope, arity_err_msg,\
-  n, Gn(Argc))
+  Gn(Argc), n)
 
 // " virtual machine instructions "
 //
@@ -213,7 +213,7 @@ interp(rec) {
 
 // type/arity checking
 #define arn(n) if(n<=Argc){N(2);}\
- Jump(nope, arity_err_msg, Gn(n), Gn(Argc))
+ Jump(nope, arity_err_msg, Gn(Argc), Gn(n))
 #define tcn(k) if(!kind(xp-k)){N(1);}\
  Jump(nope, type_err_msg, tnom(kind(xp)), tnom(k))
 interp(idZ) { tcn(Num); }
@@ -800,10 +800,11 @@ static Inline u0 perrarg(lips v, mem fp) {
   if (i == argc) break; }
  fputc(')', stderr); }
 
+#include <wchar.h>
 static interp(nope, const char *msg, ...) {
- fputs("# (", stderr), emit(v, Ph(ip), stderr);
+ fputs("# (", stderr);
+ emit(v, Ph(ip), stderr);
  perrarg(v, fp);
- fputs(" does not exist", stderr);
  va_list xs;
  fputs(" : ", stderr);
  va_start(xs, msg); vfprintf(stderr, msg, xs);
