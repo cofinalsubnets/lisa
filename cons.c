@@ -68,9 +68,9 @@ static u64 hc(lips v, obj x) {
 // tblrsz(vm, tbl, new_size): destructively resize a hash table.
 // new_size words of memory are allocated for the new bucket array.
 // the old table entries are reused to populate the modified table.
-static u0 tblrsz(lips v, obj t, i64 ns) {
+static obj tblrsz(lips v, obj t, i64 ns) {
  tble e, ch, *b, *d;
- Mm(t, rep64((mem) (b = cells(v, ns)), 0, ns));
+ with(t, set64((mem) (b = cells(v, ns)), 0, ns));
  tbl o = gettbl(t);
  i64 u, n = o->cap;
  d = o->tab; o->tab = b; o->cap = ns;
@@ -79,24 +79,45 @@ static u0 tblrsz(lips v, obj t, i64 ns) {
   ch = ch->next,
   u = hbi(ns, hc(v, e->key)),
   e->next = b[u],
-  b[u] = e); }
+  b[u] = e);
+ return t; }
 
-static u0 tblade(lips v, obj t, obj k, obj x, i64 b) {
+static u0 tblshrink(lips v, obj t) {
+  tble e = NULL;
+  tbl u = gettbl(t);
+  for (i64 i = 0; i < u->cap; i++) {
+   for (tble f = u->tab[i], g; f;
+    g = f->next,
+    f->next = e,
+    e = f,
+    f = g);
+   u->tab[i] = NULL; }
+  u->cap >>= 1;
+  for (tble f; e; e = f) {
+   i64 b = hbi(u->cap, hc(v, e->key));
+   f = e->next;
+   e->next = u->tab[b];
+   u->tab[b] = e; } }
+
+static Inline obj tblade(lips v, obj t, obj k, obj x, i64 bkt) {
  tble e; tbl y;
  Mm(t, Mm(k, Mm(x, e = cells(v, Size(tble)))));
  y = gettbl(t);
  e->key = k, e->val = x;
- e->next = y->tab[b], y->tab[b] = e;
- ++y->len; }
+ e->next = y->tab[bkt], y->tab[bkt] = e;
+ ++y->len;
+ return x; }
 
-obj tblset(lips v, obj t, obj k, obj val) {
+obj tblset_s(lips v, obj t, obj k, obj val) {
  i64 b = hbi(gettbl(t)->cap, hc(v, k));
  tble e = gettbl(t)->tab[b];
  for (;e; e = e->next) if (e->key == k) return e->val = val;
- Mm(t, Mm(val,
-  tblade(v,t,k,val,b),
-  gettbl(t)->len / gettbl(t)->cap > 2 ?
-   tblrsz(v, t, gettbl(t)->cap*2) : 0));
+ return tblade(v,t,k,val,b); }
+
+obj tblset(lips v, obj t, obj k, obj val) {
+ with(t, val = tblset_s(v, t, k, val));
+ if (gettbl(t)->len > 2 * gettbl(t)->cap)
+  with(val, tblrsz(v, t, gettbl(t)->cap*2));
  return val; }
 
 obj tbldel(lips v, obj t, obj k) {
@@ -112,8 +133,8 @@ obj tbldel(lips v, obj t, obj k) {
    y->len--;
    break; }
  y->tab[b] = _v.next;
- if (y->len && y->cap / y->len > 2)
-  Mm(r, Mm(t, tblrsz(v, t, y->cap / 2)));
+ if (y->len && y->cap > 2 * y->len)
+  Mm(r, tblshrink(v, t));
  return r; }
 
 obj tblget(lips v, obj t, obj k) {

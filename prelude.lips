@@ -336,7 +336,7 @@
    ; with certain algebraic properties. the nullary case for
    ; any grouplike function has to return its structure's
    ; identity element.
-   abelians (imm ({set} && || + *)) ; arguments can be comgined freely
+   abelians (imm ({set} && || + *)) ; arguments can be combined freely
    monoids (imm ({set} scat cat))   ; pairs of consecutive arguments can be combined in place
 
    a (A x) (case a

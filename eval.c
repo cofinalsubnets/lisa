@@ -66,9 +66,9 @@ enum { Here, Loc, Arg, Clo, Wait };
 #define c2(nom,...) static obj nom(lips v, mem e, u64 m, obj x, ##__VA_ARGS__)
 
 // emit code backwards like cons
-static Inline obj em1(terp *i, obj k) {
+static obj em1(terp *i, obj k) {
  return k -= W, G(k) = i, k; }
-static Inline obj em2(terp *i, obj j, obj k) {
+static obj em2(terp *i, obj j, obj k) {
  return em1(i, em1((terp*)j, k)); }
 
 static obj imx(lips v, mem e, i64 m, terp *i, obj x) {
@@ -108,7 +108,7 @@ static int scan_def(lips v, mem e, obj x) {
 
 static u0 scan(lips v, mem e, obj x) {
  if (!twop(x) || X(x) == La || X(x) == Qt) return;
- if (X(x) == De) return (void) scan_def(v, e, Y(x));
+ if (X(x) == De) return (u0) scan_def(v, e, Y(x));
  for (mm(&x); twop(x); x = Y(x)) scan(v, e, X(x));
  um; }
 
@@ -134,12 +134,12 @@ static obj tupl(lips v, ...) {
   va_end(xs),
   puttup(t); }
 
-static obj scope(lips v, mem e, obj a, obj n) {
+static Inline obj scope(lips v, mem e, obj a, obj n) {
  i64 s = 0;
  return with(n, a = asign(v, a, 0, &s)),
         tupl(v, a, nil, nil, e ? *e : nil, n, Pn(s), non); }
 
-static obj compose(lips v, mem e, obj x) {
+static Inline obj compose(lips v, mem e, obj x) {
  Pu(Pn(c_ev), x, Pn(inst), Pn(ret), Pn(c_ini));
  scan(v, e, Sp[1]);
  x = ccc(v, e, 4); // 4 = 2 + 2
@@ -314,7 +314,7 @@ c2(c_eval) {
 c2(c_qt) { return c_imm(v, e, m, twop(x = Y(x)) ? X(x) : x); }
 c2(c_2) {
  obj z = X(x);
- return 
+ return
   (z==Qt?c_qt:
    z==If?c_co:
    z==De?c_de:
@@ -371,7 +371,7 @@ static NoInline obj hini(lips v, u64 n) {
  return
   G(a+n) = NULL,
   GF(a+n) = (terp*) a,
-  rep64((mem) a, nil, n),
+  set64((mem) a, nil, n),
   Ph(a+n); }
 
 static obj hfin(lips v, obj a) {
@@ -406,7 +406,7 @@ static Inline int seekp(const char* p) {
  return c; }
 
 u0 lips_boot(lips v) {
- const char *path = "prelude.lips";
+ const char * const path = "prelude.lips";
  int pre = seekp(path);
  if (pre == -1) errp(v, "can't find %s", path);
  else {
@@ -416,8 +416,7 @@ u0 lips_boot(lips v) {
    fclose(f), lips_fin(v);
   script(v, f), fclose(f); } }
 
-u0 lips_fin(lips v) {
- free(v->mem_pool); }
+u0 lips_fin(lips v) { free(v->mem_pool); }
 
 static NoInline obj spush(lips v, obj x) {
  if (!Avail) with(x, reqsp(v, 1));
@@ -443,7 +442,7 @@ u0 lips_init(lips v) {
  v->count = 0, v->mem_len = 1, v->mem_pool = NULL,
  v->mem_root = NULL;
  vec t = cells(v, sizeof (struct tup)/W + NGlobs);
- rep64(t->xs, nil, t->len = NGlobs);
+ set64(t->xs, nil, t->len = NGlobs);
  obj z, y = Glob = puttup(t);
  with(y,
   spush(v, table(v)),
@@ -455,10 +454,8 @@ u0 lips_init(lips v) {
   bsym(Def, ":"),   bsym(Cond, "?"), bsym(Lamb, "\\"),
   bsym(Quote, "`"), bsym(Seq, ","),  bsym(Splat, "."));
 #undef bsym
- y = interns(v, "ns");
- tblset(v, Top, y, Top);
- y = interns(v, "macros");
- tblset(v, Top, y, Mac); }
+ y = interns(v, "ns"),     tblset(v, Top, y, Top);
+ y = interns(v, "macros"), tblset(v, Top, y, Mac); }
 
 obj compile(lips v, obj x) {
  Pu(Pn(c_ev), x, Pn(inst), Pn(yield), Pn(c_ini));
@@ -483,4 +480,3 @@ static obj snoc(lips v, obj l, obj x) {
  if (!twop(l)) return pair(v, x, l);
  with(l, x = snoc(v, Y(l), x));
  return pair(v, X(l), x); }
-

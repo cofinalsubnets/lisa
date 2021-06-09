@@ -125,7 +125,7 @@ interp(locals) {
  i64 n = Gn(GF(ip));
  Have(n + 2);
  vec t = (Ve) hp;
- rep64(t->xs, nil, t->len = n);
+ set64(t->xs, nil, t->len = n);
  hp += n + 1;
  *--sp = puttup(t);
  N(2); }
@@ -212,15 +212,16 @@ interp(rec) {
  Ap(xp, nil); }
 
 // type/arity checking
-#define arn(n) if(n<=Argc){N(2);}\
- Jump(nope, arity_err_msg, Gn(Argc), Gn(n))
 #define tcn(k) if(!kind(xp-k)){N(1);}\
  Jump(nope, type_err_msg, tnom(kind(xp)), tnom(k))
 interp(idZ) { tcn(Num); }
 interp(id2) { tcn(Two); }
 interp(idH) { tcn(Hom); }
 interp(idT) { tcn(Tbl); }
-interp(arity) { arn((obj) GF(ip)); }
+interp(arity) {
+ obj reqd = (obj) GF(ip);
+ if (reqd <= Argc) { N(2); }
+ Jump(nope, arity_err_msg, Gn(Argc), Gn(reqd)); }
 
 // continuations
 //
@@ -292,7 +293,7 @@ interp(hom_u) {
  Have(len);
  hom h = (hom) hp;
  hp += len;
- rep64((mem) h, nil, len);
+ set64((mem) h, nil, len);
  h[len-1] = (terp*) h;
  h[len-2] = NULL;
  Go(ret, Ph(h+len-2)); }
@@ -619,8 +620,8 @@ interp(car) { Ap(ip+W, X(xp)); }
 interp(cdr) { Ap(ip+W, Y(xp)); }
 
 interp(cons_u) {
- ArCh(2);
- Have(2); hp[0] = Argv[0], hp[1] = Argv[1];
+ ArCh(2); Have(2);
+ hp[0] = Argv[0], hp[1] = Argv[1];
  xp = puttwo(hp), hp += 2; Jump(ret); }
 interp(car_u) { ArCh(1); TyCh(*Argv, Two); Go(ret, X(*Argv)); }
 interp(cdr_u) { ArCh(1); TyCh(*Argv, Two); Go(ret, Y(*Argv)); }
@@ -656,22 +657,19 @@ interp(add_u) {
 interp(mul_u) {
  mm_u(Gn(Argc), Argv, 1, *); }
 interp(sub_u) {
- i64 i = Gn(Argc);
- if (i == 0) Go(ret, Pn(0));
+ if (!(xp = Gn(Argc))) Go(ret, Pn(0));
  TyCh(*Argv, Num);
- if (i == 1) Go(ret, Pn(-Gn(*Argv)));
- mm_u(i-1,Argv+1,Gn(Argv[0]),-); }
+ if (xp == 1) Go(ret, Pn(-Gn(*Argv)));
+ mm_u(xp-1,Argv+1,Gn(Argv[0]),-); }
 
 interp(div_u) {
- i64 i = Gn(Argc);
- if (i == 0) Go(ret, Pn(1));
+ if (!(xp = Gn(Argc))) Go(ret, Pn(1));
  TyCh(*Argv, Num);
- mm_u0(i-1,Argv+1,Gn(*Argv),/); }
+ mm_u0(xp-1,Argv+1,Gn(*Argv),/); }
 interp(mod_u) {
- i64 i = Gn(Argc);
- if (i == 0) Go(ret, Pn(1));
+ if (!(xp = Gn(Argc))) Go(ret, Pn(1));
  TyCh(*Argv, Num);
- mm_u0(i-1,Argv+1,Gn(*Argv),%); }
+ mm_u0(xp-1,Argv+1,Gn(*Argv),%); }
 
 #define Tf(x) ((x)?ok:nil)
 // type predicates
@@ -784,11 +782,7 @@ interp(ev_u) {
        x = G(x)(v, x, Fp, Sp, Hp, nil));
  Go(ret, x); }
 
-// the multiplier comes from "Computationally Easy, Spectrally
-// Good Multipliers for Congruential Pseudorandom Number
-// Generators" by Steele & Vigna
-interp(rnd_u) {
- Go(ret, Pn(lcprng(&v->seed))); }
+interp(rnd_u) { Go(ret, Pn(lcprng(&v->seed))); }
 
 // this is for runtime errors from the interpreter, it prints
 // a backtrace and everything.
@@ -800,7 +794,6 @@ static Inline u0 perrarg(lips v, mem fp) {
   if (i == argc) break; }
  fputc(')', stderr); }
 
-#include <wchar.h>
 static interp(nope, const char *msg, ...) {
  fputs("# (", stderr);
  emit(v, Ph(ip), stderr);

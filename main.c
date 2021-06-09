@@ -41,7 +41,6 @@ int main(int argc, char** argv) {
  int opt, args,
   F = argc == 1 ? takka : 0;
 
- setlocale(LC_ALL, "");
  while ((opt = getopt(argc, argv, "hi_")) != -1) switch (opt) {
   case '_': F|=nprel; break;
   case 'i': F|=takka; break;

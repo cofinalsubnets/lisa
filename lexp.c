@@ -101,7 +101,7 @@ static NoInline obj readz_2(const char *s, i64 rad) {
  return Pn(a); }
 
 static NoInline obj readz_1(const char *s) {
- if (*s == '0') switch (s[1]) {
+ if (*s == '0') switch (cmin(s[1])) {
   case 'b': return readz_2(s+2, 2);
   case 'o': return readz_2(s+2, 8);
   case 'd': return readz_2(s+2, 10);
@@ -110,11 +110,11 @@ static NoInline obj readz_1(const char *s) {
  return readz_2(s, 10); }
 
 static Inline obj readz(const char *s) {
- if (*s == '-') {
-  obj q = readz_1(s+1);
-  return nump(q) ? Pn(-Gn(q)) : q; }
- if (*s == '+') return readz_1(s+1);
- return readz_1(s); }
+ obj q;
+ switch (*s) {
+  case '-': return nump(q = readz_1(s+1)) ? Pn(-Gn(q)) : q;
+  case '+': s++;
+  default: return readz_1(s); } }
 
 static obj atom(lips v, FILE *i) {
  obj o = atom_(v, i, cells(v, 2), 0, 8), q = readz(chars(o));
@@ -128,9 +128,8 @@ u0 emsep(lips v, obj x, FILE *o, char s) {
 
 static u0 emoct(lips v, str s, FILE *o) {
  fputc('"', o);
- for (i64 i = 0, l = s->len - 1; i < l; i++)
-  if (s->text[i] == '"') fputs("\\\"", o);
-  else fputc(s->text[i], o);
+ for (char *t = s->text; *t; fputc(*t++, o))
+  if (*t == '"') fputc('\\', o);
  fputc('"', o); }
 
 static u0 emtbl(lips v, tbl t, FILE *o) {
@@ -167,13 +166,13 @@ static u0 emhom(lips v, hom h, FILE *o) {
 
 u0 emit(lips v, obj x, FILE *o) {
  switch (kind(x)) {
-  case Hom:  return emhom(v, Gh(x), o);
-  case Num:  return emnum(v, Gn(x), o);
-  case Sym:  return emsym(v, getsym(x), o);
-  case Two:  return emtwo(v, gettwo(x), o);
-  case Oct:  return emoct(v, getoct(x), o);
-  case Tbl:  return emtbl(v, gettbl(x), o);
-  default: return (u0) fputs("()", o); } }
+  case Hom: return emhom(v, Gh(x), o);
+  case Num: return emnum(v, Gn(x), o);
+  case Sym: return emsym(v, getsym(x), o);
+  case Two: return emtwo(v, gettwo(x), o);
+  case Oct: return emoct(v, getoct(x), o);
+  case Tbl: return emtbl(v, gettbl(x), o);
+  default:  return (u0) fputs("()", o); } }
 
 u0 errp(lips v, char *msg, ...) {
  va_list xs;

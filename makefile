@@ -3,17 +3,14 @@ n=lips
 b=$n.bin
 p=prelude.lips
 t=$(wildcard test/*)
-h=$(wildcard *.h)
-s=$(wildcard *.c)
-o=$(s:.c=.o)
 v="`git rev-parse HEAD`-git"
 run=./$b -_ $p
-tcmd=$(run) $t
-rcmd=$(run) -i
+tcmd=$(run) test/*
 
-c=gcc -std=gnu17 -g -Os -flto\
-	-Wall -Wno-shift-negative-value\
-	-Wstrict-prototypes\
+CC=gcc
+CFLAGS=-std=gnu17 -g -Os -flto\
+ 	-Wall -Werror -Wstrict-prototypes\
+ 	-Wno-shift-negative-value\
 	-fno-stack-protector\
 	-fno-unroll-loops
 
@@ -21,17 +18,15 @@ test: $n
 	@/usr/bin/env TIMEFORMAT="in %Rs" bash -c "time $(tcmd)"
 
 # build
+$b: $(patsubst %.c,%.o,$(wildcard *.c))
+	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ $^
 $n: $b
-	strip -o $n $b
-$b: $m $o
-	$c -o $b $o
-.c.o:
-	$c -c $^
+	strip -o $@ $^
 
 # install
-pref=~/.local/
-bins=$(pref)bin/
-libs=$(pref)lib/lips/
+prefix ?= ~/.local/
+bins=$(prefix)bin/
+libs=$(prefix)lib/lips/
 b0=$(bins)$n
 l0=$(libs)prelude.lips
 
@@ -60,10 +55,10 @@ perf.data: $b $t $p
 valg: $b $t
 	valgrind $(tcmd)
 sloc:
-	which cloc >/dev/null && cloc --by-file --force-lang=Lisp,$n *.{c,h,$n} || cat $s | grep -v ' *//.*' | grep -v '^$$' | wc -l
+	which cloc >/dev/null && cloc --by-file --force-lang=Lisp,$n *.{c,h,$n} || cat *.c | grep -v ' *//.*' | grep -v '^$$' | wc -l
 bins: $n $b
 	stat -c "%n %sB" $^
 repl: $n
-	which rlwrap >/dev/null && rlwrap $(rcmd) || $(rcmd)
+	which rlwrap >/dev/null && rlwrap $(run) -i || $(run) -i
 
 .PHONY: test clean perf valg sloc bins install vim repl

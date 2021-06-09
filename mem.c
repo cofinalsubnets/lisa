@@ -30,10 +30,10 @@ static Inline u0 do_copy(lips, u64, mem, u64, mem);
 // under a certain proportion of total running time: amortized
 // time in garbage collection should e than about 6%, at the cost of
 // less efficient memory use under pressure.
-#define grow() (len*=2,vit*=2)
-#define shrink() (len/=2,vit/=2)
+#define grow() (len<<=1,vit<<=1)
+#define shrink() (len>>=1,vit>>=1)
 #define growp (allocd > len || vit < 32) // lower bound
-#define shrinkp (allocd < len/2 && vit >= 128) // upper bound
+#define shrinkp (allocd < (len>>1) && vit >= 128) // upper bound
 u0 reqsp(lips v, u64 req) {
  i64 len = v->mem_len, vit = copy(v, len);
  if (vit) { // copy succeeded
@@ -45,7 +45,7 @@ u0 reqsp(lips v, u64 req) {
   if (copy(v, len)) return;
   // oh no that didn't work
   // maybe we can still return though
-  if (allocd <= Len) return; } // aww darn
+  if (allocd <= Len) return; }
  errp(v, "oom"); // this is a bad error
  restart(v); }
 
