@@ -8,6 +8,20 @@ are you on linux? `make` should work. otherwise consult the
 makefile for the C compiler invocation. `make install` puts
 files under `~/.local/{bin,lib}/`.
 
+## syntax
+it's lisp so the syntax is pretty basic!
+
+- lists are delimited with parentheses like usual. there are
+  no improper list literals. `.` is a normal symbol (but it
+  does have special meaning in argument lists).
+- `'x` quotes `x` like usual. nil (`()`) is self-quoting.
+- strings are delimited with double quotes like usual. quotes
+  can be escaped with a backslash, but no other escape
+  sequences are interpreted.
+- numbers are read in decimal by default with an optional
+  sign, like usual. the prefixes `0{b,o,d,z,x}` respectively
+  specify bases 2, 8, 10, 12, and 16.
+
 ## special forms
 nullary/unary cases are usually nil or identity, but `\`is an
 exception. equivalents to examples are in scheme.
@@ -28,8 +42,8 @@ begin.
 - `(? a b) = (cond (a b) (#t #f))` if then
 
 takes any number of branches. with no fallthrough branch the
-implicit value is nil (`()`). nil evals to itself and is the
-only false value (as in common lisp; hence `#f` in scheme).
+implicit value is nil (`()`), which is the only false value
+(like in common lisp, hence `#f` in scheme).
 
 ### `:` define / letrec
 - `(: a0 b0 ... an bn) = (begin (define a b) ... (define an bn) an)` even arguments : define variables in the current scope
@@ -42,9 +56,8 @@ only false value (as in common lisp; hence `#f` in scheme).
 - `(\ a0 ... an x) = (lambda (a0 ... an) x)` however many arguments and one expression
 - `(\ a b . (a b)) = (lambda (a . b) (a b))`  vararg syntax
 
-`.` in the vararg syntax is a normal symbol with no special
-meaning elsewhere (there are no pair literals). calling a
-function with extra arguments is ok (not enough is an error).
+calling a function with extra arguments is ok (not enough is
+an error).
 
 ## some predefined functions / macros
 some of these are primitives in lips.c and some are defined in

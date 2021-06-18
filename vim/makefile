@@ -4,6 +4,7 @@ n=lips
 vim=~/.vim
 
 install: $(vim)/syntax/$n.vim $(vim)/ftdetect/$n.vim
+
 $(vim)/ftdetect:
 	mkdir -p $@
 $(vim)/syntax:

@@ -10,18 +10,16 @@ obj pair(lips v, obj a, obj b) {
  return t = bump(v, 2), t->x = a, t->y = b, puttwo(t); }
 
 u64 llen(obj l) {
- for (u64 i = 0;; l = Y(l), i++)
-  if (!twop(l)) return i; }
+ for (u64 i = 0;; l = Y(l), i++) if (!twop(l)) return i; }
 
 // for strings
 obj string(lips v, const char* c) {
- i64 bs = 1;
- for (const char *d = c; *d++; bs++);
+ i64 bs = 1 + slen(c);
  str o = cells(v, sizeof(struct oct)/W + b2w(bs));
  cpy8(o->text, c, o->len = bs);
  return putoct(o); }
 
-static u64 hc(lips, obj);
+u64 hc(lips, obj);
 //symbols
 
 // symbols are interned into a binary search tree. we make no
@@ -54,7 +52,7 @@ static Inline u64 hash_bytes(i64 len, char *us) {
  for (; len--; h *= mix, h ^= *us++);
  return mix * h; }
 
-static u64 hc(lips v, obj x) {
+u64 hc(lips v, obj x) {
  u64 r;
  switch (kind(x)) {
   case Sym: r = getsym(x)->code; break;
@@ -139,7 +137,7 @@ obj tbldel(lips v, obj t, obj k) {
 
 obj tblget(lips v, obj t, obj k) {
  for (tble e = hb(t, hc(v, k)); e; e = e->next)
-   if (eql(e->key, k)) return e->val;
+  if (eql(e->key, k)) return e->val;
  return 0; }
 
 obj table(lips v) {

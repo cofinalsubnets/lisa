@@ -6,6 +6,7 @@
   _(locals), _(loc_),   _(pc0),    _(pc1),    _(clos),\
   _(encll),  _(encln),  _(yield),  _(ret),    _(jump),\
   _(branch), _(barnch), _(call),   _(rec),    _(lbind),\
+  _(sar_u), _(sal_u), _(band_u), _(bor_u), _(bxor_u),\
   _(tbind),  _(push),   _(add),    _(sub),    _(mul),\
   _(dqv),    _(mod),    _(neg),    _(lt),     _(lteq),\
   _(eq),     _(gteq),   _(gt),     _(twopp),  _(numpp),\
@@ -28,6 +29,7 @@
 #define prims(_)\
   _("A", car_u),     _("B", cdr_u),          _("X", cons_u),    _("=", eq_u),\
   _("<", lt_u),      _("<=", lteq_u),        _(">", gt_u),      _(">=", gteq_u),\
+  _(">>", sar_u), _("<<", sal_u), _("&", band_u), _("|", bor_u), _("^", bxor_u),\
   _("+", add_u),     _("-", sub_u),          _("*", mul_u),     _("/", div_u),\
   _("%", mod_u),     _("ap", ap_u),          _("ccc", ccc_u),   _("ev", ev_u),\
   _("fail", fail),   _("tbl", tblmk),        _("tget", tblg),   _("tset", tbls),\

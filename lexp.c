@@ -23,7 +23,6 @@ NoInline const char* tnom(enum tag t) {
 typedef obj par(lips, FILE*);
 static par atom, r1s, qt, stri;
 
-
 static obj readx(lips v, char *msg) {
  errp(v, msg);
  return restart(v); }
@@ -69,8 +68,7 @@ rloop(lips v, FILE *i, str o, i64 n, i64 lim,
     cpy8(o->text, getoct(x)->text, o->len = n),
     loop(v, i, o, n, 2 * n)); }
 
-static obj
-atom_(lips v, FILE *p, str o, i64 n, i64 lim) {
+static obj atom_(lips v, FILE *p, str o, i64 n, i64 lim) {
  obj x;
  while (n < lim) switch (x = fgetc(p)) {
   case ' ': case '\n': case '\t': case ';': case '#':
@@ -81,8 +79,7 @@ atom_(lips v, FILE *p, str o, i64 n, i64 lim) {
   default: o->text[n++] = x; } out:
  return rloop(v, p, o, n, lim, atom_); }
 
-static obj
-str_(lips v, FILE *p, str o, i64 n, i64 lim) {
+static obj str_(lips v, FILE *p, str o, i64 n, i64 lim) {
  obj x;
  while (n < lim) switch (x = fgetc(p)) {
   case '\\': if ((x = fgetc(p)) == EOF) {

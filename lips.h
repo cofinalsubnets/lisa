@@ -81,7 +81,7 @@ obj
  tbldel(lips, obj, obj),
  string(lips, const char*);
 
-u64 llen(obj) NoInline, eql(obj, obj);
+u64 llen(obj) NoInline, eql(obj, obj), hc(lips, obj);
 
 const char* tnom(enum tag);
 
