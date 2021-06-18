@@ -648,6 +648,12 @@ interp(mod) {
  xp = Pn(Gn(*sp++) % Gn(xp));
  N(1); }
 
+interp(sar) { xp = Pn(Gn(*sp++) >> Gn(xp)); N(1); }
+interp(sal) { xp = Pn(Gn(*sp++) << Gn(xp)); N(1); }
+interp(band) { xp &= *sp++; N(1); }
+interp(bor) { xp |= *sp++; N(1); }
+interp(bxor) { xp ^= *sp++; xp |= Num; N(1); }
+
 #define mm_u(_c,_v,_z,op){\
  obj x,*xs=_v,*l=xs+_c;\
  for(xp=_z;xs<l;xp=xp op Gn(x)){\
@@ -680,10 +686,12 @@ interp(mod_u) {
  mm_u0(xp-1,Argv+1,Gn(*Argv),%); }
 
 interp(sar_u) {
- ArCh(1); TyNum(*Argv);
+ if (Argc == Pn(0)) Go(ret, Pn(0));
+ TyNum(*Argv);
  mm_u(Gn(Argc)-1, Argv+1, Gn(*Argv), >>); }
 interp(sal_u) {
- ArCh(1); TyNum(*Argv);
+ if (Argc == Pn(0)) Go(ret, Pn(0));
+ TyNum(*Argv);
  mm_u(Gn(Argc)-1, Argv+1, Gn(*Argv), <<); }
 interp(band_u) {
  mm_u(Gn(Argc), Argv, (~0), &); }

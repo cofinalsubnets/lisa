@@ -327,7 +327,7 @@
    ; (or whatever).
 
    pure (imm ({set}
-    L X A B + - * / % id flip cat iota rho const
+    L X A B + - * / % & | ^ << >> id flip cat iota rho const
     cu const snoc init last rev ldel memq at idx len
     homp nilp symp nump tblp strp twop vecp
     && || scat slen sget ssub str))
@@ -571,10 +571,16 @@
      (xc i-push (eval (A x) (>- t0
       (xc i-tset (-> t3 k))))))))))
 
+  (sa_ f i) (\ x k
+   (: y (mono + 0 (B x)) 
+      z (? (nump (A x))
+         (mono f (A x) y)
+         (X (A x) y))
+    (eval (A z) (>- 'num (2f i k (B z))))))
+
   (tbl
    id (\ x k (eval (A x) k))
    + (abel + i-add)
-   * (abel * i-mul)
    - (\ x k
     (? (~ x) (Im 0 k)
        (~ (B x)) ((1y i-neg 'num 'num) x k)
@@ -582,10 +588,7 @@
           z (? (nump (A x)) (mono - (A x) y) (X (A x) y))
         (? z (eval (A z) (>- 'num (2f i-sub k (B z))))
              (Im 0 k)))))
-   L (\ x k (:
-    (loop x k) (? x (loop (B x) (xc i-push (eval (A x) (xc i-cons (-> 'two k))))) k)
-    (Im () (loop x k))))
-
+   * (abel * i-mul)
    / (\ x k (?
     (~ x) (Im 1 k)
     (~ (B x)) (eval (A x) (>- 'num k))
@@ -593,22 +596,34 @@
        c (? (nump (A x)) (mono / (A x) b) (X (A x) b)))
      (eval (A c) (>- 'num (2f i-dqv k (B c))))
     (Im 1 k)))
-   < (ordr i-lt) <= (ordr i-lteq)
-   >= (ordr i-gteq) > (ordr i-gt)
+
+   & (abel & i-band)
+   | (abel | i-bor)
+   ^ (abel ^ i-bxor)
+   >> (sa_ >> i-sar)
+   << (sa_ << i-sal)
+
    A (1y i-car 'two ())
    B (1y i-cdr 'two ())
    X (2y i-cons () () 'two)
+   L (\ x k (:
+    (loop x k) (? x (loop (B x) (xc i-push (eval (A x) (xc i-cons (-> 'two k))))) k)
+    (Im () (loop x k))))
+
 
    emi  (2y i-emi 'num 'hom 'hom)
    emx  (2y i-emx () 'hom 'hom)
+
    tget (2y i-tget 'tbl () ())
    tset (3y i-tset 'tbl () () ())
    tlen (1y i-tlen 'tbl 'num)
    thas (2y i-thas 'tbl () ())
 
+   < (ordr i-lt) <= (ordr i-lteq)
+   >= (ordr i-gteq) > (ordr i-gt)
    = (\ x k (?
     (~ x) (Im () k)
-    (&& x (~ (B x))) (Im 1 k)
+    (~ (B x)) (Im 1 k)
     (&& (: q (map (filter x qtd) unq))
         (: r (A q) (any (B q) (\ v (~ (= v r))))))
      (Im () k)

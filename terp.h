@@ -7,6 +7,7 @@
   _(encll),  _(encln),  _(yield),  _(ret),    _(jump),\
   _(branch), _(barnch), _(call),   _(rec),    _(lbind),\
   _(sar_u), _(sal_u), _(band_u), _(bor_u), _(bxor_u),\
+  _(sar), _(sal), _(band), _(bor), _(bxor),\
   _(tbind),  _(push),   _(add),    _(sub),    _(mul),\
   _(dqv),    _(mod),    _(neg),    _(lt),     _(lteq),\
   _(eq),     _(gteq),   _(gt),     _(twopp),  _(numpp),\
