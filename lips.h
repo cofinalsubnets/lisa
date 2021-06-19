@@ -62,6 +62,7 @@ u0
  lips_init(lips),
  lips_fin(lips),
  lips_boot(lips),
+ defprim(lips, const char *, terp*) NoInline,
  emit(lips, obj, FILE*),
  errp(lips, char*, ...),
  emsep(lips, obj, FILE*, char);
@@ -76,6 +77,7 @@ obj
  eval(lips, obj),
  compile(lips, obj),
  table(lips),
+ spush(lips, obj) NoInline,
  tblset(lips, obj, obj, obj),
  tblget(lips, obj, obj),
  tbldel(lips, obj, obj),
@@ -157,6 +159,7 @@ const char* tnom(enum tag);
 #define Avail (Sp-Hp)
 
 #define mix ((u64)2708237354241864315)
+#define interns(v,c) intern(v,string(v,c))
 
 static Inline hom button(hom h) {
  while (*h) h++;
@@ -169,7 +172,8 @@ static Inline u0* bump(lips v, u64 n) {
 static Inline u0* cells(lips v, u64 n) {
  return Avail < n ? reqsp(v, n):0, bump(v, n); }
 
-static Inline i64 hbi(u64 cap, u64 co) { return co % cap; }
+static Inline i64 hbi(u64 cap, u64 co) {
+ return co % cap; }
 
 static Inline tble hb(obj t, u64 code) {
  return gettbl(t)->tab[hbi(gettbl(t)->cap, code)]; }
@@ -177,8 +181,11 @@ static Inline tble hb(obj t, u64 code) {
 static Inline u0 script(lips v, FILE *f) {
  for (obj x; (x = parse(v, f)); eval(v, x)); }
 
+static Inline obj spop(lips v) {
+ return *Sp++; }
+
 _Static_assert(
- sizeof(i64*) == sizeof(i64),
+ sizeof(intptr_t) == sizeof(int64_t),
  "pointers are not 64 bits");
 
 _Static_assert(

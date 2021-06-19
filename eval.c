@@ -388,74 +388,13 @@ NoInline obj homnom(lips v, obj x) {
         x == (obj) yield                      ? Eva :
                                                 nil; }
 
-#include <stdlib.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <time.h>
-#define NOM "lips"
-#define USR_PATH ".local/lib/"NOM"/"
-#define SYS_PATH "/usr/lib/"NOM"/"
-static Inline int seekp(const char* p) {
- int b, c;
- b = openat(AT_FDCWD, getenv("HOME"), O_RDONLY);
- c = openat(b, USR_PATH, O_RDONLY), close(b);
- b = openat(c, p, O_RDONLY), close(c);
- if (-1 < b) return b;
- b = openat(AT_FDCWD, SYS_PATH, O_RDONLY);
- c = openat(b, p, O_RDONLY), close(b);
- return c; }
-
-u0 lips_boot(lips v) {
- const char * const path = "prelude.lips";
- int pre = seekp(path);
- if (pre == -1) errp(v, "can't find %s", path);
- else {
-  FILE *f = fdopen(pre, "r");
-  if (setjmp(v->restart)) return
-   errp(v, "error in %s", path),
-   fclose(f), lips_fin(v);
-  script(v, f), fclose(f); } }
-
-u0 lips_fin(lips v) { free(v->mem_pool); }
-
-static NoInline obj spush(lips v, obj x) {
- if (!Avail) with(x, reqsp(v, 1));
- return *--Sp = x; }
-
-static Inline obj spop(lips v) { return *Sp++; }
-
-#define interns(v,c) intern(v,string(v,c))
-static NoInline u0 rpr(lips v, const char *a, terp *b) {
+NoInline u0 defprim(lips v, const char *a, terp *b) {
  obj z = spush(v, pair(v, interns(v, a), nil)), x = hini(v, 2);
  x = em2(b, z = spop(v), x);
  tblset(v, *Sp, X(z), x); }
-static NoInline u0 rin(lips v, const char *a, terp *b) {
- obj z = interns(v, a);
- tblset(v, *Sp, z, Pn(b)); }
-#define repr(a,b)rpr(v,a,b)
-#define rein(a)rin(v, "i-"#a,a)
-
-u0 lips_init(lips v) {
- v->seed = v->t0 = clock(),
- v->ip = v->xp = v->syms = v->glob = nil,
- v->fp = v->hp = v->sp = (mem) W,
- v->count = 0, v->mem_len = 1, v->mem_pool = NULL,
- v->mem_root = NULL;
- vec t = cells(v, sizeof (struct tup)/W + NGlobs);
- set64(t->xs, nil, t->len = NGlobs);
- obj z, y = Glob = puttup(t);
- with(y,
-  spush(v, table(v)),
-  prims(repr), insts(rein),
-  Top = spop(v),
-  z = table(v), Mac = z,
-#define bsym(i,s)(z=interns(v,s),AR(y)[i]=z)
-  bsym(Eval, "ev"), bsym(Apply, "ap"),
-  bsym(Def, ":"),   bsym(Cond, "?"), bsym(Lamb, "\\"),
-  bsym(Quote, "`"), bsym(Seq, ","),  bsym(Splat, "."));
-#undef bsym
- y = interns(v, "ns"),     tblset(v, Top, y, Top);
- y = interns(v, "macros"), tblset(v, Top, y, Mac); }
+NoInline obj spush(lips v, obj x) {
+ if (!Avail) with(x, reqsp(v, 1));
+ return *--Sp = x; }
 
 obj compile(lips v, obj x) {
  Pu(Pn(c_ev), x, Pn(inst), Pn(yield), Pn(c_ini));

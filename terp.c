@@ -198,7 +198,7 @@ interp(call) {
  Argc = adic;
  Ap(xp, nil); }
 
-static interp(recg) {
+static interp(recne) {
  // overwrite current frame with new frame
  Xp = Subd, Ip = Retp; // save return info
  fp = Argv + Gn(Argc - ip);
@@ -214,9 +214,8 @@ static interp(recg) {
 // tail call
 interp(rec) {
  ip = (obj) GF(ip);
- if (Argc!=ip) Jump(recg);
- ip = Gn(ip);
- cpy64(Argv, sp, ip);
+ if (Argc!=ip) Jump(recne);
+ cpy64(Argv, sp, ip = Gn(ip));
  sp = fp;
  Ap(xp, nil); }
 
