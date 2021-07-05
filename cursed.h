@@ -1,6 +1,5 @@
-#ifndef CURSED_H
-#define CURSED_H
-#include <float.h>
+#ifndef _cursed_h
+#define _cursed_h
 #include <stdint.h>
 #include <limits.h>
 #include <stdarg.h>
@@ -16,6 +15,8 @@
 #define Asm asm volatile
 #define zero64 ((u64)0)
 #define word64 8
+#define rotr64(x, n) (((x)<<(64-(n)))|((x)>>(n)))
+#define rotl64(x, n) (((x)>>(64-(n)))|((x)<<(n)))
 #define BWDQ(_) _(8) _(16) _(32) _(64)
 
 typedef void u0;
@@ -25,6 +26,7 @@ typedef void u0;
  typedef uint##n##_t u##n;
 BWDQ(I)
 #undef I
+
 
 // cursed c standard library declarations
 //

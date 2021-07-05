@@ -64,14 +64,14 @@ some of these are primitives in lips.c and some are defined in
 prelude.lips.
 
 - `L = list` `X = cons` `A = car` `B = cdr`.  `AA`-`BB` are macros.
-- `+` `-` `*` `/` `%` what you think
-- `<` `<=` `>=` `>` variadic, test each successive pair of arguments, works on numbers.
+- `+ - * / % << >> & | ^` like C. ints are currently only 61 bits though
+- `< <= >= >` variadic, test each successive pair of arguments, works on numbers.
 - `=` variadic, works on anything, recursive on pairs so `(= (L 1 2 3) (L 1 2 3))`.
-- `ev = eval`, `ap = apply`, `ccc = call/cc`
+- `ev ap ccc` = `eval apply call/cc`
 - `cu` partial apply : `((cu f a b) c d) = (f a b c d)` `co` compose : `((co f g h) x) = (h (g (f x)))`
 - `.` print arguments separated by spaces, print newline, return last argument
 - `iota` and `rho` are kind of like in APL but not as good
-- `homp` `nump` `twop` `symp` `nilp` `tblp` `strp` `vecp` type predicates
+- `homp nump twop symp nilp tblp strp vecp` type predicates
 - hash functions: `tbl tset tget thas tkeys tlen tdel` ; tbl / tset take any number of key/value pairs
 - string functions: n-ary constructor `(str 97 97 97) = "aaa"` ; `slen sget ssub scat`
 - symbol functions: `gensym`
@@ -88,7 +88,8 @@ prelude.lips.
 ### hyperoperations
 ```lisp
 ; send n to the nth hyperoperation where 0 is +
-(: (hy n) (? (= n 0) + (\ x y (foldr1 (rho y x) (hy (- n 1))))))
+(: (hy n) (? (= n 0) +
+ (\ x y (foldr1 (rho y x) (hy (- n 1))))))
 ```
 
 ### church numerals

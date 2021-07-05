@@ -13,25 +13,25 @@ typedef i64 obj, *mem;
 
 // more fundamental data types
 typedef struct two {
-  obj x, y; } *Tw, *two; // pairs
+ obj x, y; } *two; // pairs
 typedef struct tup {
-  u64 len;
-  obj xs[]; } *Ve, *tup, *vec; // vectors
+ u64 len;
+ obj xs[]; } *tup, *vec; // vectors
 typedef struct oct {
-  u64 len;
-  char text[]; } *By, *oct, *str; // byte arrays
+ u64 len;
+ char text[]; } *oct, *str; // byte arrays
 typedef struct sym {
-  obj nom, code, l, r; } *Sy, *sym; // symbols
+ obj nom, code, l, r; } *sym; // symbols
 typedef struct tble {
-  obj key, val;
-  struct tble *next; } *tble; // tables
+ obj key, val;
+ struct tble *next; } *tble; // tables
 typedef struct tbl {
-  u64 len, cap;
-  tble *tab; } *Ht, *tbl;
+ u64 len, cap;
+ tble *tab; } *tbl;
 
 enum tag { // the 3 ls bits of each pointer are a type tag
- Hom = 0, Num = 1, Two = 2, Tup = 3,
- Oct = 4, Tbl = 5, Sym = 6, Nil = 7 };
+ Hom = 0, Num = 1, Two = 2, Vec = 3,
+ Str = 4, Tbl = 5, Sym = 6, Nil = 7 };
 
 enum globl { // indices into a table of global constants
  Def, Cond, Lamb, Quote, Seq,
@@ -98,18 +98,18 @@ const char* tnom(enum tag);
 #define putnum(n) (((obj)(n)<<3)+Num)
 #define getsym(x) ((sym)((obj)(x)-Sym))
 #define putsym(x) ((obj)(x)+Sym)
-#define gettup(x) ((tup)((x)-Tup))
-#define puttup(x) ((obj)(x)+Tup)
-#define getoct(x) ((oct)((obj)(x)-Oct))
-#define putoct(x) ((obj)(x)+Oct)
+#define gettup(x) ((vec)((x)-Vec))
+#define puttup(x) ((obj)(x)+Vec)
+#define getoct(x) ((oct)((obj)(x)-Str))
+#define putoct(x) ((obj)(x)+Str)
 #define gettbl(x) ((tbl)((obj)(x)-Tbl))
 #define puttbl(x) ((obj)(x)+Tbl)
 #define homp(x) (kind(x)==Hom)
-#define octp(x) (kind(x)==Oct)
+#define octp(x) (kind(x)==Str)
 #define nump(x) (kind(x)==Num)
 #define twop(x) (kind(x)==Two)
 #define symp(x) (kind(x)==Sym)
-#define tupp(x) (kind(x)==Tup)
+#define tupp(x) (kind(x)==Vec)
 #define tblp(x) (kind(x)==Tbl)
 #define nilp(x) ((x)==nil)
 #define X(o) gettwo(o)->x
@@ -130,7 +130,6 @@ const char* tnom(enum tag);
 #define um (Safe=Safe->next)
 #define AR(x) gettup(x)->xs
 #define AL(x) gettup(x)->len
-#define Mm(y,...) (mm(&(y)),(__VA_ARGS__),um)
 #define with(y,...) (mm(&(y)),(__VA_ARGS__),um)
 #define b2w(n)((n)/W+((n)%W&&1))
 #define w2b(n) ((n)*W)

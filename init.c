@@ -13,7 +13,7 @@ static Inline int seekp(const char* p) {
  b = openat(AT_FDCWD, getenv("HOME"), O_RDONLY);
  c = openat(b, USR_PATH, O_RDONLY), close(b);
  b = openat(c, p, O_RDONLY), close(c);
- if (-1 < b) return b;
+ if (b > -1) return b;
  b = openat(AT_FDCWD, SYS_PATH, O_RDONLY);
  c = openat(b, p, O_RDONLY), close(b);
  return c; }
@@ -21,13 +21,12 @@ static Inline int seekp(const char* p) {
 u0 lips_boot(lips v) {
  const char * const path = "prelude.lips";
  int pre = seekp(path);
- if (pre == -1) errp(v, "can't find %s", path);
- else {
-  FILE *f = fdopen(pre, "r");
-  if (setjmp(v->restart)) return
-   errp(v, "error in %s", path),
-   fclose(f), lips_fin(v);
-  script(v, f), fclose(f); } }
+ if (pre == -1) return errp(v, "can't find %s", path);
+ FILE *f = fdopen(pre, "r");
+ if (setjmp(v->restart)) return
+  errp(v, "error in %s", path),
+  fclose(f), lips_fin(v);
+ script(v, f), fclose(f); }
 
 u0 lips_fin(lips v) { free(v->mem_pool); }
 
@@ -36,7 +35,6 @@ static NoInline u0 rin(lips v, const char *a, terp *b) {
  tblset(v, *Sp, z, Pn(b)); }
 #define repr(a,b)defprim(v,a,b)
 #define rein(a)rin(v, "i-"#a,a)
-
 
 u0 lips_init(lips v) {
  v->seed = v->t0 = clock(),
@@ -59,4 +57,3 @@ u0 lips_init(lips v) {
 #undef bsym
  y = interns(v, "ns"),     tblset(v, Top, y, Top);
  y = interns(v, "macros"), tblset(v, Top, y, Mac); }
-

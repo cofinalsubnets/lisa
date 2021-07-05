@@ -91,8 +91,8 @@ do_copy(lips v, u64 l0, mem b0, u64 l1, mem b1) {
  Syms = nil;
  while (t0-- > s0) Sp[t0 - s0] = cp(v, *t0, l0, b0);
 #define CP(x) x=cp(v,x,l0,b0)
- CP(Ip), CP(Xp), CP(Glob);
- for (mroot r = Safe; r; r = r->next) CP(*(r->one)); }
+ for (mroot r = Safe; r; r = r->next) CP(*(r->one));
+ CP(Ip), CP(Xp), CP(Glob); }
 #undef CP
 
 // the exact method for copying an object into
@@ -101,14 +101,14 @@ do_copy(lips v, u64 l0, mem b0, u64 l1, mem b1) {
 // new locations, which effectively destroys the
 // old data.
 typedef obj cp_(lips, obj, u64, mem);
-static cp_ cphom, cptup, cptwo, cpsym, cpoct, cptbl;
+static cp_ cphom, cptup, cptwo, cpsym, cpstr, cptbl;
 #define cpcc(n) static obj n(lips v, obj x, u64 ln, mem lp)
 
 cpcc(cp) {
  switch (kind(x)) {
   case Hom: return cphom(v, x, ln, lp);
-  case Tup: return cptup(v, x, ln, lp);
-  case Oct: return cpoct(v, x, ln, lp);
+  case Vec: return cptup(v, x, ln, lp);
+  case Str: return cpstr(v, x, ln, lp);
   case Two: return cptwo(v, x, ln, lp);
   case Sym: return cpsym(v, x, ln, lp);
   case Tbl: return cptbl(v, x, ln, lp);
@@ -137,7 +137,7 @@ cpcc(cptup) {
   dst->xs[i] = cp(v, src->xs[i], ln, lp);
  return puttup(dst); }
 
-cpcc(cpoct) {
+cpcc(cpstr) {
  str dst, src = getoct(x);
  return src->len == 0 ? *(mem)src->text :
   (dst = bump(v, Size(oct) + b2w(src->len)),

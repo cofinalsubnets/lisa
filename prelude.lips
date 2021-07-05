@@ -67,8 +67,9 @@
   (tset macros
    ; a macro for defining macros
    '::: (: (defm n x .) (, (Ts macros n (: v (ev (A x))))
-                           (? (B x) (ap defm (B x)) v)))
-   'imm (\ x (ev x))
+                           (? (B x) (ap defm (B x)) v))
+         defm)
+   'imm ev
    'AA (\ x (X A (L (X A (L x))))) 'AB (\ x (X A (L (X B (L x)))))
    'BA (\ x (X B (L (X A (L x))))) 'BB (\ x (X B (L (X B (L x)))))
    '&& (\ x . (? x ((: & (\ x
@@ -649,12 +650,13 @@
 
 ; re-re-redefine functions and macros that depend on ev
 (Ts macros
-   '::: (: (defm n x .) (,(Ts macros n (: v (ev (A x))))
-                          (? (B x) (ap defm (B x)) v)))
-   'imm (\ x (ev x)))
+ '::: (: (defm n x .) (, (Ts macros n (: v (ev (A x))))
+                         (? (B x) (ap defm (B x)) v))
+       defm)
+ 'imm ev)
 
 (: (co x .) (ev (L '\ 'x (foldl x 'x (\ m e (L (L '` e) m)))))
-   (const x) (ev (L '\ (L '` x))))
+   (const x) (emi i-imm (emx x (emi i-ret (emx '(() const) (hom 4))))))
 
 ; " drop privileges "
 (: loc '(egg macros ns emi emx hom hseek hgeti hgetx hfin)

@@ -96,7 +96,7 @@ static interp(nope, const char *, ...);
 #define TyTwo(x) TyChN(x,Two,"two")
 #define TyHom(x) TyChN(x,Hom,"hom")
 #define TyTbl(x) TyChN(x,Tbl,"tbl")
-#define TyStr(x) TyChN(x,Oct,"str")
+#define TyStr(x) TyChN(x,Str,"str")
 #define ArCh(n) if(Pn(n)>Argc)\
  Jump(nope, arity_err_msg,\
   Gn(Argc), n)
@@ -133,7 +133,7 @@ interp(tbind) { CallC(tblset(v, Dict, (obj) GF(ip), xp)); N(2); }
 interp(locals) {
  u64 n = Gn(GF(ip));
  Have(n + 2);
- vec t = (Ve) hp;
+ vec t = (vec) hp;
  set64(t->xs, nil, t->len = n);
  hp += n + 1;
  *--sp = puttup(t);
@@ -732,7 +732,7 @@ u64 eql(obj a, obj b) {
  if (kind(a) != kind(b)) return false;
  switch (kind(a)) {
   case Two: return twoeq(a, b);
-  case Oct: return streq(a, b);
+  case Str: return streq(a, b);
   default:  return false; } }
 
 interp(lt)    { xp = *sp++ <  xp ? xp : nil; N(1); }
@@ -774,12 +774,12 @@ interp(gt_u)   { ord_w(>); }
  Go(ret, ok); }
 interp(nump_u) { typpp(Num); }
 interp(homp_u) { typpp(Hom); }
-interp(strp_u) { typpp(Oct); }
+interp(strp_u) { typpp(Str); }
 interp(tblp_u) { typpp(Tbl); }
 interp(twop_u) { typpp(Two); }
 interp(symp_u) { typpp(Sym); }
 interp(nilp_u) { typpp(Nil); }
-interp(vecp_u) { typpp(Tup); }
+interp(vecp_u) { typpp(Vec); }
 
 // stack manipulation
 interp(tuck) { Have1(); sp--, sp[0] = sp[1], sp[1] = xp; N(1); }
@@ -833,7 +833,7 @@ static interp(nope, const char *msg, ...) {
  for (;;) {
   ip = Retp, fp += Size(fr) + Gn(Argc) + Gn(Subd);
   if (button(Gh(ip))[-1] == yield) break;
-  fputs("#  in ", stderr), emsep(v, Ph(ip), stderr, '\n'); }
+  fputs("# in ", stderr), emsep(v, Ph(ip), stderr, '\n'); }
  Hp = hp;
  return restart(v); }
 

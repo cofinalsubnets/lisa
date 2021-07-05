@@ -15,8 +15,8 @@ NoInline const char* tnom(enum tag t) {
   case Num: return "num";
   case Tbl: return "tbl";
   case Two: return "two";
-  case Tup: return "vec";
-  case Oct: return "str";
+  case Vec: return "vec";
+  case Str: return "str";
   case Sym: return "sym";
   default:  return "nil"; } }
 
@@ -24,8 +24,7 @@ typedef obj par(lips, FILE*);
 static par atom, r1s, qt, stri;
 
 static obj readx(lips v, char *msg) {
- errp(v, msg);
- return restart(v); }
+ return errp(v, msg), restart(v); }
 
 static int r0(FILE *i) {
  for (int c;;) switch ((c = getc(i))) {
@@ -35,8 +34,8 @@ static int r0(FILE *i) {
   default: return c; } }
 
 obj parse(lips v, FILE* i) {
- int c;
- switch ((c = r0(i))) {
+ int c = r0(i);
+ switch (c) {
   case EOF:  return 0;
   case ')':  return readx(v, err_rpar);
   case '(':  return r1s(v, i);
@@ -49,13 +48,15 @@ static obj qt(lips v, FILE *i) {
  return pair(v, Qt, r); }
 
 static obj r1s(lips v, FILE *i) {
- obj x, y, c;
- return (c = r0(i)) == EOF ? readx(v, err_eof) :
-  c == ')' ? nil :
-   (ungetc(c, i),
-    x = parse(v, i),
-    with(x, y = r1s(v, i)),
-    pair(v, x, y)); }
+ obj x, y, c = r0(i);
+ switch (c) {
+  case EOF: return readx(v, err_eof);
+  case ')': return nil;
+  default: return
+   ungetc(c, i),
+   x = parse(v, i),
+   with(x, y = r1s(v, i)),
+   pair(v, x, y); } }
 
 static NoInline obj
 rloop(lips v, FILE *i, str o, i64 n, i64 lim,
@@ -64,13 +65,13 @@ rloop(lips v, FILE *i, str o, i64 n, i64 lim,
  return
   o->len = n, x = putoct(o),
   o->text[n-1] == 0 ? x :
-   (Mm(x, o = cells(v, 1 + b2w(2*n))),
+   (with(x, o = cells(v, 1 + b2w(2*n))),
     cpy8(o->text, getoct(x)->text, o->len = n),
     loop(v, i, o, n, 2 * n)); }
 
 static obj atom_(lips v, FILE *p, str o, i64 n, i64 lim) {
  obj x;
- while (n < lim) switch (x = fgetc(p)) {
+ while (n < lim) switch (x = getc(p)) {
   case ' ': case '\n': case '\t': case ';': case '#':
   case '(': case ')': case '\'': case '"':
    ungetc(x, p); case EOF:
@@ -81,8 +82,8 @@ static obj atom_(lips v, FILE *p, str o, i64 n, i64 lim) {
 
 static obj str_(lips v, FILE *p, str o, i64 n, i64 lim) {
  obj x;
- while (n < lim) switch (x = fgetc(p)) {
-  case '\\': if ((x = fgetc(p)) == EOF) {
+ while (n < lim) switch (x = getc(p)) {
+  case '\\': if ((x = getc(p)) == EOF) {
   case EOF: case '"': o->text[n++] = 0; goto out; }
   default: o->text[n++] = x; } out:
  return rloop(v, p, o, n, lim, str_); }
@@ -123,7 +124,7 @@ static obj stri(lips v, FILE *i) {
 u0 emsep(lips v, obj x, FILE *o, char s) {
  emit(v, x, o), fputc(s, o); }
 
-static u0 emoct(lips v, str s, FILE *o) {
+static u0 emstr(lips v, str s, FILE *o) {
  fputc('"', o);
  for (char *t = s->text; *t; fputc(*t++, o))
   if (*t == '"') fputc('\\', o);
@@ -147,8 +148,6 @@ static u0 emtwo(lips v, two w, FILE *o) {
   (fputc('\'', o), emit(v, X(w->y), o)) :
   (fputc('(', o), emtwo_(v, w, o)); }
 
-static u0 emnum(lips v, i64 n, FILE *o) {
-  fprintf(o, "%ld", n); }
 
 static u0 phomn(lips v, obj x, FILE *o) {
  fputc('\\', o); 
@@ -158,18 +157,15 @@ static u0 phomn(lips v, obj x, FILE *o) {
    if (symp(X(x))) emit(v, X(x), o);
    if (twop(Y(x))) phomn(v, Y(x), o); } }
 
-static u0 emhom(lips v, hom h, FILE *o) {
- phomn(v, homnom(v, Ph(h)), o); }
-
 u0 emit(lips v, obj x, FILE *o) {
  switch (kind(x)) {
-  case Hom: return emhom(v, Gh(x), o);
-  case Num: return emnum(v, Gn(x), o);
+  case Hom: phomn(v, homnom(v, x), o); return;
+  case Num: fprintf(o, "%ld", Gn(x)); return;
   case Sym: return emsym(v, getsym(x), o);
   case Two: return emtwo(v, gettwo(x), o);
-  case Oct: return emoct(v, getoct(x), o);
+  case Str: return emstr(v, getoct(x), o);
   case Tbl: return emtbl(v, gettbl(x), o);
-  default:  return (u0) fputs("()", o); } }
+  default:  fputs("()", o); } }
 
 u0 errp(lips v, char *msg, ...) {
  va_list xs;
