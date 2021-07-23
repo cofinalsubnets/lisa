@@ -41,11 +41,8 @@ u0 reqsp(lips v, u64 req) {
   if (growp)        do grow();   while (growp);
   else if (shrinkp) do shrink(); while (shrinkp);
   else return; // no size change needed
-  // otherwise grow or shrink
-  if (copy(v, len)) return;
-  // oh no that didn't work
-  // maybe we can still return though
-  if (allocd <= Len) return; }
+  // otherwise grow or shrink ; if it fails maybe we can still return
+  if (copy(v, len) || allocd <= Len) return; }
  errp(v, "oom"); // this is a bad error
  restart(v); }
 
@@ -138,12 +135,12 @@ cpcc(cptup) {
  return puttup(dst); }
 
 cpcc(cpstr) {
- str dst, src = getoct(x);
+ str dst, src = getstr(x);
  return src->len == 0 ? *(mem)src->text :
-  (dst = bump(v, Size(oct) + b2w(src->len)),
+  (dst = bump(v, Size(str) + b2w(src->len)),
    cpy64(dst->text, src->text, b2w(src->len)),
    dst->len = src->len, src->len = 0,
-   *(mem)src->text = putoct(dst)); }
+   *(mem)src->text = putstr(dst)); }
 
 cpcc(cpsym) {
  sym src = getsym(x), dst;

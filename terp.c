@@ -10,7 +10,7 @@
 // " the interpreter "
 // is all the functions of type terp:
 #define interp(n,...) NoInline obj \
-  n(lips v, obj ip, mem fp, mem sp, mem hp, obj xp, ##__VA_ARGS__)
+ n(lips v, obj ip, mem fp, mem sp, mem hp, obj xp, ##__VA_ARGS__)
 // the arguments to a terp function collectively represent the
 // runtime state, and the  return value is the result of the
 // program. there are six arguments because that's the number
@@ -98,8 +98,7 @@ static interp(nope, const char *, ...);
 #define TyTbl(x) TyChN(x,Tbl,"tbl")
 #define TyStr(x) TyChN(x,Str,"str")
 #define ArCh(n) if(Pn(n)>Argc)\
- Jump(nope, arity_err_msg,\
-  Gn(Argc), n)
+ Jump(nope,arity_err_msg,Gn(Argc),n)
 
 // " virtual machine instructions "
 //
@@ -187,7 +186,7 @@ interp(ret) {
 
 // regular function call
 interp(call) {
-#define fwds (sizeof(struct fr)/W)
+#define fwds Size(fr)
  Have(fwds);
  obj adic = (obj) GF(ip);
  i64 off = fp - (mem) ((i64) sp + adic - Num);
@@ -221,7 +220,7 @@ interp(rec) {
 
 // type/arity checking
 #define tcn(k, n) if(!kind(xp-k)){N(1);}\
- Jump(nope, type_err_msg, tnom(kind(xp)), n)
+ Jump(nope,type_err_msg,tnom(kind(xp)),n)
 interp(idZ) { tcn(Num, "num"); }
 interp(id2) { tcn(Two, "two"); }
 interp(idH) { tcn(Hom, "hom"); }
@@ -433,14 +432,14 @@ interp(tbll) {
 interp(strl) {
  ArCh(1);
  TyStr(*Argv);
- Go(ret, Pn(getoct(*Argv)->len-1)); }
+ Go(ret, Pn(getstr(*Argv)->len-1)); }
 
 interp(strg) {
  ArCh(2);
  TyStr(Argv[0]);
  TyNum(Argv[1]);
- Go(ret, Gn(Argv[1]) < getoct(Argv[0])->len-1 ?
-  Pn(getoct(Argv[0])->text[Gn(Argv[1])]) :
+ Go(ret, Gn(Argv[1]) < getstr(Argv[0])->len-1 ?
+  Pn(getstr(Argv[0])->text[Gn(Argv[1])]) :
   nil); }
 
 interp(strconc) {
@@ -448,7 +447,7 @@ interp(strconc) {
  while (i < l) {
   obj x = Argv[i++];
   TyStr(x);
-  sum += getoct(x)->len - 1; }
+  sum += getstr(x)->len - 1; }
  i64 words = b2w(sum+1) + 1;
  Have(words);
  str d = (str) hp;
@@ -456,10 +455,10 @@ interp(strconc) {
  d->len = sum + 1;
  d->text[sum] = 0;
  while (i) {
-  str x = getoct(Argv[--i]);
+  str x = getstr(Argv[--i]);
   sum -= x->len - 1;
   cpy8(d->text+sum, x->text, x->len - 1); }
- Go(ret, putoct(d)); }
+ Go(ret, putstr(d)); }
 
 #define min(a,b)(a<b?a:b)
 #define max(a,b)(a>b?a:b)
@@ -468,7 +467,7 @@ interp(strs) {
  TyStr(Argv[0]);
  TyNum(Argv[1]);
  TyNum(Argv[2]);
- str src = getoct(Argv[0]);
+ str src = getstr(Argv[0]);
  i64 lb = Gn(Argv[1]), ub = Gn(Argv[2]);
  lb = max(lb, 0);
  ub = max(min(ub, src->len-1), lb);
@@ -479,12 +478,12 @@ interp(strs) {
  dst->len = ub - lb + 1;
  dst->text[ub - lb] = 0;
  cpy8(dst->text, src->text + lb, ub - lb);
- Go(ret, putoct(dst)); }
+ Go(ret, putstr(dst)); }
 
 interp(strmk) {
  i64 i = 0, l = Gn(Argc)+1, size = 1 + b2w(l);
  Have(size);
- str s = (oct) hp;
+ str s = (str) hp;
  hp += size;
  for (obj x; i < l-1; s->text[i++] = Gn(x)) {
   x = Argv[i];
@@ -492,7 +491,7 @@ interp(strmk) {
   if (x == Pn(0)) break; }
  s->text[i] = 0;
  s->len = i+1;
- Go(ret, putoct(s)); }
+ Go(ret, putstr(s)); }
 
 interp(vararg) {
  i64 reqd = Gn(GF(ip)),
@@ -692,12 +691,9 @@ interp(sal_u) {
  if (Argc == Pn(0)) Go(ret, Pn(0));
  TyNum(*Argv);
  mm_u(Gn(Argc)-1, Argv+1, Gn(*Argv), <<); }
-interp(band_u) {
- mm_u(Gn(Argc), Argv, (~0), &); }
-interp(bor_u) {
- mm_u(Gn(Argc), Argv, 0, |); }
-interp(bxor_u) {
- mm_u(Gn(Argc), Argv, 0, ^); }
+interp(band_u) { mm_u(Gn(Argc), Argv, -1, &); }
+interp(bor_u)  { mm_u(Gn(Argc), Argv,  0, |); }
+interp(bxor_u) { mm_u(Gn(Argc), Argv,  0, ^); }
 
 #define Tf(x) ((x)?ok:nil)
 // type predicates
@@ -705,7 +701,7 @@ interp(numpp) { Ap(ip+W, Tf(nump(xp))); }
 interp(hompp) { Ap(ip+W, Tf(homp(xp))); }
 interp(twopp) { Ap(ip+W, Tf(twop(xp))); }
 interp(sympp) { Ap(ip+W, Tf(symp(xp))); }
-interp(strpp) { Ap(ip+W, Tf(octp(xp))); }
+interp(strpp) { Ap(ip+W, Tf(strp(xp))); }
 interp(tblpp) { Ap(ip+W, Tf(tblp(xp))); }
 interp(nilpp) { Ap(ip+W, Tf(nilp(xp))); }
 interp(vecpp) { Ap(ip+W, Tf(tupp(xp))); }
@@ -721,7 +717,7 @@ static u64 twoeq(obj a, obj b) {
  return true; }
 
 static u64 streq(obj a, obj b) {
- str o = getoct(a), m = getoct(b);
+ str o = getstr(a), m = getstr(b);
  if (o->len != m->len) return false;
  for (i64 i = 0; i < o->len; i++)
   if (o->text[i] != m->text[i]) return false;

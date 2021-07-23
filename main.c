@@ -33,10 +33,9 @@ static int scripts(lips v, char** argv) {
 #define help \
    "usage: %s [options and scripts]\n"\
    "options:\n"\
-   "  -_ don't bootstrap\n"\
-   "  -i interact unconditionally\n"\
-   "  -h print this message\n"
-struct lips klips;
+   " -_ don't bootstrap\n"\
+   " -i interact unconditionally\n"\
+   " -h print this message\n"
 int main(int argc, char** argv) {
  int opt, args,
   F = argc == 1 ? takka : 0;
@@ -50,17 +49,11 @@ int main(int argc, char** argv) {
  args = argc - optind;
  if (args == 0 && !(F&takka)) return OK;
 
- lips v = &klips;
- lips_init(v);
- if (!(F&nprel)) lips_boot(v);
-
- // set up argv
- obj z, c = argc, a = nil;
- for (mm(&a); c--; z = string(v, argv[c]), a = pair(v, z, a));
- z = intern(v, string(v, "argv")), um;
- tblset(v, Top, z, a);
+ struct lips V;
+ lips_init(&V);
+ if (!(F&nprel)) lips_boot(&V);
 
  int r = OK;
- if (args) r = scripts(v, argv + optind);
- if (r == OK && F&takka) repl(v, stdin, stdout);
- return lips_fin(v), r; }
+ if (args) r = scripts(&V, argv + optind);
+ if (r == OK && F&takka) repl(&V, stdin, stdout);
+ return lips_fin(&V), r; }

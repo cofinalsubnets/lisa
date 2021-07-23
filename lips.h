@@ -17,9 +17,9 @@ typedef struct two {
 typedef struct tup {
  u64 len;
  obj xs[]; } *tup, *vec; // vectors
-typedef struct oct {
+typedef struct str {
  u64 len;
- char text[]; } *oct, *str; // byte arrays
+ char text[]; } *str; // byte arrays
 typedef struct sym {
  obj nom, code, l, r; } *sym; // symbols
 typedef struct tble {
@@ -41,7 +41,7 @@ enum globl { // indices into a table of global constants
 // that need to be preserved by garbage collection.
 typedef struct mroot {
   mem one;
-  struct mroot *next; } *Mp, *mroot;
+  struct mroot *next; } *mroot;
 
 // this structure is responsible for holding runtime state.
 // most functions take a pointer to it as the first argument.
@@ -100,12 +100,12 @@ const char* tnom(enum tag);
 #define putsym(x) ((obj)(x)+Sym)
 #define gettup(x) ((vec)((x)-Vec))
 #define puttup(x) ((obj)(x)+Vec)
-#define getoct(x) ((oct)((obj)(x)-Str))
-#define putoct(x) ((obj)(x)+Str)
+#define getstr(x) ((str)((obj)(x)-Str))
+#define putstr(x) ((obj)(x)+Str)
 #define gettbl(x) ((tbl)((obj)(x)-Tbl))
 #define puttbl(x) ((obj)(x)+Tbl)
 #define homp(x) (kind(x)==Hom)
-#define octp(x) (kind(x)==Str)
+#define strp(x) (kind(x)==Str)
 #define nump(x) (kind(x)==Num)
 #define twop(x) (kind(x)==Two)
 #define symp(x) (kind(x)==Sym)
@@ -124,7 +124,7 @@ const char* tnom(enum tag);
 #define FG(x) F(G(x))
 #define GF(x) G(F(x))
 #define GG(x) G(G(x))
-#define chars(x) getoct(x)->text
+#define chars(x) getstr(x)->text
 #define symnom(y) chars(getsym(y)->nom)
 #define mm(r) ((Safe=&((struct mroot){(r),Safe})))
 #define um (Safe=Safe->next)

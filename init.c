@@ -42,7 +42,7 @@ u0 lips_init(lips v) {
  v->fp = v->hp = v->sp = (mem) W,
  v->count = 0, v->mem_len = 1, v->mem_pool = NULL,
  v->mem_root = NULL;
- vec t = cells(v, sizeof (struct tup)/W + NGlobs);
+ vec t = cells(v, Size(tup) + NGlobs);
  set64(t->xs, nil, t->len = NGlobs);
  obj z, y = Glob = puttup(t);
  with(y,

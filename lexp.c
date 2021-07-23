@@ -61,12 +61,11 @@ static obj r1s(lips v, FILE *i) {
 static NoInline obj
 rloop(lips v, FILE *i, str o, i64 n, i64 lim,
       obj (*loop)(lips, FILE*, str, i64, i64)) {
- obj x;
- return
-  o->len = n, x = putoct(o),
+ obj x; return
+  o->len = n, x = putstr(o),
   o->text[n-1] == 0 ? x :
    (with(x, o = cells(v, 1 + b2w(2*n))),
-    cpy8(o->text, getoct(x)->text, o->len = n),
+    cpy8(o->text, getstr(x)->text, o->len = n),
     loop(v, i, o, n, 2 * n)); }
 
 static obj atom_(lips v, FILE *p, str o, i64 n, i64 lim) {
@@ -163,7 +162,7 @@ u0 emit(lips v, obj x, FILE *o) {
   case Num: fprintf(o, "%ld", Gn(x)); return;
   case Sym: return emsym(v, getsym(x), o);
   case Two: return emtwo(v, gettwo(x), o);
-  case Str: return emstr(v, getoct(x), o);
+  case Str: return emstr(v, getstr(x), o);
   case Tbl: return emtbl(v, gettbl(x), o);
   default:  fputs("()", o); } }
 

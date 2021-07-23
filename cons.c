@@ -15,9 +15,9 @@ u64 llen(obj l) {
 // for strings
 obj string(lips v, const char* c) {
  i64 bs = 1 + slen(c);
- str o = cells(v, Size(oct) + b2w(bs));
+ str o = cells(v, Size(str) + b2w(bs));
  cpy8(o->text, c, o->len = bs);
- return putoct(o); }
+ return putstr(o); }
 
 //symbols
 
@@ -52,7 +52,7 @@ u64 hc(lips v, obj x) {
  u64 r;
  switch (kind(x)) {
   case Sym: r = getsym(x)->code; break;
-  case Str: r = hash_bytes(getoct(x)->len, getoct(x)->text); break;
+  case Str: r = hash_bytes(getstr(x)->len, getstr(x)->text); break;
   case Two: r = hc(v, X(x)) ^ hc(v, Y(x)); break;
   case Hom: r = hc(v, homnom(v, x)) ^ (mix * (u64) G(x)); break;
   case Vec: // mutable data are hard to hash ...

@@ -37,7 +37,6 @@
 // for a function f let n be the number of required arguments.
 // then if f takes a fixed number of arguments the arity
 // signature is n; otherwise it's -n-1.
-//
 
 typedef obj
  c1(lips, mem, u64),
@@ -83,13 +82,12 @@ static NoInline obj apply(lips v, obj f, obj x) {
  return call(v, Ph(h), Fp, Sp, Hp, tblget(v, Dict, App)); }
 
 static NoInline obj rwlade(lips v, obj x) {
- obj y;
  mm(&x);
- while (twop(X(x)))
+ for (obj y; twop(X(x));
   y = snoc(v, YX(x), XY(x)),
   y = pair(v, La, y),
   y = pair(v, y, YY(x)),
-  x = pair(v, XX(x), y) ;
+  x = pair(v, XX(x), y));
  return um, x; }
 
 static int scan_def(lips v, mem e, obj x) {
@@ -188,22 +186,23 @@ static obj c_la_clo(lips v, mem e, obj arg, obj seq) {
 
 c1(c_d_bind) {
  obj y = *Sp++;
- return toplp(e) ? imx(v, e, m, tbind, y) :
-                   imx(v, e, m, loc_, Pn(lidx(loc(*e), y))); }
+ return toplp(e) ?
+  imx(v, e, m, tbind, y) :
+  imx(v, e, m, loc_, Pn(lidx(loc(*e), y))); }
 
 static u0 c_de_r(lips v, mem e, obj x) {
- if (!twop(x)) return;
- x = rwlade(v, x);
- with(x, c_de_r(v, e, YY(x))),
- Push(Pn(c_ev), XY(x), Pn(c_d_bind), X(x)); }
+ if (twop(x)) {
+  x = rwlade(v, x);
+  with(x, c_de_r(v, e, YY(x))),
+  Push(Pn(c_ev), XY(x), Pn(c_d_bind), X(x)); } }
 
 // syntactic sugar for define
 static obj def_sug(lips v, obj x) {
- obj y = nil;
- with(y, x = linitp(v, x, &y));
- x = pair(v, x, y),   x = pair(v, Se, x);
- x = pair(v, x, nil), x = pair(v, La, x);
- return pair(v, x, nil); }
+ obj y = nil; return
+  with(y, x = linitp(v, x, &y)),
+  x = pair(v, x, y),   x = pair(v, Se, x),
+  x = pair(v, x, nil), x = pair(v, La, x),
+  pair(v, x, nil); }
 
 c2(c_de) { return
  !twop(Y(x))    ? c_imm(v, e, m, nil) :
@@ -257,8 +256,10 @@ c2(c_co) { return
  x; }
 
 static u0 c_se_r(lips v, mem e, obj x) {
- if (twop(x)) with(x, c_se_r(v, e, Y(x))),
-              Push(Pn(c_ev), X(x)); }
+ if (twop(x))
+  with(x, c_se_r(v, e, Y(x))),
+  Push(Pn(c_ev), X(x)); }
+
 c2(c_se) {
  if (!twop(x = Y(x))) x = pair(v, nil, nil);
  return c_se_r(v, e, x), Ccc(v, e, m); }
@@ -269,8 +270,7 @@ c1(c_call) {
 
 #define L(n,x) pair(v, Pn(n), x)
 static obj look(lips v, obj e, obj y) {
- obj q;
- return
+ obj q; return
   nilp(e) ?
    ((q = tblget(v, Dict, y)) ?  L(Here, q) : L(Wait, Dict)) :
   ((q = lidx(loc(e), y)) != -1) ?
@@ -283,8 +283,7 @@ static obj look(lips v, obj e, obj y) {
 #undef L
 
 c2(late, obj d) {
- obj k;
- return
+ obj k; return
   x = pair(v, d, x),
   with(x, k = Ccc(v, e, m+2)),
   with(k, x = pair(v, Pn(8), x)),
@@ -300,24 +299,26 @@ c2(c_sy) {
    if (Y(q) == *e) switch (Gn(y)) {
     case Loc: return imx(v, e, m, loc, Pn(lidx(loc(*e), x)));
     case Arg: return imx(v, e, m, arg, Pn(lidx(arg(*e), x)));
-    case Clo: return imx(v, e, m, clo, Pn(lidx(clo(*e), x))); }
-   y = llen(clo(*e));
-   with(x, q = snoc(v, clo(*e), x)), clo(*e) = q;
-   return imx(v, e, m, clo, Pn(y)); } }
+    case Clo: return imx(v, e, m, clo, Pn(lidx(clo(*e), x))); } }
+ return
+  y = llen(clo(*e)),
+  with(x, q = snoc(v, clo(*e), x)),
+  clo(*e) = q,
+  imx(v, e, m, clo, Pn(y)); }
 
 c1(c_ev) { return c_eval(v, e, m, *Sp++); }
 c2(c_eval) {
- return (symp(x)?c_sy:twop(x)?c_2:c_imm)(v,e,m,x); }
+ return (symp(x) ? c_sy : twop(x) ? c_2 : c_imm)(v, e, m, x); }
 
 c2(c_qt) { return c_imm(v, e, m, twop(x = Y(x)) ? X(x) : x); }
 c2(c_2) {
  obj z = X(x);
  return
-  (z==Qt?c_qt:
-   z==If?c_co:
-   z==De?c_de:
-   z==La?c_la:
-   z==Se?c_se:c_ap)(v,e,m,x); }
+  (z == Qt ? c_qt :
+   z == If ? c_co :
+   z == De ? c_de :
+   z == La ? c_la :
+   z == Se ? c_se : c_ap)(v,e,m,x); }
 
 c2(c_ap) {
  obj mac = tblget(v, Mac, X(x));
@@ -345,7 +346,7 @@ c1(insx) {
 
 c1(c_ini) {
  obj k = hini(v, m+1);
- return em1((terp*)(e ? name(*e):Eva), k); }
+ return em1((terp*)(e ? name(*e) : Eva), k); }
 
 static u0 pushss(lips v, i64 i, va_list xs) {
  obj x = va_arg(xs, obj);
@@ -392,13 +393,13 @@ NoInline obj spush(lips v, obj x) {
  if (!Avail) with(x, reqsp(v, 1));
  return *--Sp = x; }
 
-obj compile(lips v, obj x) {
- Push(Pn(c_ev), x, Pn(inst), Pn(yield), Pn(c_ini));
- return Ccc(v, NULL, 0); }
+obj compile(lips v, obj x) { return
+ Push(Pn(c_ev), x, Pn(inst), Pn(yield), Pn(c_ini)),
+ Ccc(v, NULL, 0); }
 
-obj eval(lips v, obj x) {
- x = pair(v, x, nil);
- return apply(v, tblget(v, Dict, Eva), x); }
+obj eval(lips v, obj x) { return
+ x = pair(v, x, nil),
+ apply(v, tblget(v, Dict, Eva), x); }
 
 static i64 lidx(obj l, obj x) {
  for (i64 i = 0; twop(l); l = Y(l), i++)
@@ -407,11 +408,11 @@ static i64 lidx(obj l, obj x) {
 
 static obj linitp(lips v, obj x, mem d) {
  if (!twop(Y(x))) return *d = x, nil;
- obj y;
- with(x, y = linitp(v, Y(x), d));
- return pair(v, X(x), y); }
+ obj y; return
+  with(x, y = linitp(v, Y(x), d)),
+  pair(v, X(x), y); }
 
 static obj snoc(lips v, obj l, obj x) {
- if (!twop(l)) return pair(v, x, l);
- with(l, x = snoc(v, Y(l), x));
- return pair(v, X(l), x); }
+ return !twop(l) ? pair(v, x, l) :
+  (with(l, x = snoc(v, Y(l), x)),
+   pair(v, X(l), x)); }
