@@ -153,20 +153,18 @@ cpcc(cpsym) {
 
 #define stale(o) inb((mem)(o),lp,lp+ln)
 cpcc(cphom) {
- hom dst, src = Gh(x), end = src, start;
+ hom src = Gh(x);
  if (fresh(G(src))) return (obj) G(src);
- while (*end) end++;
- start = (hom) G(end+1);
- i64 len = (end+2) - start;
- dst = bump(v, len);
- hom j = dst;
- for (hom k = start; k < end; j++, k++)
-  G(j) = G(k), G(k) = (terp*) Ph(j);
+ hom end = button(src), start = (hom) G(end+1),
+     dst = bump(v, end - start + 2), j = dst;
+ for (hom k = start; k < end;
+  G(j) = G(k),
+  G(k++) = (terp*) Ph(j++));
  G(j) = NULL;
  G(j+1) = (terp*) dst;
- for (obj u; j-- > dst;)
+ for (obj u; j-- > dst;
   u = (obj) G(j),
-  G(j) = (terp*) (stale(u) ? cp(v, u, ln, lp) : u);
+  G(j) = (terp*) (stale(u) ? cp(v, u, ln, lp) : u));
  return Ph(dst += src - start); }
 
 static tble cptble(lips v, tble src, i64 ln, mem lp) {

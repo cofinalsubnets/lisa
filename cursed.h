@@ -1,22 +1,15 @@
 #ifndef _cursed_h
 #define _cursed_h
 #include <stdint.h>
-#include <limits.h>
 #include <stdarg.h>
-#include <stddef.h>
 #include <stdbool.h>
-#include <stdalign.h>
 #include <stdnoreturn.h>
-#include <iso646.h>
 
 #define Inline inline __attribute__((always_inline))
 #define NoInline __attribute__((noinline))
-#define Packed __attribute__((packed))
-#define Asm asm volatile
 #define zero64 ((u64)0)
 #define word64 8
 #define rotr64(x, n) (((x)<<(64-(n)))|((x)>>(n)))
-#define rotl64(x, n) (((x)>>(64-(n)))|((x)<<(n)))
 #define BWDQ(_) _(8) _(16) _(32) _(64)
 
 typedef void u0;

@@ -470,7 +470,7 @@
 
     (\ e m ((loop e x k) e m)))
 
-   z (A x) (case z
+   (case (: z (A x))
     '` (Im (AB x) k)
     '? (cond (B x) k)
     ': (defn (B x) k)

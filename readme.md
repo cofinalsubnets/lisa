@@ -4,8 +4,8 @@ a self-hosting threaded code compiler that makes it faster than
 most interpreted languages.
 
 ## build / install
-are you on linux? `make` should work. otherwise consult the
-makefile for the C compiler invocation. `make install` puts
+are you on linux? `make` should probably work. otherwise consult
+the makefile for the C compiler invocation. `make install` puts
 files under `~/.local/{bin,lib}/`.
 
 ## syntax

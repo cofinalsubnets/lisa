@@ -3,7 +3,6 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdlib.h>
-#include <locale.h>
 #define OK EXIT_SUCCESS
 #define NO EXIT_FAILURE
 
@@ -29,31 +28,29 @@ static int scripts(lips v, char** argv) {
  return OK; }
 
 #define takka 1
-#define nprel 2
+#define aubas 2
 #define help \
-   "usage: %s [options and scripts]\n"\
-   "options:\n"\
-   " -_ don't bootstrap\n"\
-   " -i interact unconditionally\n"\
-   " -h print this message\n"
+ "usage: %s [options and scripts]\n"\
+ "options:\n"\
+ " -_ don't bootstrap\n"\
+ " -i interact unconditionally\n"\
+ " -h print this message\n"
 int main(int argc, char** argv) {
- int opt, args,
-  F = argc == 1 ? takka : 0;
+ int opt, args, F = argc == 1 ? takka : 0, r = OK;
 
  while ((opt = getopt(argc, argv, "hi_")) != -1) switch (opt) {
-  case '_': F|=nprel; break;
+  case '_': F|=aubas; break;
   case 'i': F|=takka; break;
   case 'h': fprintf(stdout, help, argv[0]); break;
   default: return NO; }
 
  args = argc - optind;
- if (args == 0 && !(F&takka)) return OK;
+ if (args == 0 && !(F&takka)) return r;
 
  struct lips V;
  lips_init(&V);
- if (!(F&nprel)) lips_boot(&V);
+ if (!(F&aubas)) lips_boot(&V);
 
- int r = OK;
  if (args) r = scripts(&V, argv + optind);
- if (r == OK && F&takka) repl(&V, stdin, stdout);
+ if (r == OK && F&takka) r = repl(&V, stdin, stdout);
  return lips_fin(&V), r; }

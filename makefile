@@ -71,5 +71,4 @@ bins: $n $b
 repl: $b
 	which rlwrap >/dev/null && rlwrap $(run) -i || $(run) -i
 
-.PHONY: test clean perf valg sloc bins install \
-	install-vim uninstall uninstall-vim repl
+.PHONY: test clean perf valg sloc bins install install-vim uninstall uninstall-vim repl

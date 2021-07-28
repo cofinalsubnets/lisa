@@ -664,10 +664,8 @@ interp(bxor) { xp ^= *sp++; xp |= Num; N(1); }
   if (x == Pn(0)) Jump(nope, div0_err_msg, xp);}\
  Go(ret, Pn(xp));}
 
-interp(add_u) {
- mm_u(Gn(Argc), Argv, 0, +); }
-interp(mul_u) {
- mm_u(Gn(Argc), Argv, 1, *); }
+interp(add_u) { mm_u(Gn(Argc), Argv, 0, +); }
+interp(mul_u) { mm_u(Gn(Argc), Argv, 1, *); }
 interp(sub_u) {
  if (!(xp = Gn(Argc))) Go(ret, Pn(0));
  TyNum(*Argv);
@@ -764,10 +762,11 @@ interp(eq_u)   { ord_wv(eql); }
 interp(gteq_u) { ord_w(>=); }
 interp(gt_u)   { ord_w(>); }
 
-#define typpp(t) {\
- for (obj *xs = Argv, *l=xs+Gn(Argc);xs<l;)\
-  if (kind(*xs++)!=t) Go(ret, nil);\
+static interp(typp) {
+ for (obj *xs = Argv, *l = xs + Gn(Argc); xs < l;)
+  if (kind(*xs++) != xp) Go(ret, nil);
  Go(ret, ok); }
+#define typpp(t) Go(typp, t)
 interp(nump_u) { typpp(Num); }
 interp(homp_u) { typpp(Hom); }
 interp(strp_u) { typpp(Str); }

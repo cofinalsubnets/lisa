@@ -169,7 +169,8 @@ static Inline u0* bump(lips v, u64 n) {
  return v->hp += n, x; }
 
 static Inline u0* cells(lips v, u64 n) {
- return Avail < n ? reqsp(v, n):0, bump(v, n); }
+ if (Avail < n) reqsp(v, n);
+ return bump(v, n); }
 
 static Inline i64 hbi(u64 cap, u64 co) {
  return co % cap; }

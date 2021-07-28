@@ -1,4 +1,4 @@
-(::: T (\ x (L '? x (L . (L '` x)) (L fail))))
+(::: T (\ x (L '? x (L . ''ok (L '` x)) (L ', (L . ''no (L'` x)) (L fail)))))
 
 (T (nilp (,)))
 (T (nilp (:)))

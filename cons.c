@@ -55,8 +55,8 @@ u64 hc(lips v, obj x) {
   case Str: r = hash_bytes(getstr(x)->len, getstr(x)->text); break;
   case Two: r = hc(v, X(x)) ^ hc(v, Y(x)); break;
   case Hom: r = hc(v, homnom(v, x)) ^ (mix * (u64) G(x)); break;
-  case Vec: // mutable data are hard to hash ...
-  case Tbl: r = mix; // umm lol
+  case Vec: // mutable data aren't really hashable ...
+  case Tbl: r = mix; // umm lol, linear search
   default:  r = mix * x; }
  return rotr64(r, 16); }
 
