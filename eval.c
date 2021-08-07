@@ -63,10 +63,8 @@ enum { Here, Loc, Arg, Clo, Wait };
 #define c2(nom,...) static obj nom(lips v, mem e, u64 m, obj x, ##__VA_ARGS__)
 
 // emit code backwards like cons
-static obj em1(terp *i, obj k) {
- return k -= W, G(k) = i, k; }
-static obj em2(terp *i, obj j, obj k) {
- return em1(i, em1((terp*)j, k)); }
+static obj em1(terp *i, obj k) { return k -= W, G(k) = i, k; }
+static obj em2(terp *i, obj j, obj k) { return em1(i, em1((terp*)j, k)); }
 
 static obj imx(lips v, mem e, i64 m, terp *i, obj x) {
  return Push(Pn(i), x), insx(v, e, m); }
@@ -122,13 +120,8 @@ static vec tuplr(lips v, i64 i, va_list xs) {
   (with(x, t = tuplr(v, i+1, xs)), t->xs[i] = x, t) :
   ((t = cells(v, Size(tup) + i))->len = i, t); }
 
-static obj tupl(lips v, ...) {
- vec t; va_list xs;
- return
-  va_start(xs, v),
-  t = tuplr(v, 0, xs),
-  va_end(xs),
-  puttup(t); }
+static obj tupl(lips v, ...) { vec t; va_list xs; return
+ va_start(xs, v), t = tuplr(v, 0, xs), va_end(xs), puttup(t); }
 
 static Inline obj scope(lips v, mem e, obj a, obj n) {
  i64 s = 0;
@@ -181,20 +174,17 @@ static obj c_la_clo(lips v, mem e, obj arg, obj seq) {
  for (Push(Pn(insx), Pn(take), Pn(i), Pn(c_ini));
       twop(arg);
       Push(Pn(c_ev), X(arg), Pn(inst), Pn(push)), arg = Y(arg));
- return arg = Ccc(v, e, 0), um, um,
-        pair(v, seq, arg); }
+ return arg = Ccc(v, e, 0), um, um, pair(v, seq, arg); }
 
-c1(c_d_bind) {
- obj y = *Sp++;
- return toplp(e) ?
-  imx(v, e, m, tbind, y) :
-  imx(v, e, m, loc_, Pn(lidx(loc(*e), y))); }
+c1(c_d_bind) { obj y = *Sp++; return
+ toplp(e) ? imx(v, e, m, tbind, y) :
+            imx(v, e, m, loc_, Pn(lidx(loc(*e), y))); }
 
 static u0 c_de_r(lips v, mem e, obj x) {
- if (twop(x)) {
-  x = rwlade(v, x);
+ if (twop(x))
+  x = rwlade(v, x),
   with(x, c_de_r(v, e, YY(x))),
-  Push(Pn(c_ev), XY(x), Pn(c_d_bind), X(x)); } }
+  Push(Pn(c_ev), XY(x), Pn(c_d_bind), X(x)); }
 
 // syntactic sugar for define
 static obj def_sug(lips v, obj x) {
@@ -311,14 +301,9 @@ c2(c_eval) {
  return (symp(x) ? c_sy : twop(x) ? c_2 : c_imm)(v, e, m, x); }
 
 c2(c_qt) { return c_imm(v, e, m, twop(x = Y(x)) ? X(x) : x); }
-c2(c_2) {
- obj z = X(x);
- return
-  (z == Qt ? c_qt :
-   z == If ? c_co :
-   z == De ? c_de :
-   z == La ? c_la :
-   z == Se ? c_se : c_ap)(v,e,m,x); }
+c2(c_2) { obj z = X(x); return
+ (z == Qt ? c_qt : z == If ? c_co : z == De ? c_de :
+  z == La ? c_la : z == Se ? c_se : c_ap)(v, e, m, x); }
 
 c2(c_ap) {
  obj mac = tblget(v, Mac, X(x));
@@ -341,8 +326,7 @@ c1(inst) {
 c1(insx) {
  terp* i = (terp*) Gn(*Sp++);
  obj x = *Sp++, k;
- with(x, k = Ccc(v, e, m+2));
- return em2(i, x, k); }
+ return with(x, k = Ccc(v, e, m+2)), em2(i, x, k); }
 
 c1(c_ini) {
  obj k = hini(v, m+1);
@@ -350,8 +334,7 @@ c1(c_ini) {
 
 static u0 pushss(lips v, i64 i, va_list xs) {
  obj x = va_arg(xs, obj);
- x ? (with(x, pushss(v, i, xs)), *--Sp = x) :
-     reqsp(v, i); }
+ x ? (with(x, pushss(v, i, xs)), *--Sp = x) : reqsp(v, i); }
 
 static u0 pushs(lips v, ...) {
  i64 i = 0;
@@ -381,8 +364,7 @@ NoInline obj homnom(lips v, obj x) {
  while (*h) h++;
  x = h[-1];
  return (mem) x >= Pool && (mem) x < Pool+Len ? x :
-        x == (obj) yield                      ? Eva :
-                                                nil; }
+        x == (obj) yield ? Eva : nil; }
 
 NoInline u0 defprim(lips v, const char *a, terp *b) {
  obj z = spush(v, pair(v, interns(v, a), nil)), x = hini(v, 2);
@@ -398,8 +380,7 @@ obj compile(lips v, obj x) { return
  Ccc(v, NULL, 0); }
 
 obj eval(lips v, obj x) { return
- x = pair(v, x, nil),
- apply(v, tblget(v, Dict, Eva), x); }
+ x = pair(v, x, nil), apply(v, tblget(v, Dict, Eva), x); }
 
 static i64 lidx(obj l, obj x) {
  for (i64 i = 0; twop(l); l = Y(l), i++)
@@ -407,12 +388,9 @@ static i64 lidx(obj l, obj x) {
  return -1; }
 
 static obj linitp(lips v, obj x, mem d) {
- if (!twop(Y(x))) return *d = x, nil;
- obj y; return
-  with(x, y = linitp(v, Y(x), d)),
-  pair(v, X(x), y); }
+ obj y; return !twop(Y(x)) ? (*d = x, nil) :
+  (with(x, y = linitp(v, Y(x), d)), pair(v, X(x), y)); }
 
 static obj snoc(lips v, obj l, obj x) {
  return !twop(l) ? pair(v, x, l) :
-  (with(l, x = snoc(v, Y(l), x)),
-   pair(v, X(l), x)); }
+  (with(l, x = snoc(v, Y(l), x)), pair(v, X(l), x)); }

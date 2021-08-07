@@ -31,26 +31,27 @@ static int scripts(lips v, char** argv) {
 #define aubas 2
 #define help \
  "usage: %s [options and scripts]\n"\
+ "with no arguments, start a repl\n"\
  "options:\n"\
  " -_ don't bootstrap\n"\
- " -i interact unconditionally\n"\
+ " -i start repl\n"\
  " -h print this message\n"
 int main(int argc, char** argv) {
- int opt, args, F = argc == 1 ? takka : 0, r = OK;
+ int opt, args, flag = argc == 1 ? takka : 0, r = OK;
 
  while ((opt = getopt(argc, argv, "hi_")) != -1) switch (opt) {
-  case '_': F|=aubas; break;
-  case 'i': F|=takka; break;
+  case '_': flag |= aubas; break;
+  case 'i': flag |= takka; break;
   case 'h': fprintf(stdout, help, argv[0]); break;
   default: return NO; }
 
  args = argc - optind;
- if (args == 0 && !(F&takka)) return r;
+ if (args == 0 && !(flag & takka)) return r;
 
  struct lips V;
  lips_init(&V);
- if (!(F&aubas)) lips_boot(&V);
+ if (!(flag & aubas)) lips_boot(&V);
 
  if (args) r = scripts(&V, argv + optind);
- if (r == OK && F&takka) r = repl(&V, stdin, stdout);
+ if (r == OK && flag & takka) r = repl(&V, stdin, stdout);
  return lips_fin(&V), r; }

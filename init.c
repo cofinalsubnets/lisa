@@ -33,8 +33,6 @@ u0 lips_fin(lips v) { free(v->mem_pool); }
 static NoInline u0 rin(lips v, const char *a, terp *b) {
  obj z = interns(v, a);
  tblset(v, *Sp, z, Pn(b)); }
-#define repr(a,b)defprim(v,a,b)
-#define rein(a)rin(v, "i-"#a,a)
 
 u0 lips_init(lips v) {
  v->seed = v->t0 = clock(),
@@ -47,6 +45,8 @@ u0 lips_init(lips v) {
  obj z, y = Glob = puttup(t);
  with(y,
   spush(v, table(v)),
+#define repr(a,b)defprim(v,a,b)
+#define rein(a)rin(v, "i-"#a,a)
   prims(repr), insts(rein),
   Top = spop(v),
   z = table(v), Mac = z,
@@ -54,6 +54,5 @@ u0 lips_init(lips v) {
   bsym(Eval, "ev"), bsym(Apply, "ap"),
   bsym(Def, ":"),   bsym(Cond, "?"), bsym(Lamb, "\\"),
   bsym(Quote, "`"), bsym(Seq, ","),  bsym(Splat, "."));
-#undef bsym
- y = interns(v, "ns"),     tblset(v, Top, y, Top);
- y = interns(v, "macros"), tblset(v, Top, y, Mac); }
+#define def(s, x) (y=interns(v,s),tblset(v,Top,y,x))
+ def("ns", Top), def("macros", Mac); }

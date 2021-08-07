@@ -3,8 +3,8 @@ n=lips
 b=$n.bin
 p=prelude.lips
 v="`git rev-parse HEAD`-git"
-run=./$b -_ $p
-tests=$(run) test/*
+r=./$b -_ $p
+tests=$r test/*
 
 CC=gcc
 CFLAGS=-std=gnu17 -g -O2 -flto\
@@ -57,18 +57,18 @@ uninstall-vim:
 
 # tasks
 clean:
-	rm -rf `git check-ignore *`
+	@which git && rm -rf `git check-ignore *` || rm -f *.o $n $b perf.data
 perf: perf.data
-	perf report
+	@which perf && perf report || echo "perf not installed"
 perf.data: $b $p
-	perf record ./$(tests)
+	@which perf && perf record ./$(tests) || echo "perf not installed"
 valg: $b
-	valgrind $(tests)
+	@which && valgrind $(tests) || echo "valgrind not installed"
 sloc:
-	cloc --by-file --force-lang=Lisp,$n *.{c,h,$n}
+	@which cloc && cloc --by-file --force-lang=Lisp,$n *.{c,h,$n} || echo "cloc not installed"
 bins: $n $b
 	stat -c "%n %sB" $^
 repl: $b
-	which rlwrap >/dev/null && rlwrap $(run) -i || $(run) -i
+	@which rlwrap >/dev/null && rlwrap $r -i || $r -i
 
 .PHONY: test clean perf valg sloc bins install install-vim uninstall uninstall-vim repl

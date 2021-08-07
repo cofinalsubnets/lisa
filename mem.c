@@ -41,7 +41,7 @@ u0 reqsp(lips v, u64 req) {
   if (growp)        do grow();   while (growp);
   else if (shrinkp) do shrink(); while (shrinkp);
   else return; // no size change needed
-  // otherwise grow or shrink ; if it fails maybe we can still return
+  // otherwise grow or shrink ; if it fails maybe we can return
   if (copy(v, len) || allocd <= Len) return; }
  errp(v, "oom"); // this is a bad error
  restart(v); }

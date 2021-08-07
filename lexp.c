@@ -9,16 +9,10 @@
 #define err_eof "unexpected eof"
 #define err_rpar "unmatched right delimiter"
 
-NoInline const char* tnom(enum tag t) {
- switch (t) {
-  case Hom: return "hom";
-  case Num: return "num";
-  case Tbl: return "tbl";
-  case Two: return "two";
-  case Vec: return "vec";
-  case Str: return "str";
-  case Sym: return "sym";
-  default:  return "nil"; } }
+// obviously this only works if the type names
+// are all 4 bytes long (counting the NUL)
+const uint32_t *tnoms = (uint32_t*)
+ "hom\0num\0tbl\0two\0vec\0str\0sym\0nil";
 
 typedef obj par(lips, FILE*);
 static par atom, r1s, qt, stri;
@@ -147,9 +141,8 @@ static u0 emtwo(lips v, two w, FILE *o) {
   (fputc('\'', o), emit(v, X(w->y), o)) :
   (fputc('(', o), emtwo_(v, w, o)); }
 
-
 static u0 phomn(lips v, obj x, FILE *o) {
- fputc('\\', o); 
+ fputc('\\', o);
  switch (kind(x)) {
   case Sym: emit(v, x, o); break;
   case Two:

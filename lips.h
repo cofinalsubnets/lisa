@@ -83,9 +83,11 @@ obj
  tbldel(lips, obj, obj),
  string(lips, const char*);
 
-u64 llen(obj) NoInline, eql(obj, obj), hc(lips, obj);
+u64 llen(obj) NoInline, hc(lips, obj);
+bool eql(obj, obj);
 
-const char* tnom(enum tag);
+extern const uint32_t *tnoms;
+#define tnom(t) ((char*)(tnoms+(t)))
 
 #define kind(x) ((x)&7)
 #define Gh(x) ((hom)((x)))

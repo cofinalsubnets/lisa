@@ -1,4 +1,5 @@
 #include "lips.h"
+#include <string.h>
 ////
 /// data constructors and utility functions
 //
@@ -126,8 +127,7 @@ obj tbldel(lips v, obj t, obj k) {
    y->len--;
    break; }
  y->tab[b] = _v.next;
- if (y->len && y->cap > 2 * y->len)
-  with(r, tblshrink(v, t));
+ if (y->len && y->cap > 2 * y->len) with(r, tblshrink(v, t));
  return r; }
 
 obj tblget(lips v, obj t, obj k) {

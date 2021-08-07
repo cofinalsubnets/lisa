@@ -152,8 +152,7 @@ interp(lbind) {
  terp *q = G(FF(ip)); // omit the arity check if possible
  if (q == call || q == rec) {
   obj aa = (obj) GF(FF(ip));
-  if (G(xp) == arity && aa >= (obj) GF(xp))
-   xp += W2; }
+  if (G(xp) == arity && aa >= (obj) GF(xp)) xp += W2; }
  G(ip) = imm;
  GF(ip) = (terp*) xp;
  N(2); }
@@ -707,21 +706,21 @@ interp(vecpp) { Ap(ip+W, Tf(tupp(xp))); }
 
 // pairs are immutable, so we can take this opportunity to
 // deduplicate them.
-static u64 twoeq(obj a, obj b) {
+static bool twoeq(obj a, obj b) {
  if (!eql(X(a), X(b))) return false;
  X(a) = X(b);
  if (!eql(Y(a), Y(b))) return false;
  Y(a) = Y(b);
  return true; }
 
-static u64 streq(obj a, obj b) {
+static bool streq(obj a, obj b) {
  str o = getstr(a), m = getstr(b);
  if (o->len != m->len) return false;
  for (i64 i = 0; i < o->len; i++)
   if (o->text[i] != m->text[i]) return false;
  return true; }
 
-u64 eql(obj a, obj b) {
+bool eql(obj a, obj b) {
  if (a == b)             return true;
  if (kind(a) != kind(b)) return false;
  switch (kind(a)) {
