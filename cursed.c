@@ -36,5 +36,4 @@ char cmaj(char c) {
 // Good Multipliers for Congruential Pseudorandom Number
 // Generators" by Steele & Vigna
 #define mul 0xaf251af3b0f025b5
-i64 lcprng(i64 *s) {
- return (*s = *s * mul + 1) >> 8; }
+i64 lcprng(i64 *s) { return (*s = *s * mul + 1) >> 8; }

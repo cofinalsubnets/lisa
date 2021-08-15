@@ -12,36 +12,24 @@ typedef i64 obj, *mem;
 #define W2 (word64*2)
 
 // more fundamental data types
-typedef struct two {
- obj x, y; } *two; // pairs
-typedef struct tup {
- u64 len;
- obj xs[]; } *tup, *vec; // vectors
-typedef struct str {
- u64 len;
- char text[]; } *str; // byte arrays
-typedef struct sym {
- obj nom, code, l, r; } *sym; // symbols
-typedef struct tble {
- obj key, val;
- struct tble *next; } *tble; // tables
-typedef struct tbl {
- u64 len, cap;
- tble *tab; } *tbl;
+typedef struct two { obj x, y; } *two; // pairs
+typedef struct tup { u64 len; obj xs[]; } *tup, *vec; // vectors
+typedef struct str { u64 len; char text[]; } *str; // byte arrays
+typedef struct sym { obj nom, code, l, r; } *sym; // symbols
+typedef struct ent { obj key, val; struct ent *next; } *ent; // tables
+typedef struct tbl { u64 len, cap; ent *tab; } *tbl;
 
 enum tag { // the 3 ls bits of each pointer are a type tag
  Hom = 0, Num = 1, Two = 2, Vec = 3,
  Str = 4, Tbl = 5, Sym = 6, Nil = 7 };
 
 enum globl { // indices into a table of global constants
- Def, Cond, Lamb, Quote, Seq,
- Splat, Topl, Macs, Eval, Apply, NGlobs };
+ Def, Cond, Lamb, Quote, Seq, Splat,
+ Topl, Macs, Eval, Apply, NGlobs };
 
 // a linked list of stack addresses containing live values
 // that need to be preserved by garbage collection.
-typedef struct mroot {
-  mem one;
-  struct mroot *next; } *mroot;
+typedef struct mroot { mem one; struct mroot *next; } *mroot;
 
 // this structure is responsible for holding runtime state.
 // most functions take a pointer to it as the first argument.
@@ -177,7 +165,7 @@ static Inline u0* cells(lips v, u64 n) {
 static Inline i64 hbi(u64 cap, u64 co) {
  return co % cap; }
 
-static Inline tble hb(obj t, u64 code) {
+static Inline ent hb(obj t, u64 code) {
  return gettbl(t)->tab[hbi(gettbl(t)->cap, code)]; }
 
 static Inline u0 script(lips v, FILE *f) {

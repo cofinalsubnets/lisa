@@ -4,27 +4,30 @@ a self-hosting threaded code compiler that makes it faster than
 most interpreted languages.
 
 ## build / install
-are you on linux? `make` should probably work. otherwise consult
+are you on linux? `make` will probably work. otherwise consult
 the makefile for the C compiler invocation. `make install` puts
-files under `~/.local/{bin,lib}/`.
+files under `~/.local/{bin,lib}/`. lips assumes 64-bit word size
+but otherwise should be fairly portable.
 
 ## syntax
-it's lisp so the syntax is pretty basic!
+if you know lisp then you know lips :)
 
 - lists are delimited with parentheses like usual. there are
   no improper list literals. `.` is a normal symbol (but it
   does have special meaning in argument lists).
 - `'x` quotes `x` like usual. nil (`()`) is self-quoting.
+  currently there's no quasiquotation.
 - strings are delimited with double quotes like usual. quotes
   can be escaped with a backslash, but no other escape
-  sequences are interpreted.
+  sequences are interpreted. multiline strings are fine.
 - numbers are read in decimal by default with an optional
   sign, like usual. the prefixes `0{b,o,d,z,x}` respectively
   specify bases 2, 8, 10, 12, and 16.
 
 ## special forms
-nullary/unary cases are usually nil or identity, but `\`is an
-exception. equivalents to examples are in scheme.
+they're all one character long. nullary/unary cases are
+nil/identity, except for `\`. equivalents to examples
+are in scheme.
 
 ### `,` begin
 - `(, a b c) = (begin a b c)`
@@ -54,14 +57,13 @@ implicit value is nil (`()`), which is the only false value
 - `(\) = (lambda () #f)` nullary -> empty function
 - `(\ (f x)) = (lambda () (f x))` unary -> a thunk
 - `(\ a0 ... an x) = (lambda (a0 ... an) x)` however many arguments and one expression
-- `(\ a b . (a b)) = (lambda (a . b) (a b))`  vararg syntax
+- `(\ a b . (a b)) = (lambda (a . b) (a b))`  vararg syntax : `.` after last argument
 
 calling a function with extra arguments is ok (not enough is
 an error).
 
 ## some predefined functions / macros
-some of these are primitives in lips.c and some are defined in
-prelude.lips.
+some of these are defined in prelude.lips, so won't be available unless you bootstrap.
 
 - `L = list` `X = cons` `A = car` `B = cdr`.  `AA`-`BB` are macros.
 - `+ - * / % << >> & | ^` like C. ints are currently only 61 bits though
@@ -114,6 +116,9 @@ prelude.lips.
 ```
 
 ## missing features
+### general purpose functionality
+wide characters, floats, arrays, files, networking, ...
+
 ### type inference
 under a weak type system suitable for dynamic languages.
 this will catch many errors and reduce runtime checks.
@@ -121,9 +126,6 @@ this will catch many errors and reduce runtime checks.
 ### polymorphism / overloading
 of functions like `+`, etc. this will need to fit in with the
 type system.
-
-### general purpose functionality
-wide characters, floats, arrays, files, networking, ...
 
 ### namespace / module system
 important for ease of use and has practical benefits for

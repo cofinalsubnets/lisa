@@ -1,6 +1,6 @@
-; to bootstrap we first define an expression that when
+; to bootstrap first we define an expression that when
 ; eval'd defines the standard environment and compiler, and
-; redefines eval. then eval it twice: the first time
+; redefines eval. then we eval it twice. the first time
 ; everything is compiled by the bootstrap system, the second
 ; time by the (bootstrapped) live system.
 (: egg '(,
@@ -47,9 +47,9 @@
 
      (filter x p) (foldr x () (\ x m (? (p x) (X x m) m)))
      (at l n) (? (< n 1) (A l) (at (B l) (- n 1)))
-     (flip f) (\ x y (f y x))
-     (diag f) (\ x (f x x))
-     (cu f x .) (\ y . (ap f (cat x y)))
+     ((flip f) x y) (f y x)
+     ((diag f) x) (f x x)
+     ((cu f x .) y .) (ap f (cat x y))
      ({set} x .) (: d (tbl) (, (each x (\ y (Ts d y ()))) d))
 
      (snoc l x) (? l (X (A l) (snoc (B l) x)) (L x))
@@ -63,10 +63,9 @@
       (loop l x n)
        (? l (? (= x (A l)) n (loop (B l) x (+ n 1))))
       (loop l x 0))
-     (len l) (? l (+ 1 (len (B l))) 0)
-     )
+     (len l) (? l (+ 1 (len (B l))) 0))
 
-  ;; and some marcos
+  ;; and some marcos ...
   (tset macros
    ; a macro for defining macros
    '::: (: (defm n x .) (X ', (X (L Ts macros (L '` n) (A x))
@@ -75,8 +74,8 @@
    'imm ev
    'AA (\ x (X A (L (X A (L x))))) 'AB (\ x (X A (L (X B (L x)))))
    'BA (\ x (X B (L (X A (L x))))) 'BB (\ x (X B (L (X B (L x)))))
-   '&& (\ x . (? x ((: & (\ x
-     (? (B x) (L '? (A x) (& (B x))) (A x)))) x) 1))
+   '&& (\ x . (? x ((: (& x)
+     (? (B x) (L '? (A x) (& (B x))) (A x))) x) 1))
    '>>= (\ x . (X (last x) (init x)))
    'case (\ x a . (: y (gensym)
     (L ': y x ((: (loop a)
@@ -164,9 +163,10 @@
    (&& (2p x) (Hp (A x)) (>= (Tg f 'sig) 0) (= (B x) (Tg f'arg)))
     (A x)
    ; otherwise compile it
-   (: k (hfin (ar (loc ((eval x ini) f 4))))
-    ; free variables or no ?
-    (? (: clo (Tg f 'clo)) (X clo k) k))))
+   (? (: k (hfin (ar (loc ((eval x ini) f 4))))
+         ; free variables or no ?
+         clo (Tg f 'clo))
+    (X clo k) k)))
 
 
  ; first compiler moiety : " weak evaluator "
@@ -578,12 +578,12 @@
      (xc i-push (eval (A x) (>- t0
       (xc i-tset (-> t3 k))))))))))
 
-  (sa_ f i) (\ x k
+  ((sa_ f i) x k)
    (: y (mono + 0 (B x)) 
       z (? (nump (A x))
          (mono f (A x) y)
          (X (A x) y))
-    (eval (A z) (>- 'num (2f i k (B z))))))
+    (eval (A z) (>- 'num (2f i k (B z)))))
 
   (tbl
    id (\ x k (eval (A x) k))
@@ -635,10 +635,10 @@
         (: r (A q) (any (B q) (\ v (~ (= v r))))))
      (Im () k)
     (eval (A x) (xc i-push (? (BB x)
-     (: fold (\ k x y
-       (xc i-dupl (eval x (xc i-eq (? y
-        (xc i-barnch (peek2 (fold k (A y) (B y))))
-        k)))))
+     (: (fold k x y)
+         (xc i-dupl (eval x (xc i-eq (? y
+          (xc i-barnch (peek2 (fold k (A y) (B y))))
+          k))))
       (pop2 (fold (push2 k) (AB x) (BB x))))
      (eval (AB x) (xc i-eq k)))))))
 
@@ -651,14 +651,18 @@
 ;  ev ; comment this line to define internals at toplevel
   )))))
 
-; now bootstrap
-((ev egg) egg)
+((ev egg) egg) ; bootstrap :D
 
 (Ts macros 'imm ev)
 (: (co x .) (ev (L '\ 'x (foldl x 'x (\ m e (L (L '` e) m)))))
    (const x) (emi i-imm (emx x (emi i-ret (emx '(() const) (hom 4))))))
 
-
 ; " drop privileges "
-(: loc '(egg macros ns emi emx hom hseek hgeti hgetx hfin)
- (each loc (\ v (Td ns v))))
+(: del (cu Td ns)
+   insns (filter (tkeys ns) (\ k (= "i-" (ssub (ystr k) 0 2))))
+   locs '(egg macros emi emx hom hseek hgeti hgetx hfin)
+(, (each insns del)
+   (each locs del)
+;   (. 'keys (tkeys ns))
+   (del 'ns)
+   ))

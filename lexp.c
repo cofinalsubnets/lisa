@@ -12,7 +12,7 @@
 // obviously this only works if the type names
 // are all 4 bytes long (counting the NUL)
 const uint32_t *tnoms = (uint32_t*)
- "hom\0num\0tbl\0two\0vec\0str\0sym\0nil";
+ "hom\0num\0two\0vec\0str\0tbl\0sym\0nil";
 
 typedef obj par(lips, FILE*);
 static par atom, r1s, qt, stri;

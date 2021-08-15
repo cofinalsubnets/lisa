@@ -65,7 +65,7 @@ u64 hc(lips v, obj x) {
 // new_size words of memory are allocated for the new bucket array.
 // the old table entries are reused to populate the modified table.
 static obj tblrsz(lips v, obj t, i64 ns) {
- tble e, ch, *b, *d;
+ ent e, ch, *b, *d;
  with(t, set64((mem) (b = cells(v, ns)), 0, ns));
  tbl o = gettbl(t);
  i64 u, n = o->cap;
@@ -81,7 +81,7 @@ static obj tblrsz(lips v, obj t, i64 ns) {
 // it's possible to shrink a table without allocating any
 // new memory.
 static u0 tblshrink(lips v, obj t) {
- tble e = NULL, f, g;
+ ent e = NULL, f, g;
  tbl u = gettbl(t);
  for (t = 0; t < u->cap; t++)
   for (f = u->tab[t], u->tab[t] = NULL; f;
@@ -94,8 +94,8 @@ static u0 tblshrink(lips v, obj t) {
   e = f); }
 
 static obj tblade(lips v, obj t, obj k, obj x, i64 bkt) {
- tble e; tbl y;
- with(t, with(k, with(x, e = cells(v, Size(tble)))));
+ ent e; tbl y;
+ with(t, with(k, with(x, e = cells(v, Size(ent)))));
  y = gettbl(t);
  e->key = k, e->val = x;
  e->next = y->tab[bkt], y->tab[bkt] = e;
@@ -104,7 +104,7 @@ static obj tblade(lips v, obj t, obj k, obj x, i64 bkt) {
 
 obj tblset_s(lips v, obj t, obj k, obj x) {
  i64 b = hbi(gettbl(t)->cap, hc(v, k));
- for (tble e = gettbl(t)->tab[b]; e; e = e->next)
+ for (ent e = gettbl(t)->tab[b]; e; e = e->next)
   if (e->key == k) return e->val = x;
  return tblade(v,t,k,x,b); }
 
@@ -118,9 +118,9 @@ obj tbldel(lips v, obj t, obj k) {
  tbl y = gettbl(t);
  obj r = nil;
  i64 b = hbi(y->cap, hc(v, k));
- tble e = y->tab[b];
- struct tble _v = {0,0,e};
- for (tble l = &_v; l && l->next; l = l->next)
+ ent e = y->tab[b];
+ struct ent _v = {0,0,e};
+ for (ent l = &_v; l && l->next; l = l->next)
   if (l->next->key == k) {
    r = l->next->val;
    l->next = l->next->next;
@@ -131,12 +131,12 @@ obj tbldel(lips v, obj t, obj k) {
  return r; }
 
 obj tblget(lips v, obj t, obj k) {
- for (tble e = hb(t, hc(v, k)); e; e = e->next)
+ for (ent e = hb(t, hc(v, k)); e; e = e->next)
   if (eql(e->key, k)) return e->val;
  return 0; }
 
 obj table(lips v) {
  tbl t = cells(v, Size(tbl) + 1);
- tble *b = (tble*)(t+1);
+ ent *b = (ent*)(t+1);
  t->len = 0, t->cap = 1, t->tab = b, *b = NULL;
  return puttbl(t); }

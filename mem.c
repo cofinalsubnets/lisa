@@ -167,10 +167,10 @@ cpcc(cphom) {
   G(j) = (terp*) (stale(u) ? cp(v, u, ln, lp) : u));
  return Ph(dst += src - start); }
 
-static tble cptble(lips v, tble src, i64 ln, mem lp) {
+static ent cpent(lips v, ent src, i64 ln, mem lp) {
  if (!src) return NULL;
- tble dst = (tble) bump(v, 3);
- dst->next = cptble(v, src->next, ln, lp);
+ ent dst = (ent) bump(v, 3);
+ dst->next = cpent(v, src->next, ln, lp);
  dst->key = cp(v, src->key, ln, lp);
  dst->val = cp(v, src->val, ln, lp);
  return dst; }
@@ -182,9 +182,9 @@ cpcc(cptbl) {
  tbl dst = bump(v, 3 + src_cap);
  dst->len = src->len;
  dst->cap = src_cap;
- dst->tab = (tble*) (dst + 1);
- tble *src_tab = src->tab;
- src->tab = (tble*) puttbl(dst);
+ dst->tab = (ent*) (dst + 1);
+ ent *src_tab = src->tab;
+ src->tab = (ent*) puttbl(dst);
  while (src_cap--)
-  dst->tab[src_cap] = cptble(v, src_tab[src_cap], ln, lp);
+  dst->tab[src_cap] = cpent(v, src_tab[src_cap], ln, lp);
  return puttbl(dst); }
