@@ -2,30 +2,29 @@
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
-#include <stdlib.h>
-#define OK EXIT_SUCCESS
-#define NO EXIT_FAILURE
 
-static int repl(lips v, FILE *i, FILE *o) {
+static int repl(lips v) {
  obj x;
- for (setjmp(v->restart);;)
-  if ((x = parse(v, i))) emsep(v, eval(v, x), o, '\n');
-  else if (feof(i)) break;
+ jmp_buf re;
+ for (v->restart = &re, setjmp(re);;)
+  if ((x = parse(v, stdin))) emsep(v, eval(v, x), stdout, '\n');
+  else if (feof(stdin)) break;
  return OK; }
 
-static int scripts(lips v, char** argv) {
- for (char *q; (q = *argv++);) {
-  FILE *f = fopen(q, "r");
-  if (!f) return errp(v, "%s : %s", q, strerror(errno)), NO;
-  if (setjmp(v->restart)) return
-   errp(v, "%s : fail", q),
+static int run_script(lips v, char *path) {
+  FILE *f = fopen(path, "r");
+  if (!f) return
+   errp(v, "%s : %s", path, strerror(errno)),
+   NO;
+
+  jmp_buf re;
+  v->restart = &re;
+  if (setjmp(re)) return
+   errp(v, "%s : fail", path),
    fclose(f),
    NO;
-  script(v, f);
-  int ok = feof(f);
-  fclose(f);
-  if (!ok) return NO; }
- return OK; }
+
+  return script(v, f); }
 
 #define takka 1
 #define aubas 2
@@ -36,8 +35,9 @@ static int scripts(lips v, char** argv) {
  " -_ don't bootstrap\n"\
  " -i start repl\n"\
  " -h print this message\n"
+
 int main(int argc, char** argv) {
- int opt, args, flag = argc == 1 ? takka : 0, r = OK;
+ int opt, flag = argc == 1 ? takka : 0, r = OK;
 
  while ((opt = getopt(argc, argv, "hi_")) != -1) switch (opt) {
   case '_': flag |= aubas; break;
@@ -45,13 +45,11 @@ int main(int argc, char** argv) {
   case 'h': fprintf(stdout, help, argv[0]); break;
   default: return NO; }
 
- args = argc - optind;
- if (args == 0 && !(flag & takka)) return r;
-
- struct lips V;
- lips_init(&V);
- if (!(flag & aubas)) lips_boot(&V);
-
- if (args) r = scripts(&V, argv + optind);
- if (r == OK && flag & takka) r = repl(&V, stdin, stdout);
- return lips_fin(&V), r; }
+ if (optind < argc || flag & takka) {
+  struct lips V;
+  lips_init(&V);
+  if (!(flag & aubas)) r = lips_boot(&V);
+  while (r == OK && optind < argc) r = run_script(&V, argv[optind++]);
+  if (r == OK && flag & takka) r = repl(&V);
+  lips_fin(&V); }
+ return r; }

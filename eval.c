@@ -232,11 +232,11 @@ c1(c_co_pre_ant) {
 
 static u0 c_co_r(lips v, mem e, obj x) {
  if (!twop(x)) x = pair(v, nil, nil);
- if (!twop(Y(x))) Push(Pn(c_ev), X(x), Pn(c_co_pre_con));
- else with(x, Push(Pn(c_co_post_con), Pn(c_ev), XY(x),
-                   Pn(c_co_pre_con)),
-              c_co_r(v, e, YY(x))),
-      Push(Pn(c_ev), X(x), Pn(c_co_pre_ant)); }
+ if (!twop(Y(x))) return Push(Pn(c_ev), X(x), Pn(c_co_pre_con));
+ with(x,
+  Push(Pn(c_co_post_con), Pn(c_ev), XY(x), Pn(c_co_pre_con)),
+  c_co_r(v, e, YY(x)));
+ Push(Pn(c_ev), X(x), Pn(c_co_pre_ant)); }
 
 c2(c_co) { return
  with(x, Push(Pn(c_co_pre))),
@@ -263,12 +263,9 @@ static obj look(lips v, obj e, obj y) {
  obj q; return
   nilp(e) ?
    ((q = tblget(v, Dict, y)) ?  L(Here, q) : L(Wait, Dict)) :
-  ((q = lidx(loc(e), y)) != -1) ?
-   L(Loc, e) :
-  ((q = lidx(arg(e), y)) != -1) ?
-   L(Arg, e) :
-  ((q = lidx(clo(e), y)) != -1) ?
-   L(Clo, e) :
+  ((q = lidx(loc(e), y)) != -1) ? L(Loc, e) :
+  ((q = lidx(arg(e), y)) != -1) ? L(Arg, e) :
+  ((q = lidx(clo(e), y)) != -1) ? L(Clo, e) :
   look(v, par(e), y); }
 #undef L
 
@@ -313,8 +310,7 @@ c2(c_ap) {
   S1 = s1, S2 = s2;
   return c_eval(v, e, m, x); }
  for (mm(&x),
-      Push(Pn(c_ev), X(x), Pn(inst), Pn(idH),
-           Pn(c_call), Pn(llen(Y(x))));
+      Push(Pn(c_ev), X(x), Pn(inst), Pn(idH), Pn(c_call), Pn(llen(Y(x))));
       twop(x = Y(x));
       Push(Pn(c_ev), X(x), Pn(inst), Pn(push)));
  return um, Ccc(v, e, m); }

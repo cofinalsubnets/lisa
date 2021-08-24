@@ -3,6 +3,7 @@ b=$n.bin
 p=prelude.lips
 r=./$b -_ $p
 t=$r test/*
+_=,
 
 # C compiler & flags
 CC=gcc # gcc seems to do better than clang
@@ -31,22 +32,22 @@ $n: $b
 	strip -o $@ $^
 
 # install
-bindir=$(DESTDIR)$(PREFIX)/bin
-libdir=$(DESTDIR)$(PREFIX)/lib/lips
-bins=$(bindir)/$n
-libs=$(libdir)/$p
-$(bindir):
-	mkdir -p $(bindir)
-$(libdir):
-	mkdir -p $(libdir)
-$(bins): $n $(bindir)
+bin=$(DESTDIR)$(PREFIX)/bin
+lib=$(DESTDIR)$(PREFIX)/lib/lips
+bins=$(bin)/$n
+libs=$(lib)/$p
+$(bin):
+	mkdir -p $(bin)
+$(lib):
+	mkdir -p $(lib)
+$(bins): $n $(bin)
 	cp $^
-$(libs): $p $(libdir)
+$(libs): $p $(lib)
 	cp $^
 install: $(bins) $(libs)
 uninstall:
 	rm -f $(bins)
-	rm -rf $(libdir)
+	rm -rf $(lib)
 
 # vim stuff
 VIMDIR ?= ~/.vim
@@ -62,16 +63,16 @@ install-vim: $(VIMDIR)/syntax/$n.vim $(VIMDIR)/ftdetect/$n.vim
 uninstall-vim:
 	rm -f $(VIMDIR)/{syntax,ftdetect}/$n.vim
 
-define WX
+define Wx
 	which $1 1>/dev/null 2>&1 && $2 || $3
 endef
 define W
-  $(call WX, $1, $2, echo "$1 not installed")
+  $(call Wx, $1, $2, echo "$1 not installed")
 endef
 
 # tasks
 clean:
-	@$(call WX, git, rm -rf `git check-ignore *`, rm -f *.o $n $b perf.data)
+	@$(call Wx, git, rm -rf `git check-ignore *`, rm -f *.o $n $b perf.data)
 perf: perf.data
 	@$(call W, perf, perf report)
 perf.data: $b $p
@@ -79,10 +80,10 @@ perf.data: $b $p
 valg: $b
 	@$(call W, valgrind, valgrind $t)
 sloc:
-	@$(call WX, cloc, cloc --by-file --force-lang=Lisp,$n *.{c,h,$n}, wc -l *.c *.h *.lips)
+	@$(call Wx, cloc, cloc --by-file --force-lang=Lisp$_$n *.{c$_h$_$n}, wc -l *.c *.h *.lips)
 bins: $n $b
 	stat -c "%n %sB" $^
 repl: $b
-	@$(call WX, rlwrap, rlwrap $r -i, $r -i)
+	@$(call Wx, rlwrap, rlwrap $r -i, $r -i)
 
 .PHONY: test clean perf valg sloc bins install install-vim uninstall uninstall-vim repl

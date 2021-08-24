@@ -18,21 +18,40 @@ static Inline int seekp(const char* p) {
  c = openat(b, p, O_RDONLY), close(b);
  return c; }
 
-u0 lips_boot(lips v) {
+int lips_boot(lips v) {
  const char * const path = "prelude.lips";
  int pre = seekp(path);
- if (pre == -1) return errp(v, "can't find %s", path);
+ if (pre == -1) return errp(v, "can't find %s", path), NO;
  FILE *f = fdopen(pre, "r");
- if (setjmp(v->restart)) return
+ jmp_buf re;
+ v->restart = &re;
+ if (setjmp(re)) return
   errp(v, "error in %s", path),
-  fclose(f), lips_fin(v);
- script(v, f), fclose(f); }
+  fclose(f), lips_fin(v), NO;
+ return script(v, f); }
 
 u0 lips_fin(lips v) { free(v->mem_pool); }
+
+lips lips_open() {
+ lips v = malloc(sizeof(struct lips));
+ if (!v) return v;
+ lips_init(v);
+ if (lips_boot(v) != OK) {
+  lips_close(v);
+  return NULL; }
+ return v; }
+
+u0 lips_close(lips v) {
+  lips_fin(v); free(v); }
 
 static NoInline u0 rin(lips v, const char *a, terp *b) {
  obj z = interns(v, a);
  tblset(v, *Sp, z, Pn(b)); }
+
+int lips_eval(lips v, char *expr) {
+  FILE *f = fmemopen(expr, slen(expr), "r");
+  if (!f) return NO;
+  return script(v, f); }
 
 u0 lips_init(lips v) {
  v->seed = v->t0 = clock(),

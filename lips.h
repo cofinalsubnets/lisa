@@ -3,15 +3,15 @@
 #include "cursed.h"
 #include <stdio.h>
 #include <setjmp.h>
+#include <stdlib.h>
 
 // thanks !!
 typedef i64 obj, *mem;
-#define non zero64
-#define nil ((obj)~non)
-#define W word64
-#define W2 (word64*2)
+#define non ((obj)0)
+#define nil (~non)
+#define W (sizeof(obj))
+#define W2 (W*2)
 
-// more fundamental data types
 typedef struct two { obj x, y; } *two; // pairs
 typedef struct tup { u64 len; obj xs[]; } *tup, *vec; // vectors
 typedef struct str { u64 len; char text[]; } *str; // byte arrays
@@ -38,22 +38,26 @@ typedef struct lips {
  obj syms, glob; // symbols and globals
  mroot mem_root; // gc protection list
  i64 t0, seed, count, mem_len, *mem_pool; // memory data
- jmp_buf restart; // top level restart
+ jmp_buf *restart; // top level restart
 } *lips;
 
 // this is the type of interpreter functions
 typedef obj terp(lips, obj, mem, mem, mem, obj);
 typedef terp **hom; // code pointer ; the internal function type
 
+int lips_boot(lips), lips_eval(lips, char *);
+
 u0
  reqsp(lips, u64),
  lips_init(lips),
  lips_fin(lips),
- lips_boot(lips),
+ lips_close(lips),
  defprim(lips, const char *, terp*) NoInline,
  emit(lips, obj, FILE*),
  errp(lips, char*, ...),
  emsep(lips, obj, FILE*, char);
+
+lips lips_open(void);
 
 obj
  sskc(lips, mem, obj),
@@ -121,7 +125,6 @@ extern const uint32_t *tnoms;
 #define AR(x) gettup(x)->xs
 #define AL(x) gettup(x)->len
 #define with(y,...) (mm(&(y)),(__VA_ARGS__),um)
-#define b2w(n)((n)/W+((n)%W&&1))
 #define w2b(n) ((n)*W)
 #define Size(t) (sizeof(struct t)/W)
 #define Ip v->ip
@@ -146,6 +149,8 @@ extern const uint32_t *tnoms;
 #define Eva AR(Glob)[Eval]
 #define App AR(Glob)[Apply]
 #define Avail (Sp-Hp)
+#define OK EXIT_SUCCESS
+#define NO EXIT_FAILURE
 
 #define mix ((u64)2708237354241864315)
 #define interns(v,c) intern(v,string(v,c))
@@ -168,11 +173,16 @@ static Inline i64 hbi(u64 cap, u64 co) {
 static Inline ent hb(obj t, u64 code) {
  return gettbl(t)->tab[hbi(gettbl(t)->cap, code)]; }
 
-static Inline u0 script(lips v, FILE *f) {
- for (obj x; (x = parse(v, f)); eval(v, x)); }
+static Inline int script(lips v, FILE *f) {
+ obj x;
+ while ((x = parse(v, f))) eval(v, x);
+ return x = feof(f) ? OK : NO, fclose(f), x; }
 
 static Inline obj spop(lips v) {
  return *Sp++; }
+
+static Inline u64 b2w(u64 b) {
+ return b / W + (b % W && 1); }
 
 _Static_assert(
  sizeof(intptr_t) == sizeof(int64_t),
@@ -180,6 +190,5 @@ _Static_assert(
 
 _Static_assert(
  -1l == ((-1l<<8)>>8),
- "opposite bit-shifts on a negative integer "
- "yield a nonidentical result");
+ "opposite bit-shifts on a negative integer yield a different result");
 #endif

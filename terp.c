@@ -462,7 +462,8 @@ interp(strs) {
  str src = getstr(Argv[0]);
  i64 lb = Gn(Argv[1]), ub = Gn(Argv[2]);
  lb = max(lb, 0);
- ub = max(min(ub, src->len-1), lb);
+ ub = min(ub, src->len-1);
+ ub = max(ub, lb);
  i64 words = 1 + b2w(ub - lb + 1);
  Have(words);
  str dst = (str) hp;
@@ -841,4 +842,4 @@ noreturn obj restart(lips v) {
  Fp = Sp = Pool + Len;
  Xp = Ip = nil;
  v->mem_root = NULL;
- longjmp(v->restart, 1); }
+ longjmp(*v->restart, 1); }
