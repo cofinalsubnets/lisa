@@ -103,7 +103,7 @@ extern const uint32_t *tnoms;
 #define nump(x) (kind(x)==Num)
 #define twop(x) (kind(x)==Two)
 #define symp(x) (kind(x)==Sym)
-#define tupp(x) (kind(x)==Vec)
+#define vecp(x) (kind(x)==Vec)
 #define tblp(x) (kind(x)==Tbl)
 #define nilp(x) ((x)==nil)
 #define X(o) gettwo(o)->x

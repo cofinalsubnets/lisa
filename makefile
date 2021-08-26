@@ -1,4 +1,5 @@
 n=lips
+m=$n.1
 b=$n.bin
 p=prelude.lips
 r=./$b -_ $p
@@ -15,18 +16,23 @@ CFLAGS=-std=gnu17 -g -O2 -flto\
 	-fno-stack-protector\
 	-fno-unroll-loops
 
+# for sorting
+LC_ALL=C
+
 # determine install path
 ifeq ($(shell whoami), root)
-	DESTDIR?=/
-	PREFIX?=/usr/local
+	DESTDIR ?= /
+	PREFIX ?= /usr/local
 else
-	DESTDIR?=${HOME}
-	PREFIX?=/.local
+	DESTDIR ?= ${HOME}
+	PREFIX ?= /.local
 endif
+
+MANPREFIX ?= $(PREFIX)/share/man
 
 test: $n
 	@/usr/bin/env TIMEFORMAT="in %Rs" bash -c "time $t"
-$b: $(patsubst %.c,%.o, $(wildcard *.c))
+$b: $(patsubst %.c,%.o, $(sort $(wildcard *.c)))
 	$(CC) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -o $@ $^
 $n: $b
 	strip -o $@ $^
@@ -34,20 +40,25 @@ $n: $b
 # install
 bin=$(DESTDIR)$(PREFIX)/bin
 lib=$(DESTDIR)$(PREFIX)/lib/lips
+man=$(DESTDIR)$(MANPREFIX)/man1
 bins=$(bin)/$n
 libs=$(lib)/$p
+mans=$(man)/$m
 $(bin):
-	mkdir -p $(bin)
+	mkdir -p $@
 $(lib):
-	mkdir -p $(lib)
+	mkdir -p $@
+$(man):
+	mkdir -p $@
 $(bins): $n $(bin)
 	cp $^
 $(libs): $p $(lib)
 	cp $^
-install: $(bins) $(libs)
+$(mans): $m $(man)
+	cp $^
+install: $(bins) $(libs) $(mans)
 uninstall:
-	rm -f $(bins)
-	rm -rf $(lib)
+	rm -f $(bins) $(libs) $(mans)
 
 # vim stuff
 VIMDIR ?= ~/.vim

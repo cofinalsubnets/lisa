@@ -686,17 +686,9 @@ interp(band_u) { mm_u(Gn(Argc), Argv, -1, &); }
 interp(bor_u)  { mm_u(Gn(Argc), Argv,  0, |); }
 interp(bxor_u) { mm_u(Gn(Argc), Argv,  0, ^); }
 
-#define Tf(x) ((x)?ok:nil)
 // type predicates
-interp(numpp) { Ap(ip+W, Tf(nump(xp))); }
-interp(hompp) { Ap(ip+W, Tf(homp(xp))); }
-interp(twopp) { Ap(ip+W, Tf(twop(xp))); }
-interp(sympp) { Ap(ip+W, Tf(symp(xp))); }
-interp(strpp) { Ap(ip+W, Tf(strp(xp))); }
-interp(tblpp) { Ap(ip+W, Tf(tblp(xp))); }
-interp(nilpp) { Ap(ip+W, Tf(nilp(xp))); }
-interp(vecpp) { Ap(ip+W, Tf(tupp(xp))); }
-
+#define Tf(ty) interp(ty##pp) { Ap(ip+W, (ty##p(xp)?ok:nil)); }
+Tf(num) Tf(hom) Tf(two) Tf(sym) Tf(str) Tf(tbl) Tf(nil) Tf(vec)
 
 // pairs are immutable, so we can take this opportunity to
 // deduplicate them.
@@ -722,52 +714,34 @@ bool eql(obj a, obj b) {
   case Str: return streq(a, b);
   default:  return false; } }
 
-interp(lt)    { xp = *sp++ <  xp ? xp : nil; N(1); }
-interp(lteq)  { xp = *sp++ <= xp ? xp : nil; N(1); }
-interp(gteq)  { xp = *sp++ >= xp ? xp : nil; N(1); }
-interp(gt)    { xp = *sp++ >  xp ? xp : nil; N(1); }
+#define cmp_(n, op) interp(n) { xp = *sp++ op xp ? xp : nil; N(1); }
+cmp_(lt, <) cmp_(lteq, <=) cmp_(gteq, >=) cmp_(gt, >)
 // there should be a separate instruction for simple equality.
-interp(eq)    { xp = eql(xp, *sp++) ? ok : nil; N(1); }
+interp(eq) { xp = eql(xp, *sp++) ? ok : nil; N(1); }
 
-#define ord_w(r){\
- obj n=Gn(Argc),*xs=Argv,m,*l;\
- switch (n){\
-  case 0: no: Go(ret, nil);\
-  case 1: break;\
-  default: for (l=xs+n-1,m=*xs;xs<l;m=*++xs)\
-           if(!(m r xs[1])) goto no;}\
+static interp(ord_) {
+ bool (*r)(obj, obj) = (void*)Xp;
+ obj n=Gn(Argc),*xs=Argv,m,*l;
+ switch(n){
+  case 0:no:Go(ret, nil);
+  default:for(l=xs+n-1,m=*xs;xs<l;m=*++xs)if(!(r(m,xs[1])))goto no;
+  case 1:break;}
  Go(ret, ok);}
 
-#define ord_wv(r){\
- obj n=Gn(Argc),*xs=Argv,m,*l;\
- switch(n) {\
-  case 0: Go(ret, nil);\
-  case 1: break;\
-  default: for (l=xs+n-1,m=*xs;xs<l;m=*++xs)\
-           if (!(r(m,xs[1]))) Go(ret, nil);}\
- Go(ret, ok);}
+#define ord_w(r)Xp=(obj)r;Jump(ord_)
+#define cmp(op, n)\
+ static bool cmp_##n(obj a, obj b) { return a op b; }\
+ interp(n##_u) { Xp=(obj)cmp_##n;Jump(ord_); }
+cmp(<, lt) cmp(<=, lteq) cmp(>=, gteq) cmp(>, gt)
+interp(eq_u) { ord_w(eql); }
 
-#define ord_v(r) Go(ret, ord_u(Gn(Argc), Argv, r))
-
-interp(lt_u)   { ord_w(<); }
-interp(lteq_u) { ord_w(<=); }
-interp(eq_u)   { ord_wv(eql); }
-interp(gteq_u) { ord_w(>=); }
-interp(gt_u)   { ord_w(>); }
-
-static interp(typp) {
+static interp(typ) {
  for (obj *xs = Argv, *l = xs + Gn(Argc); xs < l;)
   if (kind(*xs++) != xp) Go(ret, nil);
  Go(ret, ok); }
-#define typpp(t) Go(typp, t)
-interp(nump_u) { typpp(Num); }
-interp(homp_u) { typpp(Hom); }
-interp(strp_u) { typpp(Str); }
-interp(tblp_u) { typpp(Tbl); }
-interp(twop_u) { typpp(Two); }
-interp(symp_u) { typpp(Sym); }
-interp(nilp_u) { typpp(Nil); }
-interp(vecp_u) { typpp(Vec); }
+#define typp(t, i) interp(t##p_u) { Go(typ, i); }
+typp(num, Num) typp(hom, Hom) typp(str, Str) typp(tbl, Tbl)
+typp(two, Two) typp(sym, Sym) typp(nil, Nil) typp(vec, Vec)
 
 // stack manipulation
 interp(tuck) { Have1(); sp--, sp[0] = sp[1], sp[1] = xp; N(1); }

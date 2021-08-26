@@ -38,10 +38,7 @@
 // then if f takes a fixed number of arguments the arity
 // signature is n; otherwise it's -n-1.
 
-typedef obj
- c1(lips, mem, u64),
- c2(lips, mem, u64, obj),
- c3(lips, mem, u64, obj, obj);
+typedef obj c1(lips, mem, u64), c2(lips, mem, u64, obj);
 static u0
  c_de_r(lips, mem, obj),
  scan(lips, mem, obj),
@@ -55,7 +52,6 @@ static obj
 static c1 c_ev, c_d_bind, inst, insx, c_ini;
 static c2 c_eval, c_sy, c_2, c_imm, c_ap;
 static obj c_la_clo(lips, mem, obj, obj), ltu(lips, mem, obj, obj);
-static c3 late;
 static i64 lidx(obj, obj);
 
 enum { Here, Loc, Arg, Clo, Wait };
@@ -269,33 +265,28 @@ static obj look(lips v, obj e, obj y) {
   look(v, par(e), y); }
 #undef L
 
-c2(late, obj d) {
- obj k; return
-  x = pair(v, d, x),
-  with(x, k = Ccc(v, e, m+2)),
-  with(k, x = pair(v, Pn(8), x)),
-  em2(lbind, x, k); }
-
 c2(c_sy) {
  obj y, q;
  with(x, y = X(q = look(v, e ? *e:nil, x)));
  switch (Gn(y)) {
   case Here: return c_imm(v, e, m, Y(q));
-  case Wait: return late(v, e, m, x, Y(q));
+  case Wait:
+   x = pair(v, Y(q), x);
+   with(x, y = Ccc(v, e, m+2));
+   with(y, x = pair(v, Pn(8), x));
+   return em2(lbind, x, y);
   default:
    if (Y(q) == *e) switch (Gn(y)) {
     case Loc: return imx(v, e, m, loc, Pn(lidx(loc(*e), x)));
     case Arg: return imx(v, e, m, arg, Pn(lidx(arg(*e), x)));
-    case Clo: return imx(v, e, m, clo, Pn(lidx(clo(*e), x))); } }
- return
-  y = llen(clo(*e)),
-  with(x, q = snoc(v, clo(*e), x)),
-  clo(*e) = q,
-  imx(v, e, m, clo, Pn(y)); }
+    default:  return imx(v, e, m, clo, Pn(lidx(clo(*e), x))); }
+   return y = llen(clo(*e)),
+          with(x, q = snoc(v, clo(*e), x)),
+          clo(*e) = q,
+          imx(v, e, m, clo, Pn(y)); } }
 
 c1(c_ev) { return c_eval(v, e, m, *Sp++); }
-c2(c_eval) {
- return (symp(x) ? c_sy : twop(x) ? c_2 : c_imm)(v, e, m, x); }
+c2(c_eval) { return (symp(x) ? c_sy : twop(x) ? c_2 : c_imm)(v, e, m, x); }
 
 c2(c_qt) { return c_imm(v, e, m, twop(x = Y(x)) ? X(x) : x); }
 c2(c_2) { obj z = X(x); return
@@ -343,11 +334,10 @@ static u0 pushs(lips v, ...) {
 
 static NoInline obj hini(lips v, u64 n) {
  hom a = cells(v, n + 2);
- return
-  G(a+n) = NULL,
-  GF(a+n) = (terp*) a,
-  set64((mem) a, nil, n),
-  Ph(a+n); }
+ return G(a+n) = NULL,
+        GF(a+n) = (terp*) a,
+        set64((mem) a, nil, n),
+        Ph(a+n); }
 
 static obj hfin(lips v, obj a) {
  return (obj) (GF(button(Gh(a))) = (terp*) a); }
