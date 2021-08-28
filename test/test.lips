@@ -6,7 +6,10 @@
   ((\ x (= 1 x x x)) 0)
   ((\ x (= x 1 x x)) 0)
   ((\ x (= x x 1 x)) 0)
-  ((\ x (= x x x 1)) 0)))
+  ((\ x (= x x x 1)) 0))
+ (= 'a 'a)
+ (= "a" "a")
+ (~ (= (ygen) (ygen))))
  
 (test "special forms"
  (= () (,) (:) (?) (`) ((\)) (? () 1))
@@ -25,7 +28,7 @@
  (= 4 (slen "slen"))
  (= "ystr" (ystr 'ystr))
  (= 'ssym (ssym "ssym"))
- (~ (ystr (gensym)))
+ (~ (ystr (ygen)))
  (= "xxx" "xxx")
  (~ (= "xxx" "yyy"))
  (= "hollow world" (scat "hol" "low " "wor" "ld"))
@@ -50,8 +53,7 @@
 
  ((\ q (= q (ev q)))
   ((\ q ((ev q) q))
-   '(\ q (L q (L'` q)))))
- )
+   '(\ q (L q (L'` q))))))
 
 (: (even x) (? (= 0 (& x 1)))
    (odd x)  (? (= 1 (& x 1))))

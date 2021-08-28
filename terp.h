@@ -37,7 +37,7 @@
   _("fail", fail),   _("tbl", tblmk),        _("tget", tblg),   _("tset", tbls),\
   _("thas", tblc),   _("tdel", tbld),        _("tkeys", tblks), _("tlen", tbll),\
   _("slen", strl),   _("sget", strg),        _("scat", strconc),   _("ssub", strs),\
-  _("str", strmk),   _("gensym", gsym_u),    _(".", em_u),\
+  _("str", strmk),   _("ygen", gsym_u),    _(".", em_u),\
   _("ssym", ssym_u), _("ystr", ystr_u),      _("putc", putc_u),\
   _("vecp", vecp_u), _("nump", nump_u),      _("symp", symp_u), _("twop", twop_u),\
   _("tblp", tblp_u), _("strp", strp_u),      _("nilp", nilp_u), _("homp", homp_u),\

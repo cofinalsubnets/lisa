@@ -14,8 +14,8 @@
 
      (L . .) .
      (cat a .)
-      (: (app a b) (? a (X (A a) (app (B a) b)) b)
-       (foldr a () app))
+      (foldr a () (: (app a b)
+       (? a (X (A a) (app (B a) b)) b)))
 
      (iota n x .)
       (: (loop m n) (? (< m n) (X m (loop (+ m 1) n)))
@@ -36,12 +36,10 @@
      (foldr1  x f) (? (B x) (f (A x) (foldr1 (B x) f)) (A x))
      (map     x f) (foldr x () (\ x m (X (f x) m)))
 
-     (enumerate l) (:
-      (inner i l)
-       (? (B l)
-        (X (X (A l) i) (inner (+ i 1) (B l)))
-        (L (X (A l) i)))
-      (inner 0 l))
+     (enumerate l) (? l
+      (>>= 0 l (: (inner i l) (? (B l)
+       (X (X (A l) i) (inner (+ i 1) (B l)))
+       (L (X (A l) i))))))
 
      (each x f) (? x (, (f (A x)) (each (B x) f)))
      (all l p) (? l (? (p (A l)) (all (B l) p)) 0)
@@ -91,7 +89,7 @@
    '&& (\ x . (? x ((: (& x)
      (? (B x) (L '? (A x) (& (B x))) (A x))) x) 1))
    '>>= (\ x . (X (last x) (init x)))
-   'case (\ x a . (: y (gensym)
+   'case (\ x a . (: y (ygen)
     (L ': y x ((: (loop a)
       (? a (? (B a) (L '? (L '= y (A a)) (A (B a))
                       (loop (B (B a))))
