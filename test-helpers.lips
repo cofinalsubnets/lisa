@@ -1,0 +1,25 @@
+(: (endl) (putc (char "
+")))
+
+(: (puts s) (:
+ (loop s i n)
+  (? (< i n) (, (putc (sget s i)) (loop s (+ i 1) n)))
+ (loop s 0 (slen s))))
+
+(: ESC 0x1b)
+(: (term-esc string) (puts (ap str (X ESC (chars string)))))
+(: (green) (term-esc "[32m")
+   (red)   (term-esc "[31m")
+   (reset) (term-esc "[0m"))
+
+(: (color-text col s) (, (col) (puts s) (reset)))
+(: (green-text s) (color-text green s))
+(: (red-text s) (color-text red s))
+
+(: (te x) (L '? x (L green-text ".") (L red-text "X"))
+ (:::
+  T te
+  test (\ n ts .
+   (L ',
+    (X ', (X (L . (L '` (? (symp n) n (ssym n)))) (map ts te)))
+    (L endl)))))

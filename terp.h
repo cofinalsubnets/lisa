@@ -24,7 +24,7 @@
   _(brgt),   _(brne),   _(tbll),   _(tblmk),\
   _(tblg),   _(tblc),   _(tbls),   _(tbld),   _(tblks),\
   _(hom_seek_u), _(hom_geti_u), _(hom_getx_u),\
-  _(ssym_u), _(ystr_u),\
+  _(ssym_u), _(ystr_u), _(putc_u),\
   _(fail),   _(ccc_u),  _(cont),   _(vararg), _(tuck),\
   _(dupl),   _(emi),    _(drop),   _(emx_u),  _(emi_u),\
   _(emx),    _(em_u),   _(ev_u),   _(ap_u), _(rnd_u)
@@ -38,7 +38,7 @@
   _("thas", tblc),   _("tdel", tbld),        _("tkeys", tblks), _("tlen", tbll),\
   _("slen", strl),   _("sget", strg),        _("scat", strconc),   _("ssub", strs),\
   _("str", strmk),   _("gensym", gsym_u),    _(".", em_u),\
-  _("ssym", ssym_u), _("ystr", ystr_u),\
+  _("ssym", ssym_u), _("ystr", ystr_u),      _("putc", putc_u),\
   _("vecp", vecp_u), _("nump", nump_u),      _("symp", symp_u), _("twop", twop_u),\
   _("tblp", tblp_u), _("strp", strp_u),      _("nilp", nilp_u), _("homp", homp_u),\
   _("hom", hom_u),   _("hseek", hom_seek_u), _("emx", emx_u),   _("hgetx", hom_getx_u),\

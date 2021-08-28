@@ -1,3 +1,6 @@
+.de FN
+\fI\|\\$1\|\fP
+..
 .TH LIPS 1 lips
 .SH NAME
 lips - lisp interpreter
@@ -20,5 +23,12 @@ start repl unconditionally
 .TP
 .B \-_
 don't bootstrap
+.SH FILES
+.TP
+.FN /usr/local/lib/lips/prelude.lips
+The system-wide bootstrap script.
+.TP
+.FN ~/.local/lib/lips/prelude.lips
+The individual bootstrap script. Overrides the system-wide script if present.
 .SH LICENSE
 Public domain.

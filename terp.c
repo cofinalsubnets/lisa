@@ -495,7 +495,7 @@ interp(vararg) {
  if (!vdic) {
   Have1();
   sp = --fp;
-  cpy64(fp, fp+1, Size(fr));
+  cpy64(fp, fp+1, Size(fr) + Gn(Argc));
   Argc += W;
   Argv[reqd] = nil; }
  // in this case we just keep the existing slots.
@@ -609,6 +609,11 @@ interp(em_u) {
    emsep(v, Argv[i], stdout, ' ');
   emit(v, xp = Argv[i], stdout); }
  fputc('\n', stdout);
+ Jump(ret); }
+
+interp(putc_u) {
+ Ar(1);
+ fputc(Gn(*Argv), stdout);
  Jump(ret); }
 
 // pairs

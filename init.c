@@ -4,8 +4,15 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <time.h>
+#include <string.h>
+#include <errno.h>
 
+#ifndef NOM
 #define NOM "lips"
+#endif
+#ifndef BOOT
+#define BOOT "prelude."NOM
+#endif
 #define USR_PATH ".local/lib/"NOM"/"
 #define SYS_PATH "/usr/lib/"NOM"/"
 static Inline int seekp(const char* p) {
@@ -18,47 +25,55 @@ static Inline int seekp(const char* p) {
  c = openat(b, p, O_RDONLY), close(b);
  return c; }
 
-int lips_boot(lips v) {
- const char * const path = "prelude.lips";
- int pre = seekp(path);
- if (pre == -1) return errp(v, "can't find %s", path), NO;
- FILE *f = fdopen(pre, "r");
+obj script(lips v, const char *path, FILE *f) {
+ if (!f) return
+   errp(v, "%s : %s", path, strerror(errno)),
+   lips_fin(v),
+   NO;
  jmp_buf re;
  v->restart = &re;
  if (setjmp(re)) return
-  errp(v, "error in %s", path),
-  fclose(f), lips_fin(v), NO;
- return script(v, f); }
+  errp(v, "%s : fail", path),
+  fclose(f), (obj) lips_fin(v);
+ obj x;
+ while ((x = parse(v, f))) eval(v, x);
+ return x = feof(f) ? x : 0, fclose(f), x; }
 
-u0 lips_fin(lips v) { free(v->mem_pool); }
+int lips_boot(lips v) {
+ const char * const path = BOOT;
+ int pre = seekp(path);
+ if (pre == -1) return errp(v, "can't find %s", path), NO;
+ return xval(script(v, path, fdopen(pre, "r"))); }
 
 lips lips_open() {
  lips v = malloc(sizeof(struct lips));
- if (!v) return v;
- lips_init(v);
- if (lips_boot(v) != OK) {
-  lips_close(v);
-  return NULL; }
+ if (v)
+  if (!lips_init(v) || lips_boot(v) != OK)
+   return lips_close(v);
  return v; }
 
-u0 lips_close(lips v) {
-  lips_fin(v); free(v); }
+lips lips_close(lips v) { return
+ lips_fin(v), free(v), NULL; }
+
+lips lips_fin(lips v) { return
+ free(v->mem_pool), (lips) (v->mem_pool = NULL); }
 
 static NoInline u0 rin(lips v, const char *a, terp *b) {
  obj z = interns(v, a);
  tblset(v, *Sp, z, Pn(b)); }
 
-int lips_eval(lips v, char *expr) {
-  FILE *f = fmemopen(expr, slen(expr), "r");
-  if (!f) return NO;
-  return script(v, f); }
+obj lips_eval(lips v, char *expr) { return
+  script(v, "eval", fmemopen(expr, slen(expr), "r")); }
 
-u0 lips_init(lips v) {
+lips lips_init(lips v) {
  v->seed = v->t0 = clock(),
  v->ip = v->xp = v->syms = v->glob = nil,
  v->fp = v->hp = v->sp = (mem) W,
  v->count = 0, v->mem_len = 1, v->mem_pool = NULL,
  v->mem_root = NULL;
+ jmp_buf re;
+ v->restart = &re;
+ if (setjmp(re)) return lips_fin(v);
  vec t = cells(v, Size(tup) + NGlobs);
  set64(t->xs, nil, t->len = NGlobs);
  obj z, y = Glob = puttup(t);
@@ -74,4 +89,5 @@ u0 lips_init(lips v) {
   bsym(Def, ":"),   bsym(Cond, "?"), bsym(Lamb, "\\"),
   bsym(Quote, "`"), bsym(Seq, ","),  bsym(Splat, "."));
 #define def(s, x) (y=interns(v,s),tblset(v,Top,y,x))
- def("ns", Top), def("macros", Mac); }
+ def("ns", Top), def("macros", Mac);
+ return v; }

@@ -45,19 +45,20 @@ typedef struct lips {
 typedef obj terp(lips, obj, mem, mem, mem, obj);
 typedef terp **hom; // code pointer ; the internal function type
 
-int lips_boot(lips), lips_eval(lips, char *);
+int lips_boot(lips);
 
 u0
  reqsp(lips, u64),
- lips_init(lips),
- lips_fin(lips),
- lips_close(lips),
  defprim(lips, const char *, terp*) NoInline,
  emit(lips, obj, FILE*),
  errp(lips, char*, ...),
  emsep(lips, obj, FILE*, char);
 
-lips lips_open(void);
+lips
+ lips_init(lips),
+ lips_open(void),
+ lips_close(lips),
+ lips_fin(lips);
 
 obj
  sskc(lips, mem, obj),
@@ -73,7 +74,9 @@ obj
  tblset(lips, obj, obj, obj),
  tblget(lips, obj, obj),
  tbldel(lips, obj, obj),
- string(lips, const char*);
+ string(lips, const char*),
+ lips_eval(lips, char *),
+ script(lips, const char*, FILE*);
 
 u64 llen(obj) NoInline, hc(lips, obj);
 bool eql(obj, obj);
@@ -151,6 +154,7 @@ extern const uint32_t *tnoms;
 #define Avail (Sp-Hp)
 #define OK EXIT_SUCCESS
 #define NO EXIT_FAILURE
+#define xval(x) ((x)?NO:OK)
 
 #define mix ((u64)2708237354241864315)
 #define interns(v,c) intern(v,string(v,c))
@@ -172,11 +176,6 @@ static Inline i64 hbi(u64 cap, u64 co) {
 
 static Inline ent hb(obj t, u64 code) {
  return gettbl(t)->tab[hbi(gettbl(t)->cap, code)]; }
-
-static Inline int script(lips v, FILE *f) {
- obj x;
- while ((x = parse(v, f))) eval(v, x);
- return x = feof(f) ? OK : NO, fclose(f), x; }
 
 static Inline obj spop(lips v) {
  return *Sp++; }
