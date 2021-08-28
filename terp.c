@@ -158,12 +158,22 @@ interp(yield) { Pack(); return xp; }
 interp(branch) { Ap(xp == nil ? (obj) FF(ip) : (obj) GF(ip), xp); }
 interp(barnch) { Ap(xp == nil ? (obj) GF(ip) : (obj) FF(ip), xp); }
 // relational jumps
-interp(brlt)   { Ap(*sp++ <  xp    ? (obj) GF(ip) : (obj) FF(ip), xp); }
-interp(brgteq) { Ap(*sp++ <  xp    ? (obj) FF(ip) : (obj) GF(ip), xp); }
-interp(brlteq) { Ap(*sp++ <= xp    ? (obj) GF(ip) : (obj) FF(ip), xp); }
-interp(brgt)   { Ap(*sp++ <= xp    ? (obj) FF(ip) : (obj) GF(ip), xp); }
-interp(breq)   { Ap(eql(*sp++, xp) ? (obj) GF(ip) : (obj) FF(ip), xp); }
-interp(brne)   { Ap(eql(*sp++, xp) ? (obj) FF(ip) : (obj) GF(ip), xp); }
+interp(brlt)   {
+  Ap(*sp++ <  xp    ? (obj) GF(ip) : (obj) FF(ip), xp); }
+interp(brgteq) {
+  Ap(*sp++ <  xp    ? (obj) FF(ip) : (obj) GF(ip), xp); }
+interp(brlteq) {
+  Ap(*sp++ <= xp    ? (obj) GF(ip) : (obj) FF(ip), xp); }
+interp(brgt)   {
+  Ap(*sp++ <= xp    ? (obj) FF(ip) : (obj) GF(ip), xp); }
+
+interp(breq)   {
+  if (eql(*sp++, xp)) Ap((obj) GF(ip), Pn(1));
+  Ap((obj) FF(ip), nil); }
+
+interp(brne)   {
+  if (eql(*sp++, xp)) Ap((obj) FF(ip), Pn(1));
+  Ap((obj) GF(ip), nil); }
 
 // unconditional jumps
 interp(jump) { Ap((obj) GF(ip), xp); }
@@ -722,7 +732,11 @@ bool eql(obj a, obj b) {
 #define cmp_(n, op) interp(n) { xp = *sp++ op xp ? xp : nil; N(1); }
 cmp_(lt, <) cmp_(lteq, <=) cmp_(gteq, >=) cmp_(gt, >)
 // there should be a separate instruction for simple equality.
-interp(eq) { xp = eql(xp, *sp++) ? ok : nil; N(1); }
+interp(eq) {
+//  printf("eq ");
+//  emsep(v, *sp, stdout, ' ');
+//  emsep(v, xp, stdout, '\n');
+  xp = eql(xp, *sp++) ? ok : nil; N(1); }
 
 static interp(ord_) {
  bool (*r)(obj, obj) = (void*)Xp;

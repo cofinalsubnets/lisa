@@ -1,3 +1,13 @@
+(test equality
+ (=  (~())
+  (= 0 0)
+  (= (L 0 0) (X 0 (X 0 ()))))
+ (= ()
+  ((\ x (= 1 x x x)) 0)
+  ((\ x (= x 1 x x)) 0)
+  ((\ x (= x x 1 x)) 0)
+  ((\ x (= x x x 1)) 0)))
+ 
 (test "special forms"
  (= () (,) (:) (?) (`) ((\)) (? () 1))
  (= 1 (, 1) (? 1) ((\ 1)) '1 (: 1))
@@ -26,6 +36,23 @@
  (= "a" (str 97))
  (= "asdfqwer" (ap str (chars "asdfqwer"))))
 
+
+(test execution
+ (= 1 (ccc (\ k (, (k 1) 2))))
+ (= 2178309 ;; double recursive fibonacci function
+  (>>= 32 (: (fib n)
+   (? (< n 3) 1
+    (+ (fib (- n 1)) (fib (- n 2)))))))
+ (= 4093 ;; ackermann function
+  (>>= 3 9 (: (ack m n)
+    (? (< m 1) (+ n 1)
+     (ack (- m 1) (? (> n 0) (ack m (- n 1)) 1))))))
+
+ ((\ q (= q (ev q)))
+  ((\ q ((ev q) q))
+   '(\ q (L q (L'` q)))))
+ )
+
 (: (even x) (? (= 0 (& x 1)))
    (odd x)  (? (= 1 (& x 1))))
 (test "library functions"
@@ -50,19 +77,4 @@
  (= 13 ((co (cu * 2) (cu + 5)) 4))
  (= '(3 2 1 0 1 2 3) (cat (rev (iota 4)) (iota 1 4))))
 
-(:
- (fib n) ;; double recursive fibonacci function
-  (? (< n 3) 1 (+ (fib (- n 1)) (fib (- n 2))))
- (ack m n) ;; ackermann function
-  (? (< m 1) (+ n 1)
-   (ack (- m 1) (? (> n 0) (ack m (- n 1)) 1))))
 
-(test continuations
- (= 1 (ccc (\ k (, (k 1) 2)))))
-(test recursion
- (= 2178309 (fib 32))
- (= 4093 (ack 3 9)))
-
-(test quine
- (: quine ((\ x ((ev x) x)) '(\ i(L i(L'` i))))
-  (= quine (ev quine))))

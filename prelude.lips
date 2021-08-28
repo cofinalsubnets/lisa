@@ -524,10 +524,12 @@
   ; a common case is to rewrite the last emitted
   ; instruction or value according to an exact table
   ; of values
-  ((f1 g xs .) i p) (>>= (g p) (hseek p 1) (\ a q (>>= xs (:
-   (loop x) (? (~ x) (emi i p)
-               (= a (A x)) (emi (AB x) q)
-               (loop (BB x)))))))
+  ((f1 g xs .) i p)
+   (>>= (g p) (hseek p 1) (\ a q
+    (>>= xs (: (loop x) (?
+     (~ x)       (emi i p)
+     (= a (A x)) (emi (AB x) q)
+     (loop (BB x)))))))
 
   ; for specialized indexed instructions
   (argn a b) (f1 hgetx 0 a 1 b)
@@ -643,18 +645,23 @@
    < (ordr i-lt) <= (ordr i-lteq)
    >= (ordr i-gteq) > (ordr i-gt)
    = (\ x k (?
-    (~ x) (Im () k)
-    (~ (B x)) (Im 1 k)
-    (&& (: q (map (filter x qtd) unq))
-        (: r (A q) (any (B q) (\ v (~ (= v r))))))
+
+    (|| (~ x)
+        (&& (: q (map (filter x qtd) unq))
+            (: r (A q) (any (B q) (\ v (~ (= v r)))))))
      (Im () k)
-    (eval (A x) (xc i-push (? (BB x)
-     (: (fold k x y)
-         (xc i-dupl (eval x (xc i-eq (? y
+
+    (~ (B x))
+     (Im 1 k)
+
+    (eval (A x) (xc i-push (?
+     (: (fold k x y) (: l
+         (eval x (xc i-eq (? y
           (xc i-barnch (peek2 (fold k (A y) (B y))))
-          k))))
+          k)))
+         (? y (xc i-dupl l) l))
       (pop2 (fold (push2 k) (AB x) (BB x))))
-     (eval (AB x) (xc i-eq k)))))))
+     )))))
 
    nilp (1y i-nilpp () ())
    fail (0y i-fail ())))
