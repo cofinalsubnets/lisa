@@ -13,6 +13,7 @@
      (|| l .) (or l)
 
      (L . .) .
+     (Q x) (L '` x)
      (cat a .)
       (foldr a () (: (app a b)
        (? a (X (A a) (app (B a) b)) b)))
@@ -67,6 +68,7 @@
      (init l) (? (B l) (X (A l) (init (B l))))
      (last l) (? (B l) (last (B l)) (A l))
 
+     (abs x) (? (< x 0) (- x) x)
      (memq x k) (? x (? (= k (A x)) x (memq (B x) k)))
      (rev l) (foldl l () (\ r x (X x r)))
      (ldel l k) (filter l (\ x (~ (= x k))))
@@ -79,13 +81,13 @@
   ;; and some marcos ...
   (tset macros
    ; a macro for defining macros
-   '::: (: (defm n x .) (X ', (X (L Ts macros (L '` n) (A x))
+   '::: (: (defm n x .) (X ', (X (L Ts macros (Q n) (A x))
                                  (? (B x) (ap defm (B x)))))
          defm)
    'imm ev
    'AA (\ x (X A (L (X A (L x))))) 'AB (\ x (X A (L (X B (L x)))))
    'BA (\ x (X B (L (X A (L x))))) 'BB (\ x (X B (L (X B (L x)))))
-   'char (\ x (L sget (L '` x) 0))
+   'char (\ x (L sget (Q x) 0))
    '&& (\ x . (? x ((: (& x)
      (? (B x) (L '? (A x) (& (B x))) (A x))) x) 1))
    '>>= (\ x . (X (last x) (init x)))
@@ -199,7 +201,7 @@
  ; quoted.
  (qtd x) (? (2p x) (= (A x) '`) (~ (symp x)))
  (unq x) (? (2p x) (AB x) x)
- (quote x) (? (|| (symp x) (twop x)) (L '` x) x)
+ (quote x) (? (|| (symp x) (twop x)) (Q x) x)
 
  (weak e x)  (:
   ; function symbol sugar ; handles any level of nesting
@@ -545,10 +547,10 @@
    i-arg (argn i-arg0 i-arg1)
    i-loc (argn i-loc0 i-loc1)
    i-clo (argn i-clo0 i-clo1)
-   i-lt (br2 i-brlt i-brgteq)
-   i-lteq (br2 i-brlteq i-brgt)
-   i-gt (br2 i-brgt i-brlteq)
-   i-gteq (br2 i-brgteq i-brlt)
+   i-lt (br2 i-brlt i-brlt2)
+   i-lteq (br2 i-brlteq i-brlteq2)
+   i-gt (br2 i-brgt i-brgt2)
+   i-gteq (br2 i-brgteq i-brgteq2)
    i-eq (br2 i-breq i-brne)
    i-nilpp (f1 hgeti i-branch i-barnch i-barnch i-branch)
    i-imm (f1 hgetx () i-unit 0 i-zero 1 i-one)))
@@ -671,7 +673,7 @@
   )))))
 
 (Ts macros 'imm ((ev egg) egg)) ; bootstrap
-(: (co x .) (ev (L '\ 'x (foldl x 'x (\ m e (L (L '` e) m)))))
+(: (co x .) (ev (L '\ 'x (foldl x 'x (\ m e (L (Q e) m)))))
    (const x) (emi i-imm (emx x (emi i-ret (emx '(() const) (hom 4))))))
 
 ; " drop privileges "

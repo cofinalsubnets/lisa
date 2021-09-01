@@ -1,9 +1,8 @@
 #include "lips.h"
 #include <stdlib.h>
 #include <time.h>
-static int copy(lips, u64);
+static clock_t copy(lips, u64);
 static obj cp(lips, obj, u64, mem);
-static Inline u0 _copy(lips, u64, mem, u64, mem);
 
 // a simple copying garbage collector
 
@@ -67,30 +66,25 @@ u0 reqsp(lips v, u64 req) {
 // t values come from clock(). if t0 < t1 < t2 then
 // u will be >= 1. however, sometimes t1 == t2. in that case
 // u = 1.
-static int copy(lips v, u64 len) {
- clock_t t1 = clock(), t2, u;
- mem b0 = v->mem_pool, b1 = malloc(w2b(len));
- return !b1 ? 0 :
-  (_copy(v, v->mem_len, b0, len, b1),
-   free(b0),
-   t2 = clock(),
-   u = t1 == t2 ? 1 : (t2 - v->t0) / (t2 - t1),
-   v->t0 = t2,
-   u); }
-
-static Inline u0
-_copy(lips v, u64 l0, mem b0, u64 l1, mem b1) {
- mem s0 = Sp, t0 = b0 + l0, t1 = b1 + l1;
- i64 ro = t1 - t0;
+static clock_t copy(lips v, u64 l1) {
+ mem b0 = v->mem_pool, b1 = malloc(w2b(l1));
+ u64 l0 = v->mem_len;
+ if (!b1) return 0;
+ clock_t t0 = v->t0, t1 = clock(), t2;
+ mem s0 = Sp, tp0 = b0 + l0, tp1 = b1 + l1;
+ i64 ro = tp1 - tp0;
  v->mem_len = l1;
  v->mem_pool = Hp = b1;
  Sp += ro, Fp += ro;
  Syms = nil;
- while (t0-- > s0) Sp[t0 - s0] = cp(v, *t0, l0, b0);
+ while (tp0-- > s0) Sp[tp0 - s0] = cp(v, *tp0, l0, b0);
 #define CP(x) x=cp(v,x,l0,b0)
  for (mroot r = Safe; r; r = r->next) CP(*(r->one));
- CP(Ip), CP(Xp), CP(Glob); }
-#undef CP
+ CP(Ip), CP(Xp), CP(Glob); 
+ free(b0);
+ t1 = t1 == (t2 = clock()) ? 1 : (t2 - t0) / (t2 - t1); 
+ return v->t0 = t2, t1; }
+
 
 // the exact method for copying an object into
 // the new pool depends on its type. copied

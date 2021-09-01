@@ -5,6 +5,14 @@
 #include <setjmp.h>
 #include <stdlib.h>
 
+_Static_assert(
+ sizeof(intptr_t) == sizeof(int64_t),
+ "pointers are not 64 bits");
+
+_Static_assert(
+ -1l == ((-1l<<8)>>8),
+ "opposite bit-shifts on a negative integer yield a different result");
+
 // thanks !!
 typedef i64 obj, *mem;
 #define non ((obj)0)
@@ -182,12 +190,4 @@ static Inline obj spop(lips v) {
 
 static Inline u64 b2w(u64 b) {
  return b / W + (b % W && 1); }
-
-_Static_assert(
- sizeof(intptr_t) == sizeof(int64_t),
- "pointers are not 64 bits");
-
-_Static_assert(
- -1l == ((-1l<<8)>>8),
- "opposite bit-shifts on a negative integer yield a different result");
 #endif

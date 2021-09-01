@@ -23,6 +23,50 @@ start repl unconditionally
 .TP
 .B \-_
 don't bootstrap
+.SH SPECIAL FORMS
+.I (\\\\)   ; empty function returns nil
+.br
+.I (\\\\ x) ; thunk evaluates x
+.br
+.I (\\\\ a b x) ; a and b are arguments, x is the body
+.br
+.I (\\\\ a b . x) ; variadic in b
+.RS
+.B lambda
+creates functions
+.RE
+.PP
+.I (, a b c) ; eval a, then b, then c; value is c
+.RS
+.B sequence
+evaluates operands in order
+.RE
+.PP
+.I (: a b c d ...) ; let a := b, c := d ... in current scope
+.br
+.I (: a b c d ... e) ; let a := b, c := d ... in e
+.br
+.I (: (a b c) d) ; = (: a (\\\\ b c d))
+.RS
+.B define
+gives values to names
+.RE
+.PP
+.I (` (1 2 3)) ; or '(1 2 3)
+.RS
+.B quote
+suppresses evaluation
+.RE
+.PP
+.I (? a b) ; b if a else nil
+.br
+.I (? a b c) ; b if a else c
+.br
+.I (? a b c d e) ; b if a else d if c else e ; etc.
+.RS
+.B cond
+branches conditionally
+.RE
 .SH FILES
 .TP
 .FN /usr/local/lib/lips/prelude.lips

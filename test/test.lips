@@ -1,16 +1,21 @@
 (test equality
- (=  (~())
-  (= 0 0)
-  (= (L 0 0) (X 0 (X 0 ()))))
- (= ()
+ (=  (~()) (= 1 1)
+  ((\ x (= 1 x x x)) 1)
+  ((\ x (= x 1 x x)) 1)
+  ((\ x (= x x 1 x)) 1)
+  ((\ x (= x x x 1)) 1))
+ (= () (= 1 0)
   ((\ x (= 1 x x x)) 0)
   ((\ x (= x 1 x x)) 0)
   ((\ x (= x x 1 x)) 0)
   ((\ x (= x x x 1)) 0))
+ (= (L 0) (L 0))
+ (= (L 0 0) (X 0 (X 0 ())))
  (= 'a 'a)
  (= "a" "a")
- (~ (= (ygen) (ygen))))
- 
+ (~ (= (ygen) (ygen)))
+ (~ (= (tbl) (tbl))))
+
 (test "special forms"
  (= () (,) (:) (?) (`) ((\)) (? () 1))
  (= 1 (, 1) (? 1) ((\ 1)) '1 (: 1))
@@ -24,42 +29,65 @@
  (= 2 (? () 1 2))
  (= 4 (? () 1 () 2 () 3 4)))
 
-(test "string manipulation"
+(test strings
+ (= "xxx" "xxx")
+ (~ (= "xxx" "yyy"))
+ (= "xx" (scat "xx" "") (scat "x" "x") (scat "" "xx"))
  (= 4 (slen "slen"))
  (= "ystr" (ystr 'ystr))
  (= 'ssym (ssym "ssym"))
  (~ (ystr (ygen)))
- (= "xxx" "xxx")
- (~ (= "xxx" "yyy"))
  (= "hollow world" (scat "hol" "low " "wor" "ld"))
  (= "bidden" (ssub "forbidden planet" 3 9))
  (= "" (str))
+ (= () (chars "") (char ""))
  (= 97 (char "a"))
- (= (L 97) (chars "a"))
- (= "a" (str 97))
- (= "asdfqwer" (ap str (chars "asdfqwer"))))
+ (= (L 97 115 100 102) (chars "asdf"))
+ (= "asdf" (str 97 115 100 102))
+ (: (randn n) (% (abs (rand)) n)
+    (printable-char) (+ 0x20 (randn (- 0x7e 0x20)))
+    (randw) (ap str (map (iota (+ 4 (randn 12))) printable-char))
+    words (map (iota 0z100) randw)
+  (all words (\ word (= word (ap str (chars word)))))))
 
+(test arithmetic
+ (= 144 (* 12 12) (* 2 2 3 2 2 3))
+ (= -99 (- 1 49 51) (- 99))
+ (= 1024 (* (* (* 2 2 2) 2 2) (* 2 2 (* 2 2 2))) (<< 1 10))
+ (= 1040 (| (<< 1 10) (<< 1 2 2)))
+ (= 3 (>> (& 15 6 7) 1))
+ (= 4 (/ 16 2 2) (/ 16 4) (>> 16 2) (<< 1 2))
+ (= 1 (% 11 6 2) (& 1 11))
+ (< 1 (<< 1 1) (<< 1 1 1) (<< 1 1 1 1))
+ (~ (< 1 (<< 1 1) (<< 1 1) (<< 1 1 1)))
+ (>= 30 29 29 27 27 4 0 0))
 
 (test execution
- (= 1 (ccc (\ k (, (k 1) 2))))
- (= 2178309 ;; double recursive fibonacci function
-  (>>= 32 (: (fib n)
-   (? (< n 3) 1
-    (+ (fib (- n 1)) (fib (- n 2)))))))
- (= 4093 ;; ackermann function
-  (>>= 3 9 (: (ack m n)
-    (? (< m 1) (+ n 1)
-     (ack (- m 1) (? (> n 0) (ack m (- n 1)) 1))))))
+ (= 1 (ccc (\ ret ; call/cc
+  (, (ret 1) (fail "unreachable")))))
 
- ((\ q (= q (ev q)))
+ ((\ q (= (ev q) q)) ; a quine
   ((\ q ((ev q) q))
-   '(\ q (L q (L'` q))))))
+   '(\ q (L q (Q q)))))
+
+ (= 2178309 (>>= 32 (: (fib n)
+  (? (< n 3) 1 ;; fibonacci function
+   (+ (fib (- n 1)) (fib (- n 2)))))))
+
+ (= 4093 (>>= 3 9 (: (ack m n)
+  (? (< m 1) (+ n 1) ;; ackermann function
+   (ack (- m 1) (? (> n 0) (ack m (- n 1)) 1))))))
+
+ (= 13 (>>= 12 13 14 (: (tarai x y z)
+  (? (<= x y) y (tarai
+   (tarai (- x 1) y z)
+   (tarai (- y 1) x z)
+   (tarai (- z 1) x y)))))))
 
 (: (even x) (? (= 0 (& x 1)))
    (odd x)  (? (= 1 (& x 1))))
 (test "library functions"
- (= '((0 2 4) 1 3 5)
-  (part '(0 1 2 3 4 5) even))
+ (= '((0 2 4) 1 3 5) (part '(0 1 2 3 4 5) even))
  (all '(0 2 4 8) even)
  (any '(0 2 4 9) odd)
  (~ (= 1 1 2))
@@ -72,11 +100,9 @@
   (iota 0 4)
   (ldel (iota 5) 4)
   (snoc (iota 3) 3))
- (= 2 (idx (iota 9) 2) (len (iota 2)))
+ (= 2 (idx (iota 3) 2) (len (iota 2)))
  (= id (id id) ((const id) const))
  (= (iota 2 9) (memq (iota 9) 2))
  (~ (memq (iota 9) 9))
  (= 13 ((co (cu * 2) (cu + 5)) 4))
  (= '(3 2 1 0 1 2 3) (cat (rev (iota 4)) (iota 1 4))))
-
-

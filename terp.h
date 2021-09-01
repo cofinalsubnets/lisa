@@ -21,6 +21,7 @@
   _(symp_u), _(unit),   _(one),    _(zero),   _(hfin_u),\
   _(arg0),   _(arg1),   _(loc0),   _(loc1),   _(clo0),\
   _(clo1),   _(brlt),   _(brlteq), _(breq),   _(brgteq),\
+  _(brlt2), _(brlteq2), _(brgt2), _(brgteq2),\
   _(brgt),   _(brne),   _(tbll),   _(tblmk),\
   _(tblg),   _(tblc),   _(tbls),   _(tbld),   _(tblks),\
   _(hom_seek_u), _(hom_geti_u), _(hom_getx_u),\

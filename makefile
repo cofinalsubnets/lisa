@@ -6,14 +6,13 @@ b=$n.bin#       | dev binary
 p=prelude.$n#   | boot script
 r=./$b -_ $p#   | dev run command
 LC_ALL=C#       | for sorting
-t=$r test-helpers.lips test/*#    | test command
+t=$r test.lips test/*#    | test command
 #
 # compiler stuff ...
 CC ?= gcc# gcc seems to do better than clang
 # fixnums need sign extended bitshifts.
 # other things tend to break TCO ...
 CFLAGS ?= -std=gnu17 -g -O2 -flto\
-	-DNOM='"$n"' -DBOOT='"$p"'\
 	-Wall -Wstrict-prototypes\
 	-Wno-shift-negative-value\
 	-fno-stack-protector\
@@ -93,11 +92,11 @@ valg: $b
 	@$(call W, valgrind, valgrind $t)
 sloc:
 	@$(call W, cloc, cloc --by-file --force-lang=Lisp$_$n makefile *.{c$_h$_$n})
-bins: $n $b
+bits: $n $b
 	stat -c "%n %sB" $^
 repl: $b
 	@$(call Wx, rlwrap, rlwrap $r -i, $r -i)
 
 .PHONY:\
- 	test clean perf valg sloc bins install\
+ 	test clean perf valg sloc bits install\
  	install-vim uninstall uninstall-vim repl

@@ -159,18 +159,32 @@ interp(branch) { Ap(xp == nil ? (obj) FF(ip) : (obj) GF(ip), xp); }
 interp(barnch) { Ap(xp == nil ? (obj) GF(ip) : (obj) FF(ip), xp); }
 // relational jumps
 interp(brlt)   {
-  Ap(*sp++ <  xp    ? (obj) GF(ip) : (obj) FF(ip), xp); }
+  if (*sp++ < xp) Ap((obj) GF(ip), xp);
+  Ap((obj) FF(ip), nil); }
+interp(brlt2)   {
+  if (*sp++ < xp) Ap((obj) FF(ip), xp);
+  Ap((obj) GF(ip), nil); }
 interp(brgteq) {
-  Ap(*sp++ <  xp    ? (obj) FF(ip) : (obj) GF(ip), xp); }
+  if (*sp++ < xp) Ap((obj) FF(ip), nil);
+  Ap((obj) GF(ip), xp); }
+interp(brgteq2) {
+  if (*sp++ < xp) Ap((obj) GF(ip), nil);
+  Ap((obj) FF(ip), xp); }
 interp(brlteq) {
-  Ap(*sp++ <= xp    ? (obj) GF(ip) : (obj) FF(ip), xp); }
+  if (*sp++ <= xp) Ap((obj) GF(ip), xp);
+  Ap((obj) FF(ip), nil); }
+interp(brlteq2) {
+  if (*sp++ <= xp) Ap((obj) FF(ip), xp);
+  Ap((obj) GF(ip), nil); }
 interp(brgt)   {
-  Ap(*sp++ <= xp    ? (obj) FF(ip) : (obj) GF(ip), xp); }
-
+  if (*sp++ <= xp) Ap((obj) FF(ip), nil);
+  Ap((obj) GF(ip), xp); }
+interp(brgt2)   {
+  if (*sp++ <= xp) Ap((obj) GF(ip), nil);
+  Ap((obj) FF(ip), xp); }
 interp(breq)   {
   if (eql(*sp++, xp)) Ap((obj) GF(ip), Pn(1));
   Ap((obj) FF(ip), nil); }
-
 interp(brne)   {
   if (eql(*sp++, xp)) Ap((obj) FF(ip), Pn(1));
   Ap((obj) GF(ip), nil); }

@@ -7,12 +7,8 @@
 #include <string.h>
 #include <errno.h>
 
-#ifndef NOM
 #define NOM "lips"
-#endif
-#ifndef BOOT
 #define BOOT "prelude."NOM
-#endif
 #define USR_PATH ".local/lib/"NOM"/"
 #define SYS_PATH "/usr/lib/"NOM"/"
 static Inline int seekp(const char* p) {
