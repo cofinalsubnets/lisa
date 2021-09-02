@@ -1,28 +1,22 @@
-(: (endl) (putc (char "
-")))
+(::: test (:
+ (puts s) (>>= s 0 (slen s) (:
+  (loop s i n)
+   (? (< i n) (, (putc (sget s i)) (loop s (+ i 1) n)))))
 
-(: (puts s) (:
- (loop s i n)
-  (? (< i n) (, (putc (sget s i)) (loop s (+ i 1) n)))
- (loop s 0 (slen s))))
+ (term-esc string) (puts (ap str (X 0x1b (chars string))))
+ (green) (term-esc "[32m")
+ (red)   (term-esc "[31m")
+ (reset) (term-esc "[0m")
 
-(: ESC 0x1b)
-(: (term-esc string) (puts (ap str (X ESC (chars string)))))
-(: (green) (term-esc "[32m")
-   (red)   (term-esc "[31m")
-   (reset) (term-esc "[0m"))
-
-(: (color-text col s) (, (col) (puts s) (reset)))
-(: (green-text s) (color-text green s))
-(: (red-text s) (color-text red s))
-
-(: box tbl (get b) (tget b ()) (set b x) (tset b () x) (mut b f) (set b (f (get b))))
-
-(::: test (\ n ts .
- (: them (box)
-    (te x) (L '? x (L green-text ".") (L ', (L mut them (cu X x)) (L red-text "X")))
-  (L ',
-   (X ', (X (L . (L '` (? (symp n) n (ssym n)))) (map ts te)))
-   (L endl)
-   (L each (L get them) .)
-   ))))
+ (color-text col s) (, (col) (puts s) (reset))
+ (green-text s) (color-text green s)
+ (red-text s) (color-text red s)
+ box (tbl)
+ (get) (tget box ())
+ (set x) (tset box () x)
+ (mut f) (set box (f (get box)))
+ (T x) (L '? x (L green-text ".") (L ', (L mut (cu X x)) (L red-text "X")))
+ (\ n ts . (L ',
+  (X ', (X (L . (L '` (? (symp n) n (ssym n)))) (map ts T)))
+  (L .)
+  (L each (L get) .)))))

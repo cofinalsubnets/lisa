@@ -8,21 +8,20 @@
   ; standard library functions
   (: ; some aliases
      ~ nilp 2p twop Hp homp Tg tget Ts tset Td tdel Th thas
+     ~~ '(())
 
-     ; basic functional programmings
+     ; functional programmings
      (id x) x
      (const x) (\ x)
-     (co xs .) (foldl xs id (\ m f (\ x (f (m x)))))
+     (co xs .) (foldl1 xs (\ m f (\ x . (f (ap m x)))))
 
      ; logic
-     (and l)  (? l (? (A l) (and (B l))) 1)
-     (&& l .) (and l)
-     (or l)   (? l (: a (A l) (? a a (or (B l)))))
-     (|| l .) (or l)
+     (&& l .) ((: (& l) (? l (? (A l) (& (B l))) 1) l))
+     (|| l .) ((: (| l) (? l (: a (A l) (? a a (| (B l)))))) l)
      (each x f) (? x (, (f (A x)) (each (B x) f)))
-     (all l p) (? l (? (p (A l)) (all (B l) p)) 0)
-     (any l p) (? l (? (p (A l)) 0 (any (B l) p)))
-     (part l p) (foldr l '(()) (\ a m
+     (all l p) (? l (? (p (A l)) (all (B l) p)) 1)
+     (any l p) (? l (? (p (A l)) 1 (any (B l) p)))
+     (part l p) (foldr l ~~ (\ a m
       (? (p a) (X (X a (A m)) (B m))
                (X (A m) (X a (B m))))))
 
@@ -48,7 +47,7 @@
      ((flip f) x y) (f y x)
      ((diag f) x) (f x x)
      ((cu f x .) y .) (ap f (cat x y))
-     ({set} x .) (: d (tbl) (, (each x (\ y (Ts d y ()))) d))
+     ({} x .) (: d (tbl) (, (each x (\ y (Ts d y ()))) d))
 
      ; numbers
      (abs x) (? (< x 0) (- x) x)
@@ -94,8 +93,8 @@
    'AA (\ x (X A (L (X A (L x))))) 'AB (\ x (X A (L (X B (L x)))))
    'BA (\ x (X B (L (X A (L x))))) 'BB (\ x (X B (L (X B (L x)))))
    'char (\ x (L sget (Q x) 0))
-   '&& (\ x . (? x ((: (& x)
-     (? (B x) (L '? (A x) (& (B x))) (A x))) x) 1))
+   '&& (\ x . (? x ((: (& x) (? (B x) (L '? (A x) (& (B x))) (A x))) x) 1))
+   '|| (\ x . ((: (| x) (? x (: q (ygen) (L ': q (A x) (L '? q q (| (B x))))))) x))
    '>>= (\ x . (X (last x) (init x)))
    'case (\ x a . (: y (ygen)
     (L ': y x ((: (loop a)
@@ -155,11 +154,11 @@
    (? (&& (Th ns y) (~ (Th (Tg e'def) y)))
     (X 'here (Tg ns y))
     (X 'wait ns))
-  (memq (Tg e'clo) y) (X 'clo e)
-  (memq (Tg e'dfr) y) (X 'wait (Tg e'val))
-  (memq (Tg e'loc) y) (X 'loc e)
-  (memq (Tg e'arg) y) (X 'arg e)
-  (look (Tg e'par) y))
+  (memq (Tg e 'clo) y) (X 'clo e)
+  (memq (Tg e 'dfr) y) (X 'wait (Tg e'val))
+  (memq (Tg e 'loc) y) (X 'loc e)
+  (memq (Tg e 'arg) y) (X 'arg e)
+  (look (Tg e 'par) y))
 
  ; ltu : compile a lambda expression.
  ; depending on if it encloses any variables, a lambda
@@ -178,7 +177,7 @@
    (< i 0) (emi i-vararg (emx (- (- i) 1) k))
    k))
 
-  n (|| (B l) '(()))
+  n (|| (B l) ~~)
   f (env (init n) e (X nom (Tg e'nom)) nom)
   x (weak f (last n))
 
@@ -186,7 +185,7 @@
    ; if the function is nonvariadic and all it does is apply
    ; a second known function to its exact list of arguments,
    ; then it's an alias for the second function.
-   (&& (2p x) (Hp (A x)) (>= (Tg f 'sig) 0) (= (B x) (Tg f'arg)))
+   (&& (2p x) (Hp (A x)) (>= (Tg f 'sig) 0) (= (B x) (Tg f 'arg)))
     (A x)
    ; otherwise compile it
    (? (: k (hfin (ar (loc ((eval x ini) f 4))))
@@ -283,8 +282,8 @@
   ; no free variables that aren't being deferred, this time
   ; ltu will definitely return a function, which is stored in
   ; the known value set.
-  (f4 kvs) (? (~ kvs)
-   (Ts e'loc (tkeys (Tg e'def)))
+  (f4 kvs) (?
+   (~ kvs) (Ts e'loc (tkeys (Tg e'def)))
    (, (Td (Tg e'def) (: kv (A kvs) k (A kv)))
       (Ts e 'dfr (X k (Tg e'dfr)))
       (f4 (B kvs))
@@ -311,7 +310,7 @@
     (loop e x) (? x (:
      y (nom (A x))
      ll (loop e (BB x))
-     (X y (X (Tg (Tg e'def) y) ll))))
+     (X y (X (Tg (Tg e 'def) y) ll))))
     (? (B x) (? (= 0 (% (len x) 2)) (sug x)
                 (X ': (loop e (B x))))))
 
@@ -340,8 +339,7 @@
       (X a (X (wv e (A (B x))) (rec e (BB x))))
      (unq a) (L (wv e (AB x)))
      (rec e (BB x)))
-    (? (: r (rec e x))
-     (? (B r) (X '? r) (A r))))
+    (? (: r (rec e x)) (? (B r) (X '? r) (A r))))
 
    (seq e x) (:
     (loop e x) (? (~ (B x)) (L (wv e (A x))) (:
@@ -358,9 +356,9 @@
    ; users should be able to provide their own monoid instances
    ; (or whatever).
 
-   pure (imm ({set}
-    L X A B + - * / % & | ^ << >> id flip cat iota rho const
-    cu const snoc init last rev ldel memq at idx len
+   pure (imm ({}
+    L X A B Q + - * / % & | ^ << >> id flip cat iota rho const
+    = ~ <= >= < > cu const snoc init last rev ldel memq at idx len
     homp nilp symp nump tblp strp twop vecp
     && || scat slen sget ssub str))
 
@@ -368,8 +366,8 @@
    ; with certain algebraic properties. the nullary case for
    ; any grouplike function has to return its structure's
    ; identity element.
-   abelians (imm ({set} && || + *)) ; arguments can be combined freely
-   monoids (imm ({set} scat cat))   ; pairs of consecutive arguments can be combined in place
+   abelians (imm ({} && || + *)) ; arguments can be combined freely
+   monoids (imm ({} scat cat))   ; pairs of consecutive arguments can be combined in place
 
    a (A x) (case a
     '` (? (B x) x)
@@ -430,12 +428,12 @@
               (fail))
       k))
 
- ((-> t k) e m) (:
+ (-> t k) (:
   (tc h) (case (consumes h)
    () h
    t (tc (hseek h 1))
    (fail))
-  ((? t tc id) (k e m)))
+  (co k (? t tc id)))
 
  (consumes h) (case (hgeti h)
   i-idH 'hom i-idZ 'num
@@ -600,23 +598,20 @@
      (xc i-push (eval (A x) (>- t0
       (xc i-tset (-> t3 k))))))))))
 
-  ((sa_ f i) x k)
-   (: y (mono + 0 (B x)) 
-      z (? (nump (A x))
-         (mono f (A x) y)
-         (X (A x) y))
-    (eval (A z) (>- 'num (2f i k (B z)))))
+  ((shift f i) x k) (:
+   y (mono + 0 (B x))
+   z (? (nump (A x)) (mono f (A x) y) (X (A x) y))
+   (eval (A z) (>- 'num (2f i k (B z)))))
 
   (tbl
    id (\ x k (eval (A x) k))
    + (abel + i-add)
-   - (\ x k
-    (? (~ x) (Im 0 k)
-       (~ (B x)) ((1y i-neg 'num 'num) x k)
-       (: y (mono + 0 (B x))
-          z (? (nump (A x)) (mono - (A x) y) (X (A x) y))
-        (? z (eval (A z) (>- 'num (2f i-sub k (B z))))
-             (Im 0 k)))))
+   - (\ x k (?
+    (~ x) (Im 0 k)
+    (~ (B x)) ((1y i-neg 'num 'num) x k)
+    (: y (mono + 0 (B x))
+       z (? (nump (A x)) (mono - (A x) y) (X (A x) y))
+     (? z (eval (A z) (>- 'num (2f i-sub k (B z)))) (Im 0 k)))))
    * (abel * i-mul)
    / (\ x k (?
     (~ x) (Im 1 k)
@@ -629,8 +624,8 @@
    & (abel & i-band)
    | (abel | i-bor)
    ^ (abel ^ i-bxor)
-   >> (sa_ >> i-sar)
-   << (sa_ << i-sal)
+   >> (shift >> i-sar)
+   << (shift << i-sal)
 
    A (1y i-car 'two ())
    B (1y i-cdr 'two ())
@@ -640,8 +635,8 @@
     (Im () (loop x k))))
 
 
-   emi  (2y i-emi 'num 'hom 'hom)
-   emx  (2y i-emx () 'hom 'hom)
+   emi (2y i-emi 'num 'hom 'hom)
+   emx (2y i-emx () 'hom 'hom)
 
    tget (2y i-tget 'tbl () ())
    tset (3y i-tset 'tbl () () ())
@@ -653,26 +648,23 @@
    = (\ x k (?
 
     (|| (~ x)
-        (&& (: q (map (filter x qtd) unq))
-            (: r (A q) (any (B q) (\ v (~ (= v r)))))))
+     (&& (: q (map (filter x qtd) unq))
+         (: r (A q) (any (B q) (\ v (~ (= v r)))))))
      (Im () k)
 
-    (~ (B x))
-     (Im 1 k)
+    (~ (B x)) (Im 1 k)
 
-    (eval (A x) (xc i-push (?
-     (: (fold k x y) (: l
-         (eval x (xc i-eq (? y
-          (xc i-barnch (peek2 (fold k (A y) (B y))))
-          k)))
-         (? y (xc i-dupl l) l))
-      (pop2 (fold (push2 k) (AB x) (BB x))))
-     )))))
+    (eval (A x) (xc i-push (:
+     (fold k x y) (:
+      l (eval x (xc i-eq (? (~ y) k
+         (xc i-barnch (peek2 (fold k (A y) (B y)))))))
+      (? y (xc i-dupl l) l))
+     (pop2 (fold (push2 k) (AB x) (BB x))))))))
 
    nilp (1y i-nilpp () ())
    fail (0y i-fail ())))
 
-  (ini e m) ((xc i-ret (xd (Tg e 'nom) (\ e m (hom m)))) e m)
+  (ini e m) ((xc i-ret (xd (Tg e 'nom) (\ _ m (hom m)))) e m)
   (ev x) (: e (env () () 'ev) (((eval (weak e x) ini) e 0) x))
   ;; end of compiler namespace ; now return the eval function
 ;  ev ; comment this line to define internals at toplevel

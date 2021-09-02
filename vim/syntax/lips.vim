@@ -15,36 +15,34 @@ else
 endif
 
 syn match lipsSymbol contained ![^()'`,"; \t]\+!
-syn match lipsBarSymbol contained !|..\{-}|!
 if exists("g:lips_rainbow") && g:lips_rainbow != 0
-  syn region lipsParen0           matchgroup=hlLevel0 start="`\=(" end=")" skip="|.\{-}|" contains=@lipsListCluster,lipsParen1
-  syn region lipsParen1 contained matchgroup=hlLevel1 start="`\=(" end=")" skip="|.\{-}|" contains=@lipsListCluster,lipsParen2
-  syn region lipsParen2 contained matchgroup=hlLevel2 start="`\=(" end=")" skip="|.\{-}|" contains=@lipsListCluster,lipsParen3
-  syn region lipsParen3 contained matchgroup=hlLevel3 start="`\=(" end=")" skip="|.\{-}|" contains=@lipsListCluster,lipsParen4
-  syn region lipsParen4 contained matchgroup=hlLevel4 start="`\=(" end=")" skip="|.\{-}|" contains=@lipsListCluster,lipsParen5
-  syn region lipsParen5 contained matchgroup=hlLevel5 start="`\=(" end=")" skip="|.\{-}|" contains=@lipsListCluster,lipsParen6
-  syn region lipsParen6 contained matchgroup=hlLevel6 start="`\=(" end=")" skip="|.\{-}|" contains=@lipsListCluster,lipsParen7
-  syn region lipsParen7 contained matchgroup=hlLevel7 start="`\=(" end=")" skip="|.\{-}|" contains=@lipsListCluster,lipsParen8
-  syn region lipsParen8 contained matchgroup=hlLevel8 start="`\=(" end=")" skip="|.\{-}|" contains=@lipsListCluster,lipsParen9
-  syn region lipsParen9 contained matchgroup=hlLevel9 start="`\=(" end=")" skip="|.\{-}|" contains=@lipsListCluster,lipsParen0
+  syn region lipsParen0           matchgroup=hlLevel0 start="`\=(" end=")" contains=@lipsListCluster,lipsParen1
+  syn region lipsParen1 contained matchgroup=hlLevel1 start="`\=(" end=")" contains=@lipsListCluster,lipsParen2
+  syn region lipsParen2 contained matchgroup=hlLevel2 start="`\=(" end=")" contains=@lipsListCluster,lipsParen3
+  syn region lipsParen3 contained matchgroup=hlLevel3 start="`\=(" end=")" contains=@lipsListCluster,lipsParen4
+  syn region lipsParen4 contained matchgroup=hlLevel4 start="`\=(" end=")" contains=@lipsListCluster,lipsParen5
+  syn region lipsParen5 contained matchgroup=hlLevel5 start="`\=(" end=")" contains=@lipsListCluster,lipsParen6
+  syn region lipsParen6 contained matchgroup=hlLevel6 start="`\=(" end=")" contains=@lipsListCluster,lipsParen7
+  syn region lipsParen7 contained matchgroup=hlLevel7 start="`\=(" end=")" contains=@lipsListCluster,lipsParen8
+  syn region lipsParen8 contained matchgroup=hlLevel8 start="`\=(" end=")" contains=@lipsListCluster,lipsParen9
+  syn region lipsParen9 contained matchgroup=hlLevel9 start="`\=(" end=")" contains=@lipsListCluster,lipsParen0
 else
-  syn region lipsList   matchgroup=lipsParen start="("   skip="|.\{-}|"   matchgroup=lipsParen end=")" contains=@lipsListCluster
-  syn region lipsBQList   matchgroup=PreProc   start="`("  skip="|.\{-}|"   matchgroup=PreProc   end=")"  contains=@lipsListCluster
+  syn region lipsList   matchgroup=lipsParen start="(" matchgroup=lipsParen end=")" contains=@lipsListCluster
+  syn region lipsBQList   matchgroup=PreProc   start="`(" matchgroup=PreProc   end=")"  contains=@lipsListCluster
 endif
 
 " ---------------------------------------------------------------------
 syn match lipsAtomMark   "'"
 syn match lipsAtom   "'("me=e-1   contains=lipsAtomMark nextgroup=lipsAtomList
 syn match lipsAtom   "'[^ \t()]\+"   contains=lipsAtomMark
-syn match lipsAtomBarSymbol  !'|..\{-}|!   contains=lipsAtomMark
 syn region lipsAtom   start=+'"+   skip=+\\"+ end=+"+
-syn region lipsAtomList   contained   matchgroup=Special start="(" skip="|.\{-}|" matchgroup=Special end=")" contains=@lipsAtomCluster,lipsString,lipsEscapeSpecial
+syn region lipsAtomList   contained   matchgroup=Special start="(" matchgroup=Special end=")" contains=@lipsAtomCluster,lipsString,lipsEscapeSpecial
 syn match lipsAtomNmbr   contained   "\<\d\+"
 syn match lipsLeadWhite   contained   "^\s\+"
 
 " ---------------------------------------------------------------------
-syn iskeyword @,!,37-38,42-47,:,60-63,\,`,|,~
-syn keyword lipsFunc < <= = > >= + - ~ * / % ? ` : \\ , . A B X L Q && \|\|
+syn iskeyword @,!,37-38,42-47,:,60-63,\,`,|,~,^
+syn keyword lipsFunc < <= = > >= + - ~ * / % ? ` : \\ , . A B X L Q && \|\| \| & ^ << >>
 syn keyword lipsFunc vecp ::: >>= case
 syn keyword lipsFunc twop nump symp tblp strp nilp homp ev ap
 syn keyword lipsFunc str slen sget scat ssub ssym ystr ygen fail
@@ -53,7 +51,7 @@ syn keyword lipsFunc tbl tget tset tlen thas tkeys tdel
 
 syn region lipsString start=+"+ skip=+\\\\\|\\"+ end=+"+ contains=@Spell
 if exists("g:lips_instring")
-  syn region lipsInString keepend matchgroup=Delimiter start=+"(+rs=s+1 skip=+|.\{-}|+ matchgroup=Delimiter end=+)"+ contains=@lipsBaseListCluster,lipsInStringString
+  syn region lipsInString keepend matchgroup=Delimiter start=+"(+rs=s+1 matchgroup=Delimiter end=+)"+ contains=@lipsBaseListCluster,lipsInStringString
   syn region lipsInStringString start=+\\"+ skip=+\\\\+ end=+\\"+ contained
 endif
 

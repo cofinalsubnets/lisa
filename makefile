@@ -91,7 +91,7 @@ perf.data: $b $p
 valg: $b
 	@$(call W, valgrind, valgrind $t)
 sloc:
-	@$(call W, cloc, cloc --by-file --force-lang=Lisp$_$n makefile *.{c$_h$_$n})
+	@$(call W, cloc, cloc --by-file --force-lang=Lisp$_$n makefile *.{c$_h$_$n} test/*)
 bits: $n $b
 	stat -c "%n %sB" $^
 repl: $b
