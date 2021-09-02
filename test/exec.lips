@@ -1,0 +1,21 @@
+(test execution
+ (= 1 (ccc (\ ret ; call/cc
+  (, (ret 1) (fail "unreachable")))))
+
+ ((\ q (= (ev q) q)) ; a quine
+  ((\ q ((ev q) q))
+   '(\ q (L q (Q q)))))
+
+ (= 2178309 (>>= 32 (: (fib n)
+  (? (< n 3) 1 ;; fibonacci function
+   (+ (fib (- n 1)) (fib (- n 2)))))))
+
+ (= 4093 (>>= 3 9 (: (ack m n)
+  (? (< m 1) (+ n 1) ;; ackermann function
+   (ack (- m 1) (? (> n 0) (ack m (- n 1)) 1))))))
+
+ (= 13 (>>= 12 13 14 (: (tarai x y z)
+  (? (<= x y) y (tarai
+   (tarai (- x 1) y z)
+   (tarai (- y 1) x z)
+   (tarai (- z 1) x y)))))))

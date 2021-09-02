@@ -6,69 +6,75 @@
 (: egg '(,
 
   ; standard library functions
-  (: ~ nilp 2p twop Hp homp Tg tget Ts tset Td tdel Th thas
+  (: ; some aliases
+     ~ nilp 2p twop Hp homp Tg tget Ts tset Td tdel Th thas
+
+     ; basic functional programmings
+     (id x) x
+     (const x) (\ x)
+     (co xs .) (foldl xs id (\ m f (\ x (f (m x)))))
+
+     ; logic
      (and l)  (? l (? (A l) (and (B l))) 1)
      (&& l .) (and l)
      (or l)   (? l (: a (A l) (? a a (or (B l)))))
      (|| l .) (or l)
-
-     (L . .) .
-     (Q x) (L '` x)
-     (cat a .)
-      (foldr a () (: (app a b)
-       (? a (X (A a) (app (B a) b)) b)))
-
-     (iota n x .)
-      (: (loop m n) (? (< m n) (X m (loop (+ m 1) n)))
-       (? (~ x) (loop 0 n) (loop n (A x))))
-
-     (rho n xs .)
-      (: (loop n x) (? (= n 1) x (cat x (loop (- n 1) x)))
-       (? (> n 0) (loop n xs)))
-
-     (id x) x
-     ; these get redefined later
-     (const x) (\ x)
-     (co xs .) (foldl xs id (\ m f (\ x (f (m x)))))
-
-     (foldr x z f) (? x (f (A x) (foldr (B x) z f)) z)
-     (foldl x z f) (? x (foldl (B x) (f z (A x)) f) z)
-     (foldl1  x f) (foldl (B x) (A x) f)
-     (foldr1  x f) (? (B x) (f (A x) (foldr1 (B x) f)) (A x))
-     (map     x f) (foldr x () (\ x m (X (f x) m)))
-
-     (enumerate l) (? l
-      (>>= 0 l (: (inner i l) (? (B l)
-       (X (X (A l) i) (inner (+ i 1) (B l)))
-       (L (X (A l) i))))))
-
      (each x f) (? x (, (f (A x)) (each (B x) f)))
      (all l p) (? l (? (p (A l)) (all (B l) p)) 0)
      (any l p) (? l (? (p (A l)) 0 (any (B l) p)))
      (part l p) (foldr l '(()) (\ a m
       (? (p a) (X (X a (A m)) (B m))
                (X (A m) (X a (B m))))))
-     (intercal i l) (:
-      (loop i l m) (? (~ m) l (cat l i (intercal i m)))
-      (? l (loop i (A l) (B l))))
+
+     ; data constructors
+     (L . .) .
+     (Q x) (L '` x)
+     (iota n x .)
+      (: (loop m n) (? (< m n) (X m (loop (+ m 1) n)))
+       (? (~ x) (loop 0 n) (loop n (A x))))
+     (rho n xs .)
+      (: (loop n x) (? (= n 1) x (cat x (loop (- n 1) x)))
+       (? (> n 0) (loop n xs)))
+
+     ; strings
      (chars s)
       (: (loop s n)
           (? (= n (slen s)) ()
            (X (sget s n) (loop s (+ n 1))))
        (loop s 0))
 
-     (filter x p) (foldr x () (\ x m (? (p x) (X x m) m)))
+     ; functions
      (at l n) (? (< n 1) (A l) (at (B l) (- n 1)))
      ((flip f) x y) (f y x)
      ((diag f) x) (f x x)
      ((cu f x .) y .) (ap f (cat x y))
      ({set} x .) (: d (tbl) (, (each x (\ y (Ts d y ()))) d))
 
+     ; numbers
+     (abs x) (? (< x 0) (- x) x)
+     (even x) (? (= 0 (& x 1)))
+     (odd x) (? (= 1 (& x 1)))
+
+     ; lists
+     (cat a .)
+      (foldr a () (: (app a b)
+       (? a (X (A a) (app (B a) b)) b)))
+     (filter x p) (foldr x () (\ x m (? (p x) (X x m) m)))
+     (foldr x z f) (? x (f (A x) (foldr (B x) z f)) z)
+     (foldl x z f) (? x (foldl (B x) (f z (A x)) f) z)
+     (foldl1  x f) (foldl (B x) (A x) f)
+     (foldr1  x f) (? (B x) (f (A x) (foldr1 (B x) f)) (A x))
+     (map     x f) (foldr x () (\ x m (X (f x) m)))
      (snoc l x) (? l (X (A l) (snoc (B l) x)) (L x))
+     (enumerate l) (? l
+      (>>= 0 l (: (inner i l) (? (B l)
+       (X (X (A l) i) (inner (+ i 1) (B l)))
+       (L (X (A l) i))))))
+     (intercal i l) (:
+      (loop i l m) (? (~ m) l (cat l i (intercal i m)))
+      (? l (loop i (A l) (B l))))
      (init l) (? (B l) (X (A l) (init (B l))))
      (last l) (? (B l) (last (B l)) (A l))
-
-     (abs x) (? (< x 0) (- x) x)
      (memq x k) (? x (? (= k (A x)) x (memq (B x) k)))
      (rev l) (foldl l () (\ r x (X x r)))
      (ldel l k) (filter l (\ x (~ (= x k))))
