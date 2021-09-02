@@ -162,7 +162,6 @@ extern const uint32_t *tnoms;
 #define Avail (Sp-Hp)
 #define OK EXIT_SUCCESS
 #define NO EXIT_FAILURE
-#define xval(x) ((x)?NO:OK)
 
 #define mix ((u64)2708237354241864315)
 #define interns(v,c) intern(v,string(v,c))
@@ -190,4 +189,7 @@ static Inline obj spop(lips v) {
 
 static Inline u64 b2w(u64 b) {
  return b / W + (b % W && 1); }
+
+static Inline int xval(obj x) {
+ return x ? OK : NO; }
 #endif

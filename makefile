@@ -1,12 +1,12 @@
 # build config
 #
-n=lips#         | binary name
-m=$n.1#         | manpage
-b=$n.bin#       | dev binary
-p=prelude.$n#   | boot script
-r=./$b -_ $p#   | dev run command
-LC_ALL=C#       | for sorting
-t=$r test.lips test/*#    | test command
+n=lips#                          | binary name
+m=$n.1#                          | manpage
+b=$n.bin#                        | dev binary
+p=prelude.$n#                    | boot script
+r=./$b -_ $p#                    | dev run command
+LC_ALL=C#                        | for sorting
+t=$r $(sort $(wildcard test/*))# | test command
 #
 # compiler stuff ...
 CC ?= gcc# gcc seems to do better than clang

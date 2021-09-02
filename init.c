@@ -25,15 +25,16 @@ obj script(lips v, const char *path, FILE *f) {
  if (!f) return
    errp(v, "%s : %s", path, strerror(errno)),
    lips_fin(v),
-   NO;
+   0;
  jmp_buf re;
  v->restart = &re;
  if (setjmp(re)) return
   errp(v, "%s : fail", path),
-  fclose(f), (obj) lips_fin(v);
+  fclose(f),
+  (obj) lips_fin(v);
  obj x;
  while ((x = parse(v, f))) eval(v, x);
- return x = feof(f) ? x : 0, fclose(f), x; }
+ return x = feof(f) ? (x || nil) : 0, fclose(f), x; }
 
 int lips_boot(lips v) {
  const char * const path = BOOT;
