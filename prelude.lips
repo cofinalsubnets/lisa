@@ -16,8 +16,8 @@
      (co xs .) (foldl1 xs (\ m f (\ x . (f (ap m x)))))
 
      ; logic
-     (&& l .) ((: (& l) (? l (? (A l) (& (B l))) 1) l))
-     (|| l .) ((: (| l) (? l (: a (A l) (? a a (| (B l)))))) l)
+     (&& l .) (all l id)
+     (|| l .) (any l id)
      (each x f) (? x (, (f (A x)) (each (B x) f)))
      (all l p) (? l (? (p (A l)) (all (B l) p)) 1)
      (any l p) (? l (? (p (A l)) 1 (any (B l) p)))
@@ -64,6 +64,10 @@
      (foldl1  x f) (foldl (B x) (A x) f)
      (foldr1  x f) (? (B x) (f (A x) (foldr1 (B x) f)) (A x))
      (map     x f) (foldr x () (\ x m (X (f x) m)))
+     flatmap (co map (cu ap cat))
+     (zip f a .) (? (all a id)
+      (X (ap f (map a A)) (ap zip (X f (map a B)))))
+     (transp x) (ap zip (X L x))
      (snoc l x) (? l (X (A l) (snoc (B l) x)) (L x))
      (enumerate l) (? l
       (>>= 0 l (: (inner i l) (? (B l)
@@ -357,7 +361,7 @@
    ; (or whatever).
 
    pure (imm ({}
-    L X A B Q + - * / % & | ^ << >> id flip cat iota rho const
+    L X A B Q + - * / % & | ^ << >> id flip iota rho const
     = ~ <= >= < > cu const snoc init last rev ldel memq at idx len
     homp nilp symp nump tblp strp twop vecp
     && || scat slen sget ssub str))
@@ -671,7 +675,7 @@
   )))))
 
 (Ts macros 'imm ((ev egg) egg)) ; bootstrap
-(: (co x .) (ev (L '\ 'x (foldl x 'x (\ m e (L (Q e) m)))))
+(: (co a x .) (ev (L '\ 'x '. (foldl x (L ap a 'x) (flip L))))
    (const x) (emi i-imm (emx x (emi i-ret (emx '(() const) (hom 4))))))
 
 ; " drop privileges "
