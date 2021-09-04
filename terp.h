@@ -24,26 +24,30 @@
   _(brlt2), _(brlteq2), _(brgt2), _(brgteq2),\
   _(brgt),   _(brne),   _(tbll),   _(tblmk),\
   _(tblg),   _(tblc),   _(tbls),   _(tbld),   _(tblks),\
-  _(hom_seek_u), _(hom_geti_u), _(hom_getx_u),\
+  _(hseek_u), _(hgeti_u), _(hgetx_u),\
   _(ssym_u), _(ystr_u), _(putc_u),\
   _(fail),   _(ccc_u),  _(cont),   _(vararg), _(tuck),\
   _(dupl),   _(emi),    _(drop),   _(emx_u),  _(emi_u),\
   _(emx),    _(em_u),   _(ev_u),   _(ap_u), _(rnd_u)
 #define prims(_)\
-  _("A", car_u),     _("B", cdr_u),          _("X", cons_u),    _("=", eq_u),\
-  _("<", lt_u),      _("<=", lteq_u),        _(">", gt_u),      _(">=", gteq_u),\
-  _(">>", sar_u), _("<<", sal_u), _("&", band_u), _("|", bor_u), _("^", bxor_u),\
-  _("+", add_u),     _("-", sub_u),          _("*", mul_u),     _("/", div_u),\
-  _("%", mod_u),     _("ap", ap_u),          _("ccc", ccc_u),   _("ev", ev_u),\
-  _("fail", fail),   _("tbl", tblmk),        _("tget", tblg),   _("tset", tbls),\
-  _("thas", tblc),   _("tdel", tbld),        _("tkeys", tblks), _("tlen", tbll),\
-  _("slen", strl),   _("sget", strg),        _("scat", strconc),   _("ssub", strs),\
-  _("str", strmk),   _("ygen", gsym_u),    _(".", em_u),\
+  _("A", car_u),     _("B", cdr_u),          _("X", cons_u),\
+  _("=", eq_u),      _("<", lt_u),           _("<=", lteq_u),\
+  _(">", gt_u),      _(">=", gteq_u),        _(">>", sar_u),\
+  _("<<", sal_u),    _("&", band_u),         _("|", bor_u),\
+  _("^", bxor_u),    _("+", add_u),          _("-", sub_u),\
+  _("*", mul_u),     _("/", div_u),          _("%", mod_u),\
+  _("ap", ap_u),     _("ccc", ccc_u),        _("ev", ev_u),\
+  _("fail", fail),   _("tbl", tblmk),        _("tget", tblg),\
+  _("tset", tbls),   _("thas", tblc),        _("tdel", tbld),\
+  _("tkeys", tblks), _("tlen", tbll),        _("slen", strl),\
+  _("sget", strg),   _("scat", strconc),     _("ssub", strs),\
+  _("str", strmk),   _("ygen", gsym_u),      _(".", em_u),\
   _("ssym", ssym_u), _("ystr", ystr_u),      _("putc", putc_u),\
-  _("vecp", vecp_u), _("nump", nump_u),      _("symp", symp_u), _("twop", twop_u),\
-  _("tblp", tblp_u), _("strp", strp_u),      _("nilp", nilp_u), _("homp", homp_u),\
-  _("hom", hom_u),   _("hseek", hom_seek_u), _("emx", emx_u),   _("hgetx", hom_getx_u),\
-  _("emi", emi_u),   _("hgeti", hom_geti_u), _("hfin", hfin_u), _("rand", rnd_u)
+  _("vecp", vecp_u), _("nump", nump_u),      _("symp", symp_u),\
+  _("twop", twop_u), _("tblp", tblp_u),      _("strp", strp_u),\
+  _("nilp", nilp_u), _("homp", homp_u),      _("hom", hom_u),\
+  _("hseek", hseek_u), _("emx", emx_u),   _("hgetx", hgetx_u),\
+  _("emi", emi_u),   _("hgeti", hgeti_u), _("hfin", hfin_u), _("rand", rnd_u)
 
 #define ninl(x) x NoInline
 terp insts(ninl);

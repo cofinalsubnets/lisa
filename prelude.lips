@@ -69,6 +69,8 @@
       (X (ap f (map a A)) (ap zip (X f (map a B)))))
      (transp x) (ap zip (X L x))
      (snoc l x) (? l (X (A l) (snoc (B l) x)) (L x))
+     (randn n) (% (abs (rand)) n)
+     (sample l) (at l (randn (len l)))
      (enumerate l) (? l
       (>>= 0 l (: (inner i l) (? (B l)
        (X (X (A l) i) (inner (+ i 1) (B l)))

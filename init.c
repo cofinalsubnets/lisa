@@ -7,19 +7,9 @@
 #include <string.h>
 #include <errno.h>
 
-#define NOM "lips"
-#define BOOT "prelude."NOM
-#define USR_PATH ".local/lib/"NOM"/"
-#define SYS_PATH "/usr/lib/"NOM"/"
-static Inline int seekp(const char* p) {
- int b, c;
- b = openat(AT_FDCWD, getenv("HOME"), O_RDONLY);
- c = openat(b, USR_PATH, O_RDONLY), close(b);
- b = openat(c, p, O_RDONLY), close(c);
- if (b > -1) return b;
- b = openat(AT_FDCWD, SYS_PATH, O_RDONLY);
- c = openat(b, p, O_RDONLY), close(b);
- return c; }
+#ifndef PREFIX
+#define PREFIX "/usr/local"
+#endif
 
 obj script(lips v, const char *path, FILE *f) {
  if (!f) return
@@ -37,10 +27,8 @@ obj script(lips v, const char *path, FILE *f) {
  return x = feof(f) ? (x || nil) : 0, fclose(f), x; }
 
 int lips_boot(lips v) {
- const char * const path = BOOT;
- int pre = seekp(path);
- if (pre == -1) return errp(v, "can't find %s", path), NO;
- return xval(script(v, path, fdopen(pre, "r"))); }
+ static const char *path = PREFIX "/lib/lips/prelude.lips";
+ return xval(script(v, path, fopen(path, "r"))); }
 
 lips lips_open() {
  lips v = malloc(sizeof(struct lips));

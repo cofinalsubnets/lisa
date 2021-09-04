@@ -1,3 +1,4 @@
+include config.mk
 # build config
 #
 n=lips#                          | binary name
@@ -5,19 +6,9 @@ m=$n.1#                          | manpage
 b=$n.bin#                        | dev binary
 p=prelude.$n#                    | boot script
 r=./$b -_ $p#                    | dev run command
-LC_ALL=C#                        | for sorting
 t=$r $(sort $(wildcard test/*))# | test command
 #
 # compiler stuff ...
-CC ?= gcc# gcc seems to do better than clang
-# fixnums need sign extended bitshifts.
-# other things tend to break TCO ...
-CFLAGS ?= -std=gnu17 -g -O2 -flto\
-	-Wall -Wstrict-prototypes\
-	-Wno-shift-negative-value\
-	-fno-stack-protector\
-	-fno-unroll-loops
-
 # build rules
 #
 # run tests
@@ -34,13 +25,6 @@ $n: $b
 
 # install config
 #
-ifeq ($(shell whoami), root)
-DESTDIR ?= /
-PREFIX ?= /usr/local
-else
-DESTDIR ?= $(HOME)
-PREFIX ?= /.local
-endif
 D=$(DESTDIR)$(PREFIX)
 B=$D/bin
 L=$D/lib/lips

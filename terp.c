@@ -353,17 +353,17 @@ interp(emi_u) {
  G(h) = (terp*) Gn(Argv[0]);
  Go(ret, h); }
 
-interp(hom_geti_u) {
+interp(hgeti_u) {
  Ar(1);
  Ty(Argv[0], Hom);
  Go(ret, Pn(G(Argv[0]))); }
 
-interp(hom_getx_u) {
+interp(hgetx_u) {
  Ar(1);
  Ty(Argv[0], Hom);
  Go(ret, (obj) G(Argv[0])); }
 
-interp(hom_seek_u) {
+interp(hseek_u) {
  Ar(2);
  Ty(Argv[0], Hom);
  Ty(Argv[1], Num);

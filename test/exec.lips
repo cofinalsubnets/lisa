@@ -1,10 +1,13 @@
-(test execution
- (= 1 (ccc (\ ret ; call/cc
-  (, (ret 1) (fail "unreachable")))))
-
+(test "a quine"
  ((\ q (= (ev q) q)) ; a quine
   ((\ q ((ev q) q))
-   '(\ q (L q (Q q)))))
+   '(\ q (L q (Q q))))))
+
+(test continuations
+ (= 1 (ccc (\ ret ; call/cc
+  (, (ret 1) (fail "unreachable"))))))
+
+(test "highly recursive functions"
 
  (= 2178309 (>>= 32 (: (fib n)
   (? (< n 3) 1 ;; fibonacci function
