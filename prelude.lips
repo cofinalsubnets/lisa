@@ -100,9 +100,9 @@
    'BA (\ x (X B (L (X A (L x))))) 'BB (\ x (X B (L (X B (L x)))))
    'char (\ x (L sget (Q x) 0))
    '&& (\ x . (? x ((: (& x) (? (B x) (L '? (A x) (& (B x))) (A x))) x) 1))
-   '|| (\ x . ((: (| x) (? x (: q (ygen) (L ': q (A x) (L '? q q (| (B x))))))) x))
+   '|| (\ x . ((: (| x) (? x (: q (sym) (L ': q (A x) (L '? q q (| (B x))))))) x))
    '>>= (\ x . (X (last x) (init x)))
-   'case (\ x a . (: y (ygen)
+   'case (\ x a . (: y (sym)
     (L ': y x ((: (loop a)
       (? a (? (B a) (L '? (L '= y (A a)) (A (B a))
                       (loop (B (B a))))
@@ -668,7 +668,7 @@
      (pop2 (fold (push2 k) (AB x) (BB x))))))))
 
    nilp (1y i-nilpp () ())
-   fail (0y i-fail ())))
+   fail (0y (hgeti fail) ())))
 
   (ini e m) ((xc i-ret (xd (Tg e 'nom) (\ _ m (hom m)))) e m)
   (ev x) (: e (env () () 'ev) (((eval (weak e x) ini) e 0) x))

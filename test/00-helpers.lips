@@ -18,6 +18,6 @@
  (T x) (L '? x (L green-text ".") (L ', (L mut (cu X x)) (L red-text "X")))
  (\ n ts . (L ',
   (set ())
-  (X ', (X (L . (L '` (? (symp n) n (ssym n)))) (map ts T)))
+  (X ', (X (L . (L '` (? (symp n) n (sym n)))) (map ts T)))
   (L .)
   (L each (L get) .)))))

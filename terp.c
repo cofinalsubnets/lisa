@@ -777,8 +777,6 @@ typp(num, Num) typp(hom, Hom) typp(str, Str) typp(tbl, Tbl)
 typp(two, Two) typp(sym, Sym) typp(nil, Nil) typp(vec, Vec)
 
 // stack manipulation
-interp(tuck) { Have1(); sp--, sp[0] = sp[1], sp[1] = xp; N(1); }
-interp(drop) { sp++; N(1); }
 interp(dupl) { Have1(); --sp; sp[0] = sp[1]; N(1); }
 
 interp(ystr_u) {
@@ -787,16 +785,13 @@ interp(ystr_u) {
  Ty(y, Sym);
  Go(ret, getsym(y)->nom); }
 
-interp(ssym_u) {
- Ar(1);
- obj x = *Argv;
- Ty(x, Str);
- CallC(x = intern(v, x));
- Go(ret, x); }
-
 // errors
 interp(fail) { Jump(nope, "fail"); }
 interp(gsym_u) {
+ if (Argc > Pn(0) && strp(*Argv)) {
+  obj x = *Argv;
+  CallC(x = intern(v, x));
+  Go(ret, x); }
  Have(Size(sym));
  sym y = (sym) hp;
  hp += Size(sym);

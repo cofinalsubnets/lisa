@@ -62,17 +62,17 @@ lips lips_init(lips v) {
  vec t = cells(v, Size(tup) + NGlobs);
  set64(t->xs, nil, t->len = NGlobs);
  obj z, y = Glob = puttup(t);
- with(y,
-  spush(v, table(v)),
-#define repr(a,b)defprim(v,a,b)
-#define rein(a)rin(v, "i-"#a,a)
-  prims(repr), insts(rein),
+ mm(&y);
+  spush(v, table(v));
+#define repr(a, b) if (b) defprim(v,b,a);
+#define rein(a, b) if (!b) rin(v, "i-"#a,a);
+  insts(repr) insts(rein)
   Top = spop(v),
   z = table(v), Mac = z,
 #define bsym(i,s)(z=interns(v,s),AR(y)[i]=z)
   bsym(Eval, "ev"), bsym(Apply, "ap"),
   bsym(Def, ":"),   bsym(Cond, "?"), bsym(Lamb, "\\"),
-  bsym(Quote, "`"), bsym(Seq, ","),  bsym(Splat, "."));
+  bsym(Quote, "`"), bsym(Seq, ","),  bsym(Splat, ".");
 #define def(s, x) (y=interns(v,s),tblset(v,Top,y,x))
  def("ns", Top), def("macros", Mac);
- return v; }
+ return um, v; }
