@@ -21,17 +21,6 @@ BWDQ(I)
 #undef I
 
 
-// mem{set,cpy,mov} analogs are defined for
-// 8, 16, 32 and 64 bit items
-#define M(n) u0\
- set##n(u0*, u##n, u64),\
- cpy##n(u0*, const u0*, u64),\
- cpy##n##r(u0*, const u0*, u64),\
- mov##n(u0*, const u0*, u64);
-BWDQ(M)
-#undef M
-
-
 // ASCII case folding
 #define coff ('a'-'A')
 static Inline char cmin(char c) {
@@ -57,4 +46,22 @@ static Inline i64 sidx(const char *s, char c) {
  for (i64 i = 0; *s; s++, i++) if (*s == c) return i;
  return -1; }
 
+// mem{set,cpy,mov} analogs are defined for
+// 8, 16, 32 and 64 bit items
+
+#define memn(n)\
+ static Inline u0 set##n(u0*_d,u##n i,u64 l) {\
+  for(u##n*d=_d;l--;*d++=i); }\
+ static Inline u0 cpy##n(u0*_d,const u0*_s, u64 l) {\
+  u##n*d=_d; const u##n*s=_s;\
+  while (l--) *d++=*s++; }\
+ static Inline u0 cpy##n##r(u0*_d,const u0*_s, u64 l) {\
+  u##n*d=_d; const u##n*s=_s;\
+  while (l--) d[l]=s[l]; }\
+ static Inline u0 mov##n(u0*_d,const u0*_s, u64 l) {\
+  if (_d<_s) cpy##n(_d, _s, l);\
+  else if (_d>_s) cpy##n##r(_d, _s, l); }
+BWDQ(memn)
+#undef memn
+#undef BWDQ
 #endif
