@@ -31,13 +31,30 @@ BWDQ(I)
 BWDQ(M)
 #undef M
 
-// null-terminated string functions
-u64 slen(const char*);              // string length
-i64 scmp(const char*, const char*), // string compare
-    sidx(const char*, char);        // index of character
 
-char cmaj(char), cmin(char); // ASCII case folding
+// ASCII case folding
+#define coff ('a'-'A')
+static Inline char cmin(char c) {
+ return c >= 'A' && c <= 'Z' ? c + coff : c; }
+static Inline char cmaj(char c) {
+ return c >= 'a' && c <= 'z' ? c - coff : c; }
+#undef coff
 
 // linear congruential pseudorandom number generator
-i64 lcprng(i64*);
+// the multiplier comes from "Computationally Easy, Spectrally
+// Good Multipliers for Congruential Pseudorandom Number
+// Generators" by Steele & Vigna
+#define mul (0xaf251af3b0f025b5)
+static Inline i64 lcprng(i64 *s) { return (*s = *s * mul + 1) >> 8; }
+#undef mul
+
+// functions for null-terminated byte strings
+static Inline i64 scmp(const char *a, const char *b) {
+ for (;;a++, b++) if (!(*a && *a == *b)) return *a - *b; }
+static Inline u64 slen(const char *s) {
+ for (u64 l = 0;;l++) if (!*s++) return l; }
+static Inline i64 sidx(const char *s, char c) {
+ for (i64 i = 0; *s; s++, i++) if (*s == c) return i;
+ return -1; }
+
 #endif
