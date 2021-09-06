@@ -62,6 +62,7 @@ typedef struct fr { obj clos, retp, subd, argc, argv[]; } *fr;
 #define Ap(f,x) return ip=f,xp=x,G(ip)(terp_arg)
 #define Go(f,x) return xp=x,f(terp_arg)
 #define N(n) ip+=w2b(n);Ap(ip, xp)
+#define ok Pn(1)
 // the C compiler has to optimize tail calls in terp functions
 // or the stack will grow every time an instruction happens!
 
@@ -91,7 +92,7 @@ static interp(nope, const char *, ...);
  Jump(nope, type_err_msg, tnom(kind(x)), tnom(t))
 // arity check
 #define Ar(n) if(Pn(n)>Argc)\
- Jump(nope,arity_err_msg,Gn(Argc),n)
+ Jump(nope,arity_err_msg,getnum(Argc),n)
 
 // " virtual machine instructions "
 //
@@ -123,7 +124,7 @@ interp(tbind) { CallC(tblset(v, Top, (obj) GF(ip), xp)); N(2); }
 
 // initialize local variable slots
 interp(locals) {
- u64 n = Gn(GF(ip));
+ u64 n = getnum(GF(ip));
  Have(n + 2);
  vec t = (vec) hp;
  set64(t->xs, nil, t->len = n);
@@ -141,7 +142,7 @@ interp(lbind) {
  if (!(w = tblget(v, d, xp = YY(w))))
   Jump(nope, "free variable : %s", symnom(xp)); // free variable
  xp = w;
- if (Gn(y) != 8) Ty(xp, Gn(y)); // do the type check
+ if (getnum(y) != 8) Ty(xp, getnum(y)); // do the type check
  terp *q = G(FF(ip)); // omit the arity check if possible
  if (q == call || q == rec) {
   obj aa = (obj) GF(FF(ip));
@@ -155,39 +156,26 @@ interp(lbind) {
 interp(yield) { Pack(); return xp; }
 
 // conditional jumps
-interp(branch) { Ap(xp == nil ? (obj) FF(ip) : (obj) GF(ip), xp); }
-interp(barnch) { Ap(xp == nil ? (obj) GF(ip) : (obj) FF(ip), xp); }
-// relational jumps
-interp(brlt)   {
-  if (*sp++ < xp) Ap((obj) GF(ip), xp);
-  Ap((obj) FF(ip), nil); }
-interp(brlt2)   {
-  if (*sp++ < xp) Ap((obj) FF(ip), xp);
-  Ap((obj) GF(ip), nil); }
-interp(brgteq) {
-  if (*sp++ < xp) Ap((obj) FF(ip), nil);
-  Ap((obj) GF(ip), xp); }
-interp(brgteq2) {
-  if (*sp++ < xp) Ap((obj) GF(ip), nil);
-  Ap((obj) FF(ip), xp); }
-interp(brlteq) {
-  if (*sp++ <= xp) Ap((obj) GF(ip), xp);
-  Ap((obj) FF(ip), nil); }
-interp(brlteq2) {
-  if (*sp++ <= xp) Ap((obj) FF(ip), xp);
-  Ap((obj) GF(ip), nil); }
-interp(brgt)   {
-  if (*sp++ <= xp) Ap((obj) FF(ip), nil);
-  Ap((obj) GF(ip), xp); }
-interp(brgt2)   {
-  if (*sp++ <= xp) Ap((obj) GF(ip), nil);
-  Ap((obj) FF(ip), xp); }
-interp(breq)   {
-  if (eql(*sp++, xp)) Ap((obj) GF(ip), Pn(1));
-  Ap((obj) FF(ip), nil); }
-interp(brne)   {
-  if (eql(*sp++, xp)) Ap((obj) FF(ip), Pn(1));
-  Ap((obj) GF(ip), nil); }
+#define B(_x_, a, x, b, y) {\
+ if (_x_) Ap((obj) a(ip), x);\
+ Ap((obj) b(ip), y); }
+#define Br(op, a, x, b, y) B(*sp++ op xp, a, x, b, y)
+
+// conditional jumps
+interp(branch)  B(xp == nil, FF, xp, GF, xp)
+interp(barnch)  B(xp == nil, GF, xp, FF, xp)
+interp(breq)    B(eql(*sp++, xp), GF, ok, FF, nil)
+interp(brne)    B(eql(*sp++, xp), FF, ok, GF, nil)
+interp(brlt)    Br(<,  GF, xp,  FF, nil)
+interp(brlt2)   Br(<,  FF, xp,  GF, nil)
+interp(brgteq)  Br(<,  FF, nil, GF, xp)
+interp(brgteq2) Br(<,  GF, nil, FF, xp)
+interp(brlteq)  Br(<=, GF, xp,  FF, nil)
+interp(brlteq2) Br(<=, FF, xp,  GF, nil)
+interp(brgt)    Br(<=, FF, nil, GF, xp)
+interp(brgt2)   Br(<=, GF, nil, FF, xp)
+#undef Br
+#undef B
 
 // unconditional jumps
 interp(jump) { Ap((obj) GF(ip), xp); }
@@ -227,9 +215,8 @@ static interp(recne) {
 
 // tail call
 interp(rec) {
- ip = (obj) GF(ip);
- if (Argc!=ip) Jump(recne);
- cpy64(Argv, sp, ip = Gn(ip));
+ if (Argc!=(ip = (obj) GF(ip))) Jump(recne);
+ cpy64(Argv, sp, ip = getnum(ip));
  sp = fp;
  Ap(xp, nil); }
 
@@ -403,21 +390,20 @@ interp(tget) {
 
 static obj tblkeys_j(lips v, ent e, obj l) {
  obj x;
- if (!e) return l;
- x = e->key;
- with(x, l = tblkeys_j(v, e->next, l));
- return pair(v, x, l); }
+ return !e ? l :
+  (x = e->key,
+   with(x, l = tblkeys_j(v, e->next, l)),
+   pair(v, x, l)); }
 
 static obj tblkeys_i(lips v, obj t, i64 i) {
  obj k;
- if (i == gettbl(t)->cap) return nil;
- with(t, k = tblkeys_i(v, t, i+1));
- return tblkeys_j(v, gettbl(t)->tab[i], k); }
+ return i == gettbl(t)->cap ? nil :
+  (with(t, k = tblkeys_i(v, t, i+1)),
+   tblkeys_j(v, gettbl(t)->tab[i], k)); }
 
 static Inline obj tblkeys(lips v, obj t) {
  return tblkeys_i(v, t, 0); }
 
-#define ok Pn(1)
 interp(thas)  { xp = tblget(v, xp, *sp++) ? ok : nil; N(1); }
 interp(tlen)  { xp = putnum(gettbl(xp)->len); N(1); }
 interp(tkeys) { obj x; CallC(x = tblkeys(v, xp)); xp = x; N(1); }
@@ -720,11 +706,11 @@ interp(sub_u) {
  mm_u(xp-1,Argv+1,Gn(*Argv),-); }
 
 interp(div_u) {
- if (!(xp = Gn(Argc))) Go(ret, Pn(1));
+ if (!(xp = Gn(Argc))) Go(ret, ok);
  Ty(*Argv, Num);
  mm_u0(xp-1,Argv+1,Gn(*Argv),/); }
 interp(mod_u) {
- if (!(xp = Gn(Argc))) Go(ret, Pn(1));
+ if (!(xp = Gn(Argc))) Go(ret, ok);
  Ty(*Argv, Num);
  mm_u0(xp-1,Argv+1,Gn(*Argv),%); }
 
@@ -843,7 +829,7 @@ interp(rnd_u) { Go(ret, Pn(lcprng(&v->seed))); }
 // this is for runtime errors from the interpreter, it prints
 // a backtrace and everything.
 static Inline u0 perrarg(lips v, mem fp) {
- i64 i = 0, argc = fp == Pool + Len ? 0 : Gn(Argc);
+ i64 i = 0, argc = fp == Pool + Len ? 0 : getnum(Argc);
  if (argc) for (fputc(' ', stderr);;fputc(' ', stderr)) {
   obj x = Argv[i++];
   emit(v, x, stderr);
@@ -859,14 +845,14 @@ static interp(nope, const char *msg, ...) {
  va_start(xs, msg); vfprintf(stderr, msg, xs);
  fputc('\n', stderr);
  for (;;) {
-  ip = Retp, fp += Size(fr) + Gn(Argc) + Gn(Subd);
+  ip = Retp, fp += Size(fr) + getnum(Argc) + getnum(Subd);
   if (button(Gh(ip))[-1] == yield) break;
   fputs("# in ", stderr), emsep(v, Ph(ip), stderr, '\n'); }
  Hp = hp;
  return restart(v); }
 
 noreturn obj restart(lips v) {
- Fp = Sp = Pool + Len;
- Xp = Ip = nil;
+ v->fp = v->sp = v->mem_pool + v->mem_len;
+ v->xp = v->ip = nil;
  v->mem_root = NULL;
  longjmp(*v->restart, 1); }

@@ -79,7 +79,7 @@ static clock_t copy(lips v, u64 l1) {
  Syms = nil;
  while (tp0-- > s0) Sp[tp0 - s0] = cp(v, *tp0, l0, b0);
 #define CP(x) x=cp(v,x,l0,b0)
- for (mroot r = Safe; r; r = r->next) CP(*(r->one));
+ for (mem_ r = Safe; r; r = r->next) CP(*(r->one));
  for (int i = 0; i < NGlobs; i++) CP(Glob[i]);
  CP(Ip), CP(Xp);
  free(b0);

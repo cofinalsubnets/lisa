@@ -1,6 +1,6 @@
 #ifndef LIPS_H
 #define LIPS_H
-#include "cursed.h"
+#include "pre.h"
 #include <stdio.h>
 #include <setjmp.h>
 #include <stdlib.h>
@@ -15,7 +15,7 @@ _Static_assert(
  -1l == ((-1l<<8)>>8),
  "opposite bit-shifts on a negative integer yield a different result");
 
-typedef i64 obj, *mem;
+typedef i64 num, obj, *mem;
 #define non ((obj)0)
 #define nil (~non)
 #define W (sizeof(obj))
@@ -38,14 +38,14 @@ enum globl { // indices into a table of global constants
 
 // a linked list of stack addresses containing live values
 // that need to be preserved by garbage collection.
-typedef struct mroot { mem one; struct mroot *next; } *mroot;
+typedef struct mem_ { mem one; struct mem_ *next; } *mem_;
 
 // this structure is responsible for holding runtime state.
 // most functions take a pointer to it as the first argument.
 typedef struct lips {
- obj ip, xp, *fp, *hp, *sp; // vm state variables
- obj syms, glob[NGlobs]; // symbols and globals
- mroot mem_root; // gc protection list
+ obj ip, xp, *fp, *hp, *sp, // vm state variables
+     syms, glob[NGlobs]; // symbols and globals
+ mem_ mem_root; // gc protection list
  i64 t0, seed, count, mem_len, *mem_pool; // memory data
  jmp_buf *restart; // top level restart
 } *lips;
@@ -63,11 +63,7 @@ u0
  errp(lips, char*, ...),
  emsep(lips, obj, FILE*, char);
 
-lips
- lips_init(lips),
- lips_open(void),
- lips_close(lips),
- lips_fin(lips);
+lips lips_init(lips), lips_fin(lips);
 
 obj
  sskc(lips, mem, obj),
@@ -93,11 +89,13 @@ bool eql(obj, obj);
 extern const uint32_t *tnoms;
 #define tnom(t) ((char*)(tnoms+(t)))
 
-#define kind(x) ((x)&7)
-#define Gh(x) ((hom)((x)))
-#define Ph(x) ((obj)(x))
+#define Gh(x) gethom(x)
+#define Ph(x) puthom(x)
 #define Gn getnum
 #define Pn putnum
+#define kind(x) ((x)&7)
+#define gethom(x) ((hom)((x)-Hom))
+#define puthom(x) ((obj)((x)+Hom))
 #define gettwo(x) ((two)((x)-Two))
 #define puttwo(x) ((obj)(x)+Two)
 #define getnum(n) ((i64)(n)>>3)
@@ -132,7 +130,7 @@ extern const uint32_t *tnoms;
 #define GG(x) G(G(x))
 #define chars(x) getstr(x)->text
 #define symnom(y) chars(getsym(y)->nom)
-#define mm(r) ((Safe=&((struct mroot){(r),Safe})))
+#define mm(r) ((Safe=&((struct mem_){(r),Safe})))
 #define um (Safe=Safe->next)
 #define AR(x) getvec(x)->xs
 #define AL(x) getvec(x)->len
@@ -165,31 +163,25 @@ extern const uint32_t *tnoms;
 
 #define mix ((u64)2708237354241864315)
 #define interns(v,c) intern(v,string(v,c))
+#define SI static Inline
 
-static Inline hom button(hom h) {
- while (*h) h++;
- return h; }
+SI hom button(hom h) { while (*h) h++; return h; }
+SI u0* bump(lips v, u64 n) { u0* x = v->hp; return v->hp += n, x; }
+SI i64 hbi(u64 cap, u64 co) { return co % cap; }
+SI ent hb(obj t, u64 code) { return gettbl(t)->tab[hbi(gettbl(t)->cap, code)]; }
+SI u0* cells(lips v, u64 n) { if (Avail < n) reqsp(v, n); return bump(v, n); }
+SI obj spop(lips v) { return *Sp++; }
+SI u64 b2w(u64 b) { return b / W + (b % W && 1); }
+SI int xval(obj x) { return x ? OK : NO; }
 
-static Inline u0* bump(lips v, u64 n) {
- u0* x = v->hp;
- return v->hp += n, x; }
+SI lips lips_close(lips v) {
+ return lips_fin(v), free(v), NULL; }
+ 
+SI lips lips_open(void) {
+ lips v = malloc(sizeof(struct lips));
+ return v && (!lips_init(v) || lips_boot(v) != OK) ?
+  lips_close(v) :
+  v; }
+#undef SI
 
-static Inline u0* cells(lips v, u64 n) {
- if (Avail < n) reqsp(v, n);
- return bump(v, n); }
-
-static Inline i64 hbi(u64 cap, u64 co) {
- return co % cap; }
-
-static Inline ent hb(obj t, u64 code) {
- return gettbl(t)->tab[hbi(gettbl(t)->cap, code)]; }
-
-static Inline obj spop(lips v) {
- return *Sp++; }
-
-static Inline u64 b2w(u64 b) {
- return b / W + (b % W && 1); }
-
-static Inline int xval(obj x) {
- return x ? OK : NO; }
 #endif

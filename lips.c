@@ -1,3 +1,4 @@
+
 #include "lips.h"
 #include "terp.h"
 #include <stdlib.h>
@@ -26,19 +27,9 @@ obj script(lips v, const char *path, FILE *f) {
  while ((x = parse(v, f))) eval(v, x);
  return x = feof(f) ? (x || nil) : 0, fclose(f), x; }
 
-int lips_boot(lips v) {
- static const char *path = PREFIX "/lib/lips/prelude.lips";
- return xval(script(v, path, fopen(path, "r"))); }
-
-lips lips_open() {
- lips v = malloc(sizeof(struct lips));
- if (v)
-  if (!lips_init(v) || lips_boot(v) != OK)
-   return lips_close(v);
- return v; }
-
-lips lips_close(lips v) { return
- lips_fin(v), free(v), NULL; }
+#define PATH PREFIX "/lib/lips/prelude.lips"
+int lips_boot(lips v) { return xval(script(v, PATH, fopen(PATH, "r"))); }
+#undef PATH
 
 lips lips_fin(lips v) { return
  free(v->mem_pool), (lips) (v->mem_pool = NULL); }
@@ -72,3 +63,47 @@ lips lips_init(lips v) {
 #define def(s, x) (y=interns(v,s),tblset(v,Top,y,x))
  def("ns", Top), def("macros", Mac);
  return v; }
+
+#include <unistd.h>
+
+static int repl(lips v) {
+ jmp_buf re;
+ v->restart = &re;
+ setjmp(re);
+ for (obj x;;)
+  if ((x = parse(v, stdin)))
+    emsep(v, eval(v, x), stdout, '\n');
+  else if (feof(stdin)) break;
+ return OK; }
+
+#define takka 1
+#define aubas 2
+#define help \
+ "usage: %s [options and scripts]\n"\
+ "with no arguments, start a repl\n"\
+ "options:\n"\
+ " -h print this message\n"\
+ " -i start repl unconditionally\n"\
+ " -_ don't bootstrap\n"
+
+int main(int argc, char** argv) {
+ int opt, flag = argc == 1 ? takka : 0, r = OK;
+
+ while ((opt = getopt(argc, argv, "hi_")) != -1) switch (opt) {
+  case '_': flag |= aubas; break;
+  case 'i': flag |= takka; break;
+  case 'h': fprintf(stdout, help, argv[0]); break;
+  default: return NO; }
+
+ if (optind < argc || flag & takka) {
+  struct lips V;
+  lips_init(&V);
+  if (!(flag & aubas))
+    r = lips_boot(&V);
+  while (r == OK && optind < argc) {
+    const char *path = argv[optind++];
+    r = xval(script(&V, path, fopen(path, "r"))); }
+  if (r == OK && flag & takka)
+    r = repl(&V);
+  lips_fin(&V); }
+ return r; }

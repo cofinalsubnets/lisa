@@ -1,5 +1,5 @@
-#ifndef _cursed_h
-#define _cursed_h
+#ifndef _pre_h
+#define _pre_h
 #include <stdint.h>
 #include <stdarg.h>
 #include <stdbool.h>
@@ -21,8 +21,6 @@ BWDQ(I)
 #undef I
 
 
-// cursed c standard library declarations
-//
 // mem{set,cpy,mov} analogs are defined for
 // 8, 16, 32 and 64 bit items
 #define M(n) u0\

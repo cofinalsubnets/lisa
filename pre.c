@@ -1,4 +1,4 @@
-#include "cursed.h"
+#include "pre.h"
 // freestanding substitutes for some libc functionality.
 //
 // mem{set,cpy} analogs
