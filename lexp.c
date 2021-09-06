@@ -18,7 +18,8 @@ typedef obj par(lips, FILE*);
 static par atom, r1s, qt, stri;
 
 static obj readx(lips v, char *msg) {
- return errp(v, msg), restart(v); }
+ return errp(v, msg),
+        restart(v); }
 
 static int r0(FILE *i) {
  for (int c;;) switch ((c = getc(i))) {
@@ -115,7 +116,8 @@ static obj stri(lips v, FILE *i) {
  return str_(v, i, cells(v, 2), 0, 8); }
 
 u0 emsep(lips v, obj x, FILE *o, char s) {
- emit(v, x, o), fputc(s, o); }
+ emit(v, x, o),
+ fputc(s, o); }
 
 static u0 emstr(lips v, str s, FILE *o) {
  fputc('"', o);
@@ -141,6 +143,14 @@ static u0 emtwo(lips v, two w, FILE *o) {
   (fputc('\'', o), emit(v, X(w->y), o)) :
   (fputc('(', o), emtwo_(v, w, o)); }
 
+static u0 emvec(lips v, vec e, FILE *o) {
+ fputc('[', o);
+ if (e->len) for (mem i = e->xs, l = i + e->len;;) {
+  emit(v, *i, o);
+  if (fputc(++i == l, o)) break;
+  else fputc(' ', o); }
+ fputc(']', o); }
+
 static u0 phomn(lips v, obj x, FILE *o) {
  fputc('\\', o);
  switch (kind(x)) {
@@ -157,6 +167,7 @@ u0 emit(lips v, obj x, FILE *o) {
   case Two: return emtwo(v, gettwo(x), o);
   case Str: return emstr(v, getstr(x), o);
   case Tbl: return emtbl(v, gettbl(x), o);
+  case Vec: return emvec(v, getvec(x), o);
   default:  fputs("()", o); } }
 
 u0 errp(lips v, char *msg, ...) {

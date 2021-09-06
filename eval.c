@@ -73,7 +73,7 @@ static NoInline obj apply(lips v, obj f, obj x) {
  h[2] = yield;
  h[3] = NULL;
  h[4] = (terp*) h;
- return call(v, Ph(h), Fp, Sp, Hp, tblget(v, Dict, App)); }
+ return call(v, Ph(h), Fp, Sp, Hp, tblget(v, Top, App)); }
 
 static NoInline obj rwlade(lips v, obj x) {
  mm(&x);
@@ -117,7 +117,7 @@ static vec tuplr(lips v, i64 i, va_list xs) {
   ((t = cells(v, Size(tup) + i))->len = i, t); }
 
 static obj tupl(lips v, ...) { vec t; va_list xs; return
- va_start(xs, v), t = tuplr(v, 0, xs), va_end(xs), puttup(t); }
+ va_start(xs, v), t = tuplr(v, 0, xs), va_end(xs), putvec(t); }
 
 static Inline obj scope(lips v, mem e, obj a, obj n) {
  i64 s = 0;
@@ -241,24 +241,26 @@ c2(c_co) { return
  S2 = Y(S2),
  x; }
 
-static u0 c_se_r(lips v, mem e, obj x) {
- if (twop(x))
-  with(x, c_se_r(v, e, Y(x))),
-  Push(Pn(c_ev), X(x)); }
+static u0 c_se_r(lips v, mem e, obj x) { if (twop(x))
+ with(x, c_se_r(v, e, Y(x))),
+ Push(Pn(c_ev), X(x)); }
 
 c2(c_se) {
  if (!twop(x = Y(x))) x = pair(v, nil, nil);
- return c_se_r(v, e, x), Ccc(v, e, m); }
+ return c_se_r(v, e, x),
+        Ccc(v, e, m); }
 
 c1(c_call) {
  obj a = *Sp++, k = Ccc(v, e, m + 2);
- return em2(G(k) == ret ? rec : call, a, k); }
+ return em2(G(k) == ret ? rec : call,
+        a,
+        k); }
 
 #define L(n,x) pair(v, Pn(n), x)
 static obj look(lips v, obj e, obj y) {
  obj q; return
   nilp(e) ?
-   ((q = tblget(v, Dict, y)) ?  L(Here, q) : L(Wait, Dict)) :
+   ((q = tblget(v, Top, y)) ?  L(Here, q) : L(Wait, Top)) :
   ((q = lidx(loc(e), y)) != -1) ? L(Loc, e) :
   ((q = lidx(arg(e), y)) != -1) ? L(Arg, e) :
   ((q = lidx(clo(e), y)) != -1) ? L(Clo, e) :
@@ -355,7 +357,7 @@ NoInline obj homnom(lips v, obj x) {
 NoInline u0 defprim(lips v, const char *a, terp *b) {
  obj z = spush(v, pair(v, interns(v, a), nil)), x = hini(v, 2);
  x = em2(b, z = spop(v), x);
- tblset(v, *Sp, X(z), x); }
+ tblset(v, Top, X(z), x); }
 
 NoInline obj spush(lips v, obj x) {
  if (!Avail) with(x, reqsp(v, 1));
@@ -366,7 +368,7 @@ obj compile(lips v, obj x) { return
  Ccc(v, NULL, 0); }
 
 obj eval(lips v, obj x) { return
- x = pair(v, x, nil), apply(v, tblget(v, Dict, Eva), x); }
+ x = pair(v, x, nil), apply(v, tblget(v, Top, Eva), x); }
 
 static i64 lidx(obj l, obj x) {
  for (i64 i = 0; twop(l); l = Y(l), i++)

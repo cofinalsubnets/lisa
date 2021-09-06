@@ -8,7 +8,7 @@
   ; standard library functions
   (: ; some aliases
      ~ nilp 2p twop Hp homp Tg tget Ts tset Td tdel Th thas
-     ~~ '(())
+     ~~ '(()) {} (tbl) [] (vec)
 
      ; functional programmings
      (id x) x
@@ -47,7 +47,9 @@
      ((flip f) x y) (f y x)
      ((diag f) x) (f x x)
      ((cu f x .) y .) (ap f (cat x y))
-     ({} x .) (: d (tbl) (, (each x (\ y (Ts d y ()))) d))
+     (set x .) (: d (tbl) (, (each x (\ y (Ts d y ()))) d))
+
+     (strip-prefix p s) (? (= p (ssub s 0 (: a (slen p)))) (ssub s a (slen s)))
 
      ; numbers
      (abs x) (? (< x 0) (- x) x)
@@ -362,7 +364,7 @@
    ; users should be able to provide their own monoid instances
    ; (or whatever).
 
-   pure (imm ({}
+   pure (imm (set
     L X A B Q + - * / % & | ^ << >> id flip iota rho const
     = ~ <= >= < > cu const snoc init last rev ldel memq at idx len
     homp nilp symp nump tblp strp twop vecp
@@ -372,8 +374,8 @@
    ; with certain algebraic properties. the nullary case for
    ; any grouplike function has to return its structure's
    ; identity element.
-   abelians (imm ({} && || + *)) ; arguments can be combined freely
-   monoids (imm ({} scat cat))   ; pairs of consecutive arguments can be combined in place
+   abelians (imm (set && || + *)) ; arguments can be combined freely
+   monoids (imm (set scat cat))   ; pairs of consecutive arguments can be combined in place
 
    a (A x) (case a
     '` (? (B x) x)
@@ -465,7 +467,7 @@
    ((lamb x k) e m) (:
     (nom e k) (case (hgeti k)
      i-tbind (hgetx (hseek k 1))
-     i-loc_  (at (Tg e'loc) (hgetx (hseek k 1))))
+     i-loc_  (at (Tg e 'loc) (hgetx (hseek k 1))))
 
     (clo-thd e x k) (:
      (loop x k) (? (~ x) k

@@ -41,7 +41,8 @@
  _(cont, NULL)   _(ystr_u, "ystr") _(dupl, NULL)\
  _(emi, NULL)    _(emx_u, "emx")   _(emi_u, "emi")\
  _(emx, NULL)    _(em_u, ".")      _(ev_u, "ev")\
- _(ap_u, "ap")   _(vararg, NULL)\
+ _(ap_u, "ap")   _(vararg, NULL)   _(getc_u, "getc")\
+ _(vget_u, "vget") _(vset_u, "vset") _(vec_u, tnom(Vec))\
  _(hgeti_u, "hgeti") _(hfin_u, "hfin") _(hgetx_u, "hgetx")\
  _(twop_u, "twop")   _(nump_u, "nump") _(homp_u, "homp")\
  _(tblp_u, "tblp")   _(vecp_u, "vecp") _(symp_u, "symp")\

@@ -1,4 +1,21 @@
-include config.mk
+ifeq ($(shell whoami), root)
+PREFIX ?= /usr/local
+else
+PREFIX ?= $(HOME)/.local
+endif
+
+CC ?= gcc
+CPPFLAGS ?= -DPREFIX=\"$(PREFIX)\"
+# fixnums need sign extended bitshifts.
+# other things tend to break TCO ...
+CFLAGS ?= -std=gnu17 -g -O2 -flto\
+	-Wall -Wstrict-prototypes\
+	-Wno-shift-negative-value\
+	-fno-stack-protector\
+	-fno-unroll-loops
+
+# for sorting
+LC_ALL=C
 # build config
 #
 n=lips#                          | binary name
@@ -75,7 +92,7 @@ perf.data: $b $p
 valg: $b
 	@$(call W, valgrind, valgrind $t)
 sloc:
-	@$(call W, cloc, cloc --by-file --force-lang=Lisp$_$n makefile *.{c$_h$_$n} test/*)
+	@$(call W, cloc, cloc --force-lang=Lisp$_$n *)
 bits: $n $b
 	stat -c "%n %sB" $^
 repl: $b

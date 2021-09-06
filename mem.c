@@ -80,7 +80,8 @@ static clock_t copy(lips v, u64 l1) {
  while (tp0-- > s0) Sp[tp0 - s0] = cp(v, *tp0, l0, b0);
 #define CP(x) x=cp(v,x,l0,b0)
  for (mroot r = Safe; r; r = r->next) CP(*(r->one));
- CP(Ip), CP(Xp), CP(Glob); 
+ for (int i = 0; i < NGlobs; i++) CP(Glob[i]);
+ CP(Ip), CP(Xp);
  free(b0);
  t1 = t1 == (t2 = clock()) ? 1 : (t2 - t0) / (t2 - t1); 
  return v->t0 = t2, t1; }
@@ -117,16 +118,16 @@ cpcc(cptwo) {
    puttwo(dst)); }
 
 cpcc(cptup) {
- vec dst, src = gettup(x);
+ vec dst, src = getvec(x);
  if (fresh(*src->xs)) return *src->xs;
  dst = bump(v, Size(tup) + src->len);
  i64 l = dst->len = src->len;
  dst->xs[0] = src->xs[0];
- src->xs[0] = puttup(dst);
+ src->xs[0] = putvec(dst);
  dst->xs[0] = cp(v, dst->xs[0], ln, lp);
  for (i64 i = 1; i < l; ++i)
   dst->xs[i] = cp(v, src->xs[i], ln, lp);
- return puttup(dst); }
+ return putvec(dst); }
 
 cpcc(cpstr) {
  str dst, src = getstr(x);

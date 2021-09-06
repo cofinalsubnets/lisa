@@ -45,34 +45,30 @@ lips lips_fin(lips v) { return
 
 static NoInline u0 rin(lips v, const char *a, terp *b) {
  obj z = interns(v, a);
- tblset(v, *Sp, z, Pn(b)); }
+ tblset(v, Top, z, Pn(b)); }
 
 obj lips_eval(lips v, char *expr) { return
   script(v, "eval", fmemopen(expr, slen(expr), "r")); }
 
 lips lips_init(lips v) {
  v->seed = v->t0 = clock(),
- v->ip = v->xp = v->syms = v->glob = nil,
+ v->ip = v->xp = v->syms = nil,
  v->fp = v->hp = v->sp = (mem) W,
  v->count = 0, v->mem_len = 1, v->mem_pool = NULL,
  v->mem_root = NULL;
+ set64(v->glob, nil, NGlobs);
  jmp_buf re;
  v->restart = &re;
  if (setjmp(re)) return lips_fin(v);
- vec t = cells(v, Size(tup) + NGlobs);
- set64(t->xs, nil, t->len = NGlobs);
- obj z, y = Glob = puttup(t);
- mm(&y);
-  spush(v, table(v));
+ Top = table(v), Mac = table(v);
 #define repr(a, b) if (b) defprim(v,b,a);
 #define rein(a, b) if (!b) rin(v, "i-"#a,a);
-  insts(repr) insts(rein)
-  Top = spop(v),
-  z = table(v), Mac = z,
-#define bsym(i,s)(z=interns(v,s),AR(y)[i]=z)
-  bsym(Eval, "ev"), bsym(Apply, "ap"),
-  bsym(Def, ":"),   bsym(Cond, "?"), bsym(Lamb, "\\"),
-  bsym(Quote, "`"), bsym(Seq, ","),  bsym(Splat, ".");
+ insts(repr) insts(rein)
+#define bsym(i,s)(Glob[i]=interns(v,s))
+ bsym(Eval, "ev"), bsym(Apply, "ap"),
+ bsym(Def, ":"),   bsym(Cond, "?"), bsym(Lamb, "\\"),
+ bsym(Quote, "`"), bsym(Seq, ","),  bsym(Splat, ".");
+ obj y;
 #define def(s, x) (y=interns(v,s),tblset(v,Top,y,x))
  def("ns", Top), def("macros", Mac);
- return um, v; }
+ return v; }

@@ -10,3 +10,4 @@ core
 vgcore.*
 cachegrind.*
 __pycache__
+test/*._.lips

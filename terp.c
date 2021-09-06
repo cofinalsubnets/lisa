@@ -119,7 +119,7 @@ interp(clo1) { xp = AR(Clos)[1];        N(1); }
 // store instructions
 interp(push) { Have1(); *--sp = xp; N(1); } // stack push
 interp(loc_) { fast_idx(AR(Locs)) = xp; N(2); } // set a local variable
-interp(tbind) { CallC(tblset(v, Dict, (obj) GF(ip), xp)); N(2); }
+interp(tbind) { CallC(tblset(v, Top, (obj) GF(ip), xp)); N(2); }
 
 // initialize local variable slots
 interp(locals) {
@@ -128,7 +128,7 @@ interp(locals) {
  vec t = (vec) hp;
  set64(t->xs, nil, t->len = n);
  hp += n + 1;
- *--sp = puttup(t);
+ *--sp = putvec(t);
  N(2); }
 
 // late bind
@@ -202,11 +202,10 @@ interp(ret) {
 
 // regular function call
 interp(call) {
-#define fwds Size(fr)
- Have(fwds);
+ Have(Size(fr));
  obj adic = (obj) GF(ip);
  i64 off = fp - (mem) ((i64) sp + adic - Num);
- fp = sp -= fwds;
+ fp = sp -= Size(fr);
  Retp = Ph(ip+W2);
  Subd = Pn(off);
  Clos = nil;
@@ -274,7 +273,7 @@ interp(ccc_u) {
  hom c = (hom) hp;
  hp += 4;
  c[0] = cont;
- c[1] = (terp*) puttup(t);
+ c[1] = (terp*) putvec(t);
  c[2] = NULL;
  c[3] = (terp*) c;
  Argv[0] = Ph(c);
@@ -282,7 +281,7 @@ interp(ccc_u) {
 
 // call a continuation
 interp(cont) {
- vec t = gettup(GF(ip));
+ vec t = getvec(GF(ip));
  Have(t->len - 1);
  xp = Gn(Argc) == 0 ? nil : *Argv;
  i64 off = Gn(t->xs[0]);
@@ -320,6 +319,28 @@ interp(hom_u) {
  h[len-1] = (terp*) h;
  h[len-2] = NULL;
  Go(ret, Ph(h+len-2)); }
+
+interp(vset_u) {
+ Ar(3);
+ Ty(Argv[0], Vec);
+ Ty(Argv[1], Num);
+ AR(Argv)[Gn(Argv[1])] = xp = Argv[2];
+ Jump(ret); }
+
+interp(vget_u) {
+ Ar(2);
+ Ty(Argv[0], Vec);
+ Ty(Argv[1], Num);
+ Go(ret, AR(Argv)[Gn(Argv[1])]);
+}
+
+interp(vec_u) {
+ obj n = Gn(Argc);
+ Have(n + 1);
+ vec t = (vec) hp;
+ hp += 1 + n;
+ cpy64(t->xs, Argv, t->len = n);
+ Go(ret, putvec(t)); }
 
 interp(tset) {
  obj x = *sp++, y = *sp++;
@@ -518,8 +539,8 @@ interp(vararg) {
  // slot to hold the nil.
  if (!vdic) {
   Have1();
+  cpy64(fp-1, fp, Size(fr) + Gn(Argc));
   sp = --fp;
-  cpy64(fp, fp+1, Size(fr) + Gn(Argc));
   Argc += W;
   Argv[reqd] = nil; }
  // in this case we just keep the existing slots.
@@ -550,7 +571,7 @@ static interp(encl) {
   block += 1 + n;
   t->len = n;
   while (n--) t->xs[n] = Argv[n];
-  arg = puttup(t); }
+  arg = putvec(t); }
 
  vec t = (vec) block; // compiler thread closure array (1 length 5 elements)
  hom at = (hom) (block+6); // compiler thread (1 instruction 2 data 2 tag)
@@ -563,7 +584,7 @@ static interp(encl) {
  t->xs[4] = Ph(at);
 
  at[0] = pc0;
- at[1] = (terp*) puttup(t);
+ at[1] = (terp*) putvec(t);
  at[2] = (terp*) X(x);
  at[3] = 0;
  at[4] = (terp*) at;
@@ -623,7 +644,7 @@ interp(take) {
  t->len = n;
  cpy64(t->xs, sp, n);
  sp += n;
- Go(ret, puttup(t)); }
+ Go(ret, putvec(t)); }
 
 // print to console
 interp(em_u) {
@@ -639,6 +660,10 @@ interp(putc_u) {
  Ar(1);
  fputc(Gn(*Argv), stdout);
  Jump(ret); }
+
+interp(getc_u) {
+ xp = feof(stdin) ? nil : Pn(getc(stdin));
+ Go(ret, xp); }
 
 // pairs
 interp(cons) {

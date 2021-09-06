@@ -5,6 +5,8 @@
 #include <setjmp.h>
 #include <stdlib.h>
 
+// thanks !!
+
 _Static_assert(
  sizeof(intptr_t) == sizeof(int64_t),
  "pointers are not 64 bits");
@@ -13,7 +15,6 @@ _Static_assert(
  -1l == ((-1l<<8)>>8),
  "opposite bit-shifts on a negative integer yield a different result");
 
-// thanks !!
 typedef i64 obj, *mem;
 #define non ((obj)0)
 #define nil (~non)
@@ -43,7 +44,7 @@ typedef struct mroot { mem one; struct mroot *next; } *mroot;
 // most functions take a pointer to it as the first argument.
 typedef struct lips {
  obj ip, xp, *fp, *hp, *sp; // vm state variables
- obj syms, glob; // symbols and globals
+ obj syms, glob[NGlobs]; // symbols and globals
  mroot mem_root; // gc protection list
  i64 t0, seed, count, mem_len, *mem_pool; // memory data
  jmp_buf *restart; // top level restart
@@ -103,8 +104,8 @@ extern const uint32_t *tnoms;
 #define putnum(n) (((obj)(n)<<3)+Num)
 #define getsym(x) ((sym)((obj)(x)-Sym))
 #define putsym(x) ((obj)(x)+Sym)
-#define gettup(x) ((vec)((x)-Vec))
-#define puttup(x) ((obj)(x)+Vec)
+#define getvec(x) ((vec)((x)-Vec))
+#define putvec(x) ((obj)(x)+Vec)
 #define getstr(x) ((str)((obj)(x)-Str))
 #define putstr(x) ((obj)(x)+Str)
 #define gettbl(x) ((tbl)((obj)(x)-Tbl))
@@ -133,8 +134,8 @@ extern const uint32_t *tnoms;
 #define symnom(y) chars(getsym(y)->nom)
 #define mm(r) ((Safe=&((struct mroot){(r),Safe})))
 #define um (Safe=Safe->next)
-#define AR(x) gettup(x)->xs
-#define AL(x) gettup(x)->len
+#define AR(x) getvec(x)->xs
+#define AL(x) getvec(x)->len
 #define with(y,...) (mm(&(y)),(__VA_ARGS__),um)
 #define w2b(n) ((n)*W)
 #define Size(t) (sizeof(struct t)/W)
@@ -146,19 +147,18 @@ extern const uint32_t *tnoms;
 #define Xp v->xp
 #define Pool v->mem_pool
 #define Len v->mem_len
-#define Dict Top
 #define Syms (v->syms)
 #define Glob v->glob
-#define If AR(Glob)[Cond]
-#define De AR(Glob)[Def]
-#define La AR(Glob)[Lamb]
-#define Qt AR(Glob)[Quote]
-#define Se AR(Glob)[Seq]
-#define Va AR(Glob)[Splat]
-#define Top AR(Glob)[Topl]
-#define Mac AR(Glob)[Macs]
-#define Eva AR(Glob)[Eval]
-#define App AR(Glob)[Apply]
+#define If Glob[Cond]
+#define De Glob[Def]
+#define La Glob[Lamb]
+#define Qt Glob[Quote]
+#define Se Glob[Seq]
+#define Va Glob[Splat]
+#define Top Glob[Topl]
+#define Mac Glob[Macs]
+#define Eva Glob[Eval]
+#define App Glob[Apply]
 #define Avail (Sp-Hp)
 #define OK EXIT_SUCCESS
 #define NO EXIT_FAILURE
