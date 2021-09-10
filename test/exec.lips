@@ -39,4 +39,11 @@
     two (succ one) five (succ ((mul two) two))
     ten ((mul two) five)
     one-hundred ((exp two) ten)
-  (= 100 (N (C 100)) (N one-hundred))))
+  (= 100 (N (C 100)) (N one-hundred)))
+
+ (: (hy n) (? (= n 0) + (\ x y
+     ((: (hz hx x y i) (? (< i y) (hx x (hz hx x y (+ i 1))) x))
+      (hy (- n 1)) x y 1)))
+    pow (hy 2)
+    tet (hy 3)
+  (= 65536 (<< 1 16) (pow 2 16) (tet 2 4))))

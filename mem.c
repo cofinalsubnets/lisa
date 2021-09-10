@@ -79,7 +79,7 @@ static clock_t copy(lips v, u64 l1) {
  Syms = nil;
  while (tp0-- > s0) Sp[tp0 - s0] = cp(v, *tp0, l0, b0);
 #define CP(x) x=cp(v,x,l0,b0)
- for (mem_ r = Safe; r; r = r->next) CP(*(r->one));
+ for (root r = Safe; r; r = r->next) CP(*(r->one));
  for (int i = 0; i < NGlobs; i++) CP(Glob[i]);
  CP(Ip), CP(Xp);
  free(b0);
@@ -148,19 +148,19 @@ cpcc(cpsym) {
 
 #define stale(o) inb((mem)(o),lp,lp+ln)
 cpcc(cphom) {
- hom src = Gh(x);
+ hom src = gethom(x);
  if (fresh(G(src))) return (obj) G(src);
  hom end = button(src), start = (hom) G(end+1),
      dst = bump(v, end - start + 2), j = dst;
  for (hom k = start; k < end;
   G(j) = G(k),
-  G(k++) = (terp*) Ph(j++));
+  G(k++) = (terp*) puthom(j++));
  G(j) = NULL;
  G(j+1) = (terp*) dst;
  for (obj u; j-- > dst;
   u = (obj) G(j),
   G(j) = (terp*) (stale(u) ? cp(v, u, ln, lp) : u));
- return Ph(dst += src - start); }
+ return puthom(dst += src - start); }
 
 static ent cpent(lips v, ent src, i64 ln, mem lp) {
  if (!src) return NULL;

@@ -757,11 +757,7 @@ bool eql(obj a, obj b) {
 #define cmp_(n, op) interp(n) { xp = *sp++ op xp ? xp : nil; N(1); }
 cmp_(lt, <) cmp_(lteq, <=) cmp_(gteq, >=) cmp_(gt, >)
 // there should be a separate instruction for simple equality.
-interp(eq) {
-//  printf("eq ");
-//  emsep(v, *sp, stdout, ' ');
-//  emsep(v, xp, stdout, '\n');
-  xp = eql(xp, *sp++) ? ok : nil; N(1); }
+interp(eq) { xp = eql(xp, *sp++) ? ok : nil; N(1); }
 
 static interp(ord_) {
  bool (*r)(obj, obj) = (void*)Xp;

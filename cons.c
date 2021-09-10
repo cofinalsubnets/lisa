@@ -1,5 +1,8 @@
 #include "lips.h"
 #include <string.h>
+
+static u64 hc(lips, obj);
+
 ////
 /// data constructors and utility functions
 //
@@ -49,7 +52,13 @@ static Inline u64 hash_bytes(u64 len, char *us) {
  for (u64 h = mix;; h ^= *us++, h *= mix)
   if (!len--) return h; }
 
-u64 hc(lips v, obj x) {
+static Inline i64 hbi(u64 cap, u64 co) {
+ return co % cap; }
+
+static Inline ent hb(obj t, u64 code) {
+ return gettbl(t)->tab[hbi(gettbl(t)->cap, code)]; }
+
+static u64 hc(lips v, obj x) {
  u64 r;
  switch (kind(x)) {
   case Sym: r = getsym(x)->code; break;

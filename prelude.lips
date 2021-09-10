@@ -589,22 +589,17 @@
   ((abel f i) x k) (>>= (mono f (f) x) (\ x
    (eval (A x) (>- 'num (2f i k (B x))))))
 
-  ((0y i t0) _ k) (xc i (-> t0 k))
-  ((1y i t0 t1) x k)
-   (eval (A x) (>- t0 (xc i (-> t1 k))))
-  ((2y i t0 t1 t2) x k)
-   (eval (AB x) (>- t1 (xc i-push
-    (eval (A x) (>- t0 (xc i (-> t2 k)))))))
+  ((nary i tR xs .) x k)
+   (: (fo k z) (co (eval (AA z) (>- (BA z) k)) (B z))
+      (co k z) (? z (fo (xc i-push k) z) k)
+      l (xc i (-> tR k))
+      z (zip X x xs)
+    (? z (fo l z) l))
+                    
   (2f i k x)
-   (: (2g i k x xs)
-       (xc i-push (eval x (>- 'num (xc i (2f i k xs)))))
-    (? x (2g i k (A x) (B x)) (-> 'num k)))
-
-  ((3y i t0 t1 t2 t3) x k)
-   (eval (A (BB x)) (>- t2
-    (xc i-push (eval (AB x) (>- t1
-     (xc i-push (eval (A x) (>- t0
-      (xc i-tset (-> t3 k))))))))))
+   (: (2g i k x)
+       (xc i-push (eval (A x) (>- 'num (xc i (2f i k (B x))))))
+    (? x (2g i k x) (-> 'num k)))
 
   ((shift f i) x k) (:
    y (mono + 0 (B x))
@@ -616,7 +611,7 @@
    + (abel + i-add)
    - (\ x k (?
     (~ x) (Im 0 k)
-    (~ (B x)) ((1y i-neg 'num 'num) x k)
+    (~ (B x)) ((nary i-neg 'num 'num) x k)
     (: y (mono + 0 (B x))
        z (? (nump (A x)) (mono - (A x) y) (X (A x) y))
      (? z (eval (A z) (>- 'num (2f i-sub k (B z)))) (Im 0 k)))))
@@ -635,21 +630,23 @@
    >> (shift >> i-sar)
    << (shift << i-sal)
 
-   A (1y i-car 'two ())
-   B (1y i-cdr 'two ())
-   X (2y i-cons () () 'two)
+   A (nary i-car () 'two)
+   B (nary i-cdr () 'two)
+   X (nary i-cons 'two () ())
    L (\ x k (:
-    (loop x k) (? x (loop (B x) (xc i-push (eval (A x) (xc i-cons (-> 'two k))))) k)
+    (loop x k) (? (~ x) k
+     (loop (B x)
+      (xc i-push (eval (A x) (xc i-cons (-> 'two k))))))
     (Im () (loop x k))))
 
 
-   emi (2y i-emi 'num 'hom 'hom)
-   emx (2y i-emx () 'hom 'hom)
+   emi (nary i-emi 'hom 'num 'hom)
+   emx (nary i-emx 'hom () 'hom)
 
-   tget (2y i-tget 'tbl () ())
-   tset (3y i-tset 'tbl () () ())
-   tlen (1y i-tlen 'tbl 'num)
-   thas (2y i-thas 'tbl () ())
+   tget (nary i-tget () 'tbl ())
+   tset (nary i-tset () 'tbl () ())
+   tlen (nary i-tlen 'num 'tbl)
+   thas (nary i-thas () 'tbl ())
 
    < (ordr i-lt) <= (ordr i-lteq)
    >= (ordr i-gteq) > (ordr i-gt)
@@ -669,8 +666,8 @@
       (? y (xc i-dupl l) l))
      (pop2 (fold (push2 k) (AB x) (BB x))))))))
 
-   nilp (1y i-nilpp () ())
-   fail (0y (hgeti fail) ())))
+   nilp (nary i-nilpp () ())
+   fail (nary (hgeti fail) ())))
 
   (ini e m) ((xc i-ret (xd (Tg e 'nom) (\ _ m (hom m)))) e m)
   (ev x) (: e (env () () 'ev) (((eval (weak e x) ini) e 0) x))

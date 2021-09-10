@@ -43,24 +43,34 @@ static u0
  c_de_r(lips, mem, obj),
  scan(lips, mem, obj),
  pushs(lips, ...);
-static obj
- linitp(lips, obj, mem),
- snoc(lips, obj, obj),
- look(lips, obj, obj),
- hfin(lips, obj),
- hini(lips, u64);
+static obj hfin(lips, obj), hini(lips, u64);
 static c1 c_ev, c_d_bind, inst, insx, c_ini;
 static c2 c_eval, c_sy, c_2, c_imm, c_ap;
 static obj c_la_clo(lips, mem, obj, obj), ltu(lips, mem, obj, obj);
-static i64 lidx(obj, obj);
 
 enum { Here, Loc, Arg, Clo, Wait };
 #define c1(nom,...) static obj nom(lips v, mem e, u64 m, ##__VA_ARGS__)
 #define c2(nom,...) static obj nom(lips v, mem e, u64 m, obj x, ##__VA_ARGS__)
 
+// helper functions for lists
+static i64 lidx(obj l, obj x) {
+ for (i64 i = 0; twop(l); l = Y(l), i++)
+  if (x == X(l)) return i;
+ return -1; }
+
+static obj linitp(lips v, obj x, mem d) {
+ obj y; return !twop(Y(x)) ? (*d = x, nil) :
+  (with(x, y = linitp(v, Y(x), d)), pair(v, X(x), y)); }
+
+static obj snoc(lips v, obj l, obj x) {
+ return !twop(l) ? pair(v, x, l) :
+  (with(l, x = snoc(v, Y(l), x)), pair(v, X(l), x)); }
+
 // emit code backwards like cons
-static obj em1(terp *i, obj k) { return k -= W, G(k) = i, k; }
-static obj em2(terp *i, obj j, obj k) { return em1(i, em1((terp*)j, k)); }
+static obj em1(terp *i, obj k) {
+ return k -= W, G(k) = i, k; }
+static obj em2(terp *i, obj j, obj k) {
+ return em1(i, em1((terp*)j, k)); }
 
 static obj imx(lips v, mem e, i64 m, terp *i, obj x) {
  return Push(Pn(i), x), insx(v, e, m); }
@@ -241,9 +251,10 @@ c2(c_co) { return
  S2 = Y(S2),
  x; }
 
-static u0 c_se_r(lips v, mem e, obj x) { if (twop(x))
- with(x, c_se_r(v, e, Y(x))),
- Push(Pn(c_ev), X(x)); }
+static u0 c_se_r(lips v, mem e, obj x) {
+ if (twop(x))
+  with(x, c_se_r(v, e, Y(x))),
+  Push(Pn(c_ev), X(x)); }
 
 c2(c_se) {
  if (!twop(x = Y(x))) x = pair(v, nil, nil);
@@ -252,9 +263,7 @@ c2(c_se) {
 
 c1(c_call) {
  obj a = *Sp++, k = Ccc(v, e, m + 2);
- return em2(G(k) == ret ? rec : call,
-        a,
-        k); }
+ return em2(G(k) == ret ? rec : call, a, k); }
 
 #define L(n,x) pair(v, Pn(n), x)
 static obj look(lips v, obj e, obj y) {
@@ -355,30 +364,17 @@ NoInline obj homnom(lips v, obj x) {
         x == (obj) yield ? Eva : nil; }
 
 NoInline u0 defprim(lips v, const char *a, terp *b) {
- obj z = spush(v, pair(v, interns(v, a), nil)), x = hini(v, 2);
- x = em2(b, z = spop(v), x);
+ obj z = pair(v, interns(v, a), nil);
+ if (!Avail) with(z, reqsp(v, 1));
+ *--Sp = z;
+ obj x = hini(v, 2);
+ x = em2(b, z = *Sp++, x);
  tblset(v, Top, X(z), x); }
-
-NoInline obj spush(lips v, obj x) {
- if (!Avail) with(x, reqsp(v, 1));
- return *--Sp = x; }
 
 obj compile(lips v, obj x) { return
  Push(Pn(c_ev), x, Pn(inst), Pn(yield), Pn(c_ini)),
  Ccc(v, NULL, 0); }
 
 obj eval(lips v, obj x) { return
- x = pair(v, x, nil), apply(v, tblget(v, Top, Eva), x); }
-
-static i64 lidx(obj l, obj x) {
- for (i64 i = 0; twop(l); l = Y(l), i++)
-  if (x == X(l)) return i;
- return -1; }
-
-static obj linitp(lips v, obj x, mem d) {
- obj y; return !twop(Y(x)) ? (*d = x, nil) :
-  (with(x, y = linitp(v, Y(x), d)), pair(v, X(x), y)); }
-
-static obj snoc(lips v, obj l, obj x) {
- return !twop(l) ? pair(v, x, l) :
-  (with(l, x = snoc(v, Y(l), x)), pair(v, X(l), x)); }
+ x = pair(v, x, nil),
+ apply(v, tblget(v, Top, Eva), x); }

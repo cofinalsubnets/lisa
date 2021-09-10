@@ -1,26 +1,12 @@
-#ifndef LIPS_H
-#define LIPS_H
+#ifndef _lips_h
+#define _lips_h
 #include "pre.h"
 #include <stdio.h>
 #include <setjmp.h>
 #include <stdlib.h>
 
 // thanks !!
-
-_Static_assert(
- sizeof(intptr_t) == sizeof(int64_t),
- "pointers are not 64 bits");
-
-_Static_assert(
- -1l == ((-1l<<8)>>8),
- "opposite bit-shifts on a negative integer yield a different result");
-
 typedef i64 num, obj, *mem;
-#define non ((obj)0)
-#define nil (~non)
-#define W (sizeof(obj))
-#define W2 (W*2)
-
 typedef struct two { obj x, y; } *two; // pairs
 typedef struct tup { u64 len; obj xs[]; } *tup, *vec; // vectors
 typedef struct str { u64 len; char text[]; } *str; // byte arrays
@@ -38,14 +24,14 @@ enum globl { // indices into a table of global constants
 
 // a linked list of stack addresses containing live values
 // that need to be preserved by garbage collection.
-typedef struct mem_ { mem one; struct mem_ *next; } *mem_;
+typedef struct root { mem one; struct root *next; } *root;
 
 // this structure is responsible for holding runtime state.
 // most functions take a pointer to it as the first argument.
 typedef struct lips {
  obj ip, xp, *fp, *hp, *sp, // vm state variables
      syms, glob[NGlobs]; // symbols and globals
- mem_ mem_root; // gc protection list
+ root mem_root; // gc protection list
  i64 t0, seed, count, mem_len, *mem_pool; // memory data
  jmp_buf *restart; // top level restart
 } *lips;
@@ -54,16 +40,12 @@ typedef struct lips {
 typedef obj terp(lips, obj, mem, mem, mem, obj);
 typedef terp **hom; // code pointer ; the internal function type
 
-int lips_boot(lips);
-
 u0
  reqsp(lips, u64),
  defprim(lips, const char *, terp*) NoInline,
  emit(lips, obj, FILE*),
  errp(lips, char*, ...),
  emsep(lips, obj, FILE*, char);
-
-lips lips_init(lips), lips_fin(lips);
 
 obj
  sskc(lips, mem, obj),
@@ -73,22 +55,23 @@ obj
  parse(lips, FILE*),
  intern(lips, obj),
  eval(lips, obj),
- compile(lips, obj),
  table(lips),
- spush(lips, obj) NoInline,
  tblset(lips, obj, obj, obj),
  tblget(lips, obj, obj),
  tbldel(lips, obj, obj),
- string(lips, const char*),
- lips_eval(lips, char *),
- script(lips, const char*, FILE*);
+ string(lips, const char*);
 
-u64 llen(obj) NoInline, hc(lips, obj);
+u64 llen(obj) NoInline;
 bool eql(obj, obj);
 
+// a packed array of 4-byte strings.
 extern const uint32_t *tnoms;
-#define tnom(t) ((char*)(tnoms+(t)))
 
+#define non ((obj)0)
+#define nil (~non)
+#define W (sizeof(obj))
+#define W2 (W*2)
+#define tnom(t) ((char*)(tnoms+(t)))
 #define Gh(x) gethom(x)
 #define Ph(x) puthom(x)
 #define Gn getnum
@@ -130,7 +113,7 @@ extern const uint32_t *tnoms;
 #define GG(x) G(G(x))
 #define chars(x) getstr(x)->text
 #define symnom(y) chars(getsym(y)->nom)
-#define mm(r) ((Safe=&((struct mem_){(r),Safe})))
+#define mm(r) ((Safe=&((struct root){(r),Safe})))
 #define um (Safe=Safe->next)
 #define AR(x) getvec(x)->xs
 #define AL(x) getvec(x)->len
@@ -158,30 +141,21 @@ extern const uint32_t *tnoms;
 #define Eva Glob[Eval]
 #define App Glob[Apply]
 #define Avail (Sp-Hp)
-#define OK EXIT_SUCCESS
-#define NO EXIT_FAILURE
 
 #define mix ((u64)2708237354241864315)
 #define interns(v,c) intern(v,string(v,c))
 #define SI static Inline
-
 SI hom button(hom h) { while (*h) h++; return h; }
 SI u0* bump(lips v, u64 n) { u0* x = v->hp; return v->hp += n, x; }
-SI i64 hbi(u64 cap, u64 co) { return co % cap; }
-SI ent hb(obj t, u64 code) { return gettbl(t)->tab[hbi(gettbl(t)->cap, code)]; }
 SI u0* cells(lips v, u64 n) { if (Avail < n) reqsp(v, n); return bump(v, n); }
-SI obj spop(lips v) { return *Sp++; }
 SI u64 b2w(u64 b) { return b / W + (b % W && 1); }
-SI int xval(obj x) { return x ? OK : NO; }
-
-SI lips lips_close(lips v) {
- return lips_fin(v), free(v), NULL; }
- 
-SI lips lips_open(void) {
- lips v = malloc(sizeof(struct lips));
- return v && (!lips_init(v) || lips_boot(v) != OK) ?
-  lips_close(v) :
-  v; }
 #undef SI
 
+_Static_assert(
+ sizeof(intptr_t) == sizeof(int64_t),
+ "pointers are not 64 bits");
+
+_Static_assert(
+ -1l == ((-1l<<8)>>8),
+ "opposite bit-shifts on a negative integer yield a different result");
 #endif

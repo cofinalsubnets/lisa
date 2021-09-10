@@ -48,7 +48,6 @@ static Inline i64 sidx(const char *s, char c) {
 
 // mem{set,cpy,mov} analogs are defined for
 // 8, 16, 32 and 64 bit items
-
 #define memn(n)\
  static Inline u0 set##n(u0*_d,u##n i,u64 l) {\
   for(u##n*d=_d;l--;*d++=i); }\

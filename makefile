@@ -1,3 +1,6 @@
+# listen make
+# you're already getting an unqualified filename
+# don't ask for a capital letter as well
 ifeq ($(shell whoami), root)
 PREFIX ?= /usr/local
 else

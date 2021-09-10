@@ -1,4 +1,3 @@
-
 #include "lips.h"
 #include "terp.h"
 #include <stdlib.h>
@@ -12,36 +11,35 @@
 #define PREFIX "/usr/local"
 #endif
 
-obj script(lips v, const char *path, FILE *f) {
+#define OK EXIT_SUCCESS
+#define NO EXIT_FAILURE
+static Inline int xval(obj x) { return x ? OK : NO; }
+
+static obj script(lips v, const char *path, FILE *f) {
  if (!f) return
-   errp(v, "%s : %s", path, strerror(errno)),
-   lips_fin(v),
-   0;
+  errp(v, "%s : %s", path, strerror(errno)), 0;
  jmp_buf re;
  v->restart = &re;
  if (setjmp(re)) return
   errp(v, "%s : fail", path),
   fclose(f),
-  (obj) lips_fin(v);
+  0;
  obj x;
  while ((x = parse(v, f))) eval(v, x);
- return x = feof(f) ? (x || nil) : 0, fclose(f), x; }
+ return x = feof(f) ? (x ? x : nil) : 0, fclose(f), x; }
 
 #define PATH PREFIX "/lib/lips/prelude.lips"
-int lips_boot(lips v) { return xval(script(v, PATH, fopen(PATH, "r"))); }
+static int lips_boot(lips v) { return xval(script(v, PATH, fopen(PATH, "r"))); }
 #undef PATH
 
-lips lips_fin(lips v) { return
+static lips lips_fin(lips v) { return
  free(v->mem_pool), (lips) (v->mem_pool = NULL); }
 
 static NoInline u0 rin(lips v, const char *a, terp *b) {
  obj z = interns(v, a);
  tblset(v, Top, z, Pn(b)); }
 
-obj lips_eval(lips v, char *expr) { return
-  script(v, "eval", fmemopen(expr, slen(expr), "r")); }
-
-lips lips_init(lips v) {
+static lips lips_init(lips v) {
  v->seed = v->t0 = clock(),
  v->ip = v->xp = v->syms = nil,
  v->fp = v->hp = v->sp = (mem) W,
@@ -72,7 +70,7 @@ static int repl(lips v) {
  setjmp(re);
  for (obj x;;)
   if ((x = parse(v, stdin)))
-    emsep(v, eval(v, x), stdout, '\n');
+   emsep(v, eval(v, x), stdout, '\n');
   else if (feof(stdin)) break;
  return OK; }
 

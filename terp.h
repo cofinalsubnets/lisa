@@ -51,3 +51,5 @@
 #define ninl(x, _) terp x NoInline;
 insts(ninl)
 #undef ninl
+
+obj compile(lips, obj);
