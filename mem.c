@@ -141,8 +141,7 @@ cpcc(cpsym) {
  sym src = getsym(x), dst;
  if (fresh(src->nom)) return src->nom;
  if (nilp(src->nom)) // anonymous symbol
-  dst = bump(v, Size(sym)),
-  cpy64(dst, src, Size(sym));
+  cpy64(dst = bump(v, Size(sym)), src, Size(sym));
  else dst = getsym(sskc(v, &Syms, cp(v, src->nom, ln, lp)));
  return src->nom = putsym(dst); }
 

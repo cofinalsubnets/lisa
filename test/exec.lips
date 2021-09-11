@@ -36,11 +36,12 @@
     (C n) (? (= n 0) zero (succ (C (- n 1)))) ; send it to its church numeral
     (N c) ((c (\ x (+ x 1))) 0)               ; send it back
 
-    two (succ one) five (succ ((mul two) two))
+    two (succ one) five (succ ((exp two) two))
     ten ((mul two) five)
     one-hundred ((exp two) ten)
   (= 100 (N (C 100)) (N one-hundred)))
 
+ ; hyperoperations
  (: (hy n) (? (= n 0) + (\ x y
      ((: (hz hx x y i) (? (< i y) (hx x (hz hx x y (+ i 1))) x))
       (hy (- n 1)) x y 1)))

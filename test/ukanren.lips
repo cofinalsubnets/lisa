@@ -1,0 +1,40 @@
+(: (=? a b) (|| (= a b) (&& (vecp a) (vecp b)
+                            (= (vget a 0) (vget b 0))))
+   ((m\ f) x) (: c (B x)                        ; call/fresh
+               ((f (vec c)) (X (A x) (+ c 1))))
+   ((m^ f g) x) (m* (f x) g)                    ; conj
+   ((mv f g) x) (m+ (f x) (g x))                ; disj
+   (m+ a b) (? (~ a) b  (homp a) (\ (m+ b (a))) ; mplus
+                                 (X     (A a)  (m+ (B a) b)))
+   (m* a b) (? (~ a) () (homp a) (\ (m* (a) b)) ; bind
+                                 (m+ (b (A a)) (m* (B a) b)))
+   ((m= u v) x) (&&
+    (: (uni u v s) (:
+     (w u) (|| (&& (vecp u) ; walk
+                   (: r (find s (co A (cu =? u))))
+                   (w (B r)))
+               u)
+     x (w u) y (w v) (?
+      (=? x y) s             ; ok
+      (vecp x) (X (X x y) s) ; x <- y
+      (vecp y) (X (X y x) s) ; y <- x
+      (&& (twop x) (twop y)  ; list
+       (uni (B x) (B y) (uni (A x) (A y) s))))))
+    (L (X (>>= u v (A x) uni) (B x)))))
+
+(: mini (X () 0)
+   a-and-b (m^
+    (m\ (\ a (m= a 7)))
+    (m\ (\ b (mv (m= b 5) (m= b 6)))))
+   ab-results (a-and-b mini)
+   (tab results) (foldl results () (\ m rset
+    (X (foldl (A rset) () (\ m bind
+    (X (B bind) m)))
+    m)))
+   res ((m\ (\ q (m= q 5))) mini)
+   outer (A res)
+   inner (AA outer)
+
+ (test uKanren
+  (= '((7 6) (7 5)) (tab (a-and-b mini)))
+  (&& (vecp (A inner)) (=? (A inner) (vec 0)))))

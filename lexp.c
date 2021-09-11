@@ -38,10 +38,10 @@ obj parse(lips v, FILE* i) {
  int c = r0(i);
  obj x, y;
  switch (c) {
-  case EOF:  return 0;
-  case ')':  return readx(v, err_rpar);
-  case '(':  return r1s(v, i);
-  case '"':  return read_loop_call(v, i, str_read_loop);
+  case EOF: return 0;
+  case ')': return readx(v, err_rpar);
+  case '(': return r1s(v, i);
+  case '"': return read_loop_call(v, i, str_read_loop);
   case '\'':
    x = pair(v, parse(v, i), nil);
    return pair(v, Qt, x);
@@ -108,7 +108,6 @@ static NoInline obj readz_1(const char *s) {
   case 'z': return readz_2(s+2, 12);
   case 'x': return readz_2(s+2, 16); }
  return readz_2(s, 10); }
-
 
 static Inline obj readz(lips _, const char *s) {
  obj q;
