@@ -27,7 +27,7 @@
   ((call/fresh f) s/c) (: c (B s/c)
    ((f (var c)) (X (A s/c) (+ c 1))))
   ((disj g1 g2) s/c) (mplus (g1 s/c) (g2 s/c))
-  ((conj g1 g2) s/c) (bind (g1 s/c) (g2 s/c))
+  ((conj g1 g2) s/c) (bind (g1 s/c) g2)
   (mplus $1 $2) (?
    (~ $1) $2
    (homp $1) (\ (mplus $2 ($1)))
@@ -36,12 +36,30 @@
    (~ $) mzero
    (homp $) (\ (bind ($) g))
    (mplus (g (A $)) (bind (B $) g))))
+
+(: a-and-b (conj
+ (call/fresh (\ a (== a 7)))
+ (call/fresh (\ b (disj (== b 5) (== b 6)))))
+   ab-results (a-and-b empty-state)
+   ab-rset0 (A ab-results)
+   ab-bind0 (A ab-rset0)
+   b0 (BA ab-bind0)
+   a0 (BA (B ab-bind0))
+   ab-rset1 (AB ab-results)
+   ab-bind1 (A ab-rset1)
+   b1 (BA ab-bind1)
+   a1 (BA (B ab-bind1))
+)
 (: res ((call/fresh (\ q (== q 5))) empty-state)
    outer (A res)
    inner (AA outer)
+
 (test uKanren
+ (= 2 (len ab-results) (len ab-bind0) (len ab-bind1))
  (= () (B res) (B (AA res)))
  (= 1 (B outer))
  (= 5 (B inner))
+ (= '(7 5) (L a0 b0))
+ (= '(7 6) (L a1 b1))
  (&& (var? (A inner)) (var=? (A inner) (var 0)))
 ))
