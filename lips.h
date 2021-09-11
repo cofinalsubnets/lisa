@@ -44,6 +44,7 @@ u0
  reqsp(lips, u64),
  defprim(lips, const char *, terp*) NoInline,
  emit(lips, obj, FILE*),
+ errp_(lips, obj, char*, ...),
  errp(lips, char*, ...),
  emsep(lips, obj, FILE*, char);
 
@@ -62,6 +63,7 @@ obj
  string(lips, const char*);
 
 u64 llen(obj) NoInline;
+int repl(lips v, FILE *in, FILE *out);
 bool eql(obj, obj);
 
 // a packed array of 4-byte strings.
@@ -73,9 +75,13 @@ extern const uint32_t *tnoms;
 #define W2 (W*2)
 #define tnom(t) ((char*)(tnoms+(t)))
 #define Gh(x) gethom(x)
+#define H(x) gethom(x)
+#define H_(x) puthom(x)
 #define Ph(x) puthom(x)
 #define Gn getnum
 #define Pn putnum
+#define N(x) getnum(x)
+#define N_(x) putnum(x)
 #define kind(x) ((x)&7)
 #define gethom(x) ((hom)((x)-Hom))
 #define puthom(x) ((obj)((x)+Hom))

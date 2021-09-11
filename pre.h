@@ -13,7 +13,6 @@
 #define BWDQ(_) _(8) _(16) _(32) _(64)
 
 typedef void u0;
-
 #define I(n) \
  typedef int##n##_t i##n;\
  typedef uint##n##_t u##n;
@@ -33,9 +32,8 @@ static Inline char cmaj(char c) {
 // the multiplier comes from "Computationally Easy, Spectrally
 // Good Multipliers for Congruential Pseudorandom Number
 // Generators" by Steele & Vigna
-#define mul (0xaf251af3b0f025b5)
-static Inline i64 lcprng(i64 *s) { return (*s = *s * mul + 1) >> 8; }
-#undef mul
+#define LCPRNG(s) (((s) * 0xaf251af3b0f025b5ll + 1) >> 8)
+static Inline i64 lcprng(i64 *s) { return *s = LCPRNG(*s); }
 
 // functions for null-terminated byte strings
 static Inline i64 scmp(const char *a, const char *b) {

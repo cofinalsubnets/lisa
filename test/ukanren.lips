@@ -1,0 +1,47 @@
+(: (assp p l) (find l (\ x (p (A x)))))
+(:
+ empty-state (X () 0)
+ var vec
+ var? vecp
+ (var=? a b) (= (vget a 0) (vget b 0))
+ (walk u s)
+  (? (: pr (&& (var? u) (assp (cu var=? u) s)))
+   (walk (B pr) s)
+   u)
+ (ext-s x v s)
+  (X (X x v) s)
+ ((== u v) s/c)
+  (? (: s (unify u v (A s/c)))
+     (unit (X s (B s/c)))
+     mzero)
+  (unit s/c) (X s/c mzero)
+  mzero ()
+  (unify u v s) (>>= (walk u s) (walk v s) (\ u v (?
+   (&& (var? u) (var? v) (var=? u v)) s
+   (var? u) (ext-s u v s)
+   (var? v) (ext-s v u s)
+   (&& (twop u) (twop v))
+    (>>= (unify (A u) (A v) s) (\ s
+     (&& s (unify (B u) (B v) s))))
+   (&& (= u v) s))))
+  ((call/fresh f) s/c) (: c (B s/c)
+   ((f (var c)) (X (A s/c) (+ c 1))))
+  ((disj g1 g2) s/c) (mplus (g1 s/c) (g2 s/c))
+  ((conj g1 g2) s/c) (bind (g1 s/c) (g2 s/c))
+  (mplus $1 $2) (?
+   (~ $1) $2
+   (homp $1) (\ (mplus $2 ($1)))
+   (X (A $1) (mplus (B $1) $2)))
+  (bind $ g) (?
+   (~ $) mzero
+   (homp $) (\ (bind ($) g))
+   (mplus (g (A $)) (bind (B $) g))))
+(: res ((call/fresh (\ q (== q 5))) empty-state)
+   outer (A res)
+   inner (AA outer)
+(test uKanren
+ (= () (B res) (B (AA res)))
+ (= 1 (B outer))
+ (= 5 (B inner))
+ (&& (var? (A inner)) (var=? (A inner) (var 0)))
+))
