@@ -41,7 +41,7 @@ syn match lipsLeadWhite   contained   "^\s\+"
 
 syn iskeyword @,!,37-38,42-47,:,60-63,\,`,|,~,^
 syn keyword lipsFunc < <= = > >= + - ~ * / % ? ` : \\ , . A B X L Q && \|\| \| & ^ << >>
-syn keyword lipsFunc vecp ::: >>= case
+syn keyword lipsFunc vec vecp ::: >>= case
 syn keyword lipsFunc twop nump symp tblp strp nilp homp ev ap
 syn keyword lipsFunc str slen sget scat ssub ystr sym fail
 syn keyword lipsFunc tbl tget tset tlen thas tkeys tdel

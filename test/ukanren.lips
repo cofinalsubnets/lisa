@@ -1,65 +1,40 @@
-(: (assp p l) (find l (\ x (p (A x)))))
-(:
- empty-state (X () 0)
- var vec
- var? vecp
- (var=? a b) (= (vget a 0) (vget b 0))
- (walk u s)
-  (? (: pr (&& (var? u) (assp (cu var=? u) s)))
-   (walk (B pr) s)
-   u)
- (ext-s x v s)
-  (X (X x v) s)
- ((== u v) s/c)
-  (? (: s (unify u v (A s/c)))
-     (unit (X s (B s/c)))
-     mzero)
-  (unit s/c) (X s/c mzero)
-  mzero ()
-  (unify u v s) (>>= (walk u s) (walk v s) (\ u v (?
-   (&& (var? u) (var? v) (var=? u v)) s
-   (var? u) (ext-s u v s)
-   (var? v) (ext-s v u s)
-   (&& (twop u) (twop v))
-    (>>= (unify (A u) (A v) s) (\ s
-     (&& s (unify (B u) (B v) s))))
-   (&& (= u v) s))))
-  ((call/fresh f) s/c) (: c (B s/c)
-   ((f (var c)) (X (A s/c) (+ c 1))))
-  ((disj g1 g2) s/c) (mplus (g1 s/c) (g2 s/c))
-  ((conj g1 g2) s/c) (bind (g1 s/c) g2)
-  (mplus $1 $2) (?
-   (~ $1) $2
-   (homp $1) (\ (mplus $2 ($1)))
-   (X (A $1) (mplus (B $1) $2)))
-  (bind $ g) (?
-   (~ $) mzero
-   (homp $) (\ (bind ($) g))
-   (mplus (g (A $)) (bind (B $) g))))
+(: (=? a b) (|| (= a b) (&& (vecp a) (vecp b)
+                            (= (vget a 0) (vget b 0))))
+   ((m\ f) x) (: c (B x)                        ; call/fresh
+               ((f (vec c)) (X (A x) (+ c 1))))
+   ((m^ f g) x) (m* (f x) g)                    ; conj
+   ((mv f g) x) (m+ (f x) (g x))                ; disj
+   (m+ a b) (? (~ a) b  (homp a) (\ (m+ b (a))) ; mplus
+                                 (X     (A a)  (m+ (B a) b)))
+   (m* a b) (? (~ a) () (homp a) (\ (m* (a) b)) ; bind
+                                 (m+ (b (A a)) (m* (B a) b)))
+   ((m= u v) x) (&&
+    (: (uni u v s) (:
+     (w u) (|| (&& (vecp u) ; walk
+                   (: r (find s (co A (cu =? u))))
+                   (w (B r)))
+               u)
+     x (w u) y (w v) (?
+      (=? x y) s             ; ok
+      (vecp x) (X (X x y) s) ; x <- y
+      (vecp y) (X (X y x) s) ; y <- x
+      (&& (twop x) (twop y)  ; list
+       (uni (B x) (B y) (uni (A x) (A y) s))))))
+    (L (X (>>= u v (A x) uni) (B x)))))
 
-(: a-and-b (conj
- (call/fresh (\ a (== a 7)))
- (call/fresh (\ b (disj (== b 5) (== b 6)))))
-   ab-results (a-and-b empty-state)
-   ab-rset0 (A ab-results)
-   ab-bind0 (A ab-rset0)
-   b0 (BA ab-bind0)
-   a0 (BA (B ab-bind0))
-   ab-rset1 (AB ab-results)
-   ab-bind1 (A ab-rset1)
-   b1 (BA ab-bind1)
-   a1 (BA (B ab-bind1))
-)
-(: res ((call/fresh (\ q (== q 5))) empty-state)
+(: mini (X () 0)
+   a-and-b (m^
+    (m\ (\ a (m= a 7)))
+    (m\ (\ b (mv (m= b 5) (m= b 6)))))
+   ab-results (a-and-b mini)
+   (tab results) (foldl results () (\ m rset
+    (X (foldl (A rset) () (\ m bind
+    (X (B bind) m)))
+    m)))
+   res ((m\ (\ q (m= q 5))) mini)
    outer (A res)
    inner (AA outer)
 
-(test uKanren
- (= 2 (len ab-results) (len ab-bind0) (len ab-bind1))
- (= () (B res) (B (AA res)))
- (= 1 (B outer))
- (= 5 (B inner))
- (= '(7 5) (L a0 b0))
- (= '(7 6) (L a1 b1))
- (&& (var? (A inner)) (var=? (A inner) (var 0)))
-))
+ (test uKanren
+  (= '((7 6) (7 5)) (tab (a-and-b mini)))
+  (&& (vecp (A inner)) (=? (A inner) (vec 0)))))

@@ -65,7 +65,6 @@ int repl(lips v, FILE *in, FILE *out) {
  v->restart = &re;
  setjmp(re);
  for (obj x;;) {
-  fprintf(out, "    ");
   if ((x = parse(v, in)))
    emsep(v, eval(v, x), out, '\n');
   else if (feof(in)) break; }
