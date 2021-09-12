@@ -98,6 +98,7 @@ int main(int argc, char** argv) {
   while (r == OK && optind < argc) {
     const char *path = argv[optind++];
     r = xval(script(&V, path, fopen(path, "r"))); }
-  if (r == OK && flag & TAKKA) r = repl(&V, stdin, stdout);
+  if (r == OK && flag & TAKKA)
+    r = repl(&V, stdin, stdout);
   lips_fin(&V); }
  return r; }
