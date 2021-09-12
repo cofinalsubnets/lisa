@@ -32,15 +32,15 @@
 // without using the stack. so the interpreter has to restore
 // the current values in the vm struct before it makes any
 // "external" function calls.
-#define Pack() (Ip=ip,Sp=sp,Hp=hp,Fp=fp,Xp=xp)
-#define Unpack() (fp=Fp,hp=Hp,sp=Sp,ip=Ip,xp=Xp)
-#define CALLC(...)(Pack(),(__VA_ARGS__),Unpack())
+#define PACK() (Ip=ip,Sp=sp,Hp=hp,Fp=fp,Xp=xp)
+#define UNPACK() (fp=Fp,hp=Hp,sp=Sp,ip=Ip,xp=Xp)
+#define CALLC(...)(PACK(),(__VA_ARGS__),UNPACK())
 
 // the frame structure holds the current function context.
 typedef struct fr { obj clos, retp, subd, argc, argv[]; } *fr;
 #define ff(x)((fr)(x))
 #define CLOS ff(fp)->clos
-#define Retp ff(fp)->retp
+#define RETP ff(fp)->retp
 #define SUBR ff(fp)->subd
 #define ARGC ff(fp)->argc
 #define ARGV ff(fp)->argv
@@ -139,8 +139,10 @@ interp(locals) {
 interp(lbind) {
  obj w = (obj) GF(ip),
      d = XY(w), y = X(w);
- if (!(w = tblget(v, d, xp = YY(w))))
-  Jump(nope, "free variable : %s", symnom(xp)); // free variable
+ if (!(w = tblget(v, d, xp = YY(w)))) {
+  char *nom = nilp(getsym(xp)->nom) ? "<anon>" : symnom(xp);
+  Jump(nope, "free variable : %s", nom); }// free variable
+
  xp = w;
  if (getnum(y) != 8) TYP(xp, getnum(y)); // do the type check
  terp *q = G(FF(ip)); // omit the arity check if possible
@@ -153,7 +155,7 @@ interp(lbind) {
 
 // control flow instructions
 // return to C
-interp(yield) { Pack(); return xp; }
+interp(yield) { PACK(); return xp; }
 
 // conditional jumps
 #define B(_x_, a, x, b, y) {\
@@ -189,7 +191,7 @@ interp(clos) { CLOS = (obj) GF(ip); Ap((obj) G(FF(ip)), xp); }
 
 // return from a function
 interp(ret) {
- ip = Retp;
+ ip = RETP;
  sp = (mem) ((i64) ARGV + ARGC - Num);
  fp = (mem) ((i64)   sp + SUBR - Num);
  NEXT(0); }
@@ -200,7 +202,7 @@ interp(call) {
  obj adic = (obj) GF(ip);
  i64 off = fp - (mem) ((i64) sp + adic - Num);
  fp = sp -= Size(fr);
- Retp = Ph(ip+W2);
+ RETP = Ph(ip+W2);
  SUBR = Pn(off);
  CLOS = nil;
  ARGC = adic;
@@ -208,11 +210,11 @@ interp(call) {
 
 static interp(recne) {
  // overwrite current frame with new frame
- Xp = SUBR, Ip = Retp; // save return info
+ Xp = SUBR, Ip = RETP; // save return info
  fp = ARGV + Gn(ARGC - ip);
  cpy64r(fp, sp, Gn(ip)); // copy from high to low
  sp = fp -= Size(fr);
- Retp = Ip;
+ RETP = Ip;
  ARGC = ip;
  SUBR = Xp;
  ip = xp;
@@ -287,11 +289,11 @@ interp(ap_u) {
  TYP(x, Hom);
  u64 adic = llen(y);
  Have(adic);
- obj off = SUBR, rp = Retp;
+ obj off = SUBR, rp = RETP;
  sp = ARGV + Gn(ARGC) - adic;
  for (u64 j = 0; j < adic; y = Y(y)) sp[j++] = X(y);
  fp = sp -= Size(fr);
- Retp = rp;
+ RETP = rp;
  ARGC = Pn(adic);
  SUBR = off;
  CLOS = nil;
@@ -619,7 +621,7 @@ interp(pc0) {
  cpy64(sp, AR(arg), adic);
  ec = (obj) GF(ip);
  fp = sp -= Size(fr);
- Retp = ip;
+ RETP = ip;
  SUBR = Pn(off);
  ARGC = Pn(adic);
  CLOS = AR(ec)[2];
@@ -660,8 +662,7 @@ interp(putc_u) {
  Jump(ret); }
 
 interp(getc_u) {
- xp = feof(stdin) ? nil : Pn(getc(stdin));
- Go(ret, xp); }
+ Go(ret, feof(stdin) ? nil : Pn(getc(stdin))); }
 
 // pairs
 interp(cons) {
@@ -679,11 +680,11 @@ interp(cdr_u) { ARY(1); TYP(*ARGV, Two); Go(ret, Y(*ARGV)); }
 
 // arithmetic
 #define BINOP(nom, xpn) interp(nom) { xp = (xpn); NEXT(1); }
-BINOP(add, xp + *sp++ - Num)
-BINOP(sub, *sp++ - xp + Num)
-BINOP(mul, Pn(Gn(xp) * Gn(*sp++)))
-BINOP(sar, Pn(Gn(*sp++) >> Gn(xp)))
-BINOP(sal, Pn(Gn(*sp++) << Gn(xp)))
+BINOP(add,  xp + *sp++ - Num)
+BINOP(sub,  *sp++ - xp + Num)
+BINOP(mul,  Pn(Gn(xp) * Gn(*sp++)))
+BINOP(sar,  Pn(Gn(*sp++) >> Gn(xp)))
+BINOP(sal,  Pn(Gn(*sp++) << Gn(xp)))
 BINOP(band, xp & *sp++)
 BINOP(bor,  xp | *sp++)
 BINOP(bxor, (xp ^ *sp++) | Num)
@@ -854,7 +855,7 @@ static interp(nope, const char *msg, ...) {
  va_start(xs, msg); vfprintf(stderr, msg, xs);
  fputc('\n', stderr);
  for (;;) {
-  ip = Retp, fp += Size(fr) + getnum(ARGC) + getnum(SUBR);
+  ip = RETP, fp += Size(fr) + getnum(ARGC) + getnum(SUBR);
   if (button(Gh(ip))[-1] == yield) break;
   fputs("# in ", stderr), emsep(v, Ph(ip), stderr, '\n'); }
  Hp = hp;

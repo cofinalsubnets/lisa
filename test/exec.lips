@@ -9,17 +9,16 @@
  (= 1 (ccc (\ ret
   (, (ret 1) (fail "unreachable")))))
 
- ; fibonacci
- (= 2178309 (>>= 32 (: (fib n)
-  (? (< n 3) 1
-   (+ (fib (- n 1)) (fib (- n 2)))))))
+; ; fibonacci
+; (= 2178309 (>>= 32 (: (fib n)
+;  (? (< n 3) 1
+;   (+ (fib (- n 1)) (fib (- n 2)))))))
+;
+; ; ackermann
+; (= 4093 (>>= 3 9 (: (ack m n)
+;  (? (< m 1) (+ n 1)
+;   (ack (- m 1) (? (> n 0) (ack m (- n 1)) 1))))))
 
- ; ackermann
- (= 4093 (>>= 3 9 (: (ack m n)
-  (? (< m 1) (+ n 1)
-   (ack (- m 1) (? (> n 0) (ack m (- n 1)) 1))))))
-
- ; takeuchi
  (= 13 (>>= 12 13 14 (: (tarai x y z)
   (? (<= x y) y (tarai
    (tarai (- x 1) y z)
@@ -39,7 +38,8 @@
     two (succ one) five (succ ((exp two) two))
     ten ((mul two) five)
     one-hundred ((exp two) ten)
-  (= 100 (N (C 100)) (N one-hundred)))
+  (= 100 (N (C 100))
+         (N one-hundred)))
 
  ; hyperoperations
  (: (hy n) (? (= n 0) + (\ x y
