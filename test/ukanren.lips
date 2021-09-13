@@ -1,25 +1,35 @@
-(: (y? x) (&& (symp x) (~ (ystr x))) ; anonymous symbol ?
-   ((m& f g) x) (m* (f x) g)     ; conj
-   ((m| f g) x) (m+ (f x) (g x)) ; disj
-   (m* a b) (? (~ a) () (homp a) (\ (m* (a) b)) ; bind
-                                 (m+ (b (A a)) (m* (B a) b)))
-   (m+ a b) (? (~ a)  b (homp a) (\ (m+ b (a))) ; mplus
-                                 (X (A a) (m+ (B a) b)))
-   m= (: (w u s) (|| (&& (y? u) ; walk
-                         (: r (find s (co A (cu = u))))
-                         (w (B r) s))
-                     u)
-         ((uni u v) s) (: x (w u s) y (w v s) (? ; unify
+(: (_? x) (&& (symp x) (~ (ystr x))) ; anonymous symbol ?
+   ((||| f g) x) (m+ (f x) (g x)) ; disj
+   ((&&& f g) x) (m* (f x)  g)    ; conj
+   (m+ a b) (? (~ a)  b (homp a) (\            (m+    b    (a)))
+                                 (X     (A a)  (m+    b  (B a))))
+   (m* a b) (? (~ a) () (homp a) (\            (m*   (a)    b))
+                                 (m+ (b (A a)) (m* (B a)    b)))
+   == (: (walk u s) (|| (&& (_? u) ; walk
+                            (: r (find s (co B (cu = u))))
+                            (walk (A r) s))
+                        u)
+         ((unify u v) s) (: x (walk u s) y (walk v s) (?
           (= x y) s             ; ok
-          (y? x) (X (X x y) s)  ; x <- y
-          (y? y) (X (X y x) s)  ; y <- x
-          (&& (twop x) (twop y) ; list
-           (uni (B x) (B y) (uni (A x) (A y) s)))))
-       (co uni (\ f (co f L)))))
-(::: m\ (\ a . (X (X '\ a) (map (init a) (\ (L sym))))))
+          (_? x) (X (X y x) s)  ; x <- y
+          (_? y) (X (X x y) s)  ; y <- x
+          (&& (twop x) (twop y) ; unify both sides
+           (unify (B x) (B y) (unify (A x) (A y) s)))))
+       (co unify (\ _ (co _ L)))))
 
-(: a7b5|6 (m& (m\ a (m= a 7)) (m\ b (m| (m= b 5) (m= b 6))))
-   (tabulate results) (foldl results () (\ m rset
-    (X (foldl  rset () (\ m bind (X (B bind) m))) m)))
- (test kanren
-  (= '((7 6) (7 5)) (tabulate (a7b5|6 ())))))
+(::: \\ (\ a   . (X (X '\ a) (map (init a) (\ (L sym)))))
+     &* (\ a x . (? (~ x) a (L &&& a (X '&* x))))
+     |* (\ a x . (? (~ x) a (L ||| a (X '|* x)))))
+
+(: (tabulate query)
+    (foldl (query ()) () (\ m rset
+     (? (~ rset) m (X (foldl  rset () (\ m bind (X (A bind) m))) m)))))
+
+(test ukanren
+ (= '((7 6) (7 5)) (tabulate (\\ a b (&* (== a 7) (|* (== b 5) (== b 6))))))
+ (= '((9 8))       (tabulate (\\ a b (&* (== a 9) (== b 8)))))
+ (= '((1 1))       (tabulate (\\ a b (&* (== a 1) (== a b)))))
+ (=  ()            (tabulate (\\ a   (&* (== a 0) (== a 1)))))
+ (=  ()            (tabulate (\\ a b (&* (== a 7) (== b 3) (|* (== b 2) (== b 4))))))
+ (= '((7 3))       (tabulate (\\ a b (&* (== a 7) (== b 3) (|* (== b 3) (== b 4))))))
+)

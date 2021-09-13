@@ -1,9 +1,12 @@
 #ifndef _lips_h
 #define _lips_h
 #include "pre.h"
+#include <stdarg.h>
 #include <stdio.h>
 #include <setjmp.h>
 #include <stdlib.h>
+#include <stdbool.h>
+#include <stdnoreturn.h>
 
 // thanks !!
 typedef i64 num, obj, *mem;

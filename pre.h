@@ -1,9 +1,6 @@
 #ifndef _pre_h
 #define _pre_h
 #include <stdint.h>
-#include <stdarg.h>
-#include <stdbool.h>
-#include <stdnoreturn.h>
 
 #define Inline inline __attribute__((always_inline))
 #define NoInline __attribute__((noinline))
@@ -18,7 +15,6 @@ typedef void u0;
  typedef uint##n##_t u##n;
 BWDQ(I)
 #undef I
-
 
 // ASCII case folding
 #define coff ('a'-'A')
