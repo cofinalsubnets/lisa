@@ -21,7 +21,7 @@ read the `makefile` :)
 |`(\ a b c)`  |`(lambda (a b) c)`|
 |`(: a b)`    |`(begin (define a b) a)`|
 |`(: a b c)`  |`(letrec ((a b)) c)`|
-|`'x` `(`` x)`|`'x` `(quote x)`  |
+|`'x` <code>(\` x)</code>|`'x` `(quote x)`  |
 |`(? a b)`    |`(cond (a b) (#t #f))`|
 |`(? a b c)`  |`(cond (a b) (#t c))`|
 |`(? a b c d)`|`(cond (a b) (c d) (#t #f))`|
