@@ -1,13 +1,9 @@
 # lips
-lips is a simple lisp variant with a runtime written in C and
-a self-hosting threaded code compiler that makes it faster than
-most interpreted languages.
+♫ lisp is all you need ♫
 
 ## build / install
-are you on linux? `make` will probably work. otherwise consult
-the makefile for the C compiler invocation. `make install` puts
-files under `~/.local/{bin,lib}/`. lips assumes 64-bit word size
-but otherwise should be fairly portable.
+are you on linux? `make` will probably work. otherwise, just
+read the `makefile` :)
 
 ## syntax
 - `()` is self-quoting and false
@@ -17,47 +13,32 @@ but otherwise should be fairly portable.
   escape sequences are interpreted; multiline strings are fine
 
 ## special forms
-all forms take 0 or more arguments. for all forms `f` except `\`:
-- `(f) = ()`
-- `(f x) = x`
-for `\`:
-- `(\) = (\ ())`
-- `(\ x) = (\ _ x)`
+|  lips       | scheme           |
+|-------------|------------------|
+|`(, a b)`    |`(begin a b`      |
+|-------------|------------------|
+|`(\)`        |`(lambda _ '())`  |
+|-------------|------------------|
+|`(\ x)`      |`(lambda _ x)`    |
+|-------------|------------------|
+|`(\ a b c)`  |`(lambda (a b) c)`|
+|-------------|------------------|
+|`(: a b)`    |`(begin (define a b) a)`|
+|-------------|------------------|
+|`(: a b c)`  |`(letrec ((a b)) c)`|
+|-------------|------------------|
+|`'x` `(\` x)`|`'x` `(quote x)`  |
+|-------------|------------------|
+|`(? a b)`    |`(cond (a b) (#t #f))`|
+|-------------|------------------|
+|`(? a b c)`  |`(cond (a b) (#t c))`|
+|-------------|------------------|
+|`(? a b c d)`|`(cond (a b) (c d) (#t #f))`|
+|-------------|------------------|
 
-### `,` begin
-- `(, a b c) = (begin a b c)`
-
-more useful than in scheme because functions have no implicit
-`begin`.
-
-### <code>\`</code> quote
-- <code>(\` x) = (quote x)</code>
-
-`'x` works too.
-
-### `?` cond
-- `(? a b c) = (cond (a b) (#t c))` if then else
-- `(? a b) = (cond (a b) (#t #f))` if then
-
-takes any number of branches. with no fallthrough branch the
-implicit value is nil (`()`), which is the only false value
-(like in common lisp, hence `#f` in scheme).
-
-### `:` define / letrec
-- `(: a0 b0 ... an bn) = (begin (define a b) ... (define an bn) an)` even arguments : define variables in the current scope
-- `(: a0 b0 ... an bn c) = (letrec ((a0 b0) ... (an bn)) c)` odd arguments : define variables and evaluate an expression in an inner scope
-- `(: ((f g) x y) (g x y)) = (begin (define (f g) (lambda (x y) (g x y))) f)` nestable sugar for function defs
-
-### `\` lambda
-- `(\) = (lambda () #f)` nullary -> empty function
-- `(\ (f x)) = (lambda () (f x))` unary -> a thunk
-- `(\ a0 ... an x) = (lambda (a0 ... an) x)` however many arguments and one expression
-- `(\ a b . (a b)) = (lambda (a . b) (a b))`  vararg syntax : `.` after last argument
-
-calling a function with extra arguments is fine but not enough is an error.
+etc.
 
 ## some predefined functions / macros
-some of these are defined in prelude.lips, so won't be available unless you bootstrap.
 
 - `L = list` `X = cons` `A = car` `B = cdr`.  `AA`-`BB` are macros.
 - `+ - * / % << >> & | ^` like C. ints are currently only 61 bits though
@@ -70,7 +51,7 @@ some of these are defined in prelude.lips, so won't be available unless you boot
 - `homp nump twop symp nilp tblp strp vecp` type predicates
 - hash functions: `tbl tset tget thas tkeys tlen tdel` ; tbl / tset take any number of key/value pairs
 - string functions: n-ary constructor `(str 97 97 97) = "aaa"` ; `slen sget ssub scat`
-- symbol functions: `gensym`
+- symbol functions: `sym`: with no argument, `gensym`; with an argument, `string->symbol`
 - `(::: nom0 def0 nom1 def1 ...)` define macro
 - `(>>= x y z f) = (f x y z)` for readability
 
