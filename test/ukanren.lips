@@ -1,11 +1,11 @@
 (: (_? x) (&& (symp x) (~ (ystr x))) ; anonymous symbol ?
-   ((||| f g) x) (m+ (f x) (g x)) ; disj
-   ((&&& f g) x) (m* (f x)  g)    ; conj
+   ((disj f g) x) (m+ (f x) (g x)) ; disj
+   ((conj f g) x) (m* (f x)  g)    ; conj
    (m+ a b) (? (~ a)  b (homp a) (\            (m+    b    (a)))
                                  (X     (A a)  (m+    b  (B a))))
    (m* a b) (? (~ a) () (homp a) (\            (m*   (a)    b))
                                  (m+ (b (A a)) (m* (B a)    b)))
-   == (: (walk u s) (|| (&& (_? u) ; walk
+   == (: (walk u s) (|| (&& (_? u)
                             (: r (find s (co B (cu = u))))
                             (walk (A r) s))
                         u)
@@ -18,8 +18,8 @@
        (co unify (\ _ (co _ L)))))
 
 (::: \\ (\ a   . (X (X '\ a) (map (init a) (\ (L sym)))))
-     &* (\ a x . (? (~ x) a (L &&& a (X '&* x))))
-     |* (\ a x . (? (~ x) a (L ||| a (X '|* x)))))
+     &* (\ a x . (? (~ x) a (L conj a (X '&* x))))
+     |* (\ a x . (? (~ x) a (L disj a (X '|* x)))))
 
 (: (tabulate query)
     (foldl (query ()) () (\ m rset

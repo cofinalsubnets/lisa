@@ -10,30 +10,25 @@ files under `~/.local/{bin,lib}/`. lips assumes 64-bit word size
 but otherwise should be fairly portable.
 
 ## syntax
-if you know lisp then you know lips :)
-
-- lists are delimited with parentheses like usual. there are
-  no improper list literals. `.` is a normal symbol (but it
-  does have special meaning in argument lists).
-- `'x` quotes `x` like usual. nil (`()`) is self-quoting.
-  currently there's no quasiquotation.
-- strings are delimited with double quotes like usual. quotes
-  can be escaped with a backslash, but no other escape
-  sequences are interpreted. multiline strings are fine.
-- numbers are read in decimal by default with an optional
-  sign, like usual. the prefixes `0{b,o,d,z,x}` respectively
-  specify bases 2, 8, 10, 12, and 16.
+- `()` is self-quoting and false
+- there are no improper list literals or quasiquotation
+- numbers can take a radix: `0{b,o,d,z,x} -> 2, 8, 10, 12, 16`
+- quotes in strings can be escaped with a backslash, but no other
+  escape sequences are interpreted; multiline strings are fine
 
 ## special forms
-they're all one character long. nullary/unary cases are
-nil/identity, except for `\`. equivalents to examples
-are in scheme.
+all forms take 0 or more arguments. for all forms `f` except `\`:
+- `(f) = ()`
+- `(f x) = x`
+for `\`:
+- `(\) = (\ ())`
+- `(\ x) = (\ _ x)`
 
 ### `,` begin
 - `(, a b c) = (begin a b c)`
 
 more useful than in scheme because functions have no implicit
-begin.
+`begin`.
 
 ### <code>\`</code> quote
 - <code>(\` x) = (quote x)</code>
@@ -59,8 +54,7 @@ implicit value is nil (`()`), which is the only false value
 - `(\ a0 ... an x) = (lambda (a0 ... an) x)` however many arguments and one expression
 - `(\ a b . (a b)) = (lambda (a . b) (a b))`  vararg syntax : `.` after last argument
 
-calling a function with extra arguments is ok (not enough is
-an error).
+calling a function with extra arguments is fine but not enough is an error.
 
 ## some predefined functions / macros
 some of these are defined in prelude.lips, so won't be available unless you bootstrap.
@@ -115,18 +109,46 @@ some of these are defined in prelude.lips, so won't be available unless you boot
  (((C 100) fizzbuzz) 1))
 ```
 
+### μKanren
+```lisp
+(: (_? x) (&& (symp x) (~ (ystr x))) ; var?
+
+   ((disj f g) x) (m+ (f x) (g x))
+   ((conj f g) x) (m* (f x)  g)
+
+   ; mplus/bind
+   (m+ a b) (? (~ a)  b (homp a) (\            (m+    b    (a)))
+                                 (X     (A a)  (m+    b  (B a))))
+   (m* a b) (? (~ a) () (homp a) (\            (m*   (a)    b))
+                                 (m+ (b (A a)) (m* (B a)    b)))
+
+   == (: (walk u s) (|| (&& (_? u)
+                            (: r (find s (co B (cu = u))))
+                            (walk (A r) s))
+                        u)
+         ((unify u v) s) (: x (walk u s) y (walk v s) (?
+          (= x y) s             ; ok
+          (_? x) (X (X y x) s)  ; x <- y
+          (_? y) (X (X x y) s)  ; y <- x
+          (&& (twop x) (twop y) ; unify both sides
+           (unify (B x) (B y) (unify (A x) (A y) s)))))
+       (co unify (\ _ (co _ L)))))
+
+; call/fresh ;; it's a macro, sorry
+(::: \\ (\ a . (X (X '\ a) (map (init a) (\ (L sym))))))
+
+(. ((\\ a b (conj (== a 5) (disj (== b 6) (== b 7)))) ()))
+```
+
 ## missing features
 ### general purpose functionality
-wide characters, floats, arrays, files, networking, ...
+unicode, floats, arrays, files, networking, ...
 
 ### type inference
-under a weak type system suitable for dynamic languages.
-this will catch many errors and reduce runtime checks.
+like typescript but less fascist.
 
 ### polymorphism / overloading
-of functions like `+`, etc. this will need to fit in with the
-type system.
+of functions like `+`, etc. type system will help.
 
 ### namespace / module system
-important for ease of use and has practical benefits for
-compiling.
+for ease of use and has practical benefits for compiling.
