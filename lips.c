@@ -16,17 +16,13 @@
 static Inline int xval(obj x) { return x ? OK : NO; }
 
 static obj script(lips v, const char *path, FILE *f) {
- if (!f) return
-  errp(v, "%s : %s", path, strerror(errno)), 0;
- jmp_buf re;
- v->restart = &re;
- if (setjmp(re)) return
-  errp(v, "%s : fail", path),
-  fclose(f),
-  0;
+ if (!f) return errp(v, "%s : %s", path, strerror(errno)), 0;
  obj x;
+ jmp_buf *or = v->restart, re;
+ v->restart = &re;
+ if (setjmp(re)) return errp(v, "%s : fail", path), fclose(f), 0;
  while ((x = parse(v, f))) eval(v, x);
- return x = feof(f) ? (x ? x : nil) : 0, fclose(f), x; }
+ return x = feof(f) ? (x ? x : nil) : 0, fclose(f), v->restart = or, x; }
 
 static lips lips_fin(lips v) { return
  free(v->mem_pool), (lips) (v->mem_pool = NULL); }
@@ -40,13 +36,9 @@ static lips lips_init(lips v) {
  v->seed = LCPRNG(v->t0);
  v->ip = v->xp = v->syms = nil,
  v->fp = v->hp = v->sp = (mem) W,
- v->count = 0, v->mem_len = 1, v->mem_pool = NULL,
- v->mem_root = NULL;
+ v->count = 0, v->mem_len = 1;
+ v->mem_pool = (mem) (v->mem_root  = (root) (v->restart = NULL));
  set64(v->glob, nil, NGlobs);
- jmp_buf re;
- v->restart = &re;
- if (setjmp(re)) return errp(v, "init : fail "),
-                        lips_fin(v);
  Top = table(v), Mac = table(v);
 #define repr(a, b) if (b) defprim(v,b,a);
 #define rein(a, b) if (!b) rin(v, "i-"#a,a);
@@ -61,14 +53,13 @@ static lips lips_init(lips v) {
  return v; }
 
 int repl(lips v, FILE *in, FILE *out) {
- jmp_buf re;
+ jmp_buf *or = v->restart, re;
  v->restart = &re;
  setjmp(re);
  for (obj x;;) {
-  if ((x = parse(v, in)))
-   emsep(v, eval(v, x), out, '\n');
+  if ((x = parse(v, in))) emsep(v, eval(v, x), out, '\n');
   else if (feof(in)) break; }
- return OK; }
+ return v->restart = or, OK; }
 
 #define BOOT PREFIX "/lib/lips/prelude.lips"
 #define TAKKA 1
