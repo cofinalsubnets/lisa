@@ -27,7 +27,6 @@
 // pointer to an object, instead of just an object, so it can
 // be gc-protected once instead of separately by every function.
 // in the other compiler it's just a regular object.
-#define toplp(x) !e
 #define arg(x)  AR(x)[0] // argument variables : a list
 #define loc(x)  AR(x)[1] // local variables : a list
 #define clo(x)  AR(x)[2] // closure variables : a list
@@ -38,15 +37,11 @@
 // then if f takes a fixed number of arguments the arity
 // signature is n; otherwise it's -n-1.
 
+static u0 scan(lips, mem, obj);
+static obj hfin(lips, obj), hini(lips, u64), c_la_clo(lips, mem, obj, obj), ltu(lips, mem, obj, obj);
 typedef obj c1(lips, mem, u64), c2(lips, mem, u64, obj);
-static u0
- c_de_r(lips, mem, obj),
- scan(lips, mem, obj),
- pushs(lips, ...);
-static obj hfin(lips, obj), hini(lips, u64);
 static c1 c_ev, c_d_bind, inst, insx, c_ini;
 static c2 c_eval, c_sy, c_2, c_imm, c_ap;
-static obj c_la_clo(lips, mem, obj, obj), ltu(lips, mem, obj, obj);
 
 enum { Here, Loc, Arg, Clo, Wait };
 #define c1(nom,...) static obj nom(lips v, mem e, u64 m, ##__VA_ARGS__)
@@ -65,6 +60,19 @@ static obj linitp(lips v, obj x, mem d) {
 static obj snoc(lips v, obj l, obj x) {
  return !twop(l) ? pair(v, x, l) :
   (with(l, x = snoc(v, Y(l), x)), pair(v, X(l), x)); }
+
+static u0 pushss(lips v, i64 i, va_list xs) {
+ obj x = va_arg(xs, obj);
+ x ? (with(x, pushss(v, i, xs)), *--Sp = x) : reqsp(v, i); }
+
+static u0 pushs(lips v, ...) {
+ i64 i = 0;
+ va_list xs; va_start(xs, v);
+ while (va_arg(xs, obj)) i++;
+ va_end(xs), va_start(xs, v);
+ if (Avail < i) pushss(v, i, xs);
+ else for (mem sp = Sp -= i; i--; *sp++ = va_arg(xs, obj));
+ va_end(xs); }
 
 // emit code backwards like cons
 static obj em1(terp *i, obj k) {
@@ -157,7 +165,7 @@ static obj ltu(lips v, mem e, obj n, obj l) {
  with(n,
   l = twop(l) ? l : pair(v, l, nil),
   with(y, l = linitp(v, l, &y),
-          with(l, n = pair(v, n, toplp(e) ? nil : e ? name(*e):nil)),
+          with(l, n = pair(v, n, e ? name(*e) : nil)),
           n = scope(v, e, l, n)),
   l = compose(v, &n, X(y)));
  return l; }
@@ -168,7 +176,7 @@ c2(c_la) {
  with(nom, with(x, k = Ccc(v, e, m+2)));
  with(k,
   x = homp(x = ltu(v, e, nom, x)) ? x :
-  (j = toplp(e) || !twop(loc(*e)) ? encln : encll,
+  (j = e && twop(loc(*e)) ? encll : encln,
    c_la_clo(v, e, X(x), Y(x))));
  return em2(j, x, k); }
 
@@ -183,8 +191,8 @@ static obj c_la_clo(lips v, mem e, obj arg, obj seq) {
  return arg = Ccc(v, e, 0), um, um, pair(v, seq, arg); }
 
 c1(c_d_bind) { obj y = *Sp++; return
- toplp(e) ? imx(v, e, m, tbind, y) :
-            imx(v, e, m, loc_, Pn(lidx(loc(*e), y))); }
+ e ? imx(v, e, m, loc_, Pn(lidx(loc(*e), y))) :
+     imx(v, e, m, tbind, y); }
 
 static u0 c_de_r(lips v, mem e, obj x) {
  if (twop(x))
@@ -258,8 +266,7 @@ static u0 c_se_r(lips v, mem e, obj x) {
 
 c2(c_se) {
  if (!twop(x = Y(x))) x = pair(v, nil, nil);
- return c_se_r(v, e, x),
-        Ccc(v, e, m); }
+ return c_se_r(v, e, x), Ccc(v, e, m); }
 
 c1(c_call) {
  obj a = *Sp++, k = Ccc(v, e, m + 2);
@@ -329,19 +336,6 @@ c1(insx) {
 c1(c_ini) {
  obj k = hini(v, m+1);
  return em1((terp*)(e ? name(*e) : Eva), k); }
-
-static u0 pushss(lips v, i64 i, va_list xs) {
- obj x = va_arg(xs, obj);
- x ? (with(x, pushss(v, i, xs)), *--Sp = x) : reqsp(v, i); }
-
-static u0 pushs(lips v, ...) {
- i64 i = 0;
- va_list xs; va_start(xs, v);
- while (va_arg(xs, obj)) i++;
- va_end(xs), va_start(xs, v);
- if (Avail < i) pushss(v, i, xs);
- else for (mem sp = Sp -= i; i--; *sp++ = va_arg(xs, obj));
- va_end(xs); }
 
 static NoInline obj hini(lips v, u64 n) {
  hom a = cells(v, n + 2);

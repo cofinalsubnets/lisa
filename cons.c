@@ -52,8 +52,7 @@ static Inline u64 hash_bytes(u64 len, char *us) {
  for (u64 h = mix;; h ^= *us++, h *= mix)
   if (!len--) return h; }
 
-static Inline i64 hbi(u64 cap, u64 co) {
- return co % cap; }
+static Inline i64 hbi(u64 cap, u64 co) { return co % cap; }
 
 static Inline ent hb(obj t, u64 code) {
  return gettbl(t)->tab[hbi(gettbl(t)->cap, code)]; }

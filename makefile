@@ -96,7 +96,7 @@ sloc:
 bits: $n $b
 	stat -c "%n %sB" $^
 repl: $b
-	@$(call Wx, rlwrap, rlwrap $r -i, $r -i)
+	@$(call Wx, rlwrap, rlwrap $n -i_ ./prelude.lips, $r -i)
 
 .PHONY:\
  	test clean perf valg sloc bits install\
