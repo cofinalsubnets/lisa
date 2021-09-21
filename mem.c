@@ -27,8 +27,8 @@ static obj cp(lips, obj, u64, mem);
 // the memory manager uses this relation to automatically trade
 // space for time to keep the time spent in garbage collection
 // under a certain proportion of total running time: amortized
-// time in garbage collection should e than about 6%, at the cost of
-// less efficient memory use under pressure.
+// time in garbage collection should be less than about 6%, at
+// the cost of more memory use under pressure.
 #define grow() (len<<=1,vit<<=1)
 #define shrink() (len>>=1,vit>>=1)
 #define growp (allocd > len || vit < 32) // lower bound
@@ -83,7 +83,7 @@ static clock_t copy(lips v, u64 l1) {
  for (int i = 0; i < NGlobs; i++) CP(Glob[i]);
  CP(Ip), CP(Xp);
  free(b0);
- t1 = t1 == (t2 = clock()) ? 1 : (t2 - t0) / (t2 - t1); 
+ t1 = t1 == (t2 = clock()) ? 1 : (t2 - t0) / (t2 - t1);
  return v->t0 = t2, t1; }
 
 
@@ -92,8 +92,8 @@ static clock_t copy(lips v, u64 l1) {
 // objects are used to store pointers to their
 // new locations, which effectively destroys the
 // old data.
-typedef obj cp_(lips, obj, u64, mem);
-static cp_ cphom, cptup, cptwo, cpsym, cpstr, cptbl;
+typedef obj copier(lips, obj, u64, mem);
+static copier cphom, cptup, cptwo, cpsym, cpstr, cptbl;
 #define cpcc(n) static obj n(lips v, obj x, u64 ln, mem lp)
 
 cpcc(cp) {

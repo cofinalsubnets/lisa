@@ -14,18 +14,16 @@
 const uint32_t *tnoms = (uint32_t*)
  "hom\0num\0two\0vec\0str\0tbl\0sym\0nil";
 
-typedef obj parse_stream(lips, FILE*);
-typedef obj parse_string(lips, const char *);
+typedef obj parse_stream(lips, FILE*),
+            parse_string(lips, const char *),
+            read_loop(lips, FILE*, str, i64, i64);
 static parse_stream r1s;
 static parse_string readz;
-
-typedef obj read_loop(lips, FILE*, str, i64, i64);
-static obj Inline read_loop_call(lips, FILE*, read_loop*);
 static read_loop str_read_loop, atom_read_loop;
 
-static obj readx(lips v, char *msg) {
- return errp(v, msg),
-        restart(v); }
+static Inline obj read_loop_call(lips, FILE*, read_loop*);
+
+static Inline obj readx(lips v, char *msg) { return errp(v, msg), restart(v); }
 
 static int r0(FILE *i) {
  for (int c;;) switch ((c = getc(i))) {
@@ -42,14 +40,14 @@ obj parse(lips v, FILE* i) {
   case ')': return readx(v, err_rpar);
   case '(': return r1s(v, i);
   case '"': return read_loop_call(v, i, str_read_loop);
-  case '\'':
-   x = pair(v, parse(v, i), nil);
-   return pair(v, Qt, x);
-  default:  
-   ungetc(c, i);
+  case '\'': return
+   x = pair(v, parse(v, i), nil),
+   pair(v, Qt, x);
+  default: return 
+   ungetc(c, i),
    x = read_loop_call(v, i, atom_read_loop),
-   y = readz(v, chars(x));
-   return nump(y) ? y : intern(v, x); } }
+   y = readz(v, chars(x)),
+   nump(y) ? y : intern(v, x); } }
 
 static obj r1s(lips v, FILE *i) {
  obj x, y, c = r0(i);
@@ -72,8 +70,7 @@ rloop(lips v, FILE *i, str o, i64 n, i64 lim, read_loop *loop) {
     loop(v, i, o, n, 2 * n)); }
 
 static obj atom_read_loop(lips v, FILE *p, str o, i64 n, i64 lim) {
- obj x;
- while (n < lim) switch (x = getc(p)) {
+ for (obj x; n < lim;) switch (x = getc(p)) {
   case ' ': case '\n': case '\t': case ';': case '#':
   case '(': case ')': case '\'': case '"':
    ungetc(x, p); case EOF:
@@ -83,8 +80,7 @@ static obj atom_read_loop(lips v, FILE *p, str o, i64 n, i64 lim) {
  return rloop(v, p, o, n, lim, atom_read_loop); }
 
 static obj str_read_loop(lips v, FILE *p, str o, i64 n, i64 lim) {
- obj x;
- while (n < lim) switch (x = getc(p)) {
+ for (obj x; n < lim;) switch (x = getc(p)) {
   case '\\': if ((x = getc(p)) == EOF) {
   case EOF: case '"': o->text[n++] = 0; goto out; }
   default: o->text[n++] = x; } out:
@@ -95,8 +91,7 @@ static NoInline obj readz_2(const char *s, i64 rad) {
  if (!*s) return nil;
  i64 a = 0;
  for (int i, c; (c = *s++); a += i) {
-  a *= rad;
-  i = sidx(dig, cmin(c));
+  a *= rad, i = sidx(dig, cmin(c));
   if (i < 0 || i >= rad) return nil; }
  return Pn(a); }
 
@@ -120,27 +115,23 @@ static Inline obj read_loop_call(lips v, FILE *i, read_loop *loop) {
  return loop(v, i, cells(v, 2), 0, 8); }
 
 u0 emsep(lips v, obj x, FILE *o, char s) {
- emit(v, x, o),
- fputc(s, o); }
+ emit(v, x, o), fputc(s, o); }
 
 static u0 emstr(lips v, str s, FILE *o) {
  fputc('"', o);
- for (char *t = s->text; *t; fputc(*t++, o))
-  if (*t == '"') fputc('\\', o);
+ for (char *t = s->text; *t; fputc(*t++, o)) if (*t == '"') fputc('\\', o);
  fputc('"', o); }
 
 static u0 emtbl(lips v, tbl t, FILE *o) {
- fprintf(o, "#tbl:%ld/%ld", t->len, t->cap); }
+ fprintf(o, "#tbl:%ld/%ld", (long)t->len, (long)t->cap); }
 
 static u0 emsym(lips v, sym y, FILE *o) {
- nilp(y->nom) ?
-  fprintf(o, "#sym@%lx", (u64) y) :
-  fputs(chars(y->nom), o); }
+ nilp(y->nom) ? fprintf(o, "#sym@%lx", (long) y) :
+                fputs(chars(y->nom), o); }
 
 static u0 emtwo_(lips v, two w, FILE *o) {
- twop(w->y) ?
-  (emsep(v, w->x, o, ' '), emtwo_(v, gettwo(w->y), o)) :
-  emsep(v, w->x, o, ')'); }
+ twop(w->y) ? (emsep(v, w->x, o, ' '), emtwo_(v, gettwo(w->y), o)) :
+              emsep(v, w->x, o, ')'); }
 
 static u0 emtwo(lips v, two w, FILE *o) {
  w->x == Qt && twop(w->y) && nilp(Y(w->y)) ?
@@ -167,7 +158,7 @@ static u0 emhom(lips v, hom h, FILE *o) {
  emhomn(v, homnom(v, (obj) h), o); }
 
 static u0 emnum(lips v, num n, FILE *o) {
- fprintf(o, "%ld", n); }
+ fprintf(o, "%ld", (long) n); }
 
 u0 emit(lips v, obj x, FILE *o) {
  switch (kind(x)) {
