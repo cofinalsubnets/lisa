@@ -14,16 +14,13 @@
 const uint32_t *tnoms = (uint32_t*)
  "hom\0num\0two\0vec\0str\0tbl\0sym\0nil";
 
-typedef obj parse_stream(lips, FILE*),
-            parse_string(lips, const char *),
-            read_loop(lips, FILE*, str, i64, i64);
-static parse_stream r1s;
-static parse_string readz;
+typedef obj read_loop(lips, FILE*, str, i64, i64);
+static obj r1s(lips, FILE*), readz(lips, const char*);
 static read_loop str_read_loop, atom_read_loop;
 
-static Inline obj read_loop_call(lips, FILE*, read_loop*);
-
 static Inline obj readx(lips v, char *msg) { return errp(v, msg), restart(v); }
+static Inline obj read_loop_init(lips v, FILE *i, read_loop *loop) {
+ return loop(v, i, cells(v, 2), 0, 8); }
 
 static int r0(FILE *i) {
  for (int c;;) switch ((c = getc(i))) {
@@ -39,13 +36,13 @@ obj parse(lips v, FILE* i) {
   case EOF: return 0;
   case ')': return readx(v, err_rpar);
   case '(': return r1s(v, i);
-  case '"': return read_loop_call(v, i, str_read_loop);
+  case '"': return read_loop_init(v, i, str_read_loop);
   case '\'': return
    x = pair(v, parse(v, i), nil),
    pair(v, Qt, x);
-  default: return 
+  default: return
    ungetc(c, i),
-   x = read_loop_call(v, i, atom_read_loop),
+   x = read_loop_init(v, i, atom_read_loop),
    y = readz(v, chars(x)),
    nump(y) ? y : intern(v, x); } }
 
@@ -61,7 +58,7 @@ static obj r1s(lips v, FILE *i) {
    pair(v, x, y); } }
 
 static NoInline obj
-rloop(lips v, FILE *i, str o, i64 n, i64 lim, read_loop *loop) {
+read_loop_cont(lips v, FILE *i, str o, i64 n, i64 lim, read_loop *loop) {
  obj x; return
   o->len = n, x = putstr(o),
   o->text[n-1] == 0 ? x :
@@ -77,14 +74,14 @@ static obj atom_read_loop(lips v, FILE *p, str o, i64 n, i64 lim) {
    o->text[n++] = 0;
    goto out;
   default: o->text[n++] = x; } out:
- return rloop(v, p, o, n, lim, atom_read_loop); }
+ return read_loop_cont(v, p, o, n, lim, atom_read_loop); }
 
 static obj str_read_loop(lips v, FILE *p, str o, i64 n, i64 lim) {
  for (obj x; n < lim;) switch (x = getc(p)) {
   case '\\': if ((x = getc(p)) == EOF) {
   case EOF: case '"': o->text[n++] = 0; goto out; }
   default: o->text[n++] = x; } out:
- return rloop(v, p, o, n, lim, str_read_loop); }
+ return read_loop_cont(v, p, o, n, lim, str_read_loop); }
 
 static NoInline obj readz_2(const char *s, i64 rad) {
  static const char *dig = "0123456789abcdef";
@@ -110,9 +107,6 @@ static Inline obj readz(lips _, const char *s) {
   case '-': return nump(q = readz_1(s+1)) ? Pn(-Gn(q)) : q;
   case '+': s++;
   default: return readz_1(s); } }
-
-static Inline obj read_loop_call(lips v, FILE *i, read_loop *loop) {
- return loop(v, i, cells(v, 2), 0, 8); }
 
 u0 emsep(lips v, obj x, FILE *o, char s) {
  emit(v, x, o), fputc(s, o); }
@@ -150,9 +144,8 @@ static u0 emhomn(lips v, obj x, FILE *o) {
  fputc('\\', o);
  switch (kind(x)) {
   case Sym: emit(v, x, o); break;
-  case Two:
-   if (symp(X(x))) emit(v, X(x), o);
-   if (twop(Y(x))) emhomn(v, Y(x), o); } }
+  case Two: if (symp(X(x))) emit(v, X(x), o);
+            if (twop(Y(x))) emhomn(v, Y(x), o); } }
 
 static u0 emhom(lips v, hom h, FILE *o) {
  emhomn(v, homnom(v, (obj) h), o); }
