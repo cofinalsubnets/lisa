@@ -34,7 +34,7 @@ static obj cp(lips, obj, u64, mem);
 #define growp (allocd > len || vit < 32) // lower bound
 #define shrinkp (allocd < (len>>1) && vit >= 128) // upper bound
 u0 reqsp(lips v, u64 req) {
- i64 len = v->mem_len, vit = copy(v, len);
+ i64 len = v->len, vit = copy(v, len);
  if (vit) { // copy succeeded
   i64 allocd = len - (Avail - req);
   if (growp)        do grow();   while (growp);
@@ -67,14 +67,14 @@ u0 reqsp(lips v, u64 req) {
 // u will be >= 1. however, sometimes t1 == t2. in that case
 // u = 1.
 static clock_t copy(lips v, u64 l1) {
- mem b0 = v->mem_pool, b1 = malloc(w2b(l1));
- u64 l0 = v->mem_len;
+ mem b0 = v->pool, b1 = malloc(w2b(l1));
+ u64 l0 = v->len;
  if (!b1) return 0;
  clock_t t0 = v->t0, t1 = clock(), t2;
  mem s0 = Sp, tp0 = b0 + l0, tp1 = b1 + l1;
  i64 ro = tp1 - tp0;
- v->mem_len = l1;
- v->mem_pool = Hp = b1;
+ v->len = l1;
+ v->pool = Hp = b1;
  Sp += ro, Fp += ro;
  Syms = nil;
  while (tp0-- > s0) Sp[tp0 - s0] = cp(v, *tp0, l0, b0);

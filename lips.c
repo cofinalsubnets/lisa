@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <getopt.h>
 #include <time.h>
 #include <string.h>
 #include <errno.h>
@@ -25,7 +26,7 @@ static obj script(lips v, const char *path, FILE *f) {
  return x = feof(f) ? (x ? x : nil) : 0, fclose(f), v->restart = or, x; }
 
 static lips lips_fin(lips v) { return
- free(v->mem_pool), (lips) (v->mem_pool = NULL); }
+ free(v->pool), (lips) (v->pool = NULL); }
 
 static NoInline u0 rin(lips v, const char *a, terp *b) {
  obj z = interns(v, a);
@@ -36,8 +37,8 @@ static lips lips_init(lips v) {
  v->seed = LCPRNG(v->t0);
  v->ip = v->xp = v->syms = nil,
  v->fp = v->hp = v->sp = (mem) W,
- v->count = 0, v->mem_len = 1;
- v->mem_pool = (mem) (v->mem_root  = (root) (v->restart = NULL));
+ v->count = 0, v->len = 1;
+ v->pool = (mem) (v->root  = (root) (v->restart = NULL));
  set64(v->glob, nil, NGlobs);
  Top = table(v), Mac = table(v);
 #define repr(a, b) if (b) defprim(v,b,a);

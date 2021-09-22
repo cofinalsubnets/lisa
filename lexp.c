@@ -37,9 +37,7 @@ obj parse(lips v, FILE* i) {
   case ')': return readx(v, err_rpar);
   case '(': return r1s(v, i);
   case '"': return read_loop_init(v, i, str_read_loop);
-  case '\'': return
-   x = pair(v, parse(v, i), nil),
-   pair(v, Qt, x);
+  case '\'': return x = pair(v, parse(v, i), nil), pair(v, Qt, x);
   default: return
    ungetc(c, i),
    x = read_loop_init(v, i, atom_read_loop),
@@ -90,7 +88,7 @@ static NoInline obj readz_2(const char *s, i64 rad) {
  for (int i, c; (c = *s++); a += i) {
   a *= rad, i = sidx(dig, cmin(c));
   if (i < 0 || i >= rad) return nil; }
- return Pn(a); }
+ return N_(a); }
 
 static NoInline obj readz_1(const char *s) {
  if (*s == '0') switch (cmin(s[1])) {
@@ -104,7 +102,7 @@ static NoInline obj readz_1(const char *s) {
 static Inline obj readz(lips _, const char *s) {
  obj q;
  switch (*s) {
-  case '-': return nump(q = readz_1(s+1)) ? Pn(-Gn(q)) : q;
+  case '-': return nump(q = readz_1(s+1)) ? N_(-N(q)) : q;
   case '+': s++;
   default: return readz_1(s); } }
 
@@ -135,28 +133,22 @@ static u0 emtwo(lips v, two w, FILE *o) {
 static u0 emvec(lips v, vec e, FILE *o) {
  fputc('[', o);
  if (e->len) for (mem i = e->xs, l = i + e->len;;) {
-  emit(v, *i, o);
-  if (fputc(++i == l, o)) break;
-  else fputc(' ', o); }
+  emit(v, *i++, o);
+  if (i < l) fputc(' ', o);
+  else break; }
  fputc(']', o); }
 
 static u0 emhomn(lips v, obj x, FILE *o) {
  fputc('\\', o);
  switch (kind(x)) {
-  case Sym: emit(v, x, o); break;
+  case Sym: return emit(v, x, o);
   case Two: if (symp(X(x))) emit(v, X(x), o);
             if (twop(Y(x))) emhomn(v, Y(x), o); } }
 
-static u0 emhom(lips v, hom h, FILE *o) {
- emhomn(v, homnom(v, (obj) h), o); }
-
-static u0 emnum(lips v, num n, FILE *o) {
- fprintf(o, "%ld", (long) n); }
-
 u0 emit(lips v, obj x, FILE *o) {
  switch (kind(x)) {
-  case Hom: return emhom(v, gethom(x), o);
-  case Num: return emnum(v, getnum(x), o);
+  case Hom: return emhomn(v, homnom(v, x), o);
+  case Num: return (u0) fprintf(o, "%ld", (long) N(x));
   case Sym: return emsym(v, getsym(x), o);
   case Two: return emtwo(v, gettwo(x), o);
   case Str: return emstr(v, getstr(x), o);

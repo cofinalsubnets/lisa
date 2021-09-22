@@ -1,5 +1,4 @@
 # lips
-♫ lisp is all you need ♫
 
 ## build / install
 are you on linux? `make` will probably work. otherwise, just

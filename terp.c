@@ -803,9 +803,8 @@ static interp(nope, const char *msg, ...) {
  return restart(v); }
 
 noreturn obj restart(lips v) {
- v->fp = v->sp = v->mem_pool + v->mem_len;
+ v->fp = v->sp = v->pool + v->len;
  v->xp = v->ip = nil;
- v->mem_root = NULL;
+ v->root = NULL;
  if (v->restart) longjmp(*v->restart, 1);
- errp(v, "no restart");
  abort(); }
