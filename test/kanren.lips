@@ -1,31 +1,38 @@
 (: (_? x) (&& (symp x) (~ (ystr x))) ; anonymous symbol ?
-   ((disj f g) x) (m+ (f x) (g x)) ; disj
-   ((conj f g) x) (m* (f x)  g)    ; conj
    (m+ a b) (? (~ a)  b (homp a) (\            (m+    b    (a)))
                                  (X     (A a)  (m+    b  (B a))))
    (m* a b) (? (~ a) () (homp a) (\            (m*   (a)    b))
                                  (m+ (b (A a)) (m* (B a)    b)))
-   == (: (walk u s) (|| (&& (_? u)
-                            (: r (find s (co B (cu = u))))
-                            (walk (A r) s))
-                        u)
-         ((unify u v) s) (: x (walk u s) y (walk v s) (?
-          (= x y) s             ; ok
-          (_? x) (X (X y x) s)  ; x <- y
-          (_? y) (X (X x y) s)  ; y <- x
-          (&& (twop x) (twop y) ; unify both sides
-           (unify (B x) (B y) (unify (A x) (A y) s)))))
-       (co unify (\ _ (co _ L)))))
+   (?? u s) (|| (&& (_? u)
+                      (: r (find s (co B (cu = u))))
+                      (?? (A r) s))
+                  u)
+   ((disj f g) x) (m+ (f x) (g x))
+   ((conj f g) x) (m* (f x)  g)
+   ((== u v) s) (L (: x (?? u s) y (?? v s) (?
+    (= x y) s
+    (_? x) (X (X y x) s)
+    (_? y) (X (X x y) s)
+    (&& (twop x) (twop y)
+     (unify (B x) (B y) (unify (A x) (A y) s)))))))
 
 (::: \\ (\ a   . (X (X '\ a) (map (init a) (\ (L sym)))))
-     &* (\ a x . (? (~ x) a (L conj a (X '&* x))))
-     |* (\ a x . (? (~ x) a (L disj a (X '|* x)))))
+     Zzz (\ x (L '\ '_ (L '\ (L x '_))))
+     &* (\ a x . (: b (L 'Zzz a) (? (~ x) b (L conj b (X '&* x)))))
+     |* (\ a x . (: b (L 'Zzz a) (? (~ x) b (L disj b (X '|* x))))))
 
-(: (tabulate query)
-    (foldl (query ()) () (\ m rset
+(: (run n g)
+    (>>= n (g ()) (: (go n x)
+         (? (= n 0) x
+            (twop (: y (<- x))) (X (A y) (go (- n 1) (B y)))
+            y)))
+
+   (<- q) (? (homp q) (<- (q)) q)
+   (tabulate query)
+    (foldl (<- (query ())) () (\ m rset
      (? (~ rset) m (X (foldl  rset () (\ m bind (X (A bind) m))) m)))))
 
-(test ukanren
+(test kanren
  (= '((7 6) (7 5)) (tabulate (\\ a b (&* (== a 7) (|* (== b 5) (== b 6))))))
  (= '((9 8))       (tabulate (\\ a b (&* (== a 9) (== b 8)))))
  (= '((1 1))       (tabulate (\\ a b (&* (== a 1) (== a b)))))

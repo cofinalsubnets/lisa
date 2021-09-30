@@ -44,7 +44,7 @@ static lips lips_init(lips v) {
 #define repr(a, b) if (b) defprim(v,b,a);
 #define rein(a, b) if (!b) rin(v, "i-"#a,a);
  insts(repr) insts(rein)
-#define bsym(i,s)(Glob[i]=interns(v,s))
+#define bsym(i,s)(v->glob[i]=interns(v,s))
  bsym(Eval, "ev"), bsym(Apply, "ap"),
  bsym(Def, ":"),   bsym(Cond, "?"), bsym(Lamb, "\\"),
  bsym(Quote, "`"), bsym(Seq, ","),  bsym(Splat, ".");

@@ -41,7 +41,7 @@ u0 reqsp(lips v, u64 req) {
   else if (shrinkp) do shrink(); while (shrinkp);
   else return; // no size change needed
   // otherwise grow or shrink ; if it fails maybe we can return
-  if (copy(v, len) || allocd <= Len) return; }
+  if (copy(v, len) || allocd <= v->len) return; }
  errp(v, "oom"); // this is a bad error
  restart(v); }
 
@@ -76,12 +76,12 @@ static clock_t copy(lips v, u64 l1) {
  v->len = l1;
  v->pool = Hp = b1;
  Sp += ro, Fp += ro;
- Syms = nil;
+ v->syms = nil;
  while (tp0-- > s0) Sp[tp0 - s0] = cp(v, *tp0, l0, b0);
 #define CP(x) x=cp(v,x,l0,b0)
- for (root r = Safe; r; r = r->next) CP(*(r->one));
- for (int i = 0; i < NGlobs; i++) CP(Glob[i]);
- CP(Ip), CP(Xp);
+ for (root r = v->root; r; r = r->next) CP(*(r->one));
+ for (int i = 0; i < NGlobs; i++) CP(v->glob[i]);
+ CP(v->ip), CP(v->xp);
  free(b0);
  t1 = t1 == (t2 = clock()) ? 1 : (t2 - t0) / (t2 - t1);
  return v->t0 = t2, t1; }
@@ -107,7 +107,7 @@ cpcc(cp) {
   default:  return x; } }
 
 #define inb(o,l,u) (o>=l&&o<u)
-#define fresh(o) inb((mem)(o),Pool,Pool+Len)
+#define fresh(o) inb((mem)(o),v->pool,v->pool+v->len)
 cpcc(cptwo) {
  two dst, src = gettwo(x);
  return fresh(src->x) ? src->x :
@@ -118,7 +118,7 @@ cpcc(cptwo) {
    puttwo(dst)); }
 
 cpcc(cptup) {
- vec dst, src = getvec(x);
+ vec dst, src = V(x);
  if (fresh(*src->xs)) return *src->xs;
  dst = bump(v, Size(tup) + src->len);
  i64 l = dst->len = src->len;
@@ -142,7 +142,7 @@ cpcc(cpsym) {
  if (fresh(src->nom)) return src->nom;
  if (nilp(src->nom)) // anonymous symbol
   cpy64(dst = bump(v, Size(sym)), src, Size(sym));
- else dst = getsym(sskc(v, &Syms, cp(v, src->nom, ln, lp)));
+ else dst = getsym(sskc(v, &v->syms, cp(v, src->nom, ln, lp)));
  return src->nom = putsym(dst); }
 
 #define stale(o) inb((mem)(o),lp,lp+ln)

@@ -59,15 +59,13 @@
      (dec x) (- x 1)
 
      ; lists
-     (cat a .)
-      (foldr a () (: (app a b)
-       (? a (X (A a) (app (B a) b)) b)))
+     (cat a .) (foldr a () (: (app a b) (? a (X (A a) (app (B a) b)) b)))
      (filter x p) (foldr x () (\ x m (? (p x) (X x m) m)))
      (find l p) (? l (? (p (A l)) (A l) (find (B l) p)))
-     (foldr x z f) (? x (f (A x) (foldr (B x) z f)) z)
-     (foldl x z f) (? x (foldl (B x) (f z (A x)) f) z)
+     (foldr x z f) (? (twop x) (f (A x) (foldr (B x) z f)) z)
+     (foldl x z f) (? (twop x) (foldl (B x) (f z (A x)) f) z)
      (foldl1  x f) (foldl (B x) (A x) f)
-     (foldr1  x f) (? (B x) (f (A x) (foldr1 (B x) f)) (A x))
+     (foldr1  x f) (? (twop (B x)) (f (A x) (foldr1 (B x) f)) (A x))
      (map     x f) (foldr x () (\ x m (X (f x) m)))
      flatmap (co map (cu ap cat))
      (zip f a .) (? (? a (all a id))
@@ -604,7 +602,7 @@
        (xc i-push (eval (A x) (>- 'num (xc i (2f i k (B x))))))
     (? x (2g i k x) (-> 'num k)))
 
-  ((shift f i) x k) (:
+  ((bitshift f i) x k) (:
    y (mono + 0 (B x))
    z (? (nump (A x)) (mono f (A x) y) (X (A x) y))
    (eval (A z) (>- 'num (2f i k (B z)))))
@@ -630,8 +628,8 @@
    & (abel & i-band)
    | (abel | i-bor)
    ^ (abel ^ i-bxor)
-   >> (shift >> i-sar)
-   << (shift << i-sal)
+   >> (bitshift >> i-sar)
+   << (bitshift << i-sal)
 
    A (nary i-car () 'two)
    B (nary i-cdr () 'two)

@@ -46,7 +46,7 @@ obj sskc(lips v, mem y, obj x) {
 
 obj intern(lips v, obj x) {
  if (Avail < Size(sym)) with(x, reqsp(v, Size(sym)));
- return sskc(v, &Syms, x); }
+ return sskc(v, &v->syms, x); }
 
 static Inline u64 hash_bytes(u64 len, char *us) {
  for (u64 h = mix;; h ^= *us++, h *= mix)

@@ -1,4 +1,5 @@
 # lips
+unordered lisp
 
 ## build / install
 are you on linux? `make` will probably work. otherwise, just
@@ -112,7 +113,7 @@ etc.
 
 ## missing features
 ### general purpose functionality
-unicode, floats, arrays, files, networking, ...
+floats, arrays, files, networking, ...
 
 ### type inference
 like typescript but less fascist.

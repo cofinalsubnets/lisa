@@ -27,12 +27,12 @@
 // pointer to an object, instead of just an object, so it can
 // be gc-protected once instead of separately by every function.
 // in the other compiler it's just a regular object.
-#define arg(x)  AR(x)[0] // argument variables : a list
-#define loc(x)  AR(x)[1] // local variables : a list
-#define clo(x)  AR(x)[2] // closure variables : a list
-#define par(x)  AR(x)[3] // surrounding scope : tuple or nil
-#define name(x) AR(x)[4] // function name : a symbol or nil
-#define asig(x) AR(x)[5] // arity signature : an integer
+#define arg(x)  V(x)->xs[0] // argument variables : a list
+#define loc(x)  V(x)->xs[1] // local variables : a list
+#define clo(x)  V(x)->xs[2] // closure variables : a list
+#define par(x)  V(x)->xs[3] // surrounding scope : tuple or nil
+#define name(x) V(x)->xs[4] // function name : a symbol or nil
+#define asig(x) V(x)->xs[5] // arity signature : an integer
 // for a function f let n be the number of required arguments.
 // then if f takes a fixed number of arguments the arity
 // signature is n; otherwise it's -n-1.
@@ -96,22 +96,22 @@ static NoInline obj apply(lips v, obj f, obj x) {
 static NoInline obj rwlade(lips v, obj x) {
  mm(&x);
  for (obj y; twop(X(x));
-  y = snoc(v, YX(x), XY(x)),
-  y = pair(v, La, y),
-  y = pair(v, y, YY(x)),
-  x = pair(v, XX(x), y));
+  y = snoc(v, Y(X(x)), X(Y(x))),
+  y = pair(v, v->glob[Lamb], y),
+  y = pair(v, y, Y(Y(x))),
+  x = pair(v, X(X(x)), y));
  return um, x; }
 
 static int scan_def(lips v, mem e, obj x) {
  if (!twop(x)) return 1; // this is an even case so export all the definitions to the local scope
  if (!twop(Y(x))) return 0; // this is an odd case so ignore these, they'll be imported after the rewrite
  mm(&x);
- int r = scan_def(v, e, YY(x));
+ int r = scan_def(v, e, Y(Y(x)));
  if (r) {
   x = rwlade(v, x);
   obj y = pair(v, X(x), loc(*e));
   loc(*e) = y;
-  scan(v, e, XY(x)); }
+  scan(v, e, X(Y(x))); }
  return um, r; }
 
 static u0 scan(lips v, mem e, obj x) {
@@ -123,7 +123,7 @@ static u0 scan(lips v, mem e, obj x) {
 static obj asign(lips v, obj a, i64 i, mem m) {
  obj x;
  if (!twop(a)) return *m = i, a;
- if (twop(Y(a)) && XY(a) == Va)
+ if (twop(Y(a)) && X(Y(a)) == Va)
   return *m = -(i+1), pair(v, X(a), nil);
  with(a, x = asign(v, Y(a), i+1, m));
  return pair(v, X(a), x); }
@@ -197,8 +197,8 @@ c1(c_d_bind) { obj y = *Sp++; return
 static u0 c_de_r(lips v, mem e, obj x) {
  if (twop(x))
   x = rwlade(v, x),
-  with(x, c_de_r(v, e, YY(x))),
-  Push(Pn(c_ev), XY(x), Pn(c_d_bind), X(x)); }
+  with(x, c_de_r(v, e, Y(Y(x)))),
+  Push(Pn(c_ev), X(Y(x)), Pn(c_d_bind), X(x)); }
 
 // syntactic sugar for define
 static obj def_sug(lips v, obj x) {
@@ -217,8 +217,8 @@ c2(c_de) { return
 // the antecedent/consequent in the sense of
 // return order, ie. "pre_con" runs immediately
 // before the consequent code is generated.
-#define S1 Xp
-#define S2 Ip
+#define S1 v->xp
+#define S2 v->ip
 
 // before generating anything, store the
 // exit address in stack 2
@@ -248,8 +248,8 @@ static u0 c_co_r(lips v, mem e, obj x) {
  if (!twop(x)) x = pair(v, nil, nil);
  if (!twop(Y(x))) return Push(Pn(c_ev), X(x), Pn(c_co_pre_con));
  with(x,
-  Push(Pn(c_co_post_con), Pn(c_ev), XY(x), Pn(c_co_pre_con)),
-  c_co_r(v, e, YY(x)));
+  Push(_N(c_co_post_con), N_(c_ev), X(Y(x)), _N(c_co_pre_con)),
+  c_co_r(v, e, Y(Y(x))));
  Push(Pn(c_ev), X(x), Pn(c_co_pre_ant)); }
 
 c2(c_co) { return
@@ -354,7 +354,7 @@ NoInline obj homnom(lips v, obj x) {
  mem h = (mem) Gh(x);
  while (*h) h++;
  x = h[-1];
- return (mem) x >= Pool && (mem) x < Pool+Len ? x :
+ return (mem) x >= v->pool && (mem) x < v->pool+v->len ? x :
         x == (obj) yield ? Eva : nil; }
 
 NoInline u0 defprim(lips v, const char *a, terp *b) {

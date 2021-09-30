@@ -131,15 +131,18 @@ extern const uint32_t *tnoms;
 #define nil (~non)
 #define W (sizeof(obj))
 #define W2 (W*2)
-#define tnom(t) ((char*)(tnoms+(t)))
+#define TNom(t) ((char*)(tnoms+(t)))
+#define tnom TNom
 #define Gh(x) gethom(x)
 #define H(x) gethom(x)
 #define H_(x) puthom(x)
+#define _H(x) puthom(x)
 #define Ph(x) puthom(x)
 #define Gn getnum
 #define Pn putnum
 #define N(x) getnum(x)
 #define N_(x) putnum(x)
+#define _N(x) putnum(x)
 #define kind(x) ((x)&7)
 #define gethom(x) ((hom)((x)-Hom))
 #define puthom(x) ((obj)((x)+Hom))
@@ -151,6 +154,8 @@ extern const uint32_t *tnoms;
 #define putsym(x) ((obj)(x)+Sym)
 #define getvec(x) ((vec)((x)-Vec))
 #define putvec(x) ((obj)(x)+Vec)
+#define V(x) getvec(x)
+#define _V(x) putvec(x)
 #define getstr(x) ((str)((obj)(x)-Str))
 #define putstr(x) ((obj)(x)+Str)
 #define gettbl(x) ((tbl)((obj)(x)-Tbl))
@@ -165,10 +170,6 @@ extern const uint32_t *tnoms;
 #define nilp(x) ((x)==nil)
 #define X(o) gettwo(o)->x
 #define Y(o) gettwo(o)->y
-#define XX(x) X(X(x))
-#define XY(x) X(Y(x))
-#define YX(x) Y(X(x))
-#define YY(x) Y(Y(x))
 #define F(x) ((hom)(x)+1)
 #define G(x) (*(hom)(x))
 #define FF(x) F(F(x))
@@ -177,10 +178,8 @@ extern const uint32_t *tnoms;
 #define GG(x) G(G(x))
 #define chars(x) getstr(x)->text
 #define symnom(y) chars(getsym(y)->nom)
-#define mm(r) ((Safe=&((struct root){(r),Safe})))
-#define um (Safe=Safe->next)
-#define AR(x) getvec(x)->xs
-#define AL(x) getvec(x)->len
+#define mm(r) ((v->root=&((struct root){(r),v->root})))
+#define um (v->root=v->root->next)
 #define with(y,...) (mm(&(y)),(__VA_ARGS__),um)
 #define w2b(n) ((n)*W)
 #define Size(t) (sizeof(struct t)/W)
@@ -188,22 +187,17 @@ extern const uint32_t *tnoms;
 #define Fp v->fp
 #define Hp v->hp
 #define Sp v->sp
-#define Safe v->root
 #define Xp v->xp
-#define Pool v->pool
-#define Len v->len
-#define Syms (v->syms)
-#define Glob v->glob
-#define If Glob[Cond]
-#define De Glob[Def]
-#define La Glob[Lamb]
-#define Qt Glob[Quote]
-#define Se Glob[Seq]
-#define Va Glob[Splat]
-#define Top Glob[Topl]
-#define Mac Glob[Macs]
-#define Eva Glob[Eval]
-#define App Glob[Apply]
+#define If v->glob[Cond]
+#define De v->glob[Def]
+#define La v->glob[Lamb]
+#define Qt v->glob[Quote]
+#define Se v->glob[Seq]
+#define Va v->glob[Splat]
+#define Top v->glob[Topl]
+#define Mac v->glob[Macs]
+#define Eva v->glob[Eval]
+#define App v->glob[Apply]
 #define Avail (Sp-Hp)
 
 #define mix ((u64)2708237354241864315)
