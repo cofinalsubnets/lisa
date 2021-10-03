@@ -753,7 +753,7 @@ interp(gsym_u) {
 interp(hfin_u) {
  ARY(1);
  obj a = *Arg;
- TC(Arg[0], Hom);
+ TC(a, Hom);
  GF(button(Gh(a))) = (terp*) a;
  GO(ret, a); }
 
@@ -763,6 +763,18 @@ interp(ev_u) {
       v->xp = G(xp)(v, xp, Fp, Sp, Hp, nil)); }
 
 interp(rnd_u) { GO(ret, Pn(lcprng(&v->seed))); }
+
+interp(slurp) {
+  ARY(1);
+  xp = *Arg;
+  TC(xp, Str);
+  RETC(v->xp = slurp_file(v, getstr(xp)->text)); }
+interp(dump) {
+ ARY(2);
+ TC(Arg[0], Str); TC(Arg[1], Str);
+ char *p = getstr(Arg[0])->text,
+      *d = getstr(Arg[1])->text;
+ GO(ret, dump_file(v, p, d)); }
 
 // this is for runtime errors from the interpreter, it prints
 // a backtrace and everything.
@@ -789,7 +801,7 @@ static interp(nope, const char *msg, ...) {
  Hp = hp;
  return restart(v); }
 
-noreturn obj restart(lips v) {
+obj restart(lips v) {
  v->fp = v->sp = v->pool + v->len;
  v->xp = v->ip = nil;
  v->root = NULL;

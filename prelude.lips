@@ -14,6 +14,9 @@
      (id x) x
      (const x) (\ x)
      (co xs .) (foldl1 xs (\ m f (\ x . (f (ap m x)))))
+     ((flip f) x y) (f y x)
+     ((diag f) x) (f x x)
+     ((cu f x .) y .) (ap f (cat x y))
 
      ; logic
      (&& l .) (all l id)
@@ -36,20 +39,25 @@
        (? (> n 0) (loop n xs)))
 
      ; strings
+     (strip-prefix p s)
+      (? (= p (ssub s 0 (: a (slen p)))) (ssub s a (slen s)))
      (chars s)
       (: (loop s n)
-          (? (= n (slen s)) ()
+          (? (< n (slen s))
            (X (sget s n) (loop s (+ n 1))))
        (loop s 0))
+     (puts s)
+      (: (loop s n)
+       (? (< n (slen s))
+        (, (putc (sget s n))
+           (loop s (+ n 1))))
+       (loop s 0))
+      (endl) (putc (char "
+"))
 
-     ; functions
-     (at l n) (? (< n 1) (A l) (at (B l) (- n 1)))
-     ((flip f) x y) (f y x)
-     ((diag f) x) (f x x)
-     ((cu f x .) y .) (ap f (cat x y))
+     ; tables
      (set x .) (: d (tbl) (, (each x (\ y (Ts d y ()))) d))
 
-     (strip-prefix p s) (? (= p (ssub s 0 (: a (slen p)))) (ssub s a (slen s)))
 
      ; numbers
      (abs x) (? (< x 0) (- x) x)
@@ -59,6 +67,7 @@
      (dec x) (- x 1)
 
      ; lists
+     (at l n) (? (< n 1) (A l) (at (B l) (- n 1)))
      (cat a .) (foldr a () (: (app a b) (? a (X (A a) (app (B a) b)) b)))
      (filter x p) (foldr x () (\ x m (? (p x) (X x m) m)))
      (find l p) (? l (? (p (A l)) (A l) (find (B l) p)))
@@ -99,17 +108,19 @@
                                  (? (B x) (ap defm (B x)))))
          defm)
    'imm ev
-   'AA (\ x (X A (L (X A (L x))))) 'AB (\ x (X A (L (X B (L x)))))
-   'BA (\ x (X B (L (X A (L x))))) 'BB (\ x (X B (L (X B (L x)))))
-   'char (\ x (L sget (Q x) 0))
+   'AA (\ x (L A (L A x))) 'AB (\ x (L A (L B x)))
+   'BA (\ x (L B (L A x))) 'BB (\ x (L B (L B x)))
+   'char (\ x (sget x 0))
    '&& (\ x . (? x ((: (& x) (? (B x) (L '? (A x) (& (B x))) (A x))) x) 1))
    '|| (\ x . ((: (| x) (? x (: q (sym) (L ': q (A x) (L '? q q (| (B x))))))) x))
    '>>= (\ x . (X (last x) (init x)))
-   'case (\ x a . (: y (sym)
-    (L ': y x ((: (loop a)
-      (? a (? (B a) (L '? (L '= y (A a)) (A (B a))
-                      (loop (B (B a))))
-                     (A a)))) a)))))
+   'case (\ x a . (:
+     y (sym)
+     (loop a)
+      (? a (? (~ (B a)) (A a)
+       (L '? (L '= y (A a)) (A (B a))
+        (loop (B (B a))))))
+    (L ': y x (loop a)))))
 
   ; the compiler !!
   (: ev (ev '(: ; eval the compiler & redefine eval
@@ -194,7 +205,7 @@
    ; if the function is nonvariadic and all it does is apply
    ; a second known function to its exact list of arguments,
    ; then it's an alias for the second function.
-   (&& (2p x) (Hp (A x)) (>= (Tg f 'sig) 0) (= (B x) (Tg f 'arg)))
+   (&& (>= (Tg f 'sig) 0) (2p x) (Hp (A x)) (= (B x) (Tg f 'arg)))
     (A x)
    ; otherwise compile it
    (? (: k (hfin (ar (loc ((eval x ini) f 4))))
@@ -422,11 +433,11 @@
  ; either manipulate the stack or embed the item at the
  ; top into the thread.
  (((pushr s) k) e m) (: q (k e m) (A (Ts e s (X q (Tg e s)))))
- (((popr s)  k) e m) (: q (k e m) (, (Ts e s (B (Tg e s))) q))
+ (((popr  s) k) e m) (: q (k e m) (, (Ts e s (B (Tg e s))) q))
  (((peekr s) k) e m) (: q (k e (+ m 1)) (emx (A (Tg e s)) q))
 
  push1 (pushr 's1) push2 (pushr 's2)
- pop1  (popr 's1)  pop2  (popr 's2)
+ pop1  (popr  's1) pop2  (popr  's2)
  peek1 (peekr 's1) peek2 (peekr 's2)
 
  (ev-t x t k) (eval x (>- t k))
@@ -644,10 +655,10 @@
    emi (nary i-emi 'hom 'num 'hom)
    emx (nary i-emx 'hom () 'hom)
 
-   tget (nary i-tget () 'tbl ())
-   tset (nary i-tset () 'tbl () ())
+   tget (nary i-tget ()   'tbl ())
+   tset (nary i-tset ()   'tbl () ())
    tlen (nary i-tlen 'num 'tbl)
-   thas (nary i-thas () 'tbl ())
+   thas (nary i-thas ()   'tbl ())
 
    < (ordr i-lt) <= (ordr i-lteq)
    >= (ordr i-gteq) > (ordr i-gt)
@@ -683,5 +694,5 @@
 ; " drop privileges "
 (: dels (cu (flip each) (cu Td ns))
    insns (filter (tkeys ns) (\ k (= "i-" (ssub (ystr k) 0 2))))
-   locs '(egg macros emi emx hom hseek hgeti hgetx hfin ns)
+   locs '(egg emi macros emx hom hseek hgeti hgetx hfin ns)
  (each (L insns locs) dels))

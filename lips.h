@@ -6,7 +6,6 @@
 #include <setjmp.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include <stdnoreturn.h>
 
 #define Inline inline __attribute__((always_inline))
 #define NoInline __attribute__((noinline))
@@ -107,6 +106,8 @@ u0
  emsep(lips, obj, FILE*, char);
 
 obj
+ dump_file(lips, const char*, const char*),
+ slurp_file(lips, const char*),
  sskc(lips, mem, obj),
  restart(lips),
  homnom(lips, obj),

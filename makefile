@@ -84,19 +84,19 @@ endef
 _=,# for commas in function calls :(
 
 clean:
-	@$(call Wx, git, rm -rf `git check-ignore *`, rm -f *.o $n $b perf.data)
+	$(call Wx, git, rm -rf `git check-ignore *`, rm -f *.o $n $b perf.data)
 perf: perf.data
-	@$(call W, perf, perf report)
+	$(call W, perf, perf report)
 perf.data: $b $p
-	@$(call W, perf, perf record ./$t)
+	$(call W, perf, perf record ./$t)
 valg: $b
-	@$(call W, valgrind, valgrind $t)
+	$(call W, valgrind, valgrind $t)
 sloc:
-	@$(call W, cloc, cloc --force-lang=Lisp$_$n *)
+	$(call W, cloc, cloc --force-lang=Lisp$_$n *)
 bits: $n $b
 	stat -c "%n %sB" $^
 repl: $b
-	@$(call Wx, rlwrap, rlwrap $n -i_ ./prelude.lips, $r -i)
+	$(call Wx, rlwrap, rlwrap $r -i, $r -i)
 
 .PHONY:\
  	test clean perf valg sloc bits install\

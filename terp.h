@@ -34,11 +34,12 @@
  _(brlt, NULL)       _(brlteq, NULL)   _(breq, NULL)\
  _(brgteq, NULL)     _(brlt2, NULL)    _(brlteq2, NULL)\
  _(brgt2, NULL)      _(brgteq2, NULL)  _(brgt, NULL)\
- _(brne, NULL)       _(tbll, "tlen")   _(tblmk,tnom(Tbl))\
+ _(brne, NULL)       _(tbll, "tlen")   _(tblmk, tnom(Tbl))\
  _(tblg, "tget")     _(tblc, "thas")   _(tbls, "tset")\
  _(tbld, "tdel")     _(tblks, "tkeys") _(hseek_u, "hseek")\
  _(fail, "fail")     _(ccc_u, "ccc")   _(putc_u, "putc")\
  _(cont, NULL)       _(ystr_u, "ystr") _(dupl, NULL)\
+ _(slurp, "slurp")   _(dump, "dump")\
  _(emi, NULL)        _(emx_u, "emx")   _(emi_u, "emi")\
  _(emx, NULL)        _(em_u, ".")      _(ev_u, "ev")\
  _(ap_u, "ap")       _(vararg, NULL)   _(getc_u, "getc")\

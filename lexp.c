@@ -1,4 +1,13 @@
 #include "lips.h"
+#include <string.h>
+#include <errno.h>
+
+// these are the names of the fundamental types.
+// obviously this only works if the type names
+// are all 4 bytes long (counting the NUL)
+const uint32_t *tnoms = (uint32_t*)
+ "hom\0num\0two\0vec\0str\0tbl\0sym\0nil";
+
 ////
 /// lisp parser
 //
@@ -6,20 +15,12 @@
 // the string processing primitives are good
 // enough, at which point it can be called the
 // bootstrap parser
-#define err_eof "unexpected eof"
-#define err_rpar "unmatched right delimiter"
 
-// obviously this only works if the type names
-// are all 4 bytes long (counting the NUL)
-const uint32_t *tnoms = (uint32_t*)
- "hom\0num\0two\0vec\0str\0tbl\0sym\0nil";
-
-typedef obj read_loop(lips, FILE*, str, i64, i64);
+typedef obj read_loop(lips, FILE*, str, u64, u64);
 static obj r1s(lips, FILE*), readz(lips, const char*);
-static read_loop str_read_loop, atom_read_loop;
+static read_loop str_loop, atom_loop;
 
-static Inline obj readx(lips v, char *msg) { return errp(v, msg), restart(v); }
-static Inline obj read_loop_init(lips v, FILE *i, read_loop *loop) {
+static Inline obj read_loop_go(lips v, FILE *i, read_loop *loop) {
  return loop(v, i, cells(v, 2), 0, 8); }
 
 static int r0(FILE *i) {
@@ -34,20 +35,20 @@ obj parse(lips v, FILE* i) {
  obj x, y;
  switch (c) {
   case EOF: return 0;
-  case ')': return readx(v, err_rpar);
+  case ')': return errp(v, "unmatched right delimiter"), restart(v);
   case '(': return r1s(v, i);
-  case '"': return read_loop_init(v, i, str_read_loop);
+  case '"': return read_loop_go(v, i, str_loop);
   case '\'': return x = pair(v, parse(v, i), nil), pair(v, Qt, x);
   default: return
    ungetc(c, i),
-   x = read_loop_init(v, i, atom_read_loop),
+   x = read_loop_go(v, i, atom_loop),
    y = readz(v, chars(x)),
    nump(y) ? y : intern(v, x); } }
 
 static obj r1s(lips v, FILE *i) {
  obj x, y, c = r0(i);
  switch (c) {
-  case EOF: return readx(v, err_eof);
+  case EOF: return errp(v, "unexpected eof"), restart(v);
   case ')': return nil;
   default: return
    ungetc(c, i),
@@ -56,7 +57,7 @@ static obj r1s(lips v, FILE *i) {
    pair(v, x, y); } }
 
 static NoInline obj
-read_loop_cont(lips v, FILE *i, str o, i64 n, i64 lim, read_loop *loop) {
+read_loop_cont(lips v, FILE *i, str o, u64 n, u64 lim, read_loop *loop) {
  obj x; return
   o->len = n, x = putstr(o),
   o->text[n-1] == 0 ? x :
@@ -64,7 +65,7 @@ read_loop_cont(lips v, FILE *i, str o, i64 n, i64 lim, read_loop *loop) {
     cpy8(o->text, getstr(x)->text, o->len = n),
     loop(v, i, o, n, 2 * n)); }
 
-static obj atom_read_loop(lips v, FILE *p, str o, i64 n, i64 lim) {
+static obj atom_loop(lips v, FILE *p, str o, u64 n, u64 lim) {
  for (obj x; n < lim;) switch (x = getc(p)) {
   case ' ': case '\n': case '\t': case ';': case '#':
   case '(': case ')': case '\'': case '"':
@@ -72,14 +73,38 @@ static obj atom_read_loop(lips v, FILE *p, str o, i64 n, i64 lim) {
    o->text[n++] = 0;
    goto out;
   default: o->text[n++] = x; } out:
- return read_loop_cont(v, p, o, n, lim, atom_read_loop); }
+ return read_loop_cont(v, p, o, n, lim, atom_loop); }
 
-static obj str_read_loop(lips v, FILE *p, str o, i64 n, i64 lim) {
+static obj str_loop(lips v, FILE *p, str o, u64 n, u64 lim) {
  for (obj x; n < lim;) switch (x = getc(p)) {
   case '\\': if ((x = getc(p)) == EOF) {
   case EOF: case '"': o->text[n++] = 0; goto out; }
   default: o->text[n++] = x; } out:
- return read_loop_cont(v, p, o, n, lim, str_read_loop); }
+ return read_loop_cont(v, p, o, n, lim, str_loop); }
+
+static obj slurp_loop(lips v, FILE *p, str o, u64 n, u64 lim) {
+ for (obj x; n < lim;) switch (x = getc(p)) {
+  case EOF: o->text[n++] = 0; goto out;
+  default: o->text[n++] = x; } out:
+ return read_loop_cont(v, p, o, n, lim, slurp_loop); }
+
+obj slurp_file(lips v, const char *path) {
+ FILE *i = fopen(path, "r");
+ if (!i) return
+  errp(v, "%s : %s", path, strerror(errno)),
+  restart(v);
+ obj s = read_loop_go(v, i, slurp_loop);
+ fclose(i);
+ return s; }
+
+obj dump_file(lips v, const char *path, const char *text) {
+ FILE *out = fopen(path, "w");
+ if (!out) return
+  errp(v, "%s : %s", path, strerror(errno)),
+  restart(v);
+ for (int c = *text; c; c = *++text) fputc(c, out);
+ fclose(out);
+ return nil; }
 
 static NoInline obj readz_2(const char *s, i64 rad) {
  static const char *dig = "0123456789abcdef";
