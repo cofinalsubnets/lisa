@@ -9,6 +9,7 @@
   (: ; some aliases
      ~ nilp 2p twop Hp homp Tg tget Ts tset Td tdel Th thas
      ~~ '(()) {} (tbl) [] (vec)
+     2? twop \? homp Y? symp
 
      ; functional programmings
      (id x) x
@@ -75,10 +76,14 @@
      (foldl x z f) (? (twop x) (foldl (B x) (f z (A x)) f) z)
      (foldl1  x f) (foldl (B x) (A x) f)
      (foldr1  x f) (? (twop (B x)) (f (A x) (foldr1 (B x) f)) (A x))
+     (qap f x) (?
+      (2? x) (X (f (A x)) (qap f (B x)))
+      (\? x) (\ _ . (f (ap x _)))
+      x)
      (map     x f) (foldr x () (\ x m (X (f x) m)))
      flatmap (co map (cu ap cat))
      (zip f a .) (? (? a (all a id))
-      (X (ap f (map a A)) (ap zip (X f (map a B)))))
+      (X (ap f (qap A a)) (ap zip (X f (qap B a)))))
      (transp x) (ap zip (X L x))
      (snoc l x) (? l (X (A l) (snoc (B l) x)) (L x))
      (randn n) (% (abs (rand)) n)
@@ -129,8 +134,8 @@
   (idx '(hom num two vec str tbl sym nil ()) x)
 
  (type-sym x) (?
-  (homp x) 'hom (nump x) 'num
-  (twop x) 'two (vecp x) 'vec
+  (\? x) 'hom (nump x) 'num
+  (2? x) 'two (vecp x) 'vec
   (symp x) 'sym (strp x) 'str
   (tblp x) 'tbl          'nil)
 
@@ -379,7 +384,7 @@
    pure (imm (set
     L X A B Q + - * / % & | ^ << >> id flip iota rho const inc dec
     = ~ <= >= < > cu const snoc init last rev ldel memq at idx len
-    homp nilp symp nump tblp strp twop vecp
+    2? ~ symp nump tblp strp twop vecp \?
     && || scat slen sget ssub str))
 
    ; these enable extra partial evaluation for functions
@@ -489,7 +494,7 @@
 
     l ((-> 'hom k) e (+ m 2))
     y (ltu e (nom e l) x)
-    (? (homp y) (emf i-imm (emx y l))
+    (? (\? y) (emf i-imm (emx y l))
      (emi (? (Tg e'loc) i-encll i-encln)
       (emx (X (B y) (clo-thd e (A y) k)) l))))
 
