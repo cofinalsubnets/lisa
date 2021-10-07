@@ -46,7 +46,6 @@ D=$(DESTDIR)$(PREFIX)
 B=$D/bin
 L=$D/lib/lips
 M=$D/share/man/man1
-V=~/.vim
 
 # install rules
 #
@@ -64,6 +63,7 @@ $M/$m: $m $M
 
 # vim
 #
+V=~/.vim
 install-vim: $V/syntax/$n.vim $V/ftdetect/$n.vim
 uninstall-vim:
 	rm -f $V/{syntax,ftdetect}/$n.vim

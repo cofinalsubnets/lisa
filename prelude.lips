@@ -20,11 +20,11 @@
      ((cu f x .) y .) (ap f (cat x y))
 
      ; logic
-     (&& l .) (all l id)
-     (|| l .) (any l id)
+     (&& l .) (all id l)
+     (|| l .) (any id l)
      (each x f) (? x (, (f (A x)) (each (B x) f)))
-     (all l p) (? l (? (p (A l)) (all (B l) p)) 1)
-     (any l p) (? l (? (p (A l)) 1 (any (B l) p)))
+     (all p l) (? l (? (p (A l)) (all p (B l))) 1)
+     (any p l) (? l (? (p (A l)) 1 (any p (B l))))
      (part l p) (foldr l ~~ (\ a m
       (? (p a) (X (X a (A m)) (B m))
                (X (A m) (X a (B m))))))
@@ -76,17 +76,20 @@
          x)
      (filter x p) (foldr x () (\ x m (? (p x) (X x m) m)))
      (find l p) (? l (? (p (A l)) (A l) (find (B l) p)))
-     (foldr x z f) (? (twop x) (f (A x) (foldr (B x) z f)) z)
-     (foldl x z f) (? (twop x) (foldl (B x) (f z (A x)) f) z)
+     (foldr x z f) (? (2? x) (f (A x) (foldr (B x) z f)) z)
+     (foldl x z f) (? (2? x) (foldl (B x) (f z (A x)) f) z)
      (foldl1  x f) (foldl (B x) (A x) f)
-     (foldr1  x f) (? (twop (B x)) (f (A x) (foldr1 (B x) f)) (A x))
+     (foldr1  x f) (?
+      (2? (B x))
+       (f (A x) (foldr1 (B x) f)) 
+      (A x))
      (qap f x) (?
       (2? x) (X (f (A x)) (qap f (B x)))
       (\? x) (\ _ . (f (ap x _)))
       x)
      (map     x f) (foldr x () (\ x m (X (f x) m)))
-     flatmap (co map (cu ap cat))
-     (zip f a .) (? (? a (all a id))
+     flatmap (co qap (cu ap cat))
+     (zip f a .) (? (? a (all id a))
       (X (ap f (qap A a)) (ap zip (X f (qap B a)))))
      (transp x) (ap zip (X L x))
      (snoc l x) (? l (X (A l) (snoc (B l) x)) (L x))
@@ -297,7 +300,7 @@
   (f3 kvs) (f3r kvs kvs ())
   (f3r i kvs q) (:
    (chk i vs) (? (~ vs) 1 (: v (A vs) (?
-    (|| (any i (\ j (= (A j) v))) (Th (Tg e'val) v))
+    (|| (any (\ j (= (A j) v)) i) (Th (Tg e'val) v))
      (chk i (B vs)))))
    (? (~ kvs) q (?
     (chk i (AB (: kv (A kvs))))
@@ -407,7 +410,7 @@
     (? (Th macros a) (wv e (ap (Tg macros a) (B x)))
      (: z (qap (\ x (wv e x)) x) q (A z) r (B z) (?
       (~ (Th pure q)) (adj-ar z)
-      (all r qtd) (quote (ap q (qap unq r)))
+      (all qtd r) (quote (ap q (qap unq r)))
       (Th monoids q) (mono q (q) r)
       (Th abelians q) (:
        ff (part r qtd)
@@ -675,7 +678,7 @@
 
     (|| (~ x)
      (&& (: q (map unq (select qtd x)))
-         (: r (A q) (any (B q) (\ v (~ (= v r)))))))
+         (: r (A q) (any (\ v (~ (= v r))) (B q)))))
      (Im () k)
 
     (~ (B x)) (Im 1 k)
