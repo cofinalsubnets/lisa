@@ -16,7 +16,7 @@
     (&& (twop x) (twop y)
      (unify (B x) (B y) (unify (A x) (A y) s)))))))
 
-(::: \\ (\ a   . (X (X '\ a) (map (init a) (\ (L sym)))))
+(::: \\ (\ a   . (X (X '\ a) (qap (\ (L sym)) (init a))))
      Zzz (\ x (L '\ '_ (L '\ (L x '_))))
      &* (\ a x . (: b (L 'Zzz a) (? (~ x) b (L conj b (X '&* x)))))
      |* (\ a x . (: b (L 'Zzz a) (? (~ x) b (L disj b (X '|* x))))))

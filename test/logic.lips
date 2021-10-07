@@ -11,7 +11,7 @@
     none (co any ~)
     (bools n) (? (= 0 n) (L (L ()) (L t))
      (: q (bools (- n 1))
-      (flatmap q (\ b (map q (\ c (cat b c)))))))
+      (flatmap q (\ b (qap (\ c (cat b c)) q)))))
     (de-morgan a .) (= (all a id) (none a ~))
   (all (bools 3) (cu ap de-morgan)))
  (: box (tbl)
