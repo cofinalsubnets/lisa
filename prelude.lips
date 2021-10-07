@@ -70,6 +70,10 @@
      ; lists
      (at l n) (? (< n 1) (A l) (at (B l) (- n 1)))
      (cat a .) (foldr a () (: (app a b) (? a (X (A a) (app (B a) b)) b)))
+     (select p x) (?
+         (2? x) (foldr x ()  (\ x m (? (p x) (X x m) m)))
+         (\? x) (? x (f x))
+         x)
      (filter x p) (foldr x () (\ x m (? (p x) (X x m) m)))
      (find l p) (? l (? (p (A l)) (A l) (find (B l) p)))
      (foldr x z f) (? (twop x) (f (A x) (foldr (B x) z f)) z)
@@ -99,7 +103,7 @@
      (last l) (? (B l) (last (B l)) (A l))
      (memq x k) (? x (? (= k (A x)) x (memq (B x) k)))
      (rev l) (foldl l () (flip X))
-     (ldel l k) (filter l (\ x (~ (= x k))))
+     (ldel l k) (select (\ x (~ (= x k))) l)
      (idx l x)
       (: (loop l x n)
           (? l (? (= x (A l)) n (loop (B l) x (+ n 1))))
@@ -317,7 +321,7 @@
 
   ; only bother with any of this if there are inner defs
   (? (: ks (tkeys (: def (Tg e'def))))
-   (f4 (f3 (f2 (f1 (map (Ts e'loc ks) (\ k (X k (Tg def k))))))))))
+   (f4 (f3 (f2 (f1 (qap (\ k (X k (Tg def k))) (Ts e'loc ks))))))))
 
  (wv e x)  (:
   (list e x) (:
@@ -401,13 +405,13 @@
     '? (cond e (B x))
     ', (seq e x)
     (? (Th macros a) (wv e (ap (Tg macros a) (B x)))
-     (: z (map x (\ x (wv e x))) q (A z) r (B z) (?
+     (: z (qap (\ x (wv e x)) x) q (A z) r (B z) (?
       (~ (Th pure q)) (adj-ar z)
-      (all r qtd) (quote (ap q (map r unq)))
+      (all r qtd) (quote (ap q (qap unq r)))
       (Th monoids q) (mono q (q) r)
       (Th abelians q) (:
        ff (part r qtd)
-       fg (ap q (map (A ff) unq))
+       fg (ap q (qap unq (A ff)))
        (X q (? (= fg (q)) (B ff)
              (X fg (B ff)))))
       (adj-ar z))))))
@@ -670,7 +674,7 @@
    = (\ x k (?
 
     (|| (~ x)
-     (&& (: q (map (filter x qtd) unq))
+     (&& (: q (map unq (select qtd x)))
          (: r (A q) (any (B q) (\ v (~ (= v r)))))))
      (Im () k)
 
