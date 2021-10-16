@@ -1,5 +1,8 @@
 #include "lips.h"
 #include "terp.h"
+#include "table.h"
+#include "err.h"
+#include "hom.h"
 #include <stdlib.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -33,8 +36,7 @@ static NoInline u0 rin(lips v, const char *a, terp *b) {
  tblset(v, Top, z, Pn(b)); }
 
 static lips lips_init(lips v) {
- v->t0 = clock();
- v->seed = LCPRNG(v->t0);
+ v->seed = LCPRNG(v->t0 = clock());
  v->ip = v->xp = v->syms = nil,
  v->fp = v->hp = v->sp = (mem) W,
  v->count = 0, v->len = 1;
@@ -57,7 +59,7 @@ static lips lips_init(lips v) {
 #undef rein
 #undef bsym
 
-int repl(lips v, FILE *in, FILE *out) {
+static int repl(lips v, FILE *in, FILE *out) {
  jmp_buf *or = v->restart, re;
  v->restart = &re;
  setjmp(re);
@@ -97,9 +99,3 @@ int main(int argc, char** argv) {
   lips_fin(&V); }
 
  return r; }
-#undef BOOT
-#undef TAKKA
-#undef AUBAS
-#undef HELP
-#undef OK
-#undef NO

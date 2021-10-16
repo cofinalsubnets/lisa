@@ -1,4 +1,6 @@
 #include "lips.h"
+#include "symbol.h"
+#include "err.h"
 #include <stdlib.h>
 #include <time.h>
 static clock_t copy(lips, u64);
