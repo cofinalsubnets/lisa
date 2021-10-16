@@ -85,13 +85,11 @@ int main(int argc, char** argv) {
  if (optind < argc || flag & TAKKA) {
   struct lips V;
   lips_init(&V);
-
   if (!(flag & AUBAS)) r = xval(script(&V, BOOT, fopen(BOOT, "r")));
   while (r == OK && optind < argc) {
     const char *path = argv[optind++];
     r = xval(script(&V, path, fopen(path, "r"))); }
   if (r == OK && flag & TAKKA) r = repl(&V, stdin, stdout);
-
   lips_fin(&V); }
 
  return r; }

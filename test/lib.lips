@@ -1,5 +1,5 @@
 (test "library functions"
- (: parts (part '(0 1 2 3 4 5) even) (&&
+ (: parts (part even '(0 1 2 3 4 5)) (&&
   (= parts '((0 2 4) 1 3 5))
   (all even (A parts))
   (all odd (B parts))))
@@ -22,7 +22,7 @@
   (init '(0 1 2 3 4))
   (last '(0 1 2 3 (0 1 2 3)))
   (memq (iota -1 4) 0))
- (: rands (qap (\ (randn 0z10)) (iota 0z100))
+ (: rands (map (\ (randn 0z10)) (iota 0z100))
   (all (\ r (<= 0 r 0zb)) rands))
  (= 2 (idx (iota 3) 2) (len (iota 2)))
  (= id (id id) ((const id) const))

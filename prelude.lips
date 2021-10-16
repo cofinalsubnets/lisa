@@ -18,6 +18,20 @@
      ((flip f) x y) (f y x)
      ((diag f) x) (f x x)
      ((cu f x .) y .) (ap f (cat x y))
+     (map f x) (?
+      (2? x) (X (f (A x)) (map f (B x)))
+      (\? x) (\ _ . (x (ap f _)))
+      x)
+
+     (cat xs .)
+      (: x (A xs) (?
+       (2? x) (: (append a b) (? (2? a) (X (A a) (append (B a) b)) b)
+               (foldr xs () append))
+       (\? x) (: (compose f g) (\ x . (g (ap f x)))
+               (foldr xs id compose))))
+
+
+     flatmap (map map (cu ap cat))
 
      ; logic
      (&& l .) (all id l)
@@ -25,7 +39,7 @@
      (each x f) (? x (, (f (A x)) (each (B x) f)))
      (all p l) (? l (? (p (A l)) (all p (B l))) 1)
      (any p l) (? l (? (p (A l)) 1 (any p (B l))))
-     (part l p) (foldr l ~~ (\ a m
+     (part p l) (foldr l ~~ (\ a m
       (? (p a) (X (X a (A m)) (B m))
                (X (A m) (X a (B m))))))
 
@@ -69,7 +83,6 @@
 
      ; lists
      (at l n) (? (< n 1) (A l) (at (B l) (- n 1)))
-     (cat a .) (foldr a () (: (app a b) (? a (X (A a) (app (B a) b)) b)))
      (select p x) (?
          (2? x) (foldr x ()  (\ x m (? (p x) (X x m) m)))
          (\? x) (? x (f x))
@@ -83,14 +96,8 @@
       (2? (B x))
        (f (A x) (foldr1 (B x) f)) 
       (A x))
-     (qap f x) (?
-      (2? x) (X (f (A x)) (qap f (B x)))
-      (\? x) (\ _ . (f (ap x _)))
-      x)
-     (map     x f) (foldr x () (\ x m (X (f x) m)))
-     flatmap (co qap (cu ap cat))
      (zip f a .) (? (? a (all id a))
-      (X (ap f (qap A a)) (ap zip (X f (qap B a)))))
+      (X (ap f (map A a)) (ap zip (X f (map B a)))))
      (transp x) (ap zip (X L x))
      (snoc l x) (? l (X (A l) (snoc (B l) x)) (L x))
      (randn n) (% (abs (rand)) n)
@@ -276,8 +283,8 @@
    (Th (Tg e'val) (: kv (A kvs) k (A kv)))
     (f1 (B kvs))
    (: qq (wv e (B kv)) bb (f1 (B kvs)) (?
-    (qtd (Ts (Tg e'def) k qq))
-     (, (Ts (Tg e'val) k (unq qq)) (Td (Tg e'def) k) bb)
+    (qtd (Ts (Tg e 'def) k qq))
+     (, (Ts (Tg e 'val) k (unq qq)) (Td (Tg e 'def) k) bb)
     (&& (2p qq) (= '\ (A qq)))
      (X (X k qq) bb)
     bb))))
@@ -324,7 +331,7 @@
 
   ; only bother with any of this if there are inner defs
   (? (: ks (tkeys (: def (Tg e'def))))
-   (f4 (f3 (f2 (f1 (qap (\ k (X k (Tg def k))) (Ts e'loc ks))))))))
+   (f4 (f3 (f2 (f1 (map (\ k (X k (Tg def k))) (Ts e'loc ks))))))))
 
  (wv e x)  (:
   (list e x) (:
@@ -408,13 +415,13 @@
     '? (cond e (B x))
     ', (seq e x)
     (? (Th macros a) (wv e (ap (Tg macros a) (B x)))
-     (: z (qap (\ x (wv e x)) x) q (A z) r (B z) (?
+     (: z (map (\ x (wv e x)) x) q (A z) r (B z) (?
       (~ (Th pure q)) (adj-ar z)
-      (all qtd r) (quote (ap q (qap unq r)))
+      (all qtd r) (quote (ap q (map unq r)))
       (Th monoids q) (mono q (q) r)
       (Th abelians q) (:
-       ff (part r qtd)
-       fg (ap q (qap unq (A ff)))
+       ff (part qtd r)
+       fg (ap q (map unq (A ff)))
        (X q (? (= fg (q)) (B ff)
              (X fg (B ff)))))
       (adj-ar z))))))

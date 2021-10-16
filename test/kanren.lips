@@ -1,25 +1,34 @@
-(: (_? x) (&& (symp x) (~ (ystr x))) ; anonymous symbol ?
-   (m+ a b) (? (~ a)  b (homp a) (\            (m+    b    (a)))
-                                 (X     (A a)  (m+    b  (B a))))
-   (m* a b) (? (~ a) () (homp a) (\            (m*   (a)    b))
-                                 (m+ (b (A a)) (m* (B a)    b)))
-   (?? u s) (|| (&& (_? u)
-                      (: r (find s (co B (cu = u))))
-                      (?? (A r) s))
-                  u)
-   ((disj f g) x) (m+ (f x) (g x))
-   ((conj f g) x) (m* (f x)  g)
-   ((== u v) s) (L (: x (?? u s) y (?? v s) (?
-    (= x y) s
-    (_? x) (X (X y x) s)
-    (_? y) (X (X x y) s)
-    (&& (twop x) (twop y)
-     (unify (B x) (B y) (unify (A x) (A y) s)))))))
+(: == (:
+ (_? x) (&& (Y? x) (~ (ystr x))) ; anonymous symbol ?
+ (_! var val s) (X (X val var) s)
+ (?? u s) (||
+  (&& (_? u)
+   (: r (find s (co B (cu = u))))
+   (?? (A r) s))
+  u)
 
-(::: \\ (\ a   . (X (X '\ a) (qap (\ (L sym)) (init a))))
-     Zzz (\ x (L '\ '_ (L '\ (L x '_))))
-     &* (\ a x . (: b (L 'Zzz a) (? (~ x) b (L conj b (X '&* x)))))
-     |* (\ a x . (: b (L 'Zzz a) (? (~ x) b (L disj b (X '|* x))))))
+ ((== u v) s) (: x (?? u s) y (?? v s) (L (?
+  (= x y) s
+  (_? x) (_! x y s)
+  (_? y) (_! y x s)
+  (&& (2? x) (2? y)
+   (== (B x) (B y)
+    (== (A x) (A y)
+     s))))))
+
+ ==))
+
+(:
+ (m+ a b) (? (~ a)  b (\? a) (\ (m+ b (a))) (X (A a) (m+ b (B a))))
+ (m* a b) (? (~ a) () (\? a) (\ (m* (a) b)) (m+ (b (A a)) (m* (B a) b)))
+ ((disj f g) x) (m+ (f x) (g x))
+ ((conj f g) x) (m* (f x)  g)
+ (:::
+  \\ (\ a   . (X (X '\ a) (map (\ (L sym)) (init a))))
+  Zzz (\ x (: _ (sym) (L '\ _ '. (L '\ (L ap x _)))))
+  &* (\ a x . (: b (L 'Zzz a) (? (~ x) b (L conj b (X '&* x)))))
+  |* (\ a x . (: b (L 'Zzz a) (? (~ x) b (L disj b (X '|* x)))))))
+
 
 (: (run n g)
     (>>= n (g ()) (: (go n x)
@@ -33,6 +42,7 @@
      (? (~ rset) m (X (foldl  rset () (\ m bind (X (A bind) m))) m)))))
 
 (test kanren
+; (= '()            (. (tabulate (\\ a b c (&* (== a 1) (== b 2) (== c (L a b)) (== c (L 1 1)))))))
  (= '((7 6) (7 5)) (tabulate (\\ a b (&* (== a 7) (|* (== b 5) (== b 6))))))
  (= '((9 8))       (tabulate (\\ a b (&* (== a 9) (== b 8)))))
  (= '((1 1))       (tabulate (\\ a b (&* (== a 1) (== a b)))))
