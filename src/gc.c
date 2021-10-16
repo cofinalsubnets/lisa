@@ -187,8 +187,3 @@ GC(cptbl) {
  while (src_cap--)
   dst->tab[src_cap] = cpent(v, src_tab[src_cap], l0, b0);
  return puttbl(dst); }
-#undef inb
-#undef fresh
-#undef stale
-#undef GC
-#undef CP

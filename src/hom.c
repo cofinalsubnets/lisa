@@ -361,4 +361,3 @@ NoInline u0 defprim(lips v, const char *a, terp *b) {
 obj compile(lips v, obj x) { return
  Push(Pn(c_ev), x, Pn(inst), Pn(yield), Pn(c_ini)),
  Ccc(v, NULL, 0); }
-

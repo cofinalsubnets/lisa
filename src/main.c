@@ -54,10 +54,6 @@ static lips lips_init(lips v) {
 #define def(s, x) (y=interns(v,s),tblset(v,Top,y,x))
  def("ns", Top), def("macros", Mac);
  return v; }
-#undef def
-#undef repr
-#undef rein
-#undef bsym
 
 static int repl(lips v, FILE *in, FILE *out) {
  jmp_buf *or = v->restart, re;

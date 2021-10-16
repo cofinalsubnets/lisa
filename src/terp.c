@@ -439,7 +439,7 @@ interp(strconc) {
  while (i < l) {
   obj x = ARGV[i++];
   TC(x, Str);
-  sum += getstr(x)->len - 1; }
+  sum += S(x)->len - 1; }
  i64 words = b2w(sum+1) + 1;
  Have(words);
  str d = (str) hp;

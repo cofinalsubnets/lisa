@@ -26,8 +26,9 @@ enum globl { // indices into a table of global constants
 // that need to be preserved by garbage collection.
 typedef struct root { mem one; struct root *next; } *root;
 
-// this structure is responsible for holding runtime state.
-// most functions take a pointer to it as the first argument.
+// this structure holds runtime state.
+// most runtime functions take a pointer to this as the
+// first argument.
 typedef struct lips {
  obj ip, xp, *fp, *hp, *sp, // interpreter state
      syms, // symbol table
@@ -40,9 +41,7 @@ typedef struct lips {
 
 // this is the type of interpreter functions
 typedef obj terp(lips, obj, mem, mem, mem, obj);
-typedef terp **hom; // code pointer ; the internal function type
-
-u64 llen(obj) NoInline;
+typedef terp **hom; // function pointer pointer
 
 u0
  reqsp(lips, u64),
@@ -149,6 +148,7 @@ SI hom button(hom h) { while (*h) h++; return h; }
 SI u0* bump(lips v, u64 n) { u0* x = v->hp; return v->hp += n, x; }
 SI u0* cells(lips v, u64 n) { if (Avail < n) reqsp(v, n); return bump(v, n); }
 SI u64 b2w(u64 b) { return b / W + (b % W && 1); }
+SI u64 llen(obj l) { for (u64 i = 0;; l = Y(l), i++) if (!twop(l)) return i; }
 #undef SI
 
 _Static_assert(

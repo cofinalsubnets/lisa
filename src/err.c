@@ -11,9 +11,9 @@ u0 errp(lips v, char *msg, ...) {
  va_end(xs); }
 
 obj err(lips v, char *msg, ...) {
-  va_list xs; va_start(xs, msg);
-  vferrp(stderr, msg, xs);
-  return restart(v); }
+ va_list xs; va_start(xs, msg);
+ vferrp(stderr, msg, xs);
+ return restart(v); }
 
 obj restart(lips v) {
  v->fp = v->sp = v->pool + v->len;

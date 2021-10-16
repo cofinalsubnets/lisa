@@ -1,12 +1,2 @@
-*.out
-*.s
-*.o
-*.b
-*.bin
-perf.data*
-lips
-.gdb_history
-core
-vgcore.*
-cachegrind.*
-__pycache__
+bin/*
+perf.*
