@@ -29,21 +29,20 @@ static obj cp(lips, obj, u64, mem);
 // under a certain proportion of total running time: amortized
 // time in garbage collection should be less than about 6%, at
 // the cost of more memory use under pressure.
-#define grow() (len<<=1,vit<<=1)
-#define shrink() (len>>=1,vit>>=1)
 #define growp (allocd > len || vit < 32) // lower bound
 #define shrinkp (allocd < (len>>1) && vit >= 128) // upper bound
 u0 reqsp(lips v, u64 req) {
  i64 len = v->len, vit = copy(v, len);
  if (vit) { // copy succeeded
   i64 allocd = len - (Avail - req);
-  if (growp)        do grow();   while (growp);
-  else if (shrinkp) do shrink(); while (shrinkp);
+  if (growp) do len <<= 1, vit <<= 1; while (growp);
+  else if (shrinkp) do len >>= 1, vit >>= 1; while (shrinkp);
   else return; // no size change needed
   // otherwise grow or shrink ; if it fails maybe we can return
   if (copy(v, len) || allocd <= v->len) return; }
- errp(v, "oom"); // this is a bad error
- restart(v); }
+ err(v, "oom"); } // this is a bad error
+#undef growp
+#undef shrinkp
 
 // the first step in copying is to allocate
 // a new pool of the given length, which must
@@ -77,10 +76,14 @@ static clock_t copy(lips v, u64 l1) {
  v->pool = Hp = b1;
  Sp += ro, Fp += ro;
  v->syms = nil;
- while (tp0-- > s0) Sp[tp0 - s0] = cp(v, *tp0, l0, b0);
-#define CP(x) x=cp(v,x,l0,b0)
- for (root r = v->root; r; r = r->next) CP(*(r->one));
- for (int i = 0; i < NGlobs; i++) CP(v->glob[i]);
+#define COPY(dst,src) (dst=cp(v,src,l0,b0))
+#define CP(x) COPY(x,x)
+ while (tp0-- > s0)
+   COPY(Sp[tp0 - s0], *tp0);
+ for (root r = v->root; r; r = r->next)
+   CP(*(r->one));
+ for (int i = 0; i < NGlobs; i++)
+   CP(v->glob[i]);
  CP(v->ip), CP(v->xp);
  free(b0);
  t1 = t1 == (t2 = clock()) ? 1 : (t2 - t0) / (t2 - t1);
@@ -94,59 +97,59 @@ static clock_t copy(lips v, u64 l1) {
 // old data.
 typedef obj copier(lips, obj, u64, mem);
 static copier cphom, cptup, cptwo, cpsym, cpstr, cptbl;
-#define cpcc(n) static obj n(lips v, obj x, u64 ln, mem lp)
-
-cpcc(cp) {
- switch (kind(x)) {
-  case Hom: return cphom(v, x, ln, lp);
-  case Vec: return cptup(v, x, ln, lp);
-  case Str: return cpstr(v, x, ln, lp);
-  case Two: return cptwo(v, x, ln, lp);
-  case Sym: return cpsym(v, x, ln, lp);
-  case Tbl: return cptbl(v, x, ln, lp);
-  default:  return x; } }
-
+#define GC(n) static obj n(lips v, obj x, u64 l0, mem b0)
 #define inb(o,l,u) (o>=l&&o<u)
 #define fresh(o) inb((mem)(o),v->pool,v->pool+v->len)
-cpcc(cptwo) {
- two dst, src = gettwo(x);
- return fresh(src->x) ? src->x :
-  (dst = bump(v, Size(two)),
-   dst->x = src->x, src->x = (obj) puttwo(dst),
-   dst->y = cp(v, src->y, ln, lp),
-   dst->x = cp(v, dst->x, ln, lp),
-   puttwo(dst)); }
+#define stale(o) inb((mem)(o),b0,b0+l0)
 
-cpcc(cptup) {
+GC(cp) {
+ switch (kind(x)) {
+  case Hom: return cphom(v, x, l0, b0);
+  case Vec: return cptup(v, x, l0, b0);
+  case Str: return cpstr(v, x, l0, b0);
+  case Two: return cptwo(v, x, l0, b0);
+  case Sym: return cpsym(v, x, l0, b0);
+  case Tbl: return cptbl(v, x, l0, b0);
+  default:  return x; } }
+
+GC(cptwo) {
+ obj dst, src = x;
+ return fresh(A(x)) ? A(x) :
+  (dst = puttwo(bump(v, Size(two))),
+   A(dst) = A(src),
+   A(src) = dst,
+   B(dst) = cp(v, B(src), l0, b0),
+   CP(A(dst)),
+   dst); }
+
+GC(cptup) {
  vec dst, src = V(x);
  if (fresh(*src->xs)) return *src->xs;
  dst = bump(v, Size(tup) + src->len);
- i64 l = dst->len = src->len;
+ i64 i, l = dst->len = src->len;
  dst->xs[0] = src->xs[0];
  src->xs[0] = putvec(dst);
- dst->xs[0] = cp(v, dst->xs[0], ln, lp);
- for (i64 i = 1; i < l; ++i)
-  dst->xs[i] = cp(v, src->xs[i], ln, lp);
- return putvec(dst); }
+ for (CP(dst->xs[0]), i = 1; i < l; ++i)
+  COPY(dst->xs[i], src->xs[i]);
+ return _V(dst); }
 
-cpcc(cpstr) {
- str dst, src = getstr(x);
+GC(cpstr) {
+ str dst, src = S(x);
  return src->len == 0 ? *(mem)src->text :
   (dst = bump(v, Size(str) + b2w(src->len)),
    cpy64(dst->text, src->text, b2w(src->len)),
    dst->len = src->len, src->len = 0,
-   *(mem)src->text = putstr(dst)); }
+   *(mem) src->text = _S(dst)); }
 
-cpcc(cpsym) {
+GC(cpsym) {
  sym src = getsym(x), dst;
  if (fresh(src->nom)) return src->nom;
- if (nilp(src->nom)) // anonymous symbol
+ if (src->nom == nil) // anonymous symbol
   cpy64(dst = bump(v, Size(sym)), src, Size(sym));
- else dst = getsym(sskc(v, &v->syms, cp(v, src->nom, ln, lp)));
+ else dst = getsym(sskc(v, &v->syms, cp(v, src->nom, l0, b0)));
  return src->nom = putsym(dst); }
 
-#define stale(o) inb((mem)(o),lp,lp+ln)
-cpcc(cphom) {
+GC(cphom) {
  hom src = gethom(x);
  if (fresh(G(src))) return (obj) G(src);
  hom end = button(src), start = (hom) G(end+1),
@@ -158,18 +161,18 @@ cpcc(cphom) {
  G(j+1) = (terp*) dst;
  for (obj u; j-- > dst;
   u = (obj) G(j),
-  G(j) = (terp*) (stale(u) ? cp(v, u, ln, lp) : u));
+  G(j) = (terp*) (!stale(u) ? u : cp(v, u, l0, b0)));
  return puthom(dst += src - start); }
 
-static ent cpent(lips v, ent src, i64 ln, mem lp) {
+static ent cpent(lips v, ent src, i64 l0, mem b0) {
  if (!src) return NULL;
  ent dst = (ent) bump(v, 3);
- dst->next = cpent(v, src->next, ln, lp);
- dst->key = cp(v, src->key, ln, lp);
- dst->val = cp(v, src->val, ln, lp);
+ dst->next = cpent(v, src->next, l0, b0);
+ COPY(dst->key, src->key);
+ COPY(dst->val, src->val);
  return dst; }
 
-cpcc(cptbl) {
+GC(cptbl) {
  tbl src = gettbl(x);
  if (fresh(src->tab)) return (obj) src->tab;
  i64 src_cap = src->cap;
@@ -180,5 +183,10 @@ cpcc(cptbl) {
  ent *src_tab = src->tab;
  src->tab = (ent*) puttbl(dst);
  while (src_cap--)
-  dst->tab[src_cap] = cpent(v, src_tab[src_cap], ln, lp);
+  dst->tab[src_cap] = cpent(v, src_tab[src_cap], l0, b0);
  return puttbl(dst); }
+#undef inb
+#undef fresh
+#undef stale
+#undef GC
+#undef CP

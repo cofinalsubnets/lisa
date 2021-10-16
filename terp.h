@@ -53,4 +53,3 @@
 insts(ninl)
 #undef ninl
 
-obj compile(lips, obj);

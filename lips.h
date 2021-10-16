@@ -64,7 +64,7 @@ BWDQ(memn)
 #undef BWDQ
 // thanks !!
 typedef i64 num, obj, *mem;
-typedef struct two { obj x, y; } *two; // pairs
+typedef struct two { obj a, b; } *two; // pairs
 typedef struct tup { u64 len; obj xs[]; } *tup, *vec; // vectors
 typedef struct str { u64 len; char text[]; } *str; // byte arrays
 typedef struct sym { obj nom, code, l, r; } *sym; // symbols
@@ -86,8 +86,7 @@ typedef struct root { mem one; struct root *next; } *root;
 // this structure is responsible for holding runtime state.
 // most functions take a pointer to it as the first argument.
 typedef struct lips {
- obj ip, xp, *fp, *hp, *sp, // vm state variables
-     syms, glob[NGlobs]; // symbols and globals
+ obj ip, xp, *fp, *hp, *sp, syms, glob[NGlobs];
  root root; // gc protection list
  i64 t0, seed, count, len, *pool; // memory data
  jmp_buf *restart; // top level restart
@@ -106,6 +105,7 @@ u0
  emsep(lips, obj, FILE*, char);
 
 obj
+ err(lips, char*, ...),
  dump_file(lips, const char*, const char*),
  slurp_file(lips, const char*),
  sskc(lips, mem, obj),
@@ -155,8 +155,14 @@ extern const uint32_t *tnoms;
 #define putsym(x) ((obj)(x)+Sym)
 #define getvec(x) ((vec)((x)-Vec))
 #define putvec(x) ((obj)(x)+Vec)
+#define S(x) getstr(x)
+#define _S(x) putstr(x)
+//#define Y(x) getsym(x)
+//#define _Y(x) putsym(x)
 #define V(x) getvec(x)
 #define _V(x) putvec(x)
+#define T(x) gettbl(x)
+#define _T(x) puttbl(x)
 #define getstr(x) ((str)((obj)(x)-Str))
 #define putstr(x) ((obj)(x)+Str)
 #define gettbl(x) ((tbl)((obj)(x)-Tbl))
@@ -169,8 +175,10 @@ extern const uint32_t *tnoms;
 #define vecp(x) (kind(x)==Vec)
 #define tblp(x) (kind(x)==Tbl)
 #define nilp(x) ((x)==nil)
-#define X(o) gettwo(o)->x
-#define Y(o) gettwo(o)->y
+#define A(o) gettwo(o)->a
+#define B(o) gettwo(o)->b
+#define X(o) gettwo(o)->a
+#define Y(o) gettwo(o)->b
 #define F(x) ((hom)(x)+1)
 #define G(x) (*(hom)(x))
 #define FF(x) F(F(x))

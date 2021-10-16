@@ -18,10 +18,11 @@ const uint32_t *tnoms = (uint32_t*)
 
 typedef obj read_loop(lips, FILE*, str, u64, u64);
 static obj r1s(lips, FILE*), readz(lips, const char*);
-static read_loop str_loop, atom_loop;
+static read_loop read_str, read_atom;
 
-static Inline obj read_loop_go(lips v, FILE *i, read_loop *loop) {
- return loop(v, i, cells(v, 2), 0, 8); }
+static Inline obj read_buffered(lips v, FILE *i, read_loop *loop) {
+ str c = cells(v, 2);
+ return loop(v, i, c, 0, c->len = 8); }
 
 static int r0(FILE *i) {
  for (int c;;) switch ((c = getc(i))) {
@@ -30,25 +31,31 @@ static int r0(FILE *i) {
   case ' ': case '\t': case '\n': continue;
   default: return c; } }
 
+obj read_quoted(lips v, FILE *i) {
+ obj x = parse(v, i);
+ if (!x) return x;
+ x = pair(v, x, nil);
+ return pair(v, Qt, x); }
+
 obj parse(lips v, FILE* i) {
  int c = r0(i);
  obj x, y;
  switch (c) {
   case EOF: return 0;
-  case ')': return errp(v, "unmatched right delimiter"), restart(v);
+  case ')': return err(v, "unmatched %s delimiter", "right");
   case '(': return r1s(v, i);
-  case '"': return read_loop_go(v, i, str_loop);
-  case '\'': return x = pair(v, parse(v, i), nil), pair(v, Qt, x);
+  case '"': return read_buffered(v, i, read_str);
+  case '\'': return read_quoted(v, i);
   default: return
    ungetc(c, i),
-   x = read_loop_go(v, i, atom_loop),
+   x = read_buffered(v, i, read_atom),
    y = readz(v, chars(x)),
    nump(y) ? y : intern(v, x); } }
 
 static obj r1s(lips v, FILE *i) {
  obj x, y, c = r0(i);
  switch (c) {
-  case EOF: return errp(v, "unexpected eof"), restart(v);
+  case EOF: return err(v, "unmatched %s delimiter", "left");
   case ')': return nil;
   default: return
    ungetc(c, i),
@@ -56,44 +63,41 @@ static obj r1s(lips v, FILE *i) {
    with(x, y = r1s(v, i)),
    pair(v, x, y); } }
 
-static NoInline obj
-read_loop_cont(lips v, FILE *i, str o, u64 n, u64 lim, read_loop *loop) {
- obj x; return
-  o->len = n, x = putstr(o),
-  o->text[n-1] == 0 ? x :
-   (with(x, o = cells(v, 1 + b2w(2*n))),
-    cpy8(o->text, getstr(x)->text, o->len = n),
-    loop(v, i, o, n, 2 * n)); }
+static Inline obj grow_buffer(lips v, obj s) {
+  num l = b2w(S(s)->len);
+  obj t;
+  with(s, t = putstr(cells(v, 2*l+1)));
+  S(t)->len = w2b(2*l);
+  cpy64(S(t)->text, S(s)->text, l);
+  return t; }
 
-static obj atom_loop(lips v, FILE *p, str o, u64 n, u64 lim) {
+static obj read_atom(lips v, FILE *p, str o, u64 n, u64 lim) {
  for (obj x; n < lim;) switch (x = getc(p)) {
   case ' ': case '\n': case '\t': case ';': case '#':
   case '(': case ')': case '\'': case '"':
    ungetc(x, p); case EOF:
-   o->text[n++] = 0;
-   goto out;
-  default: o->text[n++] = x; } out:
- return read_loop_cont(v, p, o, n, lim, atom_loop); }
+   o->text[n++] = 0, o->len = n;
+   return putstr(o);
+  default: o->text[n++] = x; }
+ return read_atom(v, p, S(grow_buffer(v, _S(o))), lim, 2*lim); }
 
-static obj str_loop(lips v, FILE *p, str o, u64 n, u64 lim) {
+static obj read_str(lips v, FILE *p, str o, u64 n, u64 lim) {
  for (obj x; n < lim;) switch (x = getc(p)) {
   case '\\': if ((x = getc(p)) == EOF) {
-  case EOF: case '"': o->text[n++] = 0; goto out; }
-  default: o->text[n++] = x; } out:
- return read_loop_cont(v, p, o, n, lim, str_loop); }
+  case EOF: case '"': o->text[n++] = 0, o->len = n ;return _S(o); }
+  default: o->text[n++] = x; }
+ return read_str(v, p, S(grow_buffer(v, _S(o))), lim, 2*lim); }
 
-static obj slurp_loop(lips v, FILE *p, str o, u64 n, u64 lim) {
+static obj slurp(lips v, FILE *p, str o, u64 n, u64 lim) {
  for (obj x; n < lim;) switch (x = getc(p)) {
-  case EOF: o->text[n++] = 0; goto out;
-  default: o->text[n++] = x; } out:
- return read_loop_cont(v, p, o, n, lim, slurp_loop); }
+  case EOF: o->text[n++] = 0, o->len = n; return _S(o);
+  default: o->text[n++] = x; }
+ return slurp(v, p, S(grow_buffer(v, _S(o))), lim, 2*lim); }
 
 obj slurp_file(lips v, const char *path) {
  FILE *i = fopen(path, "r");
- if (!i) return
-  errp(v, "%s : %s", path, strerror(errno)),
-  restart(v);
- obj s = read_loop_go(v, i, slurp_loop);
+ if (!i) return err(v, "%s : %s", path, strerror(errno));
+ obj s = read_buffered(v, i, slurp);
  fclose(i);
  return s; }
 
@@ -147,12 +151,12 @@ static u0 emsym(lips v, sym y, FILE *o) {
                 fputs(chars(y->nom), o); }
 
 static u0 emtwo_(lips v, two w, FILE *o) {
- twop(w->y) ? (emsep(v, w->x, o, ' '), emtwo_(v, gettwo(w->y), o)) :
-              emsep(v, w->x, o, ')'); }
+ twop(w->b) ? (emsep(v, w->a, o, ' '), emtwo_(v, gettwo(w->b), o)) :
+              emsep(v, w->a, o, ')'); }
 
 static u0 emtwo(lips v, two w, FILE *o) {
- w->x == Qt && twop(w->y) && nilp(Y(w->y)) ?
-  (fputc('\'', o), emit(v, X(w->y), o)) :
+ w->a == Qt && twop(w->b) && nilp(Y(w->b)) ?
+  (fputc('\'', o), emit(v, X(w->b), o)) :
   (fputc('(', o), emtwo_(v, w, o)); }
 
 static u0 emvec(lips v, vec e, FILE *o) {
@@ -181,8 +185,15 @@ u0 emit(lips v, obj x, FILE *o) {
   case Vec: return emvec(v, getvec(x), o);
   default:  fputs("()", o); } }
 
+static u0 vferrp(FILE* o, char *msg, va_list xs) {
+  fputs("# ", o), vfprintf(o, msg, xs), fputc('\n', o); }
 u0 errp(lips v, char *msg, ...) {
  va_list xs;
- fputs("# ", stderr);
- va_start(xs, msg), vfprintf(stderr, msg, xs), va_end(xs);
- fputc('\n', stderr); }
+ va_start(xs, msg);
+ vferrp(stderr, msg, xs);
+ va_end(xs); }
+
+obj err(lips v, char *msg, ...) {
+  va_list xs; va_start(xs, msg);
+  vferrp(stderr, msg, xs);
+  return restart(v); }

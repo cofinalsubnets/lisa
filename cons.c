@@ -11,7 +11,7 @@ static u64 hc(lips, obj);
 obj pair(lips v, obj a, obj b) {
  if (Avail < 2) with(a, with(b, reqsp(v, 2)));
  two t = bump(v, 2);
- return t->x = a, t->y = b, puttwo(t); }
+ return t->a = a, t->b = b, puttwo(t); }
 
 u64 llen(obj l) {
  for (u64 i = 0;; l = Y(l), i++) if (!twop(l)) return i; }

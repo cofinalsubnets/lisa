@@ -7,6 +7,7 @@
 
   ; standard library functions
   (: ; some aliases
+     `'` ?'? :': ,', \'\
      ~ nilp 2p twop Hp homp Tg tget Ts tset Td tdel Th thas
      ~~ '(()) {} (tbl) [] (vec)
      2? twop \? homp Y? symp
@@ -45,7 +46,7 @@
 
      ; data constructors
      (L . .) .
-     (Q x) (L '` x)
+     (Q x) (L ` x)
      (iota n x .)
       (: (loop m n) (? (< m n) (X m (loop (+ m 1) n)))
        (? (~ x) (loop 0 n) (loop n (A x))))
@@ -130,14 +131,14 @@
    'AA (\ x (L A (L A x))) 'AB (\ x (L A (L B x)))
    'BA (\ x (L B (L A x))) 'BB (\ x (L B (L B x)))
    'char (\ x (sget x 0))
-   '&& (\ x . (? x ((: (& x) (? (B x) (L '? (A x) (& (B x))) (A x))) x) 1))
-   '|| (\ x . ((: (| x) (? x (: q (sym) (L ': q (A x) (L '? q q (| (B x))))))) x))
+   '&& (\ x . (? x ((: (& x) (? (B x) (L ? (A x) (& (B x))) (A x))) x) 1))
+   '|| (\ x . ((: (| x) (? x (: q (sym) (L ': q (A x) (L ? q q (| (B x))))))) x))
    '>>= (\ x . (X (last x) (init x)))
    'case (\ x a . (:
      y (sym)
      (loop a)
       (? a (? (~ (B a)) (A a)
-       (L '? (L '= y (A a)) (A (B a))
+       (L ? (L '= y (A a)) (A (B a))
         (loop (B (B a))))))
     (L ': y x (loop a)))))
 
@@ -378,7 +379,7 @@
       (X a (X (wv e (A (B x))) (rec e (BB x))))
      (unq a) (L (wv e (AB x)))
      (rec e (BB x)))
-    (? (: r (rec e x)) (? (B r) (X '? r) (A r))))
+    (? (: r (rec e x)) (? (B r) (X ? r) (A r))))
 
    (seq e x) (:
     (loop e x) (? (~ (B x)) (L (wv e (A x))) (:
@@ -412,7 +413,7 @@
     '` (? (B x) x)
     '\ (lamb e x)
     ': (defn e x)
-    '? (cond e (B x))
+    ? (cond e (B x))
     ', (seq e x)
     (? (Th macros a) (wv e (ap (Tg macros a) (B x)))
      (: z (map (\ x (wv e x)) x) q (A z) r (B z) (?
@@ -534,11 +535,11 @@
     (\ e m ((loop e x k) e m)))
 
    (case (: z (A x))
-    '` (Im (AB x) k)
-    '? (cond (B x) k)
-    ': (defn (B x) k)
-    '\ (lamb x k)
-    ', (seq (B x) k)
+    ` (Im (AB x) k)
+    ? (cond (B x) k)
+    : (defn (B x) k)
+    \ (lamb x k)
+    , (seq (B x) k)
     (app z (B x) k)))
 
   ((symb x k) e m) (:

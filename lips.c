@@ -52,14 +52,18 @@ static lips lips_init(lips v) {
 #define def(s, x) (y=interns(v,s),tblset(v,Top,y,x))
  def("ns", Top), def("macros", Mac);
  return v; }
+#undef def
+#undef repr
+#undef rein
+#undef bsym
 
 int repl(lips v, FILE *in, FILE *out) {
  jmp_buf *or = v->restart, re;
  v->restart = &re;
  setjmp(re);
- for (obj x;;) {
+ for (obj x;;)
   if ((x = parse(v, in))) emsep(v, eval(v, x), out, '\n');
-  else if (feof(in)) break; }
+  else if (feof(in)) break;
  return v->restart = or, OK; }
 
 #define BOOT PREFIX "/lib/lips/prelude.lips"
@@ -93,3 +97,9 @@ int main(int argc, char** argv) {
   lips_fin(&V); }
 
  return r; }
+#undef BOOT
+#undef TAKKA
+#undef AUBAS
+#undef HELP
+#undef OK
+#undef NO
