@@ -53,3 +53,57 @@
 insts(ninl)
 #undef ninl
 
+// " the interpreter "
+// is all the functions of type terp:
+#define VM(n,...) NoInline obj \
+ n(lips v, obj ip, mem fp, mem sp, mem hp, obj xp, ##__VA_ARGS__)
+// the arguments to a terp function collectively represent the
+// runtime state, and the  return value is the result of the
+// program. there are six arguments because that's the number
+// that the prevalent unix calling convention on AMD64 (System
+// V ABI) says should be passed in registers; that's the only
+// reason why there aren't more. but it's not too bad; the six
+// arguments are:
+// - v  : vm instance pointer ; most lips functions take this as the first argument
+// - ip : instruction pointer ; the current vm instruction ; function pointer pointer
+// - fp : frame pointer       ; current function context
+// - sp : stack pointer       ; data/call stack
+// - hp : heap pointer        ; the next free heap location
+// - xp : return value        ; general-purpose register
+
+// when the interpreter isn't running, the state variables that
+// would normally be in registers are stored in slots on the
+// vm structure. however while the interpreter is running it
+// uses these struct slots to pass and return extra values
+// without using the stack. so the interpreter has to restore
+// the current values in the vm struct before it makes any
+// "external" function calls.
+#define PACK() (v->ip=ip,Sp=sp,Hp=hp,Fp=fp,v->xp=xp)
+#define UNPACK() (fp=Fp,hp=Hp,sp=Sp,ip=v->ip,xp=v->xp)
+#define CALLC(...)(PACK(),(__VA_ARGS__),UNPACK())
+#define RETC(...){CALLC(__VA_ARGS__);Jump(ret);}
+
+// the frame structure holds the current function context.
+typedef struct frame { obj clos, retp, subd, argc, argv[]; } *frame;
+#define CLOS ((frame)fp)->clos
+#define RETP ((frame)fp)->retp
+#define SUBR ((frame)fp)->subd
+#define ARGC ((frame)fp)->argc
+#define ARGV ((frame)fp)->argv
+#define LOCS fp[-1]
+// the pointer to the local variables array isn't in the frame struct. it
+// isn't present for all functions, but if it is it's in the word of memory
+// immediately preceding the frame pointer.
+// if a function has locals, this will have been initialized by the
+// by the time they are referred to. the wrinkle in the representation
+// gives a small but significant benefit to general function call
+// performance and should be extended to the closure pointer, which is often
+// nil.
+
+// the return value of a terp function is usually a call
+// to another terp function.
+#define STATE v,ip,fp,sp,hp,xp
+#define Jump(f,...) return (f)(STATE,##__VA_ARGS__)
+#define AP(f,x) return (ip=f,xp=x,G(ip)(STATE))
+#define GO(f,x) return (xp=x,f(STATE))
+#define NEXT(n) AP(ip+w2b(n),xp)

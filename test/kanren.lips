@@ -33,10 +33,10 @@
 (: (run n g)
     (>>= n (g ()) (: (go n x)
          (? (= n 0) x
-            (twop (: y (<- x))) (X (A y) (go (- n 1) (B y)))
+            (2? (: y (<- x))) (X (A y) (go (- n 1) (B y)))
             y)))
 
-   (<- q) (? (homp q) (<- (q)) q)
+   (<- q) (? (\? q) (<- (q)) q)
    (tabulate query)
     (foldl (<- (query ())) () (\ m rset
      (? (~ rset) m (X (foldl  rset () (\ m bind (X (A bind) m))) m)))))

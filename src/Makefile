@@ -12,9 +12,8 @@ CFLAGS ?= -std=c99 -g -O2 -flto\
 
 # build config
 #
-n=lips#                          | binary name
-b=$n.bin#                        | dev binary
-
+n=lips
+b=$n.bin
 # target directory
 T=../bin
 # dist binary

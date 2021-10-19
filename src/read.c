@@ -64,7 +64,7 @@ static obj r1s(lips v, FILE *i) {
    with(x, y = r1s(v, i)),
    pair(v, x, y); } }
 
-static Inline obj grow_buffer(lips v, obj s) {
+static obj grow_buffer(lips v, obj s) {
   num l = b2w(S(s)->len);
   obj t;
   with(s, t = putstr(cells(v, 2*l+1)));

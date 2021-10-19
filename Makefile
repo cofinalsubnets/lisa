@@ -1,36 +1,24 @@
 include config.mk
 
 T=bin
-#
-n=lips#                          | binary name
+n=lips
 b=$n.bin
 m=share/man/man1/$n.1
-
-p=lib/$n/*.$n#                    | boot script
-r=$T/$n -_ $p#                    | dev run command
+p=lib/$n/*.$n
 t=$T/$b -_ $p $(sort $(wildcard test/*))# | test command
 
-# compiler stuff ...
-# build rules
-#
-# run tests
 test: $T/$b
 	/usr/bin/env TIMEFORMAT="in %Rs" bash -c "time $t"
+$T/%: $T
+	make -C src ../$@
+$T:
+	mkdir -p $@
 
-$T/$n:
-	make -C src ../$T/$n
-$T/$b:
-	make -C src ../$T/$b
-
-
-# install config
-#
+# install target
 D=$(DESTDIR)$(PREFIX)
-
 # install rules
-#
-install: $D/bin/$n $D/$p $D/$m install-vim
-uninstall: uninstall-vim
+install: $D/bin/$n $D/$p $D/$m
+uninstall:
 	rm -f $D/bin/$n $D/$p $D/$n
 $D/%:
 	mkdir -p $@
@@ -56,19 +44,18 @@ $V/%/$n.vim: vim/%/$n.vim $V/%
 #
 clean:
 	rm -rf `git check-ignore * */*`
-
 perf: perf.data
 	perf report
 perf.data: $T/$b $p
 	perf record ./$t
-valg: $b
+valg: $T/$b
 	valgrind $t
 sloc:
 	cloc --force-lang=Lisp,$n *
 bits: $T/$n $T/$b
 	stat -c "%n %sB" $^
-repl: $b
-	rlwrap $r -i, $r -i
+repl: $T/$n
+	rlwrap $T/$n -_i $p
 
 .PHONY:\
  	test clean perf valg sloc bits install\
