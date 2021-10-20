@@ -14,8 +14,6 @@ test: $T/$b
 	/usr/bin/env TIMEFORMAT="in %Rs" bash -c "time $t"
 $T/%: $T
 	make -C src ../$@
-$T:
-	mkdir -p $@
 
 # install target
 D=$(DESTDIR)$(PREFIX)
