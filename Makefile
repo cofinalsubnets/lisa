@@ -3,9 +3,12 @@ include config.mk
 T=bin
 n=lips
 b=$n.bin
-m=share/man/man1/$n.1
+
+docs=share/man/man1/$n.1
 p=lib/$n/*.$n
-t=$T/$b -_ $p $(sort $(wildcard test/*))# | test command
+
+# command to run the tests
+t=$T/$b -_ $p $(sort $(wildcard test/*))
 
 test: $T/$b
 	/usr/bin/env TIMEFORMAT="in %Rs" bash -c "time $t"
@@ -16,18 +19,13 @@ $T:
 
 # install target
 D=$(DESTDIR)$(PREFIX)
+$D/%: %
+	mkdir -p $(dir $@)
+	cp -r $(dir $^) $D
 # install rules
-install: $D/bin/$n $D/$p $D/$m
+install: $D/$T/$n $D/$p $D/$(docs)
 uninstall:
-	rm -f $D/bin/$n $D/$p $D/$n
-$D/%:
-	mkdir -p $@
-$D/$T/$n: $T/$n $D/bin
-	cp $^
-$D/$p: $p $D/lib/lips
-	cp $^
-$D/$m: $m $D/share/man/man1
-	cp $^
+	rm -f $D/$T/$n $D/$p $D/$(docs)
 
 # vim
 #
