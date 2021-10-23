@@ -18,14 +18,14 @@ const uint32_t *tnoms = (uint32_t*)
 // bootstrap parser
 
 typedef obj read_loop(lips, FILE*, str, u64, u64);
-static obj r1s(lips, FILE*), readz(lips, const char*);
+static obj read_list(lips, FILE*), readz(lips, const char*);
 static read_loop read_str, read_atom;
 
 static Inline obj read_buffered(lips v, FILE *i, read_loop *loop) {
  str c = cells(v, 2);
  return loop(v, i, c, 0, c->len = 8); }
 
-static int r0(FILE *i) {
+static int read_char(FILE *i) {
  for (int c;;) switch ((c = getc(i))) {
   case '#': case ';':
    do c = getc(i); while (c != '\n' && c != EOF);
@@ -39,12 +39,12 @@ obj read_quoted(lips v, FILE *i) {
  return pair(v, Qt, x); }
 
 obj parse(lips v, FILE* i) {
- int c = r0(i);
+ int c = read_char(i);
  obj x, y;
  switch (c) {
   case EOF: return 0;
   case ')': return err(v, "unmatched %s delimiter", "right");
-  case '(': return r1s(v, i);
+  case '(': return read_list(v, i);
   case '"': return read_buffered(v, i, read_str);
   case '\'': return read_quoted(v, i);
   default: return
@@ -53,15 +53,15 @@ obj parse(lips v, FILE* i) {
    y = readz(v, chars(x)),
    nump(y) ? y : intern(v, x); } }
 
-static obj r1s(lips v, FILE *i) {
- obj x, y, c = r0(i);
+static obj read_list(lips v, FILE *i) {
+ obj x, y, c = read_char(i);
  switch (c) {
   case EOF: return err(v, "unmatched %s delimiter", "left");
   case ')': return nil;
   default: return
    ungetc(c, i),
    x = parse(v, i),
-   with(x, y = r1s(v, i)),
+   with(x, y = read_list(v, i)),
    pair(v, x, y); } }
 
 static obj grow_buffer(lips v, obj s) {

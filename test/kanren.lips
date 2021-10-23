@@ -1,28 +1,30 @@
+
+(: (tbl8 t) (flatmap (\ k (L k (tget t k))) (tkeys t))
+   (inspect-tbl t) (, (. (tbl8 t)) t)
+   (tclone t) (ap tbl (tbl8 t)))
+
 (: == (:
  (_? x) (&& (Y? x) (~ (ystr x))) ; anonymous symbol ?
- (_! var val s) (X (X val var) s)
+ (_! var val s) (? s (, (tset s var (X val var)) s));(X (X val var) s)
  (?? u s) (||
   (&& (_? u)
-   (: r (find s (co B (cu = u))))
+   (: r (tget s u))
    (?? (A r) s))
   u)
 
- ((== u v) s) (: x (?? u s) y (?? v s) (L (?
+ ((== u v) s) (? s (: x (?? u s) y (?? v s) (L (?
   (= x y) s
   (_? x) (_! x y s)
   (_? y) (_! y x s)
   (&& (2? x) (2? y)
-   (== (B x) (B y)
-    (== (A x) (A y)
-     s))))))
-
+   ((== (B x) (B y)) ((== (A x) (A y)) s)))))))
  ==))
 
 (:
  (m+ a b) (? (~ a)  b (\? a) (\ (m+ b (a))) (X (A a) (m+ b (B a))))
  (m* a b) (? (~ a) () (\? a) (\ (m* (a) b)) (m+ (b (A a)) (m* (B a) b)))
- ((disj f g) x) (m+ (f x) (g x))
- ((conj f g) x) (m* (f x)  g)
+ ((disj f g) s) (? s (>>= (f (tclone s)) (\ f (m+ f (g s)))))
+ ((conj f g) s) (m* (f s)  g)
  (:::
   \\ (\ a   . (X (X '\ a) (map (\ (L sym)) (init a))))
   Zzz (\ x (: _ (sym) (L '\ _ '. (L '\ (L ap x _)))))
@@ -33,20 +35,29 @@
 (: (run n g)
     (>>= n (g ()) (: (go n x)
          (? (= n 0) x
-            (2? (: y (<- x))) (X (A y) (go (- n 1) (B y)))
+            (2? (: y (flow x))) (X (A y) (go (- n 1) (B y)))
             y)))
 
-   (<- q) (? (\? q) (<- (q)) q)
-   (tabulate query)
-    (foldl (<- (query ())) () (\ m rset
-     (? (~ rset) m (X (foldl  rset () (\ m bind (X (A bind) m))) m)))))
+   (flow q) (? (\? q) (flow (q)) q)
+   (tabulate query) (:
+    (lfoldl f z x) (,(?
+     (2? x) (lfoldl f (f z (A x)) (B x))
+     (\? x) (lfoldl f z (x))
+     z))
+    (lfoldl
+     (\ m rset
+      (? (~ rset) m
+       (X (map (\ k (A(tget rset k))) (tkeys rset)) m)))
+     ()
+     (query (tbl)))))
 
 (test kanren
-; (= '()            (. (tabulate (\\ a b c (&* (== a 1) (== b 2) (== c (L a b)) (== c (L 1 1)))))))
- (= '((7 6) (7 5)) (tabulate (\\ a b (&* (== a 7) (|* (== b 5) (== b 6))))))
- (= '((9 8))       (tabulate (\\ a b (&* (== a 9) (== b 8)))))
+ (= '((6 7) (5 7)) (tabulate (\\ a b (&* (== a 7) (|* (== b 5) (== b 6))))))
+ (= '((8 9))       (tabulate (\\ a b (&* (== a 9) (== b 8)))))
  (= '((1 1))       (tabulate (\\ a b (&* (== a 1) (== a b)))))
  (=  ()            (tabulate (\\ a   (&* (== a 0) (== a 1)))))
  (=  ()            (tabulate (\\ a b (&* (== a 7) (== b 3) (|* (== b 2) (== b 4))))))
  (= '((7 3))       (tabulate (\\ a b (&* (== a 7) (== b 3) (|* (== b 3) (== b 4))))))
+; (= '() (.(tabulate (\\ a b c (&* (== a 1) (== b 2) (== c (L a b)) (== c (L 1 1)))))))
 )
+(: tab tabulate)

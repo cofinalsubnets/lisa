@@ -1,29 +1,29 @@
 include config.mk
 
-T=bin
 n=lips
 b=$n.bin
 
+bin=bin
 docs=share/man/man1/$n.1
-p=lib/$n/*.$n
+libs=$(sort $(wildcard lib/$n/*.$n))
 
 # command to run the tests
-t=$T/$b -_ $p $(sort $(wildcard test/*))
+t=$(bin)/$b -_ $(libs) $(sort $(wildcard test/*))
 
-test: $T/$b
+test: $(bin)/$b
 	/usr/bin/env TIMEFORMAT="in %Rs" bash -c "time $t"
-$T/%: $T
+$(bin)/%:
 	make -C src ../$@
 
 # install target
 D=$(DESTDIR)$(PREFIX)
 $D/%: %
 	mkdir -p $(dir $@)
-	cp -r $(dir $^) $D
+	cp -r $(dir $^) $D/$(firstword $(subst /, ,$^))
 # install rules
-install: $D/$T/$n $D/$p $D/$(docs)
+install: $D/$(bin)/$n $D/$(libs) $D/$(docs)
 uninstall:
-	rm -f $D/$T/$n $D/$p $D/$(docs)
+	rm -f $D/$(bin)/$n $D/$(libs) $D/$(docs)
 
 # vim
 #
@@ -31,10 +31,10 @@ V=$(VIMDIR)
 install-vim: $V/syntax/$n.vim $V/ftdetect/$n.vim
 uninstall-vim:
 	rm -f $V/{syntax,ftdetect}/$n.vim
-$V/%:
-	mkdir -p $@
 $V/%/$n.vim: vim/%/$n.vim $V/%
 	cp $^
+$V/%:
+	mkdir -p $@
 
 # misc tasks
 #
@@ -42,16 +42,16 @@ clean:
 	rm -rf `git check-ignore * */*`
 perf: perf.data
 	perf report
-perf.data: $T/$b $p
+perf.data: $(bin)/$b $(libs)
 	perf record ./$t
-valg: $T/$b
+valg: $(bin)/$b
 	valgrind $t
 sloc:
 	cloc --force-lang=Lisp,$n *
-bits: $T/$n $T/$b
+bits: $(bin)/$n $(bin)/$b
 	stat -c "%n %sB" $^
-repl: $T/$n
-	rlwrap $T/$n -_i $p
+repl: $(bin)/$n 
+	rlwrap $^ -_i $(libs) test/00-helpers.lips test/kanren.lips
 
 .PHONY:\
  	test clean perf valg sloc bits install\

@@ -43,8 +43,8 @@
 static u0 scan(lips, mem, obj);
 static obj hfin(lips, obj), hini(lips, u64), c_la_clo(lips, mem, obj, obj), ltu(lips, mem, obj, obj);
 typedef obj c1(lips, mem, u64), c2(lips, mem, u64, obj);
-static c1 c_ev, c_d_bind, inst, insx, c_ini;
-static c2 c_eval, c_sy, c_2, c_imm, c_ap;
+static c1 pre_eval_, pre_bind, inst, insx, pre_alloc;
+static c2 pre_eval, pre_var, pre_two, pre_imm, pre_apply;
 
 enum { Here, Loc, Arg, Clo, Wait };
 #define c1(nom,...) static obj nom(lips v, mem e, u64 m, ##__VA_ARGS__)
@@ -84,7 +84,8 @@ static obj em2(terp *i, obj j, obj k) {
  return em1(i, em1((terp*)j, k)); }
 
 static obj imx(lips v, mem e, i64 m, terp *i, obj x) {
- return Push(Pn(i), x), insx(v, e, m); }
+ Push(_N(i), x);
+ return insx(v, e, m); }
 
 NoInline obj apply(lips v, obj f, obj x) {
  Push(f, x);
@@ -137,8 +138,12 @@ static vec tuplr(lips v, i64 i, va_list xs) {
   (with(x, t = tuplr(v, i+1, xs)), t->xs[i] = x, t) :
   ((t = cells(v, Size(tup) + i))->len = i, t); }
 
-static obj tupl(lips v, ...) { vec t; va_list xs; return
- va_start(xs, v), t = tuplr(v, 0, xs), va_end(xs), putvec(t); }
+static obj tupl(lips v, ...) {
+ vec t; va_list xs;
+ va_start(xs, v);
+ t = tuplr(v, 0, xs);
+ va_end(xs);
+ return putvec(t); }
 
 static Inline obj scope(lips v, mem e, obj a, obj n) {
  i64 s = 0;
@@ -146,12 +151,12 @@ static Inline obj scope(lips v, mem e, obj a, obj n) {
         tupl(v, a, nil, nil, e ? *e : nil, n, Pn(s), (obj)0); }
 
 static Inline obj compose(lips v, mem e, obj x) {
- Push(Pn(c_ev), x, Pn(inst), Pn(ret), Pn(c_ini));
+ Push(_N(pre_eval_), x, _N(inst), _N(ret), _N(pre_alloc));
  scan(v, e, Sp[1]);
  x = Ccc(v, e, 4); // 4 = 2 + 2
  i64 i = llen(loc(*e));
  if (i) x = em2(locals,  Pn(i), x);
- i = Gn(asig(*e));
+ i = N(asig(*e));
  if (i > 0) x = em2(arity, Pn(i), x);
  else if (i < 0) x = em2(vararg, Pn(-i-1), x);
  x = hfin(v, x);
@@ -175,7 +180,7 @@ static obj ltu(lips v, mem e, obj n, obj l) {
 
 c2(c_la) {
  terp* j = imm;
- obj k, nom = *Sp == Pn(c_d_bind) ? Sp[1] : nil;
+ obj k, nom = *Sp == Pn(pre_bind) ? Sp[1] : nil;
  with(nom, with(x, k = Ccc(v, e, m+2)));
  with(k,
   x = homp(x = ltu(v, e, nom, x)) ? x :
@@ -183,25 +188,25 @@ c2(c_la) {
    c_la_clo(v, e, X(x), Y(x))));
  return em2(j, x, k); }
 
-c2(c_imm) { return Push(Pn(imm), x), insx(v, e, m); }
+c2(pre_imm) { return Push(Pn(imm), x), insx(v, e, m); }
 
 static obj c_la_clo(lips v, mem e, obj arg, obj seq) {
  i64 i = llen(arg);
  mm(&arg), mm(&seq);
- for (Push(Pn(insx), Pn(take), Pn(i), Pn(c_ini));
+ for (Push(Pn(insx), Pn(take), Pn(i), Pn(pre_alloc));
       twop(arg);
-      Push(Pn(c_ev), X(arg), Pn(inst), Pn(push)), arg = Y(arg));
+      Push(Pn(pre_eval_), X(arg), Pn(inst), Pn(push)), arg = Y(arg));
  return arg = Ccc(v, e, 0), um, um, pair(v, seq, arg); }
 
-c1(c_d_bind) { obj y = *Sp++; return
+c1(pre_bind) { obj y = *Sp++; return
  e ? imx(v, e, m, loc_, Pn(lidx(loc(*e), y))) :
      imx(v, e, m, tbind, y); }
 
-static u0 c_de_r(lips v, mem e, obj x) {
+static u0 pre_let_r(lips v, mem e, obj x) {
  if (twop(x))
   x = rwlade(v, x),
-  with(x, c_de_r(v, e, Y(Y(x)))),
-  Push(Pn(c_ev), X(Y(x)), Pn(c_d_bind), X(x)); }
+  with(x, pre_let_r(v, e, Y(Y(x)))),
+  Push(Pn(pre_eval_), X(Y(x)), Pn(pre_bind), X(x)); }
 
 // syntactic sugar for define
 static obj def_sug(lips v, obj x) {
@@ -211,10 +216,10 @@ static obj def_sug(lips v, obj x) {
   x = pair(v, x, nil), x = pair(v, La, x),
   pair(v, x, nil); }
 
-c2(c_de) { return
- !twop(Y(x))    ? c_imm(v, e, m, nil) :
- llen(Y(x)) % 2 ? c_eval(v, e, m, def_sug(v, x)) :
-                  (c_de_r(v, e, Y(x)), Ccc(v, e, m)); }
+c2(pre_let) { return
+ !twop(Y(x))    ? pre_imm(v, e, m, nil) :
+ llen(Y(x)) % 2 ? pre_eval(v, e, m, def_sug(v, x)) :
+                  (pre_let_r(v, e, Y(x)), Ccc(v, e, m)); }
 
 // the following functions are "post" or "pre"
 // the antecedent/consequent in the sense of
@@ -249,11 +254,11 @@ c1(c_co_pre_ant) {
 
 static u0 c_co_r(lips v, mem e, obj x) {
  if (!twop(x)) x = pair(v, nil, nil);
- if (!twop(Y(x))) return Push(Pn(c_ev), X(x), Pn(c_co_pre_con));
+ if (!twop(Y(x))) return Push(Pn(pre_eval_), X(x), Pn(c_co_pre_con));
  with(x,
-  Push(_N(c_co_post_con), N_(c_ev), X(Y(x)), _N(c_co_pre_con)),
+  Push(_N(c_co_post_con), N_(pre_eval_), X(Y(x)), _N(c_co_pre_con)),
   c_co_r(v, e, Y(Y(x))));
- Push(Pn(c_ev), X(x), Pn(c_co_pre_ant)); }
+ Push(Pn(pre_eval_), X(x), Pn(c_co_pre_ant)); }
 
 c2(c_co) { return
  with(x, Push(Pn(c_co_pre))),
@@ -265,7 +270,7 @@ c2(c_co) { return
 static u0 c_se_r(lips v, mem e, obj x) {
  if (twop(x))
   with(x, c_se_r(v, e, Y(x))),
-  Push(Pn(c_ev), X(x)); }
+  Push(Pn(pre_eval_), X(x)); }
 
 c2(c_se) {
  if (!twop(x = Y(x))) x = pair(v, nil, nil);
@@ -286,11 +291,11 @@ static obj look(lips v, obj e, obj y) {
   look(v, par(e), y); }
 #undef L
 
-c2(c_sy) {
+c2(pre_var) {
  obj y, q;
  with(x, y = X(q = look(v, e ? *e:nil, x)));
  switch (Gn(y)) {
-  case Here: return c_imm(v, e, m, Y(q));
+  case Here: return pre_imm(v, e, m, Y(q));
   case Wait:
    x = pair(v, Y(q), x);
    with(x, y = Ccc(v, e, m+2));
@@ -306,25 +311,25 @@ c2(c_sy) {
           clo(*e) = q,
           imx(v, e, m, clo, Pn(y)); } }
 
-c1(c_ev) { return c_eval(v, e, m, *Sp++); }
-c2(c_eval) { return (symp(x) ? c_sy : twop(x) ? c_2 : c_imm)(v, e, m, x); }
+c1(pre_eval_) { return pre_eval(v, e, m, *Sp++); }
+c2(pre_eval) { return (symp(x) ? pre_var : twop(x) ? pre_two : pre_imm)(v, e, m, x); }
 
-c2(c_qt) { return c_imm(v, e, m, twop(x = Y(x)) ? X(x) : x); }
-c2(c_2) { obj z = X(x); return
- (z == Qt ? c_qt : z == If ? c_co : z == De ? c_de :
-  z == La ? c_la : z == Se ? c_se : c_ap)(v, e, m, x); }
+c2(pre_quote) { return pre_imm(v, e, m, twop(x = Y(x)) ? X(x) : x); }
+c2(pre_two) { obj z = X(x); return
+ (z == Qt ? pre_quote : z == If ? c_co : z == De ? pre_let :
+  z == La ? c_la : z == Se ? c_se : pre_apply)(v, e, m, x); }
 
-c2(c_ap) {
+c2(pre_apply) {
  obj mac = tblget(v, Mac, X(x));
  if (mac) {
   obj s1 = S1, s2 = S2;
   with(s1, with(s2, x = apply(v, mac, Y(x))));
   S1 = s1, S2 = s2;
-  return c_eval(v, e, m, x); }
+  return pre_eval(v, e, m, x); }
  for (mm(&x),
-      Push(Pn(c_ev), X(x), Pn(inst), Pn(idH), Pn(c_call), Pn(llen(Y(x))));
+      Push(Pn(pre_eval_), X(x), Pn(inst), Pn(idH), Pn(c_call), Pn(llen(Y(x))));
       twop(x = Y(x));
-      Push(Pn(c_ev), X(x), Pn(inst), Pn(push)));
+      Push(Pn(pre_eval_), X(x), Pn(inst), Pn(push)));
  return um, Ccc(v, e, m); }
 
 c1(inst) {
@@ -336,7 +341,7 @@ c1(insx) {
  obj x = *Sp++, k;
  return with(x, k = Ccc(v, e, m+2)), em2(i, x, k); }
 
-c1(c_ini) {
+c1(pre_alloc) {
  obj k = hini(v, m+1);
  return em1((terp*)(e ? name(*e) : Eva), k); }
 
@@ -359,5 +364,5 @@ NoInline u0 defprim(lips v, const char *a, terp *b) {
  tblset(v, Top, X(z), x); }
 
 obj compile(lips v, obj x) { return
- Push(Pn(c_ev), x, Pn(inst), Pn(yield), Pn(c_ini)),
+ Push(Pn(pre_eval_), x, Pn(inst), Pn(yield), Pn(pre_alloc)),
  Ccc(v, NULL, 0); }
