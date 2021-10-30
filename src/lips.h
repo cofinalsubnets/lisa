@@ -54,9 +54,7 @@ obj
  parse(lips, FILE*),
  read_file(lips, const char*),
  write_file(lips, const char*, const char*),
- intern(lips, obj),
- eval(lips, obj),
- string(lips, const char*);
+ eval(lips, obj);
 
 // a packed array of 4-byte strings.
 extern const uint32_t *tnoms;
@@ -142,7 +140,6 @@ extern const uint32_t *tnoms;
 #define Avail (Sp-Hp)
 
 #define mix ((u64)2708237354241864315)
-#define interns(v,c) intern(v,string(v,c))
 #define SI static Inline
 SI hom button(hom h) { while (*h) h++; return h; }
 SI u0* bump(lips v, u64 n) { u0* x = v->hp; return v->hp += n, x; }

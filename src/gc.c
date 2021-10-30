@@ -1,5 +1,5 @@
 #include "lips.h"
-#include "symbol.h"
+#include "sym.h"
 #include "err.h"
 #include <stdlib.h>
 #include <time.h>

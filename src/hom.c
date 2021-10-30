@@ -2,6 +2,8 @@
 #include "terp.h"
 #include "hom.h"
 #include "table.h"
+#include "str.h"
+#include "sym.h"
 
 ////
 /// bootstrap thread compiler

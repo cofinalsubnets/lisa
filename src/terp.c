@@ -4,6 +4,7 @@
 #include "table.h"
 #include "err.h"
 #include "eql.h"
+#include "sym.h"
 // " the virtual machine "
 // it's a stack machine with one free register that's
 // implemented on top of the C compiler's calling convention.

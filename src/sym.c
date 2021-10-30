@@ -1,6 +1,7 @@
 #include "lips.h"
-#include "symbol.h"
+#include "sym.h"
 #include "table.h"
+#include "str.h"
 
 //symbols
 
@@ -26,3 +27,6 @@ obj sskc(lips v, mem y, obj x) {
 obj intern(lips v, obj x) {
  if (Avail < Size(sym)) with(x, reqsp(v, Size(sym)));
  return sskc(v, &v->syms, x); }
+
+obj interns(lips v, const char *s) {
+ return intern(v, string(v, s)); }

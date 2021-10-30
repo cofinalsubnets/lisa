@@ -1,5 +1,6 @@
 #include "lips.h"
 #include "err.h"
+#include "sym.h"
 #include <string.h>
 #include <errno.h>
 

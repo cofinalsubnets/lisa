@@ -3,6 +3,7 @@
 #include "table.h"
 #include "err.h"
 #include "hom.h"
+#include "sym.h"
 #include <stdlib.h>
 #include <fcntl.h>
 #include <unistd.h>
