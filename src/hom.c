@@ -1,7 +1,7 @@
 #include "lips.h"
 #include "terp.h"
 #include "hom.h"
-#include "table.h"
+#include "tbl.h"
 #include "str.h"
 #include "sym.h"
 

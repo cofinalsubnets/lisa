@@ -1,6 +1,6 @@
 #include "lips.h"
 #include "terp.h"
-#include "table.h"
+#include "tbl.h"
 #include "err.h"
 #include "hom.h"
 #include "sym.h"

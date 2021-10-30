@@ -1,6 +1,6 @@
 #include "lips.h"
 #include "sym.h"
-#include "table.h"
+#include "tbl.h"
 #include "str.h"
 
 //symbols

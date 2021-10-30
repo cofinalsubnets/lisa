@@ -1,5 +1,5 @@
 #include "lips.h"
-#include "table.h"
+#include "tbl.h"
 #include "eql.h"
 
 static Inline u64 hash_bytes(u64 len, char *us) {
