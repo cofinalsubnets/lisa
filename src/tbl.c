@@ -9,22 +9,21 @@ static Inline u64 hash_bytes(u64 len, char *us) {
  for (u64 h = mix;; h ^= *us++, h *= mix)
   if (!len--) return h; }
 
-static Inline i64 hbi(u64 cap, u64 co) { return co % cap; }
+static Inline i64 bucket_index(u64 cap, u64 co) {
+ return co % cap; }
 
-static Inline ent hb(obj t, u64 code) {
- return gettbl(t)->tab[hbi(gettbl(t)->cap, code)]; }
+static Inline ent bucket(obj t, u64 code) {
+ return gettbl(t)->tab[bucket_index(gettbl(t)->cap, code)]; }
 
 u64 hash(lips v, obj x) {
- u64 r;
  switch (kind(x)) {
-  case Sym: r = getsym(x)->code; break;
-  case Str: r = hash_bytes(getstr(x)->len, getstr(x)->text); break;
-  case Two: r = hash(v, X(x)) ^ hash(v, Y(x)); break;
-  case Hom: r = hash(v, homnom(v, x)) ^ (mix * (u64) G(x)); break;
-  case Vec: // mutable data aren't really hashable ...
-  case Tbl: r = mix; // umm lol, linear search
-  default:  r = mix * x; }
- return rotr64(r, 16); }
+  case Sym: return getsym(x)->code;
+  case Str: return hash_bytes(getstr(x)->len, getstr(x)->text);
+  case Two: return hash(v, X(x)) ^ hash(v, Y(x));
+  case Hom: return hash(v, homnom(v, x)) ^ mix;
+  case Num: return rotr64(mix * x, 16);
+  case Vec: return rotr64(mix * V(x)->len, 32);
+  default:  return rotr64(mix * kind(x), 48); } }
 
 // rehash(vm, tbl, new_size): destructively resize a hash table.
 // new_size words of memory are allocated for the new bucket array.
@@ -38,7 +37,7 @@ static obj rehash(lips v, obj t, i64 ns) {
  while (n--) for (ch = d[n]; ch;
   e = ch,
   ch = ch->next,
-  u = hbi(ns, hash(v, e->key)),
+  u = bucket_index(ns, hash(v, e->key)),
   e->next = b[u],
   b[u] = e);
  return t; }
@@ -52,7 +51,7 @@ static u0 tblshrink(lips v, obj t) {
   for (f = u->tab[t], u->tab[t] = NULL; f;
    g = f->next, f->next = e, e = f, f = g);
  for (u->cap >>= 1; e;
-  t = hbi(u->cap, hash(v, e->key)),
+  t = bucket_index(u->cap, hash(v, e->key)),
   f = e->next,
   e->next = u->tab[t],
   u->tab[t] = e,
@@ -68,7 +67,7 @@ static obj tblade(lips v, obj t, obj k, obj x, i64 bkt) {
  return x; }
 
 obj tblset_s(lips v, obj t, obj k, obj x) {
- i64 b = hbi(gettbl(t)->cap, hash(v, k));
+ i64 b = bucket_index(gettbl(t)->cap, hash(v, k));
  for (ent e = gettbl(t)->tab[b]; e; e = e->next)
   if (e->key == k) return e->val = x;
  return tblade(v,t,k,x,b); }
@@ -82,7 +81,7 @@ obj tblset(lips v, obj t, obj k, obj val) {
 obj tbldel(lips v, obj t, obj k) {
  tbl y = gettbl(t);
  obj r = nil;
- i64 b = hbi(y->cap, hash(v, k));
+ i64 b = bucket_index(y->cap, hash(v, k));
  ent e = y->tab[b];
  struct ent _v = {0,0,e};
  for (ent l = &_v; l && l->next; l = l->next)
@@ -96,7 +95,7 @@ obj tbldel(lips v, obj t, obj k) {
  return r; }
 
 obj tblget(lips v, obj t, obj k) {
- for (ent e = hb(t, hash(v, k)); e; e = e->next)
+ for (ent e = bucket(t, hash(v, k)); e; e = e->next)
   if (eql(e->key, k)) return e->val;
  return 0; }
 
