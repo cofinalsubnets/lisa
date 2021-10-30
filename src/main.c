@@ -1,5 +1,6 @@
 #include "lips.h"
 #include "terp.h"
+#include "io.h"
 #include "tbl.h"
 #include "err.h"
 #include "hom.h"

@@ -43,18 +43,7 @@ typedef struct lips {
 typedef obj terp(lips, obj, mem, mem, mem, obj);
 typedef terp **hom; // function pointer pointer
 
-u0
- reqsp(lips, u64),
- emit(lips, obj, FILE*),
- emsep(lips, obj, FILE*, char);
-
-obj
- homnom(lips, obj),
- pair(lips, obj, obj),
- parse(lips, FILE*),
- read_file(lips, const char*),
- write_file(lips, const char*, const char*),
- eval(lips, obj);
+obj eval(lips, obj);
 
 // a packed array of 4-byte strings.
 extern const uint32_t *tnoms;
@@ -65,7 +54,7 @@ extern const uint32_t *tnoms;
 #define TNom(t) ((char*)(tnoms+(t)))
 #define tnom TNom
 #define Gh(x) gethom(x)
-#define H(x) gethom(x)
+#define H(x)  gethom(x)
 #define H_(x) puthom(x)
 #define _H(x) puthom(x)
 #define Ph(x) puthom(x)
@@ -105,22 +94,9 @@ extern const uint32_t *tnoms;
 #define vecp(x) (kind(x)==Vec)
 #define tblp(x) (kind(x)==Tbl)
 #define nilp(x) ((x)==nil)
-#define A(o) gettwo(o)->a
-#define B(o) gettwo(o)->b
-#define X(o) gettwo(o)->a
-#define Y(o) gettwo(o)->b
-#define F(x) ((hom)(x)+1)
-#define G(x) (*(hom)(x))
-#define FF(x) F(F(x))
-#define FG(x) F(G(x))
-#define GF(x) G(F(x))
-#define GG(x) G(G(x))
-#define chars(x) getstr(x)->text
-#define symnom(y) chars(getsym(y)->nom)
 #define mm(r) ((v->root=&((struct root){(r),v->root})))
 #define um (v->root=v->root->next)
 #define with(y,...) (mm(&(y)),(__VA_ARGS__),um)
-#define w2b(n) ((n)*W)
 #define Size(t) (sizeof(struct t)/W)
 #define Ip v->ip
 #define Fp v->fp
@@ -137,21 +113,6 @@ extern const uint32_t *tnoms;
 #define Mac v->glob[Macs]
 #define Eva v->glob[Eval]
 #define App v->glob[Apply]
-#define Avail (Sp-Hp)
 
-#define mix ((u64)2708237354241864315)
-#define SI static Inline
-SI hom button(hom h) { while (*h) h++; return h; }
-SI u0* bump(lips v, u64 n) { u0* x = v->hp; return v->hp += n, x; }
-SI u0* cells(lips v, u64 n) { if (Avail < n) reqsp(v, n); return bump(v, n); }
-SI u64 b2w(u64 b) { return b / W + (b % W && 1); }
-SI u64 llen(obj l) { for (u64 i = 0;; l = Y(l), i++) if (!twop(l)) return i; }
-#undef SI
-
-_Static_assert(
- sizeof(intptr_t) == sizeof(int64_t),
- "pointers are not 64 bits");
-
-_Static_assert(
- -1l == ((-1l<<8)>>8),
- "opposite bit-shifts on a negative integer yield a different result");
+_Static_assert( sizeof(i64*) == sizeof(i64), "64 bit pointers");
+_Static_assert( -1 >> 1 == -1, "sign-extended bit shifts");

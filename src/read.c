@@ -1,6 +1,10 @@
 #include "lips.h"
+#include "io.h"
 #include "err.h"
 #include "sym.h"
+#include "two.h"
+#include "mem.h"
+#include "str.h"
 #include <string.h>
 #include <errno.h>
 

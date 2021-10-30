@@ -1,10 +1,14 @@
 #include "lips.h"
 #include "terp.h"
+#include "mem.h"
+#include "io.h"
 #include "hom.h"
 #include "tbl.h"
 #include "err.h"
 #include "eql.h"
 #include "sym.h"
+#include "two.h"
+#include "str.h"
 // " the virtual machine "
 // it's a stack machine with one free register that's
 // implemented on top of the C compiler's calling convention.

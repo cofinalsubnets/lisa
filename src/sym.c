@@ -2,6 +2,7 @@
 #include "sym.h"
 #include "tbl.h"
 #include "str.h"
+#include "mem.h"
 
 //symbols
 
@@ -21,7 +22,7 @@ static Inline obj ssk(lips v, obj y, obj x) {
 obj sskc(lips v, mem y, obj x) {
  if (!nilp(*y)) return ssk(v, *y, x);
  sym z = bump(v, Size(sym));
- z->code = hc(v, z->nom = x), z->l = z->r = nil;
+ z->code = hash(v, z->nom = x), z->l = z->r = nil;
  return *y = putsym(z); }
 
 obj intern(lips v, obj x) {

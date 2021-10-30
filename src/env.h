@@ -32,6 +32,8 @@ static Inline i64 sidx(const char *s, char c) {
  for (i64 i = 0; *s; s++, i++) if (*s == c) return i;
  return -1; }
 
+static Inline u64 w2b(u64 w) { return w * 8; }
+static Inline u64 b2w(u64 b) { return b / 8 + (b % 8 && 1); }
 // mem{set,cpy,mov} analogs are defined for
 // 8, 16, 32 and 64 bit items
 #define memn(n)\

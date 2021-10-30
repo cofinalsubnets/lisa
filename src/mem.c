@@ -1,6 +1,9 @@
 #include "lips.h"
 #include "sym.h"
 #include "err.h"
+#include "two.h"
+#include "hom.h"
+#include "mem.h"
 #include <stdlib.h>
 #include <time.h>
 static clock_t copy(lips, u64);
@@ -8,7 +11,7 @@ static obj cp(lips, obj, u64, mem);
 
 // a simple copying garbage collector
 
-// gc entry point reqsp : vm x num -> bool
+// gc entry point reqsp : vm x num -> ()
 //
 // try to return with at least req words of available memory.
 // return true on success, false otherwise. this function also

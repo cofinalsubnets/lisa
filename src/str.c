@@ -1,5 +1,6 @@
 #include "lips.h"
 #include "str.h"
+#include "mem.h"
 
 // for strings
 obj string(lips v, const char* c) {

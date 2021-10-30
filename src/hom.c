@@ -4,6 +4,8 @@
 #include "tbl.h"
 #include "str.h"
 #include "sym.h"
+#include "two.h"
+#include "mem.h"
 
 ////
 /// bootstrap thread compiler

@@ -1,4 +1,8 @@
 #include "lips.h"
+#include "io.h"
+#include "two.h"
+#include "hom.h"
+#include "str.h"
 
 u0 emsep(lips v, obj x, FILE *o, char s) {
  emit(v, x, o), fputc(s, o); }
