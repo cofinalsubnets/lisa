@@ -47,19 +47,31 @@ static obj grow(lips v, obj t, i64 ns) {
 static u0 shrink(lips v, obj t) {
   ent e = NULL, f, g;
   tbl u = gettbl(t);
+
+  // collect all entries
   for (t = 0; t < u->cap; t++)
     for (f = u->tab[t], u->tab[t] = NULL; f;
       g = f->next,
       f->next = e,
       e = f, f = g);
-  for (u->cap >>= 1; e;
+
+  // shrink bucket array
+  while (u->len >= 2 * u->cap) u->cap >>= 1;
+
+  // reinsert
+  while (e)
     t = bucket_index(u->cap, hash(v, e->key)),
     f = e->next,
     e->next = u->tab[t],
     u->tab[t] = e,
-    e = f); }
+    e = f; }
 
-obj tblset(lips v, obj t, obj k, obj x) {
+ent tbl_entry(lips v, obj k, obj x) {
+  ent e;
+  with(k, with(x, e = cells(v, Size(ent))));
+  return e; }
+
+obj tblset_s(lips v, obj t, obj k, obj x) {
   i64 bucket =
     bucket_index(gettbl(t)->cap, hash(v, k));
   ent e = gettbl(t)->tab[bucket];
@@ -69,8 +81,7 @@ obj tblset(lips v, obj t, obj k, obj x) {
     else e = e->next;
 
   // allocate an entry
-  with(t, with(k, with(x,
-    e = cells(v, Size(ent)))));
+  with(t, e = tbl_entry(v, k, x));
 
   tbl y = gettbl(t);
   e->key = k;
@@ -80,11 +91,20 @@ obj tblset(lips v, obj t, obj k, obj x) {
   y->tab[bucket] = e;
   y->len += 1;
 
-  if (y->len > 2 * y->cap)
-    with(x, grow(v, t, y->cap*2));
-
   return x; }
 
+static u0 maybe_grow(lips v, obj t) {
+  tbl y = gettbl(t);
+  if (y->len > 2 * y->cap) grow(v, t, y->cap*2); }
+
+u0 maybe_shrink(lips v, obj t) {
+  tbl y = gettbl(t);
+  if (y->len && y->cap > 2 * y->len) shrink(v, t); }
+
+obj tblset(lips v, obj t, obj k, obj x) {
+  with(t, x = tblset_s(v, t, k, x));
+  with(x, maybe_grow(v, t));
+  return x; }
 
 obj tbldel(lips v, obj t, obj k) {
   tbl y = gettbl(t);
@@ -99,14 +119,17 @@ obj tbldel(lips v, obj t, obj k) {
       y->len--;
       break; }
   y->tab[b] = _v.next;
-  if (y->len && y->cap > 2 * y->len)
-    with(r, shrink(v, t));
+  with(r, maybe_shrink(v, t));
   return r; }
 
-obj tblget(lips v, obj t, obj k) {
+ent tblget_entry(lips v, obj t, obj k) {
   for (ent e = bucket(t, hash(v, k)); e; e = e->next)
-    if (eql(e->key, k)) return e->val;
+    if (eql(e->key, k)) return e;
   return 0; }
+
+obj tblget(lips v, obj t, obj k) {
+  ent e = tblget_entry(v, t, k);
+  return e ? e->val : 0; }
 
 obj table(lips v) {
   tbl t = cells(v, Size(tbl) + 1);
