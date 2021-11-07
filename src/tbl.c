@@ -4,6 +4,7 @@
 #include "two.h"
 #include "hom.h"
 #include "mem.h"
+#include "terp.h"
 
 static Inline u64 hash_bytes(u64 len, char *us) {
   for (u64 h = mix;; h ^= *us++, h *= mix)
@@ -136,3 +137,64 @@ obj table(lips v) {
   ent *b = (ent*)(t+1);
   t->len = 0, t->cap = 1, t->tab = b, *b = NULL;
   return puttbl(t); }
+
+// hash tables
+VM(tblg) {
+ ARY(2);
+ TC(ARGV[0], Tbl);
+ xp = tblget(v, ARGV[0], ARGV[1]);
+ GO(ret, xp ? xp : nil); }
+
+OP1(tget, (xp = tblget(v, xp, *sp++)) ? xp : nil)
+
+static obj tblkeys_j(lips v, ent e, obj l) {
+ obj x;
+ return !e ? l :
+  (x = e->key,
+   with(x, l = tblkeys_j(v, e->next, l)),
+   pair(v, x, l)); }
+
+static obj tblkeys_i(lips v, obj t, i64 i) {
+ obj k;
+ return i == gettbl(t)->cap ? nil :
+  (with(t, k = tblkeys_i(v, t, i+1)),
+   tblkeys_j(v, gettbl(t)->tab[i], k)); }
+
+static Inline obj tblkeys(lips v, obj t) {
+ return tblkeys_i(v, t, 0); }
+
+OP1(thas, tblget(v, xp, *sp++) ? ok : nil)
+OP1(tlen, N_(gettbl(xp)->len))
+VM(tkeys) { CALLC(v->xp = tblkeys(v, xp)); NEXT(1); }
+
+VM(tblc) {
+ ARY(2);
+ TC(ARGV[0], Tbl);
+ xp = tblget(v, ARGV[0], ARGV[1]);
+ GO(ret, xp ? ok : nil); }
+
+static obj tblss(lips v, i64 i, i64 l) {
+ mem fp = Fp;
+ return i > l-2 ? ARGV[i-1] :
+  (tblset(v, v->xp, ARGV[i], ARGV[i+1]),
+   tblss(v, i+2, l)); }
+
+VM(tbls) {
+ ARY(1);
+ xp = *ARGV;
+ TC(xp, Tbl);
+ RETC(v->xp = tblss(v, 1, N(ARGC))); }
+
+VM(tblmk) { RETC(v->xp = table(v), tblss(v, 0, N(ARGC))); }
+
+VM(tbld) {
+ ARY(2); TC(ARGV[0], Tbl);
+ RETC(v->xp = tbldel(v, ARGV[0], ARGV[1])); }
+
+VM(tblks) {
+ ARY(1); TC(*ARGV, Tbl);
+ RETC(v->xp = tblkeys(v, *ARGV)); }
+
+VM(tbll) {
+ ARY(1); TC(*ARGV, Tbl);
+ GO(ret, N_(gettbl(*ARGV)->len)); }

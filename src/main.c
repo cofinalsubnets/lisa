@@ -38,10 +38,11 @@ static NoInline u0 rin(lips v, const char *a, terp *b) {
  tblset(v, Top, z, Pn(b)); }
 
 static lips lips_init(lips v) {
+ const num ini_len = 1;
  v->seed = LCPRNG(v->t0 = clock());
- v->ip = v->xp = v->syms = nil,
- v->fp = v->hp = v->sp = (mem) W,
- v->count = 0, v->len = 1;
+ v->ip = v->xp = v->syms = nil;
+ v->fp = v->hp = v->sp = (mem) (W * ini_len),
+ v->count = 0, v->len = ini_len;
  v->pool = (mem) (v->root  = (root) (v->restart = NULL));
  set64(v->glob, nil, NGlobs);
  Top = table(v), Mac = table(v);
@@ -49,9 +50,14 @@ static lips lips_init(lips v) {
 #define rein(a, b) if (!b) rin(v, "i-"#a,a);
  insts(repr) insts(rein)
 #define bsym(i,s)(v->glob[i]=interns(v,s))
- bsym(Eval, "ev"), bsym(Apply, "ap"),
- bsym(Def, ":"),   bsym(Cond, "?"), bsym(Lamb, "\\"),
- bsym(Quote, "`"), bsym(Seq, ","),  bsym(Splat, ".");
+ bsym(Eval, "ev");
+ bsym(Apply, "ap");
+ bsym(Def, ":");
+ bsym(Cond, "?");
+ bsym(Lamb, "\\");
+ bsym(Quote, "`");
+ bsym(Seq, ",");
+ bsym(Splat, ".");
  obj y;
 #define def(s, x) (y=interns(v,s),tblset(v,Top,y,x))
  def("ns", Top), def("macros", Mac);

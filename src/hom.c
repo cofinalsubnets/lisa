@@ -367,6 +367,32 @@ NoInline u0 defprim(lips v, const char *a, terp *b) {
  x = em2(b, z = *Sp++, x);
  tblset(v, Top, X(z), x); }
 
-obj compile(lips v, obj x) { return
+static obj compile(lips v, obj x) { return
  Push(Pn(pre_eval_), x, Pn(inst), Pn(yield), Pn(pre_alloc)),
  Ccc(v, NULL, 0); }
+
+NoInline obj homnom(lips v, obj x) {
+ terp *k = G(x);
+ if (k == clos || k == pc0 || k == pc1)
+  return homnom(v, (obj) G(FF(x)));
+ mem h = (mem) Gh(x);
+ while (*h) h++;
+ x = h[-1];
+ int inb = (mem) x >= v->pool && (mem) x < v->pool+v->len;
+ return inb ? x : x == (obj) yield ? Eva : nil; }
+
+obj eval(lips v, obj x) {
+  x = pair(v, x, nil);
+  return apply(v, tblget(v, Top, Eva), x); }
+
+VM(hfin_u) {
+ ARY(1);
+ obj a = *ARGV;
+ TC(a, Hom);
+ GF(button(Gh(a))) = (terp*) a;
+ GO(ret, a); }
+
+VM(ev_u) {
+ ARY(1);
+ RETC(xp = compile(v, *ARGV),
+      v->xp = G(xp)(v, xp, Fp, Sp, Hp, nil)); }

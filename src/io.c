@@ -5,6 +5,8 @@
 #include "mem.h"
 #include "str.h"
 #include "err.h"
+#include "terp.h"
+#include "hom.h"
 #include <string.h>
 #include <errno.h>
 
@@ -94,16 +96,16 @@ static obj read_str(lips v, FILE *p, str o, u64 n, u64 lim) {
   default: o->text[n++] = x; }
  return read_str(v, p, S(grow_buffer(v, _S(o))), lim, 2*lim); }
 
-static obj slurp(lips v, FILE *p, str o, u64 n, u64 lim) {
+static obj read_file_loop(lips v, FILE *p, str o, u64 n, u64 lim) {
  for (obj x; n < lim;) switch (x = getc(p)) {
   case EOF: o->text[n++] = 0, o->len = n; return _S(o);
   default: o->text[n++] = x; }
- return slurp(v, p, S(grow_buffer(v, _S(o))), lim, 2*lim); }
+ return read_file_loop(v, p, S(grow_buffer(v, _S(o))), lim, 2*lim); }
 
 obj read_file(lips v, const char *path) {
  FILE *i = fopen(path, "r");
  if (!i) return err(v, "%s : %s", path, strerror(errno));
- obj s = read_buffered(v, i, slurp);
+ obj s = read_buffered(v, i, read_file_loop);
  fclose(i);
  return s; }
 
@@ -141,7 +143,6 @@ static Inline obj readz(lips _, const char *s) {
   case '+': s++;
   default: return readz_1(s); } }
 
-#include "hom.h"
 
 u0 emsep(lips v, obj x, FILE *o, char s) {
  emit(v, x, o), fputc(s, o); }
@@ -192,3 +193,28 @@ u0 emit(lips v, obj x, FILE *o) {
   case Tbl: return emtbl(v, gettbl(x), o);
   case Vec: return emvec(v, getvec(x), o);
   default:  fputs("()", o); } }
+
+// print to console
+VM(em_u) {
+ u64 l = Gn(ARGC), i;
+ if (l) {
+  for (i = 0; i < l - 1; i++)
+   emsep(v, ARGV[i], stdout, ' ');
+  emit(v, xp = ARGV[i], stdout); }
+ fputc('\n', stdout);
+ Jump(ret); }
+
+VM(putc_u) { ARY(1); fputc(N(*ARGV), stdout); Jump(ret); }
+VM(getc_u) { GO(ret, feof(stdin) ? nil : N_(getc(stdin))); }
+
+VM(slurp) {
+  ARY(1);
+  xp = *ARGV;
+  TC(xp, Str);
+  RETC(v->xp = read_file(v, getstr(xp)->text)); }
+VM(dump) {
+ ARY(2);
+ TC(ARGV[0], Str); TC(ARGV[1], Str);
+ char *p = S(ARGV[0])->text,
+      *d = S(ARGV[1])->text;
+ GO(ret, write_file(v, p, d)); }

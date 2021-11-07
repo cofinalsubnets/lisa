@@ -43,8 +43,6 @@ typedef struct lips {
 typedef obj terp(lips, obj, mem, mem, mem, obj);
 typedef terp **hom; // function pointer pointer
 
-obj eval(lips, obj);
-
 // a packed array of 4-byte strings.
 extern const uint32_t *tnoms;
 
@@ -97,7 +95,8 @@ extern const uint32_t *tnoms;
 #define mm(r) ((v->root=&((struct root){(r),v->root})))
 #define um (v->root=v->root->next)
 #define with(y,...) (mm(&(y)),(__VA_ARGS__),um)
-#define Size(t) (sizeof(struct t)/W)
+#define Size(t) Width(t)
+#define Width(t) (sizeof(struct t)/W)
 #define Ip v->ip
 #define Fp v->fp
 #define Hp v->hp
@@ -113,6 +112,9 @@ extern const uint32_t *tnoms;
 #define Mac v->glob[Macs]
 #define Eva v->glob[Eval]
 #define App v->glob[Apply]
+
+static Inline obj run_lips(lips v) {
+  return (*H(v->ip))(v, v->ip, v->fp, v->sp, v->hp, v->xp); }
 
 _Static_assert( sizeof(i64*) == sizeof(i64), "64 bit pointers");
 _Static_assert( -1 >> 1 == -1, "sign-extended bit shifts");

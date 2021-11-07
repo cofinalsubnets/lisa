@@ -34,25 +34,10 @@ static VM(gc) { u64 n = v->xp; CALLC(reqsp(v, n)); NEXT(0); }
 #define Have(n) if (avail < n) Jump((v->xp=n,gc))
 #define Have1() if (hp == sp) Jump((v->xp=1,gc)) // common case, faster comparison
 
-#define arity_err_msg "wrong arity : %d of %d"
-#define type_err_msg "wrong type : %s for %s"
-#define div0_err_msg "%d / 0"
 #define TERP(n, m, ...) VM(n) m(__VA_ARGS__)
 
 // jump to nope() when an error happens.
-static VM(nope, const char *, ...);
 
-// type check
-#define TC(x,t) if(kind((x))-(t))\
- Jump(nope, type_err_msg, tnom(kind(x)), tnom(t))
-// arity check
-#define ARY(n) if(_N(n)>ARGC)\
- Jump(nope,arity_err_msg,getnum(ARGC),n)
-
-#define OP(nom, x, n) VM(nom) { xp = (x); NEXT(n); }
-#define OP0(nom, x) OP(nom, x, 0)
-#define OP1(nom, x) OP(nom, x, 1)
-#define OP2(nom, x) OP(nom, x, 2)
 // " virtual machine instructions "
 //
 // load instructions
@@ -261,7 +246,7 @@ VM(vset_u) {
  TC(ARGV[1], Num);
  num idx = getnum(ARGV[1]);
  vec ary = getvec(ARGV[0]);
- if (idx < 0 || idx >= ary->len) Jump(nope, "oob : %d#%d");
+ if (idx < 0 || idx >= ary->len) Jump(nope, oob_err_msg, idx, ary->len);
  GO(ret, ary->xs[idx] = ARGV[2]); }
 
 VM(vget_u) {
@@ -270,7 +255,7 @@ VM(vget_u) {
  TC(ARGV[1], Num);
  num idx = getnum(ARGV[1]);
  vec ary = getvec(ARGV[0]);
- if (idx < 0 || idx >= ary->len) Jump(nope, "oob : %d#%d");
+ if (idx < 0 || idx >= ary->len) Jump(nope, oob_err_msg, idx, ary->len);
  GO(ret, ary->xs[idx]); }
 
 VM(vec_u) {
@@ -312,67 +297,6 @@ VM(hgetx_u) { ARY(1); TC(ARGV[0], Hom); GO(ret, (obj)G(ARGV[0])); }
 VM(hseek_u) {
  ARY(2); TC(ARGV[0], Hom); TC(ARGV[1], Num);
  GO(ret, H_(H(ARGV[0])+N(ARGV[1]))); }
-
-// hash tables
-VM(tblg) {
- ARY(2);
- TC(ARGV[0], Tbl);
- xp = tblget(v, ARGV[0], ARGV[1]);
- GO(ret, xp ? xp : nil); }
-
-OP1(tget, (xp = tblget(v, xp, *sp++)) ? xp : nil)
-
-static obj tblkeys_j(lips v, ent e, obj l) {
- obj x;
- return !e ? l :
-  (x = e->key,
-   with(x, l = tblkeys_j(v, e->next, l)),
-   pair(v, x, l)); }
-
-static obj tblkeys_i(lips v, obj t, i64 i) {
- obj k;
- return i == gettbl(t)->cap ? nil :
-  (with(t, k = tblkeys_i(v, t, i+1)),
-   tblkeys_j(v, gettbl(t)->tab[i], k)); }
-
-static Inline obj tblkeys(lips v, obj t) {
- return tblkeys_i(v, t, 0); }
-
-OP1(thas, tblget(v, xp, *sp++) ? ok : nil)
-OP1(tlen, N_(gettbl(xp)->len))
-VM(tkeys) { CALLC(v->xp = tblkeys(v, xp)); NEXT(1); }
-
-VM(tblc) {
- ARY(2);
- TC(ARGV[0], Tbl);
- xp = tblget(v, ARGV[0], ARGV[1]);
- GO(ret, xp ? ok : nil); }
-
-static obj tblss(lips v, i64 i, i64 l) {
- mem fp = Fp;
- return i > l-2 ? ARGV[i-1] :
-  (tblset(v, v->xp, ARGV[i], ARGV[i+1]),
-   tblss(v, i+2, l)); }
-
-VM(tbls) {
- ARY(1);
- xp = *ARGV;
- TC(xp, Tbl);
- RETC(v->xp = tblss(v, 1, N(ARGC))); }
-
-VM(tblmk) { RETC(v->xp = table(v), tblss(v, 0, N(ARGC))); }
-
-VM(tbld) {
- ARY(2); TC(ARGV[0], Tbl);
- RETC(v->xp = tbldel(v, ARGV[0], ARGV[1])); }
-
-VM(tblks) {
- ARY(1); TC(*ARGV, Tbl);
- RETC(v->xp = tblkeys(v, *ARGV)); }
-
-VM(tbll) {
- ARY(1); TC(*ARGV, Tbl);
- GO(ret, N_(gettbl(*ARGV)->len)); }
 
 // string instructions
 VM(strl) {
@@ -547,19 +471,6 @@ VM(take) {
  sp += n;
  GO(ret, putvec(t)); }
 
-// print to console
-VM(em_u) {
- u64 l = Gn(ARGC), i;
- if (l) {
-  for (i = 0; i < l - 1; i++)
-   emsep(v, ARGV[i], stdout, ' ');
-  emit(v, xp = ARGV[i], stdout); }
- fputc('\n', stdout);
- Jump(ret); }
-
-VM(putc_u) { ARY(1); fputc(N(*ARGV), stdout); Jump(ret); }
-VM(getc_u) { GO(ret, feof(stdin) ? nil : N_(getc(stdin))); }
-
 // pairs
 OP1(car, X(xp)) OP1(cdr, Y(xp))
 VM(cons) {
@@ -689,67 +600,5 @@ VM(gsym_u) {
  y->code = v->count++ * mix;
  GO(ret, putsym(y)); }
 
-VM(hfin_u) {
- ARY(1);
- obj a = *ARGV;
- TC(a, Hom);
- GF(button(Gh(a))) = (terp*) a;
- GO(ret, a); }
-
-VM(ev_u) {
- ARY(1);
- RETC(xp = compile(v, *ARGV),
-      v->xp = G(xp)(v, xp, Fp, Sp, Hp, nil)); }
-
 VM(rnd_u) { GO(ret, Pn(lcprng(&v->seed))); }
 
-VM(slurp) {
-  ARY(1);
-  xp = *ARGV;
-  TC(xp, Str);
-  RETC(v->xp = read_file(v, getstr(xp)->text)); }
-VM(dump) {
- ARY(2);
- TC(ARGV[0], Str); TC(ARGV[1], Str);
- char *p = S(ARGV[0])->text,
-      *d = S(ARGV[1])->text;
- GO(ret, write_file(v, p, d)); }
-
-// this is for runtime errors from the interpreter, it prints
-// a backtrace and everything.
-static Inline u0 perrarg(lips v, mem fp) {
- i64 i = 0, argc = fp == v->pool + v->len ? 0 : getnum(ARGC);
- if (argc) for (fputc(' ', stderr);;fputc(' ', stderr)) {
-  obj x = ARGV[i++];
-  emit(v, x, stderr);
-  if (i == argc) break; }
- fputc(')', stderr); }
-
-static VM(nope, const char *msg, ...) {
- fputs("# (", stderr);
- emit(v, Ph(ip), stderr);
- perrarg(v, fp);
- va_list xs;
- fputs(" : ", stderr);
- va_start(xs, msg); vfprintf(stderr, msg, xs);
- fputc('\n', stderr);
- for (;;) {
-  ip = RETP, fp += Size(frame) + getnum(ARGC) + getnum(SUBR);
-  if (button(Gh(ip))[-1] == yield) break;
-  fputs("# in ", stderr), emsep(v, Ph(ip), stderr, '\n'); }
- Hp = hp;
- return restart(v); }
-
-NoInline obj homnom(lips v, obj x) {
- terp *k = G(x);
- if (k == clos || k == pc0 || k == pc1)
-  return homnom(v, (obj) G(FF(x)));
- mem h = (mem) Gh(x);
- while (*h) h++;
- x = h[-1];
- int inb = (mem) x >= v->pool && (mem) x < v->pool+v->len;
- return inb ? x : x == (obj) yield ? Eva : nil; }
-
-obj eval(lips v, obj x) { return
- x = pair(v, x, nil),
- apply(v, tblget(v, Top, Eva), x); }

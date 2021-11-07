@@ -79,7 +79,7 @@ insts(ninl)
 // the current values in the vm struct before it makes any
 // "external" function calls.
 #define PACK() (v->ip=ip,Sp=sp,Hp=hp,Fp=fp,v->xp=xp)
-#define UNPACK() (fp=Fp,hp=Hp,sp=Sp,ip=v->ip,xp=v->xp)
+#define UNPACK() (fp=v->fp,hp=v->hp,sp=v->sp,ip=v->ip,xp=v->xp)
 #define CALLC(...)(PACK(),(__VA_ARGS__),UNPACK())
 #define RETC(...){CALLC(__VA_ARGS__);Jump(ret);}
 
@@ -107,3 +107,22 @@ typedef struct frame { obj clos, retp, subd, argc, argv[]; } *frame;
 #define AP(f,x) return (ip=f,xp=x,G(ip)(STATE))
 #define GO(f,x) return (xp=x,f(STATE))
 #define NEXT(n) AP(ip+w2b(n),xp)
+#define ok _N(1)
+
+VM(nope, const char *, ...);
+// type check
+#define TC(x,t) if(kind((x))-(t))\
+ Jump(nope, type_err_msg, tnom(kind(x)), tnom(t))
+// arity check
+#define ARY(n) if(_N(n)>ARGC)\
+ Jump(nope,arity_err_msg,getnum(ARGC),n)
+
+#define OP(nom, x, n) VM(nom) { xp = (x); NEXT(n); }
+#define OP0(nom, x) OP(nom, x, 0)
+#define OP1(nom, x) OP(nom, x, 1)
+#define OP2(nom, x) OP(nom, x, 2)
+
+#define arity_err_msg "wrong arity : %d of %d"
+#define type_err_msg "wrong type : %s for %s"
+#define div0_err_msg "%d / 0"
+#define oob_err_msg "oob : %d >= %d"
