@@ -67,12 +67,12 @@ static u0 shrink(lips v, obj t) {
     u->tab[t] = e,
     e = f; }
 
-ent tbl_entry(lips v, obj k, obj x) {
+ent tbl_ent_new(lips v, obj k, obj x) {
   ent e;
   with(k, with(x, e = cells(v, Size(ent))));
   return e; }
 
-obj tblset_s(lips v, obj t, obj k, obj x) {
+obj tbl_set_s(lips v, obj t, obj k, obj x) {
   i64 bucket =
     bucket_index(gettbl(t)->cap, hash(v, k));
   ent e = gettbl(t)->tab[bucket];
@@ -82,7 +82,7 @@ obj tblset_s(lips v, obj t, obj k, obj x) {
     else e = e->next;
 
   // allocate an entry
-  with(t, e = tbl_entry(v, k, x));
+  with(t, e = tbl_ent_new(v, k, x));
 
   tbl y = gettbl(t);
   e->key = k;
@@ -102,12 +102,12 @@ u0 maybe_shrink(lips v, obj t) {
   tbl y = gettbl(t);
   if (y->len && y->cap > 2 * y->len) shrink(v, t); }
 
-obj tblset(lips v, obj t, obj k, obj x) {
-  with(t, x = tblset_s(v, t, k, x));
+obj tbl_set(lips v, obj t, obj k, obj x) {
+  with(t, x = tbl_set_s(v, t, k, x));
   with(x, maybe_grow(v, t));
   return x; }
 
-obj tbldel(lips v, obj t, obj k) {
+static obj tbl_del(lips v, obj t, obj k) {
   tbl y = gettbl(t);
   obj r = nil;
   i64 b = bucket_index(y->cap, hash(v, k));
@@ -123,13 +123,13 @@ obj tbldel(lips v, obj t, obj k) {
   with(r, maybe_shrink(v, t));
   return r; }
 
-ent tblget_entry(lips v, obj t, obj k) {
+ent tbl_ent(lips v, obj t, obj k) {
   for (ent e = bucket(t, hash(v, k)); e; e = e->next)
     if (eql(e->key, k)) return e;
   return 0; }
 
-obj tblget(lips v, obj t, obj k) {
-  ent e = tblget_entry(v, t, k);
+obj tbl_get(lips v, obj t, obj k) {
+  ent e = tbl_ent(v, t, k);
   return e ? e->val : 0; }
 
 obj table(lips v) {
@@ -142,10 +142,10 @@ obj table(lips v) {
 VM(tblg) {
  ARY(2);
  TC(ARGV[0], Tbl);
- xp = tblget(v, ARGV[0], ARGV[1]);
+ xp = tbl_get(v, ARGV[0], ARGV[1]);
  GO(ret, xp ? xp : nil); }
 
-OP1(tget, (xp = tblget(v, xp, *sp++)) ? xp : nil)
+OP1(tget, (xp = tbl_get(v, xp, *sp++)) ? xp : nil)
 
 static obj tblkeys_j(lips v, ent e, obj l) {
  obj x;
@@ -163,20 +163,20 @@ static obj tblkeys_i(lips v, obj t, i64 i) {
 static Inline obj tblkeys(lips v, obj t) {
  return tblkeys_i(v, t, 0); }
 
-OP1(thas, tblget(v, xp, *sp++) ? ok : nil)
+OP1(thas, tbl_get(v, xp, *sp++) ? ok : nil)
 OP1(tlen, N_(gettbl(xp)->len))
 VM(tkeys) { CALLC(v->xp = tblkeys(v, xp)); NEXT(1); }
 
 VM(tblc) {
  ARY(2);
  TC(ARGV[0], Tbl);
- xp = tblget(v, ARGV[0], ARGV[1]);
+ xp = tbl_get(v, ARGV[0], ARGV[1]);
  GO(ret, xp ? ok : nil); }
 
 static obj tblss(lips v, i64 i, i64 l) {
  mem fp = Fp;
  return i > l-2 ? ARGV[i-1] :
-  (tblset(v, v->xp, ARGV[i], ARGV[i+1]),
+  (tbl_set(v, v->xp, ARGV[i], ARGV[i+1]),
    tblss(v, i+2, l)); }
 
 VM(tbls) {
@@ -189,7 +189,7 @@ VM(tblmk) { RETC(v->xp = table(v), tblss(v, 0, N(ARGC))); }
 
 VM(tbld) {
  ARY(2); TC(ARGV[0], Tbl);
- RETC(v->xp = tbldel(v, ARGV[0], ARGV[1])); }
+ RETC(v->xp = tbl_del(v, ARGV[0], ARGV[1])); }
 
 VM(tblks) {
  ARY(1); TC(*ARGV, Tbl);
@@ -198,3 +198,9 @@ VM(tblks) {
 VM(tbll) {
  ARY(1); TC(*ARGV, Tbl);
  GO(ret, N_(gettbl(*ARGV)->len)); }
+
+VM(tset) {
+ obj x = *sp++, y = *sp++;
+ CALLC(v->xp = tbl_set(v, xp, x, y));
+ NEXT(1); }
+

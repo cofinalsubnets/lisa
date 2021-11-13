@@ -24,17 +24,12 @@
 // this occurs near the beginning of a function. if enough
 // memory is not available the interpret jumps to a specific
 // terp function
-static VM(gc) { u64 n = v->xp; CALLC(reqsp(v, n)); NEXT(0); }
+VM(gc) { u64 n = v->xp; CALLC(reqsp(v, n)); NEXT(0); }
 // that stores the state and calls the garbage collector;
 // afterwards it jumps back to the instruction that called it.
 // therefore anything before the Have() macro will be executed
 // twice if garbage collection happens! there should be no side
 // effects before Have() or similar.
-#define avail (sp-hp)
-#define Have(n) if (avail < n) Jump((v->xp=n,gc))
-#define Have1() if (hp == sp) Jump((v->xp=1,gc)) // common case, faster comparison
-
-#define TERP(n, m, ...) VM(n) m(__VA_ARGS__)
 
 // jump to nope() when an error happens.
 
@@ -55,7 +50,8 @@ OP2(clo, REF(V(CLOS)->xs)) OP1(clo0, V(CLOS)->xs[0]) OP1(clo1, V(CLOS)->xs[1])
 // store instructions
 VM(push) { Have1(); *--sp = xp; NEXT(1); } // stack push
 VM(loc_) { REF(V(LOCS)->xs) = xp; NEXT(2); } // set a local variable
-VM(tbind) { CALLC(tblset(v, Top, (obj) GF(ip), xp)); NEXT(2); }
+
+VM(tbind) { CALLC(tbl_set(v, Top, (obj) GF(ip), xp)); NEXT(2); }
 
 // initialize local variable slots
 VM(locals) {
@@ -73,7 +69,7 @@ VM(locals) {
 // done by the compiler if the function had been bound early.
 VM(lbind) {
  obj w = (obj) GF(ip), d = X(Y(w)), y = X(w);
- if (!(w = tblget(v, d, xp = Y(Y(w))))) {
+ if (!(w = tbl_get(v, d, xp = Y(Y(w))))) {
   char *nom = nilp(getsym(xp)->nom) ? "<anon>" : symnom(xp);
   Jump(nope, "free variable : %s", nom); }
  xp = w;
@@ -265,11 +261,6 @@ VM(vec_u) {
  hp += 1 + n;
  cpy64(t->xs, ARGV, t->len = n);
  GO(ret, putvec(t)); }
-
-VM(tset) {
- obj x = *sp++, y = *sp++;
- CALLC(v->xp = tblset(v, xp, x, y));
- NEXT(1); }
 
 VM(emx) { obj h = *sp++ - W; G(h) = (terp*) xp;    AP(ip+W, h); }
 VM(emi) { obj h = *sp++ - W; G(h) = (terp*) N(xp); AP(ip+W, h); }
@@ -590,15 +581,5 @@ VM(ystr_u) {
 
 // errors
 VM(fail) { Jump(nope, "fail"); }
-VM(gsym_u) {
- if (ARGC > Pn(0) && strp(*ARGV))
-  RETC(v->xp = intern(v, *ARGV));
- Have(Size(sym));
- sym y = (sym) hp;
- hp += Size(sym);
- y->nom = y->l = y->r = nil;
- y->code = v->count++ * mix;
- GO(ret, putsym(y)); }
 
 VM(rnd_u) { GO(ret, Pn(lcprng(&v->seed))); }
-

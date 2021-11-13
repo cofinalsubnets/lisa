@@ -99,7 +99,7 @@ NoInline obj apply(lips v, obj f, obj x) {
  h[2] = yield;
  h[3] = NULL;
  h[4] = (terp*) h;
- return call(v, Ph(h), Fp, Sp, Hp, tblget(v, Top, App)); }
+ return call(v, Ph(h), Fp, Sp, Hp, tbl_get(v, Top, App)); }
 
 static NoInline obj rwlade(lips v, obj x) {
  mm(&x);
@@ -288,7 +288,7 @@ c1(c_call) {
 static obj look(lips v, obj e, obj y) {
  obj q; return
   nilp(e) ?
-   ((q = tblget(v, Top, y)) ?  L(Here, q) : L(Wait, Top)) :
+   ((q = tbl_get(v, Top, y)) ?  L(Here, q) : L(Wait, Top)) :
   ((q = lidx(loc(e), y)) != -1) ? L(Loc, e) :
   ((q = lidx(arg(e), y)) != -1) ? L(Arg, e) :
   ((q = lidx(clo(e), y)) != -1) ? L(Clo, e) :
@@ -324,7 +324,7 @@ c2(pre_two) { obj z = X(x); return
   z == La ? c_la : z == Se ? c_se : pre_apply)(v, e, m, x); }
 
 c2(pre_apply) {
- obj mac = tblget(v, Mac, X(x));
+ obj mac = tbl_get(v, Mac, X(x));
  if (mac) {
   obj s1 = S1, s2 = S2;
   with(s1, with(s2, x = apply(v, mac, Y(x))));
@@ -365,11 +365,7 @@ NoInline u0 defprim(lips v, const char *a, terp *b) {
  *--Sp = z;
  obj x = hini(v, 2);
  x = em2(b, z = *Sp++, x);
- tblset(v, Top, X(z), x); }
-
-static obj compile(lips v, obj x) { return
- Push(Pn(pre_eval_), x, Pn(inst), Pn(yield), Pn(pre_alloc)),
- Ccc(v, NULL, 0); }
+ tbl_set(v, Top, X(z), x); }
 
 NoInline obj homnom(lips v, obj x) {
  terp *k = G(x);
@@ -383,7 +379,7 @@ NoInline obj homnom(lips v, obj x) {
 
 obj eval(lips v, obj x) {
   x = pair(v, x, nil);
-  return apply(v, tblget(v, Top, Eva), x); }
+  return apply(v, tbl_get(v, Top, Eva), x); }
 
 VM(hfin_u) {
  ARY(1);
@@ -393,6 +389,8 @@ VM(hfin_u) {
  GO(ret, a); }
 
 VM(ev_u) {
- ARY(1);
- RETC(xp = compile(v, *ARGV),
-      v->xp = G(xp)(v, xp, Fp, Sp, Hp, nil)); }
+  ARY(1);
+  RETC(
+    Push(_N(inst), _N(yield), _N(pre_alloc)),
+    xp = pre_eval(v, NULL, 0, *ARGV),
+    v->xp = G(xp)(v, xp, v->fp, v->sp, v->hp, nil)); }

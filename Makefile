@@ -3,7 +3,7 @@ include config.mk
 n=lips
 b=$n.bin
 
-docs=share
+docs=share/man/man1/lips.1
 libs=lib/lips/prelude.lips
 files=bin/$n $(libs) $(docs)
 
@@ -49,7 +49,7 @@ sloc:
 bits: bin/$n bin/$b
 	stat -c "%n %sB" $^
 repl: bin/$n
-	rlwrap $^ -_i $(libs) test/00-helpers.lips test/kanren.lips
+	rlwrap $^ -_i $(libs) test/00-helpers.lips test/kanren.lips test/peg_.lips
 
 
 CC ?= gcc

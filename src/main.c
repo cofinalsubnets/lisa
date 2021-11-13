@@ -35,7 +35,7 @@ static lips lips_fin(lips v) { return
 
 static NoInline u0 rin(lips v, const char *a, terp *b) {
  obj z = interns(v, a);
- tblset(v, Top, z, Pn(b)); }
+ tbl_set(v, Top, z, Pn(b)); }
 
 static lips lips_init(lips v) {
  const num ini_len = 1;
@@ -59,7 +59,7 @@ static lips lips_init(lips v) {
  bsym(Seq, ",");
  bsym(Splat, ".");
  obj y;
-#define def(s, x) (y=interns(v,s),tblset(v,Top,y,x))
+#define def(s, x) (y=interns(v,s),tbl_set(v,Top,y,x))
  def("ns", Top), def("macros", Mac);
  return v; }
 

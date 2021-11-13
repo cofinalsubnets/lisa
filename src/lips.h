@@ -96,7 +96,7 @@ extern const uint32_t *tnoms;
 #define um (v->root=v->root->next)
 #define with(y,...) (mm(&(y)),(__VA_ARGS__),um)
 #define Size(t) Width(t)
-#define Width(t) (sizeof(struct t)/W)
+#define Width(t) b2w(sizeof(struct t))
 #define Ip v->ip
 #define Fp v->fp
 #define Hp v->hp

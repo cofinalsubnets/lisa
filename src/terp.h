@@ -110,6 +110,7 @@ typedef struct frame { obj clos, retp, subd, argc, argv[]; } *frame;
 #define ok _N(1)
 
 VM(nope, const char *, ...);
+VM(gc);
 // type check
 #define TC(x,t) if(kind((x))-(t))\
  Jump(nope, type_err_msg, tnom(kind(x)), tnom(t))
@@ -126,3 +127,9 @@ VM(nope, const char *, ...);
 #define type_err_msg "wrong type : %s for %s"
 #define div0_err_msg "%d / 0"
 #define oob_err_msg "oob : %d >= %d"
+
+#define avail (sp-hp)
+#define Have(n) if (avail < n) Jump((v->xp=n,gc))
+#define Have1() if (hp == sp) Jump((v->xp=1,gc)) // common case, faster comparison
+
+#define TERP(n, m, ...) VM(n) m(__VA_ARGS__)
