@@ -213,8 +213,8 @@ VM(slurp) {
   TC(xp, Str);
   RETC(v->xp = read_file(v, getstr(xp)->text)); }
 VM(dump) {
- ARY(2);
- TC(ARGV[0], Str); TC(ARGV[1], Str);
- char *p = S(ARGV[0])->text,
-      *d = S(ARGV[1])->text;
- GO(ret, write_file(v, p, d)); }
+  ARY(2);
+  TC(ARGV[0], Str); TC(ARGV[1], Str);
+  char *p = S(ARGV[0])->text,
+       *d = S(ARGV[1])->text;
+  GO(ret, write_file(v, p, d)); }

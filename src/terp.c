@@ -132,6 +132,23 @@ VM(call) {
  CLOS = nil;
  ARGC = adic;
  AP(xp, nil); }
+ 
+VM(ap_u) {
+ ARY(2);
+ obj x = ARGV[0], y = ARGV[1];
+ TC(x, Hom);
+ u64 adic = llen(y);
+ Have(adic);
+ obj off = SUBR, rp = RETP;
+ sp = ARGV + Gn(ARGC) - adic;
+ for (u64 j = 0; j < adic; y = Y(y)) sp[j++] = X(y);
+ fp = sp -= Size(frame);
+ RETP = rp;
+ ARGC = N_(adic);
+ SUBR = off;
+ CLOS = nil;
+ AP(x, nil); }
+
 
 static VM(recne) {
  // overwrite current frame with new frame
@@ -205,22 +222,6 @@ VM(cont) {
  fp = sp + off;
  cpy64(sp, t->xs+1, t->len-1);
  Jump(ret); }
-
-VM(ap_u) {
- ARY(2);
- obj x = ARGV[0], y = ARGV[1];
- TC(x, Hom);
- u64 adic = llen(y);
- Have(adic);
- obj off = SUBR, rp = RETP;
- sp = ARGV + Gn(ARGC) - adic;
- for (u64 j = 0; j < adic; y = Y(y)) sp[j++] = X(y);
- fp = sp -= Size(frame);
- RETP = rp;
- ARGC = N_(adic);
- SUBR = off;
- CLOS = nil;
- AP(x, nil); }
 
 // instructions used by the compiler
 VM(hom_u) {

@@ -49,7 +49,7 @@ sloc:
 bits: bin/$n bin/$b
 	stat -c "%n %sB" $^
 repl: bin/$n
-	rlwrap $^ -_i $(libs) test/00-helpers.lips test/kanren.lips test/peg_.lips
+	rlwrap $^ -_i $(libs) test/00-helpers.lips test/kanren.lips
 
 
 CC ?= gcc

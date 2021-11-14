@@ -7,14 +7,13 @@
 
   ; standard library functions
   (: ; some aliases
-     `'` ?'? :': ,', \'\
+     `'` ?'? :': ,', \'\ ~~ '(())
      ~ nilp 2p twop Hp homp Tg tget Ts tset Td tdel Th thas
-     ~~ '(()) {} (tbl) [] (vec)
      2? twop \? homp Y? symp
 
      ; functional programmings
-     (id x) x
-     (const x) (\ x)
+     (I x) x id I
+     (K x) (\ x) const K
      (co xs .) (foldl1 xs (\ m f (\ x . (f (ap m x)))))
      ((flip f) x y) (f y x)
      ((diag f) x) (f x x)
@@ -72,7 +71,7 @@
 "))
 
      ; tables
-     (set x .) (: d (tbl) (, (each x (\ y (Ts d y ()))) d))
+     (set x .) (foldl x (tbl) (\ t x (, (Ts t x ()) t)))
 
 
      ; numbers
