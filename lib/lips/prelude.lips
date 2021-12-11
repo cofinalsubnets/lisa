@@ -620,12 +620,13 @@
   ((abel f i) x k) (>>= (mono f (f) x) (\ x
    (eval (A x) (>- 'num (2f i k (B x))))))
 
-  ((nary i tR xs .) x k)
+  (nary i tR xs .) (: arity (len xs) (\ x k (?
+   (< (: call-arity (len x)) arity) (fail "wrong arity")
    (: (fo k z) (co (eval (AA z) (>- (BA z) k)) (B z))
       (co k z) (? z (fo (xc i-push k) z) k)
       l (xc i (-> tR k))
       z (zip X x xs)
-    (? z (fo l z) l))
+    (? z (fo l z) l)))))
 
   (2f i k x)
    (: (2g i k x)
