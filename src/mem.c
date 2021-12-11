@@ -119,7 +119,7 @@ GC(cp) {
 GC(cptwo) {
  obj dst, src = x;
  return fresh(A(x)) ? A(x) :
-  (dst = puttwo(bump(v, Size(two))),
+  (dst = puttwo(bump(v, Width(two))),
    A(dst) = A(src),
    A(src) = dst,
    B(dst) = cp(v, B(src), len0, base0),
@@ -129,7 +129,7 @@ GC(cptwo) {
 GC(cptup) {
  vec dst, src = V(x);
  if (fresh(*src->xs)) return *src->xs;
- dst = bump(v, Size(tup) + src->len);
+ dst = bump(v, Width(tup) + src->len);
  i64 i, l = dst->len = src->len;
  dst->xs[0] = src->xs[0];
  src->xs[0] = putvec(dst);
@@ -140,7 +140,7 @@ GC(cptup) {
 GC(cpstr) {
  str dst, src = S(x);
  return src->len == 0 ? *(mem)src->text :
-  (dst = bump(v, Size(str) + b2w(src->len)),
+  (dst = bump(v, Width(str) + b2w(src->len)),
    cpy64(dst->text, src->text, b2w(src->len)),
    dst->len = src->len, src->len = 0,
    *(mem) src->text = _S(dst)); }
@@ -149,7 +149,7 @@ GC(cpsym) {
  sym src = getsym(x), dst;
  if (fresh(src->nom)) return src->nom;
  if (src->nom == nil) // anonymous symbol
-   cpy64(dst = bump(v, Size(sym)), src, Size(sym));
+   cpy64(dst = bump(v, Width(sym)), src, Width(sym));
  else dst = getsym(sskc(v, &v->syms, cp(v, src->nom, len0, base0)));
  return src->nom = putsym(dst); }
 
@@ -170,7 +170,7 @@ GC(cphom) {
 
 static ent cpent(lips v, ent src, i64 len0, mem base0) {
  if (!src) return NULL;
- ent dst = (ent) bump(v, 3);
+ ent dst = (ent) bump(v, Width(ent));
  dst->next = cpent(v, src->next, len0, base0);
  COPY(dst->key, src->key);
  COPY(dst->val, src->val);
