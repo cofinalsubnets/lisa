@@ -1,63 +1,116 @@
-
 (: (tbl8 t) (flatmap (\ k (L k (tget t k))) (tkeys t))
-   (inspect-tbl t) (, (. (tbl8 t)) t)
-   (tclone t) (ap tbl (tbl8 t)))
+   (tclone t) (ap tbl (tbl8 t))
+   (tzero syms .)
+    (tbl () (ap tbl (flatmap (\ y (L (sym) y)) syms))))
 
-(: == (:
+(:
+
  (_? x) (&& (Y? x) (~ (ystr x))) ; anonymous symbol ?
- (_! var val s) (? s (, (tset s var (X val var)) s));(X (X val var) s)
  (?? u s) (||
   (&& (_? u)
-   (: r (tget s u))
-   (?? (A r) s))
+   (thas s u)
+   (?? (tget s u) s))
+  (&& (2? u) (X (?? (A u) s) (?? (B u) s)))
   u)
+ (m+ a b) (? (~ a)  b (\? a) (\ (m+ b (a))) (L a b))
+ (m* a b) (? (~ a) () (\? a) (\ (m* (a) b)) (2? a) (map b a) (b a))
+ ((disj f g) s) (? s (>>= (f (tclone s)) (\ f (m+ f (g s)))))
+ ((conj f g) s) (m* (f s)  g)
+== (:
+ (_! var val s) (, (tset s var val) s)
 
- ((== u v) s) (? s (: x (?? u s) y (?? v s) (L (?
+ ((== u v) s) (? s(,
+
+ (: x (?? u s) y (?? v s) (?
   (= x y) s
   (_? x) (_! x y s)
   (_? y) (_! y x s)
   (&& (2? x) (2? y)
-   ((== (B x) (B y)) ((== (A x) (A y)) s)))))))
+   (: t ((== (A x) (A y)) s))
+   ((== (B x) (B y)) t))))))
  ==))
 
 (:
- (m+ a b) (? (~ a)  b (\? a) (\ (m+ b (a))) (X (A a) (m+ b (B a))))
- (m* a b) (? (~ a) () (\? a) (\ (m* (a) b)) (m+ (b (A a)) (m* (B a) b)))
- ((disj f g) s) (? s (>>= (f (tclone s)) (\ f (m+ f (g s)))))
- ((conj f g) s) (m* (f s)  g)
  (:::
   \\ (\ a   . (X (X '\ a) (map (\ (L sym)) (init a))))
   Zzz (\ x (: _ (sym) (L '\ _ '. (L '\ (L ap x _)))))
-  &* (\ a x . (: b (L 'Zzz a) (? (~ x) b (L conj b (X '&* x)))))
-  |* (\ a x . (: b (L 'Zzz a) (? (~ x) b (L disj b (X '|* x)))))))
+  &? (\ a x . (: b (L 'Zzz a) (? (~ x) b (L conj b (X '&? x)))))
+  |? (\ a x . (: b (L 'Zzz a) (? (~ x) b (L disj b (X '|? x)))))))
 
 
 (: (run n g)
-    (>>= n (g ()) (: (go n x)
+    (>>= n (g (tbl)) (: (go n x)
          (? (= n 0) x
             (2? (: y (flow x))) (X (A y) (go (- n 1) (B y)))
             y)))
 
-   (flow q) (? (\? q) (flow (q)) q)
-   (tabulate query) (:
-    (lfoldl f z x) (,(?
-     (2? x) (lfoldl f (f z (A x)) (B x))
+    (lfoldl f z x) (?
+     (tblp x) (f z x)
+     (2? x) (lfoldl f (lfoldl f z (A x)) (B x))
      (\? x) (lfoldl f z (x))
-     z))
-    (lfoldl
-     (\ m rset
-      (? (~ rset) m
-       (X (map (\ k (A(tget rset k))) (tkeys rset)) m)))
-     ()
-     (query (tbl)))))
+     z)
+
+   (flow q) (? (\? q) (flow (q)) q)
+
+   ((run_ n vars .) q)
+
+   (:
+    (loop n s) (?
+     (|| (~ s) (= n 0)) s
+     (2? s) (X (A s) (loop (- n 1) (B s)))
+     (\? s) (loop n (s)))
+    (loop n (q (tzero vars)))
+    )
+
+   )
+
+(:::
+ Kq
+ (\ par .
+ (: vars (init par) avars (map (\ (sym)) vars)
+    noms (foldl (zip X vars avars) (tbl) (\ t p (, (tset t (B p) (A p)) t)))
+  (L '\ '_ '. (L lfoldl
+   (L '\ 'm 'vals
+    (L X
+     (L flatmap
+      (L '\ 'var (L ':
+       'v (L find (L '` (tkeys noms)) (L '\ 'k (L = 'var (L tget noms 'k))))
+       'val (L ?? 'v 'vals)
+       (L '? (L = 'val 'v) () (L L 'var 'val))))
+      '_)
+     'm))
+   ()
+   (L (X (X '\ par) (map (cu L `) avars)) (L tbl () noms))))))
+  Run
+ (\ par .
+ (: vars (init par) avars (map (\ (sym)) vars)
+    noms (foldl (zip X vars avars) (tbl) (\ t p (, (tset t (B p) (A p)) t)))
+  (L '\ '_ '. (L lfoldl
+   (L '\ 'm 'vals
+    (L X
+     (L flatmap
+      (L '\ 'var (L ':
+       'v (L find (L '` (tkeys noms)) (L '\ 'k (L = 'var (L tget noms 'k))))
+       'val (L ?? 'v 'vals)
+       (L '? (L = 'val 'v) () (L L 'var 'val))))
+      '_)
+     'm))
+   ()
+   (L (X (X '\ par) (map (cu L `) avars)) (L tbl () noms))))))
+)
 
 (test kanren
- (= '((6 7) (5 7)) (tabulate (\\ a b (&* (== a 7) (|* (== b 5) (== b 6))))))
- (= '((8 9))       (tabulate (\\ a b (&* (== a 9) (== b 8)))))
- (= '((1 1))       (tabulate (\\ a b (&* (== a 1) (== a b)))))
- (=  ()            (tabulate (\\ a   (&* (== a 0) (== a 1)))))
- (=  ()            (tabulate (\\ a b (&* (== a 7) (== b 3) (|* (== b 2) (== b 4))))))
- (= '((7 3))       (tabulate (\\ a b (&* (== a 7) (== b 3) (|* (== b 3) (== b 4))))))
-; (= '() (.(tabulate (\\ a b c (&* (== a 1) (== b 2) (== c (L a b)) (== c (L 1 1)))))))
-)
-(: tab tabulate)
+ (= '((a (1 2 (3 (4))) b (3 (4)) c 4))
+    ((Kq a b c (&? (== a (L 1 2 b)) (== b (L 3 (L c))) (== c 4))) 'a 'b 'c))
+ (= '((a 7 b 6) (a 7 b 5)) ((Kq a b (&? (== a 7) (|? (== b 5) (== b 6)))) 'a 'b))
+ (= '((a 9 b 8)) ((Kq a b (&? (== a 9) (== b 8))) 'a 'b))
+ (= '((a 1 b 1)) ((Kq a b (&? (== a 1) (== a b)))'a'b))
+ (= '((a 7 b 3)) ((Kq a b (&? (== a 7) (== b 3) (|? (== b 3) (== b 4))))'a'b))
+ (= '((a (1 2) b 2)) ((Kq a b (&? (== a (L 1 b)) (== b 2)))'a'b))
+ (~ ((Kq a (&? (== a 0) (== a 1)))'a))
+ (~ ((Kq a b (&? (== a 7) (== b 3) (|? (== b 2) (== b 4))))'a'b))
+ (= '((a 7 b 8 c 9) (a 4 b 5 c 6) (a 1 b 2 c 3))
+    ((Kq a b c (|? (&? (== a 1) (== b 2) (== c 3))
+                   (&? (== a 4) (== b 5) (== c 6))
+                   (&? (== a 7) (== b 8) (== c 9))))
+      'a'b'c)))
