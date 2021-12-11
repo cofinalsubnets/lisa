@@ -71,28 +71,27 @@ u0 reqsp(lips v, u64 req) {
 // u will be >= 1. however, sometimes t1 == t2. in that case
 // u = 1.
 static clock_t copy(lips v, u64 l1) {
- mem b0 = v->pool, b1 = malloc(w2b(l1));
- u64 l0 = v->len;
- if (!b1) return 0;
+ mem base0 = v->pool, base1 = malloc(w2b(l1));
+ u64 len0 = v->len;
+ if (!base1) return 0;
  clock_t t0 = v->t0, t1 = clock(), t2;
- mem s0 = Sp, tp0 = b0 + l0, tp1 = b1 + l1;
+ mem sp0 = Sp, tp0 = base0 + len0, tp1 = base1 + l1;
  i64 ro = tp1 - tp0;
  v->len = l1;
- v->pool = Hp = b1;
+ v->pool = Hp = base1;
  Sp += ro, Fp += ro;
  v->syms = nil;
-#define COPY(dst,src) (dst=cp(v,src,l0,b0))
+#define COPY(dst,src) (dst=cp(v,src,len0,base0))
 #define CP(x) COPY(x,x)
- while (tp0-- > s0)
-   COPY(Sp[tp0 - s0], *tp0);
- for (root r = v->root; r; r = r->next)
-   CP(*(r->one));
- for (int i = 0; i < NGlobs; i++)
-   CP(v->glob[i]);
+ while (tp0-- > sp0)                     COPY(Sp[tp0 - sp0], *tp0);
+ for (root r = v->root; r; r = r->next)  CP(*(r->one));
+ for (int i = 0; i < NGlobs; i++)        CP(v->glob[i]);
  CP(v->ip), CP(v->xp);
- free(b0);
- t1 = t1 == (t2 = clock()) ? 1 : (t2 - t0) / (t2 - t1);
- return v->t0 = t2, t1; }
+ free(base0);
+ t2 = clock();
+ t1 = t1 == t2 ? 1 : (t2 - t0) / (t2 - t1);
+ v->t0 = t2;
+ return t1; }
 
 
 // the exact method for copying an object into
@@ -102,19 +101,19 @@ static clock_t copy(lips v, u64 l1) {
 // old data.
 typedef obj copier(lips, obj, u64, mem);
 static copier cphom, cptup, cptwo, cpsym, cpstr, cptbl;
-#define GC(n) static obj n(lips v, obj x, u64 l0, mem b0)
+#define GC(n) static obj n(lips v, obj x, u64 len0, mem base0)
 #define inb(o,l,u) (o>=l&&o<u)
 #define fresh(o) inb((mem)(o),v->pool,v->pool+v->len)
-#define stale(o) inb((mem)(o),b0,b0+l0)
+#define stale(o) inb((mem)(o),base0,base0+len0)
 
 GC(cp) {
  switch (kind(x)) {
-  case Hom: return cphom(v, x, l0, b0);
-  case Vec: return cptup(v, x, l0, b0);
-  case Str: return cpstr(v, x, l0, b0);
-  case Two: return cptwo(v, x, l0, b0);
-  case Sym: return cpsym(v, x, l0, b0);
-  case Tbl: return cptbl(v, x, l0, b0);
+  case Hom: return cphom(v, x, len0, base0);
+  case Vec: return cptup(v, x, len0, base0);
+  case Str: return cpstr(v, x, len0, base0);
+  case Two: return cptwo(v, x, len0, base0);
+  case Sym: return cpsym(v, x, len0, base0);
+  case Tbl: return cptbl(v, x, len0, base0);
   default:  return x; } }
 
 GC(cptwo) {
@@ -123,7 +122,7 @@ GC(cptwo) {
   (dst = puttwo(bump(v, Size(two))),
    A(dst) = A(src),
    A(src) = dst,
-   B(dst) = cp(v, B(src), l0, b0),
+   B(dst) = cp(v, B(src), len0, base0),
    CP(A(dst)),
    dst); }
 
@@ -150,8 +149,8 @@ GC(cpsym) {
  sym src = getsym(x), dst;
  if (fresh(src->nom)) return src->nom;
  if (src->nom == nil) // anonymous symbol
-  cpy64(dst = bump(v, Size(sym)), src, Size(sym));
- else dst = getsym(sskc(v, &v->syms, cp(v, src->nom, l0, b0)));
+   cpy64(dst = bump(v, Size(sym)), src, Size(sym));
+ else dst = getsym(sskc(v, &v->syms, cp(v, src->nom, len0, base0)));
  return src->nom = putsym(dst); }
 
 GC(cphom) {
@@ -165,14 +164,14 @@ GC(cphom) {
  G(j) = NULL;
  G(j+1) = (terp*) dst;
  for (obj u; j-- > dst;
-  u = (obj) G(j),
-  G(j) = (terp*) (!stale(u) ? u : cp(v, u, l0, b0)));
+   u = (obj) G(j),
+   G(j) = (terp*) (!stale(u) ? u : cp(v, u, len0, base0)));
  return puthom(dst += src - start); }
 
-static ent cpent(lips v, ent src, i64 l0, mem b0) {
+static ent cpent(lips v, ent src, i64 len0, mem base0) {
  if (!src) return NULL;
  ent dst = (ent) bump(v, 3);
- dst->next = cpent(v, src->next, l0, b0);
+ dst->next = cpent(v, src->next, len0, base0);
  COPY(dst->key, src->key);
  COPY(dst->val, src->val);
  return dst; }
@@ -188,5 +187,5 @@ GC(cptbl) {
  ent *src_tab = src->tab;
  src->tab = (ent*) puttbl(dst);
  while (src_cap--)
-  dst->tab[src_cap] = cpent(v, src_tab[src_cap], l0, b0);
+  dst->tab[src_cap] = cpent(v, src_tab[src_cap], len0, base0);
  return puttbl(dst); }
