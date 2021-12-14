@@ -1,7 +1,7 @@
-(: (tbl8 t) (flatmap (\ k (L k (tget t k))) (tkeys t))
+(: (tbl8 t) (flat-map (tkeys t) (\ k (L k (tget t k))))
    (tclone t) (ap tbl (tbl8 t))
    (tzero syms .)
-    (tbl () (ap tbl (flatmap (\ y (L (sym) y)) syms))))
+    (tbl () (ap tbl (flat-map syms (\ y (L (sym) y))))))
 
 (:
 
@@ -69,48 +69,31 @@
  (\ par .
  (: vars (init par) avars (map (\ (sym)) vars)
     noms (foldl (zip X vars avars) (tbl) (\ t p (, (tset t (B p) (A p)) t)))
-  (L '\ '_ '. (L lfoldl
+  (L lfoldl
    (L '\ 'm 'vals
     (L X
-     (L flatmap
+     (L flat-map
+      (Q vars)
       (L '\ 'var (L ':
        'v (L find (L '` (tkeys noms)) (L '\ 'k (L = 'var (L tget noms 'k))))
        'val (L ?? 'v 'vals)
-       (L '? (L = 'val 'v) () (L L 'var 'val))))
-      '_)
+       (L '? (L = 'val 'v) () (L L 'var 'val)))))
      'm))
    ()
-   (L (X (X '\ par) (map (cu L `) avars)) (L tbl () noms))))))
-  Run
- (\ par .
- (: vars (init par) avars (map (\ (sym)) vars)
-    noms (foldl (zip X vars avars) (tbl) (\ t p (, (tset t (B p) (A p)) t)))
-  (L '\ '_ '. (L lfoldl
-   (L '\ 'm 'vals
-    (L X
-     (L flatmap
-      (L '\ 'var (L ':
-       'v (L find (L '` (tkeys noms)) (L '\ 'k (L = 'var (L tget noms 'k))))
-       'val (L ?? 'v 'vals)
-       (L '? (L = 'val 'v) () (L L 'var 'val))))
-      '_)
-     'm))
-   ()
-   (L (X (X '\ par) (map (cu L `) avars)) (L tbl () noms))))))
+   (L (X (X '\ par) (map (cu L `) avars)) (L tbl () noms)))))
 )
 
 (test kanren
  (= '((a (1 2 (3 (4))) b (3 (4)) c 4))
-    ((Kq a b c (&? (== a (L 1 2 b)) (== b (L 3 (L c))) (== c 4))) 'a 'b 'c))
- (= '((a 7 b 6) (a 7 b 5)) ((Kq a b (&? (== a 7) (|? (== b 5) (== b 6)))) 'a 'b))
- (= '((a 9 b 8)) ((Kq a b (&? (== a 9) (== b 8))) 'a 'b))
- (= '((a 1 b 1)) ((Kq a b (&? (== a 1) (== a b)))'a'b))
- (= '((a 7 b 3)) ((Kq a b (&? (== a 7) (== b 3) (|? (== b 3) (== b 4))))'a'b))
- (= '((a (1 2) b 2)) ((Kq a b (&? (== a (L 1 b)) (== b 2)))'a'b))
- (~ ((Kq a (&? (== a 0) (== a 1)))'a))
- (~ ((Kq a b (&? (== a 7) (== b 3) (|? (== b 2) (== b 4))))'a'b))
+    (Kq a b c (&? (== a (L 1 2 b)) (== b (L 3 (L c))) (== c 4))))
+ (= '((a 7 b 6) (a 7 b 5)) (Kq a b (&? (== a 7) (|? (== b 5) (== b 6)))))
+ (= '((a 9 b 8)) (Kq a b (&? (== a 9) (== b 8))))
+ (= '((a 1 b 1)) (Kq a b (&? (== a 1) (== a b))))
+ (= '((a 7 b 3)) (Kq a b (&? (== a 7) (== b 3) (|? (== b 3) (== b 4)))))
+ (= '((a (1 2) b 2)) (Kq a b (&? (== a (L 1 b)) (== b 2))))
+ (~ (Kq a (&? (== a 0) (== a 1))))
+ (~ (Kq a b (&? (== a 7) (== b 3) (|? (== b 2) (== b 4)))))
  (= '((a 7 b 8 c 9) (a 4 b 5 c 6) (a 1 b 2 c 3))
-    ((Kq a b c (|? (&? (== a 1) (== b 2) (== c 3))
+    (Kq a b c (|? (&? (== a 1) (== b 2) (== c 3))
                    (&? (== a 4) (== b 5) (== c 6))
-                   (&? (== a 7) (== b 8) (== c 9))))
-      'a'b'c)))
+                   (&? (== a 7) (== b 8) (== c 9))))))

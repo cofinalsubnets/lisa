@@ -28,3 +28,12 @@ VM(cons_u) {
  hp[0] = ARGV[0], hp[1] = ARGV[1];
  xp = puttwo(hp), hp += 2; Jump(ret); }
 
+GC(cptwo) {
+ obj dst, src = x;
+ return fresh(A(x)) ? A(x) :
+  (dst = puttwo(bump(v, Width(two))),
+   A(dst) = A(src),
+   A(src) = dst,
+   B(dst) = cp(v, B(src), len0, base0),
+   CP(A(dst)),
+   dst); }

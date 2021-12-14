@@ -2,6 +2,7 @@
 #include "terp.h"
 #include "hom.h"
 #include "err.h"
+#include "mem.h"
 
 // this is used to create closures.
 VM(take) {
@@ -39,3 +40,15 @@ VM(vec_u) {
  hp += 1 + n;
  cpy64(t->xs, ARGV, t->len = n);
  GO(ret, putvec(t)); }
+
+GC(cptup) {
+ vec dst, src = V(x);
+ if (fresh(*src->xs)) return *src->xs;
+ dst = bump(v, Width(tup) + src->len);
+ i64 i, l = dst->len = src->len;
+ dst->xs[0] = src->xs[0];
+ src->xs[0] = putvec(dst);
+ for (CP(dst->xs[0]), i = 1; i < l; ++i)
+  COPY(dst->xs[i], src->xs[i]);
+ return _V(dst); }
+

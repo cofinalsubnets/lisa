@@ -49,3 +49,12 @@ VM(ystr_u) {
  xp = *ARGV;
  TC(xp, Sym);
  GO(ret, getsym(xp)->nom); }
+
+GC(cpsym) {
+ sym src = getsym(x), dst;
+ if (fresh(src->nom)) return src->nom;
+ if (src->nom == nil) // anonymous symbol
+   cpy64(dst = bump(v, Width(sym)), src, Width(sym));
+ else dst = getsym(sskc(v, &v->syms, cp(v, src->nom, len0, base0)));
+ return src->nom = putsym(dst); }
+

@@ -9,7 +9,7 @@
  (: lst (iota 1 6)
     has (cu thas (ap set lst))
   (&& (all has lst) (~ (has 0))))
- (= '(0 0 1 0 1 2) (flatmap iota (iota 1 4)))
+ (= '(0 0 1 0 1 2) (flat-map (iota 1 4) iota))
  (= '(0 2 4) (filter (iota 0 6) even))
  (= '(3 2 3 3 2 3 3 2 3)
   (rho 3 3 2 3)

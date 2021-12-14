@@ -204,3 +204,24 @@ VM(tset) {
  CALLC(v->xp = tbl_set(v, xp, x, y));
  NEXT(1); }
 
+static ent cpent(lips v, ent src, i64 len0, mem base0) {
+ if (!src) return NULL;
+ ent dst = (ent) bump(v, Width(ent));
+ dst->next = cpent(v, src->next, len0, base0);
+ COPY(dst->key, src->key);
+ COPY(dst->val, src->val);
+ return dst; }
+
+GC(cptbl) {
+ tbl src = gettbl(x);
+ if (fresh(src->tab)) return (obj) src->tab;
+ i64 src_cap = src->cap;
+ tbl dst = bump(v, 3 + src_cap);
+ dst->len = src->len;
+ dst->cap = src_cap;
+ dst->tab = (ent*) (dst + 1);
+ ent *src_tab = src->tab;
+ src->tab = (ent*) puttbl(dst);
+ while (src_cap--)
+  dst->tab[src_cap] = cpent(v, src_tab[src_cap], len0, base0);
+ return puttbl(dst); }

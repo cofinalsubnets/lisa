@@ -6,22 +6,21 @@
 // arithmetic
 BINOP(add,  xp + *sp++ - Num)
 BINOP(sub,  *sp++ - xp + Num)
-BINOP(mul,  N_(N(*sp++)  * N(xp)))
-BINOP(sar,  N_(N(*sp++) >> N(xp)))
-BINOP(sal,  N_(N(*sp++) << N(xp)))
+BINOP(mul,  _N(N(*sp++)  * N(xp)))
+BINOP(sar,  _N(N(*sp++) >> N(xp)))
+BINOP(sal,  _N(N(*sp++) << N(xp)))
 BINOP(band, xp & *sp++)
 BINOP(bor,  xp | *sp++)
 BINOP(bxor, (xp ^ *sp++) | Num)
-OP1(neg, N_(-N(xp)))
+OP1(neg, _N(-N(xp)))
 VM(dqv) {
- if (xp == Pn(0)) Jump(nope, div0_err_msg, Gn(*sp));
- xp = Pn(Gn(*sp++) / Gn(xp));
+ if (xp == _N(0)) Jump(nope, div0_err_msg, N(*sp));
+ xp = _N(N(*sp++) / N(xp));
  NEXT(1); }
 VM(mod) {
- if (xp == Pn(0)) Jump(nope, div0_err_msg, Gn(*sp));
- xp = Pn(Gn(*sp++) % Gn(xp));
+ if (xp == Pn(0)) Jump(nope, div0_err_msg, N(*sp));
+ xp = _N(N(*sp++) % N(xp));
  NEXT(1); }
-
 
 #define mm_u(_c,_v,_z,op){\
  obj x,*xs=_v,*l=xs+_c;\
@@ -64,3 +63,4 @@ VM(sal_u) {
  TC(*ARGV, Num);
  mm_u(N(ARGC)-1, ARGV+1, N(*ARGV), <<); }
 
+VM(rnd_u) { GO(ret, Pn(lcprng(&v->seed))); }

@@ -70,3 +70,11 @@ VM(strmk) {
  s->text[i] = 0;
  s->len = i+1;
  GO(ret, putstr(s)); }
+
+GC(cpstr) {
+ str dst, src = S(x);
+ return src->len == 0 ? *(mem)src->text :
+  (dst = bump(v, Width(str) + b2w(src->len)),
+   cpy64(dst->text, src->text, b2w(src->len)),
+   dst->len = src->len, src->len = 0,
+   *(mem) src->text = _S(dst)); }

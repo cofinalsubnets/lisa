@@ -23,16 +23,15 @@
       (\? x) (\ _ . (x (ap f _)))
       x)
 
+     (append a b) (? (2? a) (X (A a) (append (B a) b)) b)
      (cat xs .)
       (: x (A xs) (?
-       (2? x) (: (append a b) (? (2? a) (X (A a) (append (B a) b)) b)
-               (foldr xs () append))
+       (2? x) (foldr xs () append)
        (\? x) (: (compose f g) (\ x . (g (ap f x)))
                (foldr xs id compose))))
 
 
-     flatmap (map map (cu ap cat))
-
+     (flat-map x f) (? (2? x) (append (f (A x)) (flat-map (B x) f)))
      ; logic
      (&& l .) (all id l)
      (|| l .) (any id l)

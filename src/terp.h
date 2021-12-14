@@ -5,8 +5,8 @@
  _(idZ, NULL)        _(idH, NULL)      _(id2, NULL)\
  _(idT, NULL)        _(imm, NULL)      _(arg, NULL)\
  _(clo, NULL)        _(loc, NULL)      _(take, NULL)\
- _(locals, NULL)     _(loc_, NULL)     _(pc0, NULL)\
- _(pc1, NULL)        _(clos, NULL)     _(encll, NULL)\
+ _(locals, NULL)     _(loc_, NULL)\
+ _(clos, NULL)     _(encll, NULL)\
  _(encln, NULL)      _(yield, NULL)    _(ret, NULL)\
  _(jump, NULL)       _(branch, NULL)   _(barnch, NULL)\
  _(call, NULL)       _(rec, NULL)      _(lbind, NULL)\

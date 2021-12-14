@@ -1,7 +1,7 @@
 u0 defprim(lips, const char*, terp*) NoInline;
 obj
   eval(lips, obj),
-  apply(lips, obj, obj) NoInline,
+//  apply(lips, obj, obj) NoInline,
   homnom(lips, obj);
 #define F(x) ((hom)(x)+1)
 #define G(x) (*(hom)(x))

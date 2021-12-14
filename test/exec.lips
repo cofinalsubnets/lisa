@@ -1,29 +1,29 @@
+(: (ack m n)
+  (? (< m 1) (+ n 1)
+   (ack (- m 1) (? (> n 0) (ack m (- n 1)) 1))))
+
+(: (fib n)
+  (? (< n 3) 1
+   (+ (fib (- n 1)) (fib (- n 2)))))
+
+(: quine ((\ q (L q (Q q))) '(\ q (L q (Q q)))))
+(: (tarai x y z) (?
+    (<= x y) y
+    (tarai (tarai (- x 1) y z)
+           (tarai (- y 1) x z)
+           (tarai (- z 1) x y))))
+
 ; some miscellaneous functions
 (test execution
  ; a quine
- ((\ q (= (ev q) q))
-  ((\ q ((ev q) q))
-   '(\ q (L q (Q q)))))
+ (= quine (ev quine))
 
  ; call/cc
- (= 1 (ccc (\ ret
-  (, (ret 1) (fail "unreachable")))))
+ (= 1 (ccc (\ ret (, (ret 1) (fail "unreachable")))))
 
-; ; fibonacci
-; (= 2178309 (>>= 32 (: (fib n)
-;  (? (< n 3) 1
-;   (+ (fib (- n 1)) (fib (- n 2)))))))
-;
-; ; ackermann
-; (= 4093 (>>= 3 9 (: (ack m n)
-;  (? (< m 1) (+ n 1)
-;   (ack (- m 1) (? (> n 0) (ack m (- n 1)) 1))))))
-
- (= 13 (>>= 12 13 14 (: (tarai x y z)
-  (? (<= x y) y (tarai
-   (tarai (- x 1) y z)
-   (tarai (- y 1) x z)
-   (tarai (- z 1) x y))))))
+ (= 144 (fib 12))
+ (= 1021 (ack 3 7))
+ (= 13 (tarai 12 13 14))
 
  ; church numerals
  (: K const I id ; kind of like SK combinators

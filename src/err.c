@@ -56,3 +56,13 @@ VM(nope, const char *msg, ...) {
 
 // errors
 VM(fail) { Jump(nope, "fail"); }
+
+// type/arity checking
+#define TDCN(t) if(!kind(xp-t)){ NEXT(1);}\
+ Jump(nope,type_err_msg,tnom(kind(xp)),tnom(t))
+#define DTC(n, t) VM(n) { TDCN(t); }
+DTC(idZ, Num) DTC(idH, Hom) DTC(idT, Tbl) DTC(id2, Two)
+VM(arity) {
+ obj reqd = (obj) GF(ip);
+ if (reqd <= ARGC) { NEXT(2); }
+ Jump(nope, arity_err_msg, N(ARGC), N(reqd)); }
