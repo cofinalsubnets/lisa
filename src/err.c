@@ -53,3 +53,6 @@ VM(nope, const char *msg, ...) {
   fputs("# in ", stderr), emsep(v, Ph(ip), stderr, '\n'); }
  Hp = hp;
  return restart(v); }
+
+// errors
+VM(fail) { Jump(nope, "fail"); }

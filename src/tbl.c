@@ -1,6 +1,6 @@
 #include "lips.h"
 #include "tbl.h"
-#include "eql.h"
+#include "cmp.h"
 #include "two.h"
 #include "hom.h"
 #include "mem.h"

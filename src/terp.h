@@ -133,3 +133,4 @@ VM(gc);
 #define Have1() if (hp == sp) Jump((v->xp=1,gc)) // common case, faster comparison
 
 #define TERP(n, m, ...) VM(n) m(__VA_ARGS__)
+#define BINOP(nom, xpn) VM(nom) { xp = (xpn); NEXT(1); }

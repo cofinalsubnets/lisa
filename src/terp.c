@@ -5,7 +5,7 @@
 #include "hom.h"
 #include "tbl.h"
 #include "err.h"
-#include "eql.h"
+#include "cmp.h"
 #include "sym.h"
 #include "two.h"
 #include "str.h"
@@ -223,134 +223,6 @@ VM(cont) {
  cpy64(sp, t->xs+1, t->len-1);
  Jump(ret); }
 
-// instructions used by the compiler
-VM(hom_u) {
- obj x;
- ARY(1);
- TC(x = *ARGV, Num);
- i64 len = Gn(x) + 2;
- Have(len);
- hom h = (hom) hp;
- hp += len;
- set64((mem) h, nil, len);
- h[len-1] = (terp*) h;
- h[len-2] = NULL;
- GO(ret, Ph(h+len-2)); }
-
-VM(vset_u) {
- ARY(3);
- TC(ARGV[0], Vec);
- TC(ARGV[1], Num);
- num idx = getnum(ARGV[1]);
- vec ary = getvec(ARGV[0]);
- if (idx < 0 || idx >= ary->len) Jump(nope, oob_err_msg, idx, ary->len);
- GO(ret, ary->xs[idx] = ARGV[2]); }
-
-VM(vget_u) {
- ARY(2);
- TC(ARGV[0], Vec);
- TC(ARGV[1], Num);
- num idx = getnum(ARGV[1]);
- vec ary = getvec(ARGV[0]);
- if (idx < 0 || idx >= ary->len) Jump(nope, oob_err_msg, idx, ary->len);
- GO(ret, ary->xs[idx]); }
-
-VM(vec_u) {
- obj n = N(ARGC);
- Have(n + 1);
- vec t = (vec) hp;
- hp += 1 + n;
- cpy64(t->xs, ARGV, t->len = n);
- GO(ret, putvec(t)); }
-
-VM(emx) { obj h = *sp++ - W; G(h) = (terp*) xp;    AP(ip+W, h); }
-VM(emi) { obj h = *sp++ - W; G(h) = (terp*) N(xp); AP(ip+W, h); }
-
-VM(emx_u) {
- ARY(2);
- obj h = ARGV[1];
- TC(h, Hom);
- h -= W;
- G(h) = (terp*) ARGV[0];
- GO(ret, h); }
-
-VM(emi_u) {
- ARY(2);
- TC(ARGV[0], Num);
- obj h = ARGV[1];
- TC(h, Hom);
- h -= W;
- G(h) = (terp*) Gn(ARGV[0]);
- GO(ret, h); }
-
-VM(hgeti_u) { ARY(1); TC(ARGV[0], Hom); GO(ret,   N_(G(ARGV[0]))); }
-VM(hgetx_u) { ARY(1); TC(ARGV[0], Hom); GO(ret, (obj)G(ARGV[0])); }
-
-VM(hseek_u) {
- ARY(2); TC(ARGV[0], Hom); TC(ARGV[1], Num);
- GO(ret, H_(H(ARGV[0])+N(ARGV[1]))); }
-
-// string instructions
-VM(strl) {
- ARY(1); TC(*ARGV, Str);
- GO(ret, N_(getstr(*ARGV)->len-1)); }
-
-VM(strg) {
- ARY(2); TC(ARGV[0], Str); TC(ARGV[1], Num);
- GO(ret, N(ARGV[1]) < getstr(ARGV[0])->len-1 ?
-  N_(getstr(ARGV[0])->text[N(ARGV[1])]) :
-  nil); }
-
-VM(strconc) {
- i64 l = Gn(ARGC), sum = 0, i = 0;
- while (i < l) {
-  obj x = ARGV[i++];
-  TC(x, Str);
-  sum += S(x)->len - 1; }
- i64 words = b2w(sum+1) + 1;
- Have(words);
- str d = (str) hp;
- hp += words;
- d->len = sum + 1;
- d->text[sum] = 0;
- while (i) {
-  str x = getstr(ARGV[--i]);
-  sum -= x->len - 1;
-  cpy8(d->text+sum, x->text, x->len - 1); }
- GO(ret, putstr(d)); }
-
-#define min(a,b)(a<b?a:b)
-#define max(a,b)(a>b?a:b)
-VM(strs) {
- ARY(3);
- TC(ARGV[0], Str); TC(ARGV[1], Num); TC(ARGV[2], Num);
- str src = getstr(ARGV[0]);
- i64 lb = Gn(ARGV[1]), ub = Gn(ARGV[2]);
- lb = max(lb, 0);
- ub = min(ub, src->len-1);
- ub = max(ub, lb);
- i64 words = 1 + b2w(ub - lb + 1);
- Have(words);
- str dst = (str) hp;
- hp += words;
- dst->len = ub - lb + 1;
- dst->text[ub - lb] = 0;
- cpy8(dst->text, src->text + lb, ub - lb);
- GO(ret, putstr(dst)); }
-
-VM(strmk) {
- i64 i = 0, l = Gn(ARGC)+1, size = 1 + b2w(l);
- Have(size);
- str s = (str) hp;
- hp += size;
- for (obj x; i < l-1; s->text[i++] = Gn(x)) {
-  x = ARGV[i];
-  TC(x, Num);
-  if (x == Pn(0)) break; }
- s->text[i] = 0;
- s->len = i+1;
- GO(ret, putstr(s)); }
-
 VM(vararg) {
  i64 reqd = Gn(GF(ip)),
      vdic = Gn(ARGC) - reqd;
@@ -452,116 +324,9 @@ VM(pc0) {
 // finalize function instance closure
 VM(pc1) { G(ip) = clos; GF(ip) = (terp*) xp; NEXT(0); }
 
-// this is used to create closures.
-VM(take) {
- u64 n = Gn((obj) GF(ip));
- Have(n + 1);
- vec t = (vec) hp;
- hp += n + 1;
- t->len = n;
- cpy64(t->xs, sp, n);
- sp += n;
- GO(ret, putvec(t)); }
-
-// pairs
-OP1(car, X(xp)) OP1(cdr, Y(xp))
-VM(cons) {
- Have1(); hp[0] = xp, hp[1] = *sp++;
- xp = puttwo(hp); hp += 2; NEXT(1); }
-
-VM(car_u) { ARY(1); TC(*ARGV, Two); GO(ret, X(*ARGV)); }
-VM(cdr_u) { ARY(1); TC(*ARGV, Two); GO(ret, Y(*ARGV)); }
-VM(cons_u) {
- ARY(2); Have(2);
- hp[0] = ARGV[0], hp[1] = ARGV[1];
- xp = puttwo(hp), hp += 2; Jump(ret); }
-
-// arithmetic
-#define BINOP(nom, xpn) VM(nom) { xp = (xpn); NEXT(1); }
-BINOP(add,  xp + *sp++ - Num)
-BINOP(sub,  *sp++ - xp + Num)
-BINOP(mul,  N_(N(*sp++)  * N(xp)))
-BINOP(sar,  N_(N(*sp++) >> N(xp)))
-BINOP(sal,  N_(N(*sp++) << N(xp)))
-BINOP(band, xp & *sp++)
-BINOP(bor,  xp | *sp++)
-BINOP(bxor, (xp ^ *sp++) | Num)
-OP1(neg, N_(-N(xp)))
-VM(dqv) {
- if (xp == Pn(0)) Jump(nope, div0_err_msg, Gn(*sp));
- xp = Pn(Gn(*sp++) / Gn(xp));
- NEXT(1); }
-VM(mod) {
- if (xp == Pn(0)) Jump(nope, div0_err_msg, Gn(*sp));
- xp = Pn(Gn(*sp++) % Gn(xp));
- NEXT(1); }
-
-
-#define mm_u(_c,_v,_z,op){\
- obj x,*xs=_v,*l=xs+_c;\
- for(xp=_z;xs<l;xp=xp op Gn(x)){\
-  x = *xs++; TC(x, Num);}\
- GO(ret, Pn(xp));}
-#define mm_u0(_c,_v,_z,op){\
- obj x,*xs=_v,*l=xs+_c;\
- for(xp=_z;xs<l;xp=xp op Gn(x)){\
-  x = *xs++; TC(x, Num);\
-  if (x == Pn(0)) Jump(nope, div0_err_msg, xp);}\
- GO(ret, Pn(xp));}
-
-#define UBINOP(nom, dflt, op)\
- VM(nom##_u) { mm_u(Gn(ARGC), ARGV, dflt, op); }
-UBINOP(add, 0, +) UBINOP(mul, 1, *)
-UBINOP(band, -1, &) UBINOP(bor, 0, |) UBINOP(bxor, 0, ^)
-
-VM(sub_u) {
- if (!(xp = Gn(ARGC))) GO(ret, Pn(0));
- TC(*ARGV, Num);
- if (xp == 1) GO(ret, Pn(-Gn(*ARGV)));
- mm_u(xp-1,ARGV+1,Gn(*ARGV),-); }
-
-VM(div_u) {
- if (!(xp = N(ARGC))) GO(ret, ok);
- TC(*ARGV, Num);
- mm_u0(xp-1,ARGV+1,N(*ARGV),/); }
-VM(mod_u) {
- if (!(xp = N(ARGC))) GO(ret, ok);
- TC(*ARGV, Num);
- mm_u0(xp-1,ARGV+1,N(*ARGV),%); }
-
-VM(sar_u) {
- if (ARGC == N_(0)) GO(ret, Pn(0));
- TC(*ARGV, Num);
- mm_u(N(ARGC)-1, ARGV+1, N(*ARGV), >>); }
-VM(sal_u) {
- if (ARGC == N_(0)) GO(ret, N_(0));
- TC(*ARGV, Num);
- mm_u(N(ARGC)-1, ARGV+1, N(*ARGV), <<); }
-
 // type predicates
 #define TP(ty) VM(ty##pp) { AP(ip+W, (ty##p(xp)?ok:nil)); }
 TP(num) TP(hom) TP(two) TP(sym) TP(str) TP(tbl) TP(nil) TP(vec)
-
-#define cmp_(n, op) BINOP(n, *sp++ op xp ? xp : nil)
-cmp_(lt, <) cmp_(lteq, <=) cmp_(gteq, >=) cmp_(gt, >)
-// there should be a separate instruction for simple equality?
-BINOP(eq, eql(xp, *sp++) ? ok : nil)
-
-static VM(ord_) {
- bool (*r)(obj, obj) = (void*)v->xp;
- obj n=Gn(ARGC),*xs=ARGV,m,*l;
- switch(n){
-  case 0:no:GO(ret, nil);
-  default:for(l=xs+n-1,m=*xs;xs<l;m=*++xs)if(!(r(m,xs[1])))goto no;
-  case 1:break;}
- GO(ret, ok);}
-
-#define ord_w(r)v->xp=(obj)r;Jump(ord_)
-#define cmp(op, n)\
- static bool cmp_##n(obj a, obj b) { return a op b; }\
- VM(n##_u) { v->xp=(obj)cmp_##n;Jump(ord_); }
-cmp(<, lt) cmp(<=, lteq) cmp(>=, gteq) cmp(>, gt)
-VM(eq_u) { ord_w(eql); }
 
 static VM(typ) {
  for (obj *xs = ARGV, *l = xs + N(ARGC); xs < l;)
@@ -573,14 +338,5 @@ typp(two, Two) typp(sym, Sym) typp(nil, Nil) typp(vec, Vec)
 
 // stack manipulation
 VM(dupl) { Have1(); --sp; sp[0] = sp[1]; NEXT(1); }
-
-VM(ystr_u) {
- ARY(1);
- xp = *ARGV;
- TC(xp, Sym);
- GO(ret, getsym(xp)->nom); }
-
-// errors
-VM(fail) { Jump(nope, "fail"); }
 
 VM(rnd_u) { GO(ret, Pn(lcprng(&v->seed))); }

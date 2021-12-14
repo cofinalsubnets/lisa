@@ -381,12 +381,53 @@ obj eval(lips v, obj x) {
   x = pair(v, x, nil);
   return apply(v, tbl_get(v, Top, Eva), x); }
 
+// instructions used by the compiler
+VM(hom_u) {
+ obj x;
+ ARY(1);
+ TC(x = *ARGV, Num);
+ i64 len = Gn(x) + 2;
+ Have(len);
+ hom h = (hom) hp;
+ hp += len;
+ set64((mem) h, nil, len);
+ h[len-1] = (terp*) h;
+ h[len-2] = NULL;
+ GO(ret, Ph(h+len-2)); }
+
 VM(hfin_u) {
  ARY(1);
  obj a = *ARGV;
  TC(a, Hom);
  GF(button(Gh(a))) = (terp*) a;
  GO(ret, a); }
+
+VM(emx) { obj h = *sp++ - W; G(h) = (terp*) xp;    AP(ip+W, h); }
+VM(emi) { obj h = *sp++ - W; G(h) = (terp*) N(xp); AP(ip+W, h); }
+
+VM(emx_u) {
+ ARY(2);
+ obj h = ARGV[1];
+ TC(h, Hom);
+ h -= W;
+ G(h) = (terp*) ARGV[0];
+ GO(ret, h); }
+
+VM(emi_u) {
+ ARY(2);
+ TC(ARGV[0], Num);
+ obj h = ARGV[1];
+ TC(h, Hom);
+ h -= W;
+ G(h) = (terp*) Gn(ARGV[0]);
+ GO(ret, h); }
+
+VM(hgeti_u) { ARY(1); TC(ARGV[0], Hom); GO(ret,   N_(G(ARGV[0]))); }
+VM(hgetx_u) { ARY(1); TC(ARGV[0], Hom); GO(ret, (obj)G(ARGV[0])); }
+
+VM(hseek_u) {
+ ARY(2); TC(ARGV[0], Hom); TC(ARGV[1], Num);
+ GO(ret, H_(H(ARGV[0])+N(ARGV[1]))); }
 
 VM(ev_u) {
   ARY(1);

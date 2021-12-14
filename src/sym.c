@@ -43,3 +43,9 @@ VM(gsym_u) {
   y->nom = y->l = y->r = nil;
   y->code = v->count++ * mix;
   GO(ret, putsym(y)); }
+
+VM(ystr_u) {
+ ARY(1);
+ xp = *ARGV;
+ TC(xp, Sym);
+ GO(ret, getsym(xp)->nom); }
