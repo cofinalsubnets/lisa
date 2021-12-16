@@ -1,34 +1,53 @@
-(: (tbl8 t) (flat-map (tkeys t) (\ k (L k (tget t k))))
-   (tclone t) (ap tbl (tbl8 t))
-   (tzero syms .)
-    (tbl () (ap tbl (flat-map syms (\ y (L (sym) y))))))
-
 (:
+ dict-empty ~~
+ (dict-has d k) (:
+  (loop k ks vs) (? ks
+   (? (= k (A ks)) vs (loop k (B ks) (B vs))))
+  (loop k (A d) (B d)))
+ (dict-get d k) (? (: x (dict-has d k)) (A x))
+ (dict-set d k v) (X (X k (A d)) (X v (B d)))
+ (dict-del d k) (:
+  (loop k ks vs) (? ks
+   (? (= k (A ks)) (X (B ks) (B vs))
+    (dict-set (loop k (B ks) (B vs)) (A ks) (A vs))))
+  (loop k (A d) (B d)))
 
- (_? x) (&& (Y? x) (~ (ystr x))) ; anonymous symbol ?
- (?? u s) (||
-  (&& (_? u)
-   (thas s u)
-   (?? (tget s u) s))
-  (&& (2? u) (X (?? (A u) s) (?? (B u) s)))
+; st-has-sub thas
+; st-get-sub tget
+; (st-set-sub s k v) (, (tset s k v) s)
+; st-new tbl
+; st? tblp
+
+  (st-sub s) (AB s)
+  (st-has-sub s k)
+   (dict-has (AB s) k)
+  (st-get-sub s k)
+   (dict-get (AB s) k)
+  (st-set-sub s k v)
+   (L 'st (dict-set (AB s) k v))
+  (st? x) (&& (2? x) (= 'st (A x)))
+  (st-new) '(st (()))
+
+ (var? x) (&& (Y? x) (~ (ystr x))) ; anonymous symbol ?
+ (walk u s) (||
+  (&& (var? u)
+   (: t (st-has-sub s u))
+   (walk (A t) s))
+  (&& (2? u) (X (walk (A u) s) (walk (B u) s)))
   u)
- (m+ a b) (? (~ a)  b (\? a) (\ (m+ b (a))) (L a b))
- (m* a b) (? (~ a) () (\? a) (\ (m* (a) b)) (2? a) (map b a) (b a))
- ((disj f g) s) (? s (>>= (f (tclone s)) (\ f (m+ f (g s)))))
- ((conj f g) s) (m* (f s)  g)
-== (:
- (_! var val s) (, (tset s var val) s)
+ (m+ a b) (? (\? a) (\ (m+ b (a))) (~ a) b (~ b) a (X a b))
+ (m* a b) (? (\? a) (\ (m* (a) b)) (~ a) a (b a))
+ ((disj f g) s) (? s (m+ (f s) (g s)))
+ ((conj f g) s) (m* (f s) g)
 
- ((== u v) s) (? s(,
-
- (: x (?? u s) y (?? v s) (?
-  (= x y) s
-  (_? x) (_! x y s)
-  (_? y) (_! y x s)
-  (&& (2? x) (2? y)
-   (: t ((== (A x) (A y)) s))
-   ((== (B x) (B y)) t))))))
- ==))
+ ((== u v) s)
+  (: x (walk u s) y (walk v s) (?
+   (= x y) s
+   (var? x) (st-set-sub s x y)
+   (var? y) (st-set-sub s y x)
+   (&& (2? x) (2? y)
+    (: t ((== (A x) (A y)) s))
+    ((== (B x) (B y)) t)))))
 
 (:
  (:::
@@ -37,32 +56,37 @@
   &? (\ a x . (: b (L 'Zzz a) (? (~ x) b (L conj b (X '&? x)))))
   |? (\ a x . (: b (L 'Zzz a) (? (~ x) b (L disj b (X '|? x)))))))
 
-
 (: (run n g)
-    (>>= n (g (tbl)) (: (go n x)
+    (>>= n (g (st-new)) (: (go n x)
          (? (= n 0) x
             (2? (: y (flow x))) (X (A y) (go (- n 1) (B y)))
             y)))
 
     (lfoldl f z x) (?
-     (tblp x) (f z x)
+     (st? x) (f z x)
      (2? x) (lfoldl f (lfoldl f z (A x)) (B x))
      (\? x) (lfoldl f z (x))
      z)
 
    (flow q) (? (\? q) (flow (q)) q)
 
-   ((run_ n vars .) q)
+   (run_ n q vars .) (:
 
-   (:
+    avars (map (\ (sym)) vars)
+
+    dict (X avars vars)
+
+    (re s) (flat-map avars (\ av (?
+     (= av (: val (st-get-sub s av))) ()
+     (= '_ (: var (dict-get dict av))) ()
+     (L var val))))
+
     (loop n s) (?
      (|| (~ s) (= n 0)) s
-     (2? s) (X (A s) (loop (- n 1) (B s)))
+     (2? s) (X (re (A s)) (loop (- n 1) (B s)))
      (\? s) (loop n (s)))
-    (loop n (q (tzero vars)))
-    )
 
-   )
+    (loop n ((ap q avars) (st-new)))))
 
 (:::
  Kq
@@ -75,25 +99,34 @@
      (L flat-map
       (Q vars)
       (L '\ 'var (L ':
-       'v (L find (L '` (tkeys noms)) (L '\ 'k (L = 'var (L tget noms 'k))))
-       'val (L ?? 'v 'vals)
+       'v (L find (Q (tkeys noms)) (L '\ 'k (L = 'var (L tget noms 'k))))
+       'val (L walk 'v 'vals)
        (L '? (L = 'val 'v) () (L L 'var 'val)))))
      'm))
    ()
-   (L (X (X '\ par) (map (cu L `) avars)) (L tbl () noms)))))
+   (L (X (X '\ par) (map Q avars)) (Q (st-new))))))
 )
 
+(: (unord-eq a b) (&&
+    (= (len a) (len b))
+    (all (cu memq a) b)))
+(: (nines a) (|? (== a 9) (nines a)))
+
 (test kanren
- (= '((a (1 2 (3 (4))) b (3 (4)) c 4))
+ (unord-eq '((a (1 2 (3 (4))) b (3 (4)) c 4))
     (Kq a b c (&? (== a (L 1 2 b)) (== b (L 3 (L c))) (== c 4))))
- (= '((a 7 b 6) (a 7 b 5)) (Kq a b (&? (== a 7) (|? (== b 5) (== b 6)))))
- (= '((a 9 b 8)) (Kq a b (&? (== a 9) (== b 8))))
- (= '((a 1 b 1)) (Kq a b (&? (== a 1) (== a b))))
- (= '((a 7 b 3)) (Kq a b (&? (== a 7) (== b 3) (|? (== b 3) (== b 4)))))
- (= '((a (1 2) b 2)) (Kq a b (&? (== a (L 1 b)) (== b 2))))
+ (unord-eq '((a 7 b 6) (a 7 b 5)) (Kq a b (&? (== a 7) (|? (== b 5) (== b 6)))))
+ (unord-eq '((a 9 b 8)) (Kq a b (&? (== a 9) (== b 8))))
+ (unord-eq '((a 1 b 1)) (Kq a b (&? (== a 1) (== a b))))
+ (unord-eq '((a 7 b 3)) (Kq a b (&? (== a 7) (== b 3) (|? (== b 3) (== b 4)))))
+ (unord-eq '((a (1 2) b 2)) (Kq a b (&? (== a (L 1 b)) (== b 2))))
  (~ (Kq a (&? (== a 0) (== a 1))))
  (~ (Kq a b (&? (== a 7) (== b 3) (|? (== b 2) (== b 4)))))
- (= '((a 7 b 8 c 9) (a 4 b 5 c 6) (a 1 b 2 c 3))
+ (unord-eq '((a 1 b 2 c 2) (b 9 c 7) (c 88))
+    (Kq a b c (|? (&? (== a 1) (== b 2) (== c b))
+                  (&? (== c 7) (== b 9))
+                  (== c 88))))
+ (unord-eq '((a 7 b 8 c 9) (a 4 b 5 c 6) (a 1 b 2 c 3))
     (Kq a b c (|? (&? (== a 1) (== b 2) (== c 3))
-                   (&? (== a 4) (== b 5) (== c 6))
-                   (&? (== a 7) (== b 8) (== c 9))))))
+                  (&? (== a 4) (== b 5) (== c 6))
+                  (&? (== a 7) (== b 8) (== c 9))))))

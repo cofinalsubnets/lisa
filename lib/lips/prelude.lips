@@ -17,7 +17,7 @@
      (co xs .) (foldl1 xs (\ m f (\ x . (f (ap m x)))))
      ((flip f) x y) (f y x)
      ((diag f) x) (f x x)
-     ((cu f x .) y .) (ap f (cat x y))
+     ((cu f x .) y .) (ap f (append x y))
      (map f x) (?
       (2? x) (X (f (A x)) (map f (B x)))
       (\? x) (\ _ . (x (ap f _)))
@@ -49,7 +49,7 @@
       (: (loop m n) (? (< m n) (X m (loop (+ m 1) n)))
        (? (~ x) (loop 0 n) (loop n (A x))))
      (rho n xs .)
-      (: (loop n x) (? (= n 1) x (cat x (loop (- n 1) x)))
+      (: (loop n x) (? (= n 1) x (append x (loop (- n 1) x)))
        (? (> n 0) (loop n xs)))
 
      ; strings
@@ -106,12 +106,12 @@
        (X (X (A l) i) (inner (+ i 1) (B l)))
        (L (X (A l) i))))))
      (intercal i l) (:
-      (loop i l m) (? (~ m) l (cat l i (intercal i m)))
+      (loop i l m) (? (~ m) l (append l (append i (intercal i m))))
       (? l (loop i (A l) (B l))))
      (init l) (? (B l) (X (A l) (init (B l))))
      (last l) (? (B l) (last (B l)) (A l))
      (memq x k) (? x (? (= k (A x)) x (memq (B x) k)))
-     (rev l) (foldl l () (flip X))
+     (rev l) (foldl l () (\ a b (X b a)))
      (ldel l k) (select (\ x (~ (= x k))) l)
      (idx l x)
       (: (loop l x n)

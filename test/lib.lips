@@ -27,4 +27,4 @@
  (= 2 (idx (iota 3) 2) (len (iota 2)))
  (= id (id id) ((const id) const))
  (= 13 ((co (cu * 2) (cu + 5)) 4))
- (= '(3 2 1 0 1 2 3) (cat (rev (iota 4)) (iota 1 4))))
+ (= '(3 2 1 0 1 2 3) (append (rev (iota 4)) (iota 1 4))))
