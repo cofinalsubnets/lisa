@@ -28,13 +28,15 @@ cmp_(lt, <) cmp_(lteq, <=) cmp_(gteq, >=) cmp_(gt, >)
 BINOP(eq, eql(xp, *sp++) ? ok : nil)
 
 static VM(ord_) {
- bool (*r)(obj, obj) = (void*)v->xp;
- obj n=Gn(ARGC),*xs=ARGV,m,*l;
- switch(n){
-  case 0:no:GO(ret, nil);
-  default:for(l=xs+n-1,m=*xs;xs<l;m=*++xs)if(!(r(m,xs[1])))goto no;
-  case 1:break;}
- GO(ret, ok);}
+  bool (*r)(obj, obj) = (void*)v->xp;
+  obj n = N(ARGC), *xs = ARGV, m, *l;
+  switch (n) {
+    case 0: no: GO(ret, nil);
+    default:
+      for (l = xs + n - 1, m = *xs; xs < l; m= *++xs)
+        if (!r(m, xs[1])) goto no;
+    case 1: break;}
+  GO(ret, ok);}
 
 #define ord_w(r)v->xp=(obj)r;Jump(ord_)
 #define cmp(op, n)\

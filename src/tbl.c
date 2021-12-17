@@ -69,7 +69,8 @@ static u0 shrink(lips v, obj t) {
 
 ent tbl_ent_new(lips v, obj k, obj x) {
   ent e;
-  with(k, with(x, e = cells(v, Size(ent))));
+  with(k, with(x, e = cells(v, Width(ent))));
+  e->key = k, e->val = x;
   return e; }
 
 obj tbl_set_s(lips v, obj t, obj k, obj x) {
@@ -85,8 +86,6 @@ obj tbl_set_s(lips v, obj t, obj k, obj x) {
   with(t, e = tbl_ent_new(v, k, x));
 
   tbl y = gettbl(t);
-  e->key = k;
-  e->val = x;
   e->next = y->tab[bucket];
 
   y->tab[bucket] = e;
@@ -160,7 +159,7 @@ static obj tblkeys_i(lips v, obj t, i64 i) {
   (with(t, k = tblkeys_i(v, t, i+1)),
    tblkeys_j(v, gettbl(t)->tab[i], k)); }
 
-static Inline obj tblkeys(lips v, obj t) {
+Inline obj tblkeys(lips v, obj t) {
  return tblkeys_i(v, t, 0); }
 
 OP1(thas, tbl_get(v, xp, *sp++) ? ok : nil)

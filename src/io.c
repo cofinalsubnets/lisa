@@ -29,15 +29,15 @@ static obj read_list(lips, FILE*), readz(lips, const char*);
 static read_loop read_str, read_atom;
 
 static Inline obj read_buffered(lips v, FILE *i, read_loop *loop) {
- str c = cells(v, 2);
- return loop(v, i, c, 0, c->len = 8); }
+  str c = cells(v, 2);
+  return loop(v, i, c, 0, c->len = 8); }
 
 static int read_char(FILE *i) {
- for (int c;;) switch ((c = getc(i))) {
-  case '#': case ';':
-   do c = getc(i); while (c != '\n' && c != EOF);
-  case ' ': case '\t': case '\n': continue;
-  default: return c; } }
+  for (int c;;) switch ((c = getc(i))) {
+    case '#': case ';':
+      do c = getc(i); while (c != '\n' && c != EOF);
+    case ' ': case '\t': case '\n': continue;
+    default: return c; } }
 
 obj read_quoted(lips v, FILE *i) {
  obj x = parse(v, i);
@@ -59,6 +59,14 @@ obj parse(lips v, FILE* i) {
    x = read_buffered(v, i, read_atom),
    y = readz(v, chars(x)),
    nump(y) ? y : intern(v, x); } }
+
+VM(par_u) {
+  PACK();
+  obj x = parse(v, stdin);
+  if (!x && !feof(stdin)) return restart(v);
+  else v->xp = x ? pair(v, x, nil) : nil;
+  UNPACK();
+  Jump(ret); }
 
 static obj read_list(lips v, FILE *i) {
  obj x, y, c = read_char(i);

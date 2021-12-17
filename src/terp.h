@@ -6,7 +6,7 @@
  _(idT, NULL)        _(imm, NULL)      _(arg, NULL)\
  _(clo, NULL)        _(loc, NULL)      _(take, NULL)\
  _(locals, NULL)     _(loc_, NULL)\
- _(clos, NULL)     _(encll, NULL)\
+ _(clos, NULL)     _(encll, NULL) _(par_u, "read")\
  _(encln, NULL)      _(yield, NULL)    _(ret, NULL)\
  _(jump, NULL)       _(branch, NULL)   _(barnch, NULL)\
  _(call, NULL)       _(rec, NULL)      _(lbind, NULL)\
