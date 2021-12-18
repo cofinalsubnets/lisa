@@ -5,6 +5,8 @@
 #include "err.h"
 #include "hom.h"
 #include "sym.h"
+#include "two.h"
+#include "mem.h"
 #include <stdlib.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -33,9 +35,19 @@ static obj script(lips v, const char *path, FILE *f) {
 static lips lips_fin(lips v) { return
  free(v->pool), (lips) (v->pool = NULL); }
 
-static NoInline u0 rin(lips v, const char *a, terp *b) {
+static u0 rin(lips v, const char *a, terp *b) {
  obj z = interns(v, a);
  tbl_set(v, Top, z, _N(b)); }
+
+static NoInline u0 defprim(lips v, const char *a, terp *inst) {
+  hom prim;
+  obj nom = pair(v, interns(v, a), nil);
+  with(nom, prim = cells(v, 4));
+  prim[0] = inst;
+  prim[1] = (terp*) nom;
+  prim[2] = NULL;
+  prim[3] = (terp*) prim;
+  tbl_set(v, Top, A(nom), _H(prim)); }
 
 static lips lips_init(lips v) {
  const num ini_len = 1;
@@ -101,5 +113,4 @@ int main(int argc, char** argv) {
     r = xval(script(&V, path, fopen(path, "r"))); }
   if (r == OK && flag & TAKKA) r = repl(&V, stdin, stdout);
   lips_fin(&V); }
-
  return r; }

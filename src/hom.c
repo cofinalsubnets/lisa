@@ -393,12 +393,6 @@ static NoInline obj hini(lips v, u64 n) {
 static obj hfin(lips v, obj a) {
  return (obj) (GF(button(Gh(a))) = (terp*) a); }
 
-NoInline u0 defprim(lips v, const char *a, terp *inst) {
- obj prim, nom = pair(v, interns(v, a), nil);
- with(nom, prim = hini(v, 2));
- prim = em2(inst, nom, prim);
- tbl_set(v, Top, X(nom), prim); }
-
 obj eval(lips v, obj x) {
   obj args = pair(v, x, nil),
       ev = tbl_get(v, Top, Eva);

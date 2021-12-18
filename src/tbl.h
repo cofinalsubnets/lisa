@@ -1,7 +1,6 @@
 #define mix ((u64)2708237354241864315)
 u64 hash(lips, obj);
 u0 maybe_shrink(lips, obj);
-ent tbl_ent(lips, obj, obj);
 obj
   tblkeys(lips, obj),
   table(lips),
