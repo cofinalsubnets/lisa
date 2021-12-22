@@ -35,7 +35,7 @@ obj interns(lips v, const char *s) {
   return intern(v, string(v, s)); }
 
 VM(gsym_u) {
-  if (ARGC > Pn(0) && strp(*ARGV))
+  if (ARGC > _N(0) && strp(*ARGV))
     RETC(v->xp = intern(v, *ARGV));
   Have(Width(sym));
   sym y = (sym) hp;

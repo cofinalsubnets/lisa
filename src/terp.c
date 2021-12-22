@@ -37,7 +37,7 @@ VM(gc) { u64 n = v->xp; CALLC(reqsp(v, n)); NEXT(0); }
 // " virtual machine instructions "
 //
 // load instructions
-OP2(imm, (obj)GF(ip)) OP1(unit, nil) OP1(one, N_(1)) OP1(zero, N_(0))
+OP2(imm, (obj)GF(ip)) OP1(unit, nil) OP1(one, _N(1)) OP1(zero, _N(0))
 
 // indexed load instructions
 // this pointer arithmetic works because fixnums are
@@ -69,8 +69,8 @@ VM(locals) {
 // the "static" type and arity checking that would have been
 // done by the compiler if the function had been bound early.
 VM(lbind) {
- obj w = (obj) GF(ip), d = X(Y(w)), y = X(w);
- if (!(w = tbl_get(v, d, xp = Y(Y(w))))) {
+ obj w = (obj) GF(ip), d = AB(w), y = A(w);
+ if (!(w = tbl_get(v, d, xp = BB(w)))) {
   char *nom = nilp(getsym(xp)->nom) ? "()" : symnom(xp);
   Jump(nope, "free variable : %s", nom); }
  xp = w;
@@ -109,7 +109,6 @@ VM(brne)    Br(eql(*sp++, xp), FF, ok, GF, nil)
 
 BR1(<, xp, nil)
 #undef Br
-#undef B
 
 // unconditional jumps
 VM(jump) { AP((obj) GF(ip), xp); }
@@ -142,7 +141,7 @@ VM(ap_u) {
  Have(adic);
  obj off = SUBR, rp = RETP;
  sp = ARGV + N(ARGC) - adic;
- for (u64 j = 0; j < adic; y = Y(y)) sp[j++] = X(y);
+ for (u64 j = 0; j < adic; y = B(y)) sp[j++] = A(y);
  fp = sp -= Width(frame);
  RETP = rp;
  ARGC = _N(adic);

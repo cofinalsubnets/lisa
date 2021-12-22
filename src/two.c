@@ -12,17 +12,17 @@ obj pair(lips v, obj a, obj b) {
  return A(t) = a, B(t) = b, t; }
 
 u64 llen(obj l) {
- for (u64 i = 0;; l = Y(l), i++)
+ for (u64 i = 0;; l = B(l), i++)
   if (!twop(l)) return i; }
 
 // pairs
-OP1(car, X(xp)) OP1(cdr, Y(xp))
+OP1(car, A(xp)) OP1(cdr, B(xp))
 VM(cons) {
  Have1(); hp[0] = xp, hp[1] = *sp++;
  xp = puttwo(hp); hp += 2; NEXT(1); }
 
-VM(car_u) { ARY(1); TC(*ARGV, Two); GO(ret, X(*ARGV)); }
-VM(cdr_u) { ARY(1); TC(*ARGV, Two); GO(ret, Y(*ARGV)); }
+VM(car_u) { ARY(1); TC(*ARGV, Two); GO(ret, A(*ARGV)); }
+VM(cdr_u) { ARY(1); TC(*ARGV, Two); GO(ret, B(*ARGV)); }
 VM(cons_u) {
  ARY(2); Have(2);
  hp[0] = ARGV[0], hp[1] = ARGV[1];

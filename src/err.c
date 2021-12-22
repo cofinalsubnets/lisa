@@ -39,8 +39,8 @@ VM(nope, const char *msg, ...) {
   // print backtrace
   for (;;) {
     ip = RETP, fp += Size(frame) + getnum(ARGC) + getnum(SUBR);
-    if (button(Gh(ip))[-1] == yield) break;
-    fputs("# in ", stderr), emsep(v, Ph(ip), stderr, '\n'); }
+    if (button(H(ip))[-1] == yield) break;
+    fputs("# in ", stderr), emsep(v, ip, stderr, '\n'); }
 
   v->hp = hp;
   return restart(v); }

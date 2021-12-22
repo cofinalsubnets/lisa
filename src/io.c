@@ -135,7 +135,7 @@ static NoInline obj readz_2(const char *s, i64 rad) {
  for (int i, c; (c = *s++); a += i) {
   a *= rad, i = sidx(dig, cmin(c));
   if (i < 0 || i >= rad) return nil; }
- return N_(a); }
+ return _N(a); }
 
 static NoInline obj readz_1(const char *s) {
  if (*s == '0') switch (cmin(s[1])) {
@@ -149,7 +149,7 @@ static NoInline obj readz_1(const char *s) {
 static Inline obj readz(lips _, const char *s) {
  obj q;
  switch (*s) {
-  case '-': return nump(q = readz_1(s+1)) ? N_(-N(q)) : q;
+  case '-': return nump(q = readz_1(s+1)) ? _N(-N(q)) : q;
   case '+': s++;
   default: return readz_1(s); } }
 
@@ -176,8 +176,8 @@ static u0 emtwo_(lips v, two w, FILE *o) {
               emsep(v, w->a, o, ')'); }
 
 static u0 emtwo(lips v, two w, FILE *o) {
- w->a == Qt && twop(w->b) && nilp(Y(w->b)) ?
-  (fputc('\'', o), emit(v, X(w->b), o)) :
+ w->a == Qt && twop(w->b) && nilp(B(w->b)) ?
+  (fputc('\'', o), emit(v, A(w->b), o)) :
   (fputc('(', o), emtwo_(v, w, o)); }
 
 static u0 emvec(lips v, vec e, FILE *o) {
@@ -192,8 +192,8 @@ static u0 emhomn(lips v, obj x, FILE *o) {
  fputc('\\', o);
  switch (kind(x)) {
   case Sym: return emit(v, x, o);
-  case Two: if (symp(X(x))) emit(v, X(x), o);
-            if (twop(Y(x))) emhomn(v, Y(x), o); } }
+  case Two: if (symp(A(x))) emit(v, A(x), o);
+            if (twop(B(x))) emhomn(v, B(x), o); } }
 
 u0 emit(lips v, obj x, FILE *o) {
  switch (kind(x)) {
@@ -208,7 +208,7 @@ u0 emit(lips v, obj x, FILE *o) {
 
 // print to console
 VM(em_u) {
- u64 l = Gn(ARGC), i;
+ u64 l = N(ARGC), i;
  if (l) {
   for (i = 0; i < l - 1; i++)
    emsep(v, ARGV[i], stdout, ' ');
@@ -217,7 +217,7 @@ VM(em_u) {
  Jump(ret); }
 
 VM(putc_u) { ARY(1); fputc(N(*ARGV), stdout); Jump(ret); }
-VM(getc_u) { GO(ret, feof(stdin) ? nil : N_(getc(stdin))); }
+VM(getc_u) { GO(ret, feof(stdin) ? nil : _N(getc(stdin))); }
 
 VM(slurp) {
   ARY(1);

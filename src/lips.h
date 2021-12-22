@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <setjmp.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 // thanks !!
 
@@ -51,17 +52,19 @@ extern const uint32_t *tnoms;
 #define W2 (W*2)
 #define TNom(t) ((char*)(tnoms+(t)))
 #define tnom TNom
-#define Gh(x) gethom(x)
-#define H(x)  gethom(x)
-#define H_(x) puthom(x)
-#define _H(x) puthom(x)
-#define Ph(x) puthom(x)
-#define Gn getnum
-#define Pn putnum
-#define N(x) getnum(x)
-#define N_(x) putnum(x)
-#define _N(x) putnum(x)
 #define kind(x) ((x)&7)
+#define H(x)  gethom(x)
+#define _H(x) puthom(x)
+#define N(x) getnum(x)
+#define _N(x) putnum(x)
+#define S(x) getstr(x)
+#define _S(x) putstr(x)
+#define V(x) getvec(x)
+#define _V(x) putvec(x)
+#define T(x) gettbl(x)
+#define _T(x) puttbl(x)
+//#define Y(x) getsym(x)
+//#define _Y(x) putsym(x)
 #define gethom(x) ((hom)((x)-Hom))
 #define puthom(x) ((obj)((x)+Hom))
 #define gettwo(x) ((two)((x)-Two))
@@ -72,14 +75,6 @@ extern const uint32_t *tnoms;
 #define putsym(x) ((obj)(x)+Sym)
 #define getvec(x) ((vec)((x)-Vec))
 #define putvec(x) ((obj)(x)+Vec)
-#define S(x) getstr(x)
-#define _S(x) putstr(x)
-//#define Y(x) getsym(x)
-//#define _Y(x) putsym(x)
-#define V(x) getvec(x)
-#define _V(x) putvec(x)
-#define T(x) gettbl(x)
-#define _T(x) puttbl(x)
 #define getstr(x) ((str)((obj)(x)-Str))
 #define putstr(x) ((obj)(x)+Str)
 #define gettbl(x) ((tbl)((obj)(x)-Tbl))
@@ -97,11 +92,6 @@ extern const uint32_t *tnoms;
 #define with(y,...) (mm(&(y)),(__VA_ARGS__),um)
 #define Size(t) Width(t)
 #define Width(t) b2w(sizeof(struct t))
-#define Ip v->ip
-#define Fp v->fp
-#define Hp v->hp
-#define Sp v->sp
-#define Xp v->xp
 #define If v->glob[Cond]
 #define De v->glob[Def]
 #define La v->glob[Lamb]
@@ -113,8 +103,5 @@ extern const uint32_t *tnoms;
 #define Eva v->glob[Eval]
 #define App v->glob[Apply]
 
-static Inline obj run_lips(lips v) {
-  return (*H(v->ip))(v, v->ip, v->fp, v->sp, v->hp, v->xp); }
-
-_Static_assert( sizeof(i64*) == sizeof(i64), "64 bit pointers");
-_Static_assert( -1 >> 1 == -1, "sign-extended bit shifts");
+_Static_assert(sizeof(i64*) == sizeof(i64), "64 bit pointers");
+_Static_assert(-1 >> 1 == -1, "sign-extended bit shifts");

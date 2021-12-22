@@ -6,10 +6,10 @@
 
 static bool eql_two(obj a, obj b) {
   // pairs are immutable, so we can deduplicate their insides.
-  if (eql(X(a), X(b))) {
-    X(b) = X(a);
-    if (eql(Y(a), Y(b))) {
-      Y(b) = Y(a);
+  if (eql(A(a), A(b))) {
+    A(b) = A(a);
+    if (eql(B(a), B(b))) {
+      B(b) = B(a);
       return true; } }
   return false; }
 

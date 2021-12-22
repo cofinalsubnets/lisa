@@ -78,7 +78,7 @@ insts(ninl)
 // without using the stack. so the interpreter has to restore
 // the current values in the vm struct before it makes any
 // "external" function calls.
-#define PACK() (v->ip=ip,Sp=sp,Hp=hp,Fp=fp,v->xp=xp)
+#define PACK() (v->ip=ip,v->sp=sp,v->hp=hp,v->fp=fp,v->xp=xp)
 #define UNPACK() (fp=v->fp,hp=v->hp,sp=v->sp,ip=v->ip,xp=v->xp)
 #define CALLC(...)(PACK(),(__VA_ARGS__),UNPACK())
 #define RETC(...){CALLC(__VA_ARGS__);Jump(ret);}

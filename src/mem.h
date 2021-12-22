@@ -1,4 +1,4 @@
-#define Avail (Sp-Hp)
+#define Avail (v->sp-v->hp)
 #define balloc(t) bump(v, Width(t))
 #define GC(n) obj n(lips v, obj x, u64 len0, mem base0)
 #define inb(o,l,u) (o>=l&&o<u)

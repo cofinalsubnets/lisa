@@ -6,14 +6,14 @@
 
 // this is used to create closures.
 VM(take) {
- u64 n = Gn((obj) GF(ip));
+ u64 n = N((obj) GF(ip));
  Have(n + 1);
  vec t = (vec) hp;
  hp += n + 1;
  t->len = n;
  cpy64(t->xs, sp, n);
  sp += n;
- GO(ret, putvec(t)); }
+ GO(ret, _V(t)); }
 
 VM(vset_u) {
  ARY(3);

@@ -1,6 +1,6 @@
 obj eval(lips, obj), homnom(lips, obj);
-#define F(x) ((hom)(x)+1)
-#define G(x) (*(hom)(x))
+#define F(x) (H(x)+1)
+#define G(x) (*H(x))
 #define FF(x) F(F(x))
 #define FG(x) F(G(x))
 #define GF(x) G(F(x))

@@ -13,16 +13,16 @@ obj string(lips v, const char* c) {
 // string instructions
 VM(strl) {
  ARY(1); TC(*ARGV, Str);
- GO(ret, N_(getstr(*ARGV)->len-1)); }
+ GO(ret, _N(getstr(*ARGV)->len-1)); }
 
 VM(strg) {
  ARY(2); TC(ARGV[0], Str); TC(ARGV[1], Num);
  GO(ret, N(ARGV[1]) < getstr(ARGV[0])->len-1 ?
-  N_(getstr(ARGV[0])->text[N(ARGV[1])]) :
+  _N(getstr(ARGV[0])->text[N(ARGV[1])]) :
   nil); }
 
 VM(strconc) {
- i64 l = Gn(ARGC), sum = 0, i = 0;
+ i64 l = N(ARGC), sum = 0, i = 0;
  while (i < l) {
   obj x = ARGV[i++];
   TC(x, Str);
@@ -45,7 +45,7 @@ VM(strs) {
  ARY(3);
  TC(ARGV[0], Str); TC(ARGV[1], Num); TC(ARGV[2], Num);
  str src = getstr(ARGV[0]);
- i64 lb = Gn(ARGV[1]), ub = Gn(ARGV[2]);
+ i64 lb = N(ARGV[1]), ub = N(ARGV[2]);
  lb = max(lb, 0);
  ub = min(ub, src->len-1);
  ub = max(ub, lb);
@@ -59,14 +59,14 @@ VM(strs) {
  GO(ret, putstr(dst)); }
 
 VM(strmk) {
- i64 i = 0, l = Gn(ARGC)+1, size = 1 + b2w(l);
+ i64 i = 0, l = N(ARGC)+1, size = 1 + b2w(l);
  Have(size);
  str s = (str) hp;
  hp += size;
- for (obj x; i < l-1; s->text[i++] = Gn(x)) {
+ for (obj x; i < l-1; s->text[i++] = N(x)) {
   x = ARGV[i];
   TC(x, Num);
-  if (x == Pn(0)) break; }
+  if (x == _N(0)) break; }
  s->text[i] = 0;
  s->len = i+1;
  GO(ret, putstr(s)); }

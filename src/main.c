@@ -14,7 +14,6 @@
 #include <time.h>
 #include <string.h>
 #include <errno.h>
-#include <stdbool.h>
 
 #ifndef PREFIX
 #define PREFIX "/usr/local"

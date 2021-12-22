@@ -13,11 +13,17 @@ static Inline u64 hash_bytes(u64 len, char *us) {
 static Inline i64 tbl_idx(u64 cap, u64 co) {
   return co % cap; }
 
+static ent tbl_ent(lips v, obj u, obj k) {
+  tbl t = gettbl(u);
+  ent e = t->tab[tbl_idx(t->cap, hash(v, k))];
+  for (; e; e = e->next) if (eql(e->key, k)) return e;
+  return NULL; }
+
 u64 hash(lips v, obj x) {
   switch (kind(x)) {
     case Sym: return getsym(x)->code;
     case Str: return hash_bytes(getstr(x)->len, getstr(x)->text);
-    case Two: return hash(v, X(x)) ^ hash(v, Y(x));
+    case Two: return hash(v, A(x)) ^ hash(v, B(x));
     case Hom: return hash(v, homnom(v, x)) ^ mix;
     case Num: return rotr64(mix * x, 16);
     case Vec: return rotr64(mix * V(x)->len, 32);
@@ -26,51 +32,53 @@ u64 hash(lips v, obj x) {
 // grow(vm, tbl, new_size): destructively resize a hash table.
 // new_size words of memory are allocated for the new bucket array.
 // the old table entries are reused to populate the modified table.
-static obj grow(lips v, obj t, i64 ns) {
-  ent e, ch, *b, *d;
-  with(t, set64((mem) (b = cells(v, ns)), 0, ns));
-  tbl o = gettbl(t);
-  i64 u, n = o->cap;
-  d = o->tab; o->tab = b; o->cap = ns;
-  while (n--) for (ch = d[n]; ch;)
-    e = ch,
-    ch = ch->next,
-    u = tbl_idx(ns, hash(v, e->key)),
-    e->next = b[u],
-    b[u] = e;
+static obj grow(lips v, obj t, u64 cap1) {
+  ent *tab0, *tab1;
+  with(t, tab1 = cells(v, cap1));
+  set64(tab1, 0, cap1);
+  tab0 = T(t)->tab;
+
+  for (u64 cap0 = T(t)->cap; cap0--;)
+    for (ent e, es = tab0[cap0]; es;) {
+      e = es, es = es->next;
+      u64 i = tbl_idx(cap1, hash(v, e->key));
+      e->next = tab1[i], tab1[i] = e; }
+
+  T(t)->cap = cap1, T(t)->tab = tab1;
   return t; }
 
-// it's possible to shrink a table without allocating any
-// new memory.
+static Inline u64 tbl_load(obj t) {
+  return T(t)->len / T(t)->cap; }
+
+// shrinking a table never allocates memory, so it's safe
+// to do at any time.
 static u0 shrink(lips v, obj t) {
   ent e = NULL, f, g;
-  tbl u = gettbl(t);
+  tbl u = T(t);
 
   // collect all entries
-  for (t = 0; t < u->cap; t++)
-    for (f = u->tab[t], u->tab[t] = NULL; f;)
+  for (u64 i = u->cap; i--;)
+    for (f = u->tab[i], u->tab[i] = NULL; f;)
       g = f->next,
       f->next = e,
       e = f,
       f = g;
 
   // shrink bucket array
-  while (u->len >= 2 * u->cap) u->cap >>= 1;
+  while (u->cap > 1 && tbl_load(t) < 1) u->cap >>= 1;
 
   // reinsert
-  while (e)
-    t = tbl_idx(u->cap, hash(v, e->key)),
+  while (e) {
+    u64 i = tbl_idx(u->cap, hash(v, e->key));
     f = e->next,
-    e->next = u->tab[t],
-    u->tab[t] = e,
-    e = f; }
+    e->next = u->tab[i],
+    u->tab[i] = e,
+    e = f; } }
 
 obj tbl_set_s(lips v, obj t, obj k, obj x) {
   u64 i = tbl_idx(gettbl(t)->cap, hash(v, k));
-  ent e = gettbl(t)->tab[i];
-  while (e)
-    if (eql(e->key, k)) return e->val = x;
-    else e = e->next;
+  ent e = tbl_ent(v, t, k);
+  if (e) return e->val = x;
 
   // it's not here, so allocate an entry
   tbl y;
@@ -80,45 +88,34 @@ obj tbl_set_s(lips v, obj t, obj k, obj x) {
     y = gettbl(t),
     e->next = y->tab[i],
     y->tab[i] = e,
-    y->len += 1
-  )));
+    y->len += 1)));
 
   return x; }
 
 static u0 maybe_grow(lips v, obj t) {
   tbl y = gettbl(t);
-  if (y->len > 2 * y->cap) grow(v, t, y->cap*2); }
-
-u0 maybe_shrink(lips v, obj t) {
-  tbl y = gettbl(t);
-  if (y->len && y->cap > 2 * y->len) shrink(v, t); }
+  if (tbl_load(t) > 1) grow(v, t, y->cap*2); }
 
 obj tbl_set(lips v, obj t, obj k, obj x) {
   with(t, x = tbl_set_s(v, t, k, x));
   with(x, maybe_grow(v, t));
   return x; }
 
-static obj tbl_del(lips v, obj t, obj k) {
+static obj tbl_del(lips v, obj t, obj key) {
   tbl y = gettbl(t);
-  obj r = nil;
-  i64 b = tbl_idx(y->cap, hash(v, k));
+  obj val = nil;
+  i64 b = tbl_idx(y->cap, hash(v, key));
   ent e = y->tab[b];
-  struct ent _v = {0,0,e};
-  for (ent l = &_v; l && l->next; l = l->next)
-    if (l->next->key == k) {
-      r = l->next->val;
+  struct ent prev = {0,0,e};
+  for (ent l = &prev; l && l->next; l = l->next)
+    if (l->next->key == key) {
+      val = l->next->val;
       l->next = l->next->next;
       y->len--;
       break; }
-  y->tab[b] = _v.next;
-  with(r, maybe_shrink(v, t));
-  return r; }
-
-static ent tbl_ent(lips v, obj _t, obj k) {
-  tbl t = gettbl(_t);
-  ent e = t->tab[tbl_idx(t->cap, hash(v, k))];
-  for (; e; e = e->next) if (eql(e->key, k)) return e;
-  return NULL; }
+  y->tab[b] = prev.next;
+  if (tbl_load(t) < 1) shrink(v, t);
+  return val; }
 
 obj tbl_get(lips v, obj t, obj k) {
   ent e = tbl_ent(v, t, k);
@@ -156,7 +153,7 @@ Inline obj tblkeys(lips v, obj t) {
  return tblkeys_i(v, t, 0); }
 
 OP1(thas, tbl_get(v, xp, *sp++) ? ok : nil)
-OP1(tlen, N_(gettbl(xp)->len))
+OP1(tlen, _N(gettbl(xp)->len))
 VM(tkeys) { CALLC(v->xp = tblkeys(v, xp)); NEXT(1); }
 
 VM(tblc) {
@@ -166,7 +163,7 @@ VM(tblc) {
  GO(ret, xp ? ok : nil); }
 
 static obj tblss(lips v, i64 i, i64 l) {
- mem fp = Fp;
+ mem fp = v->fp;
  return i > l-2 ? ARGV[i-1] :
   (tbl_set(v, v->xp, ARGV[i], ARGV[i+1]),
    tblss(v, i+2, l)); }
@@ -189,7 +186,7 @@ VM(tblks) {
 
 VM(tbll) {
  ARY(1); TC(*ARGV, Tbl);
- GO(ret, N_(gettbl(*ARGV)->len)); }
+ GO(ret, _N(gettbl(*ARGV)->len)); }
 
 VM(tset) {
  obj x = *sp++, y = *sp++;
