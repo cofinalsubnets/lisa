@@ -36,7 +36,7 @@ typedef struct lips {
  i64 seed, count, // random state
      t0, len, *pool; // memory state
  root root; // gc protection list
- jmp_buf *restart; // top level restart
+ jmp_buf restart; // top level restart
 } *lips;
 
 // this is the type of interpreter functions

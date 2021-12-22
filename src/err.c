@@ -4,55 +4,46 @@
 #include "hom.h"
 #include "io.h"
 
-static u0 vferrp(FILE* o, char *msg, va_list xs) {
-  fputs("# ", o);
-  vfprintf(o, msg, xs);
-  fputc('\n', o); }
-
 u0 errp(lips v, char *msg, ...) {
   va_list xs;
+  fputs("# ", stderr);
   va_start(xs, msg);
-  vferrp(stderr, msg, xs);
-  va_end(xs); }
-
-obj err(lips v, char *msg, ...) {
-  va_list xs;
-  va_start(xs, msg);
-  vferrp(stderr, msg, xs);
-  return restart(v); }
+  vfprintf(stderr, msg, xs);
+  va_end(xs);
+  fputc('\n', stderr); }
 
 obj restart(lips v) {
   v->fp = v->sp = v->pool + v->len;
   v->xp = v->ip = nil;
   v->root = NULL;
-  if (v->restart) longjmp(*v->restart, 1);
-  else errp(v, "no restart"),
-       abort(); }
-
-// this is for runtime errors from the interpreter, it prints
-// a backtrace and everything.
-static Inline u0 perrarg(lips v, mem fp) {
- i64 i = 0, argc = fp == v->pool + v->len ? 0 : getnum(ARGC);
- if (argc) for (fputc(' ', stderr);;fputc(' ', stderr)) {
-  obj x = ARGV[i++];
-  emit(v, x, stderr);
-  if (i == argc) break; }
- fputc(')', stderr); }
+  longjmp(v->restart, 1); }
 
 VM(nope, const char *msg, ...) {
- fputs("# (", stderr);
- emit(v, Ph(ip), stderr);
- perrarg(v, fp);
- va_list xs;
- fputs(" : ", stderr);
- va_start(xs, msg); vfprintf(stderr, msg, xs);
- fputc('\n', stderr);
- for (;;) {
-  ip = RETP, fp += Size(frame) + getnum(ARGC) + getnum(SUBR);
-  if (button(Gh(ip))[-1] == yield) break;
-  fputs("# in ", stderr), emsep(v, Ph(ip), stderr, '\n'); }
- Hp = hp;
- return restart(v); }
+  // print current call as (function arg1 arg2 ...)
+  fputs("# (", stderr);
+  emit(v, ip, stderr);
+  mem top = v->pool + v->len;
+  i64 i = 0, argc = fp == top ? 0 : N(ARGC);
+  if (argc) for (fputc(' ', stderr);; fputc(' ', stderr)) {
+    obj x = ARGV[i++];
+    emit(v, x, stderr);
+    if (i == argc) break; }
+  fputc(')', stderr);
+
+  // print error message
+  va_list xs;
+  fputs(" : ", stderr);
+  va_start(xs, msg); vfprintf(stderr, msg, xs);
+  fputc('\n', stderr);
+
+  // print backtrace
+  for (;;) {
+    ip = RETP, fp += Size(frame) + getnum(ARGC) + getnum(SUBR);
+    if (button(Gh(ip))[-1] == yield) break;
+    fputs("# in ", stderr), emsep(v, Ph(ip), stderr, '\n'); }
+
+  v->hp = hp;
+  return restart(v); }
 
 // errors
 VM(fail) { Jump(nope, "fail"); }

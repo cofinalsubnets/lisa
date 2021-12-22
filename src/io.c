@@ -10,6 +10,8 @@
 #include <string.h>
 #include <errno.h>
 
+#define bind(v, x) if (!((v)=(x))) return 0
+
 // these are the names of the fundamental types.
 // obviously this only works if the type names
 // are all 4 bytes long (counting the NUL)
@@ -40,8 +42,8 @@ static int read_char(FILE *i) {
     default: return c; } }
 
 obj read_quoted(lips v, FILE *i) {
- obj x = parse(v, i);
- if (!x) return x;
+ obj x;
+ bind(x, parse(v, i));
  x = pair(v, x, nil);
  return pair(v, Qt, x); }
 
@@ -50,7 +52,7 @@ obj parse(lips v, FILE* i) {
  obj x, y;
  switch (c) {
   case EOF: return 0;
-  case ')': return err(v, "unmatched %s delimiter", "right");
+  case ')': return errp(v, "unmatched %s delimiter", "right"), 0;
   case '(': return read_list(v, i);
   case '"': return read_buffered(v, i, read_str);
   case '\'': return read_quoted(v, i);
@@ -71,7 +73,7 @@ VM(par_u) {
 static obj read_list(lips v, FILE *i) {
  obj x, y, c = read_char(i);
  switch (c) {
-  case EOF: return err(v, "unmatched %s delimiter", "left");
+  case EOF: return errp(v, "unmatched %s delimiter", "left"), 0;
   case ')': return nil;
   default: return
    ungetc(c, i),
@@ -112,7 +114,7 @@ static obj read_file_loop(lips v, FILE *p, str o, u64 n, u64 lim) {
 
 obj read_file(lips v, const char *path) {
  FILE *i = fopen(path, "r");
- if (!i) return err(v, "%s : %s", path, strerror(errno));
+ if (!i) return errp(v, "%s : %s", path, strerror(errno)), restart(v);
  obj s = read_buffered(v, i, read_file_loop);
  fclose(i);
  return s; }
@@ -152,6 +154,8 @@ static Inline obj readz(lips _, const char *s) {
   default: return readz_1(s); } }
 
 
+u0 ems(lips v, FILE *o, obj x, char s) {
+ emit(v, x, o), fputc(s, o); }
 u0 emsep(lips v, obj x, FILE *o, char s) {
  emit(v, x, o), fputc(s, o); }
 
