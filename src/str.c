@@ -59,17 +59,17 @@ VM(strs) {
  GO(ret, putstr(dst)); }
 
 VM(strmk) {
- i64 i = 0, l = N(ARGC)+1, size = 1 + b2w(l);
- Have(size);
+ i64 i = 0, bytes = N(ARGC)+1, words = 1 + b2w(bytes);
+ Have(words);
  str s = (str) hp;
- hp += size;
- for (obj x; i < l-1; s->text[i++] = N(x)) {
+ hp += words;
+ for (obj x; i < bytes-1; s->text[i++] = N(x)) {
   x = ARGV[i];
   TC(x, Num);
   if (x == _N(0)) break; }
  s->text[i] = 0;
  s->len = i+1;
- GO(ret, putstr(s)); }
+ GO(ret, _S(s)); }
 
 GC(cpstr) {
  str dst, src = S(x);

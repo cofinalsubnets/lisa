@@ -21,7 +21,7 @@ enum tag { // the 3 ls bits of each pointer are a type tag
 
 enum globl { // indices into a table of global constants
  Def, Cond, Lamb, Quote, Seq, Splat,
- Topl, Macs, Eval, Apply, NGlobs };
+ Topl, Macs, Eval, Apply, Restart, NGlobs };
 
 // a linked list of stack addresses containing live values
 // that need to be preserved by garbage collection.
@@ -102,6 +102,7 @@ extern const uint32_t *tnoms;
 #define Mac v->glob[Macs]
 #define Eva v->glob[Eval]
 #define App v->glob[Apply]
+#define Re  v->glob[Restart]
 
 _Static_assert(sizeof(i64*) == sizeof(i64), "64 bit pointers");
 _Static_assert(-1 >> 1 == -1, "sign-extended bit shifts");

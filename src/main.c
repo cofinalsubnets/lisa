@@ -21,15 +21,13 @@
 #define OK EXIT_SUCCESS
 #define NO EXIT_FAILURE
 
-static Inline int xval(obj x) { return x ? OK : NO; }
-
-static obj script(lips v, const char *path) {
+static int script(lips v, const char *path) {
  FILE *f = fopen(path, "r");
- if (!f) return errp(v, "%s : %s", path, strerror(errno)), 0;
+ if (!f) return errp(v, "%s : %s", path, strerror(errno)), NO;
  obj x;
- if (setjmp(v->restart)) return errp(v, "%s : fail", path), fclose(f), 0;
+ if (setjmp(v->restart)) return errp(v, "%s : fail", path), fclose(f), NO;
  while ((x = parse(v, f))) eval(v, x);
- return x = feof(f) ? (x ? x : nil) : 0, fclose(f), x; }
+ return x = feof(f) ? (x ? x : nil) : NO, fclose(f), OK; }
 
 static lips lips_fin(lips v) { return
  free(v->pool), (lips) (v->pool = NULL); }
@@ -74,21 +72,7 @@ static lips lips_init(lips v) {
  def("ns", Top), def("macros", Mac);
  return v; }
 
-static u0 repl(lips v) {
- setjmp(v->restart);
- for (obj x;;)
-  if ((x = parse(v, stdin)))
-    emsep(v, eval(v, x), stdout, '\n');
-  else if (feof(stdin)) return; }
-
 #define BOOT PREFIX "/lib/lips/prelude.lips"
-#define HELP \
-  "usage: %s [options and scripts]\n"\
-  "with no arguments, start a repl\n"\
-  "options:\n"\
-  "  -h print this message\n"\
-  "  -i start repl unconditionally\n"\
-  "  -_ don't bootstrap\n"
 
 int main(int argc, char** argv) {
   for (int r = OK, shell = argc == 1 , boot = true;;)
@@ -96,15 +80,29 @@ int main(int argc, char** argv) {
       default: return EXIT_FAILURE;
       case '_': boot = false; break;
       case 'i': shell = true; break;
-      case 'h': fprintf(stdout, HELP, *argv); break;
+      case 'h':
+        const char *help =
+          "usage: %s [options and scripts]\n"
+          "with no arguments, start a repl\n"
+          "options:\n"
+          "  -h print this message\n"
+          "  -i start repl unconditionally\n"
+          "  -_ don't bootstrap\n";
+        fprintf(stdout, help, *argv);
+        break;
       case -1: {
+        obj x;
         argc -= optind, argv += optind;
         if (argc || shell) {
           lips v = lips_init(&((struct lips){}));
-          if (boot) r = xval(script(v, BOOT));
+          if (boot) r = script(v, BOOT);
           while (r == OK && argc--) {
             const char *path = *argv++;
-            r = xval(script(v, path)); }
-          if (r == OK && shell) repl(v);
+            r = script(v, path); }
+          if (r == OK && shell)
+            for (setjmp(v->restart);;) {
+              if ((x = parse(v, stdin)))
+                emsep(v, eval(v, x), stdout, '\n');
+              else if (feof(stdin)) break; }
           lips_fin(v); }
         return r; } } }

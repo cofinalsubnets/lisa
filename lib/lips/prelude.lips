@@ -23,13 +23,30 @@
       (\? x) (\ _ . (x (ap f _)))
       x)
 
-     (append a b) (? (2? a) (X (A a) (append (B a) b)) b)
-     (cat xs .)
-      (: x (A xs) (?
-       (2? x) (foldr xs () append)
-       (\? x) (: (compose f g) (\ x . (g (ap f x)))
-               (foldr xs id compose))))
+     (show xs .) (:
+      (str1 x) (?
+       (nump x) (sfy-num x)
+       (homp x) (sfy-hom x)
+       (twop x) (sfy-two x)
+       (symp x) (ystr x)
+       (vecp x) (sfy-vec x)
+       (tblp x) (sfy-tbl x)
+       (strp x) x
+                "()")
+      (i2d i) (sget "0123456789abcdefghijklmnopqrstuvwxyz" i)
+      (sfy-num i) (show-int i 10)
+      (show-int i r) (? (= i 0) ""
+       (scat (show-int (/ i r) r) (str (i2d (% i r)))))
+      (sfy-two x) (ap scat (X "(" (append (map show x) '(")"))))
+      (v2l v) (map (cu vget v) (iota (vlen v)))
+      (sfy-vec x)
+        (ap scat (X "[" (append (map show (v2l x)) '("]"))))
+      (sfy-tbl x)
+        (ap scat (X "{" (append (map show (flat-map (tkeys x) (\ k (L k (tget x k))))) '("}"))))
+      (sfy-hom x) (ap scat (flat-map (hnom x) ystr))
+      (ap scat (map str1 xs)))
 
+     (append a b) (? (2? a) (X (A a) (append (B a) b)) b)
 
      (flat-map x f) (? (2? x) (append (f (A x)) (flat-map (B x) f)))
      ; logic
@@ -66,8 +83,7 @@
         (, (putc (sget s n))
            (loop s (+ n 1))))
        (loop s 0))
-      (endl) (putc (char "
-"))
+      (endl) (putc 10)
 
      ; tables
      (set x .) (foldl x (tbl) (\ t x (, (Ts t x ()) t)))
@@ -112,7 +128,7 @@
      (last l) (? (B l) (last (B l)) (A l))
      (memq x k) (? x (? (= k (A x)) x (memq (B x) k)))
      (rev l) (foldl l () (\ a b (X b a)))
-     (ldel l k) (select (\ x (~ (= x k))) l)
+     (del l k) (filter l (\ x (~ (= x k))))
      (idx l x)
       (: (loop l x n)
           (? l (? (= x (A l)) n (loop (B l) x (+ n 1))))
@@ -216,7 +232,8 @@
    k))
 
   n (|| (B l) ~~)
-  f (env (init n) e (X nom (Tg e'nom)) nom)
+  anom (? (: en (Tg e'nom)) (X nom en) nom)
+  f (env (init n) e anom)
   x (weak f (last n))
 
   (?
@@ -311,7 +328,7 @@
    (? (~ kvs) q (?
     (chk i (AB (: kv (A kvs))))
      (f3r i (B kvs) (X kv q))
-    (f3 (ldel i kv)))))
+    (f3 (del i kv)))))
 
   ; step four ( the last one ) : now we have the desired
   ; set of functions. remove them from the scope's local
@@ -395,17 +412,20 @@
    ; (or whatever).
 
    pure (imm (set
-    L X A B Q + - * / % & | ^ << >> id flip iota rho const inc dec
-    = ~ <= >= < > cu const snoc init last rev ldel memq at idx len
-    2? ~ symp nump tblp strp twop vecp \?
+    L X A B Q + - * / % & | ^ << >> I K flip iota rho inc dec co
+    = ~ <= >= < > cu const snoc init last rev del memq at idx len
+    twop nilp symp nump tblp strp vecp homp
     && || scat slen sget ssub str))
+
+   ; we should have an impure set instead and infer from that
+   ;~pure (imm (set))
 
    ; these enable extra partial evaluation for functions
    ; with certain algebraic properties. the nullary case for
    ; any grouplike function has to return its structure's
    ; identity element.
    abelians (imm (set && || + *)) ; arguments can be combined freely
-   monoids (imm (set scat cat))   ; pairs of consecutive arguments can be combined in place
+   monoids (imm (set scat append)) ; pairs of consecutive arguments can be combined in place
 
    a (A x) (case a
     '` (? (B x) x)
@@ -701,7 +721,7 @@
    fail (nary (hgeti fail) ())))
 
   (ini e m) ((xc i-ret (xd (Tg e 'nom) (\ _ m (hom m)))) e m)
-  (ev x) (: e (env () () 'ev) (((eval (weak e x) ini) e 0) x))
+  (ev x) (: e (env () () ()) (((eval (weak e x) ini) e 0) x))
   ;; end of compiler namespace ; now return the eval function
 ;  ev ; comment this line to define internals at toplevel
   )))))

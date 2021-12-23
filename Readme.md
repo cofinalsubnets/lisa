@@ -1,9 +1,11 @@
 # lips
-unordered lisp
+lips is a lisp variant with a runtime written in C and a
+threaded code compiler written in itself. it's very small
+and pretty fast and should work on any 64-bit platform.
 
 ## build / install
-are you on linux? `make` will probably work. otherwise, just
-read the `makefile` :)
+are you on linux? `make` will probably work. otherwise, see
+`Makefile` for the suggested compiler flags.
 
 ## syntax quick facts
 - `()` is self-quoting and false

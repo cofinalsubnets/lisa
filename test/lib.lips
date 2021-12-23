@@ -17,7 +17,7 @@
  (= '(0 1 2 3)
   (iota 4)
   (iota 0 4)
-  (ldel (iota 5) 4)
+  (del (iota 5) 4)
   (snoc (iota 3) 3)
   (init '(0 1 2 3 4))
   (last '(0 1 2 3 (0 1 2 3)))
