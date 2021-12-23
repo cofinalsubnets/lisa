@@ -1,13 +1,6 @@
 #include "lips.h"
 #include "mem.h"
 #include "terp.h"
-#include "err.h"
-#include "sym.h"
-#include "two.h"
-#include "hom.h"
-#include "vec.h"
-#include <stdlib.h>
-#include <time.h>
 
 // memory allocation functions
 
@@ -21,6 +14,8 @@ u0* bump(lips v, u64 n) {
   u0* x = v->hp;
   return v->hp += n, x; }
 
+#include <stdlib.h>
+#include <time.h>
 // a simple copying garbage collector
 
 // the first step in copying is to allocate

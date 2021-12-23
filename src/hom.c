@@ -1,5 +1,4 @@
 #include "lips.h"
-#include "terp.h"
 #include "hom.h"
 #include "tbl.h"
 #include "str.h"
@@ -8,7 +7,7 @@
 #include "mem.h"
 #include "io.h"
 #include "vec.h"
-#include "err.h"
+#include "terp.h"
 
 ////
 /// bootstrap thread compiler
@@ -419,6 +418,21 @@ obj eval(lips v, obj x) {
       ev = tbl_get(v, Top, Eva);
   return apply(v, ev, args); }
 
+GC(cphom) {
+ hom src = H(x);
+ if (fresh(G(src))) return (obj) G(src);
+ hom end = button(src), start = (hom) G(end+1),
+     dst = bump(v, end - start + 2), j = dst;
+ for (hom k = start; k < end;)
+  G(j) = G(k),
+  G(k++) = (terp*) _H(j++);
+ G(j) = NULL;
+ G(j+1) = (terp*) dst;
+ for (obj u; j-- > dst;
+   u = (obj) G(j),
+   G(j) = (terp*) (!stale(u) ? u : cp(v, u, len0, base0)));
+ return _H(dst += src - start); }
+
 // VM instructions
 // instructions used by the compiler
 VM(hom_u) {
@@ -475,21 +489,6 @@ VM(ev_u) {
            _N(comp_alloc_thread)),
     xp = comp_expr(v, NULL, 0, *ARGV),
     v->xp = G(xp)(v, xp, v->fp, v->sp, v->hp, nil)); }
-
-GC(cphom) {
- hom src = H(x);
- if (fresh(G(src))) return (obj) G(src);
- hom end = button(src), start = (hom) G(end+1),
-     dst = bump(v, end - start + 2), j = dst;
- for (hom k = start; k < end;)
-  G(j) = G(k),
-  G(k++) = (terp*) _H(j++);
- G(j) = NULL;
- G(j+1) = (terp*) dst;
- for (obj u; j-- > dst;
-   u = (obj) G(j),
-   G(j) = (terp*) (!stale(u) ? u : cp(v, u, len0, base0)));
- return _H(dst += src - start); }
 
 static VM(clos) { CLOS = (obj) GF(ip); AP((obj) G(FF(ip)), xp); }
 // finalize function instance closure

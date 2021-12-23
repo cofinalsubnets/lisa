@@ -1,25 +1,32 @@
 #include "lips.h"
 #include "str.h"
 #include "mem.h"
-#include "terp.h"
-#include "err.h"
 
 // for strings
 obj string(lips v, const char* c) {
  i64 bs = 1 + slen(c);
  str o = cells(v, Width(str) + b2w(bs));
  cpy8(o->text, c, o->len = bs);
- return putstr(o); }
+ return _S(o); }
 
+GC(cpstr) {
+ str dst, src = S(x);
+ return src->len == 0 ? *(mem)src->text :
+  (dst = bump(v, Width(str) + b2w(src->len)),
+   cpy64(dst->text, src->text, b2w(src->len)),
+   dst->len = src->len, src->len = 0,
+   *(mem) src->text = _S(dst)); }
+
+#include "terp.h"
 // string instructions
 VM(strl) {
  ARY(1); TC(*ARGV, Str);
- GO(ret, _N(getstr(*ARGV)->len-1)); }
+ GO(ret, _N(S(*ARGV)->len-1)); }
 
 VM(strg) {
  ARY(2); TC(ARGV[0], Str); TC(ARGV[1], Num);
- GO(ret, N(ARGV[1]) < getstr(ARGV[0])->len-1 ?
-  _N(getstr(ARGV[0])->text[N(ARGV[1])]) :
+ GO(ret, N(ARGV[1]) < S(ARGV[0])->len-1 ?
+  _N(S(ARGV[0])->text[N(ARGV[1])]) :
   nil); }
 
 VM(strconc) {
@@ -35,17 +42,17 @@ VM(strconc) {
  d->len = sum + 1;
  d->text[sum] = 0;
  while (i) {
-  str x = getstr(ARGV[--i]);
+  str x = S(ARGV[--i]);
   sum -= x->len - 1;
   cpy8(d->text+sum, x->text, x->len - 1); }
- GO(ret, putstr(d)); }
+ GO(ret, _S(d)); }
 
 #define min(a,b)(a<b?a:b)
 #define max(a,b)(a>b?a:b)
 VM(strs) {
  ARY(3);
  TC(ARGV[0], Str); TC(ARGV[1], Num); TC(ARGV[2], Num);
- str src = getstr(ARGV[0]);
+ str src = S(ARGV[0]);
  i64 lb = N(ARGV[1]), ub = N(ARGV[2]);
  lb = max(lb, 0);
  ub = min(ub, src->len-1);
@@ -57,7 +64,7 @@ VM(strs) {
  dst->len = ub - lb + 1;
  dst->text[ub - lb] = 0;
  cpy8(dst->text, src->text + lb, ub - lb);
- GO(ret, putstr(dst)); }
+ GO(ret, _S(dst)); }
 
 VM(strmk) {
  i64 i = 0, bytes = N(ARGC)+1, words = 1 + b2w(bytes);
@@ -71,11 +78,3 @@ VM(strmk) {
  s->text[i] = 0;
  s->len = i+1;
  GO(ret, _S(s)); }
-
-GC(cpstr) {
- str dst, src = S(x);
- return src->len == 0 ? *(mem)src->text :
-  (dst = bump(v, Width(str) + b2w(src->len)),
-   cpy64(dst->text, src->text, b2w(src->len)),
-   dst->len = src->len, src->len = 0,
-   *(mem) src->text = _S(dst)); }

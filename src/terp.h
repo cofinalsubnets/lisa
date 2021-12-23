@@ -2,21 +2,6 @@
 
 struct frame { obj clos, retp, subd, argc, argv[]; };
 
-enum globl { // indices into a table of global constants
- Def, Cond, Lamb, Quote, Seq, Splat,
- Topl, Macs, Eval, Apply, Restart, NGlobs };
-
-// the frame structure holds the current function context.
-struct lips {
- obj ip, xp, *fp, *hp, *sp, // interpreter state
-     syms, // symbol table
-     glob[NGlobs]; // global variables
- i64 seed, count, // random state
-     t0, len, *pool; // memory state
- root root; // gc protection list
- jmp_buf restart; // top level restart
-};
-
 // this is a cool way to do "static data", i got it from luajit :)
 #define insts(_)\
  _(tget, 0)       _(tset, 0)     _(thas, 0)\
@@ -160,3 +145,7 @@ insts(ninl)
 
 VM(nope, const char *, ...);
 VM(gc);
+VM(type_error);
+VM(oob_error);
+obj restart(lips), err(lips, char*, ...);
+u0 errp(lips, char*, ...);

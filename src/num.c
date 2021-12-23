@@ -1,7 +1,6 @@
 #include "lips.h"
 #include "terp.h"
 #include "hom.h"
-#include "err.h"
 
 #define div0_err_msg "%d / 0"
 

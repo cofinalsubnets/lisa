@@ -1,8 +1,6 @@
 #include "lips.h"
 #include "terp.h"
 #include "hom.h"
-#include "err.h"
-#include "mem.h"
 #include "vec.h"
 
 // this is used to create closures.
@@ -20,8 +18,8 @@ VM(vset_u) {
  ARY(3);
  TC(ARGV[0], Vec);
  TC(ARGV[1], Num);
- num idx = getnum(ARGV[1]);
- vec ary = getvec(ARGV[0]);
+ i64 idx = N(ARGV[1]);
+ vec ary = V(ARGV[0]);
  if (idx < 0 || idx >= ary->len) {
    v->xp = idx, v->ip = ary->len;
    Jump(oob_error); }
@@ -31,8 +29,8 @@ VM(vget_u) {
  ARY(2);
  TC(ARGV[0], Vec);
  TC(ARGV[1], Num);
- num idx = getnum(ARGV[1]);
- vec ary = getvec(ARGV[0]);
+ i64 idx = N(ARGV[1]);
+ vec ary = V(ARGV[0]);
  if (idx < 0 || idx >= ary->len) {
    v->xp = idx, v->ip = ary->len;
    Jump(oob_error); }
@@ -46,6 +44,7 @@ VM(vec_u) {
  cpy64(t->xs, ARGV, t->len = n);
  GO(ret, putvec(t)); }
 
+#include "mem.h"
 GC(cpvec) {
   vec dst, src = V(x);
   if (fresh(*src->xs)) return *src->xs;
@@ -56,4 +55,3 @@ GC(cpvec) {
   for (CP(dst->xs[0]), i = 1; i < l; ++i)
     COPY(dst->xs[i], src->xs[i]);
   return _V(dst); }
-

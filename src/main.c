@@ -2,7 +2,6 @@
 #include "terp.h"
 #include "io.h"
 #include "tbl.h"
-#include "err.h"
 #include "hom.h"
 #include "sym.h"
 #include "two.h"
@@ -47,7 +46,7 @@ static NoInline u0 defprim(lips v, const char *a, terp *inst) {
   tbl_set(v, Top, A(nom), _H(prim)); }
 
 static lips lips_init(lips v) {
- const num ini_len = 1;
+ const u64 ini_len = 1;
  v->seed = LCPRNG(v->t0 = clock());
  v->ip = v->xp = v->syms = nil;
  v->fp = v->hp = v->sp = (mem) (W * ini_len),

@@ -5,7 +5,6 @@
 #include "mem.h"
 #include "str.h"
 #include "terp.h"
-#include "err.h"
 #include "hom.h"
 #include "tbl.h"
 #include "vec.h"
@@ -80,7 +79,7 @@ static obj read_list(lips v, FILE *i) {
    return pair(v, x, y); } }
 
 static obj grow_buffer(lips v, obj s) {
-  num l = b2w(S(s)->len);
+  u64 l = b2w(S(s)->len);
   obj t;
   with(s, t = putstr(cells(v, 2*l+1)));
   S(t)->len = w2b(2*l);

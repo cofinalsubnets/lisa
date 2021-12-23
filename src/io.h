@@ -1,4 +1,3 @@
-
 obj
  parse(lips, FILE*),
  read_path(lips, const char*),

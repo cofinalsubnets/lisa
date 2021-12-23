@@ -1,8 +1,6 @@
 #include "lips.h"
 #include "cmp.h"
 #include "two.h"
-#include "hom.h"
-#include "terp.h"
 #include "str.h"
 
 static bool eql_two(obj a, obj b) {
@@ -27,6 +25,8 @@ bool eql(obj a, obj b) {
     case Two: return eql_two(a, b);
     case Str: return eql_str(a, b); } }
 
+#include "hom.h"
+#include "terp.h"
 #define cmp_(n, op) BINOP(n, *sp++ op xp ? xp : nil)
 cmp_(lt, <) cmp_(lteq, <=) cmp_(gteq, >=) cmp_(gt, >)
 // there should be a separate instruction for simple equality?
