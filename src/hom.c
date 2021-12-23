@@ -7,6 +7,8 @@
 #include "two.h"
 #include "mem.h"
 #include "io.h"
+#include "vec.h"
+#include "err.h"
 
 ////
 /// bootstrap thread compiler
@@ -87,7 +89,7 @@ static vec tuplr(lips v, i64 i, va_list xs) {
  vec t; obj x;
  return (x = va_arg(xs, obj)) ?
   (with(x, t = tuplr(v, i+1, xs)), t->xs[i] = x, t) :
-  ((t = cells(v, Width(tup) + i))->len = i, t); }
+  ((t = cells(v, Width(vec) + i))->len = i, t); }
 
 static obj tupl(lips v, ...) {
  vec t; va_list xs;

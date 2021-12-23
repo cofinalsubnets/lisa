@@ -4,6 +4,7 @@
 #include "str.h"
 #include "mem.h"
 #include "terp.h"
+#include "err.h"
 
 //symbols
 

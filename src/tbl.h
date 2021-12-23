@@ -1,3 +1,5 @@
+typedef struct ent { obj key, val; struct ent *next; } *ent; // tables
+struct tbl { u64 len, cap; ent *tab; };
 #define mix ((u64)2708237354241864315)
 u64 hash(lips, obj);
 obj

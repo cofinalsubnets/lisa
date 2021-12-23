@@ -1,3 +1,4 @@
+struct two { obj a, b; };
 obj pair(lips, obj, obj);
 u64 llen(obj);
 #define A(o) gettwo(o)->a

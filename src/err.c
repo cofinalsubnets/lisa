@@ -1,6 +1,6 @@
 #include "lips.h"
-#include "err.h"
 #include "terp.h"
+#include "err.h"
 #include "hom.h"
 #include "io.h"
 
@@ -11,12 +11,6 @@ u0 errp(lips v, char *msg, ...) {
   vfprintf(stderr, msg, xs);
   va_end(xs);
   fputc('\n', stderr); }
-
-obj restart(lips v) {
-  v->fp = v->sp = v->pool + v->len;
-  v->xp = v->ip = nil;
-  v->root = NULL;
-  longjmp(v->restart, 1); }
 
 VM(nope, const char *msg, ...) {
   // print current call as (function arg1 arg2 ...)
@@ -45,16 +39,23 @@ VM(nope, const char *msg, ...) {
   v->hp = hp;
   return restart(v); }
 
+obj restart(lips v) {
+  v->fp = v->sp = v->pool + v->len;
+  v->xp = v->ip = nil;
+  v->root = NULL;
+  longjmp(v->restart, 1); }
+
 // errors
 VM(fail) { Jump(nope, "fail"); }
 
-static VM(type_error) {
+VM(type_error) {
  enum tag exp = v->xp, act = kind(xp);
- Jump(nope, type_err_msg, tnom(act), tnom(exp)); }
+ Jump(nope, "wrong type : %s for %s", tnom(act), tnom(exp)); }
+
+VM(oob_error) {
+ Jump(nope, "oob : %d >= %d", v->xp, v->ip); }
 
 // type/arity checking
-#define TDCN(t) if(!kind(xp-t)){ NEXT(1);}\
- Jump(nope,type_err_msg,tnom(kind(xp)),tnom(t))
 #define DTC(n, t) VM(n) {\
   if (kind(xp-t)==0) NEXT(1);\
   v->xp = t; Jump(type_error); }

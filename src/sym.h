@@ -1,3 +1,4 @@
+struct sym { obj nom, code, l, r; };
 obj
  intern(lips, obj),
  interns(lips, const char*),

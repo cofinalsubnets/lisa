@@ -1,10 +1,5 @@
 #include "lips.h"
 #include "tbl.h"
-#include "cmp.h"
-#include "two.h"
-#include "hom.h"
-#include "mem.h"
-#include "terp.h"
 
 static Inline u64 hash_bytes(u64 len, char *us) {
   for (u64 h = mix;; h ^= *us++, h *= mix)
@@ -12,6 +7,16 @@ static Inline u64 hash_bytes(u64 len, char *us) {
 
 static Inline i64 tbl_idx(u64 cap, u64 co) {
   return co % cap; }
+
+#include "mem.h"
+#include "cmp.h"
+#include "two.h"
+#include "hom.h"
+#include "vec.h"
+#include "str.h"
+#include "sym.h"
+#include "terp.h"
+#include "err.h"
 
 static ent tbl_ent(lips v, obj u, obj k) {
   tbl t = gettbl(u);

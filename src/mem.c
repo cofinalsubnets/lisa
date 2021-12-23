@@ -1,10 +1,11 @@
 #include "lips.h"
-#include "sym.h"
+#include "mem.h"
+#include "terp.h"
 #include "err.h"
+#include "sym.h"
 #include "two.h"
 #include "hom.h"
-#include "terp.h"
-#include "mem.h"
+#include "vec.h"
 #include <stdlib.h>
 #include <time.h>
 
@@ -123,7 +124,7 @@ GC(cp) {
   switch (kind(x)) {
     default:  return x;
     case Hom: return cphom(v, x, len0, base0);
-    case Vec: return cptup(v, x, len0, base0);
+    case Vec: return cpvec(v, x, len0, base0);
     case Str: return cpstr(v, x, len0, base0);
     case Two: return cptwo(v, x, len0, base0);
     case Sym: return cpsym(v, x, len0, base0);

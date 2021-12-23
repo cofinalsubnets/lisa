@@ -3,6 +3,7 @@
 #include "two.h"
 #include "hom.h"
 #include "terp.h"
+#include "str.h"
 
 static bool eql_two(obj a, obj b) {
   // pairs are immutable, so we can deduplicate their insides.
@@ -14,9 +15,9 @@ static bool eql_two(obj a, obj b) {
   return false; }
 
 static bool eql_str(obj a, obj b) {
-      str o = S(a), m = S(b);
-      if (o->len != m->len) return false;
-      return scmp(o->text, m->text) == 0; }
+  str o = S(a), m = S(b);
+  if (o->len != m->len) return false;
+  return scmp(o->text, m->text) == 0; }
 
 bool eql(obj a, obj b) {
   if (a == b) return true;
@@ -35,16 +36,15 @@ static VM(ord_) {
   bool (*r)(obj, obj) = (void*)v->xp;
   obj n = N(ARGC), *xs = ARGV, m, *l;
   switch (n) {
-    case 0: no: GO(ret, nil);
+    case 0:  GO(ret, nil);
     default:
       for (l = xs + n - 1, m = *xs; xs < l; m= *++xs)
-        if (!r(m, xs[1])) goto no;
-    case 1: break;}
-  GO(ret, ok);}
+        if (!r(m, xs[1])) GO(ret, nil);
+    case 1: GO(ret, ok); } }
 
 #define ord_w(r)v->xp=(obj)r;Jump(ord_)
 #define cmp(op, n)\
- static bool cmp_##n(obj a, obj b) { return a op b; }\
- VM(n##_u) { v->xp=(obj)cmp_##n;Jump(ord_); }
+  static bool cmp_##n(obj a, obj b) { return a op b; }\
+  VM(n##_u) { v->xp=(obj)cmp_##n;Jump(ord_); }
 cmp(<, lt) cmp(<=, lteq) cmp(>=, gteq) cmp(>, gt)
 VM(eq_u) { ord_w(eql); }

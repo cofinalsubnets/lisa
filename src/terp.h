@@ -1,3 +1,22 @@
+#include <setjmp.h>
+
+struct frame { obj clos, retp, subd, argc, argv[]; };
+
+enum globl { // indices into a table of global constants
+ Def, Cond, Lamb, Quote, Seq, Splat,
+ Topl, Macs, Eval, Apply, Restart, NGlobs };
+
+// the frame structure holds the current function context.
+struct lips {
+ obj ip, xp, *fp, *hp, *sp, // interpreter state
+     syms, // symbol table
+     glob[NGlobs]; // global variables
+ i64 seed, count, // random state
+     t0, len, *pool; // memory state
+ root root; // gc protection list
+ jmp_buf restart; // top level restart
+};
+
 // this is a cool way to do "static data", i got it from luajit :)
 #define insts(_)\
  _(tget, 0)       _(tset, 0)     _(thas, 0)\
@@ -20,8 +39,9 @@
  _(gteq, 0)       _(gt, 0)       _(twopp, 0)\
  _(numpp, 0)      _(nilpp, 0)    _(strpp, 0)\
  _(tblpp, 0)      _(sympp, 0)    _(hompp, 0)\
+ _(vecpp, 0)      \
  _(car, 0)        _(cdr, 0)      _(cons, 0)\
- _(vecpp, 0)      _(add_u, "+")     _(hom_u, tnom(Hom))\
+_(add_u, "+")     _(hom_u, tnom(Hom))\
  _(sub_u, "-")       _(mul_u, "*")     _(div_u, "/")\
  _(mod_u, "%")       _(lt_u, "<")      _(lteq_u, "<=")\
  _(eq_u, "=")        _(gteq_u, ">=")   _(gt_u, ">")\
@@ -83,8 +103,6 @@ insts(ninl)
 #define CALLC(...)(PACK(),(__VA_ARGS__),UNPACK())
 #define RETC(...){CALLC(__VA_ARGS__);Jump(ret);}
 
-// the frame structure holds the current function context.
-typedef struct frame { obj clos, retp, subd, argc, argv[]; } *frame;
 #define CLOS ((frame)fp)->clos
 #define RETP ((frame)fp)->retp
 #define SUBR ((frame)fp)->subd
@@ -109,13 +127,10 @@ typedef struct frame { obj clos, retp, subd, argc, argv[]; } *frame;
 #define GO(f,x) return (xp=x,f(STATE))
 #define NEXT(n) AP(ip+w2b(n),xp)
 #define ok _N(1)
-
-VM(nope, const char *, ...);
-VM(gc);
 // type check
-#define TC(x,t) if(kind((x))-(t))\
- Jump(nope, type_err_msg, tnom(kind(x)), tnom(t))
+#define TC(x,t) if(kind((x))-(t)){v->xp=t;Jump(type_error);}
 // arity check
+#define arity_err_msg "wrong arity : %d of %d"
 #define ARY(n) if(_N(n)>ARGC)\
  Jump(nope,arity_err_msg,getnum(ARGC),n)
 
@@ -124,14 +139,24 @@ VM(gc);
 #define OP1(nom, x) OP(nom, x, 1)
 #define OP2(nom, x) OP(nom, x, 2)
 
-#define arity_err_msg "wrong arity : %d of %d"
-#define type_err_msg "wrong type : %s for %s"
-#define div0_err_msg "%d / 0"
-#define oob_err_msg "oob : %d >= %d"
-
 #define avail (sp-hp)
 #define Have(n) if (avail < n) Jump((v->xp=n,gc))
 #define Have1() if (hp == sp) Jump((v->xp=1,gc)) // common case, faster comparison
 
 #define TERP(n, m, ...) VM(n) m(__VA_ARGS__)
 #define BINOP(nom, xpn) VM(nom) { xp = (xpn); NEXT(1); }
+
+#define If v->glob[Cond]
+#define De v->glob[Def]
+#define La v->glob[Lamb]
+#define Qt v->glob[Quote]
+#define Se v->glob[Seq]
+#define Va v->glob[Splat]
+#define Top v->glob[Topl]
+#define Mac v->glob[Macs]
+#define Eva v->glob[Eval]
+#define App v->glob[Apply]
+#define Re  v->glob[Restart]
+
+VM(nope, const char *, ...);
+VM(gc);

@@ -4,9 +4,11 @@
 #include "two.h"
 #include "mem.h"
 #include "str.h"
-#include "err.h"
 #include "terp.h"
+#include "err.h"
 #include "hom.h"
+#include "tbl.h"
+#include "vec.h"
 #include <string.h>
 #include <errno.h>
 
@@ -15,8 +17,8 @@
 // these are the names of the fundamental types.
 // obviously this only works if the type names
 // are all 4 bytes long (counting the NUL)
-const uint32_t *tnoms = (uint32_t*)
- "hom\0num\0two\0vec\0str\0tbl\0sym\0nil";
+const u32 *tnoms = (u32*)
+  "hom\0num\0two\0vec\0str\0tbl\0sym\0nil";
 
 ////
 /// lisp parser
@@ -48,38 +50,34 @@ obj read_quoted(lips v, FILE *i) {
  return pair(v, Qt, x); }
 
 obj parse(lips v, FILE* i) {
- int c = read_char(i);
- obj x, y;
- switch (c) {
-  case EOF: return 0;
-  case ')': return errp(v, "unmatched %s delimiter", "right"), 0;
-  case '(': return read_list(v, i);
-  case '"': return read_buffered(v, i, read_str);
-  case '\'': return read_quoted(v, i);
-  default: return
-   ungetc(c, i),
-   x = read_buffered(v, i, read_atom),
-   y = readz(v, chars(x)),
-   nump(y) ? y : intern(v, x); } }
+  int c = read_char(i);
+  obj x, y;
+  switch (c) {
+    case EOF: case ')': return 0;
+    case '(': return read_list(v, i);
+    case '"': return read_buffered(v, i, read_str);
+    case '\'': return read_quoted(v, i);
+    default: return
+     ungetc(c, i),
+     x = read_buffered(v, i, read_atom),
+     y = readz(v, chars(x)),
+     nump(y) ? y : intern(v, x); } }
 
 VM(par_u) {
-  PACK();
-  obj x = parse(v, stdin);
-  if (!x && !feof(stdin)) return restart(v);
-  else v->xp = x ? pair(v, x, nil) : nil;
-  UNPACK();
-  Jump(ret); }
+  RETC(xp = parse(v, stdin),
+       v->xp = !xp ? nil : pair(v, xp, nil)); }
 
 static obj read_list(lips v, FILE *i) {
  obj x, y, c = read_char(i);
  switch (c) {
-  case EOF: return errp(v, "unmatched %s delimiter", "left"), 0;
+  case EOF: return 0;
   case ')': return nil;
-  default: return
-   ungetc(c, i),
-   x = parse(v, i),
-   with(x, y = read_list(v, i)),
-   pair(v, x, y); } }
+  default:
+   ungetc(c, i);
+   bind(x, parse(v, i));
+   with(x, y = read_list(v, i));
+   bind(y, y);
+   return pair(v, x, y); } }
 
 static obj grow_buffer(lips v, obj s) {
   num l = b2w(S(s)->len);
@@ -90,45 +88,59 @@ static obj grow_buffer(lips v, obj s) {
   return t; }
 
 static obj read_atom(lips v, FILE *p, str o, u64 n, u64 lim) {
- for (obj x; n < lim;) switch (x = getc(p)) {
-  case ' ': case '\n': case '\t': case ';': case '#':
-  case '(': case ')': case '\'': case '"':
-   ungetc(x, p); case EOF:
-   o->text[n++] = 0, o->len = n;
-   return putstr(o);
-  default: o->text[n++] = x; }
- return read_atom(v, p, S(grow_buffer(v, _S(o))), lim, 2*lim); }
+  for (obj x; n < lim;) switch (x = getc(p)) {
+    case ' ': case '\n': case '\t': case ';': case '#':
+    case '(': case ')': case '\'': case '"':
+      ungetc(x, p); case EOF:
+      o->text[n++] = 0, o->len = n;
+      return putstr(o);
+    default: o->text[n++] = x; }
+  return read_atom(v, p, S(grow_buffer(v, _S(o))), lim, 2*lim); }
 
 static obj read_str(lips v, FILE *p, str o, u64 n, u64 lim) {
- for (obj x; n < lim;) switch (x = getc(p)) {
-  case '\\': if ((x = getc(p)) == EOF) {
-  case EOF: case '"': o->text[n++] = 0, o->len = n ;return _S(o); }
-  default: o->text[n++] = x; }
- return read_str(v, p, S(grow_buffer(v, _S(o))), lim, 2*lim); }
+  for (obj x; n < lim;) switch (x = getc(p)) {
+    case '\\': if ((x = getc(p)) == EOF) {
+    case EOF: case '"': o->text[n++] = 0, o->len = n ;return _S(o); }
+    default: o->text[n++] = x; }
+  return read_str(v, p, S(grow_buffer(v, _S(o))), lim, 2*lim); }
 
 static obj read_file_loop(lips v, FILE *p, str o, u64 n, u64 lim) {
- for (obj x; n < lim;) switch (x = getc(p)) {
-  case EOF: o->text[n++] = 0, o->len = n; return _S(o);
-  default: o->text[n++] = x; }
- return read_file_loop(v, p, S(grow_buffer(v, _S(o))), lim, 2*lim); }
+  for (obj x; n < lim;) switch (x = getc(p)) {
+    case EOF: o->text[n++] = 0, o->len = n; return _S(o);
+    default: o->text[n++] = x; }
+  return read_file_loop(v, p, S(grow_buffer(v, _S(o))), lim, 2*lim); }
 
 obj read_file(lips v, FILE *i) {
- obj s = read_buffered(v, i, read_file_loop);
- fclose(i);
- return s; }
-obj read_path(lips v, const char *path) {
- FILE *i = fopen(path, "r");
- if (!i) return errp(v, "%s : %s", path, strerror(errno)), restart(v);
- return read_file(v, i); }
+  obj s = read_buffered(v, i, read_file_loop);
+  fclose(i);
+  return s; }
 
-obj write_file(lips v, const char *path, const char *text) {
- FILE *out = fopen(path, "w");
- if (!out) return
-  errp(v, "%s : %s", path, strerror(errno)),
-  restart(v);
- for (int c = *text; c; c = *++text) fputc(c, out);
- fclose(out);
- return nil; }
+obj read_path(lips v, const char *path) {
+  FILE *in;
+  bind(in, fopen(path, "r"));
+  return read_file(v, in); }
+
+
+u0 write_file(lips v, const char *path, const char *text) {
+  FILE *out = fopen(path, "w");
+  if (out) {
+    for (int c = *text; c; c = *++text) fputc(c, out);
+    fclose(out); } }
+
+VM(slurp) {
+  ARY(1);
+  xp = *ARGV;
+  TC(xp, Str);
+  RETC(xp = read_path(v, S(xp)->text),
+       v->xp = xp ? xp : nil); }
+
+VM(dump) {
+  ARY(2);
+  TC(ARGV[0], Str); TC(ARGV[1], Str);
+  char *p = S(ARGV[0])->text,
+       *d = S(ARGV[1])->text;
+  write_file(v, p, d);
+  Jump(ret); }
 
 static NoInline obj readz_2(const char *s, i64 rad) {
  static const char *dig = "0123456789abcdef";
@@ -220,15 +232,3 @@ VM(em_u) {
 
 VM(putc_u) { ARY(1); fputc(N(*ARGV), stdout); Jump(ret); }
 VM(getc_u) { GO(ret, feof(stdin) ? nil : _N(getc(stdin))); }
-
-VM(slurp) {
-  ARY(1);
-  xp = *ARGV;
-  TC(xp, Str);
-  RETC(v->xp = read_path(v, getstr(xp)->text)); }
-VM(dump) {
-  ARY(2);
-  TC(ARGV[0], Str); TC(ARGV[1], Str);
-  char *p = S(ARGV[0])->text,
-       *d = S(ARGV[1])->text;
-  GO(ret, write_file(v, p, d)); }

@@ -2,6 +2,7 @@
 #include "str.h"
 #include "mem.h"
 #include "terp.h"
+#include "err.h"
 
 // for strings
 obj string(lips v, const char* c) {

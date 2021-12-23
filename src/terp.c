@@ -9,6 +9,7 @@
 #include "sym.h"
 #include "two.h"
 #include "str.h"
+#include "vec.h"
 // " the virtual machine "
 // it's a stack machine with one free register that's
 // implemented on top of the C compiler's calling convention.

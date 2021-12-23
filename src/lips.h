@@ -1,7 +1,6 @@
 #include "env.h"
 #include <stdarg.h>
 #include <stdio.h>
-#include <setjmp.h>
 #include <stdlib.h>
 #include <stdbool.h>
 
@@ -11,37 +10,25 @@ _Static_assert(-1 >> 1 == -1, "sign-extended bit shifts");
 // thanks !!
 
 typedef i64 num, obj, *mem;
-typedef struct two { obj a, b; } *two; // pairs
-typedef struct tup { u64 len; obj xs[]; } *tup, *vec; // vectors
-typedef struct str { u64 len; char text[]; } *str; // byte arrays
-typedef struct sym { obj nom, code, l, r; } *sym; // symbols
-typedef struct ent { obj key, val; struct ent *next; } *ent; // tables
-typedef struct tbl { u64 len, cap; ent *tab; } *tbl;
+typedef struct two *two; // pairs
+typedef struct vec *vec; // vectors
+typedef struct str *str; // byte arrays
+typedef struct sym *sym; // symbols
+typedef struct tbl *tbl;
 
 enum tag { // the 3 ls bits of each pointer are a type tag
  Hom = 0, Num = 1, Two = 2, Vec = 3,
  Str = 4, Tbl = 5, Sym = 6, Nil = 7 };
 
-enum globl { // indices into a table of global constants
- Def, Cond, Lamb, Quote, Seq, Splat,
- Topl, Macs, Eval, Apply, Restart, NGlobs };
-
 // a linked list of stack addresses containing live values
 // that need to be preserved by garbage collection.
-typedef struct root { mem one; struct root *next; } *root;
+typedef struct frame *frame;
+typedef struct root  *root;
+typedef struct lips  *lips;
 
 // this structure holds runtime state.
 // most runtime functions take a pointer to this as the
 // first argument.
-typedef struct lips {
- obj ip, xp, *fp, *hp, *sp, // interpreter state
-     syms, // symbol table
-     glob[NGlobs]; // global variables
- i64 seed, count, // random state
-     t0, len, *pool; // memory state
- root root; // gc protection list
- jmp_buf restart; // top level restart
-} *lips;
 
 // this is the type of interpreter functions
 typedef obj terp(lips, obj, mem, mem, mem, obj);
@@ -66,8 +53,8 @@ extern const uint32_t *tnoms;
 #define _V(x) putvec(x)
 #define T(x) gettbl(x)
 #define _T(x) puttbl(x)
-//#define Y(x) getsym(x)
-//#define _Y(x) putsym(x)
+#define Y(x) getsym(x)
+#define _Y(x) putsym(x)
 #define gethom(x) ((hom)((x)-Hom))
 #define puthom(x) ((obj)((x)+Hom))
 #define gettwo(x) ((two)((x)-Two))
@@ -94,14 +81,3 @@ extern const uint32_t *tnoms;
 #define um (v->root=v->root->next)
 #define with(y,...) (mm(&(y)),(__VA_ARGS__),um)
 #define Width(t) b2w(sizeof(struct t))
-#define If v->glob[Cond]
-#define De v->glob[Def]
-#define La v->glob[Lamb]
-#define Qt v->glob[Quote]
-#define Se v->glob[Seq]
-#define Va v->glob[Splat]
-#define Top v->glob[Topl]
-#define Mac v->glob[Macs]
-#define Eva v->glob[Eval]
-#define App v->glob[Apply]
-#define Re  v->glob[Restart]

@@ -3,6 +3,8 @@
 #include "hom.h"
 #include "err.h"
 
+#define div0_err_msg "%d / 0"
+
 #define mm_u(_c,_v,_z,op){\
  obj x,*xs=_v,*l=xs+_c;\
  for(xp=_z;xs<l;xp=xp op N(x)){\
