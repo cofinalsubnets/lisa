@@ -38,7 +38,7 @@ VM(nope, const char *msg, ...) {
 
   // print backtrace
   for (;;) {
-    ip = RETP, fp += Size(frame) + getnum(ARGC) + getnum(SUBR);
+    ip = RETP, fp += Width(frame) + N(ARGC) + N(SUBR);
     if (button(H(ip))[-1] == yield) break;
     fputs("# in ", stderr), emsep(v, ip, stderr, '\n'); }
 
@@ -48,12 +48,18 @@ VM(nope, const char *msg, ...) {
 // errors
 VM(fail) { Jump(nope, "fail"); }
 
+static VM(type_error) {
+ enum tag exp = v->xp, act = kind(xp);
+ Jump(nope, type_err_msg, tnom(act), tnom(exp)); }
+
 // type/arity checking
 #define TDCN(t) if(!kind(xp-t)){ NEXT(1);}\
  Jump(nope,type_err_msg,tnom(kind(xp)),tnom(t))
-#define DTC(n, t) VM(n) { TDCN(t); }
+#define DTC(n, t) VM(n) {\
+  if (kind(xp-t)==0) NEXT(1);\
+  v->xp = t; Jump(type_error); }
 DTC(idZ, Num) DTC(idH, Hom) DTC(idT, Tbl) DTC(id2, Two)
 VM(arity) {
  obj reqd = (obj) GF(ip);
- if (reqd <= ARGC) { NEXT(2); }
- Jump(nope, arity_err_msg, N(ARGC), N(reqd)); }
+ if (reqd <= ARGC) NEXT(2);
+ else Jump(nope, arity_err_msg, N(ARGC), N(reqd)); }

@@ -6,7 +6,7 @@
 // for strings
 obj string(lips v, const char* c) {
  i64 bs = 1 + slen(c);
- str o = cells(v, Size(str) + b2w(bs));
+ str o = cells(v, Width(str) + b2w(bs));
  cpy8(o->text, c, o->len = bs);
  return putstr(o); }
 

@@ -1,11 +1,18 @@
-include config.mk
+ifeq ($(shell whoami), root)
+PREFIX ?= /usr/local
+else
+PREFIX ?= $(HOME)/.local
+endif
+
+LC_ALL=C
 
 n=lips
 b=$n.bin
 
+bins=bin/lips
 docs=share/man/man1/lips.1
 libs=lib/lips/prelude.lips
-files=bin/$n $(libs) $(docs)
+files=$(bins) $(libs) $(docs)
 
 # command to run the tests
 t=bin/$b -_ $(libs) $(sort $(wildcard test/*))
@@ -38,24 +45,17 @@ bin/$n.bin: $(patsubst %.c,%.o, $(sort $(wildcard src/*.c)))
 # install target
 D=$(DESTDIR)$(PREFIX)
 $D/%: %
-	mkdir -p $(dir $@)
-	cp -r $(firstword $^) $(dir $@)
+	install -D $^ $@
 # install rules
 install: $(addprefix $D/,$(files))
 uninstall:
 	rm -f $(addprefix $D/,$(files))
 
-# vim
-V=$(VIMDIR)
-vimfiles=syntax/$n.vim ftdetect/$n.vim
-install-vim: $(addprefix $V/,$(vimfiles))
-uninstall-vim:
-	rm -f $(addprefix $V/,$(vimfiles))
-$V/%/lips.vim: vim/%/lips.vim $V/%
-	cp $^
-$V/%:
-	mkdir -p $@
+install-vim:
+	make -C vim install
 
+uninstall-vim:
+	make -C vim uninstall
 # misc tasks
 #
 clean:
@@ -74,4 +74,4 @@ repl: bin/$n
 	rlwrap $^ -_i $(libs) test/00-helpers.lips test/kanren.lips test/nf.lips
 .PHONY:\
  	test clean perf valg sloc bits install\
- 	enstall-vim uninstall uninstall-vim repl
+ 	install-vim uninstall uninstall-vim repl

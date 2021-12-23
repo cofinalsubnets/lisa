@@ -6,12 +6,12 @@
  _(idT, 0)        _(imm, 0)      _(arg, 0)\
  _(clo, 0)        _(loc, 0)      _(take, 0)\
  _(locals, 0)     _(loc_, 0)     _(exit_u, "exit")\
- _(clos, 0)       _(encll, 0)    _(par_u, "read")\
+ _(encll, 0)      _(par_u, "read")\
  _(encln, 0)      _(yield, 0)    _(ret, 0)\
  _(jump, 0)       _(branch, 0)   _(barnch, 0)\
  _(call, 0)       _(rec, 0)      _(lbind, 0)\
- _(sar_u, ">>")      _(sal_u, "<<")    _(band_u, "&")\
- _(bor_u, "|")       _(bxor_u, "^")    _(sar, 0)\
+ _(sar_u, ">>")   _(sal_u, "<<")    _(band_u, "&")\
+ _(bor_u, "|")    _(bxor_u, "^")    _(sar, 0)\
  _(sal, 0)        _(band, 0)     _(bor, 0)\
  _(bxor, 0)       _(tbind, 0)    _(push, 0)\
  _(add, 0)        _(sub, 0)      _(mul, 0)\
@@ -91,6 +91,7 @@ typedef struct frame { obj clos, retp, subd, argc, argv[]; } *frame;
 #define ARGC ((frame)fp)->argc
 #define ARGV ((frame)fp)->argv
 #define LOCS fp[-1]
+#define Frame ((frame)fp)
 // the pointer to the local variables array isn't in the frame struct. it
 // isn't present for all functions, but if it is it's in the word of memory
 // immediately preceding the frame pointer.

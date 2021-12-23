@@ -122,7 +122,7 @@ obj tbl_get(lips v, obj t, obj k) {
   return e ? e->val : 0; }
 
 obj table(lips v) {
-  tbl t = cells(v, Size(tbl) + 1);
+  tbl t = cells(v, Width(tbl) + 1);
   ent *b = (ent*)(t+1);
   t->len = 0, t->cap = 1, t->tab = b, *b = NULL;
   return puttbl(t); }

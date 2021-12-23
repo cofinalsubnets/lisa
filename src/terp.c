@@ -112,7 +112,6 @@ BR1(<, xp, nil)
 
 // unconditional jumps
 VM(jump) { AP((obj) GF(ip), xp); }
-VM(clos) { CLOS = (obj) GF(ip); AP((obj) G(FF(ip)), xp); }
 
 // return from a function
 VM(ret) {
@@ -154,7 +153,7 @@ static VM(recne) {
  v->xp = SUBR, v->ip = RETP; // save return info
  fp = ARGV + N(ARGC - ip);
  cpy64r(fp, sp, N(ip)); // copy from high to low
- sp = fp -= Size(frame);
+ sp = fp -= Width(frame);
  RETP = v->ip;
  ARGC = ip;
  SUBR = v->xp;

@@ -112,12 +112,14 @@ static obj read_file_loop(lips v, FILE *p, str o, u64 n, u64 lim) {
   default: o->text[n++] = x; }
  return read_file_loop(v, p, S(grow_buffer(v, _S(o))), lim, 2*lim); }
 
-obj read_file(lips v, const char *path) {
- FILE *i = fopen(path, "r");
- if (!i) return errp(v, "%s : %s", path, strerror(errno)), restart(v);
+obj read_file(lips v, FILE *i) {
  obj s = read_buffered(v, i, read_file_loop);
  fclose(i);
  return s; }
+obj read_path(lips v, const char *path) {
+ FILE *i = fopen(path, "r");
+ if (!i) return errp(v, "%s : %s", path, strerror(errno)), restart(v);
+ return read_file(v, i); }
 
 obj write_file(lips v, const char *path, const char *text) {
  FILE *out = fopen(path, "w");
@@ -223,7 +225,7 @@ VM(slurp) {
   ARY(1);
   xp = *ARGV;
   TC(xp, Str);
-  RETC(v->xp = read_file(v, getstr(xp)->text)); }
+  RETC(v->xp = read_path(v, getstr(xp)->text)); }
 VM(dump) {
   ARY(2);
   TC(ARGV[0], Str); TC(ARGV[1], Str);

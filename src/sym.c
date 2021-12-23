@@ -28,7 +28,7 @@ obj sskc(lips v, mem y, obj x) {
   return *y = putsym(z); }
 
 obj intern(lips v, obj x) {
-  if (Avail < Size(sym)) with(x, reqsp(v, Size(sym)));
+  if (Avail < Width(sym)) with(x, reqsp(v, Width(sym)));
   return sskc(v, &v->syms, x); }
 
 obj interns(lips v, const char *s) {
@@ -39,7 +39,7 @@ VM(gsym_u) {
     RETC(v->xp = intern(v, *ARGV));
   Have(Width(sym));
   sym y = (sym) hp;
-  hp += Size(sym);
+  hp += Width(sym);
   y->nom = y->l = y->r = nil;
   y->code = v->count++ * mix;
   GO(ret, putsym(y)); }

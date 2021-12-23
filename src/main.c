@@ -54,10 +54,12 @@ static lips lips_init(lips v) {
  v->count = 0, v->len = ini_len;
  v->pool = (mem) (v->root = NULL);
  set64(v->glob, nil, NGlobs);
- Top = table(v), Mac = table(v);
+ Top = table(v);
+ Mac = table(v);
 #define repr(a, b) if (b) defprim(v,b,a);
 #define rein(a, b) if (!b) rin(v, "i-"#a,a);
- insts(repr) insts(rein)
+ insts(repr)
+ insts(rein)
 #define bsym(i,s)(v->glob[i]=interns(v,s))
  bsym(Eval, "ev");
  bsym(Apply, "ap");
@@ -69,7 +71,8 @@ static lips lips_init(lips v) {
  bsym(Splat, ".");
  obj y;
 #define def(s, x) (y=interns(v,s),tbl_set(v,Top,y,x))
- def("ns", Top), def("macros", Mac);
+ def("_ns", Top);
+ def("_macros", Mac);
  return v; }
 
 #define BOOT PREFIX "/lib/lips/prelude.lips"
@@ -80,7 +83,7 @@ int main(int argc, char** argv) {
       default: return EXIT_FAILURE;
       case '_': boot = false; break;
       case 'i': shell = true; break;
-      case 'h':
+      case 'h': {
         const char *help =
           "usage: %s [options and scripts]\n"
           "with no arguments, start a repl\n"
@@ -89,7 +92,7 @@ int main(int argc, char** argv) {
           "  -i start repl unconditionally\n"
           "  -_ don't bootstrap\n";
         fprintf(stdout, help, *argv);
-        break;
+        break; }
       case -1: {
         obj x;
         argc -= optind, argv += optind;

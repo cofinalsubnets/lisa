@@ -87,7 +87,7 @@ static vec tuplr(lips v, i64 i, va_list xs) {
  vec t; obj x;
  return (x = va_arg(xs, obj)) ?
   (with(x, t = tuplr(v, i+1, xs)), t->xs[i] = x, t) :
-  ((t = cells(v, Size(tup) + i))->len = i, t); }
+  ((t = cells(v, Width(tup) + i))->len = i, t); }
 
 static obj tupl(lips v, ...) {
  vec t; va_list xs;
@@ -489,8 +489,9 @@ GC(cphom) {
    G(j) = (terp*) (!stale(u) ? u : cp(v, u, len0, base0)));
  return _H(dst += src - start); }
 
+static VM(clos) { CLOS = (obj) GF(ip); AP((obj) G(FF(ip)), xp); }
 // finalize function instance closure
-static VM(pc1) { G(ip) = clos; GF(ip) = (terp*) xp; NEXT(0); }
+static VM(clos1) { G(ip) = clos; GF(ip) = (terp*) xp; NEXT(0); }
 
 // this function is run the first time a user
 // function with a closure is called. its
@@ -500,18 +501,18 @@ static VM(pc1) { G(ip) = clos; GF(ip) = (terp*) xp; NEXT(0); }
 // it overwrites itself with a special jump
 // instruction that sets the closure and enters
 // the function.
-static VM(pc0) {
+static VM(clos0) {
  obj ec  = (obj) GF(ip),
      arg = V(ec)->xs[0],
      loc = V(ec)->xs[1];
  u64 adic = nilp(arg) ? 0 : V(arg)->len;
- Have(Size(frame) + adic + 1);
+ Have(Width(frame) + adic + 1);
  i64 off = (mem) fp - sp;
- G(ip) = pc1;
+ G(ip) = clos1;
  sp -= adic;
  cpy64(sp, V(arg)->xs, adic);
  ec = (obj) GF(ip);
- fp = sp -= Size(frame);
+ fp = sp -= Width(frame);
  RETP = ip;
  SUBR = _N(off);
  ARGC = _N(adic);
@@ -547,7 +548,7 @@ static VM(encl) {
  t->xs[3] = B(x);
  t->xs[4] = _H(at);
 
- at[0] = pc0;
+ at[0] = clos0;
  at[1] = (terp*) putvec(t);
  at[2] = (terp*) A(x);
  at[3] = 0;
@@ -560,7 +561,7 @@ VM(encln) { GO(encl, nil); }
 
 NoInline obj homnom(lips v, obj x) {
   terp *k = G(x);
-  if (k == clos || k == pc0 || k == pc1)
+  if (k == clos || k == clos0 || k == clos1)
     return homnom(v, (obj) G(FF(x)));
   mem h = (mem) H(x);
   while (*h) h++;

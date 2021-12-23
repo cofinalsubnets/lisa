@@ -5,6 +5,9 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
+_Static_assert(sizeof(i64*) == sizeof(i64), "64 bit pointers");
+_Static_assert(-1 >> 1 == -1, "sign-extended bit shifts");
+
 // thanks !!
 
 typedef i64 num, obj, *mem;
@@ -90,7 +93,6 @@ extern const uint32_t *tnoms;
 #define mm(r) ((v->root=&((struct root){(r),v->root})))
 #define um (v->root=v->root->next)
 #define with(y,...) (mm(&(y)),(__VA_ARGS__),um)
-#define Size(t) Width(t)
 #define Width(t) b2w(sizeof(struct t))
 #define If v->glob[Cond]
 #define De v->glob[Def]
@@ -103,6 +105,3 @@ extern const uint32_t *tnoms;
 #define Eva v->glob[Eval]
 #define App v->glob[Apply]
 #define Re  v->glob[Restart]
-
-_Static_assert(sizeof(i64*) == sizeof(i64), "64 bit pointers");
-_Static_assert(-1 >> 1 == -1, "sign-extended bit shifts");

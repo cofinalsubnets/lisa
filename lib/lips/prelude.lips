@@ -31,8 +31,7 @@
        (symp x) (ystr x)
        (vecp x) (sfy-vec x)
        (tblp x) (sfy-tbl x)
-       (strp x) x
-                "()")
+       (strp x) x "()")
       (i2d i) (sget "0123456789abcdefghijklmnopqrstuvwxyz" i)
       (sfy-num i) (show-int i 10)
       (show-int i r) (? (= i 0) ""
@@ -136,9 +135,9 @@
      (len l) (foldl l 0 inc))
 
   ;; and some marcos ...
-  (tset macros
-   ; a macro for defining macros
-   '::: (: (defm n x .) (X ', (X (L Ts macros (Q n) (A x))
+  (tset _macros
+   ; a macro for defining _macros
+   '::: (: (defm n x .) (X ', (X (L Ts _macros (Q n) (A x))
                                  (? (B x) (ap defm (B x)))))
          defm)
    'imm ev
@@ -205,9 +204,9 @@
   ; we usually want to bind early, but we also want to allow
   ; redefinition, so in that case bind late.
   (toplp e)
-   (? (&& (Th ns y) (~ (Th (Tg e'def) y)))
-    (X 'here (Tg ns y))
-    (X 'wait ns))
+   (? (&& (Th _ns y) (~ (Th (Tg e'def) y)))
+    (X 'here (Tg _ns y))
+    (X 'wait _ns))
   (memq (Tg e 'clo) y) (X 'clo e)
   (memq (Tg e 'dfr) y) (X 'wait (Tg e'val))
   (memq (Tg e 'loc) y) (X 'loc e)
@@ -433,7 +432,7 @@
     ': (defn e x)
     ? (cond e (B x))
     ', (seq e x)
-    (? (Th macros a) (wv e (ap (Tg macros a) (B x)))
+    (? (Th _macros a) (wv e (ap (Tg _macros a) (B x)))
      (: z (map (\ x (wv e x)) x) q (A z) r (B z) (?
       (~ (Th pure q)) (adj-ar z)
       (all qtd r) (quote (ap q (map unq r)))
@@ -687,7 +686,10 @@
    L (\ x k (:
     (loop x k) (? (~ x) k
      (loop (B x)
-      (xc i-push (eval (A x) (xc i-cons (-> 'two k))))))
+      (xc i-push
+       (eval (A x)
+        (xc i-cons
+         (-> 'two k))))))
     (Im () (loop x k))))
 
 
@@ -718,6 +720,13 @@
      (pop2 (fold (push2 k) (AB x) (BB x))))))))
 
    nilp (nary i-nilpp () ())
+   twop (nary i-twopp () ())
+   homp (nary i-hompp () ())
+   nump (nary i-numpp () ())
+   symp (nary i-sympp () ())
+   strp (nary i-strpp () ())
+   tblp (nary i-tblpp () ())
+   vecp (nary i-vecpp () ())
    fail (nary (hgeti fail) ())))
 
   (ini e m) ((xc i-ret (xd (Tg e 'nom) (\ _ m (hom m)))) e m)
@@ -726,12 +735,10 @@
 ;  ev ; comment this line to define internals at toplevel
   )))))
 
-(tset macros 'imm ((ev egg) egg)) ; bootstrap
-(: (co a x .) (ev (L '\ 'x '. (foldl x (L ap a 'x) (flip L))))
-   (const x) (emi i-imm (emx x (emi i-ret (emx '(() const) (hom 4))))))
+(tset _macros 'imm ((ev egg) egg)) ; bootstrap
 
 ; " drop privileges "
-(: dels (cu (flip each) (cu Td ns))
-   insns (filter (tkeys ns) (\ k (= "i-" (ssub (ystr k) 0 2))))
-   locs '(egg emi macros emx hom hseek hgeti hgetx hfin ns)
+(: dels (cu (flip each) (cu Td _ns))
+   insns (filter (tkeys _ns) (\ k (= "i-" (ssub (ystr k) 0 2))))
+   locs '(egg emi _macros emx hom hseek hgeti hgetx hfin _ns)
  (each (L insns locs) dels))
