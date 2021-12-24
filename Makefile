@@ -1,9 +1,3 @@
-ifeq ($(shell whoami), root)
-PREFIX ?= /usr/local
-else
-PREFIX ?= $(HOME)/.local
-endif
-
 LC_ALL=C
 
 n=lips
@@ -20,6 +14,12 @@ t=bin/$b -_ $(libs) $(sort $(wildcard test/*))
 test: bin/$b
 	/usr/bin/env TIMEFORMAT="in %Rs" bash -c "time $t"
 
+ifeq ($(shell whoami), root)
+PREFIX ?= /usr/local
+else
+PREFIX ?= $(HOME)/.local
+endif
+
 CC ?= gcc
 CPPFLAGS ?= -DPREFIX=\"$(PREFIX)\"
 # fixnums need sign extended bitshifts.
@@ -32,8 +32,6 @@ CFLAGS ?= -std=c99 -g -O2 -flto\
 
 # build config
 #
-n=lips
-b=$n.bin
 # target directory
 # dist binary
 bin/$n: bin/$n.bin
@@ -53,9 +51,9 @@ uninstall:
 
 install-vim:
 	make -C vim install
-
 uninstall-vim:
 	make -C vim uninstall
+
 # misc tasks
 #
 clean:
@@ -65,13 +63,15 @@ perf: perf.data
 perf.data: bin/$b $(libs)
 	perf record ./$t
 valg: bin/$b
-	valgrind $t
+	valgrind --error-exitcode=1 $t
 sloc:
 	cloc --force-lang=Lisp,$n *
 bits: bin/$n bin/$b
-	stat -c "%n %sB" $^
+	du -h $^
+repl_cmd=bin/$n.bin -_i $(libs) test/{00-helpers,kanren,nf}.lips
 repl: bin/$n
-	rlwrap $^ -_i $(libs) test/00-helpers.lips test/kanren.lips test/nf.lips
+	which rlwrap && rlwrap $(repl_cmd) || $(repl_cmd)
+
 .PHONY:\
- 	test clean perf valg sloc bits install\
- 	install-vim uninstall uninstall-vim repl
+ 	test clean perf valg sloc bits repl\
+	install uninstall install-vim uninstall-vim

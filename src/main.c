@@ -1,12 +1,11 @@
 #include "lips.h"
+
+static lips lips_fin(lips v) { return
+ free(v->pool), (lips) (v->pool = NULL); }
+
 #include "terp.h"
 #include "read.h"
-#include "write.h"
-#include "tbl.h"
 #include "hom.h"
-#include "sym.h"
-#include "two.h"
-#include "mem.h"
 #include <stdlib.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -18,24 +17,30 @@
 #ifndef PREFIX
 #define PREFIX "/usr/local"
 #endif
-#define OK EXIT_SUCCESS
-#define NO EXIT_FAILURE
 
-static int script(lips v, const char *path) {
- FILE *f = fopen(path, "r");
- if (!f) return errp(v, "%s : %s", path, strerror(errno)), NO;
- obj x;
- if (setjmp(v->restart)) return errp(v, "%s : fail", path), fclose(f), NO;
- while ((x = parse(v, f))) eval(v, x);
- return x = feof(f) ? (x ? x : nil) : NO, fclose(f), OK; }
+static bool script(lips v, const char *path) {
+  FILE *f = fopen(path, "r");
 
-static lips lips_fin(lips v) { return
- free(v->pool), (lips) (v->pool = NULL); }
+  if (!f) return
+    errp(v, "%s : %s", path, strerror(errno)),
+    false;
 
-static u0 rin(lips v, const char *a, terp *b) {
- obj z = interns(v, a);
- tbl_set(v, Top, z, _N(b)); }
+  if (setjmp(v->restart)) return false;
 
+  for (obj x; (x = parse(v, f)); eval(v, x));
+
+  bool r = feof(f);
+  fclose(f);
+  return r; }
+
+#include "sym.h"
+#include "tbl.h"
+static NoInline u0 rin(lips v, const char *a, terp *b) {
+  obj z = interns(v, a);
+  tbl_set(v, Top, z, _N(b)); }
+
+#include "mem.h"
+#include "two.h"
 static NoInline u0 defprim(lips v, const char *a, terp *inst) {
   hom prim;
   obj nom = pair(v, interns(v, a), nil);
@@ -54,6 +59,11 @@ static lips lips_init(lips v) {
  v->count = 0, v->len = ini_len;
  v->pool = (mem) (v->root = NULL);
  set64(v->glob, nil, NGlobs);
+
+ if (setjmp(v->restart)) {
+   errp(v, "fail");
+   return NULL; }
+
  Top = table(v);
  Mac = table(v);
 #define repr(a, b) if (b) defprim(v,b,a);
@@ -76,36 +86,38 @@ static lips lips_init(lips v) {
  return v; }
 
 #define BOOT PREFIX "/lib/lips/prelude.lips"
+const char *help =
+  "usage: %s [options and scripts]\n"
+  "with no arguments, start a repl\n"
+  "options:\n"
+  "  -h print this message\n"
+  "  -i start repl unconditionally\n"
+  "  -_ don't bootstrap\n";
 
+#undef ok
+#include "write.h"
 int main(int argc, char** argv) {
-  for (int r = OK, shell = argc == 1 , boot = true;;)
+  for (bool ok = true, shell = argc == 1, boot = true;;)
     switch (getopt(argc, argv, "hi_")) {
       default: return EXIT_FAILURE;
       case '_': boot = false; break;
       case 'i': shell = true; break;
-      case 'h': {
-        const char *help =
-          "usage: %s [options and scripts]\n"
-          "with no arguments, start a repl\n"
-          "options:\n"
-          "  -h print this message\n"
-          "  -i start repl unconditionally\n"
-          "  -_ don't bootstrap\n";
-        fprintf(stdout, help, *argv);
-        break; }
-      case -1: {
-        obj x;
+      case 'h': fprintf(stdout, help, *argv); break;
+      case -1:
         argc -= optind, argv += optind;
-        if (argc || shell) {
-          lips v = lips_init(&((struct lips){}));
-          if (boot) r = script(v, BOOT);
-          while (r == OK && argc--) {
-            const char *path = *argv++;
-            r = script(v, path); }
-          if (r == OK && shell)
-            for (setjmp(v->restart);;) {
-              if ((x = parse(v, stdin)))
-                emsep(v, eval(v, x), stdout, '\n');
-              else if (feof(stdin)) break; }
-          lips_fin(v); }
-        return r; } } }
+        if (!argc && !shell) return EXIT_SUCCESS;
+
+        lips v = lips_init(&((struct lips){}));
+        if (boot) ok = script(v, BOOT);
+
+        while (ok && argc--) ok = script(v, *argv++);
+
+        if (ok && shell)
+          for (setjmp(v->restart);;) {
+            putchar('\t'), fflush(stdout);
+            obj x = parse(v, stdin);
+            if (x) emsep(v, eval(v, x), stdout, '\n');
+            else if (feof(stdin)) break; }
+
+        lips_fin(v);
+        return ok ? EXIT_SUCCESS : EXIT_FAILURE; } }

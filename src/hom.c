@@ -54,8 +54,6 @@ static c2 comp_expr, comp_sym, comp_list, comp_imm;
 
 enum { Here, Loc, Arg, Clo, Wait };
 #define CO(nom,...) static obj nom(lips v, mem e, u64 m, ##__VA_ARGS__)
-#define c1(nom,...) static obj nom(lips v, mem e, u64 m, ##__VA_ARGS__)
-#define c2(nom,...) static obj nom(lips v, mem e, u64 m, obj x, ##__VA_ARGS__)
 
 // helper functions for lists
 static i64 lidx(obj l, obj x) {
@@ -68,36 +66,37 @@ static obj linitp(lips v, obj x, mem d) {
   (with(x, y = linitp(v, B(x), d)), pair(v, A(x), y)); }
 
 static obj snoc(lips v, obj l, obj x) {
- return !twop(l) ? pair(v, x, l) :
-  (with(l, x = snoc(v, B(l), x)), pair(v, A(l), x)); }
+  return !twop(l) ? pair(v, x, l) :
+    (with(l, x = snoc(v, B(l), x)), pair(v, A(l), x)); }
 
-static bool pushss(lips v, i64 i, va_list xs) {
+static u0 pushss(lips v, i64 i, va_list xs) {
   obj x = va_arg(xs, obj);
-  if (!x) return Avail >= i || cycle(v, i);
-  bool r;
-  with(x, r = pushss(v, i+1, xs));
-  if (r) *--v->sp = x;
-  return r; }
+  if (x)
+    with(x,  pushss(v, i+1, xs)),
+    *--v->sp = x;
+  else if (Avail < i && !cycle(v, i))
+    errp(v, "oom"),
+    restart(v); }
 
 static u0 pushs(lips v, ...) {
   va_list xs;
-  va_start(xs, v);
-  if (!pushss(v, 0, xs))
-    errp(v, "oom"),
-    restart(v);
-  va_end(xs); }
+  va_start(xs, v), pushss(v, 0, xs), va_end(xs); }
 
 static vec tuplr(lips v, i64 i, va_list xs) {
- vec t; obj x;
- return (x = va_arg(xs, obj)) ?
-  (with(x, t = tuplr(v, i+1, xs)), t->xs[i] = x, t) :
-  ((t = cells(v, Width(vec) + i))->len = i, t); }
+ vec t;
+ obj x = va_arg(xs, obj);
+ if (x)
+   with(x, t = tuplr(v, i+1, xs)),
+   t->xs[i] = x;
+ else
+  t = cells(v, Width(vec) + i),
+  t->len = i;
+ return t; }
 
 static obj tupl(lips v, ...) {
- vec t; va_list xs;
- va_start(xs, v);
- t = tuplr(v, 0, xs);
- va_end(xs);
+ vec t;
+ va_list xs;
+ va_start(xs, v), t = tuplr(v, 0, xs), va_end(xs);
  return _V(t); }
 
 // emit code backwards like cons
@@ -135,16 +134,19 @@ static bool scan_def(lips v, mem e, obj x) {
 static u0 scan(lips v, mem e, obj x) {
  if (!twop(x) || A(x) == La || A(x) == Qt) return;
  if (A(x) == De) return (u0) scan_def(v, e, B(x));
- for (mm(&x); twop(x); x = B(x)) scan(v, e, A(x));
+ mm(&x);
+ while (twop(x)) scan(v, e, A(x)), x = B(x);
  um; }
 
 static obj asign(lips v, obj a, i64 i, mem m) {
  obj x;
  if (!twop(a)) return *m = i, a;
- if (twop(B(a)) && AB(a) == Va)
-  return *m = -(i+1), pair(v, A(a), nil);
- with(a, x = asign(v, B(a), i+1, m));
- return pair(v, A(a), x); }
+ if (twop(B(a)) && AB(a) == Va) return
+   *m = -(i+1),
+   pair(v, A(a), nil);
+ return
+   with(a, x = asign(v, B(a), i+1, m)),
+   pair(v, A(a), x); }
 
 static Inline obj scope(lips v, mem e, obj a, obj n) {
  i64 s = 0;
@@ -227,11 +229,11 @@ static u0 comp_let_r(lips v, mem e, obj x) {
 
 // syntactic sugar for define
 static obj def_sug(lips v, obj x) {
- obj y = nil; return
-  with(y, x = linitp(v, x, &y)),
-  x = pair(v, x, y),   x = pair(v, Se, x),
-  x = pair(v, x, nil), x = pair(v, La, x),
-  pair(v, x, nil); }
+  obj y = nil;
+  return with(y, x = linitp(v, x, &y)),
+         x = pair(v, x, y),   x = pair(v, Se, x),
+         x = pair(v, x, nil), x = pair(v, La, x),
+         pair(v, x, nil); }
 
 CO(comp_let, obj x) { return
  !twop(B(x))    ? comp_imm(v, e, m, nil) :
@@ -371,7 +373,7 @@ static u0 comp_sequence_loop(lips v, mem e, obj x) {
     with(x, comp_sequence_loop(v, e, B(x))),
     PushCc(_N(comp_expr_), A(x)); }
 
-c2(comp_list) {
+CO(comp_list, obj x) {
   obj z = A(x);
   if (z == If) return comp_if(v, e, m, x);
   if (z == De) return comp_let(v, e, m, x);
@@ -387,11 +389,11 @@ c2(comp_list) {
     return comp_macro(v, e, m, z, B(x));
   return comp_call(v, e, m, A(x), B(x)); }
 
-c1(emit_i) {
+CO(emit_i) {
  terp* i = (terp*) N(*v->sp++);
  return em1(i, Ccc(m+1)); }
 
-c1(emit_i_d) {
+CO(emit_i_d) {
  terp* i = (terp*) N(*v->sp++);
  obj x = *v->sp++, k;
  return with(x, k = Ccc(m+2)), em2(i, x, k); }
@@ -403,7 +405,7 @@ static obj hini(lips v, u64 n) {
  set64((mem) a, nil, n);
  return _H(a+n); }
 
-c1(comp_alloc_thread) {
+CO(comp_alloc_thread) {
  obj k = hini(v, m+1);
  return em1((terp*)(e ? name(*e) : Eva), k); }
 
