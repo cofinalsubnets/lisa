@@ -3,6 +3,10 @@
 #include "terp.h"
 
 // memory allocation functions
+static u0 reqsp(lips v, u64 req) {
+  if (!cycle(v, req)) {
+    errp(v, "oom");
+    restart(v); } }
 
 // general purpose memory allocator
 u0* cells(lips v, u64 n) {
@@ -71,7 +75,7 @@ static clock_t copy(lips v, u64 len1) {
   v->t0 = t2;
   return t1 == t2 ? 1 : (t2 - t0) / (t2 - t1); }
 
-// gc entry point reqsp : vm x num -> ()
+// gc entry point cycle : vm x num -> bool
 //
 // try to return with at least req words of available memory.
 // return true on success, false otherwise. this function also
@@ -96,19 +100,16 @@ static clock_t copy(lips v, u64 len1) {
 // the cost of more memory use under pressure.
 #define growp (allocd > len || vit < 32) // lower bound
 #define shrinkp (allocd < (len>>1) && vit >= 128) // upper bound
-u0 reqsp(lips v, u64 req) {
+bool cycle(lips v, u64 req) {
   i64 len = v->len, vit = copy(v, len);
-  if (vit) { // copy succeeded
-    i64 allocd = len - (Avail - req);
-    if (growp) do len <<= 1, vit <<= 1; while (growp);
-    else if (shrinkp) do len >>= 1, vit >>= 1; while (shrinkp);
-    else return; // no size change needed
-    // otherwise grow or shrink ; if it fails maybe we can return
-    if (copy(v, len) || allocd <= v->len) return; }
-  errp(v, "oom");
-  restart(v); }
-#undef growp
-#undef shrinkp
+  if (!vit) return false;
+
+  i64 allocd = len - (Avail - req);
+  if (growp) do len <<= 1, vit <<= 1; while (growp);
+  else if (shrinkp) do len >>= 1, vit >>= 1; while (shrinkp);
+  else return true; // no size change needed
+  // otherwise grow or shrink ; if it fails maybe we can return
+  return copy(v, len) || allocd <= v->len; }
 
 // the exact method for copying an object into
 // the new pool depends on its type. copied
@@ -124,3 +125,11 @@ GC(cp) {
     case Two: return cptwo(v, x, len0, base0);
     case Sym: return cpsym(v, x, len0, base0);
     case Tbl: return cptbl(v, x, len0, base0); } }
+
+#include "hom.h"
+VM(gc) {
+  u64 req = v->xp;
+  bool r;
+  CALLC(r = cycle(v, req));
+  if (r) NEXT(0);
+  Jump(nope, "oom : %dB (%dB allocated)", req*W, v->len*W); }

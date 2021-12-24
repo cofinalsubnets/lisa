@@ -1,23 +1,16 @@
 #include "lips.h"
-#include "io.h"
-#include "sym.h"
-#include "two.h"
-#include "mem.h"
-#include "str.h"
-#include "terp.h"
-#include "hom.h"
-#include "tbl.h"
-#include "vec.h"
-#include <string.h>
-#include <errno.h>
-
-#define bind(v, x) if (!((v)=(x))) return 0
-
 // these are the names of the fundamental types.
 // obviously this only works if the type names
 // are all 4 bytes long (counting the NUL)
 const u32 *tnoms = (u32*)
   "hom\0num\0two\0vec\0str\0tbl\0sym\0nil";
+
+#include "read.h"
+#include "sym.h"
+#include "two.h"
+#include "mem.h"
+#include "str.h"
+#include "terp.h"
 
 ////
 /// lisp parser
@@ -61,10 +54,6 @@ obj parse(lips v, FILE* i) {
      x = read_buffered(v, i, read_atom),
      y = readz(v, chars(x)),
      nump(y) ? y : intern(v, x); } }
-
-VM(par_u) {
-  RETC(xp = parse(v, stdin),
-       v->xp = !xp ? nil : pair(v, xp, nil)); }
 
 static obj read_list(lips v, FILE *i) {
  obj x, y, c = read_char(i);
@@ -126,6 +115,10 @@ u0 write_file(lips v, const char *path, const char *text) {
     for (int c = *text; c; c = *++text) fputc(c, out);
     fclose(out); } }
 
+VM(par_u) {
+  RETC(xp = parse(v, stdin),
+       v->xp = !xp ? nil : pair(v, xp, nil)); }
+
 VM(slurp) {
   ARY(1);
   xp = *ARGV;
@@ -165,69 +158,3 @@ static Inline obj readz(lips _, const char *s) {
   case '-': return nump(q = readz_1(s+1)) ? _N(-N(q)) : q;
   case '+': s++;
   default: return readz_1(s); } }
-
-
-u0 ems(lips v, FILE *o, obj x, char s) {
- emit(v, x, o), fputc(s, o); }
-u0 emsep(lips v, obj x, FILE *o, char s) {
- emit(v, x, o), fputc(s, o); }
-
-static u0 emstr(lips v, str s, FILE *o) {
- fputc('"', o);
- for (char *t = s->text; *t; fputc(*t++, o)) if (*t == '"') fputc('\\', o);
- fputc('"', o); }
-
-static u0 emtbl(lips v, tbl t, FILE *o) {
- fprintf(o, "#tbl:%ld/%ld", (long)t->len, (long)t->cap); }
-
-static u0 emsym(lips v, sym y, FILE *o) {
- y->nom == nil ? fprintf(o, "#sym@%lx", (long) y) :
-                 fputs(chars(y->nom), o); }
-
-static u0 emtwo_(lips v, two w, FILE *o) {
- twop(w->b) ? (emsep(v, w->a, o, ' '), emtwo_(v, gettwo(w->b), o)) :
-              emsep(v, w->a, o, ')'); }
-
-static u0 emtwo(lips v, two w, FILE *o) {
- w->a == Qt && twop(w->b) && nilp(B(w->b)) ?
-  (fputc('\'', o), emit(v, A(w->b), o)) :
-  (fputc('(', o), emtwo_(v, w, o)); }
-
-static u0 emvec(lips v, vec e, FILE *o) {
- fputc('[', o);
- if (e->len) for (mem i = e->xs, l = i + e->len;;) {
-  emit(v, *i++, o);
-  if (i < l) fputc(' ', o);
-  else break; }
- fputc(']', o); }
-
-static u0 emhomn(lips v, obj x, FILE *o) {
- fputc('\\', o);
- switch (kind(x)) {
-  case Sym: return emit(v, x, o);
-  case Two: if (symp(A(x))) emit(v, A(x), o);
-            if (twop(B(x))) emhomn(v, B(x), o); } }
-
-u0 emit(lips v, obj x, FILE *o) {
- switch (kind(x)) {
-  case Hom: return emhomn(v, homnom(v, x), o);
-  case Num: return (u0) fprintf(o, "%ld", (long) N(x));
-  case Sym: return emsym(v, getsym(x), o);
-  case Two: return emtwo(v, gettwo(x), o);
-  case Str: return emstr(v, getstr(x), o);
-  case Tbl: return emtbl(v, gettbl(x), o);
-  case Vec: return emvec(v, getvec(x), o);
-  default:  fputs("()", o); } }
-
-// print to console
-VM(em_u) {
- u64 l = N(ARGC), i;
- if (l) {
-  for (i = 0; i < l - 1; i++)
-   emsep(v, ARGV[i], stdout, ' ');
-  emit(v, xp = ARGV[i], stdout); }
- fputc('\n', stdout);
- Jump(ret); }
-
-VM(putc_u) { ARY(1); fputc(N(*ARGV), stdout); Jump(ret); }
-VM(getc_u) { GO(ret, feof(stdin) ? nil : _N(getc(stdin))); }

@@ -51,8 +51,7 @@ extern const uint32_t *tnoms;
 #define nil (~(obj)0)
 #define W (sizeof(obj))
 #define W2 (W*2)
-#define TNom(t) ((char*)(tnoms+(t)))
-#define tnom TNom
+#define tnom(t) ((char*)(tnoms+(t)))
 #define kind(x) ((x)&7)
 #define N(x) getnum(x)
 #define _N(x) putnum(x)
@@ -60,7 +59,4 @@ extern const uint32_t *tnoms;
 #define putnum(n) (((obj)(n)<<3)+Num)
 #define nump(x) (kind(x)==Num)
 #define nilp(x) ((x)==nil)
-#define mm(r) ((v->root=&((struct root){(r),v->root})))
-#define um (v->root=v->root->next)
-#define with(y,...) (mm(&(y)),(__VA_ARGS__),um)
-#define Width(t) b2w(sizeof(struct t))
+#define bind(v, x) if (!((v)=(x))) return 0

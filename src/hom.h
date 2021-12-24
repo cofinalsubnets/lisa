@@ -9,5 +9,6 @@
 #define gethom(x) ((hom)((x)-Hom))
 #define puthom(x) ((obj)((x)+Hom))
 #define homp(x) (kind(x)==Hom)
-obj eval(lips, obj), homnom(lips, obj);
+obj eval(lips, obj),
+    homnom(lips, obj);
 static Inline hom button(hom h) { while (*h) h++; return h; }

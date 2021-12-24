@@ -5,7 +5,7 @@
 #include "sym.h"
 #include "two.h"
 #include "mem.h"
-#include "io.h"
+#include "write.h"
 #include "vec.h"
 #include "terp.h"
 
@@ -71,18 +71,21 @@ static obj snoc(lips v, obj l, obj x) {
  return !twop(l) ? pair(v, x, l) :
   (with(l, x = snoc(v, B(l), x)), pair(v, A(l), x)); }
 
-static u0 pushss(lips v, i64 i, va_list xs) {
- obj x = va_arg(xs, obj);
- x ? (with(x, pushss(v, i, xs)), *--v->sp = x) : reqsp(v, i); }
+static bool pushss(lips v, i64 i, va_list xs) {
+  obj x = va_arg(xs, obj);
+  if (!x) return Avail >= i || cycle(v, i);
+  bool r;
+  with(x, r = pushss(v, i+1, xs));
+  if (r) *--v->sp = x;
+  return r; }
 
 static u0 pushs(lips v, ...) {
- i64 i = 0;
- va_list xs; va_start(xs, v);
- while (va_arg(xs, obj)) i++;
- va_end(xs), va_start(xs, v);
- if (Avail < i) pushss(v, i, xs);
- else for (mem sp = v->sp -= i; i--; *sp++ = va_arg(xs, obj));
- va_end(xs); }
+  va_list xs;
+  va_start(xs, v);
+  if (!pushss(v, 0, xs))
+    errp(v, "oom"),
+    restart(v);
+  va_end(xs); }
 
 static vec tuplr(lips v, i64 i, va_list xs) {
  vec t; obj x;
@@ -107,17 +110,6 @@ static obj em2(terp *i, obj j, obj k) {
 static obj imx(lips v, mem e, i64 m, terp *i, obj x) {
  PushCc(_N(i), x);
  return emit_i_d(v, e, m); }
-
-static NoInline obj apply(lips v, obj f, obj x) {
- PushCc(f, x);
- hom h = cells(v, 5);
- h[0] = call;
- h[1] = (terp*)_N(2);
- h[2] = yield;
- h[3] = NULL;
- h[4] = (terp*) h;
- f = _H(h), x = tbl_get(v, Top, App);
- return call(v, f, v->fp, v->sp, v->hp, x); }
 
 static NoInline obj rw_let_fn(lips v, obj x) {
  mm(&x);
@@ -350,13 +342,15 @@ CO(comp_expr, obj x) {
           twop(x) ? comp_list :
                     comp_imm)(v, e, m, x); }
 
+static obj apply(lips, obj, obj) NoInline;
+
 CO(comp_macro, obj macro, obj args) {
   obj s1 = S1, s2 = S2;
   with(s1, with(s2, macro = apply(v, macro, args)));
   S1 = s1, S2 = s2;
   return comp_expr(v, e, m, macro); }
 
-CO(comp_apply, obj fun, obj args) {
+CO(comp_call, obj fun, obj args) {
   // function call
   mm(&args);
   PushCc(
@@ -391,7 +385,7 @@ c2(comp_list) {
     return comp_imm(v, e, m, x); }
   if ((z = tbl_get(v, Mac, z)))
     return comp_macro(v, e, m, z, B(x));
-  return comp_apply(v, e, m, A(x), B(x)); }
+  return comp_call(v, e, m, A(x), B(x)); }
 
 c1(emit_i) {
  terp* i = (terp*) N(*v->sp++);
@@ -417,6 +411,17 @@ obj eval(lips v, obj x) {
   obj args = pair(v, x, nil),
       ev = tbl_get(v, Top, Eva);
   return apply(v, ev, args); }
+
+static NoInline obj apply(lips v, obj f, obj x) {
+ PushCc(f, x);
+ hom h = cells(v, 5);
+ h[0] = call;
+ h[1] = (terp*)_N(2);
+ h[2] = yield;
+ h[3] = NULL;
+ h[4] = (terp*) h;
+ f = _H(h), x = tbl_get(v, Top, App);
+ return call(v, f, v->fp, v->sp, v->hp, x); }
 
 GC(cphom) {
  hom src = H(x);

@@ -1,6 +1,7 @@
 #include "lips.h"
 #include "terp.h"
-#include "io.h"
+#include "read.h"
+#include "write.h"
 #include "tbl.h"
 #include "hom.h"
 #include "sym.h"

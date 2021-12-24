@@ -23,9 +23,10 @@ VM(cons_u) {
 #include "mem.h"
 // functions for pairs and lists
 obj pair(lips v, obj a, obj b) {
- if (Avail < 2) with(a, with(b, reqsp(v, 2)));
- obj t = puttwo(bump(v, 2));
- return A(t) = a, B(t) = b, t; }
+  two w;
+  with(a, with(b, w = cells(v, 2)));
+  w->a = a, w->b = b;
+  return puttwo(w); }
 
 GC(cptwo) {
  obj dst, src = x;

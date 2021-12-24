@@ -30,7 +30,8 @@ obj sskc(lips v, mem y, obj x) {
   return *y = putsym(z); }
 
 obj intern(lips v, obj x) {
-  if (Avail < Width(sym)) with(x, reqsp(v, Width(sym)));
+  if (Avail < Width(sym) && !cycle(v, Width(sym)))
+    return 0;
   return sskc(v, &v->syms, x); }
 
 GC(cpsym) {

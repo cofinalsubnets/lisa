@@ -1,7 +1,7 @@
 #include "lips.h"
 #include "terp.h"
 #include "mem.h"
-#include "io.h"
+#include "write.h"
 #include "hom.h"
 #include "tbl.h"
 #include "cmp.h"
@@ -24,7 +24,6 @@
 // this occurs near the beginning of a function. if enough
 // memory is not available the interpret jumps to a specific
 // terp function
-VM(gc) { u64 n = v->xp; CALLC(reqsp(v, n)); NEXT(0); }
 
 // that stores the state and calls the garbage collector;
 // afterwards it jumps back to the instruction that called it.
@@ -242,15 +241,20 @@ VM(vararg) {
   NEXT(2); } }
 
 // type predicates
-#define TP(ty) VM(ty##pp) { AP(ip+W, (ty##p(xp)?ok:nil)); }
-TP(num) TP(hom) TP(two) TP(sym) TP(str) TP(tbl) TP(nil) TP(vec)
-static VM(typ) {
- for (obj *xs = ARGV, *l = xs + N(ARGC); xs < l;)
-  if (kind(*xs++) != xp) GO(ret, nil);
- GO(ret, ok); }
-#define typp(t, i) VM(t##p_u) { GO(typ, i); }
-typp(num, Num) typp(hom, Hom) typp(str, Str) typp(tbl, Tbl)
-typp(two, Two) typp(sym, Sym) typp(nil, Nil) typp(vec, Vec)
+#define TP(t) \
+    VM(t##pp) { AP(ip+W, (t##p(xp)?ok:nil)); }\
+    VM(t##p_u) {\
+      for (obj *xs = ARGV, *l = xs + N(ARGC); xs < l;)\
+        if (!t##p(*xs++)) GO(ret, nil);\
+      GO(ret, ok); }
+TP(num)
+TP(hom)
+TP(two)
+TP(sym)
+TP(str)
+TP(tbl)
+TP(vec)
+TP(nil)
 
 // stack manipulation
 VM(dupl) { Have1(); --sp; sp[0] = sp[1]; NEXT(1); }
@@ -282,9 +286,9 @@ VM(nope, const char *msg, ...) {
   fputc(')', stderr);
 
   // print error message
-  va_list xs;
   fputs(" : ", stderr);
-  va_start(xs, msg); vfprintf(stderr, msg, xs);
+  va_list xs;
+  va_start(xs, msg), vfprintf(stderr, msg, xs), va_end(xs);
   fputc('\n', stderr);
 
   // print backtrace
@@ -305,6 +309,11 @@ VM(type_error) {
 
 VM(oob_error) {
  Jump(nope, "oob : %d >= %d", v->xp, v->ip); }
+
+VM(ary_error) {
+  u64 reqd = v->xp;
+  Jump(nope, arity_err_msg, N(ARGC), reqd); }
+
 
 // type/arity checking
 #define DTC(n, t) VM(n) {\

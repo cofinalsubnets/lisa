@@ -116,8 +116,9 @@ insts(ninl)
 #define TC(x,t) if(kind((x))-(t)){v->xp=t;Jump(type_error);}
 // arity check
 #define arity_err_msg "wrong arity : %d of %d"
-#define ARY(n) if(_N(n)>ARGC)\
- Jump(nope,arity_err_msg,getnum(ARGC),n)
+#define ARY(n) if(_N(n)>ARGC){\
+ v->xp = n;\
+ Jump(ary_error); }
 
 #define OP(nom, x, n) VM(nom) { xp = (x); NEXT(n); }
 #define OP0(nom, x) OP(nom, x, 0)
@@ -147,5 +148,6 @@ VM(nope, const char *, ...);
 VM(gc);
 VM(type_error);
 VM(oob_error);
+VM(ary_error);
 obj restart(lips), err(lips, char*, ...);
 u0 errp(lips, char*, ...);

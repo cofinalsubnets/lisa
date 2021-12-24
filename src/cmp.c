@@ -1,8 +1,18 @@
 #include "lips.h"
 #include "cmp.h"
-#include "two.h"
-#include "str.h"
 
+typedef bool rel(obj, obj);
+static rel eql_two, eql_str;
+
+bool eql(obj a, obj b) {
+  if (a == b) return true;
+  if (kind(a) != kind(b)) return false;
+  switch (kind(a)) {
+    default: return false;
+    case Two: return eql_two(a, b);
+    case Str: return eql_str(a, b); } }
+
+#include "two.h"
 static bool eql_two(obj a, obj b) {
   // pairs are immutable, so we can deduplicate their insides.
   if (eql(A(a), A(b))) {
@@ -12,18 +22,11 @@ static bool eql_two(obj a, obj b) {
       return true; } }
   return false; }
 
+#include "str.h"
 static bool eql_str(obj a, obj b) {
   str o = S(a), m = S(b);
   if (o->len != m->len) return false;
   return scmp(o->text, m->text) == 0; }
-
-bool eql(obj a, obj b) {
-  if (a == b) return true;
-  if (kind(a) != kind(b)) return false;
-  switch (kind(a)) {
-    default: return false;
-    case Two: return eql_two(a, b);
-    case Str: return eql_str(a, b); } }
 
 #include "hom.h"
 #include "terp.h"
