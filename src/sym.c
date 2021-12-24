@@ -2,11 +2,6 @@
 #include "sym.h"
 #include "str.h"
 
-static Inline obj ssk(lips v, obj y, obj x) {
-  sym z = getsym(y);
-  int i = scmp(chars(z->nom), chars(x));
-  return i == 0 ? y : sskc(v, i < 0 ? &z->r : &z->l, x); }
-
 //symbols
 
 // symbols are interned into a binary search tree. we make no
@@ -23,15 +18,20 @@ obj interns(lips v, const char *s) {
 #include "mem.h"
 #include "tbl.h"
 obj sskc(lips v, mem y, obj x) {
-  if (!nilp(*y)) return ssk(v, *y, x);
+  if (!nilp(*y)) {
+    sym z = getsym(*y);
+    int i = scmp(chars(z->nom), chars(x));
+    return i == 0 ? *y : sskc(v, i < 0 ? &z->r : &z->l, x); }
   sym z = bump(v, Width(sym));
   z->code = hash(v, z->nom = x) ^ mix;
   z->l = z->r = nil;
   return *y = putsym(z); }
 
 obj intern(lips v, obj x) {
-  if (Avail < Width(sym) && !cycle(v, Width(sym)))
-    return 0;
+  if (Avail < Width(sym)) {
+    bool ok;
+    with(x, ok = cycle(v, Width(sym)));
+    if (!ok) return 0; }
   return sskc(v, &v->syms, x); }
 
 GC(cpsym) {
