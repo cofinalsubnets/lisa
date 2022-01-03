@@ -108,7 +108,8 @@ bool cycle(lips v, u64 req) {
   if (growp) do len <<= 1, vit <<= 1; while (growp);
   else if (shrinkp) do len >>= 1, vit >>= 1; while (shrinkp);
   else return true; // no size change needed
-  // otherwise grow or shrink ; if it fails maybe we can return
+  // otherwise grow or shrink ; if it fails we can still
+  // succeed if the last copy was large enough.
   return copy(v, len) || allocd <= v->len; }
 
 // the exact method for copying an object into
@@ -127,9 +128,8 @@ GC(cp) {
     case Tbl: return cptbl(v, x, len0, base0); } }
 
 #include "hom.h"
-VM(gc) {
+Vm(gc) {
   u64 req = v->xp;
-  bool r;
-  CALLC(r = cycle(v, req));
-  if (r) NEXT(0);
-  Jump(nope, "oom : %dB (%dB allocated)", req*W, v->len*W); }
+  CALLC(req = cycle(v, req));
+  if (req) NEXT(0);
+  Jump(nope, "oom : %d req %d len", req, v->len); }

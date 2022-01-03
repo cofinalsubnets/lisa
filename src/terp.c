@@ -16,7 +16,6 @@
 // in CPU registers at all times while the interpreter is
 // running, without any platform-specific code.
 
-#define ok _N(1)
 // the C compiler has to optimize tail calls in terp functions
 // or the stack will grow every time an instruction happens!
 
@@ -36,7 +35,7 @@
 // " virtual machine instructions "
 //
 // load instructions
-OP2(imm, (obj)GF(H(ip)))
+OP2(imm, (obj) H(ip)[1])
 OP1(unit, nil)
 OP1(one, _N(1))
 OP1(zero, _N(0))
@@ -44,7 +43,7 @@ OP1(zero, _N(0))
 // indexed load instructions
 // this pointer arithmetic works because fixnums are
 // premultiplied by W
-#define REF(b) (*(i64*)((i64)(b)+(i64)GF(H(ip))-Num))
+#define REF(b) (*(i64*)((i64)(b)+(i64)H(ip)[1]-Num))
 
 OP2(arg, REF(Argv))
 OP1(arg0, Argv[0])
@@ -60,11 +59,11 @@ OP1(clo1, V(Clos)->xs[1])
 VM(push) { Have1(); *--sp = xp; NEXT(1); } // stack push
 VM(loc_) { REF(V(Locs)->xs) = xp; NEXT(2); } // set a local variable
 
-VM(tbind) { CallC(tbl_set(v, Top, (obj) GF(H(ip)), xp)); NEXT(2); }
+VM(tbind) { CallC(tbl_set(v, Top, (obj) H(ip)[1], xp)); NEXT(2); }
 
 // initialize local variable slots
 VM(locals) {
- i64 n = N((i64) GF(H(ip)));
+ i64 n = N((i64) H(ip)[1]);
  Have(n + 2);
  vec t = (vec) hp;
  set64(t->xs, nil, t->len = n);
@@ -77,26 +76,34 @@ VM(locals) {
 // the "static" type and arity checking that would have been
 // done by the compiler if the function had been bound early.
 VM(lbind) {
- obj w = (obj) GF(H(ip)), d = AB(w), y = A(w);
+ obj w = (obj) H(ip)[1], d = AB(w), y = A(w);
  if (!(w = tbl_get(v, d, xp = BB(w)))) {
   char *nom = nilp(getsym(xp)->nom) ? "()" : symnom(xp);
   Jump(nope, "free variable : %s", nom); }
  xp = w;
  if (getnum(y) != 8) TC(xp, getnum(y)); // do the type check
- terp *q = G(FF(H(ip))); // omit the arity check if possible
+ terp *q = H(ip)[2]; // omit the arity check if possible
  if (q == call || q == rec) {
-  obj aa = (obj) GF(FF(H(ip)));
-  if (G(H(xp)) == arity && aa >= (obj) GF(H(xp))) xp += W2; }
- *H(ip) = imm;
- *F(H(ip)) = (terp*) xp;
+  obj aa = (obj) H(ip)[3];
+  if (H(xp)[0] == arity && aa >= (obj) H(xp)[1]) xp += W2; }
+ H(ip)[0] = imm;
+ H(ip)[1] = (terp*) xp;
  NEXT(2); }
 
 // return to C
 VM(yield) { Pack(); return xp; }
 
+#define FF(x) F(F(x))
+#define FG(x) F(G(x))
+#define GF(x) G(F(x))
+#define GG(x) G(G(x))
+
 // conditional jumps
-#define Br(_x_, a, x, b, y) {if(_x_)AP((obj)a(H(ip)),x);AP((obj)b(H(ip)),y);}
-#define BR(op, a, x, b, y) Br(*sp++ op xp, a, x, b, y)
+#define Br(test, a, x, b, y) {\
+  if (test) AP((obj)a(H(ip)),x);\
+  else AP((obj)b(H(ip)),y); }
+#define BR(op, a, x, b, y)\
+  Br(*sp++ op xp, a, x, b, y)
 
 VM(branch)  Br(xp == nil, FF, xp, GF, xp)
 VM(barnch)  Br(xp == nil, GF, xp, FF, xp)
@@ -119,7 +126,7 @@ BR1(<, xp, nil)
 #undef Br
 
 // unconditional jumps
-VM(jump) { AP((obj) GF(H(ip)), xp); }
+VM(jump) { AP((obj) H(ip)[1], xp); }
 
 // return from a function
 VM(ret) {
@@ -131,10 +138,10 @@ VM(ret) {
 // regular function call
 VM(call) {
  Have(Width(frame));
- obj adic = (obj) GF(H(ip));
+ obj adic = (obj) H(ip)[1];
  i64 off = fp - (mem) ((i64) sp + adic - Num);
  fp = sp -= Width(frame);
- Retp = ip+W2;
+ Retp = ip + W2;
  Subr = _N(off);
  Clos = nil;
  Argc = adic;
@@ -142,7 +149,8 @@ VM(call) {
  
 VM(ap_u) {
  ARY(2);
- obj x = Argv[0], y = Argv[1];
+ obj x = Argv[0],
+     y = Argv[1];
  TC(x, Hom);
  u64 adic = llen(y);
  Have(adic);
@@ -171,7 +179,7 @@ static VM(recne) {
 
 // tail call
 VM(rec) {
- if (Argc != (ip = (obj) GF(H(ip)))) Jump(recne);
+ if (Argc != (ip = (obj) H(ip)[1])) Jump(recne);
  cpy64(Argv, sp, ip = getnum(ip));
  sp = fp;
  AP(xp, nil); }
@@ -212,7 +220,7 @@ VM(ccc_u) {
 
 // call a continuation
 VM(cont) {
- vec t = V((obj) GF(H(ip)));
+ vec t = V((obj) H(ip)[1]);
  Have(t->len - 1);
  xp = N(Argc) == 0 ? nil : *Argv;
  i64 off = N(t->xs[0]);
@@ -222,7 +230,7 @@ VM(cont) {
  Jump(ret); }
 
 VM(vararg) {
- i64 reqd = N((i64) GF(H(ip))),
+ i64 reqd = N((i64) H(ip)[1]),
      vdic = N(Argc) - reqd;
  ARY(reqd);
  // in this case we need to add another argument
@@ -313,16 +321,14 @@ VM(nope, const char *msg, ...) {
 VM(fail) { Jump(nope, "fail"); }
 
 VM(type_error) {
- enum tag exp = v->xp, act = kind(xp);
- Jump(nope, "wrong type : %s for %s", tnom(act), tnom(exp)); }
+  enum tag exp = v->xp, act = kind(xp);
+  Jump(nope, "wrong type : %s for %s", tnom(act), tnom(exp)); }
 
 VM(oob_error) {
- Jump(nope, "oob : %d >= %d", v->xp, v->ip); }
+  Jump(nope, "oob : %d >= %d", v->xp, v->ip); }
 
 VM(ary_error) {
-  u64 reqd = v->xp;
-  Jump(nope, arity_err_msg, N(Argc), reqd); }
-
+  Jump(nope, arity_err_msg, N(Argc), v->xp); }
 
 // type/arity checking
 #define DTC(n, t) VM(n) {\
@@ -330,6 +336,6 @@ VM(ary_error) {
   v->xp = t; Jump(type_error); }
 DTC(idZ, Num) DTC(idH, Hom) DTC(idT, Tbl) DTC(id2, Two)
 VM(arity) {
- obj reqd = (obj) GF(H(ip));
+ obj reqd = (obj) H(ip)[1];
  if (reqd <= Argc) NEXT(2);
  else Jump((v->xp = N(reqd), ary_error)); }

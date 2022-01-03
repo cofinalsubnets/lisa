@@ -111,29 +111,31 @@ insts(ninl)
 // to another terp function.
 #define Self v,ip,fp,sp,hp,xp
 #define STATE Self
-#define Jump(f,...) return (f)(Self,##__VA_ARGS__)
-#define AP(f,x) return (ip=f,xp=x,G(H(ip))(Self))
-#define GO(f,x) Go(f,x)
-#define Go(f,x) return (xp=x,f(Self))
-#define NEXT(n) AP(ip+w2b(n),xp)
+#define Jump(f, ...) return (f)(Self, ##__VA_ARGS__)
+#define Next(n) AP(ip+w2b(n),xp)
+#define NEXT Next
+#define Ap(f,x) return ip = f, xp = x, H(ip)[0](Self)
+#define Go(f, x) return xp = x,f(Self)
+#define AP Ap
+#define GO Go
 #define ok _N(1)
 // type check
-#define TC(x,t) if(kind((x))-(t)){v->xp=t;Jump(type_error);}
+#define Tc(x,t) if(kind((x))-(t)){v->xp=t;Jump(type_error);}
+#define TC Tc
 // arity check
 #define arity_err_msg "wrong arity : %d of %d"
-#define ARY(n) if(_N(n)>Argc){\
+#define Ary(n) if(_N(n)>Argc){\
  v->xp = n;\
  Jump(ary_error); }
+#define ARY Ary
 
 #define OP(nom, x, n) VM(nom) { xp = (x); NEXT(n); }
-#define OP0(nom, x) OP(nom, x, 0)
 #define OP1(nom, x) OP(nom, x, 1)
 #define OP2(nom, x) OP(nom, x, 2)
 
 #define Have(n) if (sp - hp < n) Jump((v->xp=n,gc))
 #define Have1() if (hp == sp) Jump((v->xp=1,gc)) // common case, faster comparison
 
-#define TERP(n, m, ...) VM(n) m(__VA_ARGS__)
 #define BINOP(nom, xpn) VM(nom) { xp = (xpn); NEXT(1); }
 
 #define If v->glob[Cond]

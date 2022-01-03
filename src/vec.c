@@ -5,7 +5,7 @@
 
 // this is used to create closures.
 VM(take) {
- u64 n = N((obj) GF(H(ip)));
+ u64 n = N((obj) H(ip)[1]);
  Have(n + 1);
  vec t = (vec) hp;
  hp += n + 1;

@@ -1,5 +1,6 @@
 #define Avail (v->sp-v->hp)
-#define GC(n) obj n(lips v, obj x, u64 len0, mem base0)
+#define Gc(n) obj n(lips v, obj x, u64 len0, mem base0)
+#define GC Gc
 #define inb(o,l,u) (o>=l&&o<u)
 #define fresh(o) inb((mem)(o),v->pool,v->pool+v->len)
 #define stale(o) inb((mem)(o),base0,base0+len0)

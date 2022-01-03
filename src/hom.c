@@ -167,7 +167,7 @@ static Inline obj compose(lips v, mem e, obj x) {
  i = N(asig(*e));
  if (i > 0) x = em2(arity, _N(i), x);
  else if (i < 0) x = em2(vararg, _N(-i-1), x);
- *F(button(H(x))) = (terp*) x;
+ button(H(x))[1] = (terp*) x;
  return twop(clo(*e)) ? pair(v, clo(*e), x) : x; }
 
 // takes a lambda expr, returns either a pair or or a
@@ -259,7 +259,7 @@ CO(comp_if_pre) {
 // the top of stack 2
 CO(comp_if_pre_con) {
  obj x = Ccc(m + 2), k = A(S2);
- return G(H(k)) == ret ? em1(ret, x) : em2(jump, k, x); }
+ return *H(k) == ret ? em1(ret, x) : em2(jump, k, x); }
 
 // after generating a branch store its address
 // in stack 1
@@ -301,7 +301,7 @@ CO(comp_if, obj x) {
 
 CO(emit_call) {
   obj a = *v->sp++, k = Ccc(m + 2);
-  return em2(G(H(k)) == ret ? rec : call, a, k); }
+  return em2(*H(k) == ret ? rec : call, a, k); }
 
 #define L(n,x) pair(v, _N(n), x)
 static obj lookup_variable(lips v, obj e, obj y) {
@@ -429,16 +429,16 @@ static NoInline obj apply(lips v, obj f, obj x) {
 
 GC(cphom) {
  hom src = H(x);
- if (fresh(G(src))) return (obj) G(src);
- hom end = button(src), start = (hom) G(end+1),
+ if (fresh(*src)) return (obj) *src;
+ hom end = button(src), start = (hom) end[1],
      dst = bump(v, end - start + 2), j = dst;
  for (hom k = start; k < end;)
-  j[0] = G(k),
+  j[0] = k[0],
   k++[0] = (terp*) _H(j++);
  j[0] = NULL;
  j[1] = (terp*) dst;
  for (obj u; j-- > dst;
-   u = (obj) G(j),
+   u = (obj) *j,
    *j = (terp*) (!stale(u) ? u : cp(v, u, len0, base0)));
  return _H(dst += src - start); }
 
@@ -460,8 +460,8 @@ VM(hom_u) {
 VM(hfin_u) {
  ARY(1);
  obj a = *Argv;
- TC(a, Hom);
- *F(button(H(a))) = (terp*) a;
+ Tc(a, Hom);
+ button(H(a))[1] = (terp*) a;
  Go(ret, a); }
 
 VM(emx) { hom h = H(*sp++ - W); *h = (terp*) xp;    AP(ip+W, _H(h)); }
@@ -484,8 +484,8 @@ VM(emi_u) {
  *H(h) = (terp*) N(Argv[0]);
  Go(ret, h); }
 
-VM(hgeti_u) { ARY(1); TC(Argv[0], Hom); Go(ret, inptr(G(H(Argv[0])))); }
-VM(hgetx_u) { ARY(1); TC(Argv[0], Hom); Go(ret, (obj) G(H(Argv[0]))); }
+VM(hgeti_u) { ARY(1); TC(Argv[0], Hom); Go(ret, inptr(*H(Argv[0]))); }
+VM(hgetx_u) { ARY(1); TC(Argv[0], Hom); Go(ret, (obj) *H(Argv[0])); }
 
 VM(hseek_u) {
  ARY(2);
@@ -499,12 +499,12 @@ VM(ev_u) {
     PushCc(inptr(emit_i), inptr(yield),
            inptr(comp_alloc_thread)),
     xp = comp_expr(v, NULL, 0, *Argv),
-    v->xp = G(H(xp))(v, xp, v->fp, v->sp, v->hp, nil));
+    v->xp = (*H(xp))(v, xp, v->fp, v->sp, v->hp, nil));
   Jump(ret); }
 
-static Vm(clos) { Clos = (obj) GF(H(ip)); AP((obj) G(FF(H(ip))), xp); }
+static Vm(clos) { Clos = (obj) H(ip)[1]; AP((obj) H(ip)[2], xp); }
 // finalize function instance closure
-static Vm(clos1) { *H(ip) = clos; *F(H(ip)) = (terp*) xp; NEXT(0); }
+static Vm(clos1) { *H(ip) = clos; H(ip)[1] = (terp*) xp; NEXT(0); }
 
 // this function is run the first time a user
 // function with a closure is called. its
@@ -515,7 +515,7 @@ static Vm(clos1) { *H(ip) = clos; *F(H(ip)) = (terp*) xp; NEXT(0); }
 // instruction that sets the closure and enters
 // the function.
 static Vm(clos0) {
- obj ec  = (obj) GF(H(ip)),
+ obj ec  = (obj) H(ip)[1],
      arg = V(ec)->xs[0],
      loc = V(ec)->xs[1];
  u64 adic = nilp(arg) ? 0 : V(arg)->len;
@@ -524,7 +524,7 @@ static Vm(clos0) {
  *H(ip) = clos1;
  sp -= adic;
  cpy64(sp, V(arg)->xs, adic);
- ec = (obj) GF(H(ip));
+ ec = (obj) H(ip)[1];
  fp = sp -= Width(frame);
  Retp = ip;
  Subr = _N(off);
@@ -540,7 +540,7 @@ static VM(encl) {
  i64 n = N(Argc);
  n += n ? 12 : 11;
  Have(n);
- obj x = (obj) GF(H(ip)), arg = nil;
+ obj x = (obj) H(ip)[1], arg = nil;
  mem block = hp;
  hp += n;
  if (n > 11) {
@@ -573,9 +573,9 @@ VM(encll) { Go(encl, Locs); }
 VM(encln) { Go(encl, nil); }
 
 NoInline obj homnom(lips v, obj x) {
-  terp *k = G(H(x));
+  terp *k = *H(x);
   if (k == clos || k == clos0 || k == clos1)
-    return homnom(v, (obj) G(FF(H(x))));
+    return homnom(v, (obj) H(x)[2]);
   mem h = (mem) H(x);
   while (*h) h++;
   x = h[-1];

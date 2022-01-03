@@ -6,9 +6,4 @@ static Inline hom button(hom h) { while (*h) h++; return h; }
 static Inline bool homp(obj x) { return kind(x) == Hom; }
 #define H(x)  gethom(x)
 #define _H(x) puthom(x)
-#define FF(x) F(F(x))
-#define FG(x) F(G(x))
-#define GF(x) G(F(x))
-#define GG(x) G(G(x))
-
 obj eval(lips, obj), homnom(lips, obj);
