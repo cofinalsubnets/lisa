@@ -18,41 +18,41 @@
  GO(ret, _N(xp));}
 
 VM(sub_u) {
- if (!(xp = N(ARGC))) GO(ret, _N(0));
- TC(*ARGV, Num);
- if (xp == 1) GO(ret, _N(-N(*ARGV)));
- mm_u(xp-1,ARGV+1,N(*ARGV),-); }
+  if (!(xp = N(Argc))) GO(ret, _N(0));
+  TC(*Argv, Num);
+  if (xp == 1) GO(ret, _N(-N(*Argv)));
+  mm_u(xp-1,Argv+1,N(*Argv),-); }
 
 VM(sar_u) {
- if (ARGC == _N(0)) GO(ret, _N(0));
- TC(*ARGV, Num);
- mm_u(N(ARGC)-1, ARGV+1, N(*ARGV), >>); }
+  if (Argc == _N(0)) GO(ret, _N(0));
+  TC(*Argv, Num);
+  mm_u(N(Argc)-1, Argv+1, N(*Argv), >>); }
 
 VM(sal_u) {
- if (ARGC == _N(0)) GO(ret, _N(0));
- TC(*ARGV, Num);
- mm_u(N(ARGC)-1, ARGV+1, N(*ARGV), <<); }
+  if (Argc == _N(0)) GO(ret, _N(0));
+  TC(*Argv, Num);
+  mm_u(N(Argc)-1, Argv+1, N(*Argv), <<); }
 
 VM(dqv) {
- if (xp == _N(0)) Jump(nope, div0_err_msg, N(*sp));
- xp = _N(N(*sp++) / N(xp));
- NEXT(1); }
+  if (xp == _N(0)) Jump(nope, div0_err_msg, N(*sp));
+  xp = _N(N(*sp++) / N(xp));
+  NEXT(1); }
 
 VM(div_u) {
- if (!(xp = N(ARGC))) GO(ret, ok);
- TC(*ARGV, Num);
- mm_u0(xp-1,ARGV+1,N(*ARGV),/); }
+  if (!(xp = N(Argc))) GO(ret, ok);
+  TC(*Argv, Num);
+  mm_u0(xp-1,Argv+1,N(*Argv),/); }
 
 VM(mod) {
- if (xp == _N(0))
-   Jump(nope, div0_err_msg, N(*sp));
- xp = _N(N(*sp++) % N(xp));
- NEXT(1); }
+  if (xp == _N(0))
+    Jump(nope, div0_err_msg, N(*sp));
+  xp = _N(N(*sp++) % N(xp));
+  NEXT(1); }
 
 VM(mod_u) {
- if (!(xp = N(ARGC))) GO(ret, ok);
- TC(*ARGV, Num);
- mm_u0(xp-1,ARGV+1,N(*ARGV),%); }
+  if (!(xp = N(Argc))) GO(ret, ok);
+  TC(*Argv, Num);
+  mm_u0(xp-1,Argv+1,N(*Argv),%); }
 
 VM(rnd_u) {
   GO(ret, _N(lcprng(&v->seed))); }
@@ -68,7 +68,7 @@ BINOP(sar,  _N(N(*sp++) >> N(xp)))
 BINOP(sal,  _N(N(*sp++) << N(xp)))
 
 #define UBINOP(nom, dflt, op)\
- VM(nom##_u) { mm_u(N(ARGC), ARGV, dflt, op); }
+ VM(nom##_u) { mm_u(N(Argc), Argv, dflt, op); }
 
 UBINOP(add, 0, +)
 UBINOP(bor, 0, |)

@@ -65,13 +65,13 @@ u0 emit(lips v, obj x, FILE *o) {
 
 // print to console
 VM(em_u) {
- u64 l = N(ARGC), i;
+ u64 l = N(Argc), i;
  if (l) {
   for (i = 0; i < l - 1; i++)
-   emsep(v, ARGV[i], stdout, ' ');
-  emit(v, xp = ARGV[i], stdout); }
+   emsep(v, Argv[i], stdout, ' ');
+  emit(v, xp = Argv[i], stdout); }
  fputc('\n', stdout);
  Jump(ret); }
 
-VM(putc_u) { ARY(1); fputc(N(*ARGV), stdout); Jump(ret); }
-VM(getc_u) { GO(ret, feof(stdin) ? nil : _N(getc(stdin))); }
+VM(putc_u) { ARY(1); fputc(N(*Argv), stdout); Jump(ret); }
+VM(getc_u) { Go(ret, feof(stdin) ? nil : _N(getc(stdin))); }

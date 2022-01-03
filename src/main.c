@@ -37,7 +37,7 @@ static bool script(lips v, const char *path) {
 #include "tbl.h"
 static NoInline u0 rin(lips v, const char *a, terp *b) {
   obj z = interns(v, a);
-  tbl_set(v, Top, z, _N(b)); }
+  tbl_set(v, Top, z, _N((i64) b)); }
 
 #include "mem.h"
 #include "two.h"

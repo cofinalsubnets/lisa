@@ -7,6 +7,9 @@ u64 llen(obj);
 #define AB(o) A(B(o))
 #define BA(o) B(A(o))
 #define BB(o) B(B(o))
-#define gettwo(x) ((two)((x)-Two))
-#define puttwo(x) ((obj)(x)+Two)
-#define twop(x) (kind(x)==Two)
+//#define W(x) gettwo(x)
+//#define _W(w) puttwo(w)
+
+static Inline two gettwo(obj x) { return (two) (x - Two); }
+static Inline obj puttwo(void *x) { return (obj) x + Two; }
+static Inline bool twop(obj x) { return kind(x) == Two; }

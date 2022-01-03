@@ -55,8 +55,9 @@ extern const uint32_t *tnoms;
 #define kind(x) ((x)&7)
 #define N(x) getnum(x)
 #define _N(x) putnum(x)
-#define getnum(n) ((i64)(n)>>3)
-#define putnum(n) (((obj)(n)<<3)+Num)
-#define nump(x) (kind(x)==Num)
-#define nilp(x) ((x)==nil)
 #define bind(v, x) if (!((v)=(x))) return 0
+
+static Inline bool nilp(obj x) { return x == nil; }
+static Inline bool nump(obj x) { return kind(x) == Num; }
+static Inline i64 getnum(obj x) { return x >> 3; }
+static Inline obj putnum(i64 n) { return (n << 3) + Num; }

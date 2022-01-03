@@ -5,44 +5,44 @@
 
 // this is used to create closures.
 VM(take) {
- u64 n = N((obj) GF(ip));
+ u64 n = N((obj) GF(H(ip)));
  Have(n + 1);
  vec t = (vec) hp;
  hp += n + 1;
  t->len = n;
  cpy64(t->xs, sp, n);
  sp += n;
- GO(ret, _V(t)); }
+ Go(ret, _V(t)); }
 
 VM(vset_u) {
- ARY(3);
- TC(ARGV[0], Vec);
- TC(ARGV[1], Num);
- i64 idx = N(ARGV[1]);
- vec ary = V(ARGV[0]);
- if (idx < 0 || idx >= ary->len) {
-   v->xp = idx, v->ip = ary->len;
-   Jump(oob_error); }
- GO(ret, ary->xs[idx] = ARGV[2]); }
+  ARY(3);
+  TC(Argv[0], Vec);
+  TC(Argv[1], Num);
+  i64 idx = N(Argv[1]);
+  vec ary = V(Argv[0]);
+  if (idx < 0 || idx >= ary->len) {
+    v->xp = idx, v->ip = ary->len;
+    Jump(oob_error); }
+  Go(ret, ary->xs[idx] = Argv[2]); }
 
 VM(vget_u) {
  ARY(2);
- TC(ARGV[0], Vec);
- TC(ARGV[1], Num);
- i64 idx = N(ARGV[1]);
- vec ary = V(ARGV[0]);
+ TC(Argv[0], Vec);
+ TC(Argv[1], Num);
+ i64 idx = N(Argv[1]);
+ vec ary = V(Argv[0]);
  if (idx < 0 || idx >= ary->len) {
    v->xp = idx, v->ip = ary->len;
    Jump(oob_error); }
- GO(ret, ary->xs[idx]); }
+ Go(ret, ary->xs[idx]); }
 
 VM(vec_u) {
- obj n = N(ARGC);
+ obj n = N(Argc);
  Have(n + 1);
  vec t = (vec) hp;
  hp += 1 + n;
- cpy64(t->xs, ARGV, t->len = n);
- GO(ret, putvec(t)); }
+ cpy64(t->xs, Argv, t->len = n);
+ Go(ret, putvec(t)); }
 
 #include "mem.h"
 GC(cpvec) {

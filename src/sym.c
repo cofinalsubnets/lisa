@@ -44,8 +44,8 @@ GC(cpsym) {
 
 #include "terp.h"
 VM(gsym_u) {
-  if (ARGC > _N(0) && strp(*ARGV))
-    RETC(v->xp = intern(v, *ARGV));
+  if (Argc > _N(0) && strp(*Argv))
+    RETC(v->xp = intern(v, *Argv));
   Have(Width(sym));
   sym y = (sym) hp;
   hp += Width(sym);
@@ -55,6 +55,6 @@ VM(gsym_u) {
 
 VM(ystr_u) {
  ARY(1);
- xp = *ARGV;
+ xp = *Argv;
  TC(xp, Sym);
  GO(ret, getsym(xp)->nom); }

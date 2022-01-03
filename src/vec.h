@@ -1,6 +1,6 @@
 typedef struct vec { u64 len; obj xs[]; } *vec;
 #define V(x) getvec(x)
 #define _V(x) putvec(x)
-#define getvec(x) ((vec)((x)-Vec))
-#define putvec(x) ((obj)(x)+Vec)
-#define vecp(x) (kind(x)==Vec)
+static Inline vec getvec(obj x) { return (vec) (x - Vec); }
+static Inline obj putvec(vec v) { return (obj) v + Vec; }
+static Inline bool vecp(obj x) { return kind(x) == Vec; }

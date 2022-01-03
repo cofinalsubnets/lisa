@@ -151,67 +151,80 @@ static ent cpent(lips v, ent src, i64 len0, mem base0) {
  return dst; }
 
 GC(cptbl) {
- tbl src = gettbl(x);
- if (fresh(src->tab)) return (obj) src->tab;
- i64 src_cap = src->cap;
- tbl dst = bump(v, 3 + src_cap);
- dst->len = src->len;
- dst->cap = src_cap;
- dst->tab = (ent*) (dst + 1);
- ent *src_tab = src->tab;
- src->tab = (ent*) puttbl(dst);
- while (src_cap--)
-  dst->tab[src_cap] = cpent(v, src_tab[src_cap], len0, base0);
- return puttbl(dst); }
+  tbl src = gettbl(x);
+  if (fresh(src->tab)) return (obj) src->tab;
+  i64 src_cap = src->cap;
+  tbl dst = bump(v, 3 + src_cap);
+  dst->len = src->len;
+  dst->cap = src_cap;
+  dst->tab = (ent*) (dst + 1);
+  ent *src_tab = src->tab;
+  src->tab = (ent*) puttbl(dst);
+  while (src_cap--)
+    dst->tab[src_cap] = cpent(v, src_tab[src_cap], len0, base0);
+  return puttbl(dst); }
 
 #include "terp.h"
 
 // hash tables
 VM(tblg) {
  ARY(2);
- TC(ARGV[0], Tbl);
- xp = tbl_get(v, ARGV[0], ARGV[1]);
+ TC(Argv[0], Tbl);
+ xp = tbl_get(v, Argv[0], Argv[1]);
  GO(ret, xp ? xp : nil); }
 
 OP1(tget, (xp = tbl_get(v, xp, *sp++)) ? xp : nil)
 
 OP1(thas, tbl_get(v, xp, *sp++) ? ok : nil)
 OP1(tlen, _N(gettbl(xp)->len))
-VM(tkeys) { CALLC(v->xp = tblkeys(v, xp)); NEXT(1); }
+
+VM(tkeys) {
+  CallC(v->xp = tblkeys(v, xp));
+  NEXT(1); }
 
 VM(tblc) {
  ARY(2);
- TC(ARGV[0], Tbl);
- xp = tbl_get(v, ARGV[0], ARGV[1]);
+ TC(Argv[0], Tbl);
+ xp = tbl_get(v, Argv[0], Argv[1]);
  GO(ret, xp ? ok : nil); }
 
 static obj tblss(lips v, i64 i, i64 l) {
  mem fp = v->fp;
- return i > l-2 ? ARGV[i-1] :
-  (tbl_set(v, v->xp, ARGV[i], ARGV[i+1]),
+ return i > l-2 ? Argv[i-1] :
+  (tbl_set(v, v->xp, Argv[i], Argv[i+1]),
    tblss(v, i+2, l)); }
 
 VM(tbls) {
  ARY(1);
- xp = *ARGV;
+ xp = *Argv;
  TC(xp, Tbl);
- RETC(v->xp = tblss(v, 1, N(ARGC))); }
+ CallC(v->xp = tblss(v, 1, N(Argc)));
+ Jump(ret); }
 
-VM(tblmk) { RETC(v->xp = table(v), tblss(v, 0, N(ARGC))); }
+
+
+VM(tblmk) {
+  CallC(v->xp = table(v), tblss(v, 0, N(Argc)));
+  Jump(ret); }
 
 VM(tbld) {
- ARY(2); TC(ARGV[0], Tbl);
- RETC(v->xp = tbl_del(v, ARGV[0], ARGV[1])); }
+ ARY(2);
+ TC(Argv[0], Tbl);
+ CallC(v->xp = tbl_del(v, Argv[0], Argv[1]));
+ Jump(ret); }
 
 VM(tblks) {
- ARY(1); TC(*ARGV, Tbl);
- RETC(v->xp = tblkeys(v, *ARGV)); }
+ ARY(1);
+ TC(*Argv, Tbl);
+ CallC(v->xp = tblkeys(v, *Argv));
+ Jump(ret); }
 
 VM(tbll) {
- ARY(1); TC(*ARGV, Tbl);
- GO(ret, _N(gettbl(*ARGV)->len)); }
+ ARY(1);
+ TC(*Argv, Tbl);
+ Go(ret, _N(gettbl(*Argv)->len)); }
 
 VM(tset) {
  obj x = *sp++, y = *sp++;
- CALLC(v->xp = tbl_set(v, xp, x, y));
+ CallC(v->xp = tbl_set(v, xp, x, y));
  NEXT(1); }

@@ -6,6 +6,6 @@ obj
 #define symnom(y) chars(getsym(y)->nom)
 #define Y(x) getsym(x)
 #define _Y(x) putsym(x)
-#define getsym(x) ((sym)((obj)(x)-Sym))
-#define putsym(x) ((obj)(x)+Sym)
-#define symp(x) (kind(x)==Sym)
+static Inline sym getsym(obj x) { return (sym) (x - Sym); }
+static Inline obj putsym(void *y) { return (obj) y + Sym; }
+static Inline bool symp(obj x) { return kind(x) == Sym; }

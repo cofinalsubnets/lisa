@@ -7,9 +7,9 @@ obj
   tbl_set(lips, obj, obj, obj),
   tbl_set_s(lips, obj, obj, obj),
   tbl_get(lips, obj, obj);
+static Inline tbl gettbl(obj x) { return (tbl) (x - Tbl); }
+static Inline obj puttbl(tbl t) { return (obj) t + Tbl; }
+static Inline bool tblp(obj x) { return kind(x) == Tbl; }
 #define mix ((u64)2708237354241864315)
 #define T(x) gettbl(x)
 #define _T(x) puttbl(x)
-#define gettbl(x) ((tbl)((obj)(x)-Tbl))
-#define puttbl(x) ((obj)(x)+Tbl)
-#define tblp(x) (kind(x)==Tbl)

@@ -16,9 +16,9 @@ bool eql(obj a, obj b) {
 static bool eql_two(obj a, obj b) {
   // pairs are immutable, so we can deduplicate their insides.
   if (eql(A(a), A(b))) {
-    A(b) = A(a);
+    gettwo(b)->a = gettwo(a)->a;
     if (eql(B(a), B(b))) {
-      B(b) = B(a);
+      gettwo(b)->b = gettwo(a)->b;
       return true; } }
   return false; }
 
@@ -37,7 +37,7 @@ BINOP(eq, eql(xp, *sp++) ? ok : nil)
 
 static VM(ord_) {
   bool (*r)(obj, obj) = (void*)v->xp;
-  obj n = N(ARGC), *xs = ARGV, m, *l;
+  obj n = N(Argc), *xs = Argv, m, *l;
   switch (n) {
     case 0:  GO(ret, nil);
     default:

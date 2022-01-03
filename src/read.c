@@ -121,36 +121,37 @@ VM(par_u) {
 
 VM(slurp) {
   ARY(1);
-  xp = *ARGV;
+  xp = *Argv;
   TC(xp, Str);
   RETC(xp = read_path(v, S(xp)->text),
        v->xp = xp ? xp : nil); }
 
 VM(dump) {
   ARY(2);
-  TC(ARGV[0], Str); TC(ARGV[1], Str);
-  char *p = S(ARGV[0])->text,
-       *d = S(ARGV[1])->text;
+  TC(Argv[0], Str);
+  TC(Argv[1], Str);
+  char *p = S(Argv[0])->text,
+       *d = S(Argv[1])->text;
   write_file(v, p, d);
   Jump(ret); }
 
 static NoInline obj readz_2(const char *s, i64 rad) {
- static const char *dig = "0123456789abcdef";
- if (!*s) return nil;
- i64 a = 0;
- for (int i, c; (c = *s++); a += i) {
-  a *= rad, i = sidx(dig, cmin(c));
-  if (i < 0 || i >= rad) return nil; }
- return _N(a); }
+  static const char *dig = "0123456789abcdef";
+  if (!*s) return nil;
+  i64 a = 0;
+  for (int i, c; (c = *s++); a += i) {
+    a *= rad, i = sidx(dig, cmin(c));
+    if (i < 0 || rad <= i) return nil; }
+  return _N(a); }
 
 static NoInline obj readz_1(const char *s) {
- if (*s == '0') switch (cmin(s[1])) {
-  case 'b': return readz_2(s+2, 2);
-  case 'o': return readz_2(s+2, 8);
-  case 'd': return readz_2(s+2, 10);
-  case 'z': return readz_2(s+2, 12);
-  case 'x': return readz_2(s+2, 16); }
- return readz_2(s, 10); }
+  if (*s == '0') switch (cmin(s[1])) {
+    case 'b': return readz_2(s+2, 2);
+    case 'o': return readz_2(s+2, 8);
+    case 'd': return readz_2(s+2, 10);
+    case 'z': return readz_2(s+2, 12);
+    case 'x': return readz_2(s+2, 16); }
+  return readz_2(s, 10); }
 
 static Inline obj readz(lips _, const char *s) {
  obj q;

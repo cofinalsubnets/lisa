@@ -60,8 +60,9 @@ insts(ninl)
 
 // " the interpreter "
 // is all the functions of type terp:
-#define VM(n,...) NoInline obj \
+#define Vm(n,...) NoInline obj \
  n(lips v, obj ip, mem fp, mem sp, mem hp, obj xp, ##__VA_ARGS__)
+#define VM Vm
 // the arguments to a terp function collectively represent the
 // runtime state, and the  return value is the result of the
 // program. there are six arguments because that's the number
@@ -83,17 +84,19 @@ insts(ninl)
 // without using the stack. so the interpreter has to restore
 // the current values in the vm struct before it makes any
 // "external" function calls.
-#define PACK() (v->ip=ip,v->sp=sp,v->hp=hp,v->fp=fp,v->xp=xp)
-#define UNPACK() (fp=v->fp,hp=v->hp,sp=v->sp,ip=v->ip,xp=v->xp)
-#define CALLC(...)(PACK(),(__VA_ARGS__),UNPACK())
-#define RETC(...){CALLC(__VA_ARGS__);Jump(ret);}
+#define Pack() (v->ip=ip,v->sp=sp,v->hp=hp,v->fp=fp,v->xp=xp)
+#define Unpack() (fp=v->fp,hp=v->hp,sp=v->sp,ip=v->ip,xp=v->xp)
+#define CallC(...)(Pack(),(__VA_ARGS__),Unpack())
+#define CALLC CallC
+#define RETC(...){CallC(__VA_ARGS__);Jump(ret);}
 
-#define CLOS ((frame)fp)->clos
-#define RETP ((frame)fp)->retp
-#define SUBR ((frame)fp)->subd
-#define ARGC ((frame)fp)->argc
-#define ARGV ((frame)fp)->argv
-#define LOCS fp[-1]
+#define Clos ((frame)fp)->clos
+#define Retp ((frame)fp)->retp
+#define Subr ((frame)fp)->subd
+#define Argc ((frame)fp)->argc
+#define Argv ((frame)fp)->argv
+
+#define Locs fp[-1]
 #define Frame ((frame)fp)
 // the pointer to the local variables array isn't in the frame struct. it
 // isn't present for all functions, but if it is it's in the word of memory
@@ -106,17 +109,19 @@ insts(ninl)
 
 // the return value of a terp function is usually a call
 // to another terp function.
-#define STATE v,ip,fp,sp,hp,xp
-#define Jump(f,...) return (f)(STATE,##__VA_ARGS__)
-#define AP(f,x) return (ip=f,xp=x,G(ip)(STATE))
-#define GO(f,x) return (xp=x,f(STATE))
+#define Self v,ip,fp,sp,hp,xp
+#define STATE Self
+#define Jump(f,...) return (f)(Self,##__VA_ARGS__)
+#define AP(f,x) return (ip=f,xp=x,G(H(ip))(Self))
+#define GO(f,x) Go(f,x)
+#define Go(f,x) return (xp=x,f(Self))
 #define NEXT(n) AP(ip+w2b(n),xp)
 #define ok _N(1)
 // type check
 #define TC(x,t) if(kind((x))-(t)){v->xp=t;Jump(type_error);}
 // arity check
 #define arity_err_msg "wrong arity : %d of %d"
-#define ARY(n) if(_N(n)>ARGC){\
+#define ARY(n) if(_N(n)>Argc){\
  v->xp = n;\
  Jump(ary_error); }
 
@@ -125,8 +130,7 @@ insts(ninl)
 #define OP1(nom, x) OP(nom, x, 1)
 #define OP2(nom, x) OP(nom, x, 2)
 
-#define avail (sp-hp)
-#define Have(n) if (avail < n) Jump((v->xp=n,gc))
+#define Have(n) if (sp - hp < n) Jump((v->xp=n,gc))
 #define Have1() if (hp == sp) Jump((v->xp=1,gc)) // common case, faster comparison
 
 #define TERP(n, m, ...) VM(n) m(__VA_ARGS__)

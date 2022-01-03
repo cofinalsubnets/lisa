@@ -55,6 +55,8 @@ static c2 comp_expr, comp_sym, comp_list, comp_imm;
 enum { Here, Loc, Arg, Clo, Wait };
 #define CO(nom,...) static obj nom(lips v, mem e, u64 m, ##__VA_ARGS__)
 
+static Inline obj inptr(void *i) { return putnum((i64) i); }
+
 // helper functions for lists
 static i64 lidx(obj l, obj x) {
  for (i64 i = 0; twop(l); l = B(l), i++)
@@ -101,13 +103,13 @@ static obj tupl(lips v, ...) {
 
 // emit code backwards like cons
 static obj em1(terp *i, obj k) {
- return k -= W, G(k) = i, k; }
+ return k -= W, *H(k) = i, k; }
 
 static obj em2(terp *i, obj j, obj k) {
  return em1(i, em1((terp*)j, k)); }
 
 static obj imx(lips v, mem e, i64 m, terp *i, obj x) {
- PushCc(_N(i), x);
+ PushCc(inptr(i), x);
  return emit_i_d(v, e, m); }
 
 static NoInline obj rw_let_fn(lips v, obj x) {
@@ -155,9 +157,9 @@ static Inline obj scope(lips v, mem e, obj a, obj n) {
 
 static Inline obj compose(lips v, mem e, obj x) {
  PushCc(
-   _N(comp_expr_), x,
-   _N(emit_i), _N(ret),
-   _N(comp_alloc_thread));
+   inptr(comp_expr_), x,
+   inptr(emit_i), inptr(ret),
+   inptr(comp_alloc_thread));
  scan(v, e, v->sp[1]);
  x = Ccc(4); // 4 = 2 + 2
  i64 i = llen(loc(*e));
@@ -165,7 +167,7 @@ static Inline obj compose(lips v, mem e, obj x) {
  i = N(asig(*e));
  if (i > 0) x = em2(arity, _N(i), x);
  else if (i < 0) x = em2(vararg, _N(-i-1), x);
- GF(button(H(x))) = (terp*) x;
+ *F(button(H(x))) = (terp*) x;
  return twop(clo(*e)) ? pair(v, clo(*e), x) : x; }
 
 // takes a lambda expr, returns either a pair or or a
@@ -186,7 +188,7 @@ static obj ltu(lips v, mem e, obj n, obj l) {
 
 CO(comp_lambda, obj x) {
  terp* j = imm;
- obj k, nom = *v->sp == _N(comp_let_bind) ? v->sp[1] : nil;
+ obj k, nom = *v->sp == inptr(comp_let_bind) ? v->sp[1] : nil;
  with(nom, with(x, k = Ccc(m+2)));
  mm(&k);
  if (twop(x = ltu(v, e, nom, x)))
@@ -196,7 +198,7 @@ CO(comp_lambda, obj x) {
  return em2(j, x, k); }
 
 CO(comp_imm, obj x) {
-  PushCc(_N(imm), x);
+  PushCc(inptr(imm), x);
   return emit_i_d(v, e, m); }
 
 static obj comp_lambda_clo(lips v, mem e, obj arg, obj seq) {
@@ -204,13 +206,13 @@ static obj comp_lambda_clo(lips v, mem e, obj arg, obj seq) {
   mm(&arg), mm(&seq);
 
   for (PushCc(
-         _N(emit_i_d), _N(take), _N(i),
-         _N(comp_alloc_thread));
+         inptr(emit_i_d), inptr(take), _N(i),
+         inptr(comp_alloc_thread));
        twop(arg);
        arg = B(arg))
     PushCc(
-      _N(comp_expr_), A(arg),
-      _N(emit_i), _N(push));
+      inptr(comp_expr_), A(arg),
+      inptr(emit_i), inptr(push));
 
   arg = Ccc(0);
   um, um;
@@ -225,7 +227,7 @@ static u0 comp_let_r(lips v, mem e, obj x) {
  if (twop(x))
   x = rw_let_fn(v, x),
   with(x, comp_let_r(v, e, BB(x))),
-  PushCc(_N(comp_expr_), AB(x), _N(comp_let_bind), A(x)); }
+  PushCc(inptr(comp_expr_), AB(x), inptr(comp_let_bind), A(x)); }
 
 // syntactic sugar for define
 static obj def_sug(lips v, obj x) {
@@ -257,7 +259,7 @@ CO(comp_if_pre) {
 // the top of stack 2
 CO(comp_if_pre_con) {
  obj x = Ccc(m + 2), k = A(S2);
- return G(k) == ret ? em1(ret, x) : em2(jump, k, x); }
+ return G(H(k)) == ret ? em1(ret, x) : em2(jump, k, x); }
 
 // after generating a branch store its address
 // in stack 1
@@ -276,22 +278,22 @@ static u0 comp_if_loop(lips v, mem e, obj x) {
 
  if (!twop(B(x)))
    PushCc(
-     _N(comp_expr_), A(x),
-     _N(comp_if_pre_con));
+     inptr(comp_expr_), A(x),
+     inptr(comp_if_pre_con));
 
  else {
    with(x,
      PushCc(
-       _N(comp_if_post_con),
-       _N(comp_expr_), AB(x),
-       _N(comp_if_pre_con)),
+       inptr(comp_if_post_con),
+       inptr(comp_expr_), AB(x),
+       inptr(comp_if_pre_con)),
      comp_if_loop(v, e, BB(x)));
    PushCc(
-     _N(comp_expr_), A(x),
-     _N(comp_if_pre_ant)); } }
+     inptr(comp_expr_), A(x),
+     inptr(comp_if_pre_ant)); } }
 
 CO(comp_if, obj x) {
-  with(x, PushCc(_N(comp_if_pre)));
+  with(x, PushCc(inptr(comp_if_pre)));
   comp_if_loop(v, e, B(x));
   x = Ccc(m);
   S2 = B(S2);
@@ -299,7 +301,7 @@ CO(comp_if, obj x) {
 
 CO(emit_call) {
   obj a = *v->sp++, k = Ccc(m + 2);
-  return em2(G(k) == ret ? rec : call, a, k); }
+  return em2(G(H(k)) == ret ? rec : call, a, k); }
 
 #define L(n,x) pair(v, _N(n), x)
 static obj lookup_variable(lips v, obj e, obj y) {
@@ -356,13 +358,13 @@ CO(comp_call, obj fun, obj args) {
   // function call
   mm(&args);
   PushCc(
-    _N(comp_expr_), fun,
-    _N(emit_i), _N(idH),
-    _N(emit_call), _N(llen(args)));
+    inptr(comp_expr_), fun,
+    inptr(emit_i), inptr(idH),
+    inptr(emit_call), _N(llen(args)));
   while (twop(args))
     PushCc(
-      _N(comp_expr_), A(args),
-      _N(emit_i), _N(push)),
+      inptr(comp_expr_), A(args),
+      inptr(emit_i), inptr(push)),
     args = B(args);
   um;
 
@@ -371,7 +373,7 @@ CO(comp_call, obj fun, obj args) {
 static u0 comp_sequence_loop(lips v, mem e, obj x) {
   if (twop(x))
     with(x, comp_sequence_loop(v, e, B(x))),
-    PushCc(_N(comp_expr_), A(x)); }
+    PushCc(inptr(comp_expr_), A(x)); }
 
 CO(comp_list, obj x) {
   obj z = A(x);
@@ -431,13 +433,13 @@ GC(cphom) {
  hom end = button(src), start = (hom) G(end+1),
      dst = bump(v, end - start + 2), j = dst;
  for (hom k = start; k < end;)
-  G(j) = G(k),
-  G(k++) = (terp*) _H(j++);
- G(j) = NULL;
- G(j+1) = (terp*) dst;
+  j[0] = G(k),
+  k++[0] = (terp*) _H(j++);
+ j[0] = NULL;
+ j[1] = (terp*) dst;
  for (obj u; j-- > dst;
    u = (obj) G(j),
-   G(j) = (terp*) (!stale(u) ? u : cp(v, u, len0, base0)));
+   *j = (terp*) (!stale(u) ? u : cp(v, u, len0, base0)));
  return _H(dst += src - start); }
 
 // VM instructions
@@ -445,7 +447,7 @@ GC(cphom) {
 VM(hom_u) {
  obj x;
  ARY(1);
- TC(x = *ARGV, Num);
+ TC(x = *Argv, Num);
  i64 len = N(x) + 2;
  Have(len);
  hom h = (hom) hp;
@@ -453,53 +455,56 @@ VM(hom_u) {
  set64((mem) h, nil, len);
  h[len-1] = (terp*) h;
  h[len-2] = NULL;
- GO(ret, _H(h+len-2)); }
+ Go(ret, _H(h+len-2)); }
 
 VM(hfin_u) {
  ARY(1);
- obj a = *ARGV;
+ obj a = *Argv;
  TC(a, Hom);
- GF(button(H(a))) = (terp*) a;
- GO(ret, a); }
+ *F(button(H(a))) = (terp*) a;
+ Go(ret, a); }
 
-VM(emx) { obj h = *sp++ - W; G(h) = (terp*) xp;    AP(ip+W, h); }
-VM(emi) { obj h = *sp++ - W; G(h) = (terp*) N(xp); AP(ip+W, h); }
+VM(emx) { hom h = H(*sp++ - W); *h = (terp*) xp;    AP(ip+W, _H(h)); }
+VM(emi) { hom h = H(*sp++ - W); *h = (terp*) N(xp); AP(ip+W, _H(h)); }
 
 VM(emx_u) {
  ARY(2);
- obj h = ARGV[1];
+ obj h = Argv[1];
  TC(h, Hom);
  h -= W;
- G(h) = (terp*) ARGV[0];
- GO(ret, h); }
+ *H(h) = (terp*) Argv[0];
+ Go(ret, h); }
 
 VM(emi_u) {
  ARY(2);
- TC(ARGV[0], Num);
- obj h = ARGV[1];
+ TC(Argv[0], Num);
+ obj h = Argv[1];
  TC(h, Hom);
  h -= W;
- G(h) = (terp*) N(ARGV[0]);
- GO(ret, h); }
+ *H(h) = (terp*) N(Argv[0]);
+ Go(ret, h); }
 
-VM(hgeti_u) { ARY(1); TC(ARGV[0], Hom); GO(ret,   _N(G(ARGV[0]))); }
-VM(hgetx_u) { ARY(1); TC(ARGV[0], Hom); GO(ret, (obj)G(ARGV[0])); }
+VM(hgeti_u) { ARY(1); TC(Argv[0], Hom); Go(ret, inptr(G(H(Argv[0])))); }
+VM(hgetx_u) { ARY(1); TC(Argv[0], Hom); Go(ret, (obj) G(H(Argv[0]))); }
 
 VM(hseek_u) {
- ARY(2); TC(ARGV[0], Hom); TC(ARGV[1], Num);
- GO(ret, _H(H(ARGV[0])+N(ARGV[1]))); }
+ ARY(2);
+ TC(Argv[0], Hom);
+ TC(Argv[1], Num);
+ Go(ret, _H(H(Argv[0]) + N(Argv[1]))); }
 
 VM(ev_u) {
   ARY(1);
-  RETC(
-    PushCc(_N(emit_i), _N(yield),
-           _N(comp_alloc_thread)),
-    xp = comp_expr(v, NULL, 0, *ARGV),
-    v->xp = G(xp)(v, xp, v->fp, v->sp, v->hp, nil)); }
+  CallC(
+    PushCc(inptr(emit_i), inptr(yield),
+           inptr(comp_alloc_thread)),
+    xp = comp_expr(v, NULL, 0, *Argv),
+    v->xp = G(H(xp))(v, xp, v->fp, v->sp, v->hp, nil));
+  Jump(ret); }
 
-static VM(clos) { CLOS = (obj) GF(ip); AP((obj) G(FF(ip)), xp); }
+static Vm(clos) { Clos = (obj) GF(H(ip)); AP((obj) G(FF(H(ip))), xp); }
 // finalize function instance closure
-static VM(clos1) { G(ip) = clos; GF(ip) = (terp*) xp; NEXT(0); }
+static Vm(clos1) { *H(ip) = clos; *F(H(ip)) = (terp*) xp; NEXT(0); }
 
 // this function is run the first time a user
 // function with a closure is called. its
@@ -509,22 +514,22 @@ static VM(clos1) { G(ip) = clos; GF(ip) = (terp*) xp; NEXT(0); }
 // it overwrites itself with a special jump
 // instruction that sets the closure and enters
 // the function.
-static VM(clos0) {
- obj ec  = (obj) GF(ip),
+static Vm(clos0) {
+ obj ec  = (obj) GF(H(ip)),
      arg = V(ec)->xs[0],
      loc = V(ec)->xs[1];
  u64 adic = nilp(arg) ? 0 : V(arg)->len;
  Have(Width(frame) + adic + 1);
  i64 off = (mem) fp - sp;
- G(ip) = clos1;
+ *H(ip) = clos1;
  sp -= adic;
  cpy64(sp, V(arg)->xs, adic);
- ec = (obj) GF(ip);
+ ec = (obj) GF(H(ip));
  fp = sp -= Width(frame);
- RETP = ip;
- SUBR = _N(off);
- ARGC = _N(adic);
- CLOS = V(ec)->xs[2];
+ Retp = ip;
+ Subr = _N(off);
+ Argc = _N(adic);
+ Clos = V(ec)->xs[2];
  if (!nilp(loc)) *--sp = loc;
  ip = V(ec)->xs[3];
  NEXT(0); }
@@ -532,10 +537,10 @@ static VM(clos0) {
 // the next few functions create and store
 // lexical environments.
 static VM(encl) {
- i64 n = N(ARGC);
+ i64 n = N(Argc);
  n += n ? 12 : 11;
  Have(n);
- obj x = (obj) GF(ip), arg = nil;
+ obj x = (obj) GF(H(ip)), arg = nil;
  mem block = hp;
  hp += n;
  if (n > 11) {
@@ -543,7 +548,7 @@ static VM(encl) {
   vec t = (vec) block;
   block += 1 + n;
   t->len = n;
-  while (n--) t->xs[n] = ARGV[n];
+  while (n--) t->xs[n] = Argv[n];
   arg = putvec(t); }
 
  vec t = (vec) block; // compiler thread closure array (1 length 5 elements)
@@ -551,8 +556,8 @@ static VM(encl) {
 
  t->len = 5; // initialize alpha closure
  t->xs[0] = arg;
- t->xs[1] = xp; // LOCS or nil
- t->xs[2] = CLOS;
+ t->xs[1] = xp; // Locs or nil
+ t->xs[2] = Clos;
  t->xs[3] = B(x);
  t->xs[4] = _H(at);
 
@@ -564,13 +569,13 @@ static VM(encl) {
 
  AP(ip+W2, _H(at)); }
 
-VM(encll) { GO(encl, LOCS); }
-VM(encln) { GO(encl, nil); }
+VM(encll) { Go(encl, Locs); }
+VM(encln) { Go(encl, nil); }
 
 NoInline obj homnom(lips v, obj x) {
-  terp *k = G(x);
+  terp *k = G(H(x));
   if (k == clos || k == clos0 || k == clos1)
-    return homnom(v, (obj) G(FF(x)));
+    return homnom(v, (obj) G(FF(H(x))));
   mem h = (mem) H(x);
   while (*h) h++;
   x = h[-1];
@@ -579,6 +584,6 @@ NoInline obj homnom(lips v, obj x) {
 
 VM(hnom_u) {
   ARY(1);
-  TC(*ARGV, Hom);
-  xp = homnom(v, *ARGV);
+  TC(*Argv, Hom);
+  xp = homnom(v, *Argv);
   Jump(ret); }

@@ -1,14 +1,14 @@
-#define F(x) (H(x)+1)
-#define G(x) (*H(x))
+static Inline hom F(hom h) { return h + 1; }
+static Inline terp *G(hom h) { return *h; }
+static Inline hom gethom(obj x) { return (hom) (x - Hom); }
+static Inline obj puthom(hom h) { return (obj) h + Hom; }
+static Inline hom button(hom h) { while (*h) h++; return h; }
+static Inline bool homp(obj x) { return kind(x) == Hom; }
+#define H(x)  gethom(x)
+#define _H(x) puthom(x)
 #define FF(x) F(F(x))
 #define FG(x) F(G(x))
 #define GF(x) G(F(x))
 #define GG(x) G(G(x))
-#define H(x)  gethom(x)
-#define _H(x) puthom(x)
-#define gethom(x) ((hom)((x)-Hom))
-#define puthom(x) ((obj)((x)+Hom))
-#define homp(x) (kind(x)==Hom)
-obj eval(lips, obj),
-    homnom(lips, obj);
-static Inline hom button(hom h) { while (*h) h++; return h; }
+
+obj eval(lips, obj), homnom(lips, obj);

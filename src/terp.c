@@ -36,26 +36,35 @@
 // " virtual machine instructions "
 //
 // load instructions
-OP2(imm, (obj)GF(ip)) OP1(unit, nil) OP1(one, _N(1)) OP1(zero, _N(0))
+OP2(imm, (obj)GF(H(ip)))
+OP1(unit, nil)
+OP1(one, _N(1))
+OP1(zero, _N(0))
 
 // indexed load instructions
 // this pointer arithmetic works because fixnums are
 // premultiplied by W
-#define REF(b) (*(i64*)((i64)(b)+(i64)GF(ip)-Num))
+#define REF(b) (*(i64*)((i64)(b)+(i64)GF(H(ip))-Num))
 
-OP2(arg, REF(ARGV)) OP1(arg0, ARGV[0]) OP1(arg1, ARGV[1])
-OP2(loc, REF(V(LOCS)->xs)) OP1(loc0, V(LOCS)->xs[0]) OP1(loc1, V(LOCS)->xs[1])
-OP2(clo, REF(V(CLOS)->xs)) OP1(clo0, V(CLOS)->xs[0]) OP1(clo1, V(CLOS)->xs[1])
+OP2(arg, REF(Argv))
+OP1(arg0, Argv[0])
+OP1(arg1, Argv[1])
+OP2(loc, REF(V(Locs)->xs))
+OP1(loc0, V(Locs)->xs[0])
+OP1(loc1, V(Locs)->xs[1])
+OP2(clo, REF(V(Clos)->xs))
+OP1(clo0, V(Clos)->xs[0])
+OP1(clo1, V(Clos)->xs[1])
 
 // store instructions
 VM(push) { Have1(); *--sp = xp; NEXT(1); } // stack push
-VM(loc_) { REF(V(LOCS)->xs) = xp; NEXT(2); } // set a local variable
+VM(loc_) { REF(V(Locs)->xs) = xp; NEXT(2); } // set a local variable
 
-VM(tbind) { CALLC(tbl_set(v, Top, (obj) GF(ip), xp)); NEXT(2); }
+VM(tbind) { CallC(tbl_set(v, Top, (obj) GF(H(ip)), xp)); NEXT(2); }
 
 // initialize local variable slots
 VM(locals) {
- u64 n = N(GF(ip));
+ i64 n = N((i64) GF(H(ip)));
  Have(n + 2);
  vec t = (vec) hp;
  set64(t->xs, nil, t->len = n);
@@ -68,25 +77,25 @@ VM(locals) {
 // the "static" type and arity checking that would have been
 // done by the compiler if the function had been bound early.
 VM(lbind) {
- obj w = (obj) GF(ip), d = AB(w), y = A(w);
+ obj w = (obj) GF(H(ip)), d = AB(w), y = A(w);
  if (!(w = tbl_get(v, d, xp = BB(w)))) {
   char *nom = nilp(getsym(xp)->nom) ? "()" : symnom(xp);
   Jump(nope, "free variable : %s", nom); }
  xp = w;
  if (getnum(y) != 8) TC(xp, getnum(y)); // do the type check
- terp *q = G(FF(ip)); // omit the arity check if possible
+ terp *q = G(FF(H(ip))); // omit the arity check if possible
  if (q == call || q == rec) {
-  obj aa = (obj) GF(FF(ip));
-  if (G(xp) == arity && aa >= (obj) GF(xp)) xp += W2; }
- G(ip) = imm;
- GF(ip) = (terp*) xp;
+  obj aa = (obj) GF(FF(H(ip)));
+  if (G(H(xp)) == arity && aa >= (obj) GF(H(xp))) xp += W2; }
+ *H(ip) = imm;
+ *F(H(ip)) = (terp*) xp;
  NEXT(2); }
 
 // return to C
-VM(yield) { PACK(); return xp; }
+VM(yield) { Pack(); return xp; }
 
 // conditional jumps
-#define Br(_x_, a, x, b, y) {if(_x_)AP((obj)a(ip),x);AP((obj)b(ip),y);}
+#define Br(_x_, a, x, b, y) {if(_x_)AP((obj)a(H(ip)),x);AP((obj)b(H(ip)),y);}
 #define BR(op, a, x, b, y) Br(*sp++ op xp, a, x, b, y)
 
 VM(branch)  Br(xp == nil, FF, xp, GF, xp)
@@ -110,60 +119,60 @@ BR1(<, xp, nil)
 #undef Br
 
 // unconditional jumps
-VM(jump) { AP((obj) GF(ip), xp); }
+VM(jump) { AP((obj) GF(H(ip)), xp); }
 
 // return from a function
 VM(ret) {
- ip = RETP;
- sp = (mem) ((i64) ARGV + ARGC - Num);
- fp = (mem) ((i64)   sp + SUBR - Num);
+ ip = Retp;
+ sp = (mem) ((i64) Argv + Argc - Num);
+ fp = (mem) ((i64)   sp + Subr - Num);
  NEXT(0); }
 
 // regular function call
 VM(call) {
  Have(Width(frame));
- obj adic = (obj) GF(ip);
+ obj adic = (obj) GF(H(ip));
  i64 off = fp - (mem) ((i64) sp + adic - Num);
  fp = sp -= Width(frame);
- RETP = _H(ip+W2);
- SUBR = _N(off);
- CLOS = nil;
- ARGC = adic;
+ Retp = ip+W2;
+ Subr = _N(off);
+ Clos = nil;
+ Argc = adic;
  AP(xp, nil); }
  
 VM(ap_u) {
  ARY(2);
- obj x = ARGV[0], y = ARGV[1];
+ obj x = Argv[0], y = Argv[1];
  TC(x, Hom);
  u64 adic = llen(y);
  Have(adic);
- obj off = SUBR, rp = RETP;
- sp = ARGV + N(ARGC) - adic;
+ obj off = Subr, rp = Retp;
+ sp = Argv + N(Argc) - adic;
  for (u64 j = 0; j < adic; y = B(y)) sp[j++] = A(y);
  fp = sp -= Width(frame);
- RETP = rp;
- ARGC = _N(adic);
- SUBR = off;
- CLOS = nil;
+ Retp = rp;
+ Argc = _N(adic);
+ Subr = off;
+ Clos = nil;
  AP(x, nil); }
 
 static VM(recne) {
  // overwrite current frame with new frame
- v->xp = SUBR, v->ip = RETP; // save return info
- fp = ARGV + N(ARGC - ip);
+ v->xp = Subr, v->ip = Retp; // save return info
+ fp = Argv + N(Argc - ip);
  cpy64r(fp, sp, N(ip)); // copy from high to low
  sp = fp -= Width(frame);
- RETP = v->ip;
- ARGC = ip;
- SUBR = v->xp;
+ Retp = v->ip;
+ Argc = ip;
+ Subr = v->xp;
  ip = xp;
- CLOS = xp = nil;
+ Clos = xp = nil;
  NEXT(0); }
 
 // tail call
 VM(rec) {
- if (ARGC != (ip = (obj) GF(ip))) Jump(recne);
- cpy64(ARGV, sp, ip = getnum(ip));
+ if (Argc != (ip = (obj) GF(H(ip)))) Jump(recne);
+ cpy64(Argv, sp, ip = getnum(ip));
  sp = fp;
  AP(xp, nil); }
 
@@ -178,7 +187,7 @@ VM(rec) {
 // frequency of the two.
 VM(ccc_u) {
  ARY(1);
- TC(*ARGV, Hom);
+ TC(*Argv, Hom);
  // we need space for:
  // the entire stack
  // the frame offset
@@ -186,7 +195,7 @@ VM(ccc_u) {
  // the continuation thread (4 words)
  i64 depth = v->pool + v->len - sp;
  Have(depth + 6);
- ip = *ARGV;
+ ip = *Argv;
  vec t = (vec) hp;
  hp += depth + 2;
  t->len = depth + 1;
@@ -198,14 +207,14 @@ VM(ccc_u) {
  c[1] = (terp*) _V(t);
  c[2] = NULL;
  c[3] = (terp*) c;
- ARGV[0] = _H(c);
+ Argv[0] = _H(c);
  AP(ip, nil); }
 
 // call a continuation
 VM(cont) {
- vec t = getvec(GF(ip));
+ vec t = V((obj) GF(H(ip)));
  Have(t->len - 1);
- xp = N(ARGC) == 0 ? nil : *ARGV;
+ xp = N(Argc) == 0 ? nil : *Argv;
  i64 off = N(t->xs[0]);
  sp = v->pool + v->len - (t->len - 1);
  fp = sp + off;
@@ -213,17 +222,17 @@ VM(cont) {
  Jump(ret); }
 
 VM(vararg) {
- i64 reqd = N(GF(ip)),
-     vdic = N(ARGC) - reqd;
+ i64 reqd = N((i64) GF(H(ip))),
+     vdic = N(Argc) - reqd;
  ARY(reqd);
  // in this case we need to add another argument
  // slot to hold the nil.
  if (!vdic) {
   Have1();
-  cpy64(fp-1, fp, Width(frame) + N(ARGC));
+  cpy64(fp-1, fp, Width(frame) + N(Argc));
   sp = --fp;
-  ARGC += W;
-  ARGV[reqd] = nil;
+  Argc += W;
+  Argv[reqd] = nil;
   NEXT(2); }
  // in this case we just keep the existing slots.
  // the path is knowable at compile time in many cases
@@ -234,17 +243,17 @@ VM(vararg) {
   two t = (two) hp;
   hp += 2 * vdic;
   for (i64 i = vdic; i--;
-   t[i].a = ARGV[reqd + i],
+   t[i].a = Argv[reqd + i],
    t[i].b = puttwo(t+i+1));
   t[vdic-1].b = nil;
-  ARGV[reqd] = puttwo(t);
+  Argv[reqd] = puttwo(t);
   NEXT(2); } }
 
 // type predicates
 #define TP(t) \
     VM(t##pp) { AP(ip+W, (t##p(xp)?ok:nil)); }\
     VM(t##p_u) {\
-      for (obj *xs = ARGV, *l = xs + N(ARGC); xs < l;)\
+      for (obj *xs = Argv, *l = xs + N(Argc); xs < l;)\
         if (!t##p(*xs++)) GO(ret, nil);\
       GO(ret, ok); }
 TP(num)
@@ -278,9 +287,9 @@ VM(nope, const char *msg, ...) {
   fputs("# (", stderr);
   emit(v, ip, stderr);
   mem top = v->pool + v->len;
-  i64 i = 0, argc = fp == top ? 0 : N(ARGC);
+  i64 i = 0, argc = fp == top ? 0 : N(Argc);
   if (argc) for (fputc(' ', stderr);; fputc(' ', stderr)) {
-    obj x = ARGV[i++];
+    obj x = Argv[i++];
     emit(v, x, stderr);
     if (i == argc) break; }
   fputc(')', stderr);
@@ -293,7 +302,7 @@ VM(nope, const char *msg, ...) {
 
   // print backtrace
   for (;;) {
-    ip = RETP, fp += Width(frame) + N(ARGC) + N(SUBR);
+    ip = Retp, fp += Width(frame) + N(Argc) + N(Subr);
     if (button(H(ip))[-1] == yield) break;
     fputs("# in ", stderr), emsep(v, ip, stderr, '\n'); }
 
@@ -312,7 +321,7 @@ VM(oob_error) {
 
 VM(ary_error) {
   u64 reqd = v->xp;
-  Jump(nope, arity_err_msg, N(ARGC), reqd); }
+  Jump(nope, arity_err_msg, N(Argc), reqd); }
 
 
 // type/arity checking
@@ -321,6 +330,6 @@ VM(ary_error) {
   v->xp = t; Jump(type_error); }
 DTC(idZ, Num) DTC(idH, Hom) DTC(idT, Tbl) DTC(id2, Two)
 VM(arity) {
- obj reqd = (obj) GF(ip);
- if (reqd <= ARGC) NEXT(2);
- else Jump(nope, arity_err_msg, N(ARGC), N(reqd)); }
+ obj reqd = (obj) GF(H(ip));
+ if (reqd <= Argc) NEXT(2);
+ else Jump((v->xp = N(reqd), ary_error)); }
