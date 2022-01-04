@@ -117,15 +117,19 @@ bool cycle(lips v, u64 req) {
 // objects are used to store pointers to their
 // new locations, which effectively destroys the
 // old data.
+static GC(cpid) { return x; }
 GC(cp) {
-  switch (kind(x)) {
-    default:  return x;
-    case Hom: return cphom(v, x, len0, base0);
-    case Vec: return cpvec(v, x, len0, base0);
-    case Str: return cpstr(v, x, len0, base0);
-    case Two: return cptwo(v, x, len0, base0);
-    case Sym: return cpsym(v, x, len0, base0);
-    case Tbl: return cptbl(v, x, len0, base0); } }
+  static copier *copiers[] = {
+    [Hom] = cphom,
+    [Num] = cpid,
+    [Two] = cptwo,
+    [Vec] = cpvec,
+    [Str] = cpstr,
+    [Tbl] = cptbl,
+    [Sym] = cpsym,
+    [Nil] = cpid,
+  };
+  return copiers[kind(x)](v, x, len0, base0); }
 
 #include "hom.h"
 Vm(gc) {

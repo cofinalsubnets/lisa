@@ -3,7 +3,6 @@
 #define GC Gc
 #define inb(o,l,u) (o>=l&&o<u)
 #define fresh(o) inb((mem)(o),v->pool,v->pool+v->len)
-#define stale(o) inb((mem)(o),base0,base0+len0)
 #define COPY(dst,src) (dst=cp(v,src,len0,base0))
 #define CP(x) COPY(x,x)
 #define mm(r) ((v->root=&((struct root){(r),v->root})))

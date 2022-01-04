@@ -27,7 +27,7 @@ static u0 emtbl(lips v, tbl t, FILE *o) {
 
 static u0 emsym(lips v, sym y, FILE *o) {
   y->nom == nil ? fprintf(o, "#sym@%lx", (long) y) :
-                  fputs(chars(y->nom), o); }
+                  fputs(S(y->nom)->text, o); }
 
 static u0 emtwo_(lips v, two w, FILE *o) {
   twop(w->b) ? (emsep(v, w->a, o, ' '),

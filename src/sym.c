@@ -20,7 +20,7 @@ obj interns(lips v, const char *s) {
 obj sskc(lips v, mem y, obj x) {
   if (!nilp(*y)) {
     sym z = getsym(*y);
-    int i = scmp(chars(z->nom), chars(x));
+    int i = scmp(S(z->nom)->text, S(x)->text);
     return i == 0 ? *y : sskc(v, i < 0 ? &z->r : &z->l, x); }
   sym z = bump(v, Width(sym));
   z->code = hash(v, z->nom = x) ^ mix;

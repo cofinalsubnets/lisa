@@ -437,6 +437,7 @@ static NoInline obj apply(lips v, obj f, obj x) {
  f = _H(h), x = tbl_get(v, Top, App);
  return call(v, f, v->fp, v->sp, v->hp, x); }
 
+#define stale(o) inb((mem)(o),base0,base0+len0)
 GC(cphom) {
  hom src = H(x);
  if (fresh(*src)) return (obj) *src;

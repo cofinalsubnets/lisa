@@ -78,7 +78,7 @@ VM(locals) {
 VM(lbind) {
  obj w = (obj) H(ip)[1], d = AB(w), y = A(w);
  if (!(w = tbl_get(v, d, xp = BB(w)))) {
-  char *nom = nilp(getsym(xp)->nom) ? "()" : symnom(xp);
+  char *nom = nilp(Y(xp)->nom) ? "()" : S(Y(xp)->nom)->text;
   Jump(nope, "free variable : %s", nom); }
  xp = w;
  if (getnum(y) != 8) TC(xp, getnum(y)); // do the type check

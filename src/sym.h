@@ -3,7 +3,6 @@ obj
  intern(lips, obj),
  interns(lips, const char*),
  sskc(lips, mem, obj);
-#define symnom(y) chars(getsym(y)->nom)
 #define Y(x) getsym(x)
 #define _Y(x) putsym(x)
 static Inline sym getsym(obj x) { return (sym) (x - Sym); }

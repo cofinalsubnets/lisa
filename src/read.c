@@ -52,7 +52,7 @@ obj parse(lips v, FILE* i) {
     default: return
      ungetc(c, i),
      x = read_buffered(v, i, read_atom),
-     y = readz(v, chars(x)),
+     y = readz(v, S(x)->text),
      nump(y) ? y : intern(v, x); } }
 
 static obj read_list(lips v, FILE *i) {

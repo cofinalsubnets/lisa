@@ -2,10 +2,10 @@
 #include "tbl.h"
 
 static Inline i64 tbl_idx(u64 cap, u64 co) {
-  return co % cap; }
+  return co & ((1 << cap) - 1); }
 
 static Inline u64 tbl_load(obj t) {
-  return T(t)->len / T(t)->cap; }
+  return T(t)->len / (1<<T(t)->cap); }
 
 #include "cmp.h"
 
@@ -44,7 +44,7 @@ static u0 shrink(lips v, obj t) {
   tbl u = T(t);
 
   // collect all entries
-  for (u64 i = u->cap; i--;)
+  for (u64 i = 1<<u->cap; i--;)
     for (f = u->tab[i], u->tab[i] = NULL; f;)
       g = f->next,
       f->next = e,
@@ -52,7 +52,7 @@ static u0 shrink(lips v, obj t) {
       f = g;
 
   // shrink bucket array
-  while (u->cap > 1 && tbl_load(t) < 1) u->cap >>= 1;
+  while (u->cap && tbl_load(t) < 1) u->cap--;
 
   // reinsert
   while (e) {
@@ -85,18 +85,19 @@ static obj tbl_del(lips v, obj t, obj key) {
 // the old table entries are reused to populate the modified table.
 static obj grow(lips v, obj t) {
   ent *tab0, *tab1;
-  u64 cap0 = T(t)->cap, cap1 = cap0 * 2;
-  with(t, tab1 = cells(v, cap1));
-  set64(tab1, 0, cap1);
+  u64 cap0 = T(t)->cap, cap1 = cap0 + 1;
+  with(t, tab1 = cells(v, 1<<cap1));
+  set64(tab1, 0, 1<<cap1);
   tab0 = T(t)->tab;
 
-  while (cap0--)
-    for (ent e, es = tab0[cap0]; es;) {
+  for (u64 cap = 1<<cap0;cap--;)
+    for (ent e, es = tab0[cap]; es;) {
       e = es, es = es->next;
       u64 i = tbl_idx(cap1, hash(v, e->key));
       e->next = tab1[i], tab1[i] = e; }
 
-  T(t)->cap = cap1, T(t)->tab = tab1;
+  T(t)->cap = cap1;
+  T(t)->tab = tab1;
   return t; }
 
 obj tbl_set_s(lips v, obj t, obj k, obj x) {
@@ -128,7 +129,7 @@ obj tbl_get(lips v, obj t, obj k) {
 obj table(lips v) {
   tbl t = cells(v, Width(tbl) + 1);
   ent *b = (ent*)(t+1);
-  t->len = 0, t->cap = 1, t->tab = b, *b = NULL;
+  t->len = t->cap = 0, t->tab = b, *b = NULL;
   return puttbl(t); }
 
 static obj tblkeys_j(lips v, ent e, obj l) {
@@ -140,7 +141,7 @@ static obj tblkeys_j(lips v, ent e, obj l) {
 
 static obj tblkeys_i(lips v, obj t, i64 i) {
  obj k;
- return i == gettbl(t)->cap ? nil :
+ return i == 1<<gettbl(t)->cap ? nil :
   (with(t, k = tblkeys_i(v, t, i+1)),
    tblkeys_j(v, gettbl(t)->tab[i], k)); }
 
@@ -159,14 +160,14 @@ GC(cptbl) {
   tbl src = gettbl(x);
   if (fresh(src->tab)) return (obj) src->tab;
   i64 src_cap = src->cap;
-  tbl dst = bump(v, 3 + src_cap);
+  tbl dst = bump(v, Width(tbl) + (1<<src_cap));
   dst->len = src->len;
   dst->cap = src_cap;
   dst->tab = (ent*) (dst + 1);
   ent *src_tab = src->tab;
   src->tab = (ent*) puttbl(dst);
-  while (src_cap--)
-    dst->tab[src_cap] = cpent(v, src_tab[src_cap], len0, base0);
+  for (u64 ii = 1<<src_cap; ii--;)
+    dst->tab[ii] = cpent(v, src_tab[ii], len0, base0);
   return puttbl(dst); }
 
 #include "terp.h"

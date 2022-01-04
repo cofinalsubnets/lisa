@@ -5,4 +5,3 @@ static Inline obj putstr(str s) { return (obj) s + Str; }
 static Inline bool strp(obj x) { return kind(x) == Str; }
 #define S(x) getstr(x)
 #define _S(x) putstr(x)
-#define chars(x) S(x)->text
