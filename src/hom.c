@@ -5,7 +5,6 @@
 #include "sym.h"
 #include "two.h"
 #include "mem.h"
-#include "write.h"
 #include "vec.h"
 #include "terp.h"
 
@@ -14,7 +13,7 @@
 //
 // functions construct their continuations by pushing function
 // pointers onto the main stack with Push
-#define PushCc(...) pushs(v,__VA_ARGS__,NULL)
+#define Push(...) pushs(v,__VA_ARGS__,NULL)
 // and then calling them with Ccc
 #define Ccc(m) ((c1*)N(*v->sp++))(v,e,m)
 // there's a natural correspondence between the push/Ccc pattern
@@ -29,53 +28,57 @@
 // (almost) no optimizations or static typing since all it has
 // to do is bootstrap the main compiler.
 
+
 // " compilation environments "
+typedef struct { obj arg, loc, clo, par, nom, sig; } *cenv;
+#define Ce(x) ((cenv)(V(x)->xs))
 // the current lexical environment is passed to compiler
 // functions as a pointer to an object, either a tuple with a
 // structure specified below, or nil for toplevel. it's a
 // pointer to an object, instead of just an object, so it can
 // be gc-protected once instead of separately by every function.
 // in the other compiler it's just a regular object.
-#define arg(x)  V(x)->xs[0] // argument variables : a list
-#define loc(x)  V(x)->xs[1] // local variables : a list
-#define clo(x)  V(x)->xs[2] // closure variables : a list
-#define par(x)  V(x)->xs[3] // surrounding scope : tuple or nil
-#define name(x) V(x)->xs[4] // function name : a symbol or nil
-#define asig(x) V(x)->xs[5] // arity signature : an integer
+#define arg(x)  Ce(x)->arg // argument variables : a list
+#define loc(x)  Ce(x)->loc // local variables : a list
+#define clo(x)  Ce(x)->clo // closure variables : a list
+#define par(x)  Ce(x)->par // surrounding scope : tuple or nil
+#define name(x) Ce(x)->nom // function name : a symbol or nil
+#define asig(x) Ce(x)->sig // arity signature : an integer
 // for a function f let n be the number of required arguments.
 // then if f takes a fixed number of arguments the arity
 // signature is n; otherwise it's -n-1.
 
 static u0 scan(lips, mem, obj);
 static obj comp_lambda_clo(lips, mem, obj, obj), ltu(lips, mem, obj, obj);
-typedef obj c1(lips, mem, u64), c2(lips, mem, u64, obj);
+typedef hom c1(lips, mem, u64), c2(lips, mem, u64, obj);
 static c1 comp_expr_, comp_let_bind, emit_i, emit_i_d, comp_alloc_thread;
 static c2 comp_expr, comp_sym, comp_list, comp_imm;
 
 enum { Here, Loc, Arg, Clo, Wait };
-#define CO(nom,...) static obj nom(lips v, mem e, u64 m, ##__VA_ARGS__)
+#define CO(nom,...) static hom nom(lips v, mem e, u64 m, ##__VA_ARGS__)
 
 static Inline obj inptr(void *i) { return putnum((i64) i); }
 
 // helper functions for lists
 static i64 lidx(obj l, obj x) {
- for (i64 i = 0; twop(l); l = B(l), i++)
-  if (x == A(l)) return i;
- return -1; }
+  for (i64 i = 0; twop(l); l = B(l), i++)
+    if (x == A(l)) return i;
+  return -1; }
 
 static obj linitp(lips v, obj x, mem d) {
- obj y; return !twop(B(x)) ? (*d = x, nil) :
-  (with(x, y = linitp(v, B(x), d)), pair(v, A(x), y)); }
+  obj y;
+  return !twop(B(x)) ? (*d = x, nil) :
+    (with(x, y = linitp(v, B(x), d)), pair(v, A(x), y)); }
 
 static obj snoc(lips v, obj l, obj x) {
   return !twop(l) ? pair(v, x, l) :
-    (with(l, x = snoc(v, B(l), x)), pair(v, A(l), x)); }
+    (with(l, x = snoc(v, B(l), x)),
+     pair(v, A(l), x)); }
 
 static u0 pushss(lips v, i64 i, va_list xs) {
   obj x = va_arg(xs, obj);
-  if (x)
-    with(x,  pushss(v, i+1, xs)),
-    *--v->sp = x;
+  if (x) with(x,  pushss(v, i+1, xs)),
+         *--v->sp = x;
   else if (Avail < i && !cycle(v, i))
     errp(v, "oom"),
     restart(v); }
@@ -87,12 +90,10 @@ static u0 pushs(lips v, ...) {
 static vec tuplr(lips v, i64 i, va_list xs) {
  vec t;
  obj x = va_arg(xs, obj);
- if (x)
-   with(x, t = tuplr(v, i+1, xs)),
-   t->xs[i] = x;
- else
-  t = cells(v, Width(vec) + i),
-  t->len = i;
+ if (x) with(x, t = tuplr(v, i+1, xs)),
+        t->xs[i] = x;
+ else t = cells(v, Width(vec) + i),
+      t->len = i;
  return t; }
 
 static obj tupl(lips v, ...) {
@@ -108,36 +109,41 @@ static obj em1(terp *i, obj k) {
 static obj em2(terp *i, obj j, obj k) {
  return em1(i, em1((terp*)j, k)); }
 
-static obj imx(lips v, mem e, i64 m, terp *i, obj x) {
- PushCc(inptr(i), x);
- return emit_i_d(v, e, m); }
+static hom ee1(terp *i, hom k) {
+ return *--k = i, k; }
+
+static hom ee2(terp *i, obj x, hom k) {
+ return ee1(i, ee1((terp*) x, k)); }
+
+static hom imx(lips v, mem e, i64 m, terp *i, obj x) {
+  Push(inptr(i), x);
+  return emit_i_d(v, e, m); }
 
 static NoInline obj rw_let_fn(lips v, obj x) {
- mm(&x);
- for (obj y; twop(A(x));)
-  y = snoc(v, BA(x), AB(x)),
-  y = pair(v, La, y),
-  y = pair(v, y, BB(x)),
-  x = pair(v, AA(x), y);
- return um, x; }
+  mm(&x);
+  for (obj y; twop(A(x)); x = pair(v, AA(x), y))
+    y = snoc(v, BA(x), AB(x)),
+    y = pair(v, La, y),
+    y = pair(v, y, BB(x));
+  return um, x; }
 
 static bool scan_def(lips v, mem e, obj x) {
- if (!twop(x)) return true; // this is an even case so export all the definitions to the local scope
- if (!twop(B(x))) return false; // this is an odd case so ignore these, they'll be imported after the rewrite
- mm(&x);
- bool r = scan_def(v, e, BB(x));
- if (r) {
-  x = rw_let_fn(v, x);
-  obj y = pair(v, A(x), loc(*e));
-  loc(*e) = y;
-  scan(v, e, AB(x)); }
- return um, r; }
+  if (!twop(x)) return true; // this is an even case so export all the definitions to the local scope
+  if (!twop(B(x))) return false; // this is an odd case so ignore these, they'll be imported after the rewrite
+  mm(&x);
+  bool r = scan_def(v, e, BB(x));
+  if (r) {
+    x = rw_let_fn(v, x);
+    obj y = pair(v, A(x), loc(*e));
+    loc(*e) = y;
+    scan(v, e, AB(x)); }
+  return um, r; }
 
 static u0 scan(lips v, mem e, obj x) {
  if (!twop(x) || A(x) == La || A(x) == Qt) return;
  if (A(x) == De) return (u0) scan_def(v, e, B(x));
  mm(&x);
- while (twop(x)) scan(v, e, A(x)), x = B(x);
+ for (; twop(x); x = B(x)) scan(v, e, A(x));
  um; }
 
 static obj asign(lips v, obj a, i64 i, mem m) {
@@ -156,12 +162,12 @@ static Inline obj scope(lips v, mem e, obj a, obj n) {
         tupl(v, a, nil, nil, e ? *e : nil, n, _N(s), (obj)0); }
 
 static Inline obj compose(lips v, mem e, obj x) {
- PushCc(
+ Push(
    inptr(comp_expr_), x,
    inptr(emit_i), inptr(ret),
    inptr(comp_alloc_thread));
  scan(v, e, v->sp[1]);
- x = Ccc(4); // 4 = 2 + 2
+ x = _H(Ccc(4)); // 4 = 2 + 2
  i64 i = llen(loc(*e));
  if (i) x = em2(locals, _N(i), x);
  i = N(asig(*e));
@@ -189,32 +195,32 @@ static obj ltu(lips v, mem e, obj n, obj l) {
 CO(comp_lambda, obj x) {
  terp* j = imm;
  obj k, nom = *v->sp == inptr(comp_let_bind) ? v->sp[1] : nil;
- with(nom, with(x, k = Ccc(m+2)));
+ with(nom, with(x, k = _H(Ccc(m+2))));
  mm(&k);
  if (twop(x = ltu(v, e, nom, x)))
    j = e && twop(loc(*e)) ? encll : encln,
    x = comp_lambda_clo(v, e, A(x), B(x));
  um;
- return em2(j, x, k); }
+ return ee2(j, x, H(k)); }
 
 CO(comp_imm, obj x) {
-  PushCc(inptr(imm), x);
+  Push(inptr(imm), x);
   return emit_i_d(v, e, m); }
 
 static obj comp_lambda_clo(lips v, mem e, obj arg, obj seq) {
   i64 i = llen(arg);
   mm(&arg), mm(&seq);
 
-  for (PushCc(
+  for (Push(
          inptr(emit_i_d), inptr(take), _N(i),
          inptr(comp_alloc_thread));
        twop(arg);
        arg = B(arg))
-    PushCc(
+    Push(
       inptr(comp_expr_), A(arg),
       inptr(emit_i), inptr(push));
 
-  arg = Ccc(0);
+  arg = _H(Ccc(0));
   um, um;
   return pair(v, seq, arg); }
 
@@ -227,7 +233,7 @@ static u0 comp_let_r(lips v, mem e, obj x) {
  if (twop(x))
   x = rw_let_fn(v, x),
   with(x, comp_let_r(v, e, BB(x))),
-  PushCc(inptr(comp_expr_), AB(x), inptr(comp_let_bind), A(x)); }
+  Push(inptr(comp_expr_), AB(x), inptr(comp_let_bind), A(x)); }
 
 // syntactic sugar for define
 static obj def_sug(lips v, obj x) {
@@ -252,56 +258,59 @@ CO(comp_let, obj x) { return
 // before generating anything, store the
 // exit address in stack 2
 CO(comp_if_pre) {
- obj x = Ccc(m);
- return A(S2 = pair(v, x, S2)); }
+ obj x = _H(Ccc(m));
+ return H(A(S2 = pair(v, x, S2))); }
 
 // before generating a branch emit a jump to
 // the top of stack 2
 CO(comp_if_pre_con) {
- obj x = Ccc(m + 2), k = A(S2);
- return *H(k) == ret ? em1(ret, x) : em2(jump, k, x); }
+  hom x = Ccc(m + 2), k = H(A(S2));
+  return *k == ret ? ee1(ret, x) : ee2(jump, _H(k), x); }
 
 // after generating a branch store its address
 // in stack 1
 CO(comp_if_post_con) {
- obj x = Ccc(m);
- return A(S1 = pair(v, x, S1)); }
+ obj x = _H(Ccc(m));
+ return H(A(S1 = pair(v, x, S1))); }
 
 // before generating an antecedent emit a branch to
 // the top of stack 1
 CO(comp_if_pre_ant) {
- obj x = Ccc(m+2);
- return x = em2(branch, A(S1), x), S1 = B(S1), x; }
+ hom x = Ccc(m+2);
+ x = ee2(branch, A(S1), x);
+ S1 = B(S1);
+ return x; }
 
 static u0 comp_if_loop(lips v, mem e, obj x) {
  if (!twop(x)) x = pair(v, nil, nil);
 
  if (!twop(B(x)))
-   PushCc(
+   Push(
      inptr(comp_expr_), A(x),
      inptr(comp_if_pre_con));
 
  else {
    with(x,
-     PushCc(
+     Push(
        inptr(comp_if_post_con),
        inptr(comp_expr_), AB(x),
        inptr(comp_if_pre_con)),
      comp_if_loop(v, e, BB(x)));
-   PushCc(
+   Push(
      inptr(comp_expr_), A(x),
      inptr(comp_if_pre_ant)); } }
 
 CO(comp_if, obj x) {
-  with(x, PushCc(inptr(comp_if_pre)));
+  with(x, Push(inptr(comp_if_pre)));
   comp_if_loop(v, e, B(x));
-  x = Ccc(m);
+  hom k = Ccc(m);
   S2 = B(S2);
-  return x; }
+  return k; }
 
 CO(emit_call) {
-  obj a = *v->sp++, k = Ccc(m + 2);
-  return em2(*H(k) == ret ? rec : call, a, k); }
+  obj a = *v->sp++;
+  hom k = Ccc(m + 2);
+  return ee2(*k == ret ? rec : call, a, k); }
 
 #define L(n,x) pair(v, _N(n), x)
 static obj lookup_variable(lips v, obj e, obj y) {
@@ -322,9 +331,9 @@ CO(comp_sym, obj x) {
     case Here: return comp_imm(v, e, m, B(q));
     case Wait:
       x = pair(v, B(q), x);
-      with(x, y = Ccc(m+2));
+      with(x, y = _H(Ccc(m+2)));
       with(y, x = pair(v, _N(8), x));
-      return em2(lbind, x, y);
+      return ee2(lbind, x, H(y));
     default:
       if (B(q) == *e) switch (N(y)) {
         case Loc:
@@ -357,12 +366,12 @@ CO(comp_macro, obj macro, obj args) {
 CO(comp_call, obj fun, obj args) {
   // function call
   mm(&args);
-  PushCc(
+  Push(
     inptr(comp_expr_), fun,
     inptr(emit_i), inptr(idH),
     inptr(emit_call), _N(llen(args)));
   while (twop(args))
-    PushCc(
+    Push(
       inptr(comp_expr_), A(args),
       inptr(emit_i), inptr(push)),
     args = B(args);
@@ -373,7 +382,7 @@ CO(comp_call, obj fun, obj args) {
 static u0 comp_sequence_loop(lips v, mem e, obj x) {
   if (twop(x))
     with(x, comp_sequence_loop(v, e, B(x))),
-    PushCc(inptr(comp_expr_), A(x)); }
+    Push(inptr(comp_expr_), A(x)); }
 
 CO(comp_list, obj x) {
   obj z = A(x);
@@ -393,23 +402,24 @@ CO(comp_list, obj x) {
 
 CO(emit_i) {
  terp* i = (terp*) N(*v->sp++);
- return em1(i, Ccc(m+1)); }
+ return ee1(i, Ccc(m+1)); }
 
 CO(emit_i_d) {
  terp* i = (terp*) N(*v->sp++);
- obj x = *v->sp++, k;
- return with(x, k = Ccc(m+2)), em2(i, x, k); }
+ obj x = *v->sp++;
+ hom k;
+ return with(x, k = Ccc(m+2)), ee2(i, x, k); }
 
-static obj hini(lips v, u64 n) {
+static hom hini(lips v, u64 n) {
  hom a = cells(v, n + 2);
  a[n] = NULL;
  a[n+1] = (terp*) a;
  set64((mem) a, nil, n);
- return _H(a+n); }
+ return a + n; }
 
 CO(comp_alloc_thread) {
- obj k = hini(v, m+1);
- return em1((terp*)(e ? name(*e) : Eva), k); }
+ hom k = hini(v, m+1);
+ return ee1((terp*)(e ? name(*e) : Eva), k); }
 
 obj eval(lips v, obj x) {
   obj args = pair(v, x, nil),
@@ -417,7 +427,7 @@ obj eval(lips v, obj x) {
   return apply(v, ev, args); }
 
 static NoInline obj apply(lips v, obj f, obj x) {
- PushCc(f, x);
+ Push(f, x);
  hom h = cells(v, 5);
  h[0] = call;
  h[1] = (terp*)_N(2);
@@ -496,9 +506,9 @@ VM(hseek_u) {
 VM(ev_u) {
   ARY(1);
   CallC(
-    PushCc(inptr(emit_i), inptr(yield),
-           inptr(comp_alloc_thread)),
-    xp = comp_expr(v, NULL, 0, *Argv),
+    Push(inptr(emit_i), inptr(yield),
+         inptr(comp_alloc_thread)),
+    xp = _H(comp_expr(v, NULL, 0, *Argv)),
     v->xp = (*H(xp))(v, xp, v->fp, v->sp, v->hp, nil));
   Jump(ret); }
 

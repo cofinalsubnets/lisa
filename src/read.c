@@ -115,24 +115,22 @@ u0 write_file(lips v, const char *path, const char *text) {
     for (int c = *text; c; c = *++text) fputc(c, out);
     fclose(out); } }
 
-VM(par_u) {
-  RETC(xp = parse(v, stdin),
-       v->xp = !xp ? nil : pair(v, xp, nil)); }
+Vm(par_u) {
+  CallC(xp = parse(v, stdin),
+        v->xp = !xp ? nil : pair(v, xp, nil));
+  Jump(ret); }
 
-VM(slurp) {
-  ARY(1);
+Vm(slurp) {
+  Ary(1);
   xp = *Argv;
-  TC(xp, Str);
-  RETC(xp = read_path(v, S(xp)->text),
-       v->xp = xp ? xp : nil); }
+  Tc(xp, Str);
+  CallC(xp = read_path(v, S(xp)->text),
+        v->xp = xp ? xp : nil);
+  Jump(ret); }
 
-VM(dump) {
-  ARY(2);
-  TC(Argv[0], Str);
-  TC(Argv[1], Str);
-  char *p = S(Argv[0])->text,
-       *d = S(Argv[1])->text;
-  write_file(v, p, d);
+#include "hom.h"
+Vm(getc_u) {
+  xp = feof(stdin) ? nil : _N(getc(stdin));
   Jump(ret); }
 
 static NoInline obj readz_2(const char *s, i64 rad) {

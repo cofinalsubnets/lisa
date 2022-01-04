@@ -185,17 +185,9 @@ VM(rec) {
  AP(xp, nil); }
 
 // continuations
-//
-// this is a simple but expensive way of doing continuations.
-// it would be more memory efficient to do a copy-on-write
-// kind of thing where the stack is only copied if the function
-// returns. a spaghetti stack would be another option but it
-// would be slower. faster continuations at the cost of slower
-// function calls seems like a bad deal given the relative
-// frequency of the two.
 VM(ccc_u) {
- ARY(1);
- TC(*Argv, Hom);
+ Ary(1);
+ Tc(*Argv, Hom);
  // we need space for:
  // the entire stack
  // the frame offset
@@ -283,6 +275,10 @@ u0 errp(lips v, char *msg, ...) {
   vfprintf(stderr, msg, xs);
   va_end(xs);
   fputc('\n', stderr); }
+
+Vm(oops) {
+  if (homp(Re)) Ap(Re, nil);
+  else return restart(v); }
 
 obj restart(lips v) {
   v->fp = v->sp = v->pool + v->len;

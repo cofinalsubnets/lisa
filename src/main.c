@@ -18,6 +18,22 @@ static lips lips_fin(lips v) { return
 #define PREFIX "/usr/local"
 #endif
 
+Vm(fin) {
+  free(v->pool);
+  free(v);
+  return 0; }
+
+Vm(scrr) {
+  const char *path = (const char *) H(ip)[1];
+  FILE *f = fopen(path, "r");
+  if (!f) return
+    errp(v, "%s : %s", path, strerror(errno)),
+    EXIT_FAILURE;
+  if (setjmp(v->restart)) return EXIT_FAILURE;
+  for (obj x; (x = parse(v, f)); eval(v, x));
+  fclose(f);
+  Next(2); }
+
 static bool script(lips v, const char *path) {
   FILE *f = fopen(path, "r");
 
@@ -37,26 +53,26 @@ static bool script(lips v, const char *path) {
 #include "tbl.h"
 static NoInline u0 rin(lips v, const char *a, terp *b) {
   obj z = interns(v, a);
-  tbl_set(v, Top, z, _N((i64) b)); }
+  tbl_set(v, Mac, z, _N((i64) b)); }
 
 #include "mem.h"
 #include "two.h"
-static NoInline u0 defprim(lips v, const char *a, terp *inst) {
-  hom prim;
+static NoInline u0 defprim(lips v, const char *a, terp *i) {
   obj nom = pair(v, interns(v, a), nil);
+  hom prim;
   with(nom, prim = cells(v, 4));
-  prim[0] = inst;
+  prim[0] = i;
   prim[1] = (terp*) nom;
   prim[2] = NULL;
   prim[3] = (terp*) prim;
   tbl_set(v, Top, A(nom), _H(prim)); }
 
 static lips lips_init(lips v) {
- const u64 ini_len = 1;
- v->seed = LCPRNG(v->t0 = clock());
+ v->t0 = clock();
+ v->rand = LCPRNG(v->t0 * mix);
+ v->count = 0;
  v->ip = v->xp = v->syms = nil;
- v->fp = v->hp = v->sp = (mem) (W * ini_len),
- v->count = 0, v->len = ini_len;
+ v->fp = v->hp = v->sp = (mem) W, v->len = 1;
  v->pool = (mem) (v->root = NULL);
  set64(v->glob, nil, NGlobs);
 

@@ -17,10 +17,13 @@ enum tag { // the 3 ls bits of each pointer are a type tag
  Str = 4, Tbl = 5, Sym = 6, Nil = 7 };
 
 // the frame structure holds the current function context.
-typedef struct frame *frame;
-// a linked list of stack addresses containing live values
+typedef struct frame {
+  obj clos, retp, subd, argc, argv[];
+} *frame;
+
+// a linked list of addresses containing live values
 // that need to be preserved by garbage collection.
-typedef struct root  *root;
+typedef struct root { mem one; struct root *next; } *root;
 
 enum globl { // indices into a table of global constants
  Def, Cond, Lamb, Quote, Seq, Splat,
@@ -30,7 +33,7 @@ typedef struct lips {
  obj ip, xp, *fp, *hp, *sp, // interpreter state
      syms, // symbol table
      glob[NGlobs]; // global variables
- i64 seed, count, // random state
+ i64 rand, count, // random state
      t0, len, *pool; // memory state
  root root; // gc protection list
  jmp_buf restart; // top level restart

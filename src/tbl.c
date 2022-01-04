@@ -1,10 +1,6 @@
 #include "lips.h"
 #include "tbl.h"
 
-static Inline u64 hash_bytes(u64 len, char *us) {
-  for (u64 h = mix;; h ^= *us++, h *= mix)
-    if (!len--) return h; }
-
 static Inline i64 tbl_idx(u64 cap, u64 co) {
   return co % cap; }
 
@@ -24,10 +20,17 @@ static ent tbl_ent(lips v, obj u, obj k) {
 #include "hom.h"
 #include "vec.h"
 #include "sym.h"
+
+static u64 hash_str(str s) {
+  u64 len = s->len;
+  char *us = s->text;
+  for (u64 h = 1;; h ^= *us++, h *= mix)
+    if (!len--) return h; }
+
 u64 hash(lips v, obj x) {
   switch (kind(x)) {
     case Sym: return getsym(x)->code;
-    case Str: return hash_bytes(getstr(x)->len, getstr(x)->text);
+    case Str: return hash_str(S(x));
     case Two: return hash(v, A(x)) ^ hash(v, B(x));
     case Hom: return hash(v, homnom(v, x)) ^ mix;
     case Num: return rotr64(mix * x, 16);
@@ -80,13 +83,14 @@ static obj tbl_del(lips v, obj t, obj key) {
 // grow(vm, tbl, new_size): destructively resize a hash table.
 // new_size words of memory are allocated for the new bucket array.
 // the old table entries are reused to populate the modified table.
-static obj grow(lips v, obj t, u64 cap1) {
+static obj grow(lips v, obj t) {
   ent *tab0, *tab1;
+  u64 cap0 = T(t)->cap, cap1 = cap0 * 2;
   with(t, tab1 = cells(v, cap1));
   set64(tab1, 0, cap1);
   tab0 = T(t)->tab;
 
-  for (u64 cap0 = T(t)->cap; cap0--;)
+  while (cap0--)
     for (ent e, es = tab0[cap0]; es;) {
       e = es, es = es->next;
       u64 i = tbl_idx(cap1, hash(v, e->key));
@@ -94,6 +98,7 @@ static obj grow(lips v, obj t, u64 cap1) {
 
   T(t)->cap = cap1, T(t)->tab = tab1;
   return t; }
+
 obj tbl_set_s(lips v, obj t, obj k, obj x) {
   u64 i = tbl_idx(gettbl(t)->cap, hash(v, k));
   ent e = tbl_ent(v, t, k);
@@ -113,7 +118,7 @@ obj tbl_set_s(lips v, obj t, obj k, obj x) {
 
 obj tbl_set(lips v, obj t, obj k, obj x) {
   with(t, x = tbl_set_s(v, t, k, x));
-  if (tbl_load(t) > 1) with(x, grow(v, t, T(t)->cap*2));
+  if (tbl_load(t) > 1) with(x, grow(v, t));
   return x; }
 
 obj tbl_get(lips v, obj t, obj k) {

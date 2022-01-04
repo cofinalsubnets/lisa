@@ -11,7 +11,6 @@
 #define with(y,...) (mm(&(y)),(__VA_ARGS__),um)
 #define Width(t) b2w(sizeof(struct t))
 
-struct root { mem one; struct root *next; };
 u0 *bump(lips, u64), *cells(lips, u64);
 bool cycle(lips, u64);
 typedef obj copier(lips, obj, u64, mem);

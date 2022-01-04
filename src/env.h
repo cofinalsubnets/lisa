@@ -11,18 +11,18 @@ BWDQ(I)
 
 // ASCII case folding
 static Inline char cmin(char c) {
- return 'A' <= c && c <= 'Z' ? c + 'a' - 'A' : c; }
+  return 'A' <= c && c <= 'Z' ? c - 'A' + 'a' : c; }
 static Inline char cmaj(char c) {
- return 'a' <= c && c <= 'z' ? c - 'a' + 'A' : c; }
+  return 'a' <= c && c <= 'z' ? c - 'a' + 'A' : c; }
 
 // functions for null-terminated byte strings
 static Inline i64 scmp(const char *a, const char *b) {
- for (;;a++, b++) if (!(*a && *a == *b)) return *a - *b; }
+  for (;; a++, b++) if (!(*a && *a == *b)) return *a - *b; }
 static Inline u64 slen(const char *s) {
- for (u64 l = 0;;l++) if (!*s++) return l; }
+  for (u64 l = 0;;l++) if (!*s++) return l; }
 static Inline i64 sidx(const char *s, char c) {
- for (i64 i = 0; *s; s++, i++) if (*s == c) return i;
- return -1; }
+  for (i64 i = 0; *s; s++, i++) if (*s == c) return i;
+  return -1; }
 
 // linear congruential pseudorandom number generator
 // the multiplier comes from "Computationally Easy, Spectrally
@@ -34,7 +34,7 @@ static Inline i64 lcprng(i64 *s) { return *s = LCPRNG(*s); }
 static Inline u64 w2b(u64 w) { return w * 8; }
 static Inline u64 b2w(u64 b) { return b / 8 + (b % 8 && 1); }
 static Inline u64 rotr64(u64 x, u64 n) {
- return (x<<(64-n))|(x>>n); }
+  return (x<<(64-n))|(x>>n); }
 // mem{set,cpy,mov} analogs are defined for
 // 8, 16, 32 and 64 bit items
 #define memn(n)\

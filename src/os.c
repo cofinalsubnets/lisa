@@ -1,7 +1,10 @@
 #include "lips.h"
 #include "terp.h"
-VM(exit_u) { 
-  u64 argc = N(Argc);
-  if (!argc) exit(EXIT_SUCCESS);
-  TC(*Argv, Num);
-  exit(N(*Argv)); }
+#include "str.h"
+Vm(exit_u) { exit(N(Argc) ? N(*Argv) : EXIT_SUCCESS); }
+Vm(shell_u) {
+  Ary(1);
+  Tc(*Argv, Str);
+  str s = S(*Argv);
+  xp = _N(system(s->text));
+  Jump(ret); }
