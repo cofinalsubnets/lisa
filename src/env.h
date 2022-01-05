@@ -1,9 +1,11 @@
 #include <stdint.h>
+#include <stdbool.h>
 #define Inline inline __attribute__((always_inline))
 #define NoInline __attribute__((noinline))
 #define BWDQ(_) _(8) _(16) _(32) _(64)
 
 typedef void u0;
+typedef bool u1;
 #define I(n) \
  typedef int##n##_t i##n; typedef uint##n##_t u##n;
 BWDQ(I)

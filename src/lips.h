@@ -2,7 +2,6 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
 #include <setjmp.h>
 
 _Static_assert(sizeof(i64*) == sizeof(i64), "64 bit pointers");
@@ -59,7 +58,7 @@ extern const uint32_t *tnoms;
 #define _N(x) putnum(x)
 #define bind(v, x) if (!((v)=(x))) return 0
 
-static Inline bool nilp(obj x) { return x == nil; }
-static Inline bool nump(obj x) { return kind(x) == Num; }
+static Inline u1 nilp(obj x) { return x == nil; }
+static Inline u1 nump(obj x) { return kind(x) == Num; }
 static Inline i64 getnum(obj x) { return x >> 3; }
 static Inline obj putnum(i64 n) { return (n << 3) + Num; }

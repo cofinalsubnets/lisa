@@ -34,7 +34,7 @@ Vm(scrr) {
   fclose(f);
   Next(2); }
 
-static bool script(lips v, const char *path) {
+static u1 script(lips v, const char *path) {
   FILE *f = fopen(path, "r");
 
   if (!f) return
@@ -45,7 +45,7 @@ static bool script(lips v, const char *path) {
 
   for (obj x; (x = parse(v, f)); eval(v, x));
 
-  bool r = feof(f);
+  u1 r = feof(f);
   fclose(f);
   return r; }
 
@@ -113,7 +113,7 @@ const char *help =
 #undef ok
 #include "write.h"
 int main(int argc, char** argv) {
-  for (bool ok = true, shell = argc == 1, boot = true;;)
+  for (u1 ok = true, shell = argc == 1, boot = true;;)
     switch (getopt(argc, argv, "hi_")) {
       default: return EXIT_FAILURE;
       case '_': boot = false; break;

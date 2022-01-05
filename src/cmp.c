@@ -1,10 +1,10 @@
 #include "lips.h"
 #include "cmp.h"
 
-typedef bool rel(obj, obj);
+typedef u1 rel(obj, obj);
 static rel eql_two, eql_str;
 
-bool eql(obj a, obj b) {
+u1 eql(obj a, obj b) {
   if (a == b) return true;
   if (kind(a) != kind(b)) return false;
   switch (kind(a)) {
@@ -13,7 +13,7 @@ bool eql(obj a, obj b) {
     case Str: return eql_str(a, b); } }
 
 #include "two.h"
-static bool eql_two(obj a, obj b) {
+static u1 eql_two(obj a, obj b) {
   // pairs are immutable, so we can deduplicate their insides.
   if (eql(A(a), A(b))) {
     gettwo(b)->a = gettwo(a)->a;
@@ -23,7 +23,7 @@ static bool eql_two(obj a, obj b) {
   return false; }
 
 #include "str.h"
-static bool eql_str(obj a, obj b) {
+static u1 eql_str(obj a, obj b) {
   str o = S(a), m = S(b);
   if (o->len != m->len) return false;
   return scmp(o->text, m->text) == 0; }
@@ -36,7 +36,7 @@ cmp_(lt, <) cmp_(lteq, <=) cmp_(gteq, >=) cmp_(gt, >)
 BINOP(eq, eql(xp, *sp++) ? ok : nil)
 
 static VM(ord_) {
-  bool (*r)(obj, obj) = (void*)v->xp;
+  u1 (*r)(obj, obj) = (void*)v->xp;
   obj n = N(Argc), *xs = Argv, m, *l;
   switch (n) {
     case 0:  GO(ret, nil);
@@ -47,7 +47,7 @@ static VM(ord_) {
 
 #define ord_w(r)v->xp=(obj)r;Jump(ord_)
 #define cmp(op, n)\
-  static bool cmp_##n(obj a, obj b) { return a op b; }\
+  static u1 cmp_##n(obj a, obj b) { return a op b; }\
   VM(n##_u) { v->xp=(obj)cmp_##n;Jump(ord_); }
 cmp(<, lt) cmp(<=, lteq) cmp(>=, gteq) cmp(>, gt)
 VM(eq_u) { ord_w(eql); }

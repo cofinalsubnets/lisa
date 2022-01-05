@@ -170,6 +170,11 @@ GC(cptbl) {
     dst->tab[ii] = cpent(v, src_tab[ii], len0, base0);
   return puttbl(dst); }
 
+u0 emtbl(lips v, FILE *o, obj x) {
+  tbl t = gettbl(x);
+  fprintf(o, "#tbl:%ld/%ld", (long)t->len, (long)t->cap); }
+
+
 #include "terp.h"
 
 // hash tables

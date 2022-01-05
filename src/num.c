@@ -75,3 +75,6 @@ UBINOP(bor, 0, |)
 UBINOP(bxor, 0, ^)
 UBINOP(mul, 1, *)
 UBINOP(band, -1, &)
+
+u0 emnum(lips v, FILE *o, obj x) {
+  fprintf(o, "%ld", (long) N(x)); }

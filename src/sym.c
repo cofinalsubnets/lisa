@@ -42,6 +42,11 @@ GC(cpsym) {
  else dst = getsym(sskc(v, &v->syms, cp(v, src->nom, len0, base0)));
  return src->nom = putsym(dst); }
 
+u0 emsym(lips v, FILE *o, obj x) {
+  sym y = Y(x);
+  y->nom == nil ? fprintf(o, "#sym@%lx", (long) y) :
+                  fputs(S(y->nom)->text, o); }
+
 #include "terp.h"
 VM(gsym_u) {
   if (Argc > _N(0) && strp(*Argv))

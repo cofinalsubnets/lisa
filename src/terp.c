@@ -289,12 +289,12 @@ obj restart(lips v) {
 VM(nope, const char *msg, ...) {
   // print current call as (function arg1 arg2 ...)
   fputs("# (", stderr);
-  emit(v, ip, stderr);
+  emit(v, stderr, ip);
   mem top = v->pool + v->len;
   i64 i = 0, argc = fp == top ? 0 : N(Argc);
   if (argc) for (fputc(' ', stderr);; fputc(' ', stderr)) {
     obj x = Argv[i++];
-    emit(v, x, stderr);
+    emit(v, stderr, x);
     if (i == argc) break; }
   fputc(')', stderr);
 

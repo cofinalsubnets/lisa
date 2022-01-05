@@ -437,22 +437,6 @@ static NoInline obj apply(lips v, obj f, obj x) {
  f = _H(h), x = tbl_get(v, Top, App);
  return call(v, f, v->fp, v->sp, v->hp, x); }
 
-#define stale(o) inb((mem)(o),base0,base0+len0)
-GC(cphom) {
- hom src = H(x);
- if (fresh(*src)) return (obj) *src;
- hom end = button(src), start = (hom) end[1],
-     dst = bump(v, end - start + 2), j = dst;
- for (hom k = start; k < end;)
-  j[0] = k[0],
-  k++[0] = (terp*) _H(j++);
- j[0] = NULL;
- j[1] = (terp*) dst;
- for (obj u; j-- > dst;
-   u = (obj) *j,
-   *j = (terp*) (!stale(u) ? u : cp(v, u, len0, base0)));
- return _H(dst += src - start); }
-
 // VM instructions
 // instructions used by the compiler
 VM(hom_u) {
@@ -598,3 +582,31 @@ VM(hnom_u) {
   TC(*Argv, Hom);
   xp = homnom(v, *Argv);
   Jump(ret); }
+
+#define stale(o) inb((mem)(o),base0,base0+len0)
+GC(cphom) {
+ hom src = H(x);
+ if (fresh(*src)) return (obj) *src;
+ hom end = button(src), start = (hom) end[1],
+     dst = bump(v, end - start + 2), j = dst;
+ for (hom k = start; k < end;)
+  j[0] = k[0],
+  k++[0] = (terp*) _H(j++);
+ j[0] = NULL;
+ j[1] = (terp*) dst;
+ for (obj u; j-- > dst;
+   u = (obj) *j,
+   *j = (terp*) (!stale(u) ? u : cp(v, u, len0, base0)));
+ return _H(dst += src - start); }
+
+#include "write.h"
+static u0 emhomn(lips v, FILE *o, obj x) {
+  fputc('\\', o);
+  switch (kind(x)) {
+    case Sym: return emsym(v, o, x);
+    case Two: if (symp(A(x))) emsym(v, o, A(x));
+              if (twop(B(x))) emhomn(v, o, B(x)); } }
+
+u0 emhom(lips v, FILE *o, obj x) {
+  emhomn(v, o, homnom(v, x)); }
+

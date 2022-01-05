@@ -22,13 +22,9 @@ endif
 
 CC ?= gcc
 CPPFLAGS ?= -DPREFIX=\"$(PREFIX)\"
-# fixnums need sign extended bitshifts.
-# other things tend to break TCO ...
-CFLAGS ?= -std=c99 -g -O2 -flto\
-	-Wall -Wstrict-prototypes\
-	-Wno-shift-negative-value\
-	-fno-stack-protector\
-	-fno-unroll-loops
+CFLAGS ?= -std=c99 -g -O2 -flto -Wall -Werror\
+	-Wstrict-prototypes -Wno-shift-negative-value\
+	-fno-stack-protector -fno-unroll-loops
 
 # build config
 #

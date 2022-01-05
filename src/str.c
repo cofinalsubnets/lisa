@@ -17,6 +17,13 @@ GC(cpstr) {
      dst->len = src->len, src->len = 0,
      *(mem) src->text = _S(dst)); }
 
+u0 emstr(lips v, FILE *o, obj x) {
+  str s = S(x);
+  fputc('"', o);
+  for (char *t = s->text; *t; fputc(*t++, o))
+    if (*t == '"') fputc('\\', o);
+  fputc('"', o); }
+
 #include "terp.h"
 // string instructions
 VM(strl) {
