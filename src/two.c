@@ -18,17 +18,17 @@ VM(cons) {
   NEXT(1); }
 
 VM(car_u) {
-  ARY(1);
-  TC(*Argv, Two);
-  GO(ret, A(*Argv)); }
+  Ary(1);
+  Tc(*Argv, Two);
+  Go(ret, A(*Argv)); }
 
 VM(cdr_u) {
-  ARY(1);
-  TC(*Argv, Two);
-  GO(ret, B(*Argv)); }
+  Ary(1);
+  Tc(*Argv, Two);
+  Go(ret, B(*Argv)); }
 
 VM(cons_u) {
-  ARY(2);
+  Ary(2);
   Have(2);
   two w = (two) hp;
   hp += 2;
@@ -45,13 +45,12 @@ obj pair(lips v, obj a, obj b) {
 
 GC(cptwo) {
   obj dst, src = x;
-  return fresh(A(x)) ? A(x) :
-    (dst = puttwo(bump(v, Width(two))),
-     A(dst) = A(src),
-     A(src) = dst,
-     B(dst) = cp(v, B(src), len0, base0),
-     CP(A(dst)),
-     dst); }
+  if (fresh(A(x))) return A(x);
+  dst = puttwo(bump(v, Width(two)));
+  A(dst) = A(src), A(src) = dst;
+  B(dst) = cp(v, B(src), len0, base0);
+  A(dst) = cp(v, A(dst), len0, base0);
+  return dst; }
 
 #include "write.h"
 static u0 emtwo_(lips v, FILE *o, two w) {
