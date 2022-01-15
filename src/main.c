@@ -130,7 +130,6 @@ int main(int argc, char** argv) {
 
         if (ok && shell)
           for (setjmp(v->restart);;) {
-            putchar('\t'), fflush(stdout);
             obj x = parse(v, stdin);
             if (x) emsep(v, eval(v, x), stdout, '\n');
             else if (feof(stdin)) break; }

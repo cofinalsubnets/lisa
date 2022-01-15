@@ -1,10 +1,18 @@
  (:::
   case* (\ a* z f a af (: y (sym) (L : y a* (L ?
-   (L \? y) (L .''case0''f(L f a*))
+   (L \? y) (L ,
+    ;(L . ''f)
+    (L f a*))
    (L '&& (L 2? y) (L \? (L B y)))
-    (L .''case0''a(L af (L A y) (L B y)))
-   y (L .''case0''a''f(L a y))
-   (L .''case0 () z))))))
+    (L ,
+    ; (L . ''a ''f)
+     (L af (L A y) (L B y)))
+   y (L ,
+   ; (L . ''a)
+    (L a y))
+   (L ,
+   ; (L . ())
+    z))))))
 
 (:
  dict-empty ~~
@@ -17,7 +25,7 @@
  (fff) ()
 
   st-sub I
-  (st-has-sub a .) (.(ap dict-has a))
+  (st-has-sub a .) (ap dict-has a)
   st-get-sub dict-get
   st-set-sub dict-set
   st? I
@@ -56,8 +64,8 @@
  (:::
   \\ (\ a . (X (X '\ a) (map (\ a (L var (Q a))) (init a))))
   Zzz (\ x (: _ (sym) (L '\ _  (L '\ (L x _)))))
-  &? (\ a x . (? x (L conj a (X '&? x)) a))
-  |? (\ a x . (? x (L disj a (X '|? x)) a)))
+  &? (\ a x . (: b (L 'Zzz a) (? x (L conj b (X '&? x)) b)))
+  |? (\ a x . (: b (L 'Zzz a) (? x (L disj b (X '|? x)) b))))
 
 
 (: (run n g) (take n (g (st-new)))
@@ -74,45 +82,36 @@
   (\ a f (X a (take (? n (- n 1)) f))))))
    
 
-(:::
- Kq
- (: Kq(\ par .
- (: vars (init par) avars (map var vars)
-    noms (foldl (zip X vars avars) (tbl) (\ t p (, (tset t (B p) (A p)) t)))
-  (L lfoldl
-   (L '\ 'm 'vals
-    (L X
-     (L flat-map
-      (Q vars)
-      (L '\ 'var (L ':
-       'v (L find (Q (tkeys noms)) (L '\ 'k (L = 'var (L tget noms 'k))))
-       'val (L walk 'v 'vals)
-       (L '? (L = 'val 'v) () (L L 'var 'val)))))
-     'm))
-   ()
-   (L (X (X '\ par) (map Q avars)) (Q ~~))))) Kq)
-)
-
 (: (unord-eq a b) (&&
     (= (len a) (len b))
-    (all (cu memq a) b)))
-(: (nines a) (|? (== a 9) (nines a)))
+    (all (cu memq a) b))
 
-;(test kanren
-; (unord-eq '((a (1 2 (3 (4))) b (3 (4)) c 4))
-;    (Kq a b c (&? (== a (L 1 2 b)) (== b (L 3 (L c))) (== c 4))))
-; (unord-eq '((a 7 b 6) (a 7 b 5)) (Kq a b (&? (== a 7) (|? (== b 5) (== b 6)))))
-; (unord-eq '((a 9 b 8)) (Kq a b (&? (== a 9) (== b 8))))
-; (unord-eq '((a 1 b 1)) (Kq a b (&? (== a 1) (== a b))))
-; (unord-eq '((a 7 b 3)) (Kq a b (&? (== a 7) (== b 3) (|? (== b 3) (== b 4)))))
-; (unord-eq '((a (1 2) b 2)) (Kq a b (&? (== a (L 1 b)) (== b 2))))
-; (~ (Kq a (&? (== a 0) (== a 1))))
-; (~ (Kq a b (&? (== a 7) (== b 3) (|? (== b 2) (== b 4)))))
-; (unord-eq '((a 1 b 2 c 2) (b 9 c 7) (c 88))
-;    (Kq a b c (|? (&? (== a 1) (== b 2) (== c b))
-;                  (&? (== c 7) (== b 9))
-;                  (== c 88))))
-; (unord-eq '((a 7 b 8 c 9) (a 4 b 5 c 6) (a 1 b 2 c 3))
-;    (Kq a b c (|? (&? (== a 1) (== b 2) (== c 3))
-;                  (&? (== a 4) (== b 5) (== c 6))
-;                  (&? (== a 7) (== b 8) (== c 9))))))
+ (nines a) (|? (== a 9) (Zzz (nines a))))
+
+(: (rei ks st) (flat-map ks (\ k (? (: _v (dict-has (X (map (\ y (vget y 0)) (A st)) (B st)) k))
+ (L k (walk (A _v) st)))))
+ (re ks sts) (map (cu rei ks) sts))
+
+(test kanren
+ (unord-eq '((a (1 2 (3 (4))) b (3 (4)) c 4))
+    (re '(a b c) (run () (\\ a b c (&? (== a (L 1 2 b)) (== b (L 3 (L c))) (== c 4))))))
+ (= (rho 33 '(a 9)) (re '(a) (run 33 (\\ a (nines a)))))
+ (unord-eq '((a 1) (a 2) (a 3))
+  (re '(a) (run 3 (\\ a (: (never s) ((|? (\) never) s)
+                         (|? never (== a 3) never (== a 1) (== a 2) never))))))
+ (unord-eq '((a 7 b 6) (a 7 b 5)) (re '(a b) (run () (\\ a b (&? (== a 7) (|? (== b 5) (== b 6)))))))
+ (unord-eq '((a 9 b 8)) (re '(a b) (run () (\\ a b (&? (== a 9) (== b 8))))))
+ (unord-eq '((a 1 b 1)) (re '(a b) (run () (\\ a b (&? (== a 1) (== a b))))))
+ (unord-eq '((a 7 b 3)) (re '(a b) (run () (\\ a b (&? (== a 7) (== b 3) (|? (== b 3) (== b 4)))))))
+ (unord-eq '((a (1 2) b 2)) (re '(a b) (run () (\\ a b (&? (== a (L 1 b)) (== b 2))))))
+ (~ (run () (\\ a (&? (== a 0) (== a 1)))))
+ (~ (run () (\\ a b (&? (== a 7) (== b 3) (|? (== b 2) (== b 4))))))
+ (unord-eq '((a 1 b 2 c 2) (b 9 c 7) (c 88)) (re '(a b c) (run ()
+    (\\ a b c (|? (&? (== a 1) (== b 2) (== c b))
+                  (&? (== c 7) (== b 9))
+                  (== c 88))))))
+ (unord-eq '((a 7 b 8 c 9) (a 4 b 5 c 6) (a 1 b 2 c 3)) (re '(a b c) (run ()
+    (\\ a b c (|? (&? (== a 1) (== b 2) (== c 3))
+                  (&? (== a 4) (== b 5) (== c 6))
+                  (&? (== a 7) (== b 8) (== c 9)))))))
+)
