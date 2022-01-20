@@ -67,8 +67,7 @@ BINOP(sub,  *sp++ - xp + Num)
 BINOP(sar,  _N(N(*sp++) >> N(xp)))
 BINOP(sal,  _N(N(*sp++) << N(xp)))
 
-#define UBINOP(nom, dflt, op)\
- VM(nom##_u) { mm_u(N(Argc), Argv, dflt, op); }
+#define UBINOP(nom, dflt, op) VM(nom##_u) { mm_u(N(Argc), Argv, dflt, op); }
 
 UBINOP(add, 0, +)
 UBINOP(bor, 0, |)

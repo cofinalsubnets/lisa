@@ -71,7 +71,7 @@ static lips lips_init(lips v) {
  v->t0 = clock();
  v->rand = LCPRNG(v->t0 * mix);
  v->count = 0;
- v->ip = v->xp = v->syms = nil;
+ v->ip = v->xp = v->syms = v->reset = nil;
  v->fp = v->hp = v->sp = (mem) W, v->len = 1;
  v->pool = (mem) (v->root = NULL);
  set64(v->glob, nil, NGlobs);

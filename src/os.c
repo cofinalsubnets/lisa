@@ -2,7 +2,7 @@
 #include "terp.h"
 #include "str.h"
 Vm(exit_u) { exit(N(Argc) ? N(*Argv) : EXIT_SUCCESS); }
-Vm(shell_u) {
+Vm(sys_u) {
   Ary(1);
   Tc(*Argv, Str);
   str s = S(*Argv);

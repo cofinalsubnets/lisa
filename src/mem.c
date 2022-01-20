@@ -64,7 +64,7 @@ static clock_t copy(lips v, u64 len1) {
   v->sp += delta_r;
   v->fp += delta_r;
 
-  CP(v->ip), CP(v->xp);
+  CP(v->ip), CP(v->xp), CP(v->reset);
   for (int i = 0; i < NGlobs; i++) CP(v->glob[i]);
   while (top0-- > sp0) COPY(v->sp[top0 - sp0], *top0);
   for (root r = v->root; r; r = r->next) CP(*(r->one));

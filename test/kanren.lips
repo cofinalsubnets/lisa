@@ -1,104 +1,95 @@
  (:::
-  case* (\ a* z f a af (: y (sym) (L : y a* (L ?
-   (L \? y) (L ,
-    ;(L . ''f)
-    (L f a*))
-   (L '&& (L 2? y) (L \? (L B y)))
-    (L ,
-    ; (L . ''a ''f)
-     (L af (L A y) (L B y)))
-   y (L ,
-   ; (L . ''a)
-    (L a y))
-   (L ,
-   ; (L . ())
-    z))))))
-
+  case* (\ a* z a f af (: y (sym) (L : y a* (L ?
+   (L \? y) (L f a*)
+   (L '&& (L 2? y) (L \? (L B y))) (L af (L A y) (L B y))
+   y (L a y)
+   z))))
+  case2 (\ a* z af (: y (sym)
+   (: L y a* (L ?  y (L y af) z))))
+  \\ (\ a . (X (X '\ a) (map (\ a (L var (Q a))) (init a))))
+  Zzz (\ x (: y (sym) (L \ y  (L \ (L x y)))))
+  &? (\ a x . (: b (L 'Zzz a) (? x (L conj b (X '&? x)) b)))
+  |? (\ a x . (: b (L 'Zzz a) (? x (L disj b (X '|? x)) b))))
 (:
- dict-empty ~~
  (dict-has d k) (:
   (loop k ks vs) (? ks
    (? (= k (A ks)) vs (loop k (B ks) (B vs))))
   (loop k (A d) (B d)))
  (dict-get d k) (? (: x (dict-has d k)) (A x))
  (dict-set d k v) (X (X k (A d)) (X v (B d)))
- (fff) ()
 
-  st-sub I
-  (st-has-sub a .) (ap dict-has a)
-  st-get-sub dict-get
-  st-set-sub dict-set
-  st? I
-  (st-new) ~~
+ empty-stream ()
+ ((stream-of x) f) (f x ())
+ ((stream-cons x s) f) (f x s)
+ (stream-case s z f) (? s (s f) z)
+ (stream-take f n s)
+  (? (|| (= n 0) (~ s)) s
+   (s (\ a s (f a (stream-take f (? (nump n) (- n 1)) s)))))
+
+  has-s dict-has
+  ref-s dict-get
+  ext-s dict-set
+  st-empty ~~
+  pure I
+  (bind x f) (f x)
 
  var vec
  var? vecp
  (walk u s) (||
-  (&& (var? u)
-   (: t (st-has-sub s u))
-   (walk (A t) s))
+  (&& (var? u) (: t (has-s s u)) (walk (A t) s))
   (&& (2? u) (X (walk (A u) s) (walk (B u) s)))
   u)
- ((disj f g) s) (m+ (f s) (\ (g s)))
+ ((disj f g) s) (m+ (f s) (g s))
  ((conj f g) s) (m* (f s) g)
 
- (m+ s0 ds0) (case* s0 ds0
-  (\ f (\ (m+ (ds0) f)))
-  (\ a (X a ds0))
-  (\ a f (X a (\ (m+ (ds0) f)))))
+ (m+ s0 s1) (case* s0
+  s1
+  (\ a (X a s1))
+  (\ f (\ (m+ (s1) f)))
+  (\ a f (X a (\ (m+ (s1) f)))))
   
- (m* s g) (case* s ()
-  (\ f (\ (m* (f) g)))
+ (m* s g) (case* s
+  ()
   g
+  (\ f (\ (m* (f) g)))
   (\ a f (m+ (g a) (\ (m* (f) g)))))
 
  ((== u v) s)
   (: x (walk u s) y (walk v s) (?
-   (= x y) s
-   (var? x) (st-set-sub s x y)
-   (var? y) (st-set-sub s y x)
+   (= x y) (pure s)
+   (var? x) (pure (ext-s s x y))
+   (var? y) (pure (ext-s s y x))
    (&& (2? x) (2? y)
-    (: t ((== (A x) (A y)) s))
-    ((== (B x) (B y)) t)))))
+    (bind ((== (A x) (A y)) s)
+          (== (B x) (B y))))))
 
- (:::
-  \\ (\ a . (X (X '\ a) (map (\ a (L var (Q a))) (init a))))
-  Zzz (\ x (: _ (sym) (L '\ _  (L '\ (L x _)))))
-  &? (\ a x . (: b (L 'Zzz a) (? x (L conj b (X '&? x)) b)))
-  |? (\ a x . (: b (L 'Zzz a) (? x (L disj b (X '|? x)) b))))
-
-
-(: (run n g) (take n (g (st-new)))
-
-    (lfoldl f z x) (?
-     (st? x) (f z x)
-     (2? x) (lfoldl f (lfoldl f z (A x)) (B x))
-     (\? x) (lfoldl f z (x))
-     z)
-
+ (run n g) (take n (g st-empty))
  (take n s) (? (= n 0) () (case* s ()
-  (\ f (take n (f)))
   (\ a (L a))
-  (\ a f (X a (take (? n (- n 1)) f))))))
-   
+  (\ f (take n (f)))
+  (\ a f (X a (take (? (nump n) (- n 1)) f)))))
 
-(: (unord-eq a b) (&&
-    (= (len a) (len b))
-    (all (cu memq a) b))
+ (unord-eq a b) (&&
+  (= (len a) (len b))
+  (all (cu memq a) b))
 
- (nines a) (|? (== a 9) (Zzz (nines a))))
-
-(: (rei ks st) (flat-map ks (\ k (? (: _v (dict-has (X (map (\ y (vget y 0)) (A st)) (B st)) k))
- (L k (walk (A _v) st)))))
- (re ks sts) (map (cu rei ks) sts))
+ (re ks sts) (:
+  (rei ks st)
+   (flat-map ks (\ k
+    (? (: it (has-s (X (map (\ y (vget y 0)) (A st)) (B st)) k))
+     (L k (walk (A it) st)))))
+  (map (cu rei ks) sts)))
 
 (test kanren
  (unord-eq '((a (1 2 (3 (4))) b (3 (4)) c 4))
     (re '(a b c) (run () (\\ a b c (&? (== a (L 1 2 b)) (== b (L 3 (L c))) (== c 4))))))
- (= (rho 33 '(a 9)) (re '(a) (run 33 (\\ a (nines a)))))
- (unord-eq '((a 1) (a 2) (a 3))
-  (re '(a) (run 3 (\\ a (: (never s) ((|? (\) never) s)
-                         (|? never (== a 3) never (== a 1) (== a 2) never))))))
+ (= (rho 33 '(a 9))
+  (re '(a) (run 33 (\\ a (: (nines) (|? (== a 9) (nines)) (nines))))))
+ (unord-eq (map (\ i (L 'a i)) (iota 10))
+  (re '(a) (run 10 (\\ a
+   (: (never s) ((|? (\) never) s)
+      (at-least n) (|? (== a n) (at-least (+ n 1)))
+    (|? never (== a 0) (at-least 1)))))))
  (unord-eq '((a 7 b 6) (a 7 b 5)) (re '(a b) (run () (\\ a b (&? (== a 7) (|? (== b 5) (== b 6)))))))
  (unord-eq '((a 9 b 8)) (re '(a b) (run () (\\ a b (&? (== a 9) (== b 8))))))
  (unord-eq '((a 1 b 1)) (re '(a b) (run () (\\ a b (&? (== a 1) (== a b))))))

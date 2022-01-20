@@ -71,7 +71,7 @@
  _(emx, 0)\
  _(vararg, 0)\
  _(gsym_u, tnom(Sym))\
- _(exit_u, "exit") _(shell_u, "shell")\
+ _(exit_u, "exit") _(sys_u, "sys")\
  _(par_u, "read")\
  _(sar_u, ">>")\
  _(sal_u, "<<")\
