@@ -1,15 +1,7 @@
- (:::
-  case* (\ a* z a f af (: y (sym) (L : y a* (L ?
-   (L \? y) (L f a*)
-   (L '&& (L 2? y) (L \? (L B y))) (L af (L A y) (L B y))
-   y (L a y)
-   z))))
-  case2 (\ a* z af (: y (sym)
-   (: L y a* (L ?  y (L y af) z))))
-  \\ (\ a . (X (X '\ a) (map (\ a (L var (Q a))) (init a))))
-  Zzz (\ x (: y (sym) (L \ y  (L \ (L x y)))))
-  &? (\ a x . (: b (L 'Zzz a) (? x (L conj b (X '&? x)) b)))
-  |? (\ a x . (: b (L 'Zzz a) (? x (L disj b (X '|? x)) b))))
+(:::
+  \\ (\ a . (X (X \ a) (map (\ a (L var (Q a))) (init a))))
+  delay (\ x (: y (sym) z (sym) (L \ y (L \ z (L (L x y) z))))))
+
 (:
  (dict-has d k) (:
   (loop k ks vs) (? ks
@@ -18,91 +10,84 @@
  (dict-get d k) (? (: x (dict-has d k)) (A x))
  (dict-set d k v) (X (X k (A d)) (X v (B d)))
 
- empty-stream ()
- ((stream-of x) f) (f x ())
- ((stream-cons x s) f) (f x s)
- (stream-case s z f) (? s (s f) z)
- (stream-take f n s)
-  (? (|| (= n 0) (~ s)) s
-   (s (\ a s (f a (stream-take f (? (nump n) (- n 1)) s)))))
-
-  has-s dict-has
-  ref-s dict-get
-  ext-s dict-set
-  st-empty ~~
-  pure I
-  (bind x f) (f x)
-
- var vec
- var? vecp
  (walk u s) (||
   (&& (var? u) (: t (has-s s u)) (walk (A t) s))
   (&& (2? u) (X (walk (A u) s) (walk (B u) s)))
   u)
- ((disj f g) s) (m+ (f s) (g s))
- ((conj f g) s) (m* (f s) g)
 
- (m+ s0 s1) (case* s0
-  s1
-  (\ a (X a s1))
-  (\ f (\ (m+ (s1) f)))
-  (\ a f (X a (\ (m+ (s1) f)))))
+ var vec
+ var? vecp
+  has-s dict-has
+  ref-s dict-get
+  ext-s dict-set
+  st-empty ~
+  pure I
+
+ ((S-X x s) f) (f x s)
+ (S. x) (S-X x ())
+ (S-take f n s)
+  (? (|| (= n 0) (~ s)) ()
+   (s (\ x s (f x (S-take f (? (nump n) (- n 1)) s)))))
+
+ (S$ f s) (? s (\ g (s (\ x s (g (f x) (S$ f s))))))
+ (S+ s t) (? s (\ g (s (\ x s (g x (S+ t s))))) t)
+ (S* f s) (? s (\ g (s (\ x s (? (: r (S+ (f x) (S* f s))) (r g))))))
+ (S-lim n s) (&&
+  s (> n 0) (\ f (s (\ x s (f x (S-lim (- n 1) s))))))
   
- (m* s g) (case* s
-  ()
-  g
-  (\ f (\ (m* (f) g)))
-  (\ a f (m+ (g a) (\ (m* (f) g)))))
 
- ((== u v) s)
+ ((et  a b) s) (S* b (a s))
+ ((vel a b) s) (S+ (a s) (b s))
+
+ ((est u v) s)
   (: x (walk u s) y (walk v s) (?
-   (= x y) (pure s)
-   (var? x) (pure (ext-s s x y))
-   (var? y) (pure (ext-s s y x))
+   (= x y)  (S. s)
+   (var? x) (S. (ext-s s x y))
+   (var? y) (S. (ext-s s y x))
    (&& (2? x) (2? y)
-    (bind ((== (A x) (A y)) s)
-          (== (B x) (B y))))))
+    ((et (est (A x) (A y)) (est (B x) (B y))) s))))
 
- (run n g) (take n (g st-empty))
- (take n s) (? (= n 0) () (case* s ()
-  (\ a (L a))
-  (\ f (take n (f)))
-  (\ a f (X a (take (? (nump n) (- n 1)) f)))))
+ (Run n g) (S-take X n (g ~~))
 
  (unord-eq a b) (&&
   (= (len a) (len b))
   (all (cu memq a) b))
 
- (re ks sts) (:
-  (rei ks st)
+  ((rei ks) st)
    (flat-map ks (\ k
     (? (: it (has-s (X (map (\ y (vget y 0)) (A st)) (B st)) k))
-     (L k (walk (A it) st)))))
-  (map (cu rei ks) sts)))
+     (L k (walk (A it) st))))))
+
+(: (Run n vs q) (S-take X n (S$ (rei vs) (q ~~))))
 
 (test kanren
  (unord-eq '((a (1 2 (3 (4))) b (3 (4)) c 4))
-    (re '(a b c) (run () (\\ a b c (&? (== a (L 1 2 b)) (== b (L 3 (L c))) (== c 4))))))
- (= (rho 33 '(a 9))
-  (re '(a) (run 33 (\\ a (: (nines) (|? (== a 9) (nines)) (nines))))))
+  (Run () '(a b c) (\\ a b c (et (est a (L 1 2 b)) (et (est b (L 3 (L c))) (est c 4))))))
+ (= (rho 9 '(a 9)) (Run 9 '(a) (\\ a
+  (: nines (vel (est a 9) (delay nines))))))
  (unord-eq (map (\ i (L 'a i)) (iota 10))
-  (re '(a) (run 10 (\\ a
-   (: (never s) ((|? (\) never) s)
-      (at-least n) (|? (== a n) (at-least (+ n 1)))
-    (|? never (== a 0) (at-least 1)))))))
- (unord-eq '((a 7 b 6) (a 7 b 5)) (re '(a b) (run () (\\ a b (&? (== a 7) (|? (== b 5) (== b 6)))))))
- (unord-eq '((a 9 b 8)) (re '(a b) (run () (\\ a b (&? (== a 9) (== b 8))))))
- (unord-eq '((a 1 b 1)) (re '(a b) (run () (\\ a b (&? (== a 1) (== a b))))))
- (unord-eq '((a 7 b 3)) (re '(a b) (run () (\\ a b (&? (== a 7) (== b 3) (|? (== b 3) (== b 4)))))))
- (unord-eq '((a (1 2) b 2)) (re '(a b) (run () (\\ a b (&? (== a (L 1 b)) (== b 2))))))
- (~ (run () (\\ a (&? (== a 0) (== a 1)))))
- (~ (run () (\\ a b (&? (== a 7) (== b 3) (|? (== b 2) (== b 4))))))
- (unord-eq '((a 1 b 2 c 2) (b 9 c 7) (c 88)) (re '(a b c) (run ()
-    (\\ a b c (|? (&? (== a 1) (== b 2) (== c b))
-                  (&? (== c 7) (== b 9))
-                  (== c 88))))))
- (unord-eq '((a 7 b 8 c 9) (a 4 b 5 c 6) (a 1 b 2 c 3)) (re '(a b c) (run ()
-    (\\ a b c (|? (&? (== a 1) (== b 2) (== c 3))
-                  (&? (== a 4) (== b 5) (== c 6))
-                  (&? (== a 7) (== b 8) (== c 9)))))))
-)
+  (Run 10 '(a) (\\ a
+   (: (at-least n) (vel (est a n) (delay (at-least (+ n 1))))
+    (vel (\) (vel (est a 0) (at-least 1)))))))
+ (unord-eq '((a 7 b 6) (a 7 b 5)) (Run () '(a b) (\\ a b
+  (et (est a 7) (vel (est b 5) (est b 6))))))
+ (unord-eq '((a 9 b 8)) (Run () '(a b) (\\ a b
+  (et (est a 9) (est b 8)))))
+ (unord-eq '((a 1 b 1)) (Run () '(a b) (\\ a b
+  (et (est a 1) (est a b)))))
+ (unord-eq '((a 7 b 3)) (Run () '(a b) (\\ a b
+  (et (est a 7) (et (est b 3) (vel (est b 3) (est b 4)))))))
+ (unord-eq '((a (1 2) b 2)) (Run () '(a b) (\\ a b
+  (et (est a (L 1 b)) (est b 2)))))
+ (~ (Run () '(a) (\\ a (et (est a 0) (est a 1)))))
+ (~ (Run () '(a b) (\\ a b (et (est a 7) (et (est b 3) (vel (est b 2) (est b 4)))))))
+ (unord-eq '((a 1 b 2 c 2) (b 9 c 7) (c 88))
+  (Run () '(a b c) (\\ a b c
+   (vel (et (est a 1) (et (est b 2) (est c b)))
+    (vel (et (est c 7) (est b 9))
+     (est c 88))))))
+ (unord-eq '((a 7 b 8 c 9) (a 4 b 5 c 6) (a 1 b 2 c 3))
+  (Run () '(a b c) (\\ a b c
+   (vel (et (est a 1) (et (est b 2) (est c 3)))
+    (vel (et (est a 4) (et (est b 5) (est c 6)))
+     (et (est a 7) (et (est b 8) (est c 9)))))))))
