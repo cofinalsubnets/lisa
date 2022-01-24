@@ -1,6 +1,7 @@
 (:::
   \\ (\ a . (X (X \ a) (map (\ a (L var (Q a))) (init a))))
-  delay (\ x (: y (sym) z (sym) (L \ y (L \ z (L (L x y) z))))))
+  delay (\ x (: a (sym) b (sym) c (sym)
+   (L \ a (L \ b c (L (L x a) b c))))))
 
 (:
  (dict-has d k) (:
@@ -23,18 +24,17 @@
   st-empty ~
   pure I
 
- ((S-X x s) f) (f x s)
- (S. x) (S-X x ())
+ (empty-stream f n) (n)
+ ((S-X x s) f n) (f x s)
+ (S. x) (S-X x empty-stream)
  (S-take f n s)
-  (? (|| (= n 0) (~ s)) ()
-   (s (\ x s (f x (S-take f (? (nump n) (- n 1)) s)))))
+  (? (= n 0) ()
+   (s (\ x s (f x (S-take f (? (nump n) (- n 1)) s)))
+      (\)))
 
- (S$ f s) (? s (\ g (s (\ x s (g (f x) (S$ f s))))))
- (S+ s t) (? s (\ g (s (\ x s (g x (S+ t s))))) t)
- (S* f s) (? s (\ g (s (\ x s (? (: r (S+ (f x) (S* f s))) (r g))))))
- (S-lim n s) (&&
-  s (> n 0) (\ f (s (\ x s (f x (S-lim (- n 1) s))))))
-  
+ ((S$ f s) g n) (s (\ x s (g (f x) (S$ f s))) n)
+ ((S+ s t) g n) (s (\ x s (g x (S+ t s))) (\ (t g n)))
+ ((S* f s) g n) (s (\ x s ((S+ (f x) (S* f s)) g n)) n)
 
  ((et  a b) s) (S* b (a s))
  ((vel a b) s) (S+ (a s) (b s))
@@ -44,8 +44,9 @@
    (= x y)  (S. s)
    (var? x) (S. (ext-s s x y))
    (var? y) (S. (ext-s s y x))
-   (&& (2? x) (2? y)
-    ((et (est (A x) (A y)) (est (B x) (B y))) s))))
+   (&& (2? x) (2? y))
+    ((et (est (A x) (A y)) (est (B x) (B y))) s)
+   empty-stream))
 
  (Run n g) (S-take X n (g ~~))
 
@@ -58,7 +59,9 @@
     (? (: it (has-s (X (map (\ y (vget y 0)) (A st)) (B st)) k))
      (L k (walk (A it) st))))))
 
-(: (Run n vs q) (S-take X n (S$ (rei vs) (q ~~))))
+(:
+      never (vel (\ empty-stream) (delay never))
+(Run n vs q) (S-take X n (S$ (rei vs) (q ~~))))
 
 (test kanren
  (unord-eq '((a (1 2 (3 (4))) b (3 (4)) c 4))
@@ -68,7 +71,7 @@
  (unord-eq (map (\ i (L 'a i)) (iota 10))
   (Run 10 '(a) (\\ a
    (: (at-least n) (vel (est a n) (delay (at-least (+ n 1))))
-    (vel (\) (vel (est a 0) (at-least 1)))))))
+    (vel (\ empty-stream) (vel (est a 0) (at-least 1)))))))
  (unord-eq '((a 7 b 6) (a 7 b 5)) (Run () '(a b) (\\ a b
   (et (est a 7) (vel (est b 5) (est b 6))))))
  (unord-eq '((a 9 b 8)) (Run () '(a b) (\\ a b
@@ -90,4 +93,5 @@
   (Run () '(a b c) (\\ a b c
    (vel (et (est a 1) (et (est b 2) (est c 3)))
     (vel (et (est a 4) (et (est b 5) (est c 6)))
-     (et (est a 7) (et (est b 8) (est c 9)))))))))
+     (et (est a 7) (et (est b 8) (est c 9))))))))
+ )
