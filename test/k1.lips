@@ -16,8 +16,8 @@
   (&& (2? u) (X (walk (A u) s) (walk (B u) s)))
   u)
 
- var vec
- var? vecp
+  var vec
+  var? vecp
   has-s dict-has
   ref-s dict-get
   ext-s dict-set
@@ -59,11 +59,10 @@
     (? (: it (has-s (X (map (\ y (vget y 0)) (A st)) (B st)) k))
      (L k (walk (A it) st))))))
 
-(:
-      never (vel (\ empty-stream) (delay never))
+(: never (vel (\ empty-stream) (delay never))
 (Run n vs q) (S-take X n (S$ (rei vs) (q ~~))))
 
-(test kanren
+(test k1
  (unord-eq '((a (1 2 (3 (4))) b (3 (4)) c 4))
   (Run () '(a b c) (\\ a b c (et (est a (L 1 2 b)) (et (est b (L 3 (L c))) (est c 4))))))
  (= (rho 9 '(a 9)) (Run 9 '(a) (\\ a

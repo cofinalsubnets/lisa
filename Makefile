@@ -22,7 +22,7 @@ endif
 
 CC ?= gcc
 CPPFLAGS ?= -DPREFIX=\"$(PREFIX)\"
-CFLAGS ?= -std=c99 -g -O2 -flto -Wall -Werror\
+CFLAGS ?= -std=gnu17 -g -O2 -flto -Wall -Werror\
 	-Wstrict-prototypes -Wno-shift-negative-value\
 	-fno-stack-protector -fno-unroll-loops
 
@@ -64,7 +64,7 @@ sloc:
 	cloc --force-lang=Lisp,$n *
 bits: bin/$n bin/$b
 	du -h $^
-repl_cmd=bin/$n.bin -_i $(libs) test/{00-helpers,kanren,nf}.lips
+repl_cmd=bin/$n.bin -_i $(libs) test/{00-helpers,k3,nf}.lips
 repl: bin/$n
 	which rlwrap && rlwrap $(repl_cmd) || $(repl_cmd)
 

@@ -1,0 +1,113 @@
+(:::
+ \\ (\ a . (X (X '\ a) (map (\ a (L var (Q a))) (init a))))
+ Zzz (\ x (: y (sym) (L \ y  (L \ (L x y)))))
+ &* (\ a x . (: b (L 'Zzz a) (? x (L g* b (X '&* x)) b)))
+ |* (\ a x . (: b (L 'Zzz a) (? x (L g+ b (X '|* x)) b))))
+
+(:
+ (k3 s z x f) (?
+  (\? s) (f s)
+  (2? s) (x (A s) (B s))
+  z)
+
+ (dict-has d k) (:
+  (loop k ks vs) (? ks
+   (? (= k (A ks)) vs (loop k (B ks) (B vs))))
+  (loop k (A d) (B d)))
+ (dict-get d k) (? (: x (dict-has d k)) (A x))
+ (dict-set d k v) (X (X k (A d)) (X v (B d)))
+;
+ empty-stream ()
+ stream-of L
+ stream-cons X
+ (stream-take n s)
+  (? (= n 0) ()
+     (~ s) ()
+     (\? s) (stream-take n (s))
+     (X (A s) (stream-take (? n (- n 1)) (B s))))
+ (stream-map s f) (k3 s s (\ a b (X (f a) b)) (\ d (\ (stream-map (d) f))))
+
+ ((g+ f g) s) (n+ (f s) (g s))
+ ((g* f g) s) (n* (f s) g)
+
+ (n+ s t) (? (~ s) t
+             (\? s) (\ (n+ t (s)))
+             (X (A s) (n+ t (B s))))
+ (n* s g) (? (~ s) ()
+             (\? s) (\ (n* (s) g))
+             (n+ (g (A s)) (n* (B s) g)))
+
+  has-s dict-has
+  ref-s dict-get
+  ext-s dict-set
+  st-empty ~~
+
+ var vec
+ var? vecp
+
+ (walk u s)
+  (? (var? u) (? (: t (has-s s u)) (walk (A t) s) u)
+     (2? u) (X (walk (A u) s) (walk (B u) s))
+     u)
+
+ ((== u v) s)
+  (: x (walk u s) y (walk v s) (?
+   (= x y) (L s)
+   (var? x) (L (ext-s s x y))
+   (var? y) (L (ext-s s y x))
+   (&& (2? x) (2? y)
+    (n* ((== (A x) (A y)) s) (== (B x) (B y))))))
+
+ (run n g) (stream-take n (g st-empty))
+
+ (unord-eq a b) (&&
+  (= (len a) (len b))
+  (all (cu memq a) b))
+  ((rei ks) st)
+   (flat-map ks (\ k
+    (? (: it (has-s (X (map (\ y (vget y 0)) (A st)) (B st)) k))
+     (L k (walk (A it) st)))))
+  (re ks l) (map (rei ks) l)
+ )
+
+(test k3
+ (unord-eq '((a (1 2 (3 (4))) b (3 (4)) c 4))
+    (re '(a b c) (run () (\\ a b c (g* (== a (L 1 2 b)) (g* (== b (L 3 (L c))) (== c 4)))))))
+ (= (rho 33 '(a 9))
+  (re '(a) (run 33 (\\ a (: nines (|* (== a 9) nines) nines)))))
+ (unord-eq (map (\ i (L 'a i)) (iota 10))
+  (re '(a) (run 10 (\\ a
+   (: never (|* (\) never)
+      (at-least n) (|* (== a n) (at-least (+ n 1)))
+    (|* never (== a 0) (at-least 1)))))))
+ (unord-eq '((a 7 b 6) (a 7 b 5)) (re '(a b) (run () (\\ a b (&* (== a 7) (|* (== b 5) (== b 6)))))))
+ (unord-eq '((a 9 b 8)) (re '(a b) (run () (\\ a b (&* (== a 9) (== b 8))))))
+ (unord-eq '((a 1 b 1)) (re '(a b) (run () (\\ a b (&* (== a 1) (== a b))))))
+ (unord-eq '((a 7 b 3)) (re '(a b) (run () (\\ a b (&* (== a 7) (== b 3) (|* (== b 3) (== b 4)))))))
+ (unord-eq '((a (1 2) b 2)) (re '(a b) (run () (\\ a b (&* (== a (L 1 b)) (== b 2))))))
+ (: inc L
+    (iter n f x) (? (= 0 n) x (iter (- n 1) f (f x)))
+    zero () one '(()) two '((()))
+    (add a b c) (|* (&* (== a ()) (== b c))
+                    (\\ x (&* (== (inc x) a)
+                              (add x (inc b) c))))
+    (fibo a b) (|* (&* (== a one) (== b one))
+                   (&* (== a two) (== b one))
+                   (\\ x y p q
+                    (&* (== (inc x) a)
+                        (== (inc y) x)
+                        (fibo x p) (fibo y q)
+                        (add p q b))))
+    (= (L (L 'a (iter 144 L ())))
+     (re '(a) (run () (\\ a (fibo (iter 12 L ()) a))))))
+ (~ (run () (\\ a (&* (== a 0) (== a 1)))))
+ (~ (run () (\\ a b (&* (== a 7) (== b 3) (|* (== b 2) (== b 4))))))
+ (unord-eq '((a 1 b 2 c 2) (b 9 c 7) (c 88)) (re '(a b c) (run ()
+    (\\ a b c (|* (&* (== a 1) (== b 2) (== c b))
+                  (&* (== c 7) (== b 9))
+                  (== c 88))))))
+ (unord-eq '((a 7 b 8 c 9) (a 4 b 5 c 6) (a 1 b 2 c 3)) (re '(a b c) (run ()
+    (\\ a b c (|* (&* (== a 1) (== b 2) (== c 3))
+                  (&* (== a 4) (== b 5) (== c 6))
+                  (&* (== a 7) (== b 8) (== c 9)))))))
+)

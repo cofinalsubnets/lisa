@@ -78,6 +78,7 @@
  _(band_u, "&")\
  _(bor_u, "|")\
  _(bxor_u, "^")\
+ _(clock_u, "clock") _(sleep_u, "sleep")\
  _(add_u, "+")\
  _(hom_u, tnom(Hom))\
  _(sub_u, "-")       _(mul_u, "*")     _(div_u, "/")\
