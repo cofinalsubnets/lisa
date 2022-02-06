@@ -4,19 +4,16 @@
  &* (\ a x . (: b (L 'Zzz a) (? x (L g* b (X '&* x)) b)))
  |* (\ a x . (: b (L 'Zzz a) (? x (L g+ b (X '|* x)) b))))
 
+; dict - immutable map type made of pairs
 (:
- (k3 s z x f) (?
-  (\? s) (f s)
-  (2? s) (x (A s) (B s))
-  z)
-
  (dict-has d k) (:
   (loop k ks vs) (? ks
    (? (= k (A ks)) vs (loop k (B ks) (B vs))))
   (loop k (A d) (B d)))
  (dict-get d k) (? (: x (dict-has d k)) (A x))
- (dict-set d k v) (X (X k (A d)) (X v (B d)))
+ (dict-set d k v) (X (X k (A d)) (X v (B d))))
 ;
+(:
  empty-stream ()
  stream-of L
  stream-cons X
@@ -25,7 +22,6 @@
      (~ s) ()
      (\? s) (stream-take n (s))
      (X (A s) (stream-take (? n (- n 1)) (B s))))
- (stream-map s f) (k3 s s (\ a b (X (f a) b)) (\ d (\ (stream-map (d) f))))
 
  ((g+ f g) s) (n+ (f s) (g s))
  ((g* f g) s) (n* (f s) g)
