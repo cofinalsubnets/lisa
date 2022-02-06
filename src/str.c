@@ -9,7 +9,7 @@ obj string(lips v, const char* c) {
   cpy8(o->text, c, o->len = bs);
   return _S(o); }
 
-GC(cpstr) {
+Gc(cpstr) {
   str dst, src = S(x);
   return src->len == 0 ? *(mem)src->text :
     (dst = bump(v, Width(str) + b2w(src->len)),
@@ -26,27 +26,27 @@ u0 emstr(lips v, FILE *o, obj x) {
 
 #include "terp.h"
 // string instructions
-VM(strl) {
-  ARY(1);
-  TC(*Argv, Str);
+Vm(strl) {
+  Ary(1);
+  Tc(*Argv, Str);
   xp = _N(S(*Argv)->len-1);
   Jump(ret); }
 
-VM(strg) {
-  ARY(2);
-  TC(Argv[0], Str);
-  TC(Argv[1], Num);
+Vm(strg) {
+  Ary(2);
+  Tc(Argv[0], Str);
+  Tc(Argv[1], Num);
   xp = 
      N(Argv[1]) < S(Argv[0])->len-1 ?
     _N(S(Argv[0])->text[N(Argv[1])]) :
     nil;
   Jump(ret); }
 
-VM(strconc) {
+Vm(strconc) {
   i64 l = N(Argc), sum = 0, i = 0;
   while (i < l) {
     obj x = Argv[i++];
-    TC(x, Str);
+    Tc(x, Str);
     sum += S(x)->len - 1; }
   i64 words = b2w(sum+1) + 1;
   Have(words);
@@ -58,15 +58,15 @@ VM(strconc) {
     str x = S(Argv[--i]);
     sum -= x->len - 1;
     cpy8(d->text+sum, x->text, x->len - 1); }
-  GO(ret, _S(d)); }
+  Go(ret, _S(d)); }
 
 #define min(a,b)(a<b?a:b)
 #define max(a,b)(a>b?a:b)
-VM(strs) {
-  ARY(3);
-  TC(Argv[0], Str);
-  TC(Argv[1], Num);
-  TC(Argv[2], Num);
+Vm(strs) {
+  Ary(3);
+  Tc(Argv[0], Str);
+  Tc(Argv[1], Num);
+  Tc(Argv[2], Num);
   str src = S(Argv[0]);
   i64 lb = N(Argv[1]), ub = N(Argv[2]);
   lb = max(lb, 0);
@@ -79,17 +79,17 @@ VM(strs) {
   dst->len = ub - lb + 1;
   dst->text[ub - lb] = 0;
   cpy8(dst->text, src->text + lb, ub - lb);
-  GO(ret, _S(dst)); }
+  Go(ret, _S(dst)); }
 
-VM(strmk) {
+Vm(strmk) {
   i64 i = 0, bytes = N(Argc)+1, words = 1 + b2w(bytes);
   Have(words);
   str s = (str) hp;
   hp += words;
   for (obj x; i < bytes-1; s->text[i++] = N(x)) {
     x = Argv[i];
-    TC(x, Num);
+    Tc(x, Num);
     if (x == _N(0)) break; }
   s->text[i] = 0;
   s->len = i+1;
-  GO(ret, _S(s)); }
+  Go(ret, _S(s)); }

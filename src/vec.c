@@ -4,7 +4,7 @@
 #include "vec.h"
 
 // this is used to create closures.
-VM(take) {
+Vm(take) {
  u64 n = N((obj) H(ip)[1]);
  Have(n + 1);
  vec t = (vec) hp;
@@ -14,10 +14,10 @@ VM(take) {
  sp += n;
  Go(ret, _V(t)); }
 
-VM(vset_u) {
-  ARY(3);
-  TC(Argv[0], Vec);
-  TC(Argv[1], Num);
+Vm(vset_u) {
+  Ary(3);
+  Tc(Argv[0], Vec);
+  Tc(Argv[1], Num);
   i64 idx = N(Argv[1]);
   vec ary = V(Argv[0]);
   if (idx < 0 || idx >= ary->len) {
@@ -25,10 +25,10 @@ VM(vset_u) {
     Jump(oob_error); }
   Go(ret, ary->xs[idx] = Argv[2]); }
 
-VM(vget_u) {
- ARY(2);
- TC(Argv[0], Vec);
- TC(Argv[1], Num);
+Vm(vget_u) {
+ Ary(2);
+ Tc(Argv[0], Vec);
+ Tc(Argv[1], Num);
  i64 idx = N(Argv[1]);
  vec ary = V(Argv[0]);
  if (idx < 0 || idx >= ary->len) {
@@ -36,7 +36,7 @@ VM(vget_u) {
    Jump(oob_error); }
  Go(ret, ary->xs[idx]); }
 
-VM(vec_u) {
+Vm(vec_u) {
  obj n = N(Argc);
  Have(n + 1);
  vec t = (vec) hp;
@@ -55,7 +55,7 @@ u0 emvec(lips v, FILE *o, obj x) {
   fputc(']', o); }
 
 #include "mem.h"
-GC(cpvec) {
+Gc(cpvec) {
   vec dst, src = V(x);
   if (fresh(*src->xs)) return *src->xs;
   dst = bump(v, Width(vec) + src->len);

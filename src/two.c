@@ -9,25 +9,25 @@ u64 llen(obj l) {
 #include "hom.h"
 // pairs
 OP1(car, A(xp)) OP1(cdr, B(xp))
-VM(cons) {
+Vm(cons) {
   Have1();
   hp[0] = xp;
   hp[1] = *sp++;
   xp = puttwo(hp);
   hp += 2;
-  NEXT(1); }
+  Next(1); }
 
-VM(car_u) {
+Vm(car_u) {
   Ary(1);
   Tc(*Argv, Two);
   Go(ret, A(*Argv)); }
 
-VM(cdr_u) {
+Vm(cdr_u) {
   Ary(1);
   Tc(*Argv, Two);
   Go(ret, B(*Argv)); }
 
-VM(cons_u) {
+Vm(cons_u) {
   Ary(2);
   Have(2);
   two w = (two) hp;
@@ -43,7 +43,7 @@ obj pair(lips v, obj a, obj b) {
   w->a = a, w->b = b;
   return puttwo(w); }
 
-GC(cptwo) {
+Gc(cptwo) {
   obj dst, src = x;
   if (fresh(A(x))) return A(x);
   dst = puttwo(bump(v, Width(two)));

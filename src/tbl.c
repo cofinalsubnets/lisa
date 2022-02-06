@@ -178,26 +178,26 @@ u0 emtbl(lips v, FILE *o, obj x) {
 #include "terp.h"
 
 // hash tables
-VM(tblg) {
- ARY(2);
- TC(Argv[0], Tbl);
+Vm(tblg) {
+ Ary(2);
+ Tc(Argv[0], Tbl);
  xp = tbl_get(v, Argv[0], Argv[1]);
- GO(ret, xp ? xp : nil); }
+ Go(ret, xp ? xp : nil); }
 
 OP1(tget, (xp = tbl_get(v, xp, *sp++)) ? xp : nil)
 
 OP1(thas, tbl_get(v, xp, *sp++) ? ok : nil)
 OP1(tlen, _N(gettbl(xp)->len))
 
-VM(tkeys) {
+Vm(tkeys) {
   CallC(v->xp = tblkeys(v, xp));
-  NEXT(1); }
+  Next(1); }
 
-VM(tblc) {
- ARY(2);
- TC(Argv[0], Tbl);
+Vm(tblc) {
+ Ary(2);
+ Tc(Argv[0], Tbl);
  xp = tbl_get(v, Argv[0], Argv[1]);
- GO(ret, xp ? ok : nil); }
+ Go(ret, xp ? ok : nil); }
 
 static obj tblss(lips v, i64 i, i64 l) {
  mem fp = v->fp;
@@ -205,37 +205,37 @@ static obj tblss(lips v, i64 i, i64 l) {
   (tbl_set(v, v->xp, Argv[i], Argv[i+1]),
    tblss(v, i+2, l)); }
 
-VM(tbls) {
- ARY(1);
+Vm(tbls) {
+ Ary(1);
  xp = *Argv;
- TC(xp, Tbl);
+ Tc(xp, Tbl);
  CallC(v->xp = tblss(v, 1, N(Argc)));
  Jump(ret); }
 
 
 
-VM(tblmk) {
+Vm(tblmk) {
   CallC(v->xp = table(v), tblss(v, 0, N(Argc)));
   Jump(ret); }
 
-VM(tbld) {
- ARY(2);
- TC(Argv[0], Tbl);
+Vm(tbld) {
+ Ary(2);
+ Tc(Argv[0], Tbl);
  CallC(v->xp = tbl_del(v, Argv[0], Argv[1]));
  Jump(ret); }
 
-VM(tblks) {
- ARY(1);
- TC(*Argv, Tbl);
+Vm(tblks) {
+ Ary(1);
+ Tc(*Argv, Tbl);
  CallC(v->xp = tblkeys(v, *Argv));
  Jump(ret); }
 
-VM(tbll) {
- ARY(1);
- TC(*Argv, Tbl);
+Vm(tbll) {
+ Ary(1);
+ Tc(*Argv, Tbl);
  Go(ret, _N(gettbl(*Argv)->len)); }
 
-VM(tset) {
+Vm(tset) {
  obj x = *sp++, y = *sp++;
  CallC(v->xp = tbl_set(v, xp, x, y));
- NEXT(1); }
+ Next(1); }

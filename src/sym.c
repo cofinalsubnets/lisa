@@ -48,18 +48,18 @@ u0 emsym(lips v, FILE *o, obj x) {
                   fputs(S(y->nom)->text, o); }
 
 #include "terp.h"
-VM(gsym_u) {
+Vm(gsym_u) {
   if (Argc > _N(0) && strp(*Argv))
-    RETC(v->xp = intern(v, *Argv));
+    RetC(v->xp = intern(v, *Argv));
   Have(Width(sym));
   sym y = (sym) hp;
   hp += Width(sym);
   y->nom = y->l = y->r = nil;
   y->code = v->count++ * mix;
-  GO(ret, putsym(y)); }
+  Go(ret, putsym(y)); }
 
-VM(ystr_u) {
- ARY(1);
+Vm(ystr_u) {
+ Ary(1);
  xp = *Argv;
- TC(xp, Sym);
- GO(ret, getsym(xp)->nom); }
+ Tc(xp, Sym);
+ Go(ret, getsym(xp)->nom); }

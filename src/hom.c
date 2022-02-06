@@ -437,12 +437,11 @@ static NoInline obj apply(lips v, obj f, obj x) {
  f = _H(h), x = tbl_get(v, Top, App);
  return call(v, f, v->fp, v->sp, v->hp, x); }
 
-// VM instructions
 // instructions used by the compiler
-VM(hom_u) {
+Vm(hom_u) {
  obj x;
- ARY(1);
- TC(x = *Argv, Num);
+ Ary(1);
+ Tc(x = *Argv, Num);
  i64 len = N(x) + 2;
  Have(len);
  hom h = (hom) hp;
@@ -452,44 +451,44 @@ VM(hom_u) {
  h[len-2] = NULL;
  Go(ret, _H(h+len-2)); }
 
-VM(hfin_u) {
- ARY(1);
+Vm(hfin_u) {
+ Ary(1);
  obj a = *Argv;
  Tc(a, Hom);
  button(H(a))[1] = (terp*) a;
  Go(ret, a); }
 
-VM(emx) { hom h = H(*sp++ - W); *h = (terp*) xp;    AP(ip+W, _H(h)); }
-VM(emi) { hom h = H(*sp++ - W); *h = (terp*) N(xp); AP(ip+W, _H(h)); }
+Vm(emx) { hom h = H(*sp++ - W); *h = (terp*) xp;    Ap(ip+W, _H(h)); }
+Vm(emi) { hom h = H(*sp++ - W); *h = (terp*) N(xp); Ap(ip+W, _H(h)); }
 
-VM(emx_u) {
- ARY(2);
+Vm(emx_u) {
+ Ary(2);
  obj h = Argv[1];
- TC(h, Hom);
+ Tc(h, Hom);
  h -= W;
  *H(h) = (terp*) Argv[0];
  Go(ret, h); }
 
-VM(emi_u) {
- ARY(2);
- TC(Argv[0], Num);
+Vm(emi_u) {
+ Ary(2);
+ Tc(Argv[0], Num);
  obj h = Argv[1];
- TC(h, Hom);
+ Tc(h, Hom);
  h -= W;
  *H(h) = (terp*) N(Argv[0]);
  Go(ret, h); }
 
-VM(hgeti_u) { ARY(1); TC(Argv[0], Hom); Go(ret, inptr(*H(Argv[0]))); }
-VM(hgetx_u) { ARY(1); TC(Argv[0], Hom); Go(ret, (obj) *H(Argv[0])); }
+Vm(hgeti_u) { Ary(1); Tc(Argv[0], Hom); Go(ret, inptr(*H(Argv[0]))); }
+Vm(hgetx_u) { Ary(1); Tc(Argv[0], Hom); Go(ret, (obj) *H(Argv[0])); }
 
-VM(hseek_u) {
- ARY(2);
- TC(Argv[0], Hom);
- TC(Argv[1], Num);
+Vm(hseek_u) {
+ Ary(2);
+ Tc(Argv[0], Hom);
+ Tc(Argv[1], Num);
  Go(ret, _H(H(Argv[0]) + N(Argv[1]))); }
 
-VM(ev_u) {
-  ARY(1);
+Vm(ev_u) {
+  Ary(1);
   CallC(
     Push(inptr(emit_i), inptr(yield),
          inptr(comp_alloc_thread)),
@@ -497,9 +496,9 @@ VM(ev_u) {
     v->xp = (*H(xp))(v, xp, v->fp, v->sp, v->hp, nil));
   Jump(ret); }
 
-static Vm(clos) { Clos = (obj) H(ip)[1]; AP((obj) H(ip)[2], xp); }
+static Vm(clos) { Clos = (obj) H(ip)[1]; Ap((obj) H(ip)[2], xp); }
 // finalize function instance closure
-static Vm(clos1) { *H(ip) = clos; H(ip)[1] = (terp*) xp; NEXT(0); }
+static Vm(clos1) { *H(ip) = clos; H(ip)[1] = (terp*) xp; Next(0); }
 
 // this function is run the first time a user
 // function with a closure is called. its
@@ -527,11 +526,11 @@ static Vm(clos0) {
  Clos = V(ec)->xs[2];
  if (!nilp(loc)) *--sp = loc;
  ip = V(ec)->xs[3];
- NEXT(0); }
+ Next(0); }
 
 // the next few functions create and store
 // lexical environments.
-static VM(encl) {
+static Vm(encl) {
  i64 n = N(Argc);
  n += n ? 12 : 11;
  Have(n);
@@ -562,10 +561,10 @@ static VM(encl) {
  at[3] = 0;
  at[4] = (terp*) at;
 
- AP(ip+W2, _H(at)); }
+ Ap(ip+W2, _H(at)); }
 
-VM(encll) { Go(encl, Locs); }
-VM(encln) { Go(encl, nil); }
+Vm(encll) { Go(encl, Locs); }
+Vm(encln) { Go(encl, nil); }
 
 NoInline obj homnom(lips v, obj x) {
   terp *k = *H(x);
@@ -577,14 +576,14 @@ NoInline obj homnom(lips v, obj x) {
   int inb = (mem) x >= v->pool && (mem) x < v->pool+v->len;
   return inb ? x : x == (obj) yield ? Eva : nil; }
 
-VM(hnom_u) {
-  ARY(1);
-  TC(*Argv, Hom);
+Vm(hnom_u) {
+  Ary(1);
+  Tc(*Argv, Hom);
   xp = homnom(v, *Argv);
   Jump(ret); }
 
 #define stale(o) inb((mem)(o),base0,base0+len0)
-GC(cphom) {
+Gc(cphom) {
  hom src = H(x);
  if (fresh(*src)) return (obj) *src;
  hom end = button(src), start = (hom) end[1],
@@ -609,4 +608,3 @@ static u0 emhomn(lips v, FILE *o, obj x) {
 
 u0 emhom(lips v, FILE *o, obj x) {
   emhomn(v, o, homnom(v, x)); }
-

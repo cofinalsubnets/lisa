@@ -14,9 +14,8 @@
  (dict-set d k v) (X (X k (A d)) (X v (B d))))
 ;
 (:
- empty-stream ()
- stream-of L
- stream-cons X
+ passes L
+ fails (\)
  (stream-take n s)
   (? (= n 0) ()
      (~ s) ()
@@ -26,9 +25,10 @@
  ((g+ f g) s) (n+ (f s) (g s))
  ((g* f g) s) (n* (f s) g)
 
- (n+ s t) (? (~ s) t
-             (\? s) (\ (n+ t (s)))
-             (X (A s) (n+ t (B s))))
+ (n+ s t) (? (~ s) t (~ t) s
+             (2? s) (X (A s) (n+ t (B s)))
+             (2? t) (X (A t) (n+ (B t) s))
+             (\ (n+ (t) (s))))
  (n* s g) (? (~ s) ()
              (\? s) (\ (n* (s) g))
              (n+ (g (A s)) (n* (B s) g)))
@@ -38,8 +38,9 @@
   ext-s dict-set
   st-empty ~~
 
- var vec
- var? vecp
+ (var x) (X x (sym))
+ (var? x) (&& (2? x) (anon? (B x)))
+ (anon? x) (&& (symp x) (nilp (ystr x)))
 
  (walk u s)
   (? (var? u) (? (: t (has-s s u)) (walk (A t) s) u)
@@ -61,7 +62,7 @@
   (all (cu memq a) b))
   ((rei ks) st)
    (flat-map ks (\ k
-    (? (: it (has-s (X (map (\ y (vget y 0)) (A st)) (B st)) k))
+    (? (: it (has-s (X (map A (A st)) (B st)) k))
      (L k (walk (A it) st)))))
   (re ks l) (map (rei ks) l)
  )

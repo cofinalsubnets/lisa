@@ -117,8 +117,8 @@ bool cycle(lips v, u64 req) {
 // objects are used to store pointers to their
 // new locations, which effectively destroys the
 // old data.
-static GC(cpid) { return x; }
-GC(cp) {
+static Gc(cpid) { return x; }
+Gc(cp) {
   static copier *copiers[] = {
     [Hom] = cphom,
     [Num] = cpid,
@@ -134,6 +134,6 @@ GC(cp) {
 #include "hom.h"
 Vm(gc) {
   u64 req = v->xp;
-  CALLC(req = cycle(v, req));
-  if (req) NEXT(0);
+  CallC(req = cycle(v, req));
+  if (req) Next(0);
   Jump(nope, "oom : %d req %d len", req, v->len); }
