@@ -22,7 +22,7 @@ obj sskc(lips v, mem y, obj x) {
     sym z = getsym(*y);
     int i = scmp(S(z->nom)->text, S(x)->text);
     return i == 0 ? *y : sskc(v, i < 0 ? &z->r : &z->l, x); }
-  sym z = bump(v, Width(sym));
+  sym z = cells(v, Width(sym));
   z->code = hash(v, z->nom = x) ^ mix;
   z->l = z->r = nil;
   return *y = putsym(z); }

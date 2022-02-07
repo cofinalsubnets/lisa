@@ -16,15 +16,15 @@ static u0 reqsp(lips v, u64 req) {
     errp(v, "oom");
     restart(v); } }
 
+// unchecked allocator -- make sure there's enough memory!
+static u0* bump(lips v, u64 n) {
+  u0* x = v->hp;
+  return v->hp += n, x; }
+
 // general purpose memory allocator
 u0* cells(lips v, u64 n) {
   if (Avail < n) reqsp(v, n);
   return bump(v, n); }
-
-// unchecked allocator -- make sure there's enough memory!
-u0* bump(lips v, u64 n) {
-  u0* x = v->hp;
-  return v->hp += n, x; }
 
 #include <stdlib.h>
 #include <time.h>

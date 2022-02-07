@@ -4,5 +4,5 @@
 #define with(y,...) (mm(&(y)),(__VA_ARGS__),um)
 #define Width(t) b2w(sizeof(struct t))
 
-u0 *bump(lips, u64), *cells(lips, u64);
+u0 *cells(lips, u64);
 u1 cycle(lips, u64);

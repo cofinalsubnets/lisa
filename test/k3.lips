@@ -1,8 +1,8 @@
 (:::
  \\ (\ a . (X (X '\ a) (map (\ a (L var (Q a))) (init a))))
- Zzz (\ x (: y (sym) (L \ y  (L \ (L x y)))))
- &* (\ a x . (: b (L 'Zzz a) (? x (L g* b (X '&* x)) b)))
- |* (\ a x . (: b (L 'Zzz a) (? x (L g+ b (X '|* x)) b))))
+ zzz (\ x (: y (sym) (L \ y  (L \ (L x y)))))
+ &* (\ a x . (? x (L g* a (X '&* x)) a))
+ |* (\ a x . (: b (L 'zzz a) (? x (L g+ b (X '|* x)) b))))
 
 ; dict - immutable map type made of pairs
 (:
@@ -14,24 +14,15 @@
  (dict-set d k v) (X (X k (A d)) (X v (B d))))
 ;
 (:
- passes L
- fails (\)
  (stream-take n s)
-  (? (= n 0) ()
-     (~ s) ()
+  (? (|| (= n 0) (~ s)) ()
      (\? s) (stream-take n (s))
      (X (A s) (stream-take (? n (- n 1)) (B s))))
 
  ((g+ f g) s) (n+ (f s) (g s))
  ((g* f g) s) (n* (f s) g)
-
- (n+ s t) (? (~ s) t (~ t) s
-             (2? s) (X (A s) (n+ t (B s)))
-             (2? t) (X (A t) (n+ (B t) s))
-             (\ (n+ (t) (s))))
- (n* s g) (? (~ s) ()
-             (\? s) (\ (n* (s) g))
-             (n+ (g (A s)) (n* (B s) g)))
+ (n+ s t) (? (~ s) t  (\? s) (\ (n+ t (s))) (X (A s) (n+ (B s) t)))
+ (n* s g) (? (~ s) () (\? s) (\ (n* (s) g)) (n+ (g (A s)) (n* (B s) g)))
 
   has-s dict-has
   ref-s dict-get
