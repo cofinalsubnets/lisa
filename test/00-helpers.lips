@@ -21,3 +21,8 @@
   (X ', (X (L . (L '` (? (symp n) n (sym n)))) (map T ts)))
   (L .)
   (L each (L get) .)))))
+
+(:
+ (unord-eq a b) (&&
+  (= (len a) (len b))
+  (all (cu memq a) b)))

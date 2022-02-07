@@ -1,37 +1,12 @@
 (:::
- \\ (\ a . (X (X '\ a) (map (\ a (L var (Q a))) (init a))))
- zzz (\ x (: y (sym) (L \ y  (L \ (L x y)))))
- &* (\ a x . (? x (L g* a (X '&* x)) a))
+ &* (\ a x . (: b (L 'zzz a) (? x (L g* b (X '&* x)) b)))
  |* (\ a x . (: b (L 'zzz a) (? x (L g+ b (X '|* x)) b))))
-
-; dict - immutable map type made of pairs
-(:
- (dict-has d k) (:
-  (loop k ks vs) (? ks
-   (? (= k (A ks)) vs (loop k (B ks) (B vs))))
-  (loop k (A d) (B d)))
- (dict-get d k) (? (: x (dict-has d k)) (A x))
- (dict-set d k v) (X (X k (A d)) (X v (B d))))
 ;
 (:
- (stream-take n s)
-  (? (|| (= n 0) (~ s)) ()
-     (\? s) (stream-take n (s))
-     (X (A s) (stream-take (? n (- n 1)) (B s))))
-
  ((g+ f g) s) (n+ (f s) (g s))
  ((g* f g) s) (n* (f s) g)
  (n+ s t) (? (~ s) t  (\? s) (\ (n+ t (s))) (X (A s) (n+ (B s) t)))
  (n* s g) (? (~ s) () (\? s) (\ (n* (s) g)) (n+ (g (A s)) (n* (B s) g)))
-
-  has-s dict-has
-  ref-s dict-get
-  ext-s dict-set
-  st-empty ~~
-
- (var x) (X x (sym))
- (var? x) (&& (2? x) (anon? (B x)))
- (anon? x) (&& (symp x) (nilp (ystr x)))
 
  (walk u s)
   (? (var? u) (? (: t (has-s s u)) (walk (A t) s) u)
@@ -46,11 +21,12 @@
    (&& (2? x) (2? y)
     (n* ((== (A x) (A y)) s) (== (B x) (B y))))))
 
- (run n g) (stream-take n (g st-empty))
+ (stream-take n s)
+  (? (|| (= n 0) (~ s)) ()
+     (\? s) (stream-take n (s))
+     (X (A s) (stream-take (? n (- n 1)) (B s))))
 
- (unord-eq a b) (&&
-  (= (len a) (len b))
-  (all (cu memq a) b))
+ (run n g) (stream-take n (g st-empty))
   ((rei ks) st)
    (flat-map ks (\ k
     (? (: it (has-s (X (map A (A st)) (B st)) k))
