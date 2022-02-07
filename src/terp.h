@@ -99,7 +99,7 @@ insts(ninl)
 #define Tc(x,t) if(kind((x))-(t)){v->xp=t;Jump(type_error);}
 // arity check
 #define arity_err_msg "wrong arity : %d of %d"
-#define Ary(n) if(_N(n)>Argc){v->xp=n;Jump(ary_error);}
+#define Ary(n) if(_N(n)>Argc)Jump((v->xp=n,ary_error))
 
 #define OP(nom, x, n) Vm(nom) { xp = (x); Next(n); }
 #define OP1(nom, x) OP(nom, x, 1)

@@ -11,5 +11,5 @@ u64 llen(obj);
 //#define _W(w) puttwo(w)
 
 static Inline two gettwo(obj x) { return (two) (x - Two); }
-static Inline obj puttwo(void *x) { return (obj) x + Two; }
-static Inline bool twop(obj x) { return kind(x) == Two; }
+static Inline obj puttwo(u0 *x) { return (obj) x + Two; }
+static Inline u1 twop(obj x) { return kind(x) == Two; }

@@ -5,7 +5,7 @@ static Inline i64 tbl_idx(u64 cap, u64 co) {
   return co & ((1 << cap) - 1); }
 
 static Inline u64 tbl_load(obj t) {
-  return T(t)->len / (1<<T(t)->cap); }
+  return T(t)->len >> T(t)->cap; }
 
 #include "cmp.h"
 
@@ -39,12 +39,14 @@ u64 hash(lips v, obj x) {
 
 // shrinking a table never allocates memory, so it's safe
 // to do at any time.
-static u0 shrink(lips v, obj t) {
+static u0 tbl_fit(lips v, obj t) {
+  if (tbl_load(t)) return;
+
   ent e = NULL, f, g;
   tbl u = T(t);
 
   // collect all entries
-  for (u64 i = 1<<u->cap; i--;)
+  for (u64 i = 1 << u->cap; i--;)
     for (f = u->tab[i], u->tab[i] = NULL; f;)
       g = f->next,
       f->next = e,
@@ -75,7 +77,7 @@ static obj tbl_del(lips v, obj t, obj key) {
       y->len--;
       break; }
   y->tab[b] = prev.next;
-  if (tbl_load(t) < 1) shrink(v, t);
+  tbl_fit(v, t);
   return val; }
 
 #include "mem.h"
@@ -148,33 +150,6 @@ static obj tblkeys_i(lips v, obj t, i64 i) {
 Inline obj tblkeys(lips v, obj t) {
  return tblkeys_i(v, t, 0); }
 
-static ent cpent(lips v, ent src, i64 len0, mem base0) {
- if (!src) return NULL;
- ent dst = (ent) bump(v, Width(ent));
- dst->next = cpent(v, src->next, len0, base0);
- COPY(dst->key, src->key);
- COPY(dst->val, src->val);
- return dst; }
-
-GC(cptbl) {
-  tbl src = gettbl(x);
-  if (fresh(src->tab)) return (obj) src->tab;
-  i64 src_cap = src->cap;
-  tbl dst = bump(v, Width(tbl) + (1<<src_cap));
-  dst->len = src->len;
-  dst->cap = src_cap;
-  dst->tab = (ent*) (dst + 1);
-  ent *src_tab = src->tab;
-  src->tab = (ent*) puttbl(dst);
-  for (u64 ii = 1<<src_cap; ii--;)
-    dst->tab[ii] = cpent(v, src_tab[ii], len0, base0);
-  return puttbl(dst); }
-
-u0 emtbl(lips v, FILE *o, obj x) {
-  tbl t = gettbl(x);
-  fprintf(o, "#tbl:%ld/%ld", (long)t->len, (long)t->cap); }
-
-
 #include "terp.h"
 
 // hash tables
@@ -211,8 +186,6 @@ Vm(tbls) {
  Tc(xp, Tbl);
  CallC(v->xp = tblss(v, 1, N(Argc)));
  Jump(ret); }
-
-
 
 Vm(tblmk) {
   CallC(v->xp = table(v), tblss(v, 0, N(Argc)));

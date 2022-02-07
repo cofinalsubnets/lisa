@@ -1,6 +1,14 @@
 #include "lips.h"
 #include "mem.h"
 #include "terp.h"
+#define Gc(n) obj n(lips v, obj x, u64 len0, mem base0)
+#define inb(o,l,u) (o>=l&&o<u)
+#define fresh(o) inb((mem)(o),v->pool,v->pool+v->len)
+#define COPY(dst,src) (dst=cp(v,src,len0,base0))
+#define CP(x) COPY(x,x)
+
+typedef obj copier(lips, obj, u64, mem);
+static Inline copier cp;
 
 // memory allocation functions
 static u0 reqsp(lips v, u64 req) {
@@ -64,7 +72,7 @@ static clock_t copy(lips v, u64 len1) {
   v->sp += delta_r;
   v->fp += delta_r;
 
-  CP(v->ip), CP(v->xp), CP(v->reset);
+  CP(v->ip), CP(v->xp);
   for (int i = 0; i < NGlobs; i++) CP(v->glob[i]);
   while (top0-- > sp0) COPY(v->sp[top0 - sp0], *top0);
   for (root r = v->root; r; r = r->next) CP(*(r->one));
@@ -75,7 +83,7 @@ static clock_t copy(lips v, u64 len1) {
   v->t0 = t2;
   return t1 == t2 ? 1 : (t2 - t0) / (t2 - t1); }
 
-// gc entry point cycle : vm x num -> bool
+// gc entry point cycle : li x i64 -> u1
 //
 // try to return with at least req words of available memory.
 // return true on success, false otherwise. this function also
@@ -100,7 +108,7 @@ static clock_t copy(lips v, u64 len1) {
 // the cost of more memory use under pressure.
 #define growp (allocd > len || vit < 32) // lower bound
 #define shrinkp (allocd < (len>>1) && vit >= 128) // upper bound
-bool cycle(lips v, u64 req) {
+u1 cycle(lips v, u64 req) {
   i64 len = v->len, vit = copy(v, len);
   if (!vit) return false;
 
@@ -112,28 +120,107 @@ bool cycle(lips v, u64 req) {
   // succeed if the last copy was large enough.
   return copy(v, len) || allocd <= v->len; }
 
-// the exact method for copying an object into
-// the new pool depends on its type. copied
-// objects are used to store pointers to their
-// new locations, which effectively destroys the
-// old data.
-static Gc(cpid) { return x; }
-Gc(cp) {
-  static copier *copiers[] = {
-    [Hom] = cphom,
-    [Num] = cpid,
-    [Two] = cptwo,
-    [Vec] = cpvec,
-    [Str] = cpstr,
-    [Tbl] = cptbl,
-    [Sym] = cpsym,
-    [Nil] = cpid,
-  };
-  return copiers[kind(x)](v, x, len0, base0); }
-
 #include "hom.h"
 Vm(gc) {
   u64 req = v->xp;
   CallC(req = cycle(v, req));
   if (req) Next(0);
   Jump(nope, "oom : %d req %d len", req, v->len); }
+
+static copier cphom, cpvec, cptwo, cpsym, cpstr, cptbl;
+static Gc(cpid) { return x; }
+// the exact method for copying an object into
+// the new pool depends on its type. copied
+// objects are used to store pointers to their
+// new locations, which effectively destroys the
+// old data.
+static copier *copiers[] = {
+  [Hom] = cphom,
+  [Num] = cpid,
+  [Two] = cptwo,
+  [Vec] = cpvec,
+  [Str] = cpstr,
+  [Tbl] = cptbl,
+  [Sym] = cpsym,
+  [Nil] = cpid, };
+static Inline Gc(cp) {
+  return copiers[kind(x)](v, x, len0, base0); }
+
+#define stale(o) inb((mem)(o),base0,base0+len0)
+Gc(cphom) {
+ hom src = H(x);
+ if (fresh(*src)) return (obj) *src;
+ hom end = button(src), start = (hom) end[1],
+     dst = bump(v, end - start + 2), j = dst;
+ for (hom k = start; k < end;)
+  j[0] = k[0],
+  k++[0] = (terp*) _H(j++);
+ j[0] = NULL;
+ j[1] = (terp*) dst;
+ for (obj u; j-- > dst;
+   u = (obj) *j,
+   *j = (terp*) (!stale(u) ? u : cp(v, u, len0, base0)));
+ return _H(dst += src - start); }
+
+#include "str.h"
+Gc(cpstr) {
+  str dst, src = S(x);
+  return src->len == 0 ? *(mem)src->text :
+    (dst = bump(v, Width(str) + b2w(src->len)),
+     cpy64(dst->text, src->text, b2w(src->len)),
+     dst->len = src->len, src->len = 0,
+     *(mem) src->text = _S(dst)); }
+
+#include "sym.h"
+Gc(cpsym) {
+ sym src = getsym(x), dst;
+ if (fresh(src->nom)) return src->nom;
+ if (src->nom == nil) // anonymous symbol
+   cpy64(dst = bump(v, Width(sym)), src, Width(sym));
+ else dst = getsym(sskc(v, &v->syms, cp(v, src->nom, len0, base0)));
+ return src->nom = putsym(dst); }
+
+#include "tbl.h"
+static ent cpent(lips v, ent src, i64 len0, mem base0) {
+ if (!src) return NULL;
+ ent dst = (ent) bump(v, Width(ent));
+ dst->next = cpent(v, src->next, len0, base0);
+ COPY(dst->key, src->key);
+ COPY(dst->val, src->val);
+ return dst; }
+
+Gc(cptbl) {
+  tbl src = gettbl(x);
+  if (fresh(src->tab)) return (obj) src->tab;
+  i64 src_cap = src->cap;
+  tbl dst = bump(v, Width(tbl) + (1<<src_cap));
+  dst->len = src->len;
+  dst->cap = src_cap;
+  dst->tab = (ent*) (dst + 1);
+  ent *src_tab = src->tab;
+  src->tab = (ent*) puttbl(dst);
+  for (u64 ii = 1<<src_cap; ii--;)
+    dst->tab[ii] = cpent(v, src_tab[ii], len0, base0);
+  return puttbl(dst); }
+
+#include "two.h"
+Gc(cptwo) {
+  obj dst, src = x;
+  if (fresh(A(x))) return A(x);
+  dst = puttwo(bump(v, Width(two)));
+  A(dst) = A(src), A(src) = dst;
+  B(dst) = cp(v, B(src), len0, base0);
+  A(dst) = cp(v, A(dst), len0, base0);
+  return dst; }
+
+#include "vec.h"
+Gc(cpvec) {
+  vec dst, src = V(x);
+  if (fresh(*src->xs)) return *src->xs;
+  dst = bump(v, Width(vec) + src->len);
+  i64 i, l = dst->len = src->len;
+  dst->xs[0] = src->xs[0];
+  src->xs[0] = putvec(dst);
+  for (CP(dst->xs[0]), i = 1; i < l; ++i)
+    COPY(dst->xs[i], src->xs[i]);
+  return _V(dst); }

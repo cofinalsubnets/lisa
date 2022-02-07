@@ -1,32 +1,17 @@
 #include "lips.h"
 #include "cmp.h"
-
-typedef u1 rel(obj, obj);
-static rel eql_two, eql_str;
-
-u1 eql(obj a, obj b) {
-  if (a == b) return true;
-  if (kind(a) != kind(b)) return false;
-  switch (kind(a)) {
-    default: return false;
-    case Two: return eql_two(a, b);
-    case Str: return eql_str(a, b); } }
-
 #include "two.h"
-static u1 eql_two(obj a, obj b) {
-  // pairs are immutable, so we can deduplicate their insides.
-  if (eql(A(a), A(b))) {
-    gettwo(b)->a = gettwo(a)->a;
-    if (eql(B(a), B(b))) {
-      gettwo(b)->b = gettwo(a)->b;
-      return true; } }
-  return false; }
-
 #include "str.h"
-static u1 eql_str(obj a, obj b) {
-  str o = S(a), m = S(b);
-  if (o->len != m->len) return false;
-  return scmp(o->text, m->text) == 0; }
+
+static NoInline u1 eql_(obj a, obj b) {
+  return eql(a, b); }
+
+NoInline u1 eql_two(obj a, obj b) {
+  return eql_(A(a), A(b)) && eql_(B(a), B(b)); }
+
+NoInline u1 eql_str(obj a, obj b) {
+  return S(a)->len == S(b)->len &&
+    scmp(S(a)->text, S(b)->text) == 0; }
 
 #include "hom.h"
 #include "terp.h"
@@ -36,7 +21,7 @@ cmp_(lt, <) cmp_(lteq, <=) cmp_(gteq, >=) cmp_(gt, >)
 BINOP(eq, eql(xp, *sp++) ? ok : nil)
 
 static Vm(ord_) {
-  u1 (*r)(obj, obj) = (void*)v->xp;
+  u1 (*r)(obj, obj) = (u0*)v->xp;
   obj n = N(Argc), *xs = Argv, m, *l;
   switch (n) {
     case 0:  Go(ret, nil);

@@ -1,8 +1,4 @@
 #include "lips.h"
-
-static lips lips_fin(lips v) { return
- free(v->pool), (lips) (v->pool = NULL); }
-
 #include "terp.h"
 #include "read.h"
 #include "hom.h"
@@ -67,39 +63,50 @@ static NoInline u0 defprim(lips v, const char *a, terp *i) {
   prim[3] = (terp*) prim;
   tbl_set(v, Top, A(nom), _H(prim)); }
 
-static lips lips_init(lips v) {
- v->t0 = clock();
- v->rand = LCPRNG(v->t0 * mix);
- v->count = 0;
- v->ip = v->xp = v->syms = v->reset = nil;
- v->fp = v->hp = v->sp = (mem) W, v->len = 1;
- v->pool = (mem) (v->root = NULL);
- set64(v->glob, nil, NGlobs);
+u0 li_fin(lips v) {
+  if (v->pool) free(v->pool);
+  memset(v, 0, sizeof(struct lips)); }
 
- if (setjmp(v->restart)) {
-   errp(v, "fail");
-   return NULL; }
+lips li_ini(lips v) {
+  v->t0 = clock();
+  v->rand = LCPRNG(v->t0 * mix);
+  v->count = 0;
+  v->ip = v->xp = v->syms = nil;
+  v->fp = v->hp = v->sp = (mem) W, v->len = 1;
+  v->pool = (mem) (v->root = NULL);
+  set64(v->glob, nil, NGlobs);
 
- Top = table(v);
- Mac = table(v);
+  if (setjmp(v->restart))
+    return li_fin(v), NULL;
+
+  Top = table(v);
+  Mac = table(v);
 #define repr(a, b) if (b) defprim(v,b,a);
 #define rein(a, b) if (!b) rin(v, "i-"#a,a);
- insts(repr)
- insts(rein)
+  insts(repr)
+  insts(rein)
 #define bsym(i,s)(v->glob[i]=interns(v,s))
- bsym(Eval, "ev");
- bsym(Apply, "ap");
- bsym(Def, ":");
- bsym(Cond, "?");
- bsym(Lamb, "\\");
- bsym(Quote, "`");
- bsym(Seq, ",");
- bsym(Splat, ".");
- obj y;
+  bsym(Eval, "ev");
+  bsym(Apply, "ap");
+  bsym(Def, ":");
+  bsym(Cond, "?");
+  bsym(Lamb, "\\");
+  bsym(Quote, "`");
+  bsym(Seq, ",");
+  bsym(Splat, ".");
+  obj y;
 #define def(s, x) (y=interns(v,s),tbl_set(v,Top,y,x))
- def("_ns", Top);
- def("_macros", Mac);
- return v; }
+  def("_ns", Top);
+  def("_macros", Mac);
+  return v; }
+
+u0 li_close(lips v) { if (v) li_fin(v), free(v); }
+
+lips li_open(void) {
+  lips u, v;
+  if (!(v = malloc(sizeof (struct lips)))) return v;
+  if (!(u = li_ini(v))) free(v);
+  return u; }
 
 #define BOOT PREFIX "/lib/lips/prelude.lips"
 const char *help =
@@ -123,7 +130,7 @@ int main(int argc, char** argv) {
         argc -= optind, argv += optind;
         if (!argc && !shell) return EXIT_SUCCESS;
 
-        lips v = lips_init(&((struct lips){}));
+        lips v = li_ini(&((struct lips){}));
         if (boot) ok = script(v, BOOT);
 
         while (ok && argc--) ok = script(v, *argv++);
@@ -134,5 +141,5 @@ int main(int argc, char** argv) {
             if (x) emsep(v, eval(v, x), stdout, '\n');
             else if (feof(stdin)) break; }
 
-        lips_fin(v);
+        li_fin(v);
         return ok ? EXIT_SUCCESS : EXIT_FAILURE; } }

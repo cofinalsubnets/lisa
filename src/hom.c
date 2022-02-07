@@ -56,8 +56,7 @@ static c2 comp_expr, comp_sym, comp_list, comp_imm;
 
 enum { Here, Loc, Arg, Clo, Wait };
 #define CO(nom,...) static hom nom(lips v, mem e, u64 m, ##__VA_ARGS__)
-
-static Inline obj inptr(void *i) { return putnum((i64) i); }
+#define inptr(x) _N((i64)(x))
 
 // helper functions for lists
 static i64 lidx(obj l, obj x) {
@@ -116,8 +115,7 @@ static hom ee2(terp *i, obj x, hom k) {
  return ee1(i, ee1((terp*) x, k)); }
 
 static hom imx(lips v, mem e, i64 m, terp *i, obj x) {
-  Push(inptr(i), x);
-  return emit_i_d(v, e, m); }
+  return Push(inptr(i), x), emit_i_d(v, e, m); }
 
 static NoInline obj rw_let_fn(lips v, obj x) {
   mm(&x);
@@ -127,11 +125,11 @@ static NoInline obj rw_let_fn(lips v, obj x) {
     y = pair(v, y, BB(x));
   return um, x; }
 
-static bool scan_def(lips v, mem e, obj x) {
+static u1 scan_def(lips v, mem e, obj x) {
   if (!twop(x)) return true; // this is an even case so export all the definitions to the local scope
   if (!twop(B(x))) return false; // this is an odd case so ignore these, they'll be imported after the rewrite
   mm(&x);
-  bool r = scan_def(v, e, BB(x));
+  u1 r = scan_def(v, e, BB(x));
   if (r) {
     x = rw_let_fn(v, x);
     obj y = pair(v, A(x), loc(*e));
@@ -204,8 +202,7 @@ CO(comp_lambda, obj x) {
  return ee2(j, x, H(k)); }
 
 CO(comp_imm, obj x) {
-  Push(inptr(imm), x);
-  return emit_i_d(v, e, m); }
+  return Push(inptr(imm), x), emit_i_d(v, e, m); }
 
 static obj comp_lambda_clo(lips v, mem e, obj arg, obj seq) {
   i64 i = llen(arg);
@@ -221,8 +218,7 @@ static obj comp_lambda_clo(lips v, mem e, obj arg, obj seq) {
       inptr(emit_i), inptr(push));
 
   arg = _H(Ccc(0));
-  um, um;
-  return pair(v, seq, arg); }
+  return um, um, pair(v, seq, arg); }
 
 CO(comp_let_bind) {
   obj y = *v->sp++;
@@ -312,21 +308,22 @@ CO(emit_call) {
   hom k = Ccc(m + 2);
   return ee2(*k == ret ? rec : call, a, k); }
 
-#define L(n,x) pair(v, _N(n), x)
-static obj lookup_variable(lips v, obj e, obj y) {
+obj lookup_mod(lips v, obj x) {
+  return tbl_get(v, Top, x); }
+
+static obj lookup_lex(lips v, obj e, obj y) {
   if (nilp(e)) {
-    obj q = tbl_get(v, Top, y);
-    return q ? L(Here, q) : L(Wait, Top); }
+    obj q = lookup_mod(v, y);
+    return q ? pair(v, _N(Here), q) : pair(v, _N(Wait), Top); }
   return
-    lidx(loc(e), y) > -1 ? L(Loc, e) :
-    lidx(arg(e), y) > -1 ? L(Arg, e) :
-    lidx(clo(e), y) > -1 ? L(Clo, e) :
-    lookup_variable(v, par(e), y); }
-#undef L
+    lidx(loc(e), y) > -1 ? pair(v, _N(Loc), e) :
+    lidx(arg(e), y) > -1 ? pair(v, _N(Arg), e) :
+    lidx(clo(e), y) > -1 ? pair(v, _N(Clo), e) :
+    lookup_lex(v, par(e), y); }
 
 CO(comp_sym, obj x) {
   obj y, q;
-  with(x, y = A(q = lookup_variable(v, e ? *e:nil, x)));
+  with(x, y = A(q = lookup_lex(v, e ? *e:nil, x)));
   switch (N(y)) {
     case Here: return comp_imm(v, e, m, B(q));
     case Wait:
@@ -347,13 +344,10 @@ CO(comp_sym, obj x) {
       clo(*e) = q;
       return imx(v, e, m, clo, _N(y)); } }
 
-CO(comp_expr_) {
-  return comp_expr(v, e, m, *v->sp++); }
-
-CO(comp_expr, obj x) {
-  return (symp(x) ? comp_sym :
-          twop(x) ? comp_list :
-                    comp_imm)(v, e, m, x); }
+CO(comp_expr_) { return comp_expr(v, e, m, *v->sp++); }
+CO(comp_expr, obj x) { return (symp(x) ? comp_sym :
+                               twop(x) ? comp_list :
+                                         comp_imm)(v, e, m, x); }
 
 static obj apply(lips, obj, obj) NoInline;
 
@@ -375,9 +369,8 @@ CO(comp_call, obj fun, obj args) {
       inptr(comp_expr_), A(args),
       inptr(emit_i), inptr(push)),
     args = B(args);
-  um;
 
-  return Ccc(m); }
+  return um, Ccc(m); }
 
 static u0 comp_sequence_loop(lips v, mem e, obj x) {
   if (twop(x))
@@ -490,8 +483,7 @@ Vm(hseek_u) {
 Vm(ev_u) {
   Ary(1);
   CallC(
-    Push(inptr(emit_i), inptr(yield),
-         inptr(comp_alloc_thread)),
+    Push(inptr(emit_i), inptr(yield), inptr(comp_alloc_thread)),
     xp = _H(comp_expr(v, NULL, 0, *Argv)),
     v->xp = (*H(xp))(v, xp, v->fp, v->sp, v->hp, nil));
   Jump(ret); }
@@ -581,30 +573,3 @@ Vm(hnom_u) {
   Tc(*Argv, Hom);
   xp = homnom(v, *Argv);
   Jump(ret); }
-
-#define stale(o) inb((mem)(o),base0,base0+len0)
-Gc(cphom) {
- hom src = H(x);
- if (fresh(*src)) return (obj) *src;
- hom end = button(src), start = (hom) end[1],
-     dst = bump(v, end - start + 2), j = dst;
- for (hom k = start; k < end;)
-  j[0] = k[0],
-  k++[0] = (terp*) _H(j++);
- j[0] = NULL;
- j[1] = (terp*) dst;
- for (obj u; j-- > dst;
-   u = (obj) *j,
-   *j = (terp*) (!stale(u) ? u : cp(v, u, len0, base0)));
- return _H(dst += src - start); }
-
-#include "write.h"
-static u0 emhomn(lips v, FILE *o, obj x) {
-  fputc('\\', o);
-  switch (kind(x)) {
-    case Sym: return emsym(v, o, x);
-    case Two: if (symp(A(x))) emsym(v, o, A(x));
-              if (twop(B(x))) emhomn(v, o, B(x)); } }
-
-u0 emhom(lips v, FILE *o, obj x) {
-  emhomn(v, o, homnom(v, x)); }

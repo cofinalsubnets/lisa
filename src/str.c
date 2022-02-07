@@ -9,21 +9,6 @@ obj string(lips v, const char* c) {
   cpy8(o->text, c, o->len = bs);
   return _S(o); }
 
-Gc(cpstr) {
-  str dst, src = S(x);
-  return src->len == 0 ? *(mem)src->text :
-    (dst = bump(v, Width(str) + b2w(src->len)),
-     cpy64(dst->text, src->text, b2w(src->len)),
-     dst->len = src->len, src->len = 0,
-     *(mem) src->text = _S(dst)); }
-
-u0 emstr(lips v, FILE *o, obj x) {
-  str s = S(x);
-  fputc('"', o);
-  for (char *t = s->text; *t; fputc(*t++, o))
-    if (*t == '"') fputc('\\', o);
-  fputc('"', o); }
-
 #include "terp.h"
 // string instructions
 Vm(strl) {
