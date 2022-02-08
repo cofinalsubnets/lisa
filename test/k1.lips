@@ -1,7 +1,3 @@
-(:::
-  delay (\ x (: a (sym) b (sym) c (sym) d (sym) (L \ a (L \ b c d (L (L x a) b c d)))))
-  )
-
 (:
  (walk u s) (||
   (&& (var? u) (: t (has-s s u)) (walk (A t) s))
@@ -9,23 +5,23 @@
   u)
 
 
- (empty-stream n m y) (n)
- ((SX x s) n m y) (y x s)
+ (empty-stream n) (n)
+ ((SX x s) n m y) (y x (s n m y))
  (SI x) (SX x empty-stream)
  (S-take z f n s) (? (= n 0) z (s
   (\ z)
   (\ s (S-take z f n (s)))
   (\ x s (f x (S-take z f (? (nump n) (- n 1)) s)))))
 
- ((S+ s t) n m y) (s
-  (\ (t n m y))
-  (\ s (\ ((S+ t (s)) n m y)))
-  (\ x s (y x ((S+ t s) n m y))))
+ (S+ s t) (s
+  (\ t)
+  (\ s (\ (S+ (s) t)))
+  (\ x s (SX x (S+ t s))))
 
- ((S* f s) n m y) (s
-  n
-  (\ s (\ ((S* f (s)) n m y)))
-  (\ x s ((S+ (S* f s) (f x)) n m y)))
+ (S* f s) (s
+  (\ empty-stream)
+  (\ s (\ (S* f (s))))
+  (\ x s (S+ (f x) (S* f s))))
 
  ((et  a b) s) (S* b (a s))
  ((vel a b) s) (S+ (a s) (b s))
@@ -46,6 +42,7 @@
    (? (: it (has-s (X (map A (A st)) (B st)) k))
     (L k (walk (A it) st)))))
    )
+(::: delay (\ x (: a (sym) b (sym) (L \ a (L \ _ b _ (L b (L \ (L x a))))))))
 
 ;(: never (vel (\ empty-stream) (delay never))
 ;(Run n vs q) (S-take X n (S$ (rei vs) (q ~~))))
@@ -54,7 +51,7 @@
  (unord-eq '((a (1 2 (3 (4))) b (3 (4)) c 4)) (Run () '(a b c) (\\ a b c (et (est a (L 1 2 b)) (et (est b (L 3 (L c))) (est c 4))))))
 ; (= (rho 9 '(a 9)) (Run 9 '(a) (\\ a (: nines (vel (est a 9) (delay nines))))))
 ; (unord-eq (map (\ i (L 'a i)) (iota 10)) (Run 10 '(a) (\\ a (: (at-least n) (vel (est a n) (delay (at-least (+ n 1)))) (vel (\ empty-stream) (vel (est a 0) (at-least 1)))))))
-; (unord-eq '((a 7 b 6) (a 7 b 5)) (Run () '(a b) (\\ a b (et (est a 7) (vel (est b 5) (est b 6))))))
+ ;(unord-eq '((a 7 b 6) (a 7 b 5)) (Run () '(a b) (\\ a b (et (est a 7) (vel (est b 5) (est b 6))))))
  (unord-eq '((a 9 b 8)) (Run () '(a b) (\\ a b (et (est a 9) (est b 8)))))
  (unord-eq '((a 1 b 1)) (Run () '(a b) (\\ a b (et (est a 1) (est a b)))))
 ; (unord-eq '((a 7 b 3)) (Run () '(a b) (\\ a b (et (est a 7) (et (est b 3) (vel (est b 3) (est b 4)))))))
