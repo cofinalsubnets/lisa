@@ -14,7 +14,7 @@
 
   has-s dict-has
   ref-s dict-get
-  ext-s dict-set
+  (ext-s s k v) (dict-set s k v)
   st-empty ~~
  )
 (:::

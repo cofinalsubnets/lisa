@@ -65,7 +65,7 @@ sloc:
 	cloc --force-lang=Lisp,$n *
 bits: bin/$n bin/$b
 	du -h $^
-repl_cmd=bin/$n.bin -_i $(libs) test/{00-helpers,k3,nf}.lips
+repl_cmd=bin/$n.bin -_i $(libs) test/{00-helpers,01-k,k1,nf}.lips
 repl: bin/$n
 	which rlwrap && rlwrap $(repl_cmd) || $(repl_cmd)
 

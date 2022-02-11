@@ -26,3 +26,5 @@
  (unord-eq a b) (&&
   (= (len a) (len b))
   (all (cu memq a) b)))
+
+(: (time f) (: t0 (clock) x (f) (, (. (- (clock) t0) 'ms) x)))

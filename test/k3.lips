@@ -5,8 +5,16 @@
 (:
  ((g+ f g) s) (n+ (f s) (g s))
  ((g* f g) s) (n* (f s) g)
- (n+ s t) (? (~ s) t  (\? s) (\ (n+ t (s))) (X (A s) (n+ (B s) t)))
- (n* s g) (? (~ s) () (\? s) (\ (n* (s) g)) (n+ (g (A s)) (n* (B s) g)))
+
+ (n+ s t)
+  (? (~ s) t
+     (\? s) (\ (n+ t (s)))
+     (X (A s) (n+ (B s) t)))
+
+ (n* s g)
+  (? (~ s) s
+     (\? s) (\ (n* (s) g))
+     (n+ (g (A s)) (n* (B s) g)))
 
  (walk u s)
   (? (var? u) (? (: t (has-s s u)) (walk (A t) s) u)
@@ -63,7 +71,7 @@
                         (fibo x p) (fibo y q)
                         (add p q b))))
     (= (L (L 'a (iter 144 L ())))
-     (re '(a) (run () (\\ a (fibo (iter 12 L ()) a))))))
+     (time (\(re '(a) (run () (\\ a (fibo (iter 12 L ()) a))))))))
  (~ (run () (\\ a (&* (== a 0) (== a 1)))))
  (~ (run () (\\ a b (&* (== a 7) (== b 3) (|* (== b 2) (== b 4))))))
  (unord-eq '((a 1 b 2 c 2) (b 9 c 7) (c 88)) (re '(a b c) (run ()
