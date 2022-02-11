@@ -71,7 +71,7 @@
                         (fibo x p) (fibo y q)
                         (add p q b))))
     (= (L (L 'a (iter 144 L ())))
-     (\(re '(a) (run () (\\ a (fibo (iter 12 L ()) a)))))))
+     (re '(a) (run () (\\ a (fibo (iter 12 L ()) a))))))
  (~ (run () (\\ a (&* (== a 0) (== a 1)))))
  (~ (run () (\\ a b (&* (== a 7) (== b 3) (|* (== b 2) (== b 4))))))
  (unord-eq '((a 1 b 2 c 2) (b 9 c 7) (c 88)) (re '(a b c) (run ()
