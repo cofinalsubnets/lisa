@@ -74,18 +74,16 @@
  (: inc L
     (iter n f x) (? (= 0 n) x (iter (- n 1) f (f x)))
     zero () one '(()) two '((()))
-    (add a b c) (vel (et (est a ()) (est b c))
-                 (wait (\\ x
-                  (et (est (inc x) a)
-                   (add x (inc b) c)))))
+    (add a b c) (vel (et (est a ()) (est b c)) (\\ x
+                 (et (est (inc x) a) (wait
+                  (add x (inc b) c)))))
     (fibo a b) (vel (et (est a one) (est b one))
-                (vel (et (est a two) (est b one))
-                 (wait (\\ x y p q
-                  (et (est (inc x) a)
-                   (et (est (inc y) x)
-                    (et (fibo x p)
-                     (et (fibo y q)
-                      (add p q b)))))))))
+                (vel (et (est a two) (est b one)) (\\ x y p q
+                 (et (est (inc x) a)
+                  (et (est (inc y) x) (wait
+                   (et (fibo x p)
+                    (et (fibo y q)
+                     (add p q b)))))))))
     (= (L (L 'a (iter 144 L ())))
-     (time (\ (Run () '(a) (\\ a (fibo (iter 12 L ()) a)))))))
+     (\ (Run () '(a) (\\ a (fibo (iter 12 L ()) a))))))
  )
