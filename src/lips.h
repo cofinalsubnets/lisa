@@ -35,6 +35,7 @@ typedef struct lips {
  i64 rand, count, // random state
      t0, len, *pool; // memory state
  root root; // gc protection list
+ obj (*panic)(struct lips*);
  jmp_buf restart; // top level restart
 } *lips;
 

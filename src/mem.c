@@ -10,12 +10,6 @@
 typedef obj copier(lips, obj, u64, mem);
 static Inline copier cp;
 
-// memory allocation functions
-static u0 reqsp(lips v, u64 req) {
-  if (!cycle(v, req)) {
-    errp(v, "oom");
-    restart(v); } }
-
 // unchecked allocator -- make sure there's enough memory!
 static u0* bump(lips v, u64 n) {
   u0* x = v->hp;
@@ -23,7 +17,9 @@ static u0* bump(lips v, u64 n) {
 
 // general purpose memory allocator
 u0* cells(lips v, u64 n) {
-  if (Avail < n) reqsp(v, n);
+  if (Avail < n && !cycle(v, n)) {
+    errp(v, oom_err_msg, v->len, n);
+    restart(v); }
   return bump(v, n); }
 
 #include <stdlib.h>
@@ -121,11 +117,6 @@ u1 cycle(lips v, u64 req) {
   return copy(v, len) || allocd <= v->len; }
 
 #include "hom.h"
-Vm(gc) {
-  u64 req = v->xp;
-  CallC(req = cycle(v, req));
-  if (req) Next(0);
-  Jump(nope, "oom : %d req %d len", req, v->len); }
 
 static copier cphom, cpvec, cptwo, cpsym, cpstr, cptbl;
 static Gc(cpid) { return x; }

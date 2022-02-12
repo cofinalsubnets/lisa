@@ -9,7 +9,7 @@ libs=lib/lips/prelude.lips
 files=$(bins) $(libs) $(docs)
 
 # command to run the tests
-t=bin/$b -_ $(libs) $(sort $(wildcard test/*))
+t=bin/$b -_ $(libs) $(sort $(wildcard test/*.lips))
 
 test: bin/$b
 	/usr/bin/env TIMEFORMAT="in %Rs" bash -c "time $t"

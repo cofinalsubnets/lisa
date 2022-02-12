@@ -1,3 +1,7 @@
+terp gc, type_error, oob_error, ary_error, div_error;
+obj restart(lips);
+u0 errp(lips, const char*, ...);
+
 #define insts(_)\
  _(tget, 0) _(tset, 0) _(thas, 0) _(tlen, 0) _(arity, 0)\
  _(idZ, 0) _(idH, 0) _(id2, 0) _(idT, 0) _(imm, 0)\
@@ -99,6 +103,7 @@ insts(ninl)
 #define Tc(x,t) if(kind((x))-(t)){v->xp=t;Jump(type_error);}
 // arity check
 #define arity_err_msg "wrong arity : %d of %d"
+#define oom_err_msg "out of memory : %d + %d"
 #define Ary(n) if(_N(n)>Argc)Jump((v->xp=n,ary_error))
 
 #define OP(nom, x, n) Vm(nom) { xp = (x); Next(n); }
@@ -121,8 +126,3 @@ insts(ninl)
 #define Eva v->glob[Eval]
 #define App v->glob[Apply]
 #define Re  v->glob[Restart]
-
-terp gc, type_error, oob_error, ary_error, div_error;
-Vm(nope, const char *, ...);
-obj restart(lips), err(lips, char*, ...);
-u0 errp(lips, char*, ...);

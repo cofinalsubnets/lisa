@@ -24,9 +24,9 @@ Vm(fin) { return free(v->pool), free(v), 0; }
 Vm(scrr) {
   const char *path = (const char *) H(ip)[1];
   FILE *f = fopen(path, "r");
-  if (!f) return
-    errp(v, "%s : %s", path, strerror(errno)),
-    EXIT_FAILURE;
+  if (!f) {
+    errp(v, "%s : %s", path, strerror(errno));
+    return EXIT_FAILURE; }
   if (setjmp(v->restart)) return EXIT_FAILURE;
   for (obj x; (x = parse(v, f)); eval(v, x));
   fclose(f);
@@ -35,9 +35,9 @@ Vm(scrr) {
 static u1 script(lips v, const char *path) {
   FILE *f = fopen(path, "r");
 
-  if (!f) return
-    errp(v, "%s : %s", path, strerror(errno)),
-    false;
+  if (!f) {
+    errp(v, "%s : %s", path, strerror(errno));
+    return false; }
 
   if (setjmp(v->restart)) return false;
 
@@ -68,6 +68,9 @@ lips li_close(lips v) {
   return NULL; }
 
 Vm(li_exit) { li_close(v); exit(N(xp)); }
+
+//static obj panic_zero(lips v) { return 0; }
+
 
 #define BOOT PREFIX "/lib/lips/prelude.lips"
 lips li_open(const char *boot) {

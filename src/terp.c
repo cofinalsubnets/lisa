@@ -79,7 +79,9 @@ Vm(lbind) {
  obj w = (obj) H(ip)[1], d = AB(w), y = A(w);
  if (!(w = tbl_get(v, d, xp = BB(w)))) {
   char *nom = nilp(Y(xp)->nom) ? "()" : S(Y(xp)->nom)->text;
-  Jump(nope, "free variable : %s", nom); }
+  Pack();
+  errp(v, "free variable: %s", nom);
+  return restart(v); }
  xp = w;
  if (getnum(y) != 8) Tc(xp, getnum(y)); // do the type check
  terp *q = H(ip)[2]; // omit the arity check if possible
@@ -142,7 +144,7 @@ Vm(call) {
  Clos = nil;
  Argc = adic;
  Ap(xp, nil); }
- 
+
 Vm(ap_u) {
  Ary(2);
  obj x = Argv[0],
@@ -258,21 +260,15 @@ Tp(str) Tp(tbl) Tp(vec) Tp(nil)
 // stack manipulation
 Vm(dupl) { Have1(); --sp; sp[0] = sp[1]; Next(1); }
 
-u0 errp(lips v, char *msg, ...) {
-  va_list xs;
-  fputs("# ", stderr);
-  va_start(xs, msg);
-  vfprintf(stderr, msg, xs);
-  va_end(xs);
-  fputc('\n', stderr); }
-
 obj restart(lips v) {
   v->fp = v->sp = v->pool + v->len;
   v->xp = v->ip = nil;
   v->root = NULL;
   longjmp(v->restart, 1); }
 
-Vm(nope, const char *msg, ...) {
+u0 errp(lips v, const char *msg, ...) {
+  obj ip = v->ip;
+  mem fp = v->fp;
   // print current call as (function arg1 arg2 ...)
   fputs("# (", stderr);
   emit(v, stderr, ip);
@@ -293,35 +289,51 @@ Vm(nope, const char *msg, ...) {
   fputc('\n', stderr);
 
   // print backtrace
-  for (;;) {
+  for (mem top = v->pool + v->len; fp < top;) {
     ip = Retp, fp += Width(frame) + N(Argc) + N(Subr);
     if (button(H(ip))[-1] == yield) break;
-    fputs("# in ", stderr), emsep(v, ip, stderr, '\n'); }
+    fputs("# in ", stderr), emsep(v, ip, stderr, '\n'); } }
 
-  v->hp = hp;
+Vm(gc) {
+  u64 req = v->xp;
+  CallC(req = cycle(v, req));
+  if (req) Next(0);
+  errp(v, oom_err_msg, v->len, req);
   return restart(v); }
 
 // errors
 Vm(fail) {
   if (homp(Re)) Ap(Re, xp);
-  Jump(nope, NULL); }
+  Pack();
+  errp(v, NULL);
+  return restart(v); }
 
 Vm(type_error) {
   if (homp(Re)) Ap(Re, xp);
   enum tag exp = v->xp, act = kind(xp);
-  Jump(nope, "wrong type : %s for %s", tnom(act), tnom(exp)); }
+  Pack();
+  errp(v, "wrong type : %s for %s", tnom(act), tnom(exp));
+  return restart(v); }
 
 Vm(oob_error) {
   if (homp(Re)) Ap(Re, xp);
-  Jump(nope, "oob : %d >= %d", v->xp, v->ip); }
+  i64 a = v->xp, b = v->ip;
+  Pack();
+  errp(v, "oob : %d >= %d", a, b);
+  return restart(v); }
 
 Vm(ary_error) {
   if (homp(Re)) Ap(Re, xp);
-  Jump(nope, arity_err_msg, N(Argc), v->xp); }
+  i64 a = N(Argc), b = v->xp;
+  Pack();
+  errp(v, arity_err_msg, a, b);
+  return restart(v); }
 
 Vm(div_error) {
   if (homp(Re)) Ap(Re, xp);
-  Jump(nope, "/ 0"); }
+  Pack();
+  errp(v, "/ 0");
+  return restart(v); }
 
 // type/arity checking
 #define DTc(n, t) Vm(n) {\
