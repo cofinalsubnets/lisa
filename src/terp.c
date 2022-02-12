@@ -98,35 +98,31 @@ Vm(yield) { Pack(); return xp; }
 #define GF(x) G(F(x))
 #define GG(x) G(G(x))
 
-// conditional jumps
+// branches
+Vm(jump) { Ap((obj) H(ip)[1], xp); }
+// test, yes addr, yes val, no addr, no val
 #define Br(test, a, x, b, y) {\
   if (test) Ap((obj)a(H(ip)),x);\
   else Ap((obj)b(H(ip)),y); }
-#define BR(op, a, x, b, y)\
-  Br(*sp++ op xp, a, x, b, y)
 
-Vm(branch) Br(xp == nil, FF, xp, GF, xp)
-Vm(barnch) Br(xp == nil, GF, xp, FF, xp)
-Vm(breq)   Br(eql(*sp++, xp), GF, ok, FF, nil)
-Vm(brne)   Br(eql(*sp++, xp), FF, ok, GF, nil)
+Vm(branch)  Br(xp != nil, GF, xp, FF, xp)
+Vm(barnch)  Br(xp == nil, GF, xp, FF, xp)
 
-// ordinary jumps
+Vm(breq)    Br(eql(*sp++, xp), GF, ok, FF, nil)
+Vm(brne)    Br(eql(*sp++, xp), FF, ok, GF, nil)
 
-#define BR1(a, b, c)\
- Vm(brlt)    BR(a,  GF, b,  FF, c)\
- Vm(brgteq2) BR(a,  GF, b,  FF, c)\
- Vm(brgteq)  BR(a,  FF, c, GF, b)\
- Vm(brlt2)   BR(a,  FF, b,  GF, c)\
- Vm(brgt2)   BR(a##=, GF, c, FF, b)\
- Vm(brlteq)  BR(a##=, GF, b,  FF, c)\
- Vm(brgt)    BR(a##=, FF, c, GF, b)\
- Vm(brlteq2) BR(a##=, FF, b,  GF, c)\
+Vm(brlt)    Br(*sp++ < xp,  GF, xp,  FF, nil)
+Vm(brlt2)   Br(*sp++ < xp,  FF, xp,  GF, nil)
 
-BR1(<, xp, nil)
+Vm(brlteq)  Br(*sp++ <= xp, GF, xp,  FF, nil)
+Vm(brlteq2) Br(*sp++ <= xp, FF, xp,  GF, nil)
+
+Vm(brgt)    Br(*sp++ > xp, GF, xp, FF, nil)
+Vm(brgt2)   Br(*sp++ > xp, FF, xp, GF, nil)
+
+Vm(brgteq)  Br(*sp++ >= xp, GF, xp, FF, nil)
+// brgteq2 is brlt
 #undef Br
-
-// unconditional jumps
-Vm(jump) { Ap((obj) H(ip)[1], xp); }
 
 // return from a function
 Vm(ret) {
@@ -256,14 +252,8 @@ Vm(vararg) {
       for (obj *xs = Argv, *l = xs + N(Argc); xs < l;)\
         if (!t##p(*xs++)) Go(ret, nil);\
       Go(ret, ok); }
-Tp(num)
-Tp(hom)
-Tp(two)
-Tp(sym)
-Tp(str)
-Tp(tbl)
-Tp(vec)
-Tp(nil)
+Tp(num) Tp(hom) Tp(two) Tp(sym)
+Tp(str) Tp(tbl) Tp(vec) Tp(nil)
 
 // stack manipulation
 Vm(dupl) { Have1(); --sp; sp[0] = sp[1]; Next(1); }
@@ -275,10 +265,6 @@ u0 errp(lips v, char *msg, ...) {
   vfprintf(stderr, msg, xs);
   va_end(xs);
   fputc('\n', stderr); }
-
-Vm(oops) {
-  if (homp(Re)) Ap(Re, nil);
-  else return restart(v); }
 
 obj restart(lips v) {
   v->fp = v->sp = v->pool + v->len;

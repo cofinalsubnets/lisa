@@ -613,7 +613,7 @@
    (i- lt) (br2 (i- brlt) (i- brlt2))
    (i- lteq) (br2 (i- brlteq) (i- brlteq2))
    (i- gt) (br2 (i- brgt) (i- brgt2))
-   (i- gteq) (br2 (i- brgteq) (i- brgteq2))
+   (i- gteq) (br2 (i- brgteq) (i- brlt))
    (i- eq) (br2 (i- breq) (i- brne))
    (i- nilpp) (f1 hgeti (i- branch) (i- barnch) (i- barnch) (i- branch))
    (i- imm) (f1 hgetx () (i- unit) 0 (i- zero) 1 (i- one))))

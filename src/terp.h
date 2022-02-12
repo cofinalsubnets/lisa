@@ -13,7 +13,7 @@
  _(unit, 0) _(one, 0) _(zero, 0) _(arg0, 0) _(arg1, 0)\
  _(loc0, 0) _(loc1, 0)       _(clo0, 0)     _(clo1, 0)\
  _(brlt, 0) _(brlteq, 0)   _(breq, 0) _(brgteq, 0) _(brlt2, 0)\
- _(brlteq2, 0) _(brgt2, 0) _(brgteq2, 0)  _(brgt, 0) _(brne, 0)\
+ _(brlteq2, 0) _(brgt2, 0) _(brgt, 0) _(brne, 0)\
  _(cont, 0) _(dupl, 0) _(emi, 0) _(emx, 0) _(vararg, 0)\
  _(gsym_u, tnom(Sym)) _(exit_u, "exit") _(sys_u, "sys")\
  _(par_u, "read") _(sar_u, ">>") _(sal_u, "<<") _(band_u, "&")\
