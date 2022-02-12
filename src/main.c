@@ -64,8 +64,7 @@ static NoInline u0 defprim(lips v, const char *a, terp *i) {
   tbl_set(v, Top, A(nom), _H(prim)); }
 
 u0 li_fin(lips v) {
-  if (v->pool) free(v->pool);
-  memset(v, 0, sizeof(struct lips)); }
+  if (v->pool) free(v->pool), v->pool = NULL; }
 
 lips li_ini(lips v) {
   v->t0 = clock();

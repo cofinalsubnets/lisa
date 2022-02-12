@@ -105,10 +105,10 @@ Vm(yield) { Pack(); return xp; }
 #define BR(op, a, x, b, y)\
   Br(*sp++ op xp, a, x, b, y)
 
-Vm(branch)  Br(xp == nil, FF, xp, GF, xp)
-Vm(barnch)  Br(xp == nil, GF, xp, FF, xp)
-Vm(breq)    Br(eql(*sp++, xp), GF, ok, FF, nil)
-Vm(brne)    Br(eql(*sp++, xp), FF, ok, GF, nil)
+Vm(branch) Br(xp == nil, FF, xp, GF, xp)
+Vm(barnch) Br(xp == nil, GF, xp, FF, xp)
+Vm(breq)   Br(eql(*sp++, xp), GF, ok, FF, nil)
+Vm(brne)   Br(eql(*sp++, xp), FF, ok, GF, nil)
 
 // ordinary jumps
 
@@ -332,6 +332,6 @@ Vm(ary_error) {
   v->xp = t; Jump(type_error); }
 DTc(idZ, Num) DTc(idH, Hom) DTc(idT, Tbl) DTc(id2, Two)
 Vm(arity) {
- obj reqd = (obj) H(ip)[1];
- if (reqd <= Argc) Next(2);
- else Jump((v->xp = N(reqd), ary_error)); }
+  obj reqd = (obj) H(ip)[1];
+  if (reqd <= Argc) Next(2);
+  else Jump((v->xp = N(reqd), ary_error)); }

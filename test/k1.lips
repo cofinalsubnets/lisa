@@ -1,4 +1,7 @@
-(::: zz (\ x (: a (sym) b (sym) c (sym) (L \ a (L \ b c (L c (L x a))))))) (:
+(::: zz (\ x (: a (sym) b (sym) c (sym) (L \ a (L \ b c (L c (L x a))))))
+ et (\ x xs . (foldl xs x (\ a b (L (\ a b (\ s (s* (a s) b))) a b))))
+ vel (\ x xs . (foldl xs x (\ a b (L (\ a b (\ s (s+ (a s) (b s)))) a b)))))
+(:
  ((sX x s) _ _ y) (y x s)
  (sno n) (n)
  (sun x) (sX x sno)
@@ -10,9 +13,6 @@
  (slist s) (sfold X () s)
  (s+ s t) (s (\ t) (\ s (\ _ m (m (s+ t s)))) (\ x s (sX x (s+ s t))))
  (s* s g) (s (\ s) (\ s (\ _ m (m (s* s g)))) (\ x s (s+ (g x) (s* s g))))
-
- ((et  a b) s) (s* (a s) b)
- ((vel a b) s) (s+ (a s) (b s))
 
  ((est u v) s) (:
   (walk u s) (?  (&& (var? u) (: t (has-s s u))) (walk (A t) s) u)
