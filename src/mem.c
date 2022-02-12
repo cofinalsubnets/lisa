@@ -17,7 +17,7 @@ static u0* bump(lips v, u64 n) {
 
 // general purpose memory allocator
 u0* cells(lips v, u64 n) {
-  if (Avail < n && !cycle(v, n)) {
+  if (Avail < n && !please(v, n)) {
     errp(v, oom_err_msg, v->len, n);
     restart(v); }
   return bump(v, n); }
@@ -79,7 +79,7 @@ static clock_t copy(lips v, u64 len1) {
   v->t0 = t2;
   return t1 == t2 ? 1 : (t2 - t0) / (t2 - t1); }
 
-// gc entry point cycle : li x i64 -> u1
+// please : li x i64 -> u1
 //
 // try to return with at least req words of available memory.
 // return true on success, false otherwise. this function also
@@ -104,7 +104,7 @@ static clock_t copy(lips v, u64 len1) {
 // the cost of more memory use under pressure.
 #define growp (allocd > len || vit < 32) // lower bound
 #define shrinkp (allocd < (len>>1) && vit >= 128) // upper bound
-u1 cycle(lips v, u64 req) {
+u1 please(lips v, u64 req) {
   i64 len = v->len, vit = copy(v, len);
   if (!vit) return false;
 

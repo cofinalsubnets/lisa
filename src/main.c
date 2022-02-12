@@ -19,33 +19,13 @@
 #define PREFIX "/usr/local"
 #endif
 
-Vm(fin) { return free(v->pool), free(v), 0; }
-
-Vm(scrr) {
-  const char *path = (const char *) H(ip)[1];
-  FILE *f = fopen(path, "r");
-  if (!f) {
-    errp(v, "%s : %s", path, strerror(errno));
-    return EXIT_FAILURE; }
-  if (setjmp(v->restart)) return EXIT_FAILURE;
-  for (obj x; (x = parse(v, f)); eval(v, x));
-  fclose(f);
-  Next(2); }
-
 static u1 script(lips v, const char *path) {
   FILE *f = fopen(path, "r");
-
-  if (!f) {
-    errp(v, "%s : %s", path, strerror(errno));
-    return false; }
-
+  if (!f) return errp(v, "%s : %s", path, strerror(errno)), false;
   if (setjmp(v->restart)) return false;
-
   for (obj x; (x = parse(v, f)); eval(v, x));
-
-  u1 r = feof(f);
-  fclose(f);
-  return r; }
+  u1 done = feof(f);
+  return fclose(f), done; }
 
 static NoInline u0 rin(lips v, const char *a, terp *b) {
   obj z = interns(v, a);

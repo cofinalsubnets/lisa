@@ -10,11 +10,12 @@
 #include "str.h"
 #include "vec.h"
 // " the virtual machine "
-// it's a stack machine with one free register that's
-// implemented on top of the C compiler's calling convention.
-// this allows us to keep the most important state variables
-// in CPU registers at all times while the interpreter is
-// running, without any platform-specific code.
+// It's a stack machine with one free register that runs on
+// top of the C compiler's calling convention. This lets us
+// keep the main state variables in CPU registers without
+// needing to write any platform specific code, as long as
+// the compiler passes enough arguments in registers and
+// optimizes tail calls.
 
 // the C compiler has to optimize tail calls in terp functions
 // or the stack will grow every time an instruction happens!
@@ -296,7 +297,7 @@ u0 errp(lips v, const char *msg, ...) {
 
 Vm(gc) {
   u64 req = v->xp;
-  CallC(req = cycle(v, req));
+  CallC(req = please(v, req));
   if (req) Next(0);
   errp(v, oom_err_msg, v->len, req);
   return restart(v); }

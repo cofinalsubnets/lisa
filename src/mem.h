@@ -5,4 +5,4 @@
 #define Width(t) b2w(sizeof(struct t))
 
 u0 *cells(lips, u64);
-u1 cycle(lips, u64);
+u1 please(lips, u64);

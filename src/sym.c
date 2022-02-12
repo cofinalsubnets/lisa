@@ -1,6 +1,7 @@
 #include "lips.h"
 #include "sym.h"
 #include "str.h"
+#include "terp.h"
 
 //symbols
 
@@ -29,9 +30,9 @@ obj sskc(lips v, mem y, obj x) {
 
 obj intern(lips v, obj x) {
   if (Avail < Width(sym)) {
-    u1 ok;
-    with(x, ok = cycle(v, Width(sym)));
-    if (!ok) return 0; }
+    u1 o;
+    with(x, o = please(v, Width(sym)));
+    if (!o) errp(v, oom_err_msg, v->len, Width(sym)), restart(v); }
   return sskc(v, &v->syms, x); }
 
 #include "terp.h"

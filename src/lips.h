@@ -30,12 +30,10 @@ enum globl { // indices into a table of global constants
 
 typedef struct lips {
  obj ip, xp, *fp, *hp, *sp, // interpreter state
-     syms, // symbol table
-     glob[NGlobs]; // global variables
+     syms, glob[NGlobs]; // symbols & globals
  i64 rand, count, // random state
      t0, len, *pool; // memory state
  root root; // gc protection list
- obj (*panic)(struct lips*);
  jmp_buf restart; // top level restart
 } *lips;
 

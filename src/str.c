@@ -21,10 +21,9 @@ Vm(strg) {
   Ary(2);
   Tc(Argv[0], Str);
   Tc(Argv[1], Num);
-  xp = 
-     N(Argv[1]) < S(Argv[0])->len-1 ?
-    _N(S(Argv[0])->text[N(Argv[1])]) :
-    nil;
+  xp = N(Argv[1]) < S(Argv[0])->len-1 ?
+       _N(S(Argv[0])->text[N(Argv[1])]) :
+       nil;
   Jump(ret); }
 
 Vm(strconc) {

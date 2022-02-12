@@ -34,7 +34,7 @@ u0 errp(lips, const char*, ...);
  _(ccc_u, "ccc") _(putc_u, "putc") _(ystr_u, "ystr")\
  _(slurp, "slurp") _(dump, "dump") _(hnom_u, "hnom")\
  _(emx_u, "emx") _(emi_u, "emi") _(em_u, ".") _(ev_u, "ev")\
- _(ap_u, "ap") _(getc_u, "getc") _(vget_u, "vget")\
+ _(ap_u, "ap") _(vget_u, "vget")\
  _(vset_u, "vset") _(vec_u, tnom(Vec)) _(hgeti_u, "hgeti")\
  _(hfin_u, "hfin") _(hgetx_u, "hgetx") _(twop_u, "twop")\
  _(nump_u, "nump") _(homp_u, "homp") _(tblp_u, "tblp")\

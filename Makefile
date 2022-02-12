@@ -20,12 +20,13 @@ else
 PREFIX ?= $(HOME)/.local
 endif
 
-CC = gcc
-CPPFLAGS = -DPREFIX=\"$(PREFIX)\"
-CFLAGS = -std=gnu17 -g -O2 -flto -Wall -Werror\
+CC=gcc
+CPPFLAGS=-DPREFIX=\"$(PREFIX)\"
+CFLAGS=-std=gnu17 -g -O2 -flto -Wall -Werror\
 	-Wstrict-prototypes -Wno-shift-negative-value\
 	-fno-stack-protector -fno-unroll-loops\
-	-fno-inline -fno-align-functions
+	-fno-inline -fno-align-functions\
+	-mtune=native -march=native
 
 # build config
 #
