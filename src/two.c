@@ -2,7 +2,8 @@
 #include "two.h"
 
 u64 llen(obj l) {
-  for (u64 i = 0;; l = B(l), i++) if (!twop(l)) return i; }
+  for (u64 i = 0;; l = B(l), i++)
+    if (!twop(l)) return i; }
 
 #include "terp.h"
 #include "hom.h"

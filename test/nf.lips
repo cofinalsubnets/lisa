@@ -1,5 +1,4 @@
-(: 
-   (or_ l r) (? (= l r) l (L 'or l r))
+(: (or_ l r) (? (= l r) l (L 'or l r))
    (and_ l r) (? (= l r) l (L 'and l r))
 
    (lhs x) (AB x)
@@ -70,11 +69,7 @@
              (or (or (and b (and c e))
                      (and b (and c f)))
                  (or (and b (and d e))
-                     (and b (and d f)))))
-
-
-
-   )
+                     (and b (and d f))))))
 
    (test "boolean normal forms"
      (= (nnf ex1) nnf1)
@@ -84,4 +79,3 @@
      (= (dnf ex4) dnf4)
      (= (dnf ex5) dnf5)
      (= (dnf ex3) dnf3))
-

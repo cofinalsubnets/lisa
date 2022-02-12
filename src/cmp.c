@@ -6,12 +6,19 @@
 static NoInline u1 eql_(obj a, obj b) {
   return eql(a, b); }
 
-NoInline u1 eql_two(obj a, obj b) {
+static NoInline u1 eql_two(obj a, obj b) {
   return eql_(A(a), A(b)) && eql_(B(a), B(b)); }
 
-NoInline u1 eql_str(obj a, obj b) {
+static NoInline u1 eql_str(obj a, obj b) {
   return S(a)->len == S(b)->len &&
     scmp(S(a)->text, S(b)->text) == 0; }
+
+Inline u1 eql(obj a, obj b) {
+  if (a == b) return true;
+  if (kind(a) != kind(b)) return false;
+  if (kind(a) == Two) return eql_two(a, b);
+  if (kind(a) == Str) return eql_str(a, b);
+  return false; }
 
 #include "hom.h"
 #include "terp.h"

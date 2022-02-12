@@ -64,5 +64,4 @@
                     (et (fibo y q)
                      (add p q b)))))))))
     (= (L (L 'a (iter 144 L ())))
-     (Run () '(a) (\\ a (fibo (iter 12 L ()) a)))))
- )
+     (Run () '(a) (\\ a (fibo (iter 12 L ()) a))))))

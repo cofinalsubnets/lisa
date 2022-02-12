@@ -139,19 +139,19 @@ static Inline Gc(cp) {
 
 #define stale(o) inb((mem)(o),base0,base0+len0)
 Gc(cphom) {
- hom src = H(x);
- if (fresh(*src)) return (obj) *src;
- hom end = button(src), start = (hom) end[1],
-     dst = bump(v, end - start + 2), j = dst;
- for (hom k = start; k < end;)
-  j[0] = k[0],
-  k++[0] = (terp*) _H(j++);
- j[0] = NULL;
- j[1] = (terp*) dst;
- for (obj u; j-- > dst;
-   u = (obj) *j,
-   *j = (terp*) (!stale(u) ? u : cp(v, u, len0, base0)));
- return _H(dst += src - start); }
+  hom src = H(x);
+  if (fresh(*src)) return (obj) *src;
+  hom end = button(src), start = (hom) end[1],
+      dst = bump(v, end - start + 2), j = dst;
+  for (hom k = start; k < end;)
+    j[0] = k[0],
+    k++[0] = (terp*) _H(j++);
+  j[0] = NULL;
+  j[1] = (terp*) dst;
+  for (obj u; j-- > dst;
+    u = (obj) *j,
+    *j = (terp*) (!stale(u) ? u : cp(v, u, len0, base0)));
+  return _H(dst += src - start); }
 
 #include "str.h"
 Gc(cpstr) {

@@ -4,7 +4,6 @@
 ; everything is compiled by the bootstrap system, the second
 ; time by the (bootstrapped) live system.
 (: egg '(,
-
   ; standard library functions
   (: ; some aliases
      `'` ?'? :': ,', \'\ ~~ '(())
@@ -22,28 +21,6 @@
       (2? x) (X (f (A x)) (map f (B x)))
       (\? x) (\ _ . (x (ap f _)))
       x)
-
-     (show xs .) (:
-      (str1 x) (?
-       (nump x) (sfy-num x)
-       (homp x) (sfy-hom x)
-       (twop x) (sfy-two x)
-       (symp x) (ystr x)
-       (vecp x) (sfy-vec x)
-       (tblp x) (sfy-tbl x)
-       (strp x) x "()")
-      (i2d i) (sget "0123456789abcdefghijklmnopqrstuvwxyz" i)
-      (sfy-num i) (show-int i 10)
-      (show-int i r) (? (= i 0) ""
-       (scat (show-int (/ i r) r) (str (i2d (% i r)))))
-      (sfy-two x) (ap scat (X "(" (append (map show x) '(")"))))
-      (v2l v) (map (cu vget v) (iota (vlen v)))
-      (sfy-vec x)
-        (ap scat (X "[" (append (map show (v2l x)) '("]"))))
-      (sfy-tbl x)
-        (ap scat (X "{" (append (map show (flat-map (tkeys x) (\ k (L k (tget x k))))) '("}"))))
-      (sfy-hom x) (ap scat (flat-map (hnom x) ystr))
-      (ap scat (map str1 xs)))
 
      (append a b) (? (2? a) (X (A a) (append (B a) b)) b)
 
@@ -86,7 +63,6 @@
 
      ; tables
      (set x .) (foldl x (tbl) (\ t x (, (Ts t x ()) t)))
-
 
      ; numbers
      (abs x) (? (< x 0) (- x) x)
@@ -344,7 +320,6 @@
       (Ts e 'dfr (X k (Tg e'dfr)))
       (f4 (B kvs))
       (Ts (Tg e'val) k (ltu e k (BB kv)))))
-
 
   ; only bother with any of this if there are inner defs
   (? (: ks (tkeys (: def (Tg e'def))))

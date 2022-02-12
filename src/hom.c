@@ -11,18 +11,12 @@
 ////
 /// bootstrap thread compiler
 //
-// functions construct their continuations by pushing function
-// pointers onto the main stack with Push
+// passes continuations by pushing function pointers
+// onto the main stack with Push and calling them with Ccc
 #define Push(...) pushs(v,__VA_ARGS__,NULL)
-// and then calling them with Ccc
 #define Ccc(m) ((c1*)N(*v->sp++))(v,e,m)
-// there's a natural correspondence between the push/Ccc pattern
-// in this file and normal continuation passing style in lisp
-// (cf. the stage 2 compiler).
-
-// in addition to the main stack, the compiler uses Xp and Ip
-// as stacks for storing code entry points when generating
-// conditionals, which is admittedly kind of sus.
+// also uses Xp and Ip as stacks for storing code entry points
+// when generating conditionals.
 //
 // this compiler emits runtime type checks for safety but does
 // (almost) no optimizations or static typing since all it has
@@ -60,8 +54,7 @@ enum { Here, Loc, Arg, Clo, Wait };
 
 // helper functions for lists
 static i64 lidx(obj l, obj x) {
-  for (i64 i = 0; twop(l); l = B(l), i++)
-    if (x == A(l)) return i;
+  for (i64 i = 0; twop(l); l = B(l), i++) if (x == A(l)) return i;
   return -1; }
 
 static obj linitp(lips v, obj x, mem d) {

@@ -1,5 +1,3 @@
-typedef u0 emitter(lips, FILE*, obj);
-emitter emtwo, emit;
-u0 write_file(lips, const char*, const char*),
-   ems(lips, FILE*, obj, char),
+u0 emit(lips, FILE*, obj),
+   write_file(lips, const char*, const char*),
    emsep(lips, obj, FILE*, char);

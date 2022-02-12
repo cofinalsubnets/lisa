@@ -34,34 +34,29 @@ static hasher *hashers[] = {
   [Str] = hash_str,
   [Num] = hash_num,
   [Sym] = hash_sym,
-  [Tbl] = hash_nil,
-};
+  [Tbl] = hash_nil };
+
+Inline u64 hash(lips v, obj x) {
+  return hashers[kind(x)](v, x); }
 
 static u64 hash_sym(lips v, obj y) {
   return getsym(y)->code; }
-
-static u64 hash_str(lips v, obj x) {
-  str s = S(x);
-  u64 len = s->len;
-  char *us = s->text;
-  for (u64 h = 1;; h ^= *us++, h *= mix)
-    if (!len--) return h; }
-
 static u64 hash_two(lips v, obj w) {
   return ror64(hash(v, A(w)) * hash(v, B(w)), 32); }
-
 static u64 hash_hom(lips v, obj h) {
   return hash(v, homnom(v, h)) ^ mix; }
-
 static u64 hash_num(lips v, obj n) {
   return ror64(mix * n, 16); }
 static u64 hash_vec(lips v, obj x) {
   return ror64(mix * V(x)->len, 32); }
 static u64 hash_nil(lips v, obj _) {
   return ror64(mix * kind(_), 48); }
-
-Inline u64 hash(lips v, obj x) {
-  return hashers[kind(x)](v, x); }
+static u64 hash_str(lips v, obj x) {
+  str s = S(x);
+  u64 len = s->len;
+  char *us = s->text;
+  for (u64 h = 1;; h ^= *us++, h *= mix)
+    if (!len--) return h; }
 
 // shrinking a table never allocates memory, so it's safe
 // to do at any time.
@@ -180,10 +175,10 @@ Inline obj tblkeys(lips v, obj t) {
 
 // hash tables
 Vm(tblg) {
- Ary(2);
- Tc(Argv[0], Tbl);
- xp = tbl_get(v, Argv[0], Argv[1]);
- Go(ret, xp ? xp : nil); }
+  Ary(2);
+  Tc(Argv[0], Tbl);
+  xp = tbl_get(v, Argv[0], Argv[1]);
+  Go(ret, xp ? xp : nil); }
 
 OP1(tget, (xp = tbl_get(v, xp, *sp++)) ? xp : nil)
 
@@ -195,46 +190,46 @@ Vm(tkeys) {
   Next(1); }
 
 Vm(tblc) {
- Ary(2);
- Tc(Argv[0], Tbl);
- xp = tbl_get(v, Argv[0], Argv[1]);
- Go(ret, xp ? ok : nil); }
+  Ary(2);
+  Tc(Argv[0], Tbl);
+  xp = tbl_get(v, Argv[0], Argv[1]);
+  Go(ret, xp ? ok : nil); }
 
 static obj tblss(lips v, i64 i, i64 l) {
- mem fp = v->fp;
- return i > l-2 ? Argv[i-1] :
-  (tbl_set(v, v->xp, Argv[i], Argv[i+1]),
-   tblss(v, i+2, l)); }
+  mem fp = v->fp;
+  return i > l-2 ? Argv[i-1] :
+   (tbl_set(v, v->xp, Argv[i], Argv[i+1]),
+    tblss(v, i+2, l)); }
 
 Vm(tbls) {
- Ary(1);
- xp = *Argv;
- Tc(xp, Tbl);
- CallC(v->xp = tblss(v, 1, N(Argc)));
- Jump(ret); }
+  Ary(1);
+  xp = *Argv;
+  Tc(xp, Tbl);
+  CallC(v->xp = tblss(v, 1, N(Argc)));
+  Jump(ret); }
 
 Vm(tblmk) {
   CallC(v->xp = table(v), tblss(v, 0, N(Argc)));
   Jump(ret); }
 
 Vm(tbld) {
- Ary(2);
- Tc(Argv[0], Tbl);
- CallC(v->xp = tbl_del(v, Argv[0], Argv[1]));
- Jump(ret); }
+  Ary(2);
+  Tc(Argv[0], Tbl);
+  CallC(v->xp = tbl_del(v, Argv[0], Argv[1]));
+  Jump(ret); }
 
 Vm(tblks) {
- Ary(1);
- Tc(*Argv, Tbl);
- CallC(v->xp = tblkeys(v, *Argv));
- Jump(ret); }
+  Ary(1);
+  Tc(*Argv, Tbl);
+  CallC(v->xp = tblkeys(v, *Argv));
+  Jump(ret); }
 
 Vm(tbll) {
- Ary(1);
- Tc(*Argv, Tbl);
- Go(ret, _N(gettbl(*Argv)->len)); }
+  Ary(1);
+  Tc(*Argv, Tbl);
+  Go(ret, _N(gettbl(*Argv)->len)); }
 
 Vm(tset) {
- obj x = *sp++, y = *sp++;
- CallC(v->xp = tbl_set(v, xp, x, y));
- Next(1); }
+  obj x = *sp++, y = *sp++;
+  CallC(v->xp = tbl_set(v, xp, x, y));
+  Next(1); }
