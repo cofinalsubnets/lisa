@@ -21,21 +21,47 @@ static ent tbl_ent(lips v, obj u, obj k) {
 #include "vec.h"
 #include "sym.h"
 
-static u64 hash_str(str s) {
+static Inline u64 ror64(u64 x, u64 n) {
+  return (x<<(64-n))|(x>>n); }
+
+typedef u64 hasher(lips, obj);
+static hasher hash_sym, hash_str, hash_two, hash_hom, hash_num, hash_vec, hash_nil;
+static hasher *hashers[] = {
+  [Nil] = hash_nil,
+  [Hom] = hash_hom,
+  [Two] = hash_two,
+  [Vec] = hash_vec,
+  [Str] = hash_str,
+  [Num] = hash_num,
+  [Sym] = hash_sym,
+  [Tbl] = hash_nil,
+};
+
+static u64 hash_sym(lips v, obj y) {
+  return getsym(y)->code; }
+
+static u64 hash_str(lips v, obj x) {
+  str s = S(x);
   u64 len = s->len;
   char *us = s->text;
   for (u64 h = 1;; h ^= *us++, h *= mix)
     if (!len--) return h; }
 
-u64 hash(lips v, obj x) {
-  switch (kind(x)) {
-    case Sym: return getsym(x)->code;
-    case Str: return hash_str(S(x));
-    case Two: return hash(v, A(x)) ^ hash(v, B(x));
-    case Hom: return hash(v, homnom(v, x)) ^ mix;
-    case Num: return rotr64(mix * x, 16);
-    case Vec: return rotr64(mix * V(x)->len, 32);
-    default:  return rotr64(mix * kind(x), 48); } }
+static u64 hash_two(lips v, obj w) {
+  return ror64(hash(v, A(w)) * hash(v, B(w)), 32); }
+
+static u64 hash_hom(lips v, obj h) {
+  return hash(v, homnom(v, h)) ^ mix; }
+
+static u64 hash_num(lips v, obj n) {
+  return ror64(mix * n, 16); }
+static u64 hash_vec(lips v, obj x) {
+  return ror64(mix * V(x)->len, 32); }
+static u64 hash_nil(lips v, obj _) {
+  return ror64(mix * kind(_), 48); }
+
+Inline u64 hash(lips v, obj x) {
+  return hashers[kind(x)](v, x); }
 
 // shrinking a table never allocates memory, so it's safe
 // to do at any time.

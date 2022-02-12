@@ -2,7 +2,6 @@
 #include "terp.h"
 #include "hom.h"
 
-#define div0_err_msg "%d / 0"
 
 #define mm_u(_c,_v,_z,op){\
  obj x,*xs=_v,*l=xs+_c;\
@@ -14,7 +13,7 @@
  obj x,*xs=_v,*l=xs+_c;\
  for(xp=_z;xs<l;xp=xp op N(x)){\
   x = *xs++; Tc(x, Num);\
-  if (x == _N(0)) Jump(nope, div0_err_msg, xp);}\
+  if (x == _N(0)) Jump(div_error);}\
  Go(ret, _N(xp));}
 
 Vm(sub_u) {
@@ -34,7 +33,7 @@ Vm(sal_u) {
   mm_u(N(Argc)-1, Argv+1, N(*Argv), <<); }
 
 Vm(dqv) {
-  if (xp == _N(0)) Jump(nope, div0_err_msg, N(*sp));
+  if (xp == _N(0)) Jump(div_error);
   xp = _N(N(*sp++) / N(xp));
   Next(1); }
 
@@ -44,8 +43,7 @@ Vm(div_u) {
   mm_u0(xp-1,Argv+1,N(*Argv),/); }
 
 Vm(mod) {
-  if (xp == _N(0))
-    Jump(nope, div0_err_msg, N(*sp));
+  if (xp == _N(0)) Jump(div_error);
   xp = _N(N(*sp++) % N(xp));
   Next(1); }
 

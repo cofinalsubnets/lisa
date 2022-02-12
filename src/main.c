@@ -9,15 +9,17 @@
 #include <time.h>
 #include <string.h>
 #include <errno.h>
+#include "sym.h"
+#include "tbl.h"
+#include "mem.h"
+#include "two.h"
+#include "write.h"
 
 #ifndef PREFIX
 #define PREFIX "/usr/local"
 #endif
 
-Vm(fin) {
-  free(v->pool);
-  free(v);
-  return 0; }
+Vm(fin) { return free(v->pool), free(v), 0; }
 
 Vm(scrr) {
   const char *path = (const char *) H(ip)[1];
@@ -45,14 +47,10 @@ static u1 script(lips v, const char *path) {
   fclose(f);
   return r; }
 
-#include "sym.h"
-#include "tbl.h"
 static NoInline u0 rin(lips v, const char *a, terp *b) {
   obj z = interns(v, a);
   tbl_set(v, Mac, z, _N((i64) b)); }
 
-#include "mem.h"
-#include "two.h"
 static NoInline u0 defprim(lips v, const char *a, terp *i) {
   obj nom = pair(v, interns(v, a), nil);
   hom prim;
@@ -63,10 +61,18 @@ static NoInline u0 defprim(lips v, const char *a, terp *i) {
   prim[3] = (terp*) prim;
   tbl_set(v, Top, A(nom), _H(prim)); }
 
-u0 li_fin(lips v) {
-  if (v->pool) free(v->pool), v->pool = NULL; }
+lips li_close(lips v) {
+  if (v) {
+    if (v->pool) free(v->pool);
+    free(v); }
+  return NULL; }
 
-lips li_ini(lips v) {
+Vm(li_exit) { li_close(v); exit(N(xp)); }
+
+#define BOOT PREFIX "/lib/lips/prelude.lips"
+lips li_open(const char *boot) {
+  lips v;
+  if (!(v = malloc(sizeof (struct lips)))) return v;
   v->t0 = clock();
   v->rand = LCPRNG(v->t0 * mix);
   v->count = 0;
@@ -75,8 +81,7 @@ lips li_ini(lips v) {
   v->pool = (mem) (v->root = NULL);
   set64(v->glob, nil, NGlobs);
 
-  if (setjmp(v->restart))
-    return li_fin(v), NULL;
+  if (setjmp(v->restart)) return li_close(v);
 
   Top = table(v);
   Mac = table(v);
@@ -97,17 +102,9 @@ lips li_ini(lips v) {
 #define def(s, x) (y=interns(v,s),tbl_set(v,Top,y,x))
   def("_ns", Top);
   def("_macros", Mac);
+  if (boot && !script(v, boot)) return li_close(v);
   return v; }
 
-u0 li_close(lips v) { if (v) li_fin(v), free(v); }
-
-lips li_open(void) {
-  lips u, v;
-  if (!(v = malloc(sizeof (struct lips)))) return v;
-  if (!(u = li_ini(v))) free(v);
-  return u; }
-
-#define BOOT PREFIX "/lib/lips/prelude.lips"
 const char *help =
   "usage: %s [options and scripts]\n"
   "with no arguments, start a repl\n"
@@ -117,7 +114,6 @@ const char *help =
   "  -_ don't bootstrap\n";
 
 #undef ok
-#include "write.h"
 int main(int argc, char** argv) {
   for (u1 ok = true, shell = argc == 1, boot = true;;)
     switch (getopt(argc, argv, "hi_")) {
@@ -126,19 +122,20 @@ int main(int argc, char** argv) {
       case 'i': shell = true; break;
       case 'h': fprintf(stdout, help, *argv); break;
       case -1:
+        // adjust
         argc -= optind, argv += optind;
+        // nothing to do?
         if (!argc && !shell) return EXIT_SUCCESS;
-
-        lips v = li_ini(&((struct lips){}));
-        if (boot) ok = script(v, BOOT);
-
-        while (ok && argc--) ok = script(v, *argv++);
-
-        if (ok && shell)
-          for (setjmp(v->restart);;) {
+        // init
+        lips v = li_open(boot ? BOOT : NULL);
+        if ((ok = !!v)) {
+          // scripts
+          while (argc-- && (ok = script(v, *argv++)));
+          // repl
+          if (ok && shell) for (setjmp(v->restart);;) {
             obj x = parse(v, stdin);
             if (x) emsep(v, eval(v, x), stdout, '\n');
             else if (feof(stdin)) break; }
 
-        li_fin(v);
+          li_close(v); }
         return ok ? EXIT_SUCCESS : EXIT_FAILURE; } }

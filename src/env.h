@@ -35,8 +35,6 @@ static Inline i64 lcprng(i64 *s) { return *s = LCPRNG(*s); }
 
 static Inline u64 w2b(u64 w) { return w * 8; }
 static Inline u64 b2w(u64 b) { return b / 8 + (b % 8 && 1); }
-static Inline u64 rotr64(u64 x, u64 n) {
-  return (x<<(64-n))|(x>>n); }
 // mem{set,cpy,mov} analogs are defined for
 // 8, 16, 32 and 64 bit items
 #define memn(n)\

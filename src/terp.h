@@ -122,7 +122,7 @@ insts(ninl)
 #define App v->glob[Apply]
 #define Re  v->glob[Restart]
 
-terp gc, type_error, oob_error, ary_error;
+terp gc, type_error, oob_error, ary_error, div_error;
 Vm(nope, const char *, ...);
 obj restart(lips), err(lips, char*, ...);
 u0 errp(lips, char*, ...);

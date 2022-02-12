@@ -285,9 +285,11 @@ Vm(nope, const char *msg, ...) {
   fputc(')', stderr);
 
   // print error message
-  fputs(" : ", stderr);
-  va_list xs;
-  va_start(xs, msg), vfprintf(stderr, msg, xs), va_end(xs);
+  if (msg) {
+    fputs(" : ", stderr);
+    va_list xs;
+    va_start(xs, msg), vfprintf(stderr, msg, xs), va_end(xs); }
+
   fputc('\n', stderr);
 
   // print backtrace
@@ -300,17 +302,26 @@ Vm(nope, const char *msg, ...) {
   return restart(v); }
 
 // errors
-Vm(fail) { Jump(nope, "fail"); }
+Vm(fail) {
+  if (homp(Re)) Ap(Re, xp);
+  Jump(nope, NULL); }
 
 Vm(type_error) {
+  if (homp(Re)) Ap(Re, xp);
   enum tag exp = v->xp, act = kind(xp);
   Jump(nope, "wrong type : %s for %s", tnom(act), tnom(exp)); }
 
 Vm(oob_error) {
+  if (homp(Re)) Ap(Re, xp);
   Jump(nope, "oob : %d >= %d", v->xp, v->ip); }
 
 Vm(ary_error) {
+  if (homp(Re)) Ap(Re, xp);
   Jump(nope, arity_err_msg, N(Argc), v->xp); }
+
+Vm(div_error) {
+  if (homp(Re)) Ap(Re, xp);
+  Jump(nope, "/ 0"); }
 
 // type/arity checking
 #define DTc(n, t) Vm(n) {\

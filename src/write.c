@@ -78,7 +78,7 @@ static emitter *emitters[] = {
   [Vec] = emvec,
   [Two] = emtwo, };
 
-u0 emit(lips v, FILE *o, obj x) {
+Inline u0 emit(lips v, FILE *o, obj x) {
   emitters[kind(x)](v, o, x); }
 
 // print to console
