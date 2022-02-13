@@ -34,7 +34,7 @@ typedef struct lips {
  i64 rand, count, // random state
      t0, len, *pool; // memory state
  root root; // gc protection list
- jmp_buf restart; // top level restart
+ jmp_buf *restart; // top level restart
 } *lips;
 
 // this structure holds runtime state.

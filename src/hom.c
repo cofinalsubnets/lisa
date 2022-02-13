@@ -47,7 +47,7 @@ typedef struct { obj arg, loc, clo, par, nom, sig; } *cenv;
 static u0 scan(lips, mem, obj);
 static obj comp_lambda_clo(lips, mem, obj, obj), ltu(lips, mem, obj, obj);
 typedef hom c1(lips, mem, u64), c2(lips, mem, u64, obj);
-static c1 comp_expr_, comp_let_bind, emit_i, emit_i_d, comp_alloc_thread;
+static c1 comp_expr_, comp_let_bind, emit_i, emit_i_d, comp_alloc;
 static c2 comp_expr, comp_sym, comp_list, comp_imm;
 
 enum { Here, Loc, Arg, Clo, Wait };
@@ -84,10 +84,8 @@ static u0 pushs(lips v, ...) {
 static vec tuplr(lips v, i64 i, va_list xs) {
  vec t;
  obj x = va_arg(xs, obj);
- if (x) with(x, t = tuplr(v, i+1, xs)),
-        t->xs[i] = x;
- else t = cells(v, Width(vec) + i),
-      t->len = i;
+ if (x) with(x, t = tuplr(v, i+1, xs)), t->xs[i] = x;
+ else t = cells(v, Width(vec) + i), t->len = i;
  return t; }
 
 static obj tupl(lips v, ...) {
@@ -97,19 +95,19 @@ static obj tupl(lips v, ...) {
  return _V(t); }
 
 // emit code backwards like cons
-static obj em1(terp *i, obj k) {
+static Inline obj em1(terp *i, obj k) {
  return k -= W, *H(k) = i, k; }
 
-static obj em2(terp *i, obj j, obj k) {
+static Inline obj em2(terp *i, obj j, obj k) {
  return em1(i, em1((terp*)j, k)); }
 
-static hom ee1(terp *i, hom k) {
+static Inline hom ee1(terp *i, hom k) {
  return *--k = i, k; }
 
-static hom ee2(terp *i, obj x, hom k) {
+static Inline hom ee2(terp *i, obj x, hom k) {
  return ee1(i, ee1((terp*) x, k)); }
 
-static hom imx(lips v, mem e, i64 m, terp *i, obj x) {
+static Inline hom imx(lips v, mem e, i64 m, terp *i, obj x) {
   return Push(inptr(i), x), emit_i_d(v, e, m); }
 
 static NoInline obj rw_let_fn(lips v, obj x) {
@@ -149,16 +147,16 @@ static obj asign(lips v, obj a, i64 i, mem m) {
    with(a, x = asign(v, B(a), i+1, m)),
    pair(v, A(a), x); }
 
-static Inline obj scope(lips v, mem e, obj a, obj n) {
+static Inline obj new_scope(lips v, mem e, obj a, obj n) {
  i64 s = 0;
  return with(n, a = asign(v, a, 0, &s)),
         tupl(v, a, nil, nil, e ? *e : nil, n, _N(s), (obj)0); }
 
-static Inline obj compose(lips v, mem e, obj x) {
+static Inline obj comp_body(lips v, mem e, obj x) {
  Push(
    inptr(comp_expr_), x,
    inptr(emit_i), inptr(ret),
-   inptr(comp_alloc_thread));
+   inptr(comp_alloc));
  scan(v, e, v->sp[1]);
  x = _H(Ccc(4)); // 4 = 2 + 2
  i64 i = llen(loc(*e));
@@ -174,16 +172,32 @@ static Inline obj compose(lips v, mem e, obj x) {
 // (in the former case the car is the list of free variables
 // and the cdr is a hom that assumes the missing variables
 // are available in the closure).
-static obj ltu(lips v, mem e, obj n, obj l) {
+static Inline obj ltu(lips v, mem e, obj n, obj l) {
  obj y;
  l = B(l);
  with(n,
   l = twop(l) ? l : pair(v, l, nil),
   with(y, l = linitp(v, l, &y),
           with(l, n = pair(v, n, e ? name(*e) : nil)),
-          n = scope(v, e, l, n)),
-  l = compose(v, &n, A(y)));
+          n = new_scope(v, e, l, n)),
+  l = comp_body(v, &n, A(y)));
  return l; }
+
+static Inline obj comp_lambda_clo(lips v, mem e, obj arg, obj seq) {
+  i64 i = llen(arg);
+  mm(&arg), mm(&seq);
+
+  for (Push(
+         inptr(emit_i_d), inptr(take), _N(i),
+         inptr(comp_alloc));
+       twop(arg);
+       arg = B(arg))
+    Push(
+      inptr(comp_expr_), A(arg),
+      inptr(emit_i), inptr(push));
+
+  arg = _H(Ccc(0));
+  return um, um, pair(v, seq, arg); }
 
 CO(comp_lambda, obj x) {
  terp* j = imm;
@@ -199,22 +213,6 @@ CO(comp_lambda, obj x) {
 CO(comp_imm, obj x) {
   return Push(inptr(imm), x), emit_i_d(v, e, m); }
 
-static obj comp_lambda_clo(lips v, mem e, obj arg, obj seq) {
-  i64 i = llen(arg);
-  mm(&arg), mm(&seq);
-
-  for (Push(
-         inptr(emit_i_d), inptr(take), _N(i),
-         inptr(comp_alloc_thread));
-       twop(arg);
-       arg = B(arg))
-    Push(
-      inptr(comp_expr_), A(arg),
-      inptr(emit_i), inptr(push));
-
-  arg = _H(Ccc(0));
-  return um, um, pair(v, seq, arg); }
-
 CO(comp_let_bind) {
   obj y = *v->sp++;
   return e ? imx(v, e, m, loc_, _N(lidx(loc(*e), y))) :
@@ -227,7 +225,7 @@ static u0 comp_let_r(lips v, mem e, obj x) {
   Push(inptr(comp_expr_), AB(x), inptr(comp_let_bind), A(x)); }
 
 // syntactic sugar for define
-static obj def_sug(lips v, obj x) {
+static Inline obj def_sug(lips v, obj x) {
   obj y = nil;
   return with(y, x = linitp(v, x, &y)),
          x = pair(v, x, y),   x = pair(v, Se, x),
@@ -384,7 +382,7 @@ CO(comp_list, obj x) {
   if (z == Qt) {
     x = twop(x = B(x)) ? A(x) : x;
     return comp_imm(v, e, m, x); }
-  // FIXME bootstrap compiler should not support macros
+  // FIXME bootstrap compiler should not use macros
   if ((z = tbl_get(v, Mac, z)))
     return comp_macro(v, e, m, z, B(x));
   return comp_call(v, e, m, A(x), B(x)); }
@@ -406,7 +404,7 @@ static hom hini(lips v, u64 n) {
  set64((mem) a, nil, n);
  return a + n; }
 
-CO(comp_alloc_thread) {
+CO(comp_alloc) {
  hom k = hini(v, m+1);
  return ee1((terp*)(e ? name(*e) : nil), k); }
 
@@ -477,7 +475,7 @@ Vm(hseek_u) {
   Go(ret, _H(H(Argv[0]) + N(Argv[1]))); }
 
 obj analyze(lips v, obj x) {
-  with(x, Push(inptr(emit_i), inptr(ret), inptr(comp_alloc_thread)));
+  with(x, Push(inptr(emit_i), inptr(ret), inptr(comp_alloc)));
   return _H(comp_expr(v, NULL, 0, x)); }
 
 Vm(ev_u) {
@@ -490,7 +488,7 @@ Vm(bootstrap) {
   Ary(1);
   xp = *Argv;
   Tc(xp, Hom);
-  Eva = xp;
+  // ev must already be interned
   tbl_set(v, Top, interns(v, "ev"), Eva = xp);
   Jump(ret); }
 

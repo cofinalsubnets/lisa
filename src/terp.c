@@ -262,10 +262,12 @@ Tp(str) Tp(tbl) Tp(vec) Tp(nil)
 Vm(dupl) { Have1(); --sp; sp[0] = sp[1]; Next(1); }
 
 obj restart(lips v) {
+  if (v->restart == NULL) {
+    exit(EXIT_FAILURE); }
   v->fp = v->sp = v->pool + v->len;
   v->xp = v->ip = nil;
   v->root = NULL;
-  longjmp(v->restart, 1); }
+  longjmp(*v->restart, 1); }
 
 u0 errp(lips v, const char *msg, ...) {
   obj ip = v->ip;
