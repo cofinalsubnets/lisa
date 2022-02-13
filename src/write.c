@@ -45,6 +45,7 @@ static u0 write_vec(lips v, obj x, FILE *o) {
   fputc(']', o); }
 
 static u0 emhomn(lips v, obj x, FILE *o) {
+//  emit(v, o, x); return;
   fputc('\\', o);
   switch (kind(x)) {
     case Sym: return write_sym(v, x, o);

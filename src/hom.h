@@ -6,4 +6,5 @@ static Inline hom button(hom h) { while (*h) h++; return h; }
 static Inline u1 homp(obj x) { return kind(x) == Hom; }
 #define H(x)  gethom(x)
 #define _H(x) puthom(x)
-obj eval(lips, obj), homnom(lips, obj);
+obj eval(lips, obj), homnom(lips, obj), analyze(lips, obj), sequence(lips, obj, obj);
+

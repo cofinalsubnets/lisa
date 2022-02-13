@@ -30,6 +30,7 @@ u0 errp(lips, const char*, ...);
  _(strl, "slen") _(strs, "ssub")   _(strconc, "scat")\
  _(tbll, "tlen") _(tblmk, tnom(Tbl)) _(tblg, "tget")\
  _(tblc, "thas") _(tbls, "tset") _(tbld, "tdel")\
+ _(bootstrap, "boot")\
  _(tblks, "tkeys") _(hseek_u, "hseek") _(fail, "fail")\
  _(ccc_u, "ccc") _(putc_u, "putc") _(ystr_u, "ystr")\
  _(slurp, "slurp") _(dump, "dump") _(hnom_u, "hnom")\
@@ -100,7 +101,7 @@ insts(ninl)
 #define Go(f, x) return xp = x,f(Self)
 #define ok _N(1)
 // type check
-#define Tc(x,t) if(kind((x))-(t)){v->xp=t;Jump(type_error);}
+#define Tc(x,t) if(kind((x))-(t)){xp=x,v->xp=t;Jump(type_error);}
 // arity check
 #define arity_err_msg "wrong arity : %d of %d"
 #define oom_err_msg "out of memory : %d + %d"

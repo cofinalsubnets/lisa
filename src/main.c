@@ -3,7 +3,6 @@
 #include "read.h"
 #include "hom.h"
 #include <stdlib.h>
-#include <fcntl.h>
 #include <unistd.h>
 #include <getopt.h>
 #include <time.h>
@@ -15,21 +14,108 @@
 #include "two.h"
 #include "write.h"
 
+#undef ok
 #ifndef PREFIX
 #define PREFIX "/usr/local"
 #endif
+#define BOOT PREFIX "/lib/lips/prelude.lips"
 
+lips li_ini(void);
+u0 li_fin(lips);
+static u1 script(lips, const char *);
+static u0 repl(lips);
+static u1 scris(lips, const char*, const char **);
+
+const char *help =
+  "usage: %s [options and scripts]\n"
+  "with no arguments, start a repl\n"
+  "options:\n"
+  "  -h print this message\n"
+  "  -i start repl unconditionally\n"
+  "  -_ don't bootstrap\n";
+
+int main(int argc, char** argv) {
+  for (u1 ok = true, shell = argc == 1, boot = true;;)
+    switch (getopt(argc, argv, "hi_")) {
+      default: return EXIT_FAILURE;
+      case '_': boot = false; break;
+      case 'i': shell = true; break;
+      case 'h': fprintf(stdout, help, *argv); break;
+      case -1:
+        argc -= optind, argv += optind;
+        if (!argc && !shell) return EXIT_SUCCESS;
+        lips v = li_ini();
+        if ((ok = !!v)) {
+          ok = scris(v, boot ? BOOT : NULL, (const char**) argv);
+          if (ok && shell) repl(v);
+          li_fin(v); }
+        return ok ? EXIT_SUCCESS : EXIT_FAILURE; } }
+
+static obj scr_(lips v, FILE *in) {
+  obj y, x = parse(v, in);
+  if (!x) return feof(in) ? nil : 0;
+  // lol
+  x = pair(v, x, nil);
+  x = pair(v, Qt, x);
+  x = pair(v, x, nil);
+  x = pair(v, Eva, x);
+  with(x, y = scr_(v, in));
+  if (!y) return y;
+  return pair(v, x, y); }
+
+static obj scrp(lips v, const char *path) {
+  FILE *in = fopen(path, "r");
+  if (!in) {
+    errp(v, "%s : %s", path, strerror(errno));
+    return 0; }
+
+  if (setjmp(v->restart)) return fclose(in), 0;
+  obj x = scr_(v, in);
+  fclose(in);
+  if (!x) return x;
+  return pair(v, Se, x); }
+
+static obj scrr(lips v, const char **paths) {
+  const char *path = *paths;
+  if (!path) return nil;
+  obj x, y = scrr(v, paths+1);
+  if (!y) return y;
+  with(y, x = scrp(v, path));
+  if (!x) return 0;
+  return pair(v, x, y); }
+
+static u1 scris(lips v, const char *boot, const char **paths) {
+  obj y, x = scrr(v, paths);
+  if (!x) return x;
+  if (boot) {
+    with(x, y = scrp(v, boot));
+    if (!y) return false;
+    x = pair(v, y, x); }
+  return !!eval(v, pair(v, Se, x)); }
+
+  /*
 static u1 script(lips v, const char *path) {
-  FILE *f = fopen(path, "r");
-  if (!f) return errp(v, "%s : %s", path, strerror(errno)), false;
+  FILE *f;
+  if (!(f = fopen(path, "r"))) {
+    errp(v, "%s : %s", path, strerror(errno));
+    return false; }
+
   if (setjmp(v->restart)) return false;
+
   for (obj x; (x = parse(v, f)); eval(v, x));
+
   u1 done = feof(f);
-  return fclose(f), done; }
+  return fclose(f), done; }*/
+
+static u0 repl(lips v) {
+  setjmp(v->restart);
+  for (obj x;;) if ((x = parse(v, stdin)))
+                  emsep(v, eval(v, x), stdout, '\n');
+                else if (feof(stdin)) return; }
 
 static NoInline u0 rin(lips v, const char *a, terp *b) {
   obj z = interns(v, a);
-  tbl_set(v, Mac, z, _N((i64) b)); }
+  tbl_set(v, Top, z, _N((i64) b)); }
 
 static NoInline u0 defprim(lips v, const char *a, terp *i) {
   obj nom = pair(v, interns(v, a), nil);
@@ -41,21 +127,12 @@ static NoInline u0 defprim(lips v, const char *a, terp *i) {
   prim[3] = (terp*) prim;
   tbl_set(v, Top, A(nom), _H(prim)); }
 
-lips li_close(lips v) {
-  if (v) {
-    if (v->pool) free(v->pool);
-    free(v); }
-  return NULL; }
+u0 li_fin(lips v) { if (v) { if (v->pool) free(v->pool);
+                             free(v); } }
 
-Vm(li_exit) { li_close(v); exit(N(xp)); }
-
-//static obj panic_zero(lips v) { return 0; }
-
-
-#define BOOT PREFIX "/lib/lips/prelude.lips"
-lips li_open(const char *boot) {
+lips li_ini(void) {
   lips v;
-  if (!(v = malloc(sizeof (struct lips)))) return v;
+  if (!(v = malloc(sizeof(struct lips)))) return v;
   v->t0 = clock();
   v->rand = LCPRNG(v->t0 * mix);
   v->count = 0;
@@ -64,7 +141,7 @@ lips li_open(const char *boot) {
   v->pool = (mem) (v->root = NULL);
   set64(v->glob, nil, NGlobs);
 
-  if (setjmp(v->restart)) return li_close(v);
+  if (setjmp(v->restart)) return li_fin(v), NULL;
 
   Top = table(v);
   Mac = table(v);
@@ -85,40 +162,4 @@ lips li_open(const char *boot) {
 #define def(s, x) (y=interns(v,s),tbl_set(v,Top,y,x))
   def("_ns", Top);
   def("_macros", Mac);
-  if (boot && !script(v, boot)) return li_close(v);
   return v; }
-
-const char *help =
-  "usage: %s [options and scripts]\n"
-  "with no arguments, start a repl\n"
-  "options:\n"
-  "  -h print this message\n"
-  "  -i start repl unconditionally\n"
-  "  -_ don't bootstrap\n";
-
-#undef ok
-int main(int argc, char** argv) {
-  for (u1 ok = true, shell = argc == 1, boot = true;;)
-    switch (getopt(argc, argv, "hi_")) {
-      default: return EXIT_FAILURE;
-      case '_': boot = false; break;
-      case 'i': shell = true; break;
-      case 'h': fprintf(stdout, help, *argv); break;
-      case -1:
-        // adjust
-        argc -= optind, argv += optind;
-        // nothing to do?
-        if (!argc && !shell) return EXIT_SUCCESS;
-        // init
-        lips v = li_open(boot ? BOOT : NULL);
-        if ((ok = !!v)) {
-          // scripts
-          while (argc-- && (ok = script(v, *argv++)));
-          // repl
-          if (ok && shell) for (setjmp(v->restart);;) {
-            obj x = parse(v, stdin);
-            if (x) emsep(v, eval(v, x), stdout, '\n');
-            else if (feof(stdin)) break; }
-
-          li_close(v); }
-        return ok ? EXIT_SUCCESS : EXIT_FAILURE; } }

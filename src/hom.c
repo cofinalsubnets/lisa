@@ -7,6 +7,8 @@
 #include "mem.h"
 #include "vec.h"
 #include "terp.h"
+#include "write.h"
+
 
 ////
 /// bootstrap thread compiler
@@ -382,6 +384,7 @@ CO(comp_list, obj x) {
   if (z == Qt) {
     x = twop(x = B(x)) ? A(x) : x;
     return comp_imm(v, e, m, x); }
+  // FIXME bootstrap compiler should not support macros
   if ((z = tbl_get(v, Mac, z)))
     return comp_macro(v, e, m, z, B(x));
   return comp_call(v, e, m, A(x), B(x)); }
@@ -405,11 +408,11 @@ static hom hini(lips v, u64 n) {
 
 CO(comp_alloc_thread) {
  hom k = hini(v, m+1);
- return ee1((terp*)(e ? name(*e) : Eva), k); }
+ return ee1((terp*)(e ? name(*e) : nil), k); }
 
 obj eval(lips v, obj x) {
   obj args = pair(v, x, nil),
-      ev = tbl_get(v, Top, Eva);
+      ev = homp(Eva) ? Eva : tbl_get(v, Top, Eva);
   return apply(v, ev, args); }
 
 static NoInline obj apply(lips v, obj f, obj x) {
@@ -468,17 +471,27 @@ Vm(hgeti_u) { Ary(1); Tc(Argv[0], Hom); Go(ret, inptr(*H(Argv[0]))); }
 Vm(hgetx_u) { Ary(1); Tc(Argv[0], Hom); Go(ret, (obj) *H(Argv[0])); }
 
 Vm(hseek_u) {
- Ary(2);
- Tc(Argv[0], Hom);
- Tc(Argv[1], Num);
- Go(ret, _H(H(Argv[0]) + N(Argv[1]))); }
+  Ary(2);
+  Tc(Argv[0], Hom);
+  Tc(Argv[1], Num);
+  Go(ret, _H(H(Argv[0]) + N(Argv[1]))); }
+
+obj analyze(lips v, obj x) {
+  with(x, Push(inptr(emit_i), inptr(ret), inptr(comp_alloc_thread)));
+  return _H(comp_expr(v, NULL, 0, x)); }
 
 Vm(ev_u) {
   Ary(1);
-  CallC(
-    Push(inptr(emit_i), inptr(yield), inptr(comp_alloc_thread)),
-    xp = _H(comp_expr(v, NULL, 0, *Argv)),
-    v->xp = (*H(xp))(v, xp, v->fp, v->sp, v->hp, nil));
+  if (homp(Eva)) ip = Eva;
+  else CallC(v->ip = analyze(v, *Argv));
+  Next(0); }
+
+Vm(bootstrap) {
+  Ary(1);
+  xp = *Argv;
+  Tc(xp, Hom);
+  Eva = xp;
+  tbl_set(v, Top, interns(v, "ev"), Eva = xp);
   Jump(ret); }
 
 static Vm(clos) { Clos = (obj) H(ip)[1]; Ap((obj) H(ip)[2], xp); }
@@ -559,10 +572,23 @@ NoInline obj homnom(lips v, obj x) {
   while (*h) h++;
   x = h[-1];
   int inb = (mem) x >= v->pool && (mem) x < v->pool+v->len;
-  return inb ? x : x == (obj) yield ? Eva : nil; }
+  return inb ? x : nil; }
 
 Vm(hnom_u) {
   Ary(1);
   Tc(*Argv, Hom);
   xp = homnom(v, *Argv);
   Jump(ret); }
+
+obj sequence(lips v, obj a, obj b) {
+  hom h;
+  with(a, with(b, h = cells(v, 8)));
+  h[0] = imm;
+  h[1] = (terp*) a;
+  h[2] = call;
+  h[3] = (terp*) _N(0);
+  h[4] = jump;
+  h[5] = (terp*) b;
+  h[6] = NULL;
+  h[7] = (terp*) h;
+  return _H(h); }
