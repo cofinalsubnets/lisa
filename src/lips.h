@@ -61,3 +61,6 @@ static Inline u1 nilp(obj x) { return x == nil; }
 static Inline u1 nump(obj x) { return kind(x) == Num; }
 static Inline i64 getnum(obj x) { return x >> 3; }
 static Inline obj putnum(i64 n) { return (n << 3) + Num; }
+
+lips li_ini(u0);
+u0 li_fin(lips);

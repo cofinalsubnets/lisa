@@ -23,7 +23,8 @@ obj sskc(lips v, mem y, obj x) {
     sym z = getsym(*y);
     int i = scmp(S(z->nom)->text, S(x)->text);
     return i == 0 ? *y : sskc(v, i < 0 ? &z->r : &z->l, x); }
-  sym z = cells(v, Width(sym));
+  sym z;
+  bind(z, cells(v, Width(sym)));
   z->code = hash(v, z->nom = x) ^ mix;
   z->l = z->r = nil;
   return *y = putsym(z); }
@@ -32,7 +33,7 @@ obj intern(lips v, obj x) {
   if (Avail < Width(sym)) {
     u1 o;
     with(x, o = please(v, Width(sym)));
-    if (!o) errp(v, oom_err_msg, v->len, Width(sym)), restart(v); }
+    bind(o, o); }
   return sskc(v, &v->syms, x); }
 
 #include "terp.h"

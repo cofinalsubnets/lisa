@@ -82,7 +82,7 @@ Vm(lbind) {
   char *nom = nilp(Y(xp)->nom) ? "()" : S(Y(xp)->nom)->text;
   Pack();
   errp(v, "free variable: %s", nom);
-  return restart(v); }
+  return panic(v); }
  xp = w;
  if (getnum(y) != 8) Tc(xp, getnum(y)); // do the type check
  terp *q = H(ip)[2]; // omit the arity check if possible
@@ -261,9 +261,8 @@ Tp(str) Tp(tbl) Tp(vec) Tp(nil)
 // stack manipulation
 Vm(dupl) { Have1(); --sp; sp[0] = sp[1]; Next(1); }
 
-obj restart(lips v) {
-  if (v->restart == NULL) {
-    exit(EXIT_FAILURE); }
+obj panic(lips v) {
+  if (v->restart == NULL) return li_fin(v), 0;
   v->fp = v->sp = v->pool + v->len;
   v->xp = v->ip = nil;
   v->root = NULL;
@@ -302,41 +301,41 @@ Vm(gc) {
   CallC(req = please(v, req));
   if (req) Next(0);
   errp(v, oom_err_msg, v->len, req);
-  return restart(v); }
+  return panic(v); }
 
 // errors
 Vm(fail) {
   if (homp(Re)) Ap(Re, xp);
   Pack();
   errp(v, NULL);
-  return restart(v); }
+  return panic(v); }
 
 Vm(type_error) {
   if (homp(Re)) Ap(Re, xp);
   enum tag exp = v->xp, act = kind(xp);
   Pack();
   errp(v, "wrong type : %s for %s", tnom(act), tnom(exp));
-  return restart(v); }
+  return panic(v); }
 
 Vm(oob_error) {
   if (homp(Re)) Ap(Re, xp);
   i64 a = v->xp, b = v->ip;
   Pack();
   errp(v, "oob : %d >= %d", a, b);
-  return restart(v); }
+  return panic(v); }
 
 Vm(ary_error) {
   if (homp(Re)) Ap(Re, xp);
   i64 a = N(Argc), b = v->xp;
   Pack();
   errp(v, arity_err_msg, a, b);
-  return restart(v); }
+  return panic(v); }
 
 Vm(div_error) {
   if (homp(Re)) Ap(Re, xp);
   Pack();
   errp(v, "/ 0");
-  return restart(v); }
+  return panic(v); }
 
 // type/arity checking
 #define DTc(n, t) Vm(n) {\

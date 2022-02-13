@@ -17,10 +17,7 @@ static u0* bump(lips v, u64 n) {
 
 // general purpose memory allocator
 u0* cells(lips v, u64 n) {
-  if (Avail < n && !please(v, n)) {
-    errp(v, oom_err_msg, v->len, n);
-    restart(v); }
-  return bump(v, n); }
+  return Avail >= n || please(v, n) ? bump(v, n) : NULL; }
 
 #include <stdlib.h>
 #include <time.h>
@@ -48,17 +45,11 @@ u0* cells(lips v, u64 n) {
 // u will be >= 1. however, sometimes t1 == t2. in that case
 // u = 1.
 static clock_t copy(lips v, u64 len1) {
-  clock_t t0 = v->t0,
-          t1 = clock();
-
+  mem base1;
+  bind(base1, malloc(w2b(len1)));
+  clock_t t0 = v->t0, t1 = clock();
   u64 len0 = v->len;
-  mem base0 = v->pool,
-      base1 = malloc(w2b(len1)),
-      sp0 = v->sp,
-      top0 = base0 + len0;
-
-  if (!base1) return 0;
-
+  mem base0 = v->pool, sp0 = v->sp, top0 = base0 + len0;
 
   v->len = len1;
   v->pool = v->hp = base1;
@@ -105,15 +96,12 @@ static clock_t copy(lips v, u64 len1) {
 #define growp (allocd > len || vit < 32) // lower bound
 #define shrinkp (allocd < (len>>1) && vit >= 128) // upper bound
 u1 please(lips v, u64 req) {
-  i64 len = v->len, vit = copy(v, len);
-  if (!vit) return false;
-
+  i64 len = v->len, vit;
+  bind(vit, copy(v, len));
   i64 allocd = len - (Avail - req);
   if (growp) do len <<= 1, vit <<= 1; while (growp);
   else if (shrinkp) do len >>= 1, vit >>= 1; while (shrinkp);
   else return true; // no size change needed
-  // otherwise grow or shrink ; if it fails we can still
-  // succeed if the last copy was large enough.
   return copy(v, len) || allocd <= v->len; }
 
 #include "hom.h"
@@ -134,6 +122,7 @@ static copier *copiers[] = {
   [Tbl] = cptbl,
   [Sym] = cpsym,
   [Nil] = cpid, };
+
 static Inline Gc(cp) {
   return copiers[kind(x)](v, x, len0, base0); }
 

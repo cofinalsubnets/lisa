@@ -75,7 +75,7 @@ static u0 pushss(lips v, i64 i, va_list xs) {
          *--v->sp = x;
   else if (Avail < i && !please(v, i)) {
     errp(v, oom_err_msg, v->len, i);
-    restart(v); } }
+    panic(v); } }
 
 static u0 pushs(lips v, ...) {
   va_list xs;

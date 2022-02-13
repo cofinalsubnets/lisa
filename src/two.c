@@ -40,5 +40,6 @@ Vm(cons_u) {
 obj pair(lips v, obj a, obj b) {
   two w;
   with(a, with(b, w = cells(v, 2)));
+  bind(w, w);
   w->a = a, w->b = b;
   return puttwo(w); }
