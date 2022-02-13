@@ -7,13 +7,14 @@
 #include "hom.h"
 #include <time.h>
 
+// lips destructor
+u0 li_fin(lips v) {
+  if (v) free(v->pool);
+  free(v); }
+
 // initialization helpers
 static u1 inst(lips, const char*, terp*) NoInline,
           prim(lips, const char*, terp*) NoInline;
-
-// lips destructor
-u0 li_fin(lips v) { if (v) { if (v->pool) free(v->pool);
-                             free(v); } }
 
 // lips constructor
 lips li_ini(void) {
@@ -32,15 +33,11 @@ lips li_ini(void) {
   if (setjmp(re)) fail: return li_fin(v), NULL;
 
 #define Bind(x) if(!(x))goto fail
-#define register_inst(a, b)\
-  if (b) { Bind(prim(v,b,a)); }\
-  else { Bind(inst(v, "i-"#a,a)); }
-#define bsym(i,s) Bind(v->glob[i]=interns(v,s))
-#define def(s, x) Bind(_=interns(v,s));\
-                  Bind(tbl_set(v,Top,_,x))
   Bind(Top = table(v));
   Bind(Mac = table(v));
+#define register_inst(a, b)if(b){Bind(prim(v,b,a));}else{Bind(inst(v, "i-"#a,a));}
   insts(register_inst)
+#define bsym(i,s) Bind(v->glob[i]=interns(v,s))
   bsym(Eval, "ev");
   bsym(Apply, "ap");
   bsym(Def, ":");
@@ -49,6 +46,7 @@ lips li_ini(void) {
   bsym(Quote, "`");
   bsym(Seq, ",");
   bsym(Splat, ".");
+#define def(s, x) Bind(_=interns(v,s));Bind(tbl_set(v,Top,_,x))
   def("_ns", Top);
   def("_macros", Mac);
   v->restart = NULL;

@@ -61,37 +61,50 @@ static i64 lidx(obj l, obj x) {
 
 static obj linitp(lips v, obj x, mem d) {
   obj y;
-  return !twop(B(x)) ? (*d = x, nil) :
-    (with(x, y = linitp(v, B(x), d)), pair(v, A(x), y)); }
+  if (!twop(B(x))) return *d = x, nil;
+  with(x, y = linitp(v, B(x), d));
+  bind(y, y);
+  return pair(v, A(x), y); }
 
 static obj snoc(lips v, obj l, obj x) {
-  return !twop(l) ? pair(v, x, l) :
-    (with(l, x = snoc(v, B(l), x)),
-     pair(v, A(l), x)); }
+  if (!twop(l)) return pair(v, x, l);
+  with(l, x = snoc(v, B(l), x));
+  bind(x, x);
+  return pair(v, A(l), x); }
 
-static u0 pushss(lips v, i64 i, va_list xs) {
+static u1 pushss(lips v, i64 i, va_list xs) {
+  u1 _;
   obj x = va_arg(xs, obj);
-  if (x) with(x,  pushss(v, i+1, xs)),
-         *--v->sp = x;
-  else if (Avail < i && !please(v, i)) {
-    errp(v, oom_err_msg, v->len, i);
-    panic(v); } }
+  if (!x) return Avail >= i || please(v, i); 
+  with(x, _ = pushss(v, i+1, xs));
+  bind(_, _);
+  *--v->sp = x;
+  return _; }
 
-static u0 pushs(lips v, ...) {
+static u1 pushs(lips v, ...) {
   va_list xs;
-  va_start(xs, v), pushss(v, 0, xs), va_end(xs); }
+  va_start(xs, v);
+  u1 _ = pushss(v, 0, xs);
+  va_end(xs);
+  return _; }
 
 static vec tuplr(lips v, i64 i, va_list xs) {
  vec t;
  obj x = va_arg(xs, obj);
- if (x) with(x, t = tuplr(v, i+1, xs)), t->xs[i] = x;
- else t = cells(v, Width(vec) + i), t->len = i;
+ if (!x) {
+   bind(t, cells(v, Width(vec) + i));
+   t->len = i; }
+ else {
+   with(x, t = tuplr(v, i+1, xs));
+   bind(t, t);
+   t->xs[i] = x; }
  return t; }
 
 static obj tupl(lips v, ...) {
  vec t;
  va_list xs;
  va_start(xs, v), t = tuplr(v, 0, xs), va_end(xs);
+ bind(t, t);
  return _V(t); }
 
 // emit code backwards like cons
@@ -108,15 +121,19 @@ static Inline hom ee2(terp *i, obj x, hom k) {
  return ee1(i, ee1((terp*) x, k)); }
 
 static Inline hom imx(lips v, mem e, i64 m, terp *i, obj x) {
-  return Push(inptr(i), x), emit_i_d(v, e, m); }
+  bind(x, Push(inptr(i), x));
+  return emit_i_d(v, e, m); }
 
+#define Bind(v, x) if(!((v)=(x)))goto fail
 static NoInline obj rw_let_fn(lips v, obj x) {
-  mm(&x);
-  for (obj y; twop(A(x)); x = pair(v, AA(x), y))
-    y = snoc(v, BA(x), AB(x)),
-    y = pair(v, La, y),
-    y = pair(v, y, BB(x));
-  return um, x; }
+  obj y;
+  for (mm(&x); twop(A(x));) {
+    Bind(y, snoc(v, BA(x), AB(x)));
+    Bind(y, pair(v, La, y));
+    Bind(y, pair(v, y, BB(x)));
+    Bind(x, pair(v, AA(x), y)); }
+  return um, x; fail:
+  return um, 0; }
 
 static u1 scan_def(lips v, mem e, obj x) {
   if (!twop(x)) return true; // this is an even case so export all the definitions to the local scope
@@ -153,12 +170,12 @@ static Inline obj new_scope(lips v, mem e, obj a, obj n) {
         tupl(v, a, nil, nil, e ? *e : nil, n, _N(s), (obj)0); }
 
 static Inline obj comp_body(lips v, mem e, obj x) {
- Push(
+ bind(x, Push(
    inptr(comp_expr_), x,
    inptr(emit_i), inptr(ret),
-   inptr(comp_alloc));
+   inptr(comp_alloc)));
  scan(v, e, v->sp[1]);
- x = _H(Ccc(4)); // 4 = 2 + 2
+ bind(x, _H(Ccc(4))); // 4 = 2 + 2
  i64 i = llen(loc(*e));
  if (i) x = em2(locals, _N(i), x);
  i = N(asig(*e));
@@ -172,6 +189,8 @@ static Inline obj comp_body(lips v, mem e, obj x) {
 // (in the former case the car is the list of free variables
 // and the cdr is a hom that assumes the missing variables
 // are available in the closure).
+//
+// FIXME fallible
 static Inline obj ltu(lips v, mem e, obj n, obj l) {
  obj y;
  l = B(l);
@@ -183,6 +202,7 @@ static Inline obj ltu(lips v, mem e, obj n, obj l) {
   l = comp_body(v, &n, A(y)));
  return l; }
 
+// FIXME fallible
 static Inline obj comp_lambda_clo(lips v, mem e, obj arg, obj seq) {
   i64 i = llen(arg);
   mm(&arg), mm(&seq);
@@ -197,12 +217,15 @@ static Inline obj comp_lambda_clo(lips v, mem e, obj arg, obj seq) {
       inptr(emit_i), inptr(push));
 
   arg = _H(Ccc(0));
-  return um, um, pair(v, seq, arg); }
+  um, um;
+  bind(arg, arg);
+  return pair(v, seq, arg); }
 
 CO(comp_lambda, obj x) {
  terp* j = imm;
  obj k, nom = *v->sp == inptr(comp_let_bind) ? v->sp[1] : nil;
  with(nom, with(x, k = _H(Ccc(m+2))));
+ bind(k, k);
  mm(&k);
  if (twop(x = ltu(v, e, nom, x)))
    j = e && twop(loc(*e)) ? encll : encln,
@@ -211,31 +234,41 @@ CO(comp_lambda, obj x) {
  return ee2(j, x, H(k)); }
 
 CO(comp_imm, obj x) {
-  return Push(inptr(imm), x), emit_i_d(v, e, m); }
+  bind(x, Push(inptr(imm), x));
+  return emit_i_d(v, e, m); }
 
 CO(comp_let_bind) {
   obj y = *v->sp++;
   return e ? imx(v, e, m, loc_, _N(lidx(loc(*e), y))) :
              imx(v, e, m, tbind, y); }
 
-static u0 comp_let_r(lips v, mem e, obj x) {
- if (twop(x))
-  x = rw_let_fn(v, x),
-  with(x, comp_let_r(v, e, BB(x))),
-  Push(inptr(comp_expr_), AB(x), inptr(comp_let_bind), A(x)); }
+static u1 comp_let_r(lips v, mem e, obj x) {
+  u1 _ = true;
+  if (twop(x)) {
+    bind(x, rw_let_fn(v, x));
+    with(x, _ = comp_let_r(v, e, BB(x)));
+    bind(_, _);
+    bind(_, Push(inptr(comp_expr_), AB(x), inptr(comp_let_bind), A(x))); }
+  return _; }
 
 // syntactic sugar for define
 static Inline obj def_sug(lips v, obj x) {
   obj y = nil;
-  return with(y, x = linitp(v, x, &y)),
-         x = pair(v, x, y),   x = pair(v, Se, x),
-         x = pair(v, x, nil), x = pair(v, La, x),
-         pair(v, x, nil); }
+  with(y, x = linitp(v, x, &y));
+  bind(x, x);
+  bind(x, pair(v, x, y));
+  bind(x, pair(v, Se, x));
+  bind(x, pair(v, x, nil));
+  bind(x, pair(v, La, x));
+  return pair(v, x, nil); }
 
-CO(comp_let, obj x) { return
- !twop(B(x))    ? comp_imm(v, e, m, nil) :
- llen(B(x)) % 2 ? comp_expr(v, e, m, def_sug(v, x)) :
-                  (comp_let_r(v, e, B(x)), Ccc(m)); }
+CO(comp_let, obj x) {
+  if (!twop(B(x))) return comp_imm(v, e, m, nil);
+  if (llen(B(x)) % 2) {
+    bind(x, def_sug(v, x));
+    return comp_expr(v, e, m, x); }
+  bind(x, comp_let_r(v, e, B(x)));
+  return Ccc(m); }
 
 // the following functions are "post" or "pre"
 // the antecedent/consequent in the sense of
@@ -247,58 +280,71 @@ CO(comp_let, obj x) { return
 // before generating anything, store the
 // exit address in stack 2
 CO(comp_if_pre) {
- obj x = _H(Ccc(m));
- return H(A(S2 = pair(v, x, S2))); }
+ obj x;
+ bind(x, _H(Ccc(m)));
+ bind(x, pair(v, x, S2));
+ return H(A(S2 = x)); }
 
 // before generating a branch emit a jump to
 // the top of stack 2
 CO(comp_if_pre_con) {
-  hom x = Ccc(m + 2), k = H(A(S2));
+  hom x, k;
+  bind(x, Ccc(m + 2));
+  k = H(A(S2));
   return *k == ret ? ee1(ret, x) : ee2(jump, _H(k), x); }
 
 // after generating a branch store its address
 // in stack 1
 CO(comp_if_post_con) {
- obj x = _H(Ccc(m));
- return H(A(S1 = pair(v, x, S1))); }
+ obj x;
+ bind(x, _H(Ccc(m)));
+ bind(x, pair(v, x, S1));
+ return H(A(S1 = x)); }
 
 // before generating an antecedent emit a branch to
 // the top of stack 1
 CO(comp_if_pre_ant) {
- hom x = Ccc(m+2);
+ hom x;
+ bind(x, Ccc(m+2));
  x = ee2(branch, A(S1), x);
  S1 = B(S1);
  return x; }
 
-static u0 comp_if_loop(lips v, mem e, obj x) {
- if (!twop(x)) x = pair(v, nil, nil);
+static u1 comp_if_loop(lips v, mem e, obj x) {
+  if (!twop(x)) bind(x, pair(v, nil, nil));
 
- if (!twop(B(x)))
-   Push(
-     inptr(comp_expr_), A(x),
-     inptr(comp_if_pre_con));
+  if (!twop(B(x))) return
+    Push(
+      inptr(comp_expr_), A(x),
+      inptr(comp_if_pre_con));
 
- else {
-   with(x,
-     Push(
-       inptr(comp_if_post_con),
-       inptr(comp_expr_), AB(x),
-       inptr(comp_if_pre_con)),
-     comp_if_loop(v, e, BB(x)));
-   Push(
-     inptr(comp_expr_), A(x),
-     inptr(comp_if_pre_ant)); } }
+  u1 _;
+  with(x,
+    _ = Push(
+      inptr(comp_if_post_con),
+      inptr(comp_expr_), AB(x),
+      inptr(comp_if_pre_con)));
+  bind(_, _);
+  with(x, comp_if_loop(v, e, BB(x)));
+  bind(_, _);
+  return Push(
+    inptr(comp_expr_), A(x),
+    inptr(comp_if_pre_ant)); }
 
 CO(comp_if, obj x) {
-  with(x, Push(inptr(comp_if_pre)));
-  comp_if_loop(v, e, B(x));
-  hom k = Ccc(m);
+  u1 _;
+  with(x, _ = Push(inptr(comp_if_pre)));
+  bind(_, _);
+  bind(_, comp_if_loop(v, e, B(x)));
+  hom k;
+  bind(k, Ccc(m));
   S2 = B(S2);
   return k; }
 
 CO(emit_call) {
   obj a = *v->sp++;
-  hom k = Ccc(m + 2);
+  hom k;
+  bind(k, Ccc(m + 2));
   return ee2(*k == ret ? rec : call, a, k); }
 
 obj lookup_mod(lips v, obj x) {
@@ -316,13 +362,17 @@ static obj lookup_lex(lips v, obj e, obj y) {
 
 CO(comp_sym, obj x) {
   obj y, q;
-  with(x, y = A(q = lookup_lex(v, e ? *e:nil, x)));
+  with(x, q = lookup_lex(v, e ? *e:nil, x));
+  bind(q, q);
+  y = A(q);
   switch (N(y)) {
     case Here: return comp_imm(v, e, m, B(q));
     case Wait:
-      x = pair(v, B(q), x);
+      bind(x, pair(v, B(q), x));
       with(x, y = _H(Ccc(m+2)));
+      bind(y, y);
       with(y, x = pair(v, _N(8), x));
+      bind(x, x);
       return ee2(lbind, x, H(y));
     default:
       if (B(q) == *e) switch (N(y)) {
@@ -334,6 +384,7 @@ CO(comp_sym, obj x) {
           return imx(v, e, m, clo, _N(lidx(clo(*e), x))); }
       y = llen(clo(*e));
       with(x, q = snoc(v, clo(*e), x));
+      bind(q, q);
       clo(*e) = q;
       return imx(v, e, m, clo, _N(y)); } }
 
@@ -344,31 +395,36 @@ CO(comp_expr, obj x) { return (symp(x) ? comp_sym :
 
 static obj apply(lips, obj, obj) NoInline;
 
+// FIXME no macros in stage 1
 CO(comp_macro, obj macro, obj args) {
   obj s1 = S1, s2 = S2;
   with(s1, with(s2, macro = apply(v, macro, args)));
+  bind(macro, macro);
   S1 = s1, S2 = s2;
   return comp_expr(v, e, m, macro); }
 
 CO(comp_call, obj fun, obj args) {
-  // function call
   mm(&args);
-  Push(
+  Bind(fun, Push(
     inptr(comp_expr_), fun,
     inptr(emit_i), inptr(idH),
-    inptr(emit_call), _N(llen(args)));
-  while (twop(args))
-    Push(
+    inptr(emit_call), _N(llen(args))));
+  while (twop(args)) {
+    Bind(fun, Push(
       inptr(comp_expr_), A(args),
-      inptr(emit_i), inptr(push)),
-    args = B(args);
+      inptr(emit_i), inptr(push)));
+    args = B(args); }
 
-  return um, Ccc(m); }
+  return um, Ccc(m); fail:
+  return um, NULL; }
 
-static u0 comp_sequence_loop(lips v, mem e, obj x) {
-  if (twop(x))
-    with(x, comp_sequence_loop(v, e, B(x))),
-    Push(inptr(comp_expr_), A(x)); }
+static u1 comp_seq_loop(lips v, mem e, obj x) {
+  u1 _ = true;
+  if (twop(x)) {
+    with(x, _ = comp_seq_loop(v, e, B(x)));
+    bind(_, _);
+    bind(_, Push(inptr(comp_expr_), A(x))); }
+  return _; }
 
 CO(comp_list, obj x) {
   obj z = A(x);
@@ -376,8 +432,8 @@ CO(comp_list, obj x) {
   if (z == De) return comp_let(v, e, m, x);
   if (z == La) return comp_lambda(v, e, m, x);
   if (z == Se) {
-    if (!twop(x = B(x))) x = pair(v, x, nil);
-    comp_sequence_loop(v, e, x);
+    if (!twop(x = B(x))) bind(x, pair(v, x, nil));
+    bind(x, comp_seq_loop(v, e, x));
     return Ccc(m); }
   if (z == Qt) {
     x = twop(x = B(x)) ? A(x) : x;
@@ -389,33 +445,40 @@ CO(comp_list, obj x) {
 
 CO(emit_i) {
  terp* i = (terp*) N(*v->sp++);
- return ee1(i, Ccc(m+1)); }
+ hom k;
+ bind(k, Ccc(m+1));
+ return ee1(i, k); }
 
 CO(emit_i_d) {
  terp* i = (terp*) N(*v->sp++);
  obj x = *v->sp++;
  hom k;
- return with(x, k = Ccc(m+2)), ee2(i, x, k); }
+ with(x, k = Ccc(m+2));
+ bind(k, k);
+ return ee2(i, x, k); }
 
 static hom hini(lips v, u64 n) {
- hom a = cells(v, n + 2);
+ hom a;
+ bind(a, cells(v, n + 2));
  a[n] = NULL;
  a[n+1] = (terp*) a;
  set64((mem) a, nil, n);
  return a + n; }
 
 CO(comp_alloc) {
- hom k = hini(v, m+1);
+ hom k;
+ bind(k, hini(v, m+1));
  return ee1((terp*)(e ? name(*e) : nil), k); }
 
 obj eval(lips v, obj x) {
-  obj args = pair(v, x, nil),
-      ev = homp(Eva) ? Eva : tbl_get(v, Top, Eva);
-  return apply(v, ev, args); }
+  obj args;
+  bind(args, pair(v, x, nil));
+  return apply(v, homp(Eva) ? Eva : tbl_get(v, Top, Eva), args); }
 
 static NoInline obj apply(lips v, obj f, obj x) {
  Push(f, x);
- hom h = cells(v, 5);
+ hom h;
+ bind(h, cells(v, 5));
  h[0] = call;
  h[1] = (terp*)_N(2);
  h[2] = yield;
@@ -481,14 +544,16 @@ obj analyze(lips v, obj x) {
 Vm(ev_u) {
   Ary(1);
   if (homp(Eva)) ip = Eva;
-  else CallC(v->ip = analyze(v, *Argv));
+  else { Pack();
+         bind(v->ip, analyze(v, *Argv));
+         Unpack(); }
   Next(0); }
 
 Vm(bootstrap) {
   Ary(1);
   xp = *Argv;
   Tc(xp, Hom);
-  // ev must already be interned
+  // neither intern nor tbl_set will allocate if ev is already interned / defined
   tbl_set(v, Top, interns(v, "ev"), Eva = xp);
   Jump(ret); }
 
@@ -581,6 +646,7 @@ Vm(hnom_u) {
 obj sequence(lips v, obj a, obj b) {
   hom h;
   with(a, with(b, h = cells(v, 8)));
+  bind(h, h);
   h[0] = imm;
   h[1] = (terp*) a;
   h[2] = call;

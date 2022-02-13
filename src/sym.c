@@ -14,17 +14,21 @@
 // the table and unpredictable memory allocation isn't safe
 // during garbage collection.
 obj interns(lips v, const char *s) {
-  return intern(v, string(v, s)); }
+  obj _;
+  bind(_, string(v, s));
+  return intern(v, _); }
 
 #include "mem.h"
 #include "tbl.h"
+
 obj sskc(lips v, mem y, obj x) {
   if (!nilp(*y)) {
     sym z = getsym(*y);
     int i = scmp(S(z->nom)->text, S(x)->text);
     return i == 0 ? *y : sskc(v, i < 0 ? &z->r : &z->l, x); }
   sym z;
-  bind(z, cells(v, Width(sym)));
+  // caller must ensure Avail >= Width(sym)
+  z = cells(v, Width(sym));
   z->code = hash(v, z->nom = x) ^ mix;
   z->l = z->r = nil;
   return *y = putsym(z); }
