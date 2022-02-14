@@ -10,6 +10,7 @@ typedef bool u1;
  typedef int##n##_t i##n; typedef uint##n##_t u##n;
 BWDQ(I)
 #undef I
+typedef i8 i1;
 
 // ASCII case folding
 static Inline char cmin(char c) {

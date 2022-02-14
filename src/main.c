@@ -50,7 +50,6 @@ static obj go(int argc, char **argv) {
         Unpack();
         Next(0); } } }
 
-
 static obj scr_(lips v, FILE *in) {
   obj y, x = parse(v, in);
   if (!x) return feof(in) ? nil : 0;

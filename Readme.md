@@ -1,7 +1,5 @@
 # lips
-lips is a lisp variant with a runtime written in C and a
-threaded code compiler written in itself. it's very small
-and pretty fast and should work on any 64-bit platform.
+nonverbal lisp
 
 ## build / install
 are you on linux? `make` will probably work. otherwise, see

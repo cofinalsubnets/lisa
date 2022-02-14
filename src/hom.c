@@ -44,7 +44,7 @@ typedef struct { obj arg, loc, clo, par, nom, sig; } *cenv;
 // then if f takes a fixed number of arguments the arity
 // signature is n; otherwise it's -n-1.
 
-static u0 scan(lips, mem, obj);
+static u1 scan(lips, mem, obj);
 static obj comp_lambda_clo(lips, mem, obj, obj), ltu(lips, mem, obj, obj);
 typedef hom c1(lips, mem, u64), c2(lips, mem, u64, obj);
 static c1 comp_expr_, comp_let_bind, emit_i, emit_i_d, comp_alloc;
@@ -120,7 +120,7 @@ static Inline hom ee1(terp *i, hom k) {
 static Inline hom ee2(terp *i, obj x, hom k) {
  return ee1(i, ee1((terp*) x, k)); }
 
-static Inline hom imx(lips v, mem e, i64 m, terp *i, obj x) {
+static hom imx(lips v, mem e, i64 m, terp *i, obj x) {
   bind(x, Push(inptr(i), x));
   return emit_i_d(v, e, m); }
 
@@ -135,91 +135,92 @@ static NoInline obj rw_let_fn(lips v, obj x) {
   return um, x; fail:
   return um, 0; }
 
-static u1 scan_def(lips v, mem e, obj x) {
-  if (!twop(x)) return true; // this is an even case so export all the definitions to the local scope
-  if (!twop(B(x))) return false; // this is an odd case so ignore these, they'll be imported after the rewrite
+static i1 scan_def(lips v, mem e, obj x) {
+  if (!twop(x)) return 1; // this is an even case so export all the definitions to the local scope
+  if (!twop(B(x))) return 0; // this is an odd case so ignore these, they'll be imported after the rewrite
   mm(&x);
   u1 r = scan_def(v, e, BB(x));
-  if (r) {
-    x = rw_let_fn(v, x);
-    obj y = pair(v, A(x), loc(*e));
+  if (r == 1) {
+    Bind(x, rw_let_fn(v, x));
+    obj y;
+    Bind(y, pair(v, A(x), loc(*e)));
     loc(*e) = y;
-    scan(v, e, AB(x)); }
-  return um, r; }
+    Bind(y, scan(v, e, AB(x))); }
+  return um, r; fail:
+  return um, -1; }
 
-static u0 scan(lips v, mem e, obj x) {
- if (!twop(x) || A(x) == La || A(x) == Qt) return;
- if (A(x) == De) return (u0) scan_def(v, e, B(x));
- mm(&x);
- for (; twop(x); x = B(x)) scan(v, e, A(x));
- um; }
+static u1 scan(lips v, mem e, obj x) {
+  if (!twop(x) || A(x) == La || A(x) == Qt) return true;
+  if (A(x) == De) return scan_def(v, e, B(x)) != -1;
+  mm(&x);
+  for (; twop(x); x = B(x))
+    if (!scan(v, e, A(x))) return um, false;
+  return um, true; }
 
 static obj asign(lips v, obj a, i64 i, mem m) {
- obj x;
- if (!twop(a)) return *m = i, a;
- if (twop(B(a)) && AB(a) == Va) return
-   *m = -(i+1),
-   pair(v, A(a), nil);
- return
-   with(a, x = asign(v, B(a), i+1, m)),
-   pair(v, A(a), x); }
+  obj x;
+  if (!twop(a)) return *m = i, a;
+  if (twop(B(a)) && AB(a) == Va) {
+    *m = -i-1;
+    return pair(v, A(a), nil); }
+  with(a, x = asign(v, B(a), i+1, m));
+  bind(x, x);
+  return pair(v, A(a), x); }
 
 static Inline obj new_scope(lips v, mem e, obj a, obj n) {
- i64 s = 0;
- return with(n, a = asign(v, a, 0, &s)),
-        tupl(v, a, nil, nil, e ? *e : nil, n, _N(s), (obj)0); }
+  i64 s = 0;
+  with(n, a = asign(v, a, 0, &s));
+  bind(a, a);
+  return tupl(v, a, nil, nil, e ? *e : nil, n, _N(s), (obj)0); }
 
 static Inline obj comp_body(lips v, mem e, obj x) {
- bind(x, Push(
-   inptr(comp_expr_), x,
-   inptr(emit_i), inptr(ret),
-   inptr(comp_alloc)));
- scan(v, e, v->sp[1]);
- bind(x, _H(Ccc(4))); // 4 = 2 + 2
- i64 i = llen(loc(*e));
- if (i) x = em2(locals, _N(i), x);
- i = N(asig(*e));
- if (i > 0) x = em2(arity, _N(i), x);
- else if (i < 0) x = em2(vararg, _N(-i-1), x);
- button(H(x))[1] = (terp*) x;
- return twop(clo(*e)) ? pair(v, clo(*e), x) : x; }
+  bind(x, Push(
+    inptr(comp_expr_), x,
+    inptr(emit_i), inptr(ret),
+    inptr(comp_alloc)));
+  scan(v, e, v->sp[1]);
+  bind(x, _H(Ccc(4))); // 4 = 2 + 2
+  i64 i = llen(loc(*e));
+  if (i) x = em2(locals, _N(i), x);
+  i = N(asig(*e));
+  if (i > 0) x = em2(arity, _N(i), x);
+  else if (i < 0) x = em2(vararg, _N(-i-1), x);
+  button(H(x))[1] = (terp*) x;
+  return twop(clo(*e)) ? pair(v, clo(*e), x) : x; }
 
 // takes a lambda expr, returns either a pair or or a
 // hom depending on if the function has free variables or not
 // (in the former case the car is the list of free variables
 // and the cdr is a hom that assumes the missing variables
 // are available in the closure).
-//
-// FIXME fallible
 static Inline obj ltu(lips v, mem e, obj n, obj l) {
- obj y;
- l = B(l);
- with(n,
-  l = twop(l) ? l : pair(v, l, nil),
-  with(y, l = linitp(v, l, &y),
-          with(l, n = pair(v, n, e ? name(*e) : nil)),
-          n = new_scope(v, e, l, n)),
-  l = comp_body(v, &n, A(y)));
- return l; }
+  obj y = nil;
+  l = B(l);
+  mm(&n); mm(&y); mm(&l);
+  Bind(l, twop(l) ? l : pair(v, l, nil));
+  Bind(l, linitp(v, l, &y));
+  Bind(n, pair(v, n, e ? name(*e) : nil));
+  Bind(n, new_scope(v, e, l, n));
+  Bind(l, comp_body(v, &n, A(y)));
+  return um, um, um, l; fail:
+  return um, um, um, 0; }
 
-// FIXME fallible
 static Inline obj comp_lambda_clo(lips v, mem e, obj arg, obj seq) {
   i64 i = llen(arg);
   mm(&arg), mm(&seq);
-
-  for (Push(
-         inptr(emit_i_d), inptr(take), _N(i),
-         inptr(comp_alloc));
-       twop(arg);
-       arg = B(arg))
-    Push(
+  u1 _;
+  Bind(_, Push(
+    inptr(emit_i_d), inptr(take), _N(i),
+    inptr(comp_alloc)));
+  while (twop(arg)) {
+    Bind(_, Push(
       inptr(comp_expr_), A(arg),
-      inptr(emit_i), inptr(push));
+      inptr(emit_i), inptr(push)));
+    arg = B(arg); }
 
-  arg = _H(Ccc(0));
-  um, um;
-  bind(arg, arg);
-  return pair(v, seq, arg); }
+  Bind(arg, _H(Ccc(0)));
+  return um, um, pair(v, seq, arg); fail:
+  return um, um, 0; }
 
 CO(comp_lambda, obj x) {
  terp* j = imm;
@@ -231,6 +232,7 @@ CO(comp_lambda, obj x) {
    j = e && twop(loc(*e)) ? encll : encln,
    x = comp_lambda_clo(v, e, A(x), B(x));
  um;
+ bind(x, x);
  return ee2(j, x, H(k)); }
 
 CO(comp_imm, obj x) {

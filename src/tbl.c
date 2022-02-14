@@ -103,13 +103,14 @@ static obj tbl_del(lips v, obj t, obj key) {
 
 #include "mem.h"
 
-// grow(vm, tbl, new_size): destructively resize a hash table.
+// tbl_grow(vm, tbl, new_size): destructively resize a hash table.
 // new_size words of memory are allocated for the new bucket array.
 // the old table entries are reused to populate the modified table.
-static obj grow(lips v, obj t) {
+static obj tbl_grow(lips v, obj t) {
   ent *tab0, *tab1;
   u64 cap0 = T(t)->cap, cap1 = cap0 + 1;
   with(t, tab1 = cells(v, 1<<cap1));
+  bind(tab1, tab1);
   set64(tab1, 0, 1<<cap1);
   tab0 = T(t)->tab;
 
@@ -129,20 +130,21 @@ obj tbl_set_s(lips v, obj t, obj k, obj x) {
   if (e) return e->val = x;
 
   // it's not here, so allocate an entry
-  tbl y;
-  with(t, with(k, with(x,
-    e = cells(v, Width(ent)),
-    e->key = k, e->val = x,
-    y = gettbl(t),
-    e->next = y->tab[i],
-    y->tab[i] = e,
-    y->len += 1)));
+  with(t, with(k, with(x, e = cells(v, Width(ent)))));
+  bind(e, e);
+  e->key = k, e->val = x;
+  tbl y = gettbl(t);
+  e->next = y->tab[i];
+  y->tab[i] = e;
+  y->len += 1;
 
   return x; }
 
 obj tbl_set(lips v, obj t, obj k, obj x) {
   with(t, x = tbl_set_s(v, t, k, x));
-  if (tbl_load(t) > 1) with(x, grow(v, t));
+  bind(x, x);
+  if (tbl_load(t) > 1) with(x, t = tbl_grow(v, t));
+  bind(t, t);
   return x; }
 
 obj tbl_get(lips v, obj t, obj k) {
@@ -150,26 +152,28 @@ obj tbl_get(lips v, obj t, obj k) {
   return e ? e->val : 0; }
 
 obj table(lips v) {
-  tbl t = cells(v, Width(tbl) + 1);
+  tbl t;
+  bind(t, cells(v, Width(tbl) + 1));
   ent *b = (ent*)(t+1);
   t->len = t->cap = 0, t->tab = b, *b = NULL;
   return puttbl(t); }
 
 static obj tblkeys_j(lips v, ent e, obj l) {
- obj x;
- return !e ? l :
-  (x = e->key,
-   with(x, l = tblkeys_j(v, e->next, l)),
-   pair(v, x, l)); }
+  if (!e) return l;
+  obj x = e->key;
+  with(x, l = tblkeys_j(v, e->next, l));
+  bind(l, l);
+  return pair(v, x, l); }
 
 static obj tblkeys_i(lips v, obj t, i64 i) {
- obj k;
- return i == 1<<gettbl(t)->cap ? nil :
-  (with(t, k = tblkeys_i(v, t, i+1)),
-   tblkeys_j(v, gettbl(t)->tab[i], k)); }
+  obj k;
+  if (i == 1 << gettbl(t)->cap) return nil;
+  with(t, k = tblkeys_i(v, t, i+1));
+  bind(k, k);
+  return tblkeys_j(v, gettbl(t)->tab[i], k); }
 
 Inline obj tblkeys(lips v, obj t) {
- return tblkeys_i(v, t, 0); }
+  return tblkeys_i(v, t, 0); }
 
 #include "terp.h"
 
@@ -187,6 +191,7 @@ OP1(tlen, _N(gettbl(xp)->len))
 
 Vm(tkeys) {
   CallC(v->xp = tblkeys(v, xp));
+  bind(xp, xp);
   Next(1); }
 
 Vm(tblc) {
@@ -197,19 +202,24 @@ Vm(tblc) {
 
 static obj tblss(lips v, i64 i, i64 l) {
   mem fp = v->fp;
-  return i > l-2 ? Argv[i-1] :
-   (tbl_set(v, v->xp, Argv[i], Argv[i+1]),
-    tblss(v, i+2, l)); }
+  if (i > l-2) return Argv[i-1];
+  obj _;
+  bind(_, tbl_set(v, v->xp, Argv[i], Argv[i+1]));
+  return tblss(v, i+2, l); }
 
 Vm(tbls) {
   Ary(1);
   xp = *Argv;
   Tc(xp, Tbl);
   CallC(v->xp = tblss(v, 1, N(Argc)));
+  bind(xp, xp);
   Jump(ret); }
 
 Vm(tblmk) {
-  CallC(v->xp = table(v), tblss(v, 0, N(Argc)));
+  Pack();
+  bind(v->xp, table(v));
+  bind(xp, tblss(v, 0, N(Argc)));
+  Unpack();
   Jump(ret); }
 
 Vm(tbld) {
@@ -222,6 +232,7 @@ Vm(tblks) {
   Ary(1);
   Tc(*Argv, Tbl);
   CallC(v->xp = tblkeys(v, *Argv));
+  bind(xp, xp);
   Jump(ret); }
 
 Vm(tbll) {
@@ -232,4 +243,5 @@ Vm(tbll) {
 Vm(tset) {
   obj x = *sp++, y = *sp++;
   CallC(v->xp = tbl_set(v, xp, x, y));
+  bind(xp, xp);
   Next(1); }

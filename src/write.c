@@ -102,5 +102,12 @@ Vm(dump) {
   Tc(Argv[1], Str);
   char *p = S(Argv[0])->text,
        *d = S(Argv[1])->text;
-  write_file(v, p, d);
+  write_file(v, p, d); // FIXME handle failure
   Jump(ret); }
+
+u1 write_file(lips v, const char *path, const char *text) {
+  FILE *out;
+  bind(out, fopen(path, "w"));
+  for (int c = *text; c; c = *++text) fputc(c, out);
+  fclose(out);
+  return true; }

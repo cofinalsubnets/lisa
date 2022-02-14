@@ -58,7 +58,7 @@ obj parse(lips v, FILE* i) {
     case '"': return read_str(v, i);
     case '\'': return read_quoted(v, i);
     default: ungetc(c, i);
-             x = read_atom(v, i);
+             bind(x, read_atom(v, i));
              y = read_num(v, S(x)->text);
              return nump(y) ? y : intern(v, x); } }
 
@@ -141,12 +141,6 @@ obj read_path(lips v, const char *path) {
   FILE *in;
   bind(in, fopen(path, "r"));
   return read_file(v, in); }
-
-u0 write_file(lips v, const char *path, const char *text) {
-  FILE *out = fopen(path, "w");
-  if (!out) return;
-  for (int c = *text; c; c = *++text) fputc(c, out);
-  fclose(out); }
 
 Vm(par_u) {
   CallC(xp = parse(v, stdin),
