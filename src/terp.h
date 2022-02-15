@@ -1,5 +1,4 @@
 terp gc, type_error, oob_error, ary_error, div_error;
-obj panic(lips);
 u0 errp(lips, const char*, ...);
 
 #define insts(_)\

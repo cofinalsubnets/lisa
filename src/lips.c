@@ -28,9 +28,6 @@ lips li_ini(void) {
   v->pool = (mem) (v->root = NULL);
   set64(v->glob, nil, NGlobs);
 
-  jmp_buf re;
-  v->restart = &re;
-  if (setjmp(re)) fail: return li_fin(v), NULL;
 
 #define Bind(x) if(!(x))goto fail
   Bind(Top = table(v));
@@ -49,8 +46,8 @@ lips li_ini(void) {
 #define def(s, x) Bind(_=interns(v,s));Bind(tbl_set(v,Top,_,x))
   def("_ns", Top);
   def("_macros", Mac);
-  v->restart = NULL;
-  return v; }
+  return v; fail:
+  return li_fin(v), NULL; }
 
 static NoInline u1 inst(lips v, const char *a, terp *b) {
   obj z;

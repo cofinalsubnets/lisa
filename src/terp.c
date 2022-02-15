@@ -9,6 +9,8 @@
 #include "two.h"
 #include "str.h"
 #include "vec.h"
+static obj panic(lips);
+
 // " the virtual machine "
 // It's a stack machine with one free register that runs on
 // top of the C compiler's calling convention. This lets us
@@ -261,12 +263,10 @@ Tp(str) Tp(tbl) Tp(vec) Tp(nil)
 // stack manipulation
 Vm(dupl) { Have1(); --sp; sp[0] = sp[1]; Next(1); }
 
-obj panic(lips v) {
-  if (v->restart == NULL) return li_fin(v), 0;
+static obj panic(lips v) {
   v->fp = v->sp = v->pool + v->len;
   v->xp = v->ip = nil;
-  v->root = NULL;
-  longjmp(*v->restart, 1); }
+  return 0; }
 
 u0 errp(lips v, const char *msg, ...) {
   obj ip = v->ip;
@@ -305,34 +305,29 @@ Vm(gc) {
 
 // errors
 Vm(fail) {
-  if (homp(Re)) Ap(Re, xp);
   Pack();
   errp(v, NULL);
   return panic(v); }
 
 Vm(type_error) {
-  if (homp(Re)) Ap(Re, xp);
   enum tag exp = v->xp, act = kind(xp);
   Pack();
   errp(v, "wrong type : %s for %s", tnom(act), tnom(exp));
   return panic(v); }
 
 Vm(oob_error) {
-  if (homp(Re)) Ap(Re, xp);
   i64 a = v->xp, b = v->ip;
   Pack();
   errp(v, "oob : %d >= %d", a, b);
   return panic(v); }
 
 Vm(ary_error) {
-  if (homp(Re)) Ap(Re, xp);
   i64 a = N(Argc), b = v->xp;
   Pack();
   errp(v, arity_err_msg, a, b);
   return panic(v); }
 
 Vm(div_error) {
-  if (homp(Re)) Ap(Re, xp);
   Pack();
   errp(v, "/ 0");
   return panic(v); }

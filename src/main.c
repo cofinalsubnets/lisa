@@ -68,22 +68,17 @@ static obj scrp(lips v, const char *path) {
     errp(v, "%s : %s", path, strerror(errno)),
     0;
 
-  jmp_buf re;
-  v->restart = &re;
-  if (setjmp(re)) return v->restart = NULL, fclose(in), 0;
   obj x = scr_(v, in);
-  v->restart = NULL, fclose(in);
+  fclose(in);
   bind(x, x);
   bind(x, pair(v, Se, x));
   return analyze(v, x); }
 
 static Vm(li_fin_ok) { return li_fin(v), nil; }
 static Vm(li_repl) {
-  obj x;
-  jmp_buf re;
-  for (v->restart = &re, setjmp(re);;)
-    if ((x = parse(v, stdin)))
-      emsep(v, eval(v, x), stdout, '\n');
+  for (obj x;;)
+    if ((x = parse(v, stdin))) {
+      if ((x = eval(v, x))) emsep(v, x, stdout, '\n'); }
     else if (feof(stdin)) return li_fin(v), nil; }
 
 static obj scrr(lips v, u1 shell, const char **paths) {

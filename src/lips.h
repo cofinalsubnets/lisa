@@ -2,7 +2,6 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <setjmp.h>
 
 _Static_assert(sizeof(i64*) == sizeof(i64), "64 bit pointers");
 _Static_assert(-1 >> 1 == -1, "sign-extended bit shifts");
@@ -26,7 +25,7 @@ typedef struct root { mem one; struct root *next; } *root;
 
 enum globl { // indices into a table of global constants
  Def, Cond, Lamb, Quote, Seq, Splat,
- Topl, Macs, Eval, Apply, Restart, NGlobs };
+ Topl, Macs, Eval, Apply, NGlobs };
 
 typedef struct lips {
  obj ip, xp, *fp, *hp, *sp, // interpreter state
@@ -34,7 +33,6 @@ typedef struct lips {
  i64 rand, count, // random state
      t0, len, *pool; // memory state
  root root; // gc protection list
- jmp_buf *restart; // top level restart
 } *lips;
 
 // this structure holds runtime state.
