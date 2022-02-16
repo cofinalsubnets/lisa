@@ -75,7 +75,7 @@ static obj snoc(lips v, obj l, obj x) {
 static u1 pushss(lips v, i64 i, va_list xs) {
   u1 _;
   obj x = va_arg(xs, obj);
-  if (!x) return Avail >= i || please(v, i); 
+  if (!x) return Avail >= i || please(v, i);
   with(x, _ = pushss(v, i+1, xs));
   bind(_, _);
   *--v->sp = x;
@@ -395,15 +395,6 @@ CO(comp_expr, obj x) { return (symp(x) ? comp_sym :
                                twop(x) ? comp_list :
                                          comp_imm)(v, e, m, x); }
 
-static obj apply(lips, obj, obj) NoInline;
-
-// FIXME no macros in stage 1
-CO(comp_macro, obj macro, obj args) {
-  obj s1 = S1, s2 = S2;
-  with(s1, with(s2, macro = apply(v, macro, args)));
-  bind(macro, macro);
-  S1 = s1, S2 = s2;
-  return comp_expr(v, e, m, macro); }
 
 CO(comp_call, obj fun, obj args) {
   mm(&args);
@@ -440,9 +431,6 @@ CO(comp_list, obj x) {
   if (z == Qt) {
     x = twop(x = B(x)) ? A(x) : x;
     return comp_imm(v, e, m, x); }
-  // FIXME bootstrap compiler should not use macros
-  if ((z = tbl_get(v, Mac, z)))
-    return comp_macro(v, e, m, z, B(x));
   return comp_call(v, e, m, A(x), B(x)); }
 
 CO(emit_i) {
@@ -472,6 +460,7 @@ CO(comp_alloc) {
  bind(k, hini(v, m+1));
  return ee1((terp*)(e ? name(*e) : nil), k); }
 
+static obj apply(lips, obj, obj) NoInline;
 obj eval(lips v, obj x) {
   obj args;
   bind(args, pair(v, x, nil));

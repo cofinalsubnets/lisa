@@ -273,10 +273,10 @@
     (, (Ts (Tg e'def) (A x) a) (rec a)))
    (loop (BB x))))
 
-  (rec x) (? (2p x) (case (A x)
-   '\ () '` ()
-   ': (? (= 1 (% (len x) 2)) (loop (B x)))
-   (each x rec)))
+  (rec x) (? (2p x) (: head (A x) (?
+   (|| (= head \) (= head `)) ()
+   (= head :) (? (= 1 (% (len x) 2)) (loop (B x)))
+   (each x rec))))
 
   (, (rec x) (resolve e) (wv e x)))
 
@@ -404,12 +404,12 @@
                     (? (B z) (X ', z) (A z)))))
 
 
-   a (A x) (case a
-    ` (? (B x) x)
-    \ (lamb e x)
-    : (defn e x)
-    ? (cond e (B x))
-    , (seq e x)
+   a (A x) (?
+    (= a `) (? (B x) x)
+    (= a \) (lamb e x)
+    (= a :) (defn e x)
+    (= a ?) (cond e (B x))
+    (= a ,) (seq e x)
     (? (Th _macros a) (wv e (ap (Tg _macros a) (B x)))
      (: z (map (\ x (wv e x)) x) q (A z) r (B z) (?
       (~ (Th pure q)) (check-arity z)
@@ -418,8 +418,7 @@
       (Th abelians q) (:
        ff (part qtd r)
        fg (ap q (map unq (A ff)))
-       (X q (? (= fg (q)) (B ff)
-             (X fg (B ff)))))
+       (X q (? (= fg (q)) (B ff) (X fg (B ff)))))
       (check-arity z))))))
 
   (symb e x) (: l (look e x) (?
@@ -458,10 +457,9 @@
  (ev-t x t k) (eval x (>- t k))
  ; these functions are for type checking
  (>- t k) (? (~ t) k
-  (xc (case t 'two i-id2 'num i-idZ
-              'hom i-idH 'tbl i-idT
-              (fail))
-      k))
+  (xc (? (= t 'two) i-id2 (= t 'num) i-idZ
+         (= t 'hom) i-idH (= t 'tbl) i-idT
+         (fail)) k))
 
  (-> t k) (:
   (produces t h)
@@ -470,9 +468,9 @@
       (fail))
   (co k (? t (cu produces t) id)))
 
- (consumes h) (case (hgeti h)
-  i-idH 'hom i-idZ 'num
-  i-id2 'two i-idT 'tbl)
+ (consumes h) (: i (hgeti h) (?
+  (= i i-idH) 'hom (= i i-idZ) 'num
+  (= i i-id2) 'two (= i i-idT) 'tbl))
 
  (eval x k) (:
   (list x k) (:
@@ -492,9 +490,10 @@
     (pop2 (loop x (push2 k))))
 
    ((lamb x k) e m) (:
-    (nom e k) (case (hgeti k)
-     i-tbind (hgetx (hseek k 1))
-     i-loc_  (at (Tg e 'loc) (hgetx (hseek k 1))))
+    (nom e k) ; try to pick a name for this function
+     (: i (hgeti k) (?
+      (= i i-tbind) (hgetx (hseek k 1)) ; maybe we're about to set a global?
+      (= i i-loc_) (at (Tg e 'loc) (hgetx (hseek k 1))))) ; or a local
 
     (clo-thd e x k) (:
      (loop x k) (? (~ x) k
@@ -513,8 +512,7 @@
     (loop x k) (? (~ x) k
      (loop (B x) (eval (A x) (xc i-push k))))
     (? (? (qtd a) (: q (Tg inliners (unq a)))) (q b k)
-     (loop b (eval a (>- 'hom
-      ; tail call optimization is handled by instruction fusion
+     (loop b (eval a (>- 'hom ; tail call optimization is handled by instruction fusion
       (xc i-call (xd (len b) k))))))) ; here is where you would do it instead
 
    (defn x k) (:
@@ -529,13 +527,13 @@
 
     (\ e m ((loop e x k) e m)))
 
-   (case (: z (A x))
-    ` (Im (AB x) k)
-    ? (cond (B x) k)
-    : (defn (B x) k)
-    \ (lamb x k)
-    , (seq (B x) k)
-    (app z (B x) k)))
+   (: z (A x) (?
+    (= z `) (Im (AB x) k)
+    (= z ?) (cond (B x) k)
+    (= z :) (defn (B x) k)
+    (= z \) (lamb x k)
+    (= z ,) (seq (B x) k)
+    (app z (B x) k))))
 
   ((symb x k) e m) (:
    (late d) (:
@@ -548,7 +546,7 @@
     (= s 'here) ((Im (B r) k) e m)
     (= s 'wait) (late (B r))
     (= e (B r)) (
-     (xc (case s 'arg i-arg 'loc i-loc 'clo i-clo)
+     (xc (? (= s 'arg) i-arg (= s 'loc) i-loc (= s 'clo) i-clo)
       (xd (idx (Tg e s) x) k)) e m)
     (, (: l (len (Tg e'clo)))
        (Ts e'clo(snoc (Tg e'clo) x))
@@ -580,8 +578,8 @@
   (tbl
    ; this along with "return forwarding" in branches is how
    ; tail calls get optimized.
-   i-call (\ i h (case (hgeti (hseek h 1))
-    i-ret (emi i-rec (emx (hgetx h) (hseek h 1)))
+   i-call (\ i h (? (= i-ret (hgeti (hseek h 1)))
+    (emi i-rec (emx (hgetx h) (hseek h 1)))
     (emi i h)))
    i-arg (argn i-arg0 i-arg1)
    i-loc (argn i-loc0 i-loc1)
