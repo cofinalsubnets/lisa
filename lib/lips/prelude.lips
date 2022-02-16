@@ -170,8 +170,8 @@
   (idx '(hom num two vec str tbl sym nil ()) x)
 
  (type-sym x) (?
-  (\? x) 'hom (nump x) 'num
-  (2? x) 'two (vecp x) 'vec
+  (homp x) 'hom (nump x) 'num
+  (twop x) 'two (vecp x) 'vec
   (symp x) 'sym (strp x) 'str
   (tblp x) 'tbl          'nil)
 
@@ -192,16 +192,6 @@
 
  (toplp e) (~ (Tg e'par))
 
-
- ; type representation for inference
- ; the total space of lips values is partitioned into finitely
- ; many elementary types. an inferred type is a union of these
- ; nonoverlapping sets. elementary types are function, number,
- ; pair, etc.
- ; (typeof x) (<< 1 (type-sym-num (type-sym x)))
- ; top-type (- (<< 1 8) 1)
- ; (refine t c) (& t c)
- ; (relax t c) (| t c)
 
  ; this function is used in several places to look for a
  ; variable's value, or failing that to find where it's bound.

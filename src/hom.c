@@ -477,6 +477,8 @@ obj eval(lips v, obj x) {
   bind(args, pair(v, x, nil));
   return apply(v, homp(Eva) ? Eva : tbl_get(v, Top, Eva), args); }
 
+// return to C
+static Vm(yield) { Pack(); return xp; }
 static NoInline obj apply(lips v, obj f, obj x) {
  Push(f, x);
  hom h;

@@ -79,24 +79,19 @@ Vm(locals) {
 // the "static" type and arity checking that would have been
 // done by the compiler if the function had been bound early.
 Vm(lbind) {
- obj w = (obj) H(ip)[1], d = AB(w), y = A(w);
- if (!(w = tbl_get(v, d, xp = BB(w)))) {
-  char *nom = nilp(Y(xp)->nom) ? "()" : S(Y(xp)->nom)->text;
-  Pack();
-  errp(v, "free variable: %s", nom);
-  return panic(v); }
- xp = w;
- if (getnum(y) != 8) Tc(xp, getnum(y)); // do the type check
- terp *q = H(ip)[2]; // omit the arity check if possible
- if (q == call || q == rec) {
-  obj aa = (obj) H(ip)[3];
-  if (H(xp)[0] == arity && aa >= (obj) H(xp)[1]) xp += W2; }
- H(ip)[0] = imm;
- H(ip)[1] = (terp*) xp;
- Next(2); }
-
-// return to C
-Vm(yield) { Pack(); return xp; }
+  obj w = (obj) H(ip)[1], d = AB(w), y = A(w);
+  if (!(w = tbl_get(v, d, xp = BB(w)))) {
+    char *nom = nilp(Y(xp)->nom) ? "()" : S(Y(xp)->nom)->text;
+    return Pack(), errp(v, "free variable : %s", nom), panic(v); }
+  xp = w;
+  if (y != _N(8)) Tc(xp, N(y)); // do the type check
+  terp *q = H(ip)[2]; // omit the arity check if possible
+  if (q == call || q == rec) {
+    obj aa = (obj) H(ip)[3];
+    if (H(xp)[0] == arity && aa >= (obj) H(xp)[1]) xp += W2; }
+  H(ip)[0] = imm;
+  H(ip)[1] = (terp*) xp;
+  Next(2); }
 
 #define FF(x) F(F(x))
 #define FG(x) F(G(x))
@@ -268,19 +263,20 @@ static obj panic(lips v) {
   v->xp = v->ip = nil;
   return 0; }
 
+static NoInline u0 show_call(lips v, obj ip, mem fp) {
+  fputc('(', stderr);
+  emit(v, stderr, ip);
+  mem top = v->pool + v->len;
+  for (i64 i = 0, argc = fp == top ? 0 : N(Argc); i < argc;)
+    fputc(' ', stderr), emit(v, stderr, Argv[i++]);
+  fputc(')', stderr); }
+
 u0 errp(lips v, const char *msg, ...) {
   obj ip = v->ip;
   mem fp = v->fp;
   // print current call as (function arg1 arg2 ...)
-  fputs("# (", stderr);
-  emit(v, stderr, ip);
-  mem top = v->pool + v->len;
-  i64 i = 0, argc = fp == top ? 0 : N(Argc);
-  if (argc) for (fputc(' ', stderr);; fputc(' ', stderr)) {
-    obj x = Argv[i++];
-    emit(v, stderr, x);
-    if (i == argc) break; }
-  fputc(')', stderr);
+  fputs("# ", stderr);
+  show_call(v, ip, fp);
 
   // print error message
   if (msg) {
@@ -291,10 +287,10 @@ u0 errp(lips v, const char *msg, ...) {
   fputc('\n', stderr);
 
   // print backtrace
-  for (mem top = v->pool + v->len; fp < top;) {
+  for (mem top = v->pool + v->len;;) {
     ip = Retp, fp += Width(frame) + N(Argc) + N(Subr);
-    if (button(H(ip))[-1] == yield) break;
-    fputs("# in ", stderr), emsep(v, ip, stderr, '\n'); } }
+    if (fp == top) break;
+    fputs("#  in ", stderr), show_call(v, ip, fp), fputc('\n', stderr); } }
 
 Vm(gc) {
   u64 req = v->xp;
@@ -304,10 +300,7 @@ Vm(gc) {
   return panic(v); }
 
 // errors
-Vm(fail) {
-  Pack();
-  errp(v, NULL);
-  return panic(v); }
+Vm(fail) { return Pack(), errp(v, NULL), panic(v); }
 
 Vm(type_error) {
   enum tag exp = v->xp, act = kind(xp);
@@ -317,20 +310,13 @@ Vm(type_error) {
 
 Vm(oob_error) {
   i64 a = v->xp, b = v->ip;
-  Pack();
-  errp(v, "oob : %d >= %d", a, b);
-  return panic(v); }
+  return Pack(), errp(v, "oob : %d >= %d", a, b), panic(v); }
 
 Vm(ary_error) {
   i64 a = N(Argc), b = v->xp;
-  Pack();
-  errp(v, arity_err_msg, a, b);
-  return panic(v); }
+  return Pack(), errp(v, arity_err_msg, a, b), panic(v); }
 
-Vm(div_error) {
-  Pack();
-  errp(v, "/ 0");
-  return panic(v); }
+Vm(div_error) { return Pack(), errp(v, "/ 0"), panic(v); }
 
 // type/arity checking
 #define DTc(n, t) Vm(n) {\

@@ -5,7 +5,7 @@ u0 errp(lips, const char*, ...);
  _(tget, 0) _(tset, 0) _(thas, 0) _(tlen, 0) _(arity, 0)\
  _(idZ, 0) _(idH, 0) _(id2, 0) _(idT, 0) _(imm, 0)\
  _(arg, 0) _(clo, 0) _(loc, 0) _(take, 0) _(locals, 0)\
- _(loc_, 0) _(encll, 0) _(encln, 0) _(yield, 0) _(ret, 0)\
+ _(loc_, 0) _(encll, 0) _(encln, 0) _(ret, 0)\
  _(jump, 0) _(branch, 0) _(barnch, 0) _(call, 0) _(rec, 0)\
  _(lbind, 0) _(sar, 0) _(sal, 0) _(band, 0) _(bor, 0)\
  _(bxor, 0) _(tbind, 0) _(push, 0) _(add, 0) _(sub, 0)\

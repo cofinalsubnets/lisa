@@ -22,19 +22,8 @@ static reader read_list, read_str, read_atom;
 static obj read_list(lips, FILE*), read_num(lips, const char*);
 static read_loop read_str_loop, read_atom_loop;
 
-static Inline obj read_buffered(lips v, FILE *i, read_loop *loop) {
-  str c;
-  bind(c, cells(v, 2));
-  return loop(v, i, c, 0, c->len = 8); }
-
-static NoInline obj grow_buffer(lips v, obj s) {
-  u64 l = b2w(S(s)->len);
-  str t;
-  with(s, t = cells(v, 2*l+1));
-  bind(t, t);
-  t->len = w2b(2*l);
-  cpy64(t->text, S(s)->text, l);
-  return _S(t); }
+static Inline obj read_buffered(lips, FILE*, read_loop*);
+static NoInline obj grow_buffer(lips, obj);
 
 static int read_char(FILE *i) {
   for (int c;;) switch ((c = getc(i))) {
@@ -78,6 +67,24 @@ static obj read_list(lips v, FILE *i) {
            bind(y, y);
            return pair(v, x, y); } }
 
+static Inline obj read_buffered(lips v, FILE *i, read_loop *loop) {
+  str c;
+  bind(c, cells(v, 2));
+  return loop(v, i, c, 0, c->len = 8); }
+
+static NoInline obj reloop(lips v, FILE *i, obj x, u64 n, read_loop *loop) {
+  bind(x, grow_buffer(v, x));
+  return loop(v, i, S(x), n, 2 * n); }
+
+static NoInline obj grow_buffer(lips v, obj s) {
+  u64 l = b2w(S(s)->len);
+  str t;
+  with(s, t = cells(v, 2*l+1));
+  bind(t, t);
+  t->len = w2b(2*l);
+  cpy64(t->text, S(s)->text, l);
+  return _S(t); }
+
 static obj read_atom_loop(lips v, FILE *p, str o, u64 n, u64 lim) {
   obj x;
   while (n < lim) switch (x = getc(p)) {
@@ -85,10 +92,9 @@ static obj read_atom_loop(lips v, FILE *p, str o, u64 n, u64 lim) {
     case '(': case ')': case '\'': case '"':
       ungetc(x, p); case EOF:
       o->text[n++] = 0, o->len = n;
-      return putstr(o);
+      return _S(o);
     default: o->text[n++] = x; }
-  bind(x, grow_buffer(v, _S(o)));
-  return read_atom_loop(v, p, S(x), lim, 2*lim); }
+  return reloop(v, p, _S(o), lim, read_atom_loop); }
 
 static obj read_str_loop(lips v, FILE *p, str o, u64 n, u64 lim) {
   obj x;
@@ -96,16 +102,15 @@ static obj read_str_loop(lips v, FILE *p, str o, u64 n, u64 lim) {
     case '\\': if ((x = getc(p)) == EOF) {
     case EOF: case '"': o->text[n++] = 0, o->len = n ;return _S(o); }
     default: o->text[n++] = x; }
-  bind(x, grow_buffer(v, _S(o)));
-  return read_str_loop(v, p, S(x), lim, 2*lim); }
+  return reloop(v, p, _S(o), lim, read_str_loop); }
 
 static obj read_file_loop(lips v, FILE *p, str o, u64 n, u64 lim) {
   obj x;
   while (n < lim) switch (x = getc(p)) {
     case EOF: o->text[n++] = 0, o->len = n; return _S(o);
     default: o->text[n++] = x; }
-  bind(x, grow_buffer(v, _S(o)));
-  return read_file_loop(v, p, S(x), lim, 2*lim); }
+  return reloop(v, p, _S(o), lim, read_file_loop); }
+
 
 static NoInline obj read_num_2(const char *s, i64 rad) {
   static const char *dig = "0123456789abcdef";
