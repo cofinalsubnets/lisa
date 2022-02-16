@@ -132,10 +132,11 @@
   )
 
   )
-(: egg '(,
-  ; standard library functions
-
-(:
+; this is the compiler source that's eval'd by stage 1, then
+; again by itself to produce the final eval function. you can't
+; use any macros in here, because stage 1 doesn't know about
+; macros.
+(: egg '(, (:
    ; these data structures encode rules for partially evaluating
    ; different functions. right now the functions eligible for
    ; partial evaluation are hardcoded. but the compiler should
@@ -160,11 +161,7 @@
    abelians (set && || + *) ; arguments can be combined freely
    monoids (set scat append) ; pairs of consecutive arguments can be combined in place
 
-   )
-
-  ; the compiler !!
-  (: ; eval the compiler & redefine eval
-
+   ) (: ; new let expn makes sure ^^^ exist & don't make a closure vvv
 
  (type-sym-num x)
   (idx '(hom num two vec str tbl sym nil ()) x)

@@ -50,7 +50,7 @@ static u0 emhomn(lips v, obj x, FILE *o) {
   switch (kind(x)) {
     case Sym: return write_sym(v, x, o);
     case Two: if (symp(A(x))) write_sym(v, A(x), o);
-              if (twop(B(x))) emhomn(v, B(x), o); } }
+              emhomn(v, B(x), o); } }
 
 static u0 write_hom(lips v, obj x, FILE *o) {
   emhomn(v, homnom(v, x), o); }
