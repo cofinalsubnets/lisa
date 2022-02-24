@@ -161,6 +161,157 @@
    abelians (set && || + *) ; arguments can be combined freely
    monoids (set scat append) ; pairs of consecutive arguments can be combined in place
 
+
+ ; instruction fusion table
+ fuse (:
+
+  ; a common case is to rewrite the last emitted
+  ; instruction or value according to an exact table
+  ; of values
+  ((f1 g xs .) i p)
+   ((\ a q
+    ((: (loop x) (?
+     (~ x)       (emi i p)
+     (= a (A x)) (emi (AB x) q)
+     (loop (BB x)))) xs))(g p) (hseek p 1))
+
+  ; for specialized indexed instructions
+  (argn a b) (f1 hgetx 0 a 1 b)
+
+  ; for specialized branch instructions ;
+  ; takes an argument for each branch case
+  (br2 b c) (f1 hgeti i-branch b i-barnch c)
+
+  (tbl
+   ; this along with "return forwarding" in branches is how
+   ; tail calls get optimized.
+   i-call (\ i h (? (= i-ret (hgeti (hseek h 1)))
+    (emi i-rec (emx (hgetx h) (hseek h 1)))
+    (emi i h)))
+   i-arg (argn i-arg0 i-arg1)
+   i-loc (argn i-loc0 i-loc1)
+   i-clo (argn i-clo0 i-clo1)
+   i-lt (br2 i-brlt i-brlt2)
+   i-lteq (br2 i-brlteq i-brlteq2)
+   i-gt (br2 i-brgt i-brgt2)
+   i-gteq (br2 i-brgteq i-brlt)
+   i-eq (br2 i-breq i-brne)
+   i-nilpp (f1 hgeti i-branch i-barnch i-barnch i-branch)
+   i-imm (f1 hgetx () i-unit 0 i-zero 1 i-one)))
+
+ ; special function compiler table
+ inliners (:
+
+  (mono f m x) (:
+   (fold f m x) (? (~ x) (L m)
+    (? (qtd (: y (A x))) (fold f (f m (unq y)) (B x))
+     (: z (fold f m (B x)) (X (A z) (X y (B z))))))
+   (? (= (f) (A (: j (fold f m x)))) (B j) j))
+
+  ((ordr i) x k) (?
+   (~ x) (Im () k)
+   (~ (B x)) (Im 1 k)
+   (eval (A x) (:
+    (fold k x y)
+     (eval x (xc i (? (~ y) (push2 k)
+      (xc i-barnch (peek2 (xc i-push
+       (fold k (A y) (B y))))))))
+    (xc i-push (pop2 (fold k (AB x) (BB x)))))))
+
+  ((abel f i) x k) ((\ x
+   (eval (A x) (>- 'num (2f i k (B x)))))(mono f (f) x))
+
+  (nary i tR xs .) (: arity (len xs) (\ x k (?
+   (< (len x) arity) (fail "wrong arity")
+   (: (fo k z) (co (eval (AA z) (>- (BA z) k)) (B z))
+      (co k z) (? z (fo (xc i-push k) z) k)
+      l (xc i (-> tR k))
+      z (zip X x xs)
+    (? z (fo l z) l)))))
+
+  (2f i k x)
+   (: (2g i k x)
+       (xc i-push (eval (A x) (>- 'num (xc i (2f i k (B x))))))
+    (? x (2g i k x) (-> 'num k)))
+
+  ((bitshift f i) x k) (:
+   y (mono + 0 (B x))
+   z (? (nump (A x)) (mono f (A x) y) (X (A x) y))
+   (eval (A z) (>- 'num (2f i k (B z)))))
+
+  (tbl
+   id (\ x k (eval (A x) k))
+   + (abel + i-add)
+   - (\ x k (?
+    (~ x) (Im 0 k)
+    (~ (B x)) ((nary i-neg 'num 'num) x k)
+    (: y (mono + 0 (B x))
+       z (? (nump (A x)) (mono - (A x) y) (X (A x) y))
+     (? z (eval (A z) (>- 'num (2f i-sub k (B z)))) (Im 0 k)))))
+   * (abel * i-mul)
+   / (\ x k (?
+    (~ x) (Im 1 k)
+    (~ (B x)) (eval (A x) (>- 'num k))
+    (: b (mono * 1 (B x))
+       c (? (nump (A x)) (mono / (A x) b) (X (A x) b)))
+     (eval (A c) (>- 'num (2f i-dqv k (B c))))
+    (Im 1 k)))
+
+   & (abel & i-band)
+   | (abel | i-bor)
+   ^ (abel ^ i-bxor)
+   >> (bitshift >> i-sar)
+   << (bitshift << i-sal)
+
+   A (nary i-car () 'two)
+   B (nary i-cdr () 'two)
+   X (nary i-cons 'two () ())
+   L (\ x k (:
+    (loop x k) (? (~ x) k
+     (loop (B x)
+      (xc i-push
+       (eval (A x)
+        (xc i-cons
+         (-> 'two k))))))
+    (Im () (loop x k))))
+
+
+   emi (nary i-emi 'hom 'num 'hom)
+   emx (nary i-emx 'hom () 'hom)
+
+   tget (nary i-tget ()   'tbl ())
+   tset (nary i-tset ()   'tbl () ())
+   tlen (nary i-tlen 'num 'tbl)
+   thas (nary i-thas ()   'tbl ())
+
+   < (ordr i-lt) <= (ordr i-lteq)
+   >= (ordr i-gteq) > (ordr i-gt)
+   = (\ x k (?
+
+    (|| (~ x)
+     (? (: q (map unq (select qtd x)))
+        (: r (A q) (any (\ v (~ (= v r))) (B q)))))
+     (Im () k)
+
+    (~ (B x)) (Im 1 k)
+
+    (eval (A x) (xc i-push (:
+     (fold k x y) (:
+      l (eval x (xc i-eq (? (~ y) k
+         (xc i-barnch (peek2 (fold k (A y) (B y)))))))
+      (? y (xc i-dupl l) l))
+     (pop2 (fold (push2 k) (AB x) (BB x))))))))
+
+   nilp (nary i-nilpp () ())
+   twop (nary i-twopp () ())
+   homp (nary i-hompp () ())
+   nump (nary i-numpp () ())
+   symp (nary i-sympp () ())
+   strp (nary i-strpp () ())
+   tblp (nary i-tblpp () ())
+   vecp (nary i-vecpp () ())
+   fail (nary (hgeti fail) ())))
+
    ) (: ; new let expn makes sure ^^^ exist & don't make a closure vvv
 
  (type-sym-num x)
@@ -551,171 +702,20 @@
 
   ((? (twop x) list (symp x) symb Im) x k))
 
-
- ; instruction fusion table
- fuse (:
-
-  ; a common case is to rewrite the last emitted
-  ; instruction or value according to an exact table
-  ; of values
-  ((f1 g xs .) i p)
-   ((\ a q
-    ((: (loop x) (?
-     (~ x)       (emi i p)
-     (= a (A x)) (emi (AB x) q)
-     (loop (BB x)))) xs))(g p) (hseek p 1))
-
-  ; for specialized indexed instructions
-  (argn a b) (f1 hgetx 0 a 1 b)
-
-  ; for specialized branch instructions ;
-  ; takes an argument for each branch case
-  (br2 b c) (f1 hgeti i-branch b i-barnch c)
-
-  (tbl
-   ; this along with "return forwarding" in branches is how
-   ; tail calls get optimized.
-   i-call (\ i h (? (= i-ret (hgeti (hseek h 1)))
-    (emi i-rec (emx (hgetx h) (hseek h 1)))
-    (emi i h)))
-   i-arg (argn i-arg0 i-arg1)
-   i-loc (argn i-loc0 i-loc1)
-   i-clo (argn i-clo0 i-clo1)
-   i-lt (br2 i-brlt i-brlt2)
-   i-lteq (br2 i-brlteq i-brlteq2)
-   i-gt (br2 i-brgt i-brgt2)
-   i-gteq (br2 i-brgteq i-brlt)
-   i-eq (br2 i-breq i-brne)
-   i-nilpp (f1 hgeti i-branch i-barnch i-barnch i-branch)
-   i-imm (f1 hgetx () i-unit 0 i-zero 1 i-one)))
-
- ; special function compiler table
- inliners (:
-
-  (mono f m x) (:
-   (fold f m x) (? (~ x) (L m)
-    (? (qtd (: y (A x))) (fold f (f m (unq y)) (B x))
-     (: z (fold f m (B x)) (X (A z) (X y (B z))))))
-   (? (= (f) (A (: j (fold f m x)))) (B j) j))
-
-  ((ordr i) x k) (?
-   (~ x) (Im () k)
-   (~ (B x)) (Im 1 k)
-   (eval (A x) (:
-    (fold k x y)
-     (eval x (xc i (? (~ y) (push2 k)
-      (xc i-barnch (peek2 (xc i-push
-       (fold k (A y) (B y))))))))
-    (xc i-push (pop2 (fold k (AB x) (BB x)))))))
-
-  ((abel f i) x k) ((\ x
-   (eval (A x) (>- 'num (2f i k (B x)))))(mono f (f) x))
-
-  (nary i tR xs .) (: arity (len xs) (\ x k (?
-   (< (: call-arity (len x)) arity) (fail "wrong arity")
-   (: (fo k z) (co (eval (AA z) (>- (BA z) k)) (B z))
-      (co k z) (? z (fo (xc i-push k) z) k)
-      l (xc i (-> tR k))
-      z (zip X x xs)
-    (? z (fo l z) l)))))
-
-  (2f i k x)
-   (: (2g i k x)
-       (xc i-push (eval (A x) (>- 'num (xc i (2f i k (B x))))))
-    (? x (2g i k x) (-> 'num k)))
-
-  ((bitshift f i) x k) (:
-   y (mono + 0 (B x))
-   z (? (nump (A x)) (mono f (A x) y) (X (A x) y))
-   (eval (A z) (>- 'num (2f i k (B z)))))
-
-  (tbl
-   id (\ x k (eval (A x) k))
-   + (abel + i-add)
-   - (\ x k (?
-    (~ x) (Im 0 k)
-    (~ (B x)) ((nary i-neg 'num 'num) x k)
-    (: y (mono + 0 (B x))
-       z (? (nump (A x)) (mono - (A x) y) (X (A x) y))
-     (? z (eval (A z) (>- 'num (2f i-sub k (B z)))) (Im 0 k)))))
-   * (abel * i-mul)
-   / (\ x k (?
-    (~ x) (Im 1 k)
-    (~ (B x)) (eval (A x) (>- 'num k))
-    (: b (mono * 1 (B x))
-       c (? (nump (A x)) (mono / (A x) b) (X (A x) b)))
-     (eval (A c) (>- 'num (2f i-dqv k (B c))))
-    (Im 1 k)))
-
-   & (abel & i-band)
-   | (abel | i-bor)
-   ^ (abel ^ i-bxor)
-   >> (bitshift >> i-sar)
-   << (bitshift << i-sal)
-
-   A (nary i-car () 'two)
-   B (nary i-cdr () 'two)
-   X (nary i-cons 'two () ())
-   L (\ x k (:
-    (loop x k) (? (~ x) k
-     (loop (B x)
-      (xc i-push
-       (eval (A x)
-        (xc i-cons
-         (-> 'two k))))))
-    (Im () (loop x k))))
-
-
-   emi (nary i-emi 'hom 'num 'hom)
-   emx (nary i-emx 'hom () 'hom)
-
-   tget (nary i-tget ()   'tbl ())
-   tset (nary i-tset ()   'tbl () ())
-   tlen (nary i-tlen 'num 'tbl)
-   thas (nary i-thas ()   'tbl ())
-
-   < (ordr i-lt) <= (ordr i-lteq)
-   >= (ordr i-gteq) > (ordr i-gt)
-   = (\ x k (?
-
-    (|| (~ x)
-     (? (: q (map unq (select qtd x)))
-        (: r (A q) (any (\ v (~ (= v r))) (B q)))))
-     (Im () k)
-
-    (~ (B x)) (Im 1 k)
-
-    (eval (A x) (xc i-push (:
-     (fold k x y) (:
-      l (eval x (xc i-eq (? (~ y) k
-         (xc i-barnch (peek2 (fold k (A y) (B y)))))))
-      (? y (xc i-dupl l) l))
-     (pop2 (fold (push2 k) (AB x) (BB x))))))))
-
-   nilp (nary i-nilpp () ())
-   twop (nary i-twopp () ())
-   homp (nary i-hompp () ())
-   nump (nary i-numpp () ())
-   symp (nary i-sympp () ())
-   strp (nary i-strpp () ())
-   tblp (nary i-tblpp () ())
-   vecp (nary i-vecpp () ())
-   fail (nary (hgeti fail) ())))
-
-  (ini e m) ((xc i-ret (xd (Tg e 'nom) (\ _ m (hom m)))) e m)
-  (ev x) (: e (env () () ()) (((eval (weak e x) ini) e 0) x))
+ (ini e m) ((xc i-ret (xd (Tg e 'nom) (\ _ m (hom m)))) e m)
+ (ev x) (: e (env () () ()) (((eval (weak e x) ini) e 0) x))
   ;; end of compiler namespace ; now return the eval function
 ;  ev ; comment this line to define internals at toplevel
   )))
-(, ; bootstrap
- (ev prelude)
- (boot (ev egg))
- (ev prelude)
- (boot (ev egg))
- (tset _macros 'imm ev)
+; bootstrap
+(ev prelude)
+(boot (ev egg))
+(ev prelude)
+(boot (ev egg))
+(tset _macros 'imm ev)
 ; " drop privileges "
- (: dels (cu (flip each) (cu Td _ns))
-    insns (filter (tkeys _ns) (\ k (= "i-" (ssub (ystr k) 0 2))))
-    locs '(boot egg emi _macros emx hom hseek hgeti hgetx hfin _ns)
-  (, (Td _macros 'i-)
-     (each (L insns locs) dels))))
+(: dels (cu (flip each) (cu Td _ns))
+   insns (filter (tkeys _ns) (\ k (= "i-" (ssub (ystr k) 0 2))))
+   locs '(boot egg emi _macros emx hom hseek hgeti hgetx hfin _ns)
+ (, (Td _macros 'i-)
+    (each (L insns locs) dels)))

@@ -72,7 +72,6 @@ insts(ninl)
 #define Pack() (v->ip=ip,v->sp=sp,v->hp=hp,v->fp=fp,v->xp=xp)
 #define Unpack() (fp=v->fp,hp=v->hp,sp=v->sp,ip=v->ip,xp=v->xp)
 #define CallC(...)(Pack(),(__VA_ARGS__),Unpack())
-#define RetC(...){CallC(__VA_ARGS__);Jump(ret);}
 
 #define Clos ((frame)fp)->clos
 #define Retp ((frame)fp)->retp

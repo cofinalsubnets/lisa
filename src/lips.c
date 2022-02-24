@@ -28,7 +28,6 @@ lips li_ini(void) {
   v->pool = (mem) (v->root = NULL);
   set64(v->glob, nil, NGlobs);
 
-
 #define Bind(x) if(!(x))goto fail
   Bind(Top = table(v));
   Bind(Mac = table(v));
@@ -55,9 +54,8 @@ static NoInline u1 inst(lips v, const char *a, terp *b) {
   return !!tbl_set(v, Top, z, _N((i64) b)); }
 
 static NoInline u1 prim(lips v, const char *a, terp *i) {
-  obj nom; 
+  obj nom; hom prim;
   bind(nom, pair(v, interns(v, a), nil));
-  hom prim;
   with(nom, prim = cells(v, 4));
   bind(prim, prim);
   prim[0] = i;

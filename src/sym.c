@@ -42,8 +42,9 @@ obj intern(lips v, obj x) {
 
 #include "terp.h"
 Vm(gsym_u) {
-  if (Argc > _N(0) && strp(*Argv))
-    RetC(v->xp = intern(v, *Argv));
+  if (Argc > _N(0) && strp(*Argv)) {
+    CallC(v->xp = intern(v, *Argv));
+    Jump(ret); }
   Have(Width(sym));
   sym y = (sym) hp;
   hp += Width(sym);

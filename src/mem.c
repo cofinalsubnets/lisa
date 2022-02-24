@@ -56,8 +56,7 @@ static clock_t copy(lips v, u64 len1) {
   v->syms = nil;
 
   i64 delta_r = base1 + len1 - top0;
-  v->sp += delta_r;
-  v->fp += delta_r;
+  v->sp += delta_r, v->fp += delta_r;
 
   CP(v->ip), CP(v->xp);
   for (int i = 0; i < NGlobs; i++) CP(v->glob[i]);
@@ -153,21 +152,21 @@ Gc(cpstr) {
 
 #include "sym.h"
 Gc(cpsym) {
- sym src = getsym(x), dst;
- if (fresh(src->nom)) return src->nom;
- if (src->nom == nil) // anonymous symbol
-   cpy64(dst = bump(v, Width(sym)), src, Width(sym));
- else dst = getsym(sskc(v, &v->syms, cp(v, src->nom, len0, base0)));
- return src->nom = putsym(dst); }
+  sym src = getsym(x), dst;
+  if (fresh(src->nom)) return src->nom;
+  if (src->nom == nil) // anonymous symbol
+    cpy64(dst = bump(v, Width(sym)), src, Width(sym));
+  else dst = getsym(sskc(v, &v->syms, cp(v, src->nom, len0, base0)));
+  return src->nom = putsym(dst); }
 
 #include "tbl.h"
 static ent cpent(lips v, ent src, i64 len0, mem base0) {
- if (!src) return NULL;
- ent dst = (ent) bump(v, Width(ent));
- dst->next = cpent(v, src->next, len0, base0);
- COPY(dst->key, src->key);
- COPY(dst->val, src->val);
- return dst; }
+  bind(src, src);
+  ent dst = (ent) bump(v, Width(ent));
+  dst->next = cpent(v, src->next, len0, base0);
+  COPY(dst->key, src->key);
+  COPY(dst->val, src->val);
+  return dst; }
 
 Gc(cptbl) {
   tbl src = gettbl(x);
