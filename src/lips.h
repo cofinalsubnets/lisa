@@ -1,3 +1,5 @@
+#ifndef _lips_h
+#define _lips_h
 #include "env.h"
 #include <stdarg.h>
 #include <stdio.h>
@@ -62,3 +64,4 @@ static Inline obj putnum(i64 n) { return (n << 3) + Num; }
 
 lips li_ini(u0);
 u0 li_fin(lips);
+#endif

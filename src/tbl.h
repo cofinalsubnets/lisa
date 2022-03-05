@@ -1,3 +1,5 @@
+#ifndef _tbl_h
+#define _tbl_h
 typedef struct ent { obj key, val; struct ent *next; } *ent; // tables
 typedef struct tbl { u64 len, cap; ent *tab; } *tbl;
 u64 hash(lips, obj);
@@ -12,3 +14,4 @@ static Inline u1 tblp(obj x) { return kind(x) == Tbl; }
 #define mix ((u64)2708237354241864315)
 #define T(x) gettbl(x)
 #define _T(x) puttbl(x)
+#endif

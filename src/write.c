@@ -10,8 +10,9 @@
 #include "vec.h"
 
 typedef u0 writer(lips, obj, FILE*);
-static writer write_nil, write_two, write_num, write_vec,
-              write_str, write_sym, write_tbl, write_hom;
+static writer
+  write_nil, write_two, write_num, write_vec,
+  write_str, write_sym, write_tbl, write_hom;
 static writer *writers[] = {
   [Hom] = write_hom,
   [Num] = write_num,
@@ -23,17 +24,18 @@ static writer *writers[] = {
   [Two] = write_two, };
 
 u0 emsep(lips v, obj x, FILE *o, char s) {
- emit(v, o, x), fputc(s, o); }
+  emit(v, o, x), fputc(s, o); }
 
-static u0 write_nil(lips v, obj x, FILE *o) { fputs("()", o); }
+static u0 write_nil(lips v, obj x, FILE *o) {
+  fputs("()", o); }
 
 static u0 write_num(lips v, obj x, FILE *o) {
   fprintf(o, "%ld", (long) N(x)); }
 
 static u0 write_sym(lips v, obj x, FILE *o) {
   sym y = Y(x);
-  y->nom == nil ? fprintf(o, "#sym@%lx", (long) y) :
-                  fputs(S(y->nom)->text, o); }
+  nilp(y->nom) ? fprintf(o, "#sym@%lx", (long) y) :
+                 fputs(S(y->nom)->text, o); }
 
 static u0 write_vec(lips v, obj x, FILE *o) {
   vec e = V(x);
@@ -45,7 +47,6 @@ static u0 write_vec(lips v, obj x, FILE *o) {
   fputc(']', o); }
 
 static u0 emhomn(lips v, obj x, FILE *o) {
-//  emit(v, o, x); return;
   fputc('\\', o);
   switch (kind(x)) {
     case Sym: return write_sym(v, x, o);

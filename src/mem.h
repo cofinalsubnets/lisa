@@ -1,3 +1,5 @@
+#ifndef _mem_h
+#define _mem_h
 #define Avail (v->sp-v->hp)
 #define mm(r) ((v->root=&((struct root){(r),v->root})))
 #define um (v->root=v->root->next)
@@ -6,3 +8,4 @@
 
 u0 *cells(lips, u64);
 u1 please(lips, u64);
+#endif

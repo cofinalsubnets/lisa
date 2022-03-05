@@ -1,5 +1,8 @@
+#ifndef _terp_h
+#define _terp_h
 terp gc, type_error, oob_error, ary_error, div_error;
 u0 errp(lips, const char*, ...);
+obj panic(lips);
 
 #define insts(_)\
  _(tget, 0) _(tset, 0) _(thas, 0) _(tlen, 0) _(arity, 0)\
@@ -125,3 +128,10 @@ insts(ninl)
 #define Eva v->glob[Eval]
 #define App v->glob[Apply]
 #define Re  v->glob[Restart]
+
+// thread accessors
+#define FF(x) F(F(x))
+#define FG(x) F(G(x))
+#define GF(x) G(F(x))
+#define GG(x) G(G(x))
+#endif

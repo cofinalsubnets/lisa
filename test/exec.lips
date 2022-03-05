@@ -25,18 +25,18 @@
 
 
  ; church numerals
- (: K const I id ; kind of like SK combinators
-    (((P f) g) x) (f (g x)) ; normal composition
-    (((T f) g) x) ((P (f x)) (g x)) ; with an argument
+ (: (((mul f) g) x) (f (g x))
+    ((((add f) g) x) y) ((f x) ((g x) y))
+    one (\ - -)
+    zero (\ one)
+    succ (add one)
+    (C n) (? (= n 0) zero ((add one) (C (- n 1)))) ; ℕ->⛪
+    (N c) ((c (\ x (+ x 1))) 0)                    ; ⛪->ℕ
 
-    zero (K I) one I exp I mul P add T succ (add one)
 
-    (C n) (? (= n 0) zero (succ (C (- n 1)))) ; send it to its church numeral
-    (N c) ((c (\ x (+ x 1))) 0)               ; send it back
-
-    two (succ one) five (succ ((exp two) two))
+    two (succ one) five (succ (two two))
     ten ((mul two) five)
-    one-hundred ((exp two) ten)
+    one-hundred (two ten)
   (= 100 (N (C 100))
          (N one-hundred)))
 

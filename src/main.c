@@ -62,7 +62,7 @@ static lips init(u1 shell, const char *boot, char **paths) {
   v->ip = x;
   return v; }
 
-// special interpreter functions to end the main thread
+// vm functions to yield from the main thread
 static Vm(li_fin_ok) { return li_fin(v), nil; }
 static Vm(li_repl) {
   for (Pack();;)

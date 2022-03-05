@@ -1,3 +1,5 @@
+#ifndef _hom_h
+#define _hom_h
 static Inline hom F(hom h) { return h + 1; }
 static Inline terp *G(hom h) { return *h; }
 static Inline hom gethom(obj x) { return (hom) (x - Hom); }
@@ -7,4 +9,4 @@ static Inline u1 homp(obj x) { return kind(x) == Hom; }
 #define H(x)  gethom(x)
 #define _H(x) puthom(x)
 obj eval(lips, obj), homnom(lips, obj), analyze(lips, obj), sequence(lips, obj, obj);
-
+#endif

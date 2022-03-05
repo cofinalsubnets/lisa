@@ -121,7 +121,8 @@
    'char (\ x (sget x 0))
    '&& (\ x . (? x ((: (& x) (? (B x) (L ? (A x) (& (B x))) (A x))) x) 1))
    '|| (\ x . ((: (| x) (? x (: q (sym) (L ': q (A x) (L ? q q (| (B x))))))) x))
-   '>>= (\ x . (X (last x) (init x)))
+   '>>= (\ x . (? (> (len x) 1) (X (last x) (init x))
+                                (: y (sym) (L \ y (X y x)))))
    'case (\ x a . (:
      y (sym)
      (loop a)

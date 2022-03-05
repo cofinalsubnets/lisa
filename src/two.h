@@ -1,3 +1,5 @@
+#ifndef _two_h
+#define _two_h
 typedef struct two { obj a, b; } *two;
 obj pair(lips, obj, obj);
 u64 llen(obj);
@@ -13,3 +15,4 @@ u64 llen(obj);
 static Inline two gettwo(obj x) { return (two) (x - Two); }
 static Inline obj puttwo(u0 *x) { return (obj) x + Two; }
 static Inline u1 twop(obj x) { return kind(x) == Two; }
+#endif

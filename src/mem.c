@@ -1,6 +1,12 @@
 #include "lips.h"
 #include "mem.h"
 #include "terp.h"
+#include "hom.h"
+#include "str.h"
+#include "tbl.h"
+#include "sym.h"
+#include "two.h"
+#include "vec.h"
 #define Gc(n) obj n(lips v, obj x, u64 len0, mem base0)
 #define inb(o,l,u) (o>=l&&o<u)
 #define fresh(o) inb((mem)(o),v->pool,v->pool+v->len)
@@ -18,6 +24,14 @@ static u0* bump(lips v, u64 n) {
 // general purpose memory allocator
 u0* cells(lips v, u64 n) {
   return Avail >= n || please(v, n) ? bump(v, n) : NULL; }
+
+// Run a GC cycle from inside the VM
+Vm(gc) {
+  u64 req = v->xp;
+  CallC(req = please(v, req));
+  if (req) Next(0);
+  errp(v, oom_err_msg, v->len, req);
+  return panic(v); }
 
 #include <stdlib.h>
 #include <time.h>
@@ -103,7 +117,6 @@ u1 please(lips v, u64 req) {
   else return true; // no size change needed
   return copy(v, len) || allocd <= v->len; }
 
-#include "hom.h"
 
 static copier cphom, cpvec, cptwo, cpsym, cpstr, cptbl;
 static Gc(cpid) { return x; }
@@ -141,7 +154,6 @@ Gc(cphom) {
     *j = (terp*) (!stale(u) ? u : cp(v, u, len0, base0)));
   return _H(dst += src - start); }
 
-#include "str.h"
 Gc(cpstr) {
   str dst, src = S(x);
   return src->len == 0 ? *(mem)src->text :
@@ -150,7 +162,6 @@ Gc(cpstr) {
      dst->len = src->len, src->len = 0,
      *(mem) src->text = _S(dst)); }
 
-#include "sym.h"
 Gc(cpsym) {
   sym src = getsym(x), dst;
   if (fresh(src->nom)) return src->nom;
@@ -159,7 +170,6 @@ Gc(cpsym) {
   else dst = getsym(sskc(v, &v->syms, cp(v, src->nom, len0, base0)));
   return src->nom = putsym(dst); }
 
-#include "tbl.h"
 static ent cpent(lips v, ent src, i64 len0, mem base0) {
   bind(src, src);
   ent dst = (ent) bump(v, Width(ent));
@@ -182,7 +192,6 @@ Gc(cptbl) {
     dst->tab[ii] = cpent(v, src_tab[ii], len0, base0);
   return puttbl(dst); }
 
-#include "two.h"
 Gc(cptwo) {
   obj dst, src = x;
   if (fresh(A(x))) return A(x);
@@ -192,7 +201,6 @@ Gc(cptwo) {
   A(dst) = cp(v, A(dst), len0, base0);
   return dst; }
 
-#include "vec.h"
 Gc(cpvec) {
   vec dst, src = V(x);
   if (fresh(*src->xs)) return *src->xs;

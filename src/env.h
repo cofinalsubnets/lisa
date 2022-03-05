@@ -1,3 +1,5 @@
+#ifndef _env_h
+#define _env_h
 #include <stdint.h>
 #include <stdbool.h>
 #define Inline inline __attribute__((always_inline))
@@ -51,3 +53,4 @@ static Inline u64 b2w(u64 b) { return b / 8 + (b % 8 && 1); }
 BWDQ(memn)
 #undef memn
 #undef BWDQ
+#endif

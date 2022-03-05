@@ -30,35 +30,31 @@ etc.
 
 ## code examples
 
-### hyperoperations
+### a quine
+```lisp
+((\ - (L - (L ` -))) '(\ - (L - (L ` -))))
+```
 
+### hyperoperations
 ```lisp
 ; send n to the nth hyperoperation where 0 is +
 (: (hy n) (? (= n 0) +
  (\ x y (foldr1 (rho y x) (hy (- n 1))))))
 ```
 
-### a quine
-
-```lisp
-((\ - (L - (L ` -))) '(\ - (L - (L ` -))))
-```
-
 ### church numerals
-
 ```lisp
-(: K const I id ; kind of like SK combinators
-   (((P f) g) x) (f (g x)) ; normal composition
-   (((Q f) g) x) ((P (f x)) (g x)) ; with an argument
+(: (((mul f) g) x) (f (g x))
+   ((((add f) g) x) y) ((f x) ((g x) y))
+   one (\ - -)
+   zero (\ one)
 
-   zero (K I) one I exp I mul P add Q succ (add one)
-
-   (C n) (? (= n 0) zero (succ (C (- n 1)))) ; send it to its church numeral
-   (N c) ((c (\ x (+ x 1))) 0))              ; send it back
+   (C n) (? (= n 0) zero ((add one) (C (- n 1)))) ; ℕ->⛪
+   (N c) ((c (\ x (+ x 1))) 0))                   ; ⛪->ℕ
 
 (: (/p m n) (= 0 (% m n))
    (fizzbuzz m)
-    ((K (+ m 1)) (. (?
+    ((\ (+ m 1)) (. (?
      (/p m 15) 'fizzbuzz
      (/p m 5)  'buzz
      (/p m 3)  'fizz
@@ -80,22 +76,4 @@ etc.
 - string functions: n-ary constructor `(str 97 97 97) = "aaa"` ; `slen sget ssub scat`
 - symbol functions: `sym`: with no argument, `gensym`; with an argument, `string->symbol`
 - `(::: nom0 def0 nom1 def1 ...)` define macro
-- `(>>= x y z f) = (f x y z)` is sometimes preferable for
-  readability
-
-## missing features
-
-### general purpose functionality
-- floats
-- arrays
-- module system
-- file system
-- network
-
-### parser
-- reader macros
-
-### compiler
-- type inference
-- odd `:` should behave like `let*` not `letrec`
-- variable renaming to minimize closure creation
+- `(>>= x y z f) = (f x y z)` is sometimes preferable for readability

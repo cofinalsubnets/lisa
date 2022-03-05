@@ -1,3 +1,5 @@
+#ifndef _sym_h
+#define _sym_h
 typedef struct sym { obj nom, code, l, r; } *sym;
 obj
  intern(lips, obj),
@@ -8,3 +10,4 @@ obj
 static Inline sym getsym(obj x) { return (sym) (x - Sym); }
 static Inline obj putsym(u0 *y) { return (obj) y + Sym; }
 static Inline u1 symp(obj x) { return kind(x) == Sym; }
+#endif
