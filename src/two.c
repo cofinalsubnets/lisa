@@ -1,10 +1,6 @@
 #include "lips.h"
 #include "two.h"
 
-u64 llen(obj l) {
-  for (u64 i = 0;; l = B(l), i++)
-    if (!twop(l)) return i; }
-
 #include "mem.h"
 // functions for pairs and lists
 obj pair(lips v, obj a, obj b) {

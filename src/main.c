@@ -25,7 +25,7 @@ static const char *help =
   "  -i start repl unconditionally\n"
   "  -_ don't bootstrap\n";
 
-static obj go(lips);
+static obj go(lips), scrp(lips, const char*), scrr(lips, u1, const char**);
 static lips init(u1, const char*, char **);
 
 int main(int argc, char **argv) {
@@ -41,15 +41,16 @@ int main(int argc, char **argv) {
         return v && go(v) ? EXIT_SUCCESS : EXIT_FAILURE; } }
 
 // unpack state & jump into thread
+//
+// go : obj lips
 static obj go(lips v) {
-  obj xp, ip;
-  mem sp, hp, fp;
+  obj xp, ip, *sp, *hp, *fp;
   Unpack();
   Next(0); }
 
-static obj scrp(lips, const char*), scrr(lips, u1, const char**);
-
 // make a lips instance for these opts
+//
+// init : lips repl? boot paths
 static lips init(u1 shell, const char *boot, char **paths) {
   lips v;
   obj y, x;
@@ -63,7 +64,10 @@ static lips init(u1 shell, const char *boot, char **paths) {
   return v; }
 
 // vm functions to yield from the main thread
+//
+// li_fin_ok : nil
 static Vm(li_fin_ok) { return li_fin(v), nil; }
+// li_repl : nil
 static Vm(li_repl) {
   for (Pack();;)
     if ((xp = parse(v, stdin))) {
@@ -72,11 +76,10 @@ static Vm(li_repl) {
 
 // functions to compile scripts into a program
 //
-// stream -> two
+// scr_ : two stream
 static obj scr_(lips v, FILE *in) {
   obj y, x = parse(v, in);
   if (!x) return feof(in) ? nil : 0;
-  // lol :(
   bind(x, pair(v, x, nil));
   bind(x, pair(v, Qt, x));
   bind(x, pair(v, x, nil));
@@ -85,7 +88,7 @@ static obj scr_(lips v, FILE *in) {
   bind(y, y);
   return pair(v, x, y); }
 
-// path -> hom
+// scrp : hom path
 static obj scrp(lips v, const char *path) {
   FILE *in = fopen(path, "r");
   if (!in) return errp(v, "%s : %s", path, strerror(errno)), 0;
@@ -95,7 +98,7 @@ static obj scrp(lips v, const char *path) {
   bind(x, pair(v, Se, x));
   return analyze(v, x); }
 
-// repl * paths -> hom
+// scrr : hom repl? paths
 static obj scrr(lips v, u1 shell, const char **paths) {
   const char *path = *paths;
   if (!path) {

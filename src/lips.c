@@ -8,9 +8,10 @@
 #include <time.h>
 
 // lips destructor
-u0 li_fin(lips v) {
-  if (v) free(v->pool);
-  free(v); }
+u0 li_fin(lips v) { if (v) {
+  // call data destructors here, once we have them
+  free(v->pool);
+  free(v); } }
 
 // initialization helpers
 static u1 inst(lips, const char*, terp*) NoInline,
@@ -21,11 +22,15 @@ lips li_ini(void) {
   lips v; obj _;
   bind(v, malloc(sizeof(struct lips)));
 
-  v->t0 = clock();
-  v->count = 0, v->rand = LCPRNG(v->t0 * mix);
-  v->ip = v->xp = v->syms = nil;
-  v->fp = v->hp = v->sp = (mem) W, v->len = 1;
-  v->pool = (mem) (v->root = NULL);
+  u64 t0 = clock();
+  v->t0 = t0;
+  v->rand = LCPRNG(t0 * mix);
+  v->count = 0;
+  v->len = 1;
+  v->pool = NULL;
+  v->root = NULL;
+  v->fp = v->hp = v->sp = (mem) W;
+  v->ip = v->xp = v->syms = v->restart = nil;
   set64(v->glob, nil, NGlobs);
 
 #define Bind(x) if(!(x))goto fail
@@ -46,7 +51,8 @@ lips li_ini(void) {
   def("_ns", Top);
   def("_macros", Mac);
   return v; fail:
-  return li_fin(v), NULL; }
+  li_fin(v);
+  return NULL; }
 
 static NoInline u1 inst(lips v, const char *a, terp *b) {
   obj z;

@@ -5,7 +5,8 @@
 #include "hom.h"
 
 // errors
-Vm(fail) { return Pack(), errp(v, NULL), panic(v); }
+Vm(fail) {
+  return Pack(), errp(v, "fail"), panic(v); }
 
 Vm(type_error) {
   enum tag exp = v->xp, act = kind(xp);
@@ -36,35 +37,26 @@ Vm(arity) {
 obj panic(lips v) {
   v->fp = v->sp = v->pool + v->len;
   v->xp = v->ip = nil;
-  // check for continuation else
   return 0; }
 
 static NoInline u0 show_call(lips v, obj ip, mem fp) {
   fputc('(', stderr);
-  emit(v, stderr, ip);
+  emit(v, ip, stderr);
   mem top = v->pool + v->len;
   for (i64 i = 0, argc = fp == top ? 0 : N(Argc); i < argc;)
-    fputc(' ', stderr), emit(v, stderr, Argv[i++]);
+    fputc(' ', stderr), emit(v, Argv[i++], stderr);
   fputc(')', stderr); }
 
 u0 errp(lips v, const char *msg, ...) {
-  obj ip = v->ip;
-  mem fp = v->fp;
-  // print current call as (function arg1 arg2 ...)
-  fputs("# ", stderr);
-  show_call(v, ip, fp);
-
-  // print error message
-  if (msg) {
-    fputs(" : ", stderr);
-    va_list xs;
-    va_start(xs, msg), vfprintf(stderr, msg, xs), va_end(xs); }
-
-  fputc('\n', stderr);
-
+  obj ip = v->ip, *fp = v->fp;
+  va_list xs; va_start(xs, msg);
+  fputs("# ", stderr), show_call(v, ip, fp);
+  fputs(" : ", stderr), vfprintf(stderr, msg, xs);
+  fputc('\n', stderr), va_end(xs);
   // print backtrace
   for (mem top = v->pool + v->len;;) {
     ip = Retp, fp += Width(frame) + N(Argc) + N(Subr);
-    if (fp == top) break;
-    fputs("#  in ", stderr), show_call(v, ip, fp), fputc('\n', stderr); } }
-
+    if (fp == top) return;
+    fputs("#  in ", stderr);
+    show_call(v, ip, fp);
+    fputc('\n', stderr); } }

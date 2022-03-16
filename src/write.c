@@ -23,9 +23,6 @@ static writer *writers[] = {
   [Sym] = write_sym,
   [Two] = write_two, };
 
-u0 emsep(lips v, obj x, FILE *o, char s) {
-  emit(v, o, x), fputc(s, o); }
-
 static u0 write_nil(lips v, obj x, FILE *o) {
   fputs("()", o); }
 
@@ -41,7 +38,7 @@ static u0 write_vec(lips v, obj x, FILE *o) {
   vec e = V(x);
   fputc('[', o);
   if (e->len) for (mem i = e->xs, l = i + e->len;;) {
-    emit(v, o, *i++);
+    emit(v, *i++, o);
     if (i < l) fputc(' ', o);
     else break; }
   fputc(']', o); }
@@ -76,10 +73,10 @@ static Inline u1 quotate(lips v, two w) {
   return w->a == Qt && twop(w->b) && nilp(B(w->b)); }
 
 static u0 write_two(lips v, obj x, FILE *o) {
-  if (quotate(v, gettwo(x))) fputc('\'', o), emit(v, o, A(B(x)));
+  if (quotate(v, gettwo(x))) fputc('\'', o), emit(v, A(B(x)), o);
   else fputc('(', o), write_two_(v, gettwo(x), o); }
 
-Inline u0 emit(lips v, FILE *o, obj x) {
+Inline u0 emit(lips v, obj x, FILE *o) {
   writers[kind(x)](v, x, o); }
 
 // print to console
@@ -88,7 +85,7 @@ Vm(em_u) {
   if (l) {
     for (i = 0; i < l - 1; i++)
       emsep(v, Argv[i], stdout, ' ');
-    emit(v, stdout, xp = Argv[i]); }
+    emit(v, xp = Argv[i], stdout); }
   fputc('\n', stdout);
   Jump(ret); }
 

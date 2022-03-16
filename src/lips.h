@@ -31,8 +31,9 @@ enum globl { // indices into a table of global constants
 
 typedef struct lips {
  obj ip, xp, *fp, *hp, *sp, // interpreter state
-     syms, glob[NGlobs]; // symbols & globals
- i64 rand, count, // random state
+     syms, glob[NGlobs], // symbols & globals
+     rand, count, // random state
+     restart,
      t0, len, *pool; // memory state
  root root; // gc protection list
 } *lips;
@@ -55,7 +56,7 @@ extern const uint32_t *tnoms;
 #define kind(x) ((x)&7)
 #define N(x) getnum(x)
 #define _N(x) putnum(x)
-#define bind(v, x) if (!((v)=(x))) return 0
+#define bind(v, x) if(!((v)=(x)))return 0
 
 static Inline u1 nilp(obj x) { return x == nil; }
 static Inline u1 nump(obj x) { return kind(x) == Num; }

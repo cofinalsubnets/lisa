@@ -25,14 +25,13 @@
 
 
  ; church numerals
- (: (((mul f) g) x) (f (g x))
-    ((((add f) g) x) y) ((f x) ((g x) y))
+ (: (((mul f) g) x) (f (g x))           ; (.)
+    (((add f) g) x) ((mul (f x)) (g x)) ; liftA2 (.)
     one (\ - -)
     zero (\ one)
     succ (add one)
     (C n) (? (= n 0) zero ((add one) (C (- n 1)))) ; ℕ->⛪
     (N c) ((c (\ x (+ x 1))) 0)                    ; ⛪->ℕ
-
 
     two (succ one) five (succ (two two))
     ten ((mul two) five)

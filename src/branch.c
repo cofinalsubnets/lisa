@@ -15,27 +15,23 @@ Vm(jump) { Ap((obj) H(ip)[1], xp); }
 // conditional jumps
 //
 // args: test, yes addr, yes val, no addr, no val
-#define Br(test, a, x, b, y) {\
+#define Br(nom, test, a, x, b, y) Vm(nom) {\
   if (test) Ap((obj)a(H(ip)),x);\
   else Ap((obj)b(H(ip)),y); }
-
 // combined test/branch instructions
-Vm(branch)  Br(xp != nil, GF, xp, FF, xp)
-Vm(barnch)  Br(xp == nil, GF, xp, FF, xp)
+Br(branch, xp != nil, GF, xp, FF, xp)
+Br(barnch, xp != nil, FF, xp, GF, xp)
 
-Vm(breq)    Br(eql(*sp++, xp), GF, ok, FF, nil)
-Vm(brne)    Br(eql(*sp++, xp), FF, ok, GF, nil)
+Br(breq,  eql(*sp++, xp), GF, ok, FF, nil)
+Br(brne,  eql(*sp++, xp), FF, ok, GF, nil)
 
-Vm(brlt)    Br(*sp++ < xp,  GF, xp,  FF, nil)
-Vm(brlt2)   Br(*sp++ < xp,  FF, xp,  GF, nil)
-
-Vm(brlteq)  Br(*sp++ <= xp, GF, xp,  FF, nil)
-Vm(brlteq2) Br(*sp++ <= xp, FF, xp,  GF, nil)
-
-Vm(brgt)    Br(*sp++ > xp, GF, xp, FF, nil)
-Vm(brgt2)   Br(*sp++ > xp, FF, xp, GF, nil)
-
-Vm(brgteq)  Br(*sp++ >= xp, GF, xp, FF, nil)
+Br(brlt,    *sp++ < xp,  GF, xp, FF, nil)
+Br(brlt2,   *sp++ < xp,  FF, xp, GF, nil)
+Br(brlteq,  *sp++ <= xp, GF, xp, FF, nil)
+Br(brlteq2, *sp++ <= xp, FF, xp, GF, nil)
+Br(brgt,    *sp++ > xp,  GF, xp, FF, nil)
+Br(brgt2,   *sp++ > xp,  FF, xp, GF, nil)
+Br(brgteq,  *sp++ >= xp, GF, xp, FF, nil)
 // brgteq2 is brlt
 #undef Br
 
