@@ -32,9 +32,9 @@
 
 
 Vm(ap_u) {
- Ary(2);
+ Arity(2);
  obj x = Argv[0], y = Argv[1];
- Tc(x, Hom);
+ CheckType(x, Hom);
  u64 adic = llen(y);
  Have(adic);
  obj off = Subr, rp = Retp;
@@ -49,8 +49,8 @@ Vm(ap_u) {
 
 // continuations
 Vm(ccc_u) {
- Ary(1);
- Tc(*Argv, Hom);
+ Arity(1);
+ CheckType(*Argv, Hom);
  // we need space for:
  // the entire stack
  // the frame offset
@@ -70,44 +70,44 @@ Vm(ccc_u) {
  c[1] = (terp*) _V(t);
  c[2] = NULL;
  c[3] = (terp*) c;
- Argv[0] = _H(c);
+ *Argv = _H(c);
  Ap(ip, nil); }
 
 Vm(vararg) {
- i64 reqd = N((i64) H(ip)[1]),
-     vdic = N(Argc) - reqd;
- Ary(reqd);
- // in this case we need to add another argument
- // slot to hold the nil.
- if (!vdic) {
-  Have1();
-  cpy64(fp-1, fp, Width(frame) + N(Argc));
-  sp = --fp;
-  Argc += W;
-  Argv[reqd] = nil;
-  Next(2); }
- // in this case we just keep the existing slots.
- // the path is knowable at compile time in many cases
- // so maybe vararg should be two or more different
- // functions.
- else {
-  Have(2 * vdic);
-  two t = (two) hp;
-  hp += 2 * vdic;
-  for (i64 i = vdic; i--;
-   t[i].a = Argv[reqd + i],
-   t[i].b = puttwo(t+i+1));
-  t[vdic-1].b = nil;
-  Argv[reqd] = puttwo(t);
-  Next(2); } }
+  i64 reqd = N((i64) H(ip)[1]),
+      vdic = N(Argc) - reqd;
+  Arity(reqd);
+  // in this case we need to add another argument
+  // slot to hold the nil.
+  if (!vdic) {
+    Have1();
+    cpy64(fp-1, fp, Width(frame) + N(Argc));
+    sp = --fp;
+    Argc += W;
+    Argv[reqd] = nil;
+    Next(2); }
+  // in this case we just keep the existing slots.
+  // the path is knowable at compile time in many cases
+  // so maybe vararg should be two or more different
+  // functions.
+  else {
+    Have(2 * vdic);
+    two t = (two) hp;
+    hp += 2 * vdic;
+    for (i64 i = vdic; i--;
+      t[i].a = Argv[reqd + i],
+      t[i].b = puttwo(t+i+1));
+    t[vdic-1].b = nil;
+    Argv[reqd] = puttwo(t);
+    Next(2); } }
 
 // type predicates
 #define Tp(t)\
-    Vm(t##pp) { Ap(ip+W, (t##p(xp)?ok:nil)); }\
-    Vm(t##p_u) {\
-      for (obj *xs = Argv, *l = xs + N(Argc); xs < l;)\
-        if (!t##p(*xs++)) Go(ret, nil);\
-      Go(ret, ok); }
+  Vm(t##pp) { Ap(ip+W, (t##p(xp)?ok:nil)); }\
+  Vm(t##p_u) {\
+    for (obj *xs = Argv, *l = xs + N(Argc); xs < l;)\
+      if (!t##p(*xs++)) Go(ret, nil);\
+    Go(ret, ok); }
 Tp(num) Tp(hom) Tp(two) Tp(sym) Tp(str) Tp(tbl) Tp(vec) Tp(nil)
 
 // stack manipulation

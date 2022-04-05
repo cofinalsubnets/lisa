@@ -2,6 +2,7 @@
 #include "cmp.h"
 #include "two.h"
 #include "str.h"
+#include <string.h>
 
 NoInline u1 eql_(obj a, obj b) { return eql(a, b); }
 
@@ -10,7 +11,7 @@ static NoInline u1 eql_two(obj a, obj b) {
 
 static NoInline u1 eql_str(obj a, obj b) {
   return S(a)->len == S(b)->len &&
-    scmp(S(a)->text, S(b)->text) == 0; }
+    strcmp(S(a)->text, S(b)->text) == 0; }
 
 Inline u1 eql(obj a, obj b) {
   if (a == b) return true;

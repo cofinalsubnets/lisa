@@ -25,7 +25,7 @@ static const char *help =
   "  -i start repl unconditionally\n"
   "  -_ don't bootstrap\n";
 
-static obj go(lips), scrp(lips, const char*), scrr(lips, u1, const char**);
+static obj scrp(lips, const char*), scrr(lips, u1, const char**);
 static lips init(u1, const char*, char **);
 
 int main(int argc, char **argv) {
@@ -38,19 +38,19 @@ int main(int argc, char **argv) {
       case -1:
         if (argc == optind && !shell) return EXIT_SUCCESS;
         lips v = init(shell, boot ? BOOT : NULL,  argv + optind);
-        return v && go(v) ? EXIT_SUCCESS : EXIT_FAILURE; } }
+        return v && li_go(v) ? EXIT_SUCCESS : EXIT_FAILURE; } }
 
 // unpack state & jump into thread
 //
 // go : obj lips
-static obj go(lips v) {
+obj li_go(lips v) {
   obj xp, ip, *sp, *hp, *fp;
   Unpack();
   Next(0); }
 
 // make a lips instance for these opts
 //
-// init : lips repl? boot paths
+// init : lips bool string strings
 static lips init(u1 shell, const char *boot, char **paths) {
   lips v;
   obj y, x;
@@ -65,9 +65,9 @@ static lips init(u1 shell, const char *boot, char **paths) {
 
 // vm functions to yield from the main thread
 //
-// li_fin_ok : nil
+// li_fin_ok : nil lips
 static Vm(li_fin_ok) { return li_fin(v), nil; }
-// li_repl : nil
+// li_repl : nil lips
 static Vm(li_repl) {
   for (Pack();;)
     if ((xp = parse(v, stdin))) {
@@ -76,7 +76,7 @@ static Vm(li_repl) {
 
 // functions to compile scripts into a program
 //
-// scr_ : two stream
+// scr_ : two lips stream
 static obj scr_(lips v, FILE *in) {
   obj y, x = parse(v, in);
   if (!x) return feof(in) ? nil : 0;
@@ -88,17 +88,17 @@ static obj scr_(lips v, FILE *in) {
   bind(y, y);
   return pair(v, x, y); }
 
-// scrp : hom path
+// scrp : hom lips string
 static obj scrp(lips v, const char *path) {
   FILE *in = fopen(path, "r");
-  if (!in) return errp(v, "%s : %s", path, strerror(errno)), 0;
+  if (!in) return err(v, "%s : %s", path, strerror(errno));
   obj x = scr_(v, in);
   fclose(in);
   bind(x, x);
   bind(x, pair(v, Se, x));
   return analyze(v, x); }
 
-// scrr : hom repl? paths
+// scrr : hom lips bool strings
 static obj scrr(lips v, u1 shell, const char **paths) {
   const char *path = *paths;
   if (!path) {

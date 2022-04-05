@@ -7,14 +7,15 @@
 #include "sym.h"
 #include "two.h"
 #include "vec.h"
-#define Gc(n) obj n(lips v, obj x, u64 len0, mem base0)
-#define inb(o,l,u) (o>=l&&o<u)
-#define fresh(o) inb((mem)(o),v->pool,v->pool+v->len)
-#define COPY(dst,src) (dst=cp(v,src,len0,base0))
-#define CP(x) COPY(x,x)
 
 typedef obj copier(lips, obj, u64, mem);
 static Inline copier cp;
+#define Gc(n) obj n(lips v, obj x, u64 len0, mem pool0)
+
+#define inb(o,l,u) (o>=l&&o<u)
+#define fresh(o) inb((mem)(o),v->pool,v->pool+v->len)
+#define COPY(dst,src) (dst=cp(v,src,len0,pool0))
+#define CP(x) COPY(x,x)
 
 // unchecked allocator -- make sure there's enough memory!
 static u0* bump(lips v, u64 n) {
@@ -23,15 +24,16 @@ static u0* bump(lips v, u64 n) {
 
 // general purpose memory allocator
 u0* cells(lips v, u64 n) {
-  return Avail >= n || please(v, n) ? bump(v, n) : NULL; }
+  return Avail >= n || please(v, n) ? bump(v, n) : 0; }
 
+#define oom_err_msg "out of memory : %d + %d"
 // Run a GC cycle from inside the VM
 Vm(gc) {
   u64 req = v->xp;
-  CallC(req = please(v, req));
-  if (req) Next(0);
-  errp(v, oom_err_msg, v->len, req);
-  return panic(v); }
+  Pack();
+  if (!please(v, req)) return err(v, oom_err_msg, v->len, req); 
+  Unpack();
+  Next(0); }
 
 #include <stdlib.h>
 #include <time.h>
@@ -59,25 +61,25 @@ Vm(gc) {
 // u will be >= 1. however, sometimes t1 == t2. in that case
 // u = 1.
 static clock_t copy(lips v, u64 len1) {
-  mem base1;
-  bind(base1, malloc(w2b(len1)));
+  mem pool1;
+  bind(pool1, malloc(w2b(len1)));
   clock_t t0 = v->t0, t1 = clock();
   u64 len0 = v->len;
-  mem base0 = v->pool, sp0 = v->sp, top0 = base0 + len0;
+  mem pool0 = v->pool, sp0 = v->sp, top0 = pool0 + len0;
 
   v->len = len1;
-  v->pool = v->hp = base1;
+  v->pool = v->hp = pool1;
   v->syms = nil;
 
-  i64 delta_r = base1 + len1 - top0;
-  v->sp += delta_r, v->fp += delta_r;
+  i64 delta_top = pool1 + len1 - top0;
+  v->sp += delta_top, v->fp += delta_top;
 
   CP(v->ip), CP(v->xp);
   for (int i = 0; i < NGlobs; i++) CP(v->glob[i]);
   while (top0-- > sp0) COPY(v->sp[top0 - sp0], *top0);
   for (root r = v->root; r; r = r->next) CP(*(r->one));
 
-  free(base0);
+  free(pool0);
 
   clock_t t2 = clock();
   v->t0 = t2;
@@ -136,9 +138,9 @@ static copier *copiers[] = {
   [Nil] = cpid, };
 
 static Inline Gc(cp) {
-  return copiers[kind(x)](v, x, len0, base0); }
+  return copiers[kind(x)](v, x, len0, pool0); }
 
-#define stale(o) inb((mem)(o),base0,base0+len0)
+#define stale(o) inb((mem)(o),pool0,pool0+len0)
 Gc(cphom) {
   hom src = H(x);
   if (fresh(*src)) return (obj) *src;
@@ -151,7 +153,7 @@ Gc(cphom) {
   j[1] = (terp*) dst;
   for (obj u; j-- > dst;
     u = (obj) *j,
-    *j = (terp*) (!stale(u) ? u : cp(v, u, len0, base0)));
+    *j = (terp*) (!stale(u) ? u : cp(v, u, len0, pool0)));
   return _H(dst += src - start); }
 
 Gc(cpstr) {
@@ -167,13 +169,13 @@ Gc(cpsym) {
   if (fresh(src->nom)) return src->nom;
   if (src->nom == nil) // anonymous symbol
     cpy64(dst = bump(v, Width(sym)), src, Width(sym));
-  else dst = getsym(sskc(v, &v->syms, cp(v, src->nom, len0, base0)));
+  else dst = getsym(sskc(v, &v->syms, cp(v, src->nom, len0, pool0)));
   return src->nom = putsym(dst); }
 
-static ent cpent(lips v, ent src, i64 len0, mem base0) {
+static ent cpent(lips v, ent src, i64 len0, mem pool0) {
   bind(src, src);
   ent dst = (ent) bump(v, Width(ent));
-  dst->next = cpent(v, src->next, len0, base0);
+  dst->next = cpent(v, src->next, len0, pool0);
   COPY(dst->key, src->key);
   COPY(dst->val, src->val);
   return dst; }
@@ -189,7 +191,7 @@ Gc(cptbl) {
   ent *src_tab = src->tab;
   src->tab = (ent*) puttbl(dst);
   for (u64 ii = 1<<src_cap; ii--;)
-    dst->tab[ii] = cpent(v, src_tab[ii], len0, base0);
+    dst->tab[ii] = cpent(v, src_tab[ii], len0, pool0);
   return puttbl(dst); }
 
 Gc(cptwo) {
@@ -197,8 +199,8 @@ Gc(cptwo) {
   if (fresh(A(x))) return A(x);
   dst = puttwo(bump(v, Width(two)));
   A(dst) = A(src), A(src) = dst;
-  B(dst) = cp(v, B(src), len0, base0);
-  A(dst) = cp(v, A(dst), len0, base0);
+  B(dst) = cp(v, B(src), len0, pool0);
+  A(dst) = cp(v, A(dst), len0, pool0);
   return dst; }
 
 Gc(cpvec) {

@@ -109,16 +109,16 @@ static obj tupl(lips v, ...) {
 
 // emit code backwards like cons
 static Inline obj em1(terp *i, obj k) {
- return k -= W, *H(k) = i, k; }
+  return k -= W, *H(k) = i, k; }
 
 static Inline obj em2(terp *i, obj j, obj k) {
- return em1(i, em1((terp*)j, k)); }
+  return em1(i, em1((terp*)j, k)); }
 
 static Inline hom ee1(terp *i, hom k) {
- return *--k = i, k; }
+  return *--k = i, k; }
 
 static Inline hom ee2(terp *i, obj x, hom k) {
- return ee1(i, ee1((terp*) x, k)); }
+  return ee1(i, ee1((terp*) x, k)); }
 
 static hom imx(lips v, mem e, i64 m, terp *i, obj x) {
   bind(x, Push(inptr(i), x));
@@ -327,7 +327,7 @@ static u1 comp_if_loop(lips v, mem e, obj x) {
       inptr(comp_expr_), AB(x),
       inptr(comp_if_pre_con)));
   bind(_, _);
-  with(x, comp_if_loop(v, e, BB(x)));
+  with(x, _ = comp_if_loop(v, e, BB(x)));
   bind(_, _);
   return Push(
     inptr(comp_expr_), A(x),
@@ -349,7 +349,7 @@ CO(emit_call) {
   bind(k, Ccc(m + 2));
   return ee2(*k == ret ? rec : call, a, k); }
 
-obj lookup_mod(lips v, obj x) {
+static obj lookup_mod(lips v, obj x) {
   return tbl_get(v, Top, x); }
 
 static obj lookup_lex(lips v, obj e, obj y) {
@@ -394,7 +394,6 @@ CO(comp_expr_) { return comp_expr(v, e, m, *v->sp++); }
 CO(comp_expr, obj x) { return (symp(x) ? comp_sym :
                                twop(x) ? comp_list :
                                          comp_imm)(v, e, m, x); }
-
 
 CO(comp_call, obj fun, obj args) {
   mm(&args);
@@ -467,7 +466,7 @@ obj eval(lips v, obj x) {
   return apply(v, homp(Eva) ? Eva : tbl_get(v, Top, Eva), args); }
 
 // return to C
-static Vm(yield) { Pack(); return xp; }
+Vm(yield) { Pack(); return xp; }
 static NoInline obj apply(lips v, obj f, obj x) {
  Push(f, x);
  hom h;

@@ -2,6 +2,7 @@
 #include "sym.h"
 #include "str.h"
 #include "terp.h"
+#include <string.h>
 
 //symbols
 
@@ -22,12 +23,13 @@ obj interns(lips v, const char *s) {
 #include "tbl.h"
 
 obj sskc(lips v, mem y, obj x) {
-  if (!nilp(*y)) {
-    sym z = getsym(*y);
-    int i = scmp(S(z->nom)->text, S(x)->text);
-    return i == 0 ? *y : sskc(v, i < 0 ? &z->r : &z->l, x); }
   sym z;
-  // caller must ensure Avail >= Width(sym)
+  if (!nilp(*y)) {
+    z = getsym(*y);
+    int i = strcmp(S(z->nom)->text, S(x)->text);
+    return i == 0 ? *y : sskc(v, i < 0 ? &z->r : &z->l, x); }
+  // the caller must ensure Avail >= Width(sym) because to GC
+  // here would cause the tree to be rebuilt
   z = cells(v, Width(sym));
   z->code = hash(v, z->nom = x) ^ mix;
   z->l = z->r = nil;
@@ -53,7 +55,7 @@ Vm(gsym_u) {
   Go(ret, putsym(y)); }
 
 Vm(ystr_u) {
- Ary(1);
- xp = *Argv;
- Tc(xp, Sym);
- Go(ret, getsym(xp)->nom); }
+  Arity(1);
+  xp = *Argv;
+  CheckType(xp, Sym);
+  Go(ret, getsym(xp)->nom); }

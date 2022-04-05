@@ -56,14 +56,14 @@ Vm(locals) {
  Next(2); }
 
 // late binding
-// lil long b/c it does the "static" type and arity checks
+// long b/c it does the "static" type and arity checks
 // that would have been done by the compiler if the function
 // had been bound early.
 Vm(lbind) {
   obj w = (obj) H(ip)[1], d = AB(w), y = A(w);
   if (!(w = tbl_get(v, d, xp = BB(w)))) {
     char *nom = nilp(Y(xp)->nom) ? "()" : S(Y(xp)->nom)->text;
-    return Pack(), errp(v, "free variable : %s", nom), panic(v); }
+    return Pack(), err(v, "free variable : %s", nom); }
   xp = w;
   if (y != _N(8)) Tc(xp, N(y)); // do the type check
   terp *q = H(ip)[2]; // omit the arity check if possible

@@ -30,7 +30,7 @@ lips li_ini(void) {
   v->pool = NULL;
   v->root = NULL;
   v->fp = v->hp = v->sp = (mem) W;
-  v->ip = v->xp = v->syms = v->restart = nil;
+  v->ip = v->xp = v->syms = nil;
   set64(v->glob, nil, NGlobs);
 
 #define Bind(x) if(!(x))goto fail

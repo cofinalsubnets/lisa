@@ -1,8 +1,7 @@
 #ifndef _terp_h
 #define _terp_h
-terp gc, type_error, oob_error, ary_error, div_error;
-u0 errp(lips, const char*, ...);
-obj panic(lips);
+terp gc, type_error, oob_error, ary_error, div_error, yield;
+obj err(lips, const char*, ...) NoInline;
 
 #define insts(_)\
  _(tget, 0) _(tset, 0) _(thas, 0) _(tlen, 0) _(arity, 0)\
@@ -17,8 +16,8 @@ obj panic(lips);
  _(numpp, 0) _(nilpp, 0) _(strpp, 0) _(tblpp, 0) _(sympp, 0)\
  _(hompp, 0) _(vecpp, 0) _(car, 0) _(cdr, 0) _(cons, 0)\
  _(unit, 0) _(one, 0) _(zero, 0) _(arg0, 0) _(arg1, 0)\
- _(loc0, 0) _(loc1, 0)       _(clo0, 0)     _(clo1, 0)\
- _(brlt, 0) _(brlteq, 0)   _(breq, 0) _(brgteq, 0) _(brlt2, 0)\
+ _(loc0, 0) _(loc1, 0) _(clo0, 0) _(clo1, 0)\
+ _(brlt, 0) _(brlteq, 0) _(breq, 0) _(brgteq, 0) _(brlt2, 0)\
  _(brlteq2, 0) _(brgt2, 0) _(brgt, 0) _(brne, 0)\
  _(cont, 0) _(dupl, 0) _(emi, 0) _(emx, 0) _(vararg, 0)\
  _(gsym_u, tnom(Sym)) _(exit_u, "exit") _(sys_u, "sys")\
@@ -74,16 +73,14 @@ insts(ninl)
 // "external" function calls.
 #define Pack() (v->ip=ip,v->sp=sp,v->hp=hp,v->fp=fp,v->xp=xp)
 #define Unpack() (fp=v->fp,hp=v->hp,sp=v->sp,ip=v->ip,xp=v->xp)
-#define CallC(...)(Pack(),(__VA_ARGS__),Unpack())
+#define CallC(...) (Pack(), (__VA_ARGS__), Unpack())
 
 #define Clos ((frame)fp)->clos
 #define Retp ((frame)fp)->retp
 #define Subr ((frame)fp)->subd
 #define Argc ((frame)fp)->argc
 #define Argv ((frame)fp)->argv
-
 #define Locs fp[-1]
-#define Frame ((frame)fp)
 // the pointer to the local variables array isn't in the frame struct. it
 // isn't present for all functions, but if it is it's in the word of memory
 // immediately preceding the frame pointer.
@@ -95,18 +92,15 @@ insts(ninl)
 
 // the return value of a terp function is usually a call
 // to another terp function.
-#define Self v,ip,fp,sp,hp,xp
-#define Jump(f, ...) return (f)(Self, ##__VA_ARGS__)
-#define Next(n) Ap(ip+w2b(n),xp)
-#define Ap(f,x) return ip = f, xp = x, H(ip)[0](Self)
-#define Go(f, x) return xp = x,f(Self)
+#define Jump(f, ...) return (f)(v, ip, fp, sp, hp, xp, ##__VA_ARGS__)
+#define Ap(f, x) return ip = f, (*H(ip))(v, ip, fp, sp, hp, x)
+#define Go(f, x) return f(v, ip, fp, sp, hp, x)
+#define Next(n) Ap(ip + w2b(n), xp)
+#define CheckType(x,t) if(kind((x))-(t)){xp=x,v->xp=t;Jump(type_error);}
+#define Arity(n) if(_N(n)>Argc)Jump((v->xp=n,ary_error))
+#define Ary Arity
+#define Tc CheckType
 #define ok _N(1)
-// type check
-#define Tc(x,t) if(kind((x))-(t)){xp=x,v->xp=t;Jump(type_error);}
-// arity check
-#define arity_err_msg "wrong arity : %d of %d"
-#define oom_err_msg "out of memory : %d + %d"
-#define Ary(n) if(_N(n)>Argc)Jump((v->xp=n,ary_error))
 
 #define OP(nom, x, n) Vm(nom) { xp = (x); Next(n); }
 #define OP1(nom, x) OP(nom, x, 1)
@@ -127,11 +121,4 @@ insts(ninl)
 #define Mac v->glob[Macs]
 #define Eva v->glob[Eval]
 #define App v->glob[Apply]
-#define Re  v->glob[Restart]
-
-// thread accessors
-#define FF(x) F(F(x))
-#define FG(x) F(G(x))
-#define GF(x) G(F(x))
-#define GG(x) G(G(x))
 #endif

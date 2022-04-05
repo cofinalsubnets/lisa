@@ -15,7 +15,7 @@ Vm(take) {
   Go(ret, _V(t)); }
 
 Vm(vset_u) {
-  Ary(3);
+  Arity(3);
   Tc(Argv[0], Vec);
   Tc(Argv[1], Num);
   i64 idx = N(Argv[1]);
@@ -26,7 +26,7 @@ Vm(vset_u) {
   Go(ret, ary->xs[idx] = Argv[2]); }
 
 Vm(vget_u) {
-  Ary(2);
+  Arity(2);
   Tc(Argv[0], Vec);
   Tc(Argv[1], Num);
   i64 idx = N(Argv[1]);

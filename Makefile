@@ -8,8 +8,8 @@ boot=lib/$(nom)/prelude.$(nom)
 libs=$(boot)
 tests=$(sort $(wildcard test/*.$(nom)))
 
-headers=$(sort $(wildcard src/*.h))
-sources=$(sort $(wildcard src/*.c))
+headers=$(sort $(wildcard c/*.h))
+sources=$(sort $(wildcard c/*.c))
 objects=$(patsubst %.c,%.o,$(sources))
 
 ifeq ($(shell id -u), 0)
@@ -22,7 +22,7 @@ CPPFLAGS=-DPREFIX=\"$(PREFIX)\"
 CFLAGS=-std=gnu17 -g -O2 -flto -Wall -Werror\
 	-Wstrict-prototypes -Wno-shift-negative-value\
 	-fno-stack-protector -fno-unroll-loops\
-	-fno-inline -fno-align-functions
+	-fno-align-functions
 
 run_repl=bin/$(nom).bin -_i $(libs) test/*.$(nom)
 run_tests=bin/$(nom).bin -_ $(libs) $(tests)

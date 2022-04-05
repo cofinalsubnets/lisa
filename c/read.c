@@ -11,6 +11,7 @@ const u32 *tnoms = (u32*)
 #include "mem.h"
 #include "str.h"
 #include "terp.h"
+#include <ctype.h>
 
 ////
 /// " the parser "
@@ -111,18 +112,21 @@ static obj read_file_loop(lips v, FILE *p, str o, u64 n, u64 lim) {
     default: o->text[n++] = x; }
   return reloop(v, p, _S(o), lim, read_file_loop); }
 
+static Inline i64 sidx(const char *s, char c) {
+  for (i64 i = 0; *s; s++, i++) if (*s == c) return i;
+  return -1; }
 
 static NoInline obj read_num_2(const char *s, i64 rad) {
   static const char *dig = "0123456789abcdef";
   if (!*s) return nil;
   i64 a = 0;
-  for (int i, c; (c = *s++); a += i) {
-    a *= rad, i = sidx(dig, cmin(c));
+  for (int i, c; (c = tolower(*s++)); a += i) {
+    a *= rad, i = sidx(dig, c);
     if (i < 0 || rad <= i) return nil; }
   return _N(a); }
 
 static NoInline obj read_num_1(const char *s) {
-  if (*s == '0') switch (cmin(s[1])) {
+  if (*s == '0') switch (tolower(s[1])) {
     case 'b': return read_num_2(s+2, 2);
     case 'o': return read_num_2(s+2, 8);
     case 'd': return read_num_2(s+2, 10);
@@ -131,11 +135,11 @@ static NoInline obj read_num_1(const char *s) {
   return read_num_2(s, 10); }
 
 static Inline obj read_num(lips _, const char *s) {
- obj q;
- switch (*s) {
-  case '-': return nump(q = read_num_1(s+1)) ? _N(-N(q)) : q;
-  case '+': s++;
-  default: return read_num_1(s); } }
+  obj q;
+  switch (*s) {
+    case '-': return nump(q = read_num_1(s+1)) ? _N(-N(q)) : q;
+    case '+': s++;
+    default: return read_num_1(s); } }
 
 obj read_file(lips v, FILE *i) {
   obj s = read_buffered(v, i, read_file_loop);
@@ -154,7 +158,7 @@ Vm(par_u) {
   Jump(ret); }
 
 Vm(slurp) {
-  Ary(1);
+  Arity(1);
   xp = *Argv;
   Tc(xp, Str);
   CallC(xp = read_path(v, S(xp)->text),

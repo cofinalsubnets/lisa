@@ -106,6 +106,8 @@ Vm(dump) {
 u1 write_file(lips v, const char *path, const char *text) {
   FILE *out;
   bind(out, fopen(path, "w"));
-  for (int c = *text; c; c = *++text) fputc(c, out);
+  u1 r = true;
+  for (char c = *text; r && c; c = *++text)
+    r = fputc(c, out) != EOF;
   fclose(out);
-  return true; }
+  return r; }

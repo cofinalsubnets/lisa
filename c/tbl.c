@@ -50,7 +50,7 @@ static u64 hash_num(lips v, obj n) {
 static u64 hash_vec(lips v, obj x) {
   return ror64(mix * V(x)->len, 32); }
 static u64 hash_nil(lips v, obj _) {
-  return ror64(mix * kind(_), 48); }
+  return ror64(mix * kind(nil), 48); }
 static u64 hash_str(lips v, obj x) {
   str s = S(x);
   u64 len = s->len;
@@ -185,7 +185,6 @@ Vm(tblg) {
   Go(ret, xp ? xp : nil); }
 
 OP1(tget, (xp = tbl_get(v, xp, *sp++)) ? xp : nil)
-
 OP1(thas, tbl_get(v, xp, *sp++) ? ok : nil)
 OP1(tlen, _N(gettbl(xp)->len))
 
@@ -217,8 +216,8 @@ Vm(tbls) {
 
 Vm(tblmk) {
   Pack();
-  bind(v->xp, table(v));
-  bind(xp, tblss(v, 0, N(Argc)));
+  bind(v->xp, table(v)); // xp <- table
+  bind(xp, tblss(v, 0, N(Argc))); // _ <- updates
   Unpack();
   Jump(ret); }
 

@@ -118,6 +118,10 @@
    'imm ev
    'AA (\ x (L A (L A x))) 'AB (\ x (L A (L B x)))
    'BA (\ x (L B (L A x))) 'BB (\ x (L B (L B x)))
+   'AAA (\ x (L A (L A (L A x)))) 'AAB (\ x (L A (L A (L B x))))
+   'ABA (\ x (L A (L B (L A x)))) 'ABB (\ x (L A (L B (L B x))))
+   'BAA (\ x (L B (L A (L A x)))) 'BAB (\ x (L B (L A (L B x))))
+   'BBA (\ x (L B (L B (L A x)))) 'BBB (\ x (L B (L B (L B x))))
    'char (\ x (sget x 0))
    '&& (\ x . (? x ((: (& x) (? (B x) (L ? (A x) (& (B x))) (A x))) x) 1))
    '|| (\ x . ((: (| x) (? x (: q (sym) (L ': q (A x) (L ? q q (| (B x))))))) x))
@@ -508,19 +512,19 @@
 
    (defn e x) (:
     (nom s) (? (2p s) (nom (A s)) s)
-    (sug d) (L (L '\ (L ', (init d) (last d))))
+    (sug d) (L (L \ (L , (init d) (last d))))
     (loop e x) (? x (:
      y (nom (A x))
      ll (loop e (BB x))
      (X y (X (Tg (Tg e 'def) y) ll))))
     (? (B x) (? (= 0 (% (len x) 2)) (sug x)
-                (X ': (loop e (B x))))))
+                (X : (loop e (B x))))))
 
    (lamb e l) (:
     (trlamp l) (? (B l) (: x (last l)
-     (? (2p x) (? (= (A x) ':) (= 0 (% (len x) 2))))))
+     (? (2p x) (? (= (A x) :) (= 0 (% (len x) 2))))))
     (wv-lamm l) (: m (last l)
-     (snoc (init l) (L ', (init m) (last m))))
+     (snoc (init l) (L , (init m) (last m))))
     (? (trlamp l) (wv-lamm l) l))
 
    (mono f i l) (:
@@ -688,7 +692,7 @@
    (late d) (:
     h (k e (+ m 2))
     t (consumes h)
-    c (type-sym-num t) ; runtime dependent type code
+    c (type-sym-num t) ; get the runtime type tag
     (emf i-lbind (emx (X c (X d x)) (? t (hseek h 1) h))))
 
    s (A (: r (look e x))) (?

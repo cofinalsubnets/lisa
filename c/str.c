@@ -1,10 +1,11 @@
 #include "lips.h"
 #include "str.h"
 #include "mem.h"
+#include <string.h>
 
 // for strings
 obj string(lips v, const char* c) {
-  i64 bs = 1 + slen(c);
+  i64 bs = 1 + strlen(c);
   str o;
   bind(o, cells(v, Width(str) + b2w(bs)));
   cpy8(o->text, c, o->len = bs);

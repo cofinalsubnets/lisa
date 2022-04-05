@@ -6,15 +6,13 @@
  (sno n) (n)
  (sun x) (sX x sno)
 
- (s+ s t)
-  (s (\ t)
-     (\ s (\ _ m (m (s+ t s))))
-     (\ x s (sX x (s+ s t))))
+ (s+ s t) (s (\ t)
+             (\ s (\ _ m (m (s+ t s))))
+             (\ x s (sX x (s+ s t))))
 
- (s* s g)
-  (s (\ s)
-     (\ s (\ _ m (m (s* s g))))
-     (\ x s (s+ (g x) (s* s g))))
+ (s* s g) (s (\ s)
+             (\ s (\ _ m (m (s* s g))))
+             (\ x s (s+ (g x) (s* s g))))
 
  (stake i s)
   (? (= i 0) sno

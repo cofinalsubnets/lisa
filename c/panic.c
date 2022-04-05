@@ -6,23 +6,23 @@
 
 // errors
 Vm(fail) {
-  return Pack(), errp(v, "fail"), panic(v); }
+  return Pack(), err(v, "fail"); }
 
+#define type_err_msg "wrong type : %s for %s"
 Vm(type_error) {
   enum tag exp = v->xp, act = kind(xp);
-  Pack();
-  errp(v, "wrong type : %s for %s", tnom(act), tnom(exp));
-  return panic(v); }
+  return Pack(), err(v, type_err_msg, tnom(act), tnom(exp)); }
 
 Vm(oob_error) {
   i64 a = v->xp, b = v->ip;
-  return Pack(), errp(v, "oob : %d >= %d", a, b), panic(v); }
+  return Pack(), err(v, "oob : %d >= %d", a, b); }
 
+#define arity_err_msg "wrong arity : %d of %d"
 Vm(ary_error) {
   i64 a = N(Argc), b = v->xp;
-  return Pack(), errp(v, arity_err_msg, a, b), panic(v); }
+  return Pack(), err(v, arity_err_msg, a, b); }
 
-Vm(div_error) { return Pack(), errp(v, "/ 0"), panic(v); }
+Vm(div_error) { return Pack(), err(v, "/ 0"); }
 
 // type/arity checking
 #define DTc(n, t) Vm(n) {\
@@ -34,12 +34,7 @@ Vm(arity) {
   if (reqd <= Argc) Next(2);
   else Jump((v->xp = N(reqd), ary_error)); }
 
-obj panic(lips v) {
-  v->fp = v->sp = v->pool + v->len;
-  v->xp = v->ip = nil;
-  return 0; }
-
-static NoInline u0 show_call(lips v, obj ip, mem fp) {
+static Inline u0 show_call(lips v, obj ip, mem fp) {
   fputc('(', stderr);
   emit(v, ip, stderr);
   mem top = v->pool + v->len;
@@ -47,16 +42,19 @@ static NoInline u0 show_call(lips v, obj ip, mem fp) {
     fputc(' ', stderr), emit(v, Argv[i++], stderr);
   fputc(')', stderr); }
 
-u0 errp(lips v, const char *msg, ...) {
+NoInline obj err(lips v, const char *msg, ...) {
   obj ip = v->ip, *fp = v->fp;
-  va_list xs; va_start(xs, msg);
-  fputs("# ", stderr), show_call(v, ip, fp);
-  fputs(" : ", stderr), vfprintf(stderr, msg, xs);
-  fputc('\n', stderr), va_end(xs);
+  fputs("# ", stderr), show_call(v, ip, fp), fputs(" : ", stderr);
+  va_list xs;
+  va_start(xs, msg), vfprintf(stderr, msg, xs), va_end(xs);
+  fputc('\n', stderr);
   // print backtrace
   for (mem top = v->pool + v->len;;) {
     ip = Retp, fp += Width(frame) + N(Argc) + N(Subr);
-    if (fp == top) return;
+    if (fp == top) break;
     fputs("#  in ", stderr);
     show_call(v, ip, fp);
-    fputc('\n', stderr); } }
+    fputc('\n', stderr); }
+  v->fp = v->sp = v->pool + v->len;
+  v->xp = v->ip = nil;
+  return 0; }
