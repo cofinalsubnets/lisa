@@ -23,17 +23,17 @@ Vm(cons) {
   Next(1); }
 
 Vm(car_u) {
-  Ary(1);
-  Tc(*Argv, Two);
+  Arity(1);
+  CheckType(*Argv, Two);
   Go(ret, A(*Argv)); }
 
 Vm(cdr_u) {
-  Ary(1);
-  Tc(*Argv, Two);
+  Arity(1);
+  CheckType(*Argv, Two);
   Go(ret, B(*Argv)); }
 
 Vm(cons_u) {
-  Ary(2);
+  Arity(2);
   Have(2);
   two w = (two) hp;
   hp += 2;

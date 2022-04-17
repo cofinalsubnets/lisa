@@ -101,7 +101,7 @@
                     (et (est a two) (est b one))
                     (\\ x y p q
                      (et (est (inc x) a)
-                         (est (inc y) x) 
+                         (est (inc y) x)
                          (zz (et (fibo x p)
                                  (fibo y q)
                                  (add p q b))))))

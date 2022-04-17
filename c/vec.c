@@ -16,8 +16,8 @@ Vm(take) {
 
 Vm(vset_u) {
   Arity(3);
-  Tc(Argv[0], Vec);
-  Tc(Argv[1], Num);
+  CheckType(Argv[0], Vec);
+  CheckType(Argv[1], Num);
   i64 idx = N(Argv[1]);
   vec ary = V(Argv[0]);
   if (idx < 0 || idx >= ary->len) {
@@ -27,8 +27,8 @@ Vm(vset_u) {
 
 Vm(vget_u) {
   Arity(2);
-  Tc(Argv[0], Vec);
-  Tc(Argv[1], Num);
+  CheckType(Argv[0], Vec);
+  CheckType(Argv[1], Num);
   i64 idx = N(Argv[1]);
   vec ary = V(Argv[0]);
   if (idx < 0 || idx >= ary->len) {

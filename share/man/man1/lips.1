@@ -32,30 +32,7 @@ don't bootstrap
 .br
 .I (\\\\ a b . x) ; variadic in b
 .RS
-.B lambda
-creates functions
-.RE
-.PP
-.I (, a b c) ; eval a, then b, then c; value is c
-.RS
-.B sequence
-evaluates operands in order
-.RE
-.PP
-.I (: a b c d ...) ; let a := b, c := d ... in current scope
-.br
-.I (: a b c d ... e) ; let a := b, c := d ... in e
-.br
-.I (: (a b c) d) ; = (: a (\\\\ b c d))
-.RS
-.B define
-gives values to names
-.RE
-.PP
-.I (` (1 2 3)) ; or '(1 2 3)
-.RS
-.B quote
-suppresses evaluation
+.B make a function
 .RE
 .PP
 .I (? a b) ; b if a else nil
@@ -64,8 +41,26 @@ suppresses evaluation
 .br
 .I (? a b c d e) ; b if a else d if c else e ; etc.
 .RS
-.B cond
-branches conditionally
+.B make a choice
+.RE
+.PP
+.I (, a b c) ; eval a, then b, then c; value is c
+.RS
+.B do things in order
+.RE
+.PP
+.I (: a b c d ...) ; let a := b, c := d ... in current scope
+.br
+.I (: a b c d ... e) ; let a := b, c := d ... in e
+.br
+.I (: (a b c) d) ; = (: a (\\\\ b c d))
+.RS
+.B name values
+.RE
+.PP
+.I (` (1 2 3)) ; or '(1 2 3)
+.RS
+.B quote data
 .RE
 .SH FILES
 .TP
