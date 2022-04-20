@@ -7,6 +7,7 @@
 #include "two.h"
 #include "str.h"
 #include "vec.h"
+#include "num.h"
 
 ////
 /// Load Instructions
@@ -69,7 +70,7 @@ Vm(lbind) {
   terp *q = H(ip)[2]; // omit the arity check if possible
   if (q == call || q == rec) {
     obj aa = (obj) H(ip)[3];
-    if (H(xp)[0] == arity && aa >= (obj) H(xp)[1]) xp += W2; }
+    if (H(xp)[0] == arity && aa >= (obj) H(xp)[1]) xp += word * 2; }
   H(ip)[0] = imm;
   H(ip)[1] = (terp*) xp;
   Next(2); }

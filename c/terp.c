@@ -7,6 +7,7 @@
 #include "two.h"
 #include "str.h"
 #include "vec.h"
+#include "num.h"
 
 // " the virtual machine "
 // It's a stack machine with one free register that runs on
@@ -29,7 +30,6 @@
 // therefore anything before the Have() macro will be executed
 // twice if garbage collection happens! there should be no side
 // effects before Have() or similar.
-
 
 Vm(ap_u) {
  Arity(2);
@@ -73,6 +73,17 @@ Vm(ccc_u) {
  *Argv = _H(c);
  Ap(ip, nil); }
 
+// call a continuation
+Vm(cont) {
+ vec t = V((obj) H(ip)[1]);
+ Have(t->len - 1);
+ xp = N(Argc) == 0 ? nil : *Argv;
+ i64 off = N(t->xs[0]);
+ sp = v->pool + v->len - (t->len - 1);
+ fp = sp + off;
+ cpy64(sp, t->xs+1, t->len-1);
+ Jump(ret); }
+
 Vm(vararg) {
   i64 reqd = N((i64) H(ip)[1]),
       vdic = N(Argc) - reqd;
@@ -83,7 +94,7 @@ Vm(vararg) {
     Have1();
     cpy64(fp-1, fp, Width(frame) + N(Argc));
     sp = --fp;
-    Argc += W;
+    Argc += Word;
     Argv[reqd] = nil;
     Next(2); }
   // in this case we just keep the existing slots.
@@ -103,7 +114,7 @@ Vm(vararg) {
 
 // type predicates
 #define Tp(t)\
-  Vm(t##pp) { Ap(ip+W, (t##p(xp)?ok:nil)); }\
+  Vm(t##pp) { Ap(ip+Word, (t##p(xp)?ok:nil)); }\
   Vm(t##p_u) {\
     for (obj *xs = Argv, *l = xs + N(Argc); xs < l;)\
       if (!t##p(*xs++)) Go(ret, nil);\

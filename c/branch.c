@@ -4,6 +4,7 @@
 #include "hom.h"
 #include "cmp.h"
 #include "vec.h"
+#include "num.h"
 static terp recne;
 
 ////
@@ -48,7 +49,7 @@ Vm(call) {
  obj adic = (obj) H(ip)[1];
  i64 off = fp - (mem) ((i64) sp + adic - Num);
  fp = sp -= Width(frame);
- Retp = ip + W2;
+ Retp = ip + 2 * word;
  Subr = _N(off);
  Clos = nil;
  Argc = adic;
@@ -73,14 +74,3 @@ static Vm(recne) {
  ip = xp;
  Clos = xp = nil;
  Next(0); }
-
-// call a continuation
-Vm(cont) {
- vec t = V((obj) H(ip)[1]);
- Have(t->len - 1);
- xp = N(Argc) == 0 ? nil : *Argv;
- i64 off = N(t->xs[0]);
- sp = v->pool + v->len - (t->len - 1);
- fp = sp + off;
- cpy64(sp, t->xs+1, t->len-1);
- Jump(ret); }

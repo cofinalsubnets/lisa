@@ -1,7 +1,7 @@
 #include "lips.h"
 #include "terp.h"
 #include "hom.h"
-
+#include "num.h"
 
 #define mm_u(_c,_v,_z,op){\
  obj x,*xs=_v,*l=xs+_c;\

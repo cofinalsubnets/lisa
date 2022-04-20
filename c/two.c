@@ -1,7 +1,10 @@
 #include "lips.h"
 #include "two.h"
-
 #include "mem.h"
+#include "num.h"
+#include "terp.h"
+#include "hom.h"
+
 // functions for pairs and lists
 obj pair(lips v, obj a, obj b) {
   two w;
@@ -10,8 +13,6 @@ obj pair(lips v, obj a, obj b) {
   w->a = a, w->b = b;
   return puttwo(w); }
 
-#include "terp.h"
-#include "hom.h"
 // pairs
 OP1(car, A(xp)) OP1(cdr, B(xp))
 Vm(cons) {

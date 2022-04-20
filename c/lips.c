@@ -5,6 +5,7 @@
 #include "mem.h"
 #include "two.h"
 #include "hom.h"
+#include "num.h"
 #include <time.h>
 
 // lips destructor
@@ -29,7 +30,7 @@ lips li_ini(void) {
   v->len = 1;
   v->pool = NULL;
   v->root = NULL;
-  v->fp = v->hp = v->sp = (mem) W;
+  v->fp = v->hp = v->sp = (mem) word;
   v->ip = v->xp = v->syms = nil;
   set64(v->glob, nil, NGlobs);
 

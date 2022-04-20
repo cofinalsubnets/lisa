@@ -1,30 +1,31 @@
 # lips
-nonverbal lisp
+limiting lisp
 
 ## build / install
 are you on linux? `make` will probably work. otherwise, see
 `Makefile` for the suggested compiler flags.
 
-## syntax quick facts
-- `()` is self-quoting and false
-- there are no improper list literals or quasiquotation
-- numbers can take a radix: `0{b,o,d,z,x} -> 2, 8, 10, 12, 16`
-- quotes in strings can be escaped with a backslash, but no other
-  escape sequences are interpreted; multiline strings are fine
+## syntax fax
+- `()` is false & fixed by `ev`
+- no improper list literals or quasiquotation
+- numbers may take a C-style radix in `{b=2,o=8,d=10,z=12,x=16}`
+- strings delimited by `"` which can be escaped with a backslash;
+  no other escape sequences are interpreted
 
 ## special forms
-|  lips       | scheme           |
-|-------------|------------------|
-|`(, a b)`    |`(begin a b)`     |
-|`(\)`        |`(lambda _ #f)`   |
-|`(\ x)`      |`(lambda _ x)`    |
-|`(\ a b c)`  |`(lambda (a b) c)`|
-|`(: a b)`    |`(begin (define a b) a)`|
-|`(: a b c)`  |`(letrec ((a b)) c)`|
-|`(? a b)`    |`(cond (a b) (#t #f))`|
-|`(? a b c)`  |`(cond (a b) (#t c))`|
+
+|  lips       | scheme                     |
+|-------------|----------------------------|
+|`(, a b)`    |`(begin a b)`               |
+|`(\)`        |`(lambda _ #f)`             |
+|`(\ x)`      |`(lambda _ x)`              |
+|`(\ a b c)`  |`(lambda (a b) c)`          |
+|`(: a b)`    |`(begin (define a b) a)`    |
+|`(: a b c)`  |`(letrec ((a b)) c)`        |
+|`(? a b)`    |`(cond (a b) (#t #f))`      |
+|`(? a b c)`  |`(cond (a b) (#t c))`       |
 |`(? a b c d)`|`(cond (a b) (c d) (#t #f))`|
-|`'x` <code>(\` x)</code>|`'x` `(quote x)`  |
+|`'x`         |`'x`                        |
 
 etc.
 

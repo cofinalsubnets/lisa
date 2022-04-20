@@ -2,6 +2,7 @@
 #include "cmp.h"
 #include "two.h"
 #include "str.h"
+#include "num.h"
 #include <string.h>
 
 NoInline u1 eql_(obj a, obj b) { return eql(a, b); }

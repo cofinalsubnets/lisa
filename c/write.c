@@ -8,6 +8,7 @@
 #include "tbl.h"
 #include "hom.h"
 #include "vec.h"
+#include "num.h"
 
 typedef u0 writer(lips, obj, FILE*);
 static writer

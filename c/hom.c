@@ -8,7 +8,7 @@
 #include "vec.h"
 #include "terp.h"
 #include "write.h"
-
+#include "num.h"
 
 ////
 /// bootstrap thread compiler
@@ -82,10 +82,8 @@ static u1 pushss(lips v, i64 i, va_list xs) {
   return _; }
 
 static u1 pushs(lips v, ...) {
-  va_list xs;
-  va_start(xs, v);
-  u1 _ = pushss(v, 0, xs);
-  va_end(xs);
+  va_list xs; u1 _;
+  va_start(xs, v), _ = pushss(v, 0, xs), va_end(xs);
   return _; }
 
 static vec tuplr(lips v, i64 i, va_list xs) {
@@ -101,15 +99,14 @@ static vec tuplr(lips v, i64 i, va_list xs) {
  return t; }
 
 static obj tupl(lips v, ...) {
- vec t;
- va_list xs;
+ va_list xs; vec t;
  va_start(xs, v), t = tuplr(v, 0, xs), va_end(xs);
  bind(t, t);
  return _V(t); }
 
 // emit code backwards like cons
 static Inline obj em1(terp *i, obj k) {
-  return k -= W, *H(k) = i, k; }
+  return k -= word, *H(k) = i, k; }
 
 static Inline obj em2(terp *i, obj j, obj k) {
   return em1(i, em1((terp*)j, k)); }
@@ -174,10 +171,9 @@ static Inline obj new_scope(lips v, mem e, obj a, obj n) {
   return tupl(v, a, nil, nil, e ? *e : nil, n, _N(s), (obj)0); }
 
 static Inline obj comp_body(lips v, mem e, obj x) {
-  bind(x, Push(
-    inptr(comp_expr_), x,
-    inptr(emit_i), inptr(ret),
-    inptr(comp_alloc)));
+  bind(x, Push(inptr(comp_expr_), x,
+               inptr(emit_i), inptr(ret),
+               inptr(comp_alloc)));
   scan(v, e, v->sp[1]);
   bind(x, _H(Ccc(4))); // 4 = 2 + 2
   i64 i = llen(loc(*e));
@@ -500,14 +496,14 @@ Vm(hfin_u) {
  button(H(a))[1] = (terp*) a;
  Go(ret, a); }
 
-Vm(emx) { hom h = H(*sp++ - W); *h = (terp*) xp;    Ap(ip+W, _H(h)); }
-Vm(emi) { hom h = H(*sp++ - W); *h = (terp*) N(xp); Ap(ip+W, _H(h)); }
+Vm(emx) { hom h = H(*sp++ - word); *h = (terp*) xp;    Ap(ip+word, _H(h)); }
+Vm(emi) { hom h = H(*sp++ - word); *h = (terp*) N(xp); Ap(ip+word, _H(h)); }
 
 Vm(emx_u) {
  Ary(2);
  obj h = Argv[1];
  Tc(h, Hom);
- h -= W;
+ h -= word;
  *H(h) = (terp*) Argv[0];
  Go(ret, h); }
 
@@ -516,7 +512,7 @@ Vm(emi_u) {
  Tc(Argv[0], Num);
  obj h = Argv[1];
  Tc(h, Hom);
- h -= W;
+ h -= word;
  *H(h) = (terp*) N(Argv[0]);
  Go(ret, h); }
 
@@ -614,7 +610,7 @@ static Vm(encl) {
  at[3] = 0;
  at[4] = (terp*) at;
 
- Ap(ip+W2, _H(at)); }
+ Ap(ip + word * 2, _H(at)); }
 
 Vm(encll) { Go(encl, Locs); }
 Vm(encln) { Go(encl, nil); }

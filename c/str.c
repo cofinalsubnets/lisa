@@ -1,6 +1,7 @@
 #include "lips.h"
 #include "str.h"
 #include "mem.h"
+#include "num.h"
 #include <string.h>
 
 // for strings

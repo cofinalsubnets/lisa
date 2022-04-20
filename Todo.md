@@ -6,11 +6,17 @@
 - network
 - more file i/o
 - ffi
-- semispace
-- generational gc
+- hom type in vm fn signature
+- l2r evaluation
+- semispace gc
+- generational
 - buddy allocator
 
-# Lisp
+# lips[E]
+- more string escape sequences
+- make sure utf-8 works?
+
+# lips[I]
 - type inference
 - variable renaming
 - inlining

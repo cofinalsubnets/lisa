@@ -2,6 +2,7 @@
 #include "sym.h"
 #include "str.h"
 #include "terp.h"
+#include "num.h"
 #include <string.h>
 
 //symbols

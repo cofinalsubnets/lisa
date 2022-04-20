@@ -28,6 +28,8 @@ static const char *help =
 static obj scrp(lips, const char*), scrr(lips, u1, const char**);
 static lips init(u1, const char*, char **);
 
+static obj li_go(lips);
+
 int main(int argc, char **argv) {
   for (u1 shell = argc == 1, boot = true;;)
     switch (getopt(argc, argv, "hi_")) {

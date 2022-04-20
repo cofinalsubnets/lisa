@@ -5,7 +5,6 @@
 #define um (v->root=v->root->next)
 #define with(y,...) (mm(&(y)),(__VA_ARGS__),um)
 #define Width(t) b2w(sizeof(struct t))
-
 u0 *cells(lips, u64);
 u1 please(lips, u64);
 #endif

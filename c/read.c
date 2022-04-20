@@ -11,6 +11,7 @@ const u32 *tnoms = (u32*)
 #include "mem.h"
 #include "str.h"
 #include "terp.h"
+#include "num.h"
 #include <ctype.h>
 
 ////

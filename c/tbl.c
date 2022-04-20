@@ -1,5 +1,6 @@
 #include "lips.h"
 #include "tbl.h"
+#include "num.h"
 
 static Inline i64 tbl_idx(u64 cap, u64 co) {
   return co & ((1 << cap) - 1); }
