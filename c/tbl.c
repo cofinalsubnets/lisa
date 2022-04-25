@@ -115,14 +115,13 @@ static obj tbl_grow(lips v, obj t) {
   set64(tab1, 0, 1<<cap1);
   tab0 = T(t)->tab;
 
-  for (u64 cap = 1<<cap0;cap--;)
-    for (ent e, es = tab0[cap]; es;) {
-      e = es, es = es->next;
-      u64 i = tbl_idx(cap1, hash(v, e->key));
-      e->next = tab1[i], tab1[i] = e; }
+  for (u64 i, cap = 1 << cap0; cap--;)
+    for (ent e, es = tab0[cap]; es;
+      e = es, es = es->next,
+      i = tbl_idx(cap1, hash(v, e->key)),
+      e->next = tab1[i], tab1[i] = e);
 
-  T(t)->cap = cap1;
-  T(t)->tab = tab1;
+  T(t)->cap = cap1, T(t)->tab = tab1;
   return t; }
 
 obj tbl_set_s(lips v, obj t, obj k, obj x) {

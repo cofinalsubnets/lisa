@@ -4,7 +4,6 @@
 #include "num.h"
 #include <string.h>
 
-// for strings
 obj string(lips v, const char* c) {
   i64 bs = 1 + strlen(c);
   str o;
@@ -15,15 +14,15 @@ obj string(lips v, const char* c) {
 #include "terp.h"
 // string instructions
 Vm(strl) {
-  Ary(1);
-  Tc(*Argv, Str);
+  Arity(1);
+  CheckType(*Argv, Str);
   xp = _N(S(*Argv)->len-1);
   Jump(ret); }
 
 Vm(strg) {
-  Ary(2);
-  Tc(Argv[0], Str);
-  Tc(Argv[1], Num);
+  Arity(2);
+  CheckType(Argv[0], Str);
+  CheckType(Argv[1], Num);
   xp = N(Argv[1]) < S(Argv[0])->len-1 ?
        _N(S(Argv[0])->text[N(Argv[1])]) :
        nil;
@@ -33,7 +32,7 @@ Vm(strconc) {
   i64 l = N(Argc), sum = 0, i = 0;
   while (i < l) {
     obj x = Argv[i++];
-    Tc(x, Str);
+    CheckType(x, Str);
     sum += S(x)->len - 1; }
   i64 words = b2w(sum+1) + 1;
   Have(words);
@@ -50,10 +49,10 @@ Vm(strconc) {
 #define min(a,b)(a<b?a:b)
 #define max(a,b)(a>b?a:b)
 Vm(strs) {
-  Ary(3);
-  Tc(Argv[0], Str);
-  Tc(Argv[1], Num);
-  Tc(Argv[2], Num);
+  Arity(3);
+  CheckType(Argv[0], Str);
+  CheckType(Argv[1], Num);
+  CheckType(Argv[2], Num);
   str src = S(Argv[0]);
   i64 lb = N(Argv[1]), ub = N(Argv[2]);
   lb = max(lb, 0);

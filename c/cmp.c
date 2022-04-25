@@ -5,7 +5,7 @@
 #include "num.h"
 #include <string.h>
 
-NoInline u1 eql_(obj a, obj b) { return eql(a, b); }
+static NoInline u1 eql_(obj a, obj b) { return eql(a, b); }
 
 static NoInline u1 eql_two(obj a, obj b) {
   return eql_(A(a), A(b)) && eql_(B(a), B(b)); }
@@ -15,11 +15,9 @@ static NoInline u1 eql_str(obj a, obj b) {
     strcmp(S(a)->text, S(b)->text) == 0; }
 
 Inline u1 eql(obj a, obj b) {
-  if (a == b) return true;
-  if (kind(a) != kind(b)) return false;
-  switch (kind(a)) { case Two: return eql_two(a, b);
-                     case Str: return eql_str(a, b);
-                     default: return false; } }
+  return a == b || (kind(a) == kind(b) &&
+    ((twop(a) && eql_two(a, b)) ||
+     (strp(a) && eql_str(a, b)))); }
 
 #include "hom.h"
 #include "terp.h"

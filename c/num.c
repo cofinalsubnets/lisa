@@ -52,8 +52,7 @@ Vm(mod_u) {
   Tc(*Argv, Num);
   mm_u0(xp-1,Argv+1,N(*Argv),%); }
 
-Vm(rnd_u) {
-  Go(ret, _N(lcprng(&v->rand))); }
+Vm(rnd_u) { Go(ret, _N(v->rand = lcprng(v->rand))); }
 
 OP1(neg, _N(-N(xp)))
 BINOP(add,  xp + *sp++ - Num)

@@ -52,7 +52,7 @@ obj li_go(lips v) {
 
 // make a lips instance for these opts
 //
-// init : lips bool string strings
+// init : lips bool string? strings
 static lips init(u1 shell, const char *boot, char **paths) {
   lips v;
   obj y, x;

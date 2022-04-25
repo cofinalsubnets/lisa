@@ -23,6 +23,7 @@ obj interns(lips v, const char *s) {
 #include "mem.h"
 #include "tbl.h"
 
+// FIXME this is awful
 obj sskc(lips v, mem y, obj x) {
   sym z;
   if (!nilp(*y)) {

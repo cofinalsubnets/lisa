@@ -21,7 +21,7 @@ const u32 *tnoms = (u32*)
 typedef obj reader(lips, FILE*);
 typedef obj read_loop(lips, FILE*, str, u64, u64);
 static reader read_list, read_str, read_atom;
-static obj read_list(lips, FILE*), read_num(lips, const char*);
+static obj read_list(lips, FILE*), read_num(const char*);
 static read_loop read_str_loop, read_atom_loop;
 
 static Inline obj read_buffered(lips, FILE*, read_loop*);
@@ -50,11 +50,17 @@ obj parse(lips v, FILE* i) {
     case '\'': return read_quoted(v, i);
     default: ungetc(c, i);
              bind(x, read_atom(v, i));
-             y = read_num(v, S(x)->text);
+             y = read_num(S(x)->text);
              return nump(y) ? y : intern(v, x); } }
+
+static Inline obj read_buffered(lips v, FILE *i, read_loop *loop) {
+  str c;
+  bind(c, cells(v, 2));
+  return loop(v, i, c, 0, c->len = 8); }
 
 static Inline obj read_str(lips v, FILE *i) {
   return read_buffered(v, i, read_str_loop); }
+
 static Inline obj read_atom(lips v, FILE *i) {
   return read_buffered(v, i, read_atom_loop); }
 
@@ -68,11 +74,6 @@ static obj read_list(lips v, FILE *i) {
            with(x, y = read_list(v, i));
            bind(y, y);
            return pair(v, x, y); } }
-
-static Inline obj read_buffered(lips v, FILE *i, read_loop *loop) {
-  str c;
-  bind(c, cells(v, 2));
-  return loop(v, i, c, 0, c->len = 8); }
 
 static NoInline obj reloop(lips v, FILE *i, obj x, u64 n, read_loop *loop) {
   bind(x, grow_buffer(v, x));
@@ -113,34 +114,32 @@ static obj read_file_loop(lips v, FILE *p, str o, u64 n, u64 lim) {
     default: o->text[n++] = x; }
   return reloop(v, p, _S(o), lim, read_file_loop); }
 
-static Inline i64 sidx(const char *s, char c) {
-  for (i64 i = 0; *s; s++, i++) if (*s == c) return i;
-  return -1; }
+static NoInline obj read_num_base(const char *in, int base) {
+  static const char *digits = "0123456789abcdef";
+  int c = tolower(*in++);
+  if (!c) return nil; // fail to parse empty string
+  i64 out = 0;
+  do {
+    int digit = 0;
+    for (const char *d = digits; *d && *d != c; d++, digit++);
+    if (digit >= base) return nil; // fail to parse oob digit
+    out = out * base + digit;
+  } while ((c = tolower(*in++)));
+  return _N(out); }
 
-static NoInline obj read_num_2(const char *s, i64 rad) {
-  static const char *dig = "0123456789abcdef";
-  if (!*s) return nil;
-  i64 a = 0;
-  for (int i, c; (c = tolower(*s++)); a += i) {
-    a *= rad, i = sidx(dig, c);
-    if (i < 0 || rad <= i) return nil; }
-  return _N(a); }
-
-static NoInline obj read_num_1(const char *s) {
-  if (*s == '0') switch (tolower(s[1])) {
-    case 'b': return read_num_2(s+2, 2);
-    case 'o': return read_num_2(s+2, 8);
-    case 'd': return read_num_2(s+2, 10);
-    case 'z': return read_num_2(s+2, 12);
-    case 'x': return read_num_2(s+2, 16); }
-  return read_num_2(s, 10); }
-
-static Inline obj read_num(lips _, const char *s) {
-  obj q;
+static NoInline obj read_num(const char *s) {
+  obj n;
   switch (*s) {
-    case '-': return nump(q = read_num_1(s+1)) ? _N(-N(q)) : q;
-    case '+': s++;
-    default: return read_num_1(s); } }
+    case '-': return nump(n = read_num(s+1)) ? _N(-N(n)) : n;
+    case '+': return read_num(s+1);
+    case '0': switch (tolower(s[1])) {
+      case 'b': return read_num_base(s+2, 2);
+      case 'o': return read_num_base(s+2, 8);
+      case 'd': return read_num_base(s+2, 10);
+      case 'z': return read_num_base(s+2, 12);
+      case 'x': return read_num_base(s+2, 16); } }
+  return read_num_base(s, 10); }
+
 
 obj read_file(lips v, FILE *i) {
   obj s = read_buffered(v, i, read_file_loop);

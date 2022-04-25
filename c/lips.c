@@ -8,15 +8,12 @@
 #include "num.h"
 #include <time.h>
 
-// lips destructor
-u0 li_fin(lips v) { if (v) {
-  // call data destructors here, once we have them
-  free(v->pool);
-  free(v); } }
-
 // initialization helpers
 static u1 inst(lips, const char*, terp*) NoInline,
           prim(lips, const char*, terp*) NoInline;
+
+// lips destructor
+u0 li_fin(lips v) { if (v) free(v->pool), free(v); }
 
 // lips constructor
 lips li_ini(void) {
@@ -25,7 +22,7 @@ lips li_ini(void) {
 
   u64 t0 = clock();
   v->t0 = t0;
-  v->rand = LCPRNG(t0 * mix);
+  v->rand = lcprng(t0 * mix);
   v->count = 0;
   v->len = 1;
   v->pool = NULL;
@@ -52,8 +49,7 @@ lips li_ini(void) {
   def("_ns", Top);
   def("_macros", Mac);
   return v; fail:
-  li_fin(v);
-  return NULL; }
+  return li_fin(v), NULL; }
 
 static NoInline u1 inst(lips v, const char *a, terp *b) {
   obj z;
