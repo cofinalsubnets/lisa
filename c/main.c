@@ -1,9 +1,7 @@
 #include "lips.h"
 #include "terp.h"
 #include "read.h"
-#include "hom.h"
 #include "mem.h"
-#include "two.h"
 #include "write.h"
 #include <stdlib.h>
 #include <unistd.h>
@@ -102,15 +100,15 @@ static obj scrp(lips v, const char *path) {
 
 // scrr : hom lips bool strings
 static obj scrr(lips v, u1 shell, const char **paths) {
+  hom h;
+  obj x, y;
   const char *path = *paths;
   if (!path) {
-    hom h;
     bind(h, cells(v, 3));
     h[0] = shell ? li_repl : li_fin_ok;
     h[1] = NULL;
     h[2] = (terp*) h;
     return _H(h); }
-  obj x, y;
   bind(y, scrr(v, shell, paths+1));
   with(y, x = scrp(v, path));
   bind(x, x);

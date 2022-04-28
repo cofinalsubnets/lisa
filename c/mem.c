@@ -1,16 +1,10 @@
 #include "lips.h"
 #include "mem.h"
 #include "terp.h"
-#include "hom.h"
-#include "str.h"
-#include "tbl.h"
-#include "sym.h"
-#include "two.h"
-#include "vec.h"
 
-typedef obj copier(lips, obj, u64, mem);
+typedef obj copier(run, obj, u64, mem);
 static Inline copier cp;
-#define Gc(n) obj n(lips v, obj x, u64 len0, mem pool0)
+#define Gc(n) obj n(run v, obj x, u64 len0, mem pool0)
 
 #define inb(o,l,u) (o>=l&&o<u)
 #define fresh(o) inb((mem)(o),v->pool,v->pool+v->len)
@@ -18,12 +12,12 @@ static Inline copier cp;
 #define CP(x) COPY(x,x)
 
 // unchecked allocator -- make sure there's enough memory!
-static u0* bump(lips v, u64 n) {
+static u0* bump(run v, u64 n) {
   u0* x = v->hp;
   return v->hp += n, x; }
 
 // general purpose memory allocator
-u0* cells(lips v, u64 n) {
+u0* cells(run v, u64 n) {
   return Avail >= n || please(v, n) ? bump(v, n) : 0; }
 
 #define oom_err_msg "out of memory : %d + %d"
@@ -60,30 +54,33 @@ Vm(gc) {
 // t values come from clock(). if t0 < t1 < t2 then
 // u will be >= 1. however, sometimes t1 == t2. in that case
 // u = 1.
-static clock_t copy(lips v, u64 len1) {
+static clock_t copy(run v, u64 len1) {
   mem pool1;
+  clock_t t0, t1 = clock(), t2;
   bind(pool1, malloc(w2b(len1)));
-  clock_t t0 = v->t0, t1 = clock();
-  u64 len0 = v->len;
-  mem pool0 = v->pool, sp0 = v->sp, top0 = pool0 + len0;
 
+  u64 len0 = v->len;
+  mem pool0 = v->pool,
+      sp0 = v->sp,
+      top0 = pool0 + len0;
+  i64 shift = pool1 + len1 - top0;
+
+  v->sp = sp0 + shift;
+  v->fp = v->fp + shift;
   v->len = len1;
   v->pool = v->hp = pool1;
   v->syms = nil;
 
-  i64 delta_top = pool1 + len1 - top0;
-  v->sp += delta_top, v->fp += delta_top;
-
   CP(v->ip), CP(v->xp);
   for (int i = 0; i < NGlobs; i++) CP(v->glob[i]);
-  while (top0-- > sp0) COPY(v->sp[top0 - sp0], *top0);
+  for (mem sp1 = v->sp; sp0 < top0; COPY(*sp1++, *sp0++));
   for (root r = v->root; r; r = r->next) CP(*(r->one));
 
   free(pool0);
-
-  clock_t t2 = clock();
-  v->t0 = t2;
-  return t1 == t2 ? 1 : (t2 - t0) / (t2 - t1); }
+  t0 = v->t0;
+  v->t0 = t2 = clock();
+  t1 = t2 - t1;
+  return t1 ? (t2 - t0) / t1 : 1; }
 
 // please : li x i64 -> u1
 //
@@ -172,7 +169,7 @@ Gc(cpsym) {
   else dst = getsym(sskc(v, &v->syms, cp(v, src->nom, len0, pool0)));
   return src->nom = putsym(dst); }
 
-static ent cpent(lips v, ent src, i64 len0, mem pool0) {
+static ent cpent(run v, ent src, i64 len0, mem pool0) {
   bind(src, src);
   ent dst = (ent) bump(v, Width(ent));
   dst->next = cpent(v, src->next, len0, pool0);

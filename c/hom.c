@@ -1,14 +1,7 @@
 #include "lips.h"
-#include "hom.h"
-#include "tbl.h"
-#include "str.h"
-#include "sym.h"
-#include "two.h"
 #include "mem.h"
-#include "vec.h"
 #include "terp.h"
 #include "write.h"
-#include "num.h"
 
 ////
 /// bootstrap thread compiler
@@ -44,14 +37,14 @@ typedef struct { obj arg, loc, clo, par, nom, sig; } *cenv;
 // then if f takes a fixed number of arguments the arity
 // signature is n; otherwise it's -n-1.
 
-static u1 scan(lips, mem, obj);
-static obj comp_lambda_clo(lips, mem, obj, obj), ltu(lips, mem, obj, obj);
-typedef hom c1(lips, mem, u64), c2(lips, mem, u64, obj);
+static u1 scan(run, mem, obj);
+static obj comp_lambda_clo(run, mem, obj, obj), ltu(run, mem, obj, obj);
+typedef hom c1(run, mem, u64), c2(run, mem, u64, obj);
 static c1 comp_expr_, comp_let_bind, emit_i, emit_i_d, comp_alloc;
 static c2 comp_expr, comp_sym, comp_list, comp_imm;
 
 enum { Here, Loc, Arg, Clo, Wait };
-#define CO(nom,...) static hom nom(lips v, mem e, u64 m, ##__VA_ARGS__)
+#define CO(nom,...) static hom nom(run v, mem e, u64 m, ##__VA_ARGS__)
 #define inptr(x) _N((i64)(x))
 
 // helper functions for lists
@@ -59,20 +52,20 @@ static i64 lidx(obj l, obj x) {
   for (i64 i = 0; twop(l); l = B(l), i++) if (x == A(l)) return i;
   return -1; }
 
-static obj linitp(lips v, obj x, mem d) {
+static obj linitp(run v, obj x, mem d) {
   obj y;
   if (!twop(B(x))) return *d = x, nil;
   with(x, y = linitp(v, B(x), d));
   bind(y, y);
   return pair(v, A(x), y); }
 
-static obj snoc(lips v, obj l, obj x) {
+static obj snoc(run v, obj l, obj x) {
   if (!twop(l)) return pair(v, x, l);
   with(l, x = snoc(v, B(l), x));
   bind(x, x);
   return pair(v, A(l), x); }
 
-static u1 pushss(lips v, i64 i, va_list xs) {
+static u1 pushss(run v, i64 i, va_list xs) {
   u1 _;
   obj x = va_arg(xs, obj);
   if (!x) return Avail >= i || please(v, i);
@@ -81,12 +74,12 @@ static u1 pushss(lips v, i64 i, va_list xs) {
   *--v->sp = x;
   return _; }
 
-static u1 pushs(lips v, ...) {
+static u1 pushs(run v, ...) {
   va_list xs; u1 _;
   va_start(xs, v), _ = pushss(v, 0, xs), va_end(xs);
   return _; }
 
-static vec tuplr(lips v, i64 i, va_list xs) {
+static vec tuplr(run v, i64 i, va_list xs) {
  vec t;
  obj x = va_arg(xs, obj);
  if (!x) {
@@ -98,7 +91,7 @@ static vec tuplr(lips v, i64 i, va_list xs) {
    t->xs[i] = x; }
  return t; }
 
-static obj tupl(lips v, ...) {
+static obj tupl(run v, ...) {
  va_list xs; vec t;
  va_start(xs, v), t = tuplr(v, 0, xs), va_end(xs);
  bind(t, t);
@@ -117,12 +110,12 @@ static Inline hom ee1(terp *i, hom k) {
 static Inline hom ee2(terp *i, obj x, hom k) {
   return ee1(i, ee1((terp*) x, k)); }
 
-static hom imx(lips v, mem e, i64 m, terp *i, obj x) {
+static hom imx(run v, mem e, i64 m, terp *i, obj x) {
   bind(x, Push(inptr(i), x));
   return emit_i_d(v, e, m); }
 
 #define Bind(v, x) if(!((v)=(x)))goto fail
-static NoInline obj rw_let_fn(lips v, obj x) {
+static NoInline obj rw_let_fn(run v, obj x) {
   obj y;
   for (mm(&x); twop(A(x));) {
     Bind(y, snoc(v, BA(x), AB(x)));
@@ -132,7 +125,7 @@ static NoInline obj rw_let_fn(lips v, obj x) {
   return um, x; fail:
   return um, 0; }
 
-static i1 scan_def(lips v, mem e, obj x) {
+static i1 scan_def(run v, mem e, obj x) {
   if (!twop(x)) return 1; // this is an even case so export all the definitions to the local scope
   if (!twop(B(x))) return 0; // this is an odd case so ignore these, they'll be imported after the rewrite
   mm(&x);
@@ -146,7 +139,7 @@ static i1 scan_def(lips v, mem e, obj x) {
   return um, r; fail:
   return um, -1; }
 
-static u1 scan(lips v, mem e, obj x) {
+static u1 scan(run v, mem e, obj x) {
   if (!twop(x) || A(x) == La || A(x) == Qt) return true;
   if (A(x) == De) return scan_def(v, e, B(x)) != -1;
   mm(&x);
@@ -154,7 +147,7 @@ static u1 scan(lips v, mem e, obj x) {
     if (!scan(v, e, A(x))) return um, false;
   return um, true; }
 
-static obj asign(lips v, obj a, i64 i, mem m) {
+static obj asign(run v, obj a, i64 i, mem m) {
   obj x;
   if (!twop(a)) return *m = i, a;
   if (twop(B(a)) && AB(a) == Va) {
@@ -164,13 +157,13 @@ static obj asign(lips v, obj a, i64 i, mem m) {
   bind(x, x);
   return pair(v, A(a), x); }
 
-static Inline obj new_scope(lips v, mem e, obj a, obj n) {
+static Inline obj new_scope(run v, mem e, obj a, obj n) {
   i64 s = 0;
   with(n, a = asign(v, a, 0, &s));
   bind(a, a);
   return tupl(v, a, nil, nil, e ? *e : nil, n, _N(s), (obj)0); }
 
-static Inline obj comp_body(lips v, mem e, obj x) {
+static Inline obj comp_body(run v, mem e, obj x) {
   bind(x, Push(inptr(comp_expr_), x,
                inptr(emit_i), inptr(ret),
                inptr(comp_alloc)));
@@ -189,7 +182,7 @@ static Inline obj comp_body(lips v, mem e, obj x) {
 // (in the former case the car is the list of free variables
 // and the cdr is a hom that assumes the missing variables
 // are available in the closure).
-static Inline obj ltu(lips v, mem e, obj n, obj l) {
+static Inline obj ltu(run v, mem e, obj n, obj l) {
   obj y = nil;
   l = B(l);
   mm(&n); mm(&y); mm(&l);
@@ -201,7 +194,7 @@ static Inline obj ltu(lips v, mem e, obj n, obj l) {
   return um, um, um, l; fail:
   return um, um, um, 0; }
 
-static Inline obj comp_lambda_clo(lips v, mem e, obj arg, obj seq) {
+static Inline obj comp_lambda_clo(run v, mem e, obj arg, obj seq) {
   i64 i = llen(arg);
   mm(&arg), mm(&seq);
   u1 _;
@@ -240,7 +233,7 @@ CO(comp_let_bind) {
   return e ? imx(v, e, m, loc_, _N(lidx(loc(*e), y))) :
              imx(v, e, m, tbind, y); }
 
-static u1 comp_let_r(lips v, mem e, obj x) {
+static u1 comp_let_r(run v, mem e, obj x) {
   u1 _ = true;
   if (twop(x)) {
     bind(x, rw_let_fn(v, x));
@@ -250,7 +243,7 @@ static u1 comp_let_r(lips v, mem e, obj x) {
   return _; }
 
 // syntactic sugar for define
-static Inline obj def_sug(lips v, obj x) {
+static Inline obj def_sug(run v, obj x) {
   obj y = nil;
   with(y, x = linitp(v, x, &y));
   bind(x, x);
@@ -308,7 +301,7 @@ CO(comp_if_pre_ant) {
  S1 = B(S1);
  return x; }
 
-static u1 comp_if_loop(lips v, mem e, obj x) {
+static u1 comp_if_loop(run v, mem e, obj x) {
   if (!twop(x)) bind(x, pair(v, nil, nil));
 
   if (!twop(B(x))) return
@@ -345,10 +338,10 @@ CO(emit_call) {
   bind(k, Ccc(m + 2));
   return ee2(*k == ret ? rec : call, a, k); }
 
-static obj lookup_mod(lips v, obj x) {
+static obj lookup_mod(run v, obj x) {
   return tbl_get(v, Top, x); }
 
-static obj lookup_lex(lips v, obj e, obj y) {
+static obj lookup_lex(run v, obj e, obj y) {
   if (nilp(e)) {
     obj q = lookup_mod(v, y);
     return q ? pair(v, _N(Here), q) : pair(v, _N(Wait), Top); }
@@ -406,7 +399,7 @@ CO(comp_call, obj fun, obj args) {
   return um, Ccc(m); fail:
   return um, NULL; }
 
-static u1 comp_seq_loop(lips v, mem e, obj x) {
+static u1 comp_seq_loop(run v, mem e, obj x) {
   u1 _ = true;
   if (twop(x)) {
     with(x, _ = comp_seq_loop(v, e, B(x)));
@@ -442,7 +435,7 @@ CO(emit_i_d) {
  bind(k, k);
  return ee2(i, x, k); }
 
-static hom hini(lips v, u64 n) {
+static hom hini(run v, u64 n) {
  hom a;
  bind(a, cells(v, n + 2));
  a[n] = NULL;
@@ -456,14 +449,14 @@ CO(comp_alloc) {
  return ee1((terp*)(e ? name(*e) : nil), k); }
 
 static obj apply(lips, obj, obj) NoInline;
-obj eval(lips v, obj x) {
+obj eval(run v, obj x) {
   obj args;
   bind(args, pair(v, x, nil));
   return apply(v, homp(Eva) ? Eva : tbl_get(v, Top, Eva), args); }
 
 // return to C
 Vm(yield) { Pack(); return xp; }
-static NoInline obj apply(lips v, obj f, obj x) {
+static NoInline obj apply(run v, obj f, obj x) {
  Push(f, x);
  hom h;
  bind(h, cells(v, 5));
@@ -490,7 +483,7 @@ Vm(hom_u) {
  Go(ret, _H(h+len-2)); }
 
 Vm(hfin_u) {
- Ary(1);
+ Arity(1);
  obj a = *Argv;
  Tc(a, Hom);
  button(H(a))[1] = (terp*) a;
@@ -500,9 +493,9 @@ Vm(emx) { hom h = H(*sp++ - word); *h = (terp*) xp;    Ap(ip+word, _H(h)); }
 Vm(emi) { hom h = H(*sp++ - word); *h = (terp*) N(xp); Ap(ip+word, _H(h)); }
 
 Vm(emx_u) {
- Ary(2);
+ Arity(2);
  obj h = Argv[1];
- Tc(h, Hom);
+ CheckType(h, Hom);
  h -= word;
  *H(h) = (terp*) Argv[0];
  Go(ret, h); }
@@ -525,7 +518,7 @@ Vm(hseek_u) {
   Tc(Argv[1], Num);
   Go(ret, _H(H(Argv[0]) + N(Argv[1]))); }
 
-obj analyze(lips v, obj x) {
+obj analyze(run v, obj x) {
   with(x, Push(inptr(emit_i), inptr(ret), inptr(comp_alloc)));
   return _H(comp_expr(v, NULL, 0, x)); }
 
@@ -615,7 +608,7 @@ static Vm(encl) {
 Vm(encll) { Go(encl, Locs); }
 Vm(encln) { Go(encl, nil); }
 
-NoInline obj homnom(lips v, obj x) {
+NoInline obj homnom(run v, obj x) {
   terp *k = *H(x);
   if (k == clos || k == clos0 || k == clos1)
     return homnom(v, (obj) H(x)[2]);
@@ -631,7 +624,7 @@ Vm(hnom_u) {
   xp = homnom(v, *Argv);
   Jump(ret); }
 
-obj sequence(lips v, obj a, obj b) {
+obj sequence(run v, obj a, obj b) {
   hom h;
   with(a, with(b, h = cells(v, 8)));
   bind(h, h);

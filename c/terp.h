@@ -100,6 +100,7 @@ insts(ninl)
 #define Arity(n) if(_N(n)>Argc)Jump((v->xp=n,ary_error))
 #define Ary Arity
 #define Tc CheckType
+#define TypeCheck Tc
 #define ok _N(1)
 
 #define OP(nom, x, n) Vm(nom) { xp = (x); Next(n); }

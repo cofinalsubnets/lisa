@@ -1,8 +1,5 @@
 #include "lips.h"
 #include "terp.h"
-#include "hom.h"
-#include "vec.h"
-#include "num.h"
 
 // this is used to create closures.
 Vm(take) {

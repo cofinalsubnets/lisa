@@ -1,26 +1,21 @@
 #include "lips.h"
-#include "cmp.h"
-#include "two.h"
-#include "str.h"
-#include "num.h"
+#include "terp.h"
 #include <string.h>
 
 static NoInline u1 eql_(obj a, obj b) { return eql(a, b); }
 
-static NoInline u1 eql_two(obj a, obj b) {
-  return eql_(A(a), A(b)) && eql_(B(a), B(b)); }
+static NoInline u1 eql_two(two a, two b) {
+  return eql_(a->a, b->a) && eql_(a->b, b->b); }
 
-static NoInline u1 eql_str(obj a, obj b) {
-  return S(a)->len == S(b)->len &&
-    strcmp(S(a)->text, S(b)->text) == 0; }
+static NoInline u1 eql_str(str a, str b) {
+  return a->len == b->len &&
+    strcmp(a->text, b->text) == 0; }
 
 Inline u1 eql(obj a, obj b) {
   return a == b || (kind(a) == kind(b) &&
-    ((twop(a) && eql_two(a, b)) ||
-     (strp(a) && eql_str(a, b)))); }
+    ((twop(a) && eql_two(gettwo(a), gettwo(b))) ||
+     (strp(a) && eql_str(getstr(a), getstr(b))))); }
 
-#include "hom.h"
-#include "terp.h"
 #define LT(a,b) (a<b)
 #define LE(a,b) (a<=b)
 #define GE(a,b) (a>=b)

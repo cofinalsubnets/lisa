@@ -1,13 +1,6 @@
 #include "lips.h"
 #include "terp.h"
 #include "hom.h"
-#include "tbl.h"
-#include "cmp.h"
-#include "sym.h"
-#include "two.h"
-#include "str.h"
-#include "vec.h"
-#include "num.h"
 
 ////
 /// Load Instructions

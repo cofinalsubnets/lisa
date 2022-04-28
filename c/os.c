@@ -1,7 +1,6 @@
 #include "lips.h"
 #include "terp.h"
-#include "str.h"
-#include "num.h"
+#include <time.h>
 Vm(exit_u) { exit(N(Argc) ? N(*Argv) : EXIT_SUCCESS); }
 Vm(sys_u) { Ary(1);
             Tc(*Argv, Str);
@@ -9,7 +8,6 @@ Vm(sys_u) { Ary(1);
             xp = _N(system(s->text));
             Jump(ret); }
 
-#include <time.h>
 Vm(clock_u) {
   struct timespec ts;
   if (clock_gettime(CLOCK_REALTIME, &ts) == 0)

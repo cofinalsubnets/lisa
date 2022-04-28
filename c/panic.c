@@ -2,8 +2,6 @@
 #include "terp.h"
 #include "mem.h"
 #include "write.h"
-#include "hom.h"
-#include "num.h"
 
 // errors
 Vm(fail) { return Pack(), err(v, "fail"); }

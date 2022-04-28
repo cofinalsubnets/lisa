@@ -1,10 +1,6 @@
 #include "lips.h"
 #include "terp.h"
 #include "mem.h"
-#include "hom.h"
-#include "cmp.h"
-#include "vec.h"
-#include "num.h"
 static terp recne;
 
 ////

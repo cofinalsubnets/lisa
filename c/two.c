@@ -1,9 +1,6 @@
 #include "lips.h"
-#include "two.h"
 #include "mem.h"
-#include "num.h"
 #include "terp.h"
-#include "hom.h"
 
 // functions for pairs and lists
 obj pair(lips v, obj a, obj b) {

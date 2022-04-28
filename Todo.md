@@ -1,22 +1,20 @@
-# C
-- extended types
+# extensional
 - floating point
-- finalizers
-- more i/o
-- ffi
-- hom type in vm fn signature
-- symbols hash
-- l2r evaluation
-- semispace gc
-- generational
-
-# lips[E]
 - more string escape sequences
 - make sure utf-8 works?
 - modules
 - try/catch
+- more i/o
+- ffi of some kind
 
-# lips[I]
+# intensional
+- finalizers
+- extended types
 - type inference
 - variable renaming
 - inlining
+- symbols hash
+- generational gc
+- semispace gc
+- hom type in vm fn signature
+- subexpression interleaving

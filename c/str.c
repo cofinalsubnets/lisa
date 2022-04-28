@@ -1,7 +1,6 @@
 #include "lips.h"
-#include "str.h"
 #include "mem.h"
-#include "num.h"
+#include "terp.h"
 #include <string.h>
 
 obj string(lips v, const char* c) {
@@ -11,7 +10,6 @@ obj string(lips v, const char* c) {
   cpy8(o->text, c, o->len = bs);
   return _S(o); }
 
-#include "terp.h"
 // string instructions
 Vm(strl) {
   Arity(1);

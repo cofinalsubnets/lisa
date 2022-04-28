@@ -1,8 +1,6 @@
 #include "lips.h"
-#include "sym.h"
-#include "str.h"
 #include "terp.h"
-#include "num.h"
+#include "mem.h"
 #include <string.h>
 
 //symbols
@@ -20,10 +18,8 @@ obj interns(lips v, const char *s) {
   bind(_, string(v, s));
   return intern(v, _); }
 
-#include "mem.h"
-#include "tbl.h"
 
-// FIXME this is awful
+// FIXME this is too bad
 obj sskc(lips v, mem y, obj x) {
   sym z;
   if (!nilp(*y)) {
@@ -53,7 +49,7 @@ Vm(gsym_u) {
   sym y = (sym) hp;
   hp += Width(sym);
   y->nom = y->l = y->r = nil;
-  y->code = v->count++ * mix;
+  y->code = v->rand = lcprng(v->rand);
   Go(ret, putsym(y)); }
 
 Vm(ystr_u) {

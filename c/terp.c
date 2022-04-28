@@ -1,13 +1,6 @@
 #include "lips.h"
 #include "terp.h"
 #include "mem.h"
-#include "hom.h"
-#include "tbl.h"
-#include "sym.h"
-#include "two.h"
-#include "str.h"
-#include "vec.h"
-#include "num.h"
 
 // " the virtual machine "
 // It's a stack machine with one free register that runs on

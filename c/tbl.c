@@ -1,6 +1,4 @@
 #include "lips.h"
-#include "tbl.h"
-#include "num.h"
 
 static Inline i64 tbl_idx(u64 cap, u64 co) {
   return co & ((1 << cap) - 1); }
@@ -8,7 +6,6 @@ static Inline i64 tbl_idx(u64 cap, u64 co) {
 static Inline u64 tbl_load(obj t) {
   return T(t)->len >> T(t)->cap; }
 
-#include "cmp.h"
 
 static ent tbl_ent(lips v, obj u, obj k) {
   tbl t = gettbl(u);
@@ -16,11 +13,6 @@ static ent tbl_ent(lips v, obj u, obj k) {
   for (; e; e = e->next) if (eql(e->key, k)) return e;
   return NULL; }
 
-#include "two.h"
-#include "str.h"
-#include "hom.h"
-#include "vec.h"
-#include "sym.h"
 
 static Inline u64 ror64(u64 x, u64 n) {
   return (x<<(64-n))|(x>>n); }
