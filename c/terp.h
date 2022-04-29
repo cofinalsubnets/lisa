@@ -1,7 +1,7 @@
 #ifndef _terp_h
 #define _terp_h
-terp gc, type_error, oob_error, ary_error, div_error, yield;
-obj err(lips, const char*, ...) NoInline;
+vm gc, type_error, oob_error, ary_error, div_error, yield;
+ob err(en, const char*, ...) NoInline;
 
 #define insts(_)\
  _(tget, 0) _(tset, 0) _(thas, 0) _(tlen, 0) _(arity, 0)\
@@ -43,13 +43,12 @@ obj err(lips, const char*, ...) NoInline;
  _(vecp_u, "vecp") _(symp_u, "symp") _(strp_u, "strp")\
  _(nilp_u, "nilp") _(rnd_u, "rand")
 
-#define ninl(x, _) terp x NoInline;
+#define ninl(x, _) vm x NoInline;
 insts(ninl)
 #undef ninl
 
 // " the interpreter "
-#define Vm(n,...) NoInline obj \
- n(lips v, obj ip, mem fp, mem sp, mem hp, obj xp, ##__VA_ARGS__)
+#define Vm(n,...) NoInline ob n(en v, ob ip, ob*fp, ob*sp, ob*hp, ob xp, ##__VA_ARGS__)
 // the arguments to a terp function collectively represent the
 // runtime state, and the  return value is the result of the
 // program. there are six arguments because that's the number
@@ -80,7 +79,7 @@ insts(ninl)
 #define Subr ((fr)fp)->subd
 #define Argc ((fr)fp)->argc
 #define Argv ((fr)fp)->argv
-#define Locs fp[-1]
+#define Locs ((ob*)fp)[-1]
 // the pointer to the local variables array isn't in the frame struct. it
 // isn't present for all functions, but if it is it's in the word of memory
 // immediately preceding the frame pointer.
@@ -93,7 +92,7 @@ insts(ninl)
 // the return value of a terp function is usually a call
 // to another terp function.
 #define Jump(f, ...) return (f)(v, ip, fp, sp, hp, xp, ##__VA_ARGS__)
-#define Ap(f, x) return ip = f, ((terp*) ((yo)(ip))->ll)(v, ip, fp, sp, hp, x)
+#define Ap(f, x) return ip = f, ((vm*) ((yo)(ip))->ll)(v, ip, fp, sp, hp, x)
 #define Go(f, x) return f(v, ip, fp, sp, hp, x)
 #define Next(n) Ap(ip + w2b(n), xp)
 #define CheckType(x,t) if(kind((x))-(t)){xp=x,v->xp=t;Jump(type_error);}

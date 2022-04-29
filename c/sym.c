@@ -12,14 +12,14 @@
 // existing code is unsuitable because it dynamically resizes
 // the table and unpredictable memory allocation isn't safe
 // during garbage collection.
-obj interns(lips v, const char *s) {
-  obj _;
+ob interns(en v, const char *s) {
+  ob _;
   bind(_, string(v, s));
   return intern(v, _); }
 
 
 // FIXME this is too bad
-obj sskc(lips v, mem y, obj x) {
+ob sskc(en v, ob*y, ob x) {
   sym z;
   if (!nilp(*y)) {
     z = getsym(*y);

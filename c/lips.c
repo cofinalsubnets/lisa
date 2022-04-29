@@ -3,8 +3,8 @@
 #include <time.h>
 
 // initialization helpers
-static u1 inst(run, const char*, terp*) NoInline,
-          prim(run, const char*, terp*) NoInline;
+static u1 inst(run, const char*, vm*) NoInline,
+          prim(run, const char*, vm*) NoInline;
 
 // lips destructor
 u0 li_fin(run v) { if (v) free(v->pool), free(v); }
@@ -44,18 +44,19 @@ run li_ini(void) {
   return v; fail:
   return li_fin(v), NULL; }
 
-static NoInline u1 inst(run v, const char *a, terp *b) {
+static NoInline u1 inst(run v, const char *a, vm *b) {
   obj z;
   bind(z, interns(v, a));
   return !!tbl_set(v, Top, z, _N((i64) b)); }
 
-static NoInline u1 prim(run v, const char *a, terp *i) {
-  obj nom; hom prim;
+static NoInline u1 prim(run v, const char *a, vm *i) {
+  obj nom;
+  yo prim;
   bind(nom, pair(v, interns(v, a), nil));
   with(nom, prim = cells(v, 4));
   bind(prim, prim);
-  prim[0] = i;
-  prim[1] = (terp*) nom;
-  prim[2] = NULL;
-  prim[3] = (terp*) prim;
+  prim[0].ll = i;
+  prim[1].ll = (vm*) nom;
+  prim[2].ll = NULL;
+  prim[3].ll = (vm*) prim;
   return !!tbl_set(v, Top, A(nom), (ob) prim); }

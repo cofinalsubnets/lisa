@@ -60,9 +60,9 @@ static u0 tbl_fit(lips v, obj t) {
     u->tab[i] = e,
     e = f; } }
 
-static obj tbl_del(lips v, obj t, obj key) {
+static ob tbl_del(en v, ob t, ob key) {
   tbl y = gettbl(t);
-  obj val = nil;
+  ob val = nil;
   i64 b = tbl_idx(y->cap, hash(v, key));
   ent e = y->tab[b];
   struct ent prev = {0,0,e};
@@ -80,7 +80,7 @@ static obj tbl_del(lips v, obj t, obj key) {
 // tbl_grow(vm, tbl, new_size): destructively resize a hash table.
 // new_size words of memory are allocated for the new bucket array.
 // the old table entries are reused to populate the modified table.
-static obj tbl_grow(lips v, obj t) {
+static ob tbl_grow(en v, ob t) {
   ent *tab0, *tab1;
   u64 cap0 = T(t)->cap, cap1 = cap0 + 1;
   with(t, tab1 = cells(v, 1<<cap1));
@@ -172,8 +172,8 @@ Vm(tblc) {
   xp = tbl_get(v, Argv[0], Argv[1]);
   Go(ret, xp ? ok : nil); }
 
-static obj tblss(lips v, i64 i, i64 l) {
-  mem fp = v->fp;
+static ob tblss(en v, i64 i, i64 l) {
+  ob *fp = v->fp;
   if (i > l-2) return Argv[i-1];
   obj _;
   bind(_, tbl_set(v, v->xp, Argv[i], Argv[i+1]));

@@ -17,7 +17,7 @@ BWDQ(I)
 typedef void u0;
 typedef bool u1;
 typedef i8 i1;
-typedef i64 ob, obj, *mem;
+typedef i64 ob, obj;
 
 // the 3 least bits of each pointer are a type tag
 typedef enum { Hom = 0, Num = 1, Two = 2, Vec = 3,
@@ -47,10 +47,8 @@ typedef struct en {
 } *run, *lips, *en;
 
 // this is the type of interpreter functions
-typedef ob terp(en, ob, ob*, ob*, ob*, ob);
-typedef terp **hom; // function pointer pointer
 typedef struct yo *yo;
-typedef ob vm(en, yo, fr, ob*, ob*, ob);
+typedef ob vm(en, ob, ob*, ob*, ob*, ob);
 struct yo { vm *ll, *sh[]; };
 
 // a packed array of 4-byte strings.
@@ -124,10 +122,7 @@ SI u1 homp(obj x) { return kind(x) == Hom; }
 obj eval(lips, obj), homnom(lips, obj), analyze(lips, obj), sequence(lips, obj, obj);
 //sym.h
 typedef struct sym { obj nom, code, l, r; } *sym;
-obj
- intern(lips, obj),
- interns(lips, const char*),
- sskc(lips, mem, obj);
+ob intern(en, ob), interns(en, const char*), sskc(en, ob*, ob);
 #define Y(x) getsym(x)
 #define _Y(x) putsym(x)
 SI sym getsym(obj x) { return (sym) (x - Sym); }

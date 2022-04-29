@@ -59,7 +59,7 @@ Vm(lbind) {
     return Pack(), err(v, "free variable : %s", nom); }
   xp = w;
   if (y != _N(8)) Tc(xp, N(y)); // do the type check
-  terp *q = (terp*) H(ip)[2].ll; // omit the arity check if possible
+  vm *q = (vm*) H(ip)[2].ll; // omit the arity check if possible
   if (q == call || q == rec) {
     obj aa = (obj) H(ip)[3].ll;
     if (H(xp)[0].ll == (vm*) arity && aa >= (ob) H(xp)[1].ll) xp += word * 2; }

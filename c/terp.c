@@ -107,7 +107,7 @@ Vm(vararg) {
 #define Tp(t)\
   Vm(t##pp) { Ap(ip+Word, (t##p(xp)?ok:nil)); }\
   Vm(t##p_u) {\
-    for (obj *xs = Argv, *l = xs + N(Argc); xs < l;)\
+    for (ob *xs = Argv, *l = xs + N(Argc); xs < l;)\
       if (!t##p(*xs++)) Go(ret, nil);\
     Go(ret, ok); }
 Tp(num) Tp(hom) Tp(two) Tp(sym) Tp(str) Tp(tbl) Tp(vec) Tp(nil)
@@ -115,7 +115,7 @@ Tp(num) Tp(hom) Tp(two) Tp(sym) Tp(str) Tp(tbl) Tp(vec) Tp(nil)
 // stack manipulation
 Vm(dupl) { Have1(); --sp; sp[0] = sp[1]; Next(1); }
 
-static terp recne;
+static vm recne;
 
 ////
 /// Branch Instructions
@@ -127,8 +127,8 @@ Vm(jump) { Ap((ob) H(ip)[1].ll, xp); }
 //
 // args: test, yes addr, yes val, no addr, no val
 #define Br(nom, test, a, x, b, y) Vm(nom) {\
-  if (test) Ap((obj)a(H(ip)),x);\
-  else Ap((obj)b(H(ip)),y); }
+  if (test) Ap((ob)a(H(ip)),x);\
+  else Ap((ob)b(H(ip)),y); }
 // combined test/branch instructions
 Br(branch, xp != nil, GF, xp, FF, xp)
 Br(barnch, xp != nil, FF, xp, GF, xp)
@@ -149,15 +149,15 @@ Br(brgteq,  *sp++ >= xp, GF, xp, FF, nil)
 // return from a function
 Vm(ret) {
   ip = Retp;
-  sp = (mem) ((i64) Argv + Argc - Num);
-  fp = (mem) ((i64)   sp + Subr - Num);
+  sp = (ob*) ((i64) Argv + Argc - Num);
+  fp = (ob*) ((i64)   sp + Subr - Num);
   Next(0); }
 
 // "inner" function call
 Vm(call) {
   Have(Width(fr));
   ob adic = (ob) H(ip)[1].ll;
-  i64 off = fp - (mem) ((i64) sp + adic - Num);
+  i64 off = fp - (ob*) ((i64) sp + adic - Num);
   fp = sp -= Width(fr);
   Retp = ip + 2 * word;
   Subr = _N(off);

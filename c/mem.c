@@ -3,22 +3,22 @@
 #include <stdlib.h>
 #include <time.h>
 
-typedef obj copier(run, obj, u64, mem);
+typedef ob copier(en, ob, u64, ob*);
 static Inline copier cp;
-#define Gc(n) obj n(run v, obj x, u64 len0, mem pool0)
+#define Gc(n) ob n(en v, ob x, u64 len0, ob*pool0)
 
 #define inb(o,l,u) (o>=l&&o<u)
-#define fresh(o) inb((mem)(o),v->pool,v->pool+v->len)
+#define fresh(o) inb((ob*)(o),v->pool,v->pool+v->len)
 #define COPY(dst,src) (dst=cp(v,src,len0,pool0))
 #define CP(x) COPY(x,x)
 
 // unchecked allocator -- make sure there's enough memory!
-static u0* bump(run v, u64 n) {
+static u0* bump(en v, u64 n) {
   u0* x = v->hp;
   return v->hp += n, x; }
 
 // general purpose memory allocator
-u0* cells(run v, u64 n) {
+u0* cells(en v, u64 n) {
   return Avail >= n || please(v, n) ? bump(v, n) : 0; }
 
 #define oom_err_msg "out of memory : %d + %d"
@@ -54,14 +54,14 @@ Vm(gc) {
 // u will be >= 1. however, sometimes t1 == t2. in that case
 // u = 1.
 static clock_t copy(run v, u64 len1) {
-  mem pool1;
+  ob* pool1;
   clock_t t0, t1 = clock(), t2;
   bind(pool1, malloc(w2b(len1)));
 
   u64 len0 = v->len;
-  mem pool0 = v->pool,
-      sp0 = v->sp,
-      top0 = pool0 + len0;
+  ob *pool0 = v->pool,
+     *sp0 = v->sp,
+     *top0 = pool0 + len0;
   i64 shift = pool1 + len1 - top0;
 
   v->sp = sp0 + shift;
@@ -72,7 +72,7 @@ static clock_t copy(run v, u64 len1) {
 
   CP(v->ip), CP(v->xp);
   for (int i = 0; i < NGlobs; i++) CP(v->glob[i]);
-  for (mem sp1 = v->sp; sp0 < top0; COPY(*sp1++, *sp0++));
+  for (ob *sp1 = v->sp; sp0 < top0; COPY(*sp1++, *sp0++));
   for (root r = v->root; r; r = r->next) CP(*(r->one));
 
   free(pool0);
@@ -129,7 +129,7 @@ static copier *copiers[] = {
 
 static Inline Gc(cp) { return copiers[kind(x)](v, x, len0, pool0); }
 
-#define stale(o) inb((mem)(o),pool0,pool0+len0)
+#define stale(o) inb((ob*)(o),pool0,pool0+len0)
 Gc(cphom) {
   yo src = H(x);
   if (fresh(src->ll)) return (ob) src->ll;
@@ -147,11 +147,11 @@ Gc(cphom) {
 
 Gc(cpstr) {
   str dst, src = S(x);
-  return src->len == 0 ? *(mem)src->text :
+  return src->len == 0 ? *(ob*)src->text :
     (dst = bump(v, Width(str) + b2w(src->len)),
      cpy64(dst->text, src->text, b2w(src->len)),
      dst->len = src->len, src->len = 0,
-     *(mem) src->text = _S(dst)); }
+     *(ob*) src->text = _S(dst)); }
 
 Gc(cpsym) {
   sym src = getsym(x), dst;
@@ -161,7 +161,7 @@ Gc(cpsym) {
   else dst = getsym(sskc(v, &v->syms, cp(v, src->nom, len0, pool0)));
   return src->nom = putsym(dst); }
 
-static ent cpent(run v, ent src, i64 len0, mem pool0) {
+static ent cpent(en v, ent src, i64 len0, ob *pool0) {
   bind(src, src);
   ent dst = (ent) bump(v, Width(ent));
   dst->next = cpent(v, src->next, len0, pool0);
