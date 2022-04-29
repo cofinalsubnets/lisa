@@ -175,6 +175,24 @@ SI u64 llen(obj l) {
 lips li_ini(u0);
 u0 li_fin(lips);
 
+//mem.h
+#define Avail (v->sp-v->hp)
+#define mm(r) ((v->root=&((struct root){(r),v->root})))
+#define um (v->root=v->root->next)
+#define with(y,...) (mm(&(y)),(__VA_ARGS__),um)
+#define Width(t) b2w(sizeof(struct t))
+u0 *cells(lips, u64);
+u1 please(lips, u64);
+
+//read.h
+obj parse(lips, FILE*),
+    read_path(lips, const char*),
+    read_file(lips, FILE*);
+//write.h
+u0 emit(lips, obj, FILE*);
+u1 write_file(lips, const char*, const char*);
+static Inline u0 emsep(lips v, obj x, FILE *o, char s) {
+  emit(v, x, o), fputc(s, o); }
 _Static_assert(sizeof(void*) == sizeof(int64_t), "64 bit pointers");
 _Static_assert(-1 >> 1 == -1, "sign-extended bit shifts");
 #endif

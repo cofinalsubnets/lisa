@@ -1,7 +1,6 @@
 #include "lips.h"
 #include "terp.h"
 #include "read.h"
-#include "mem.h"
 #include "write.h"
 #include <stdlib.h>
 #include <unistd.h>

@@ -1,5 +1,4 @@
 #include "lips.h"
-#include "mem.h"
 #include "terp.h"
 
 // functions for pairs and lists

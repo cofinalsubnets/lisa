@@ -6,7 +6,6 @@ const u32 *tnoms = (u32*)
   "hom\0num\0two\0vec\0str\0tbl\0sym\0nil";
 
 #include "read.h"
-#include "mem.h"
 #include "terp.h"
 #include <ctype.h>
 

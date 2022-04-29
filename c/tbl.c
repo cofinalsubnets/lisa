@@ -76,7 +76,6 @@ static obj tbl_del(lips v, obj t, obj key) {
   tbl_fit(v, t);
   return val; }
 
-#include "mem.h"
 
 // tbl_grow(vm, tbl, new_size): destructively resize a hash table.
 // new_size words of memory are allocated for the new bucket array.

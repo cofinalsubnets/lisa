@@ -1,6 +1,5 @@
 #include "lips.h"
 #include "terp.h"
-#include "mem.h"
 #include "write.h"
 
 // errors

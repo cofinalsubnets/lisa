@@ -1,6 +1,5 @@
 #include "lips.h"
 #include "terp.h"
-#include "mem.h"
 
 // " the virtual machine "
 // It's a stack machine with one free register that runs on
