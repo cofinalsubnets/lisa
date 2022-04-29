@@ -16,18 +16,18 @@
 
 Vm(sub_u) {
   if (!(xp = N(Argc))) Go(ret, _N(0));
-  Tc(*Argv, Num);
+  TypeCheck(*Argv, Num);
   if (xp == 1) Go(ret, _N(-N(*Argv)));
   mm_u(xp-1,Argv+1,N(*Argv),-); }
 
 Vm(sar_u) {
   if (Argc == _N(0)) Go(ret, _N(0));
-  Tc(*Argv, Num);
+  TypeCheck(*Argv, Num);
   mm_u(N(Argc)-1, Argv+1, N(*Argv), >>); }
 
 Vm(sal_u) {
   if (Argc == _N(0)) Go(ret, _N(0));
-  Tc(*Argv, Num);
+  TypeCheck(*Argv, Num);
   mm_u(N(Argc)-1, Argv+1, N(*Argv), <<); }
 
 Vm(dqv) {

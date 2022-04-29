@@ -18,3 +18,4 @@
 - semispace gc
 - hom type in vm fn signature
 - subexpression interleaving
+- 32-bit compatible

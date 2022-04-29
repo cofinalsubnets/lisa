@@ -21,12 +21,12 @@ Vm(cons) {
 
 Vm(car_u) {
   Arity(1);
-  CheckType(*Argv, Two);
+  TypeCheck(*Argv, Two);
   Go(ret, A(*Argv)); }
 
 Vm(cdr_u) {
   Arity(1);
-  CheckType(*Argv, Two);
+  TypeCheck(*Argv, Two);
   Go(ret, B(*Argv)); }
 
 Vm(cons_u) {

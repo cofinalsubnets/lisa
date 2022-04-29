@@ -62,6 +62,7 @@ extern const uint32_t *tnoms;
 #define Inline inline __attribute__((always_inline))
 #define NoInline __attribute__((noinline))
 #define SI static Inline
+#define SNI static NoInline
 #define memn(n)\
   SI u0 set##n(u0*_d,u##n i,u64 l) {\
     for(u##n*d=_d;l--;*d++=i); }\

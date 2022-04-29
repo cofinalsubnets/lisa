@@ -113,7 +113,7 @@ static yo imx(en v, ob *e, i64 m, vm *i, ob x) {
   return em_i_d(v, e, m); }
 
 #define Bind(v, x) if(!((v)=(x)))goto fail
-static NoInline ob rw_let_fn(en v, ob x) {
+SNI ob rw_let_fn(en v, ob x) {
   ob y;
   for (mm(&x); twop(A(x));) {
     Bind(y, snoc(v, BA(x), AB(x)));
@@ -453,7 +453,7 @@ ob eval(en v, ob x) {
 
 // return to C
 Vm(yield) { Pack(); return xp; }
-static NoInline ob apply(en v, ob f, ob x) {
+SNI ob apply(en v, ob f, ob x) {
   Push(f, x);
   yo h;
   bind(h, cells(v, 5));

@@ -18,8 +18,8 @@ static reader read_list, read_str, read_atom;
 static ob read_list(en, FILE*), read_num(const char*);
 static read_loop read_str_loop, read_atom_loop;
 
-static Inline ob read_buffered(en, FILE*, read_loop*);
-static NoInline ob grow_buffer(en, ob);
+SI ob read_buffered(en, FILE*, read_loop*);
+SNI ob grow_buffer(en, ob);
 
 static int read_char(FILE *i) {
   for (int c;;) switch ((c = getc(i))) {
@@ -47,16 +47,13 @@ ob parse(en v, FILE* i) {
              y = read_num(S(x)->text);
              return nump(y) ? y : intern(v, x); } }
 
-static Inline ob read_buffered(en v, FILE *i, read_loop *loop) {
+SI ob read_buffered(en v, FILE *i, read_loop *loop) {
   str c;
   bind(c, cells(v, 2));
   return loop(v, i, c, 0, c->len = 8); }
 
-static Inline ob read_str(en v, FILE *i) {
-  return read_buffered(v, i, read_str_loop); }
-
-static Inline ob read_atom(en v, FILE *i) {
-  return read_buffered(v, i, read_atom_loop); }
+SI ob read_str(en v, FILE *i) { return read_buffered(v, i, read_str_loop); }
+SI ob read_atom(en v, FILE *i) { return read_buffered(v, i, read_atom_loop); }
 
 static ob read_list(en v, FILE *i) {
   ob x, y, c = read_char(i);
@@ -69,11 +66,11 @@ static ob read_list(en v, FILE *i) {
              bind(y, y);
              return pair(v, x, y); } }
 
-static NoInline ob reloop(en v, FILE *i, ob x, u64 n, read_loop *loop) {
+SNI ob reloop(en v, FILE *i, ob x, u64 n, read_loop *loop) {
   bind(x, grow_buffer(v, x));
   return loop(v, i, S(x), n, 2 * n); }
 
-static NoInline ob grow_buffer(en v, ob s) {
+SNI ob grow_buffer(en v, ob s) {
   u64 l = b2w(S(s)->len);
   str t;
   with(s, t = cells(v, 2*l+1));
