@@ -32,7 +32,7 @@ ob sskc(en v, ob*y, ob x) {
   z->l = z->r = nil;
   return *y = putsym(z); }
 
-obj intern(lips v, obj x) {
+ob intern(en v, ob x) {
   if (Avail < Width(sym)) {
     u1 o;
     with(x, o = please(v, Width(sym)));

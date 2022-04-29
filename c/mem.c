@@ -53,7 +53,7 @@ Vm(gc) {
 // t values come from clock(). if t0 < t1 < t2 then
 // u will be >= 1. however, sometimes t1 == t2. in that case
 // u = 1.
-static clock_t copy(run v, u64 len1) {
+static clock_t copy(en v, u64 len1) {
   ob* pool1;
   clock_t t0, t1 = clock(), t2;
   bind(pool1, malloc(w2b(len1)));
@@ -106,7 +106,7 @@ static clock_t copy(run v, u64 len1) {
 // the cost of more memory use under pressure.
 #define growp (allocd > len || vit < 32) // lower bound
 #define shrinkp (allocd < (len>>1) && vit >= 128) // upper bound
-u1 please(lips v, u64 req) {
+u1 please(en v, u64 req) {
   i64 len = v->len, vit;
   bind(vit, copy(v, len));
   i64 allocd = len - (Avail - req);

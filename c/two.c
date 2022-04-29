@@ -2,7 +2,7 @@
 #include "terp.h"
 
 // functions for pairs and lists
-obj pair(lips v, obj a, obj b) {
+ob pair(en v, ob a, ob b) {
   two w;
   with(a, with(b, w = cells(v, 2)));
   bind(w, w);

@@ -24,8 +24,7 @@ typedef enum { Hom = 0, Num = 1, Two = 2, Vec = 3,
                Str = 4, Tbl = 5, Sym = 6, Nil = 7 } class;
 
 // current function stack frame
-typedef struct fr {
-  ob clos, retp, subd, argc, argv[]; } *fr;
+typedef struct fr { ob clos, retp, subd, argc, argv[]; } *fr;
 
 // list of addresses of live values preserved by garbage
 // collection
@@ -44,7 +43,7 @@ typedef struct en {
      rand, // random state
      t0, len, *pool; // memory state
   root root; // gc protection list
-} *run, *lips, *en;
+} *en;
 
 // this is the type of interpreter functions
 typedef struct yo *yo;
@@ -54,8 +53,8 @@ struct yo { vm *ll, *sh[]; };
 // a packed array of 4-byte strings.
 extern const uint32_t *tnoms;
 
-#define nil (~(obj)0)
-#define Word (sizeof(obj))
+#define nil (~(ob)0)
+#define Word (sizeof(ob))
 #define word Word
 #define kind(x) ((x)&7)
 #define bind(v, x) if(!((v)=(x)))return 0
@@ -86,11 +85,11 @@ SI i64 lcprng(i64 s) { return (s * 0xaf251af3b0f025b5ll + 1) >> 8; }
 SI u64 w2b(u64 w) { return w * 8; }
 SI u64 b2w(u64 b) { return b / 8 + (b % 8 && 1); }
 
-SI u1 nilp(obj x) { return x == nil; }
+SI u1 nilp(ob x) { return x == nil; }
 SI const char *tnom(class t) { return (const char*) (tnoms + t); }
 
 //cmp.h
-u1 eql(obj, obj);
+u1 eql(ob, ob);
 
 //num.h
 SI u1 nump(ob x) { return kind(x) == Num; }
@@ -100,10 +99,10 @@ SI ob putnum(i64 n) { return (n << 3) + Num; }
 #define _N(x) putnum(x)
 //str.h
 typedef struct str { u64 len; char text[]; } *str;
-ob string(lips, const char*);
-SI str getstr(obj x) { return (str) (x - Str); }
+ob string(en, const char*);
+SI str getstr(ob x) { return (str) (x - Str); }
 SI ob putstr(str s) { return (ob) s + Str; }
-SI u1 strp(obj x) { return kind(x) == Str; }
+SI u1 strp(ob x) { return kind(x) == Str; }
 #define S(x) getstr(x)
 #define _S(x) putstr(x)
 //hom.h
@@ -112,48 +111,48 @@ SI vm *G(yo h) { return h->ll; }
 SI yo gethom(ob x) { return (yo) (x - Hom); }
 SI ob puthom(yo h) { return (ob) h + Hom; }
 SI yo button(yo h) { while (G(h)) h = F(h); return h; }
-SI u1 homp(obj x) { return kind(x) == Hom; }
+SI u1 homp(ob x) { return kind(x) == Hom; }
 #define H(x)  gethom(x)
 #define _H(x) puthom(x)
 #define FF(x) F(F(x))
 #define FG(x) F(G(x))
 #define GF(x) G(F(x))
 #define GG(x) G(G(x))
-obj eval(lips, obj), homnom(lips, obj), analyze(lips, obj), sequence(lips, obj, obj);
+ob eval(en, ob), homnom(en, ob), analyze(en, ob), sequence(en, ob, ob);
 //sym.h
-typedef struct sym { obj nom, code, l, r; } *sym;
+typedef struct sym { ob nom, code, l, r; } *sym;
 ob intern(en, ob), interns(en, const char*), sskc(en, ob*, ob);
 #define Y(x) getsym(x)
 #define _Y(x) putsym(x)
-SI sym getsym(obj x) { return (sym) (x - Sym); }
-SI obj putsym(u0 *y) { return (obj) y + Sym; }
-SI u1 symp(obj x) { return kind(x) == Sym; }
+SI sym getsym(ob x) { return (sym) (x - Sym); }
+SI ob putsym(u0 *y) { return (ob) y + Sym; }
+SI u1 symp(ob x) { return kind(x) == Sym; }
 // tbl.h
-typedef struct ent { obj key, val; struct ent *next; } *ent; // tables
+typedef struct ent { ob key, val; struct ent *next; } *ent; // tables
 typedef struct tbl { u64 len, cap; ent *tab; } *tbl;
-u64 hash(lips, obj);
-obj tblkeys(lips, obj),
-    table(lips),
-    tbl_set(lips, obj, obj, obj),
-    tbl_set_s(lips, obj, obj, obj),
-    tbl_get(lips, obj, obj);
-SI tbl gettbl(obj x) { return (tbl) (x - Tbl); }
-SI obj puttbl(tbl t) { return (obj) t + Tbl; }
-SI u1 tblp(obj x) { return kind(x) == Tbl; }
+u64 hash(en, ob);
+ob tblkeys(en, ob),
+   table(en),
+   tbl_set(en, ob, ob, ob),
+   tbl_set_s(en, ob, ob, ob),
+   tbl_get(en, ob, ob);
+SI tbl gettbl(ob x) { return (tbl) (x - Tbl); }
+SI ob puttbl(tbl t) { return (ob) t + Tbl; }
+SI u1 tblp(ob x) { return kind(x) == Tbl; }
 #define mix ((u64)2708237354241864315)
 #define T(x) gettbl(x)
 #define _T(x) puttbl(x)
 // vec.h
-typedef struct vec { u64 len; obj xs[]; } *vec;
+typedef struct vec { u64 len; ob xs[]; } *vec;
 #define V(x) getvec(x)
 #define _V(x) putvec(x)
-SI vec getvec(obj x) { return (vec) (x - Vec); }
-SI obj putvec(vec v) { return (obj) v + Vec; }
-SI u1 vecp(obj x) { return kind(x) == Vec; }
+SI vec getvec(ob x) { return (vec) (x - Vec); }
+SI ob putvec(vec v) { return (ob) v + Vec; }
+SI u1 vecp(ob x) { return kind(x) == Vec; }
 
 // two.h
-typedef struct two { obj a, b; } *two;
-obj pair(lips, obj, obj);
+typedef struct two { ob a, b; } *two;
+ob pair(en, ob, ob);
 #define A(o) gettwo(o)->a
 #define B(o) gettwo(o)->b
 #define AA(o) A(A(o))
@@ -162,15 +161,15 @@ obj pair(lips, obj, obj);
 #define BB(o) B(B(o))
 //#define W(x) gettwo(x)
 //#define _W(w) puttwo(w)
-SI two gettwo(obj x) { return (two) (x - Two); }
-SI obj puttwo(u0 *x) { return (obj) x + Two; }
-SI u1 twop(obj x) { return kind(x) == Two; }
-SI u64 llen(obj l) {
+SI two gettwo(ob x) { return (two) (x - Two); }
+SI ob puttwo(u0 *x) { return (ob) x + Two; }
+SI u1 twop(ob x) { return kind(x) == Two; }
+SI u64 llen(ob l) {
   for (u64 i = 0;; l = B(l), i++)
     if (!twop(l)) return i; }
 
-lips li_ini(u0);
-u0 li_fin(lips);
+en li_ini(u0);
+u0 li_fin(en);
 
 //mem.h
 #define Avail (v->sp-v->hp)
@@ -178,18 +177,17 @@ u0 li_fin(lips);
 #define um (v->root=v->root->next)
 #define with(y,...) (mm(&(y)),(__VA_ARGS__),um)
 #define Width(t) b2w(sizeof(struct t))
-u0 *cells(lips, u64);
-u1 please(lips, u64);
+u0 *cells(en, u64);
+u1 please(en, u64);
 
 //read.h
-obj parse(lips, FILE*),
-    read_path(lips, const char*),
-    read_file(lips, FILE*);
+ob parse(en, FILE*),
+   read_path(en, const char*),
+   read_file(en, FILE*);
 //write.h
-u0 emit(lips, obj, FILE*);
-u1 write_file(lips, const char*, const char*);
-static Inline u0 emsep(lips v, obj x, FILE *o, char s) {
-  emit(v, x, o), fputc(s, o); }
+u0 emit(en, ob, FILE*);
+u1 write_file(en, const char*, const char*);
+SI u0 emsep(en v, ob x, FILE *o, char s) { emit(v, x, o), fputc(s, o); }
 _Static_assert(sizeof(void*) == sizeof(int64_t), "64 bit pointers");
 _Static_assert(-1 >> 1 == -1, "sign-extended bit shifts");
 #endif

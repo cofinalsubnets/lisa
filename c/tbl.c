@@ -7,28 +7,28 @@ SI u64 tbl_load(obj t) {
   return T(t)->len >> T(t)->cap; }
 
 
-static ent tbl_ent(lips v, obj u, obj k) {
+static ent tbl_ent(en v, obj u, obj k) {
   tbl t = gettbl(u);
   ent e = t->tab[tbl_idx(t->cap, hash(v, k))];
   for (; e; e = e->next) if (eql(e->key, k)) return e;
   return NULL; }
 
-typedef u64 hasher(lips, obj);
+typedef u64 hasher(en, ob);
 static hasher hash_sym, hash_str, hash_two, hash_hom, hash_num, hash_vec, hash_nil;
 static hasher *hashers[] = {
   [Nil] = hash_nil, [Hom] = hash_hom, [Two] = hash_two, [Vec] = hash_vec,
   [Str] = hash_str, [Num] = hash_num, [Sym] = hash_sym, [Tbl] = hash_nil };
 
-Inline u64 hash(lips v, obj x) { return hashers[kind(x)](v, x); }
+Inline u64 hash(en v, obj x) { return hashers[kind(x)](v, x); }
 
 SI u64 ror64(u64 x, u64 n) { return (x<<(64-n))|(x>>n); }
-static u64 hash_sym(lips v, obj y) { return getsym(y)->code; }
-static u64 hash_two(lips v, obj w) { return ror64(hash(v, A(w)) * hash(v, B(w)), 32); }
-static u64 hash_hom(lips v, obj h) { return hash(v, homnom(v, h)) ^ mix; }
-static u64 hash_num(lips v, obj n) { return ror64(mix * n, 16); }
-static u64 hash_vec(lips v, obj x) { return ror64(mix * V(x)->len, 32); }
-static u64 hash_nil(lips v, obj _) { return ror64(mix * kind(nil), 48); }
-static u64 hash_str(lips v, obj x) {
+static u64 hash_sym(en v, obj y) { return getsym(y)->code; }
+static u64 hash_two(en v, obj w) { return ror64(hash(v, A(w)) * hash(v, B(w)), 32); }
+static u64 hash_hom(en v, obj h) { return hash(v, homnom(v, h)) ^ mix; }
+static u64 hash_num(en v, obj n) { return ror64(mix * n, 16); }
+static u64 hash_vec(en v, obj x) { return ror64(mix * V(x)->len, 32); }
+static u64 hash_nil(en v, obj _) { return ror64(mix * kind(nil), 48); }
+static u64 hash_str(en v, obj x) {
   str s = S(x);
   u64 len = s->len;
   char *us = s->text;
@@ -37,7 +37,7 @@ static u64 hash_str(lips v, obj x) {
 
 // shrinking a table never allocates memory, so it's safe
 // to do at any time.
-static u0 tbl_fit(lips v, obj t) {
+static u0 tbl_fit(en v, obj t) {
   if (tbl_load(t)) return;
 
   ent e = NULL, f, g;
@@ -97,7 +97,7 @@ static ob tbl_grow(en v, ob t) {
   T(t)->cap = cap1, T(t)->tab = tab1;
   return t; }
 
-obj tbl_set_s(lips v, obj t, obj k, obj x) {
+ob tbl_set_s(en v, obj t, obj k, obj x) {
   u64 i = tbl_idx(gettbl(t)->cap, hash(v, k));
   ent e = tbl_ent(v, t, k);
   if (e) return e->val = x;
@@ -113,39 +113,39 @@ obj tbl_set_s(lips v, obj t, obj k, obj x) {
 
   return x; }
 
-obj tbl_set(lips v, obj t, obj k, obj x) {
+obj tbl_set(en v, obj t, obj k, obj x) {
   with(t, x = tbl_set_s(v, t, k, x));
   bind(x, x);
   if (tbl_load(t) > 1) with(x, t = tbl_grow(v, t));
   bind(t, t);
   return x; }
 
-obj tbl_get(lips v, obj t, obj k) {
+obj tbl_get(en v, obj t, obj k) {
   ent e = tbl_ent(v, t, k);
   return e ? e->val : 0; }
 
-obj table(lips v) {
+obj table(en v) {
   tbl t;
   bind(t, cells(v, Width(tbl) + 1));
   ent *b = (ent*)(t+1);
   t->len = t->cap = 0, t->tab = b, *b = NULL;
   return puttbl(t); }
 
-static obj tblkeys_j(lips v, ent e, obj l) {
+static obj tblkeys_j(en v, ent e, obj l) {
   if (!e) return l;
   obj x = e->key;
   with(x, l = tblkeys_j(v, e->next, l));
   bind(l, l);
   return pair(v, x, l); }
 
-static obj tblkeys_i(lips v, obj t, i64 i) {
+static obj tblkeys_i(en v, obj t, i64 i) {
   obj k;
   if (i == 1 << gettbl(t)->cap) return nil;
   with(t, k = tblkeys_i(v, t, i+1));
   bind(k, k);
   return tblkeys_j(v, gettbl(t)->tab[i], k); }
 
-Inline obj tblkeys(lips v, obj t) {
+Inline obj tblkeys(en v, obj t) {
   return tblkeys_i(v, t, 0); }
 
 #include "terp.h"

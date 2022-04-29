@@ -46,7 +46,7 @@ enum { Here, Loc, Arg, Clo, Wait };
 #define Put(x) _N((i64)(x))
 
 // helper functions for lists
-static i64 lidx(obj l, obj x) {
+static i64 lidx(ob l, ob x) {
   for (i64 i = 0; twop(l); l = B(l), i++) if (x == A(l)) return i;
   return -1; }
 
@@ -57,29 +57,29 @@ static ob linitp(en v, ob x, ob* d) {
   bind(y, y);
   return pair(v, A(x), y); }
 
-static obj snoc(run v, obj l, obj x) {
+static ob snoc(en v, ob l, ob x) {
   if (!twop(l)) return pair(v, x, l);
   with(l, x = snoc(v, B(l), x));
   bind(x, x);
   return pair(v, A(l), x); }
 
-static u1 pushss(run v, i64 i, va_list xs) {
+static u1 pushss(en v, i64 i, va_list xs) {
   u1 _;
-  obj x = va_arg(xs, obj);
+  ob x = va_arg(xs, ob);
   if (!x) return Avail >= i || please(v, i);
   with(x, _ = pushss(v, i+1, xs));
   bind(_, _);
   *--v->sp = x;
   return _; }
 
-static u1 pushs(run v, ...) {
+static u1 pushs(en v, ...) {
   va_list xs; u1 _;
   va_start(xs, v), _ = pushss(v, 0, xs), va_end(xs);
   return _; }
 
-static vec tuplr(run v, i64 i, va_list xs) {
+static vec tuplr(en v, i64 i, va_list xs) {
  vec t;
- obj x = va_arg(xs, obj);
+ ob x = va_arg(xs, ob);
  if (!x) {
    bind(t, cells(v, Width(vec) + i));
    t->len = i; }
@@ -89,7 +89,7 @@ static vec tuplr(run v, i64 i, va_list xs) {
    t->xs[i] = x; }
  return t; }
 
-static obj tupl(run v, ...) {
+static ob tupl(en v, ...) {
  va_list xs; vec t;
  va_start(xs, v), t = tuplr(v, 0, xs), va_end(xs);
  bind(t, t);
@@ -108,12 +108,12 @@ SI yo ee1(vm *i, yo k) {
 SI yo ee2(vm *i, obj x, yo k) {
   return ee1(i, ee1((vm*) x, k)); }
 
-static yo imx(run v, ob *e, i64 m, vm *i, obj x) {
+static yo imx(en v, ob *e, i64 m, vm *i, obj x) {
   bind(x, Push(Put(i), x));
   return em_i_d(v, e, m); }
 
 #define Bind(v, x) if(!((v)=(x)))goto fail
-static NoInline obj rw_let_fn(run v, obj x) {
+static NoInline obj rw_let_fn(en v, obj x) {
   obj y;
   for (mm(&x); twop(A(x));) {
     Bind(y, snoc(v, BA(x), AB(x)));
@@ -155,13 +155,13 @@ static ob asign(en v, ob a, i64 i, ob*m) {
   bind(x, x);
   return pair(v, A(a), x); }
 
-SI ob new_scope(run v, ob*e, ob a, ob n) {
+SI ob new_scope(en v, ob*e, ob a, ob n) {
   i64 s = 0;
   with(n, a = asign(v, a, 0, &s));
   bind(a, a);
   return tupl(v, a, nil, nil, e ? *e : nil, n, _N(s), (obj)0); }
 
-SI ob comp_body(run v, ob*e, obj x) {
+SI ob comp_body(en v, ob*e, obj x) {
   bind(x, Push(Put(xpn_yo_), x,
                Put(em_i), Put(ret),
                Put(mk_yo)));
@@ -180,7 +180,7 @@ SI ob comp_body(run v, ob*e, obj x) {
 // (in the former case the car is the list of free variables
 // and the cdr is a hom that assumes the missing variables
 // are available in the closure).
-SI ob ltu(run v, ob* e, ob n, ob l) {
+SI ob ltu(en v, ob* e, ob n, ob l) {
   ob y = nil;
   l = B(l);
   mm(&n); mm(&y); mm(&l);
@@ -192,7 +192,7 @@ SI ob ltu(run v, ob* e, ob n, ob l) {
   return um, um, um, l; fail:
   return um, um, um, 0; }
 
-SI ob yo_yo_clo(run v, ob*e, ob arg, ob seq) {
+SI ob yo_yo_clo(en v, ob*e, ob arg, ob seq) {
   i64 i = llen(arg);
   mm(&arg), mm(&seq);
   u1 _;
@@ -335,10 +335,10 @@ CO(em_call) {
   bind(k, Ccc(m + 2));
   return ee2(k->ll == (vm*) ret ? rec : call, a, k); }
 
-static obj lookup_mod(run v, obj x) {
+static obj lookup_mod(en v, obj x) {
   return tbl_get(v, Top, x); }
 
-static obj lookup_lex(run v, obj e, obj y) {
+static obj lookup_lex(en v, obj e, obj y) {
   if (nilp(e)) {
     obj q = lookup_mod(v, y);
     return q ? pair(v, _N(Here), q) : pair(v, _N(Wait), Top); }
@@ -396,7 +396,7 @@ CO(ap_yo, ob fun, ob args) {
   return um, Ccc(m); fail:
   return um, NULL; }
 
-static u1 seq_yo_loop(run v, ob*e, ob x) {
+static u1 seq_yo_loop(en v, ob*e, ob x) {
   u1 _ = true;
   if (twop(x)) {
     with(x, _ = seq_yo_loop(v, e, B(x)));
@@ -481,7 +481,7 @@ Vm(hom_u) {
 
 Vm(hfin_u) {
   Arity(1);
-  obj a = *Argv;
+  ob a = *Argv;
   Tc(a, Hom);
   button(H(a))[1].ll = (vm*) a;
   Go(ret, a); }
@@ -500,7 +500,7 @@ Vm(emx_u) {
 Vm(emi_u) {
  Ary(2);
  Tc(Argv[0], Num);
- obj h = Argv[1];
+ ob h = Argv[1];
  Tc(h, Hom);
  h -= word;
  H(h)->ll = (vm*) N(Argv[0]);
@@ -513,7 +513,7 @@ Vm(hgeti_u) {
 Vm(hgetx_u) {
   Arity(1);
   TypeCheck(*Argv, Hom);
-  Go(ret, (obj) H(*Argv)->ll); }
+  Go(ret, (ob) H(*Argv)->ll); }
 
 Vm(hseek_u) {
   Ary(2);
@@ -541,7 +541,7 @@ Vm(bootstrap) {
   tbl_set(v, Top, interns(v, "ev"), Eva = xp);
   Jump(ret); }
 
-static Vm(clos) { Clos = (ob) H(ip)[1].ll; Ap((obj) H(ip)[2].ll, xp); }
+static Vm(clos) { Clos = (ob) H(ip)[1].ll; Ap((ob) H(ip)[2].ll, xp); }
 // finalize function instance closure
 static Vm(clos1) { H(ip)->ll = (vm*) clos; H(ip)[1].ll = (vm*) xp; Next(0); }
 

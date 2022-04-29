@@ -1,32 +1,25 @@
 #include "lips.h"
 #include "terp.h"
 
-typedef u0 writer(lips, obj, FILE*);
-static writer
-  write_nil, write_two, write_num, write_vec,
-  write_str, write_sym, write_tbl, write_hom;
+typedef u0 writer(en, ob, FILE*);
+static writer nil_out, two_out, num_out, vec_out,
+              str_out, sym_out, tbl_out, hom_out;
 static writer *writers[] = {
-  [Hom] = write_hom,
-  [Num] = write_num,
-  [Tbl] = write_tbl,
-  [Nil] = write_nil,
-  [Str] = write_str,
-  [Vec] = write_vec,
-  [Sym] = write_sym,
-  [Two] = write_two, };
+  [Hom] = hom_out, [Num] = num_out, [Tbl] = tbl_out, [Nil] = nil_out,
+  [Str] = str_out, [Vec] = vec_out, [Sym] = sym_out, [Two] = two_out, };
 
-static u0 write_nil(en v, ob x, FILE *o) {
+static u0 nil_out(en v, ob x, FILE *o) {
   fputs("()", o); }
 
-static u0 write_num(en v, ob x, FILE *o) {
+static u0 num_out(en v, ob x, FILE *o) {
   fprintf(o, "%ld", (long) N(x)); }
 
-static u0 write_sym(en v, ob x, FILE *o) {
+static u0 sym_out(en v, ob x, FILE *o) {
   sym y = Y(x);
   nilp(y->nom) ? fprintf(o, "#sym@%lx", (long) y) :
                  fputs(S(y->nom)->text, o); }
 
-static u0 write_vec(en v, ob x, FILE *o) {
+static u0 vec_out(en v, ob x, FILE *o) {
   vec e = V(x);
   fputc('[', o);
   if (e->len) for (ob*i = e->xs, *l = i + e->len;;) {
@@ -35,40 +28,40 @@ static u0 write_vec(en v, ob x, FILE *o) {
     else break; }
   fputc(']', o); }
 
-static u0 emhomn(en v, obj x, FILE *o) {
+static u0 emhomn(en v, ob x, FILE *o) {
   fputc('\\', o);
   switch (kind(x)) {
-    case Sym: return write_sym(v, x, o);
-    case Two: if (symp(A(x))) write_sym(v, A(x), o);
+    case Sym: return sym_out(v, x, o);
+    case Two: if (symp(A(x))) sym_out(v, A(x), o);
               emhomn(v, B(x), o); } }
 
-static u0 write_hom(en v, obj x, FILE *o) {
+static u0 hom_out(en v, ob x, FILE *o) {
   emhomn(v, homnom(v, x), o); }
 
-static u0 write_tbl(en v, obj x, FILE *o) {
+static u0 tbl_out(en v, ob x, FILE *o) {
   tbl t = gettbl(x);
   fprintf(o, "#tbl:%ld/%ld", (long)t->len, (long)t->cap); }
 
-static u0 write_str(en v, obj x, FILE *o) {
+static u0 str_out(en v, ob x, FILE *o) {
   str s = S(x);
   fputc('"', o);
   for (char *t = s->text; *t; fputc(*t++, o))
     if (*t == '"') fputc('\\', o);
   fputc('"', o); }
 
-static u0 write_two_(en v, two w, FILE *o) {
+static u0 two_out_(en v, two w, FILE *o) {
   twop(w->b) ? (emsep(v, w->a, o, ' '),
-                write_two_(v, gettwo(w->b), o)) :
+                two_out_(v, gettwo(w->b), o)) :
                emsep(v, w->a, o, ')'); }
 
-static Inline u1 quotate(en v, two w) {
+SI u1 quotate(en v, two w) {
   return w->a == Qt && twop(w->b) && nilp(B(w->b)); }
 
-static u0 write_two(en v, obj x, FILE *o) {
+static u0 two_out(en v, ob x, FILE *o) {
   if (quotate(v, gettwo(x))) fputc('\'', o), emit(v, A(B(x)), o);
-  else fputc('(', o), write_two_(v, gettwo(x), o); }
+  else fputc('(', o), two_out_(v, gettwo(x), o); }
 
-Inline u0 emit(en v, obj x, FILE *o) {
+Inline u0 emit(en v, ob x, FILE *o) {
   writers[kind(x)](v, x, o); }
 
 // print to console

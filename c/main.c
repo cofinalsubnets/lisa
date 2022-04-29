@@ -42,9 +42,9 @@ int main(int argc, char **argv) {
         return v && go(v) ? EXIT_SUCCESS : EXIT_FAILURE; } }
 
 // init : en u1 string? strings
-static lips init(u1 shell, const char *boot, char **paths) {
-  lips v;
-  obj y, x;
+static en init(u1 shell, const char *boot, char **paths) {
+  en v;
+  ob y, x;
   bind(v, li_ini());
   bind(x, scrr(v, shell, (const char **) paths));
   if (boot) {
@@ -67,8 +67,8 @@ static Vm(li_repl) {
 
 // functions to compile scripts into a program
 //
-// scr_ : two lips stream
-static ob scr_(lips v, FILE *in) {
+// scr_ : two en stream
+static ob scr_(en v, FILE *in) {
   ob y, x = parse(v, in);
   if (!x) return feof(in) ? nil : 0;
   bind(x, pair(v, x, nil));
@@ -79,7 +79,7 @@ static ob scr_(lips v, FILE *in) {
   bind(y, y);
   return pair(v, x, y); }
 
-// scrp : hom lips string
+// scrp : yo en string
 static ob scrp(en v, const char *path) {
   FILE *in = fopen(path, "r");
   if (!in) return err(v, "%s : %s", path, strerror(errno));
@@ -89,7 +89,7 @@ static ob scrp(en v, const char *path) {
   bind(x, pair(v, Se, x));
   return analyze(v, x); }
 
-// scrr : hom lips bool strings
+// scrr : yo en bool strings
 static ob scrr(en v, u1 shell, const char **paths) {
   yo h;
   ob x, y;

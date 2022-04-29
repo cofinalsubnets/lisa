@@ -2,7 +2,7 @@
 #include "terp.h"
 #include <string.h>
 
-obj string(lips v, const char* c) {
+ob string(en v, const char* c) {
   i64 bs = 1 + strlen(c);
   str o;
   bind(o, cells(v, Width(str) + b2w(bs)));
@@ -28,7 +28,7 @@ Vm(strg) {
 Vm(strconc) {
   i64 l = N(Argc), sum = 0, i = 0;
   while (i < l) {
-    obj x = Argv[i++];
+    ob x = Argv[i++];
     CheckType(x, Str);
     sum += S(x)->len - 1; }
   i64 words = b2w(sum+1) + 1;
@@ -69,7 +69,7 @@ Vm(strmk) {
   Have(words);
   str s = (str) hp;
   hp += words;
-  for (obj x; i < bytes-1; s->text[i++] = N(x)) {
+  for (ob x; i < bytes-1; s->text[i++] = N(x)) {
     x = Argv[i];
     Tc(x, Num);
     if (x == _N(0)) break; }

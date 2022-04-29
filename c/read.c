@@ -12,14 +12,14 @@ const u32 *tnoms = (u32*)
 /// " the parser "
 //
 
-typedef obj reader(lips, FILE*);
-typedef obj read_loop(lips, FILE*, str, u64, u64);
+typedef ob reader(en, FILE*);
+typedef ob read_loop(en, FILE*, str, u64, u64);
 static reader read_list, read_str, read_atom;
-static obj read_list(lips, FILE*), read_num(const char*);
+static ob read_list(en, FILE*), read_num(const char*);
 static read_loop read_str_loop, read_atom_loop;
 
-static Inline obj read_buffered(lips, FILE*, read_loop*);
-static NoInline obj grow_buffer(lips, obj);
+static Inline obj read_buffered(en, FILE*, read_loop*);
+static NoInline obj grow_buffer(en, obj);
 
 static int read_char(FILE *i) {
   for (int c;;) switch ((c = getc(i))) {
@@ -28,13 +28,13 @@ static int read_char(FILE *i) {
     case ' ': case '\t': case '\n': continue;
     default: return c; } }
 
-obj read_quoted(lips v, FILE *i) {
-  obj x;
+ob read_quoted(en v, FILE *i) {
+  ob x;
   bind(x, parse(v, i));
   bind(x, pair(v, x, nil));
   return pair(v, Qt, x); }
 
-obj parse(lips v, FILE* i) {
+ob parse(en v, FILE* i) {
   int c = read_char(i);
   obj x, y;
   switch (c) {
@@ -47,33 +47,33 @@ obj parse(lips v, FILE* i) {
              y = read_num(S(x)->text);
              return nump(y) ? y : intern(v, x); } }
 
-static Inline obj read_buffered(lips v, FILE *i, read_loop *loop) {
+static Inline ob read_buffered(en v, FILE *i, read_loop *loop) {
   str c;
   bind(c, cells(v, 2));
   return loop(v, i, c, 0, c->len = 8); }
 
-static Inline obj read_str(lips v, FILE *i) {
+static Inline ob read_str(en v, FILE *i) {
   return read_buffered(v, i, read_str_loop); }
 
-static Inline obj read_atom(lips v, FILE *i) {
+static Inline ob read_atom(en v, FILE *i) {
   return read_buffered(v, i, read_atom_loop); }
 
-static obj read_list(lips v, FILE *i) {
- obj x, y, c = read_char(i);
- switch (c) {
-  case EOF: return 0;
-  case ')': return nil;
-  default: ungetc(c, i);
-           bind(x, parse(v, i));
-           with(x, y = read_list(v, i));
-           bind(y, y);
-           return pair(v, x, y); } }
+static ob read_list(en v, FILE *i) {
+  ob x, y, c = read_char(i);
+  switch (c) {
+    case EOF: return 0;
+    case ')': return nil;
+    default: ungetc(c, i);
+             bind(x, parse(v, i));
+             with(x, y = read_list(v, i));
+             bind(y, y);
+             return pair(v, x, y); } }
 
-static NoInline obj reloop(lips v, FILE *i, obj x, u64 n, read_loop *loop) {
+static NoInline obj reloop(en v, FILE *i, obj x, u64 n, read_loop *loop) {
   bind(x, grow_buffer(v, x));
   return loop(v, i, S(x), n, 2 * n); }
 
-static NoInline obj grow_buffer(lips v, obj s) {
+static NoInline obj grow_buffer(en v, obj s) {
   u64 l = b2w(S(s)->len);
   str t;
   with(s, t = cells(v, 2*l+1));
@@ -82,7 +82,7 @@ static NoInline obj grow_buffer(lips v, obj s) {
   cpy64(t->text, S(s)->text, l);
   return _S(t); }
 
-static obj read_atom_loop(lips v, FILE *p, str o, u64 n, u64 lim) {
+static obj read_atom_loop(en v, FILE *p, str o, u64 n, u64 lim) {
   obj x;
   while (n < lim) switch (x = getc(p)) {
     case ' ': case '\n': case '\t': case ';': case '#':
@@ -93,7 +93,7 @@ static obj read_atom_loop(lips v, FILE *p, str o, u64 n, u64 lim) {
     default: o->text[n++] = x; }
   return reloop(v, p, _S(o), lim, read_atom_loop); }
 
-static obj read_str_loop(lips v, FILE *p, str o, u64 n, u64 lim) {
+static obj read_str_loop(en v, FILE *p, str o, u64 n, u64 lim) {
   obj x;
   while (n < lim) switch (x = getc(p)) {
     case '\\': if ((x = getc(p)) == EOF) {
@@ -101,7 +101,7 @@ static obj read_str_loop(lips v, FILE *p, str o, u64 n, u64 lim) {
     default: o->text[n++] = x; }
   return reloop(v, p, _S(o), lim, read_str_loop); }
 
-static obj read_file_loop(lips v, FILE *p, str o, u64 n, u64 lim) {
+static obj read_file_loop(en v, FILE *p, str o, u64 n, u64 lim) {
   obj x;
   while (n < lim) switch (x = getc(p)) {
     case EOF: o->text[n++] = 0, o->len = n; return _S(o);
@@ -135,12 +135,12 @@ static NoInline obj read_num(const char *s) {
   return read_num_base(s, 10); }
 
 
-obj read_file(lips v, FILE *i) {
+obj read_file(en v, FILE *i) {
   obj s = read_buffered(v, i, read_file_loop);
   fclose(i);
   return s; }
 
-obj read_path(lips v, const char *path) {
+obj read_path(en v, const char *path) {
   FILE *in;
   bind(in, fopen(path, "r"));
   return read_file(v, in); }

@@ -3,15 +3,15 @@
 #include <time.h>
 
 // initialization helpers
-static u1 inst(run, const char*, vm*) NoInline,
-          prim(run, const char*, vm*) NoInline;
+static u1 inst(en, const char*, vm*) NoInline,
+          prim(en, const char*, vm*) NoInline;
 
 // lips destructor
-u0 li_fin(run v) { if (v) free(v->pool), free(v); }
+u0 li_fin(en v) { if (v) free(v->pool), free(v); }
 
 // lips constructor
-run li_ini(void) {
-  run v; obj _;
+en li_ini(void) {
+  en v; ob _;
   bind(v, malloc(sizeof(struct en)));
 
   u64 t0 = clock();
@@ -44,13 +44,13 @@ run li_ini(void) {
   return v; fail:
   return li_fin(v), NULL; }
 
-static NoInline u1 inst(run v, const char *a, vm *b) {
-  obj z;
+static NoInline u1 inst(en v, const char *a, vm *b) {
+  ob z;
   bind(z, interns(v, a));
   return !!tbl_set(v, Top, z, _N((i64) b)); }
 
-static NoInline u1 prim(run v, const char *a, vm *i) {
-  obj nom;
+static NoInline u1 prim(en v, const char *a, vm *i) {
+  ob nom;
   yo prim;
   bind(nom, pair(v, interns(v, a), nil));
   with(nom, prim = cells(v, 4));
