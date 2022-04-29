@@ -17,7 +17,7 @@ BWDQ(I)
 typedef void u0;
 typedef bool u1;
 typedef i8 i1;
-typedef i64 ob, obj;
+typedef i64 ob;
 
 // the 3 least bits of each pointer are a type tag
 typedef enum { Hom = 0, Num = 1, Two = 2, Vec = 3,

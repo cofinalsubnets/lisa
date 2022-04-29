@@ -18,8 +18,8 @@ static reader read_list, read_str, read_atom;
 static ob read_list(en, FILE*), read_num(const char*);
 static read_loop read_str_loop, read_atom_loop;
 
-static Inline obj read_buffered(en, FILE*, read_loop*);
-static NoInline obj grow_buffer(en, obj);
+static Inline ob read_buffered(en, FILE*, read_loop*);
+static NoInline ob grow_buffer(en, ob);
 
 static int read_char(FILE *i) {
   for (int c;;) switch ((c = getc(i))) {
@@ -36,7 +36,7 @@ ob read_quoted(en v, FILE *i) {
 
 ob parse(en v, FILE* i) {
   int c = read_char(i);
-  obj x, y;
+  ob x, y;
   switch (c) {
     case EOF: case ')': return 0;
     case '(': return read_list(v, i);
@@ -69,11 +69,11 @@ static ob read_list(en v, FILE *i) {
              bind(y, y);
              return pair(v, x, y); } }
 
-static NoInline obj reloop(en v, FILE *i, obj x, u64 n, read_loop *loop) {
+static NoInline ob reloop(en v, FILE *i, ob x, u64 n, read_loop *loop) {
   bind(x, grow_buffer(v, x));
   return loop(v, i, S(x), n, 2 * n); }
 
-static NoInline obj grow_buffer(en v, obj s) {
+static NoInline ob grow_buffer(en v, ob s) {
   u64 l = b2w(S(s)->len);
   str t;
   with(s, t = cells(v, 2*l+1));
@@ -82,8 +82,8 @@ static NoInline obj grow_buffer(en v, obj s) {
   cpy64(t->text, S(s)->text, l);
   return _S(t); }
 
-static obj read_atom_loop(en v, FILE *p, str o, u64 n, u64 lim) {
-  obj x;
+static ob read_atom_loop(en v, FILE *p, str o, u64 n, u64 lim) {
+  ob x;
   while (n < lim) switch (x = getc(p)) {
     case ' ': case '\n': case '\t': case ';': case '#':
     case '(': case ')': case '\'': case '"':
@@ -93,22 +93,22 @@ static obj read_atom_loop(en v, FILE *p, str o, u64 n, u64 lim) {
     default: o->text[n++] = x; }
   return reloop(v, p, _S(o), lim, read_atom_loop); }
 
-static obj read_str_loop(en v, FILE *p, str o, u64 n, u64 lim) {
-  obj x;
+static ob read_str_loop(en v, FILE *p, str o, u64 n, u64 lim) {
+  ob x;
   while (n < lim) switch (x = getc(p)) {
     case '\\': if ((x = getc(p)) == EOF) {
     case EOF: case '"': o->text[n++] = 0, o->len = n ;return _S(o); }
     default: o->text[n++] = x; }
   return reloop(v, p, _S(o), lim, read_str_loop); }
 
-static obj read_file_loop(en v, FILE *p, str o, u64 n, u64 lim) {
-  obj x;
+static ob read_file_loop(en v, FILE *p, str o, u64 n, u64 lim) {
+  ob x;
   while (n < lim) switch (x = getc(p)) {
     case EOF: o->text[n++] = 0, o->len = n; return _S(o);
     default: o->text[n++] = x; }
   return reloop(v, p, _S(o), lim, read_file_loop); }
 
-static NoInline obj read_num_base(const char *in, int base) {
+static NoInline ob read_num_base(const char *in, int base) {
   static const char *digits = "0123456789abcdef";
   int c = tolower(*in++);
   if (!c) return nil; // fail to parse empty string
@@ -121,8 +121,8 @@ static NoInline obj read_num_base(const char *in, int base) {
   } while ((c = tolower(*in++)));
   return _N(out); }
 
-static NoInline obj read_num(const char *s) {
-  obj n;
+static NoInline ob read_num(const char *s) {
+  ob n;
   switch (*s) {
     case '-': return nump(n = read_num(s+1)) ? _N(-N(n)) : n;
     case '+': return read_num(s+1);
@@ -135,12 +135,12 @@ static NoInline obj read_num(const char *s) {
   return read_num_base(s, 10); }
 
 
-obj read_file(en v, FILE *i) {
-  obj s = read_buffered(v, i, read_file_loop);
+ob read_file(en v, FILE *i) {
+  ob s = read_buffered(v, i, read_file_loop);
   fclose(i);
   return s; }
 
-obj read_path(en v, const char *path) {
+ob read_path(en v, const char *path) {
   FILE *in;
   bind(in, fopen(path, "r"));
   return read_file(v, in); }

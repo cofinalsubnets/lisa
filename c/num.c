@@ -2,13 +2,13 @@
 #include "terp.h"
 
 #define mm_u(_c,_v,_z,op){\
- obj x,*xs=_v,*l=xs+_c;\
+ ob x,*xs=_v,*l=xs+_c;\
  for(xp=_z;xs<l;xp=xp op N(x)){\
   x = *xs++; Tc(x, Num);}\
  Go(ret, _N(xp));}
 
 #define mm_u0(_c,_v,_z,op){\
- obj x,*xs=_v,*l=xs+_c;\
+ ob x,*xs=_v,*l=xs+_c;\
  for(xp=_z;xs<l;xp=xp op N(x)){\
   x = *xs++; Tc(x, Num);\
   if (x == _N(0)) Jump(div_error);}\

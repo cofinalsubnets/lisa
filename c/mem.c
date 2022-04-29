@@ -140,7 +140,7 @@ Gc(cphom) {
     k++->ll = (vm*) (ob) (j++);
   j[0].ll = NULL;
   j[1].ll = (vm*) dst;
-  for (obj u; j-- > dst;
+  for (ob u; j-- > dst;
     u = (ob) j->ll,
     j->ll = (vm*) (!stale(u) ? u : cp(v, u, len0, pool0)));
   return (ob) (dst += src - start); }
@@ -171,7 +171,7 @@ static ent cpent(en v, ent src, i64 len0, ob *pool0) {
 
 Gc(cptbl) {
   tbl src = gettbl(x);
-  if (fresh(src->tab)) return (obj) src->tab;
+  if (fresh(src->tab)) return (ob) src->tab;
   i64 src_cap = src->cap;
   tbl dst = bump(v, Width(tbl) + (1<<src_cap));
   dst->len = src->len;
@@ -184,7 +184,7 @@ Gc(cptbl) {
   return puttbl(dst); }
 
 Gc(cptwo) {
-  obj dst, src = x;
+  ob dst, src = x;
   if (fresh(A(x))) return A(x);
   dst = puttwo(bump(v, Width(two)));
   A(dst) = A(src), A(src) = dst;

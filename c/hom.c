@@ -105,16 +105,16 @@ SI ob em2(vm *i, ob j, ob k) {
 SI yo ee1(vm *i, yo k) {
   return (--k)->ll = (vm*) i, k; }
 
-SI yo ee2(vm *i, obj x, yo k) {
+SI yo ee2(vm *i, ob x, yo k) {
   return ee1(i, ee1((vm*) x, k)); }
 
-static yo imx(en v, ob *e, i64 m, vm *i, obj x) {
+static yo imx(en v, ob *e, i64 m, vm *i, ob x) {
   bind(x, Push(Put(i), x));
   return em_i_d(v, e, m); }
 
 #define Bind(v, x) if(!((v)=(x)))goto fail
-static NoInline obj rw_let_fn(en v, obj x) {
-  obj y;
+static NoInline ob rw_let_fn(en v, ob x) {
+  ob y;
   for (mm(&x); twop(A(x));) {
     Bind(y, snoc(v, BA(x), AB(x)));
     Bind(y, pair(v, La, y));
@@ -130,7 +130,7 @@ static i1 scan_def(en v, ob *e, ob x) {
   u1 r = scan_def(v, e, BB(x));
   if (r == 1) {
     Bind(x, rw_let_fn(v, x));
-    obj y;
+    ob y;
     Bind(y, pair(v, A(x), loc(*e)));
     loc(*e) = y;
     Bind(y, scan(v, e, AB(x))); }
@@ -159,9 +159,9 @@ SI ob new_scope(en v, ob*e, ob a, ob n) {
   i64 s = 0;
   with(n, a = asign(v, a, 0, &s));
   bind(a, a);
-  return tupl(v, a, nil, nil, e ? *e : nil, n, _N(s), (obj)0); }
+  return tupl(v, a, nil, nil, e ? *e : nil, n, _N(s), (ob)0); }
 
-SI ob comp_body(en v, ob*e, obj x) {
+SI ob comp_body(en v, ob*e, ob x) {
   bind(x, Push(Put(xpn_yo_), x,
                Put(em_i), Put(ret),
                Put(mk_yo)));
@@ -209,9 +209,9 @@ SI ob yo_yo_clo(en v, ob*e, ob arg, ob seq) {
   return um, um, pair(v, seq, arg); fail:
   return um, um, 0; }
 
-CO(yo_yo, obj x) {
+CO(yo_yo, ob x) {
  vm* j = imm;
- obj k, nom = *v->sp == Put(let_yo_bind) ? v->sp[1] : nil;
+ ob k, nom = *v->sp == Put(let_yo_bind) ? v->sp[1] : nil;
  with(nom, with(x, k = (ob) Ccc(m+2)));
  bind(k, k);
  mm(&k);
@@ -222,12 +222,12 @@ CO(yo_yo, obj x) {
  bind(x, x);
  return ee2(j, x, (yo) k); }
 
-CO(im_yo, obj x) {
+CO(im_yo, ob x) {
   bind(x, Push(Put(imm), x));
   return em_i_d(v, e, m); }
 
 CO(let_yo_bind) {
-  obj y = *v->sp++;
+  ob y = *v->sp++;
   return e ? imx(v, e, m, loc_, _N(lidx(loc(*e), y))) :
              imx(v, e, m, tbind, y); }
 
@@ -251,7 +251,7 @@ SI ob def_sug(en v, ob x) {
   bind(x, pair(v, La, x));
   return pair(v, x, nil); }
 
-CO(let_yo, obj x) {
+CO(let_yo, ob x) {
   if (!twop(B(x))) return im_yo(v, e, m, nil);
   if (llen(B(x)) % 2) {
     bind(x, def_sug(v, x));
@@ -269,7 +269,7 @@ CO(let_yo, obj x) {
 // before generating anything, store the
 // exit address in stack 2
 CO(if_yo_pre) {
- obj x;
+ ob x;
  bind(x, (ob) Ccc(m));
  bind(x, pair(v, x, S2));
  return (yo) A(S2 = x); }
@@ -330,17 +330,17 @@ CO(if_yo, ob x) {
   return k; }
 
 CO(em_call) {
-  obj a = *v->sp++;
+  ob a = *v->sp++;
   yo k;
   bind(k, Ccc(m + 2));
   return ee2(k->ll == (vm*) ret ? rec : call, a, k); }
 
-static obj lookup_mod(en v, obj x) {
+static ob lookup_mod(en v, ob x) {
   return tbl_get(v, Top, x); }
 
-static obj lookup_lex(en v, obj e, obj y) {
+static ob lookup_lex(en v, ob e, ob y) {
   if (nilp(e)) {
-    obj q = lookup_mod(v, y);
+    ob q = lookup_mod(v, y);
     return q ? pair(v, _N(Here), q) : pair(v, _N(Wait), Top); }
   return
     lidx(loc(e), y) > -1 ? pair(v, _N(Loc), e) :
@@ -348,8 +348,8 @@ static obj lookup_lex(en v, obj e, obj y) {
     lidx(clo(e), y) > -1 ? pair(v, _N(Clo), e) :
     lookup_lex(v, par(e), y); }
 
-CO(var_yo, obj x) {
-  obj y, q;
+CO(var_yo, ob x) {
+  ob y, q;
   with(x, q = lookup_lex(v, e ? *e:nil, x));
   bind(q, q);
   y = A(q);
@@ -377,9 +377,9 @@ CO(var_yo, obj x) {
       return imx(v, e, m, clo, _N(y)); } }
 
 CO(xpn_yo_) { return xpn_yo(v, e, m, *v->sp++); }
-CO(xpn_yo, obj x) { return (symp(x) ? var_yo :
-                               twop(x) ? form_yo :
-                                         im_yo)(v, e, m, x); }
+CO(xpn_yo, ob x) { return (symp(x) ? var_yo :
+                           twop(x) ? form_yo :
+                                     im_yo)(v, e, m, x); }
 
 CO(ap_yo, ob fun, ob args) {
   mm(&args);
@@ -404,8 +404,8 @@ static u1 seq_yo_loop(en v, ob*e, ob x) {
     bind(_, Push(Put(xpn_yo_), A(x))); }
   return _; }
 
-CO(form_yo, obj x) {
-  obj z = A(x);
+CO(form_yo, ob x) {
+  ob z = A(x);
   if (z == If) return if_yo(v, e, m, x);
   if (z == De) return let_yo(v, e, m, x);
   if (z == La) return yo_yo(v, e, m, x);
@@ -426,7 +426,7 @@ CO(em_i) {
 
 CO(em_i_d) {
   vm* i = (vm*) N(*v->sp++);
-  obj x = *v->sp++;
+  ob x = *v->sp++;
   yo k;
   with(x, k = Ccc(m+2));
   bind(k, k);

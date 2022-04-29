@@ -25,11 +25,11 @@
 
 Vm(ap_u) {
   Arity(2);
-  obj x = Argv[0], y = Argv[1];
+  ob x = Argv[0], y = Argv[1];
   TypeCheck(x, Hom);
   u64 adic = llen(y);
   Have(adic);
-  obj off = Subr, rp = Retp;
+  ob off = Subr, rp = Retp;
   sp = Argv + N(Argc) - adic;
   for (u64 j = 0; j < adic; y = B(y)) sp[j++] = A(y);
   fp = sp -= Width(fr);

@@ -3,7 +3,7 @@
 
 // this is used to create closures.
 Vm(take) {
-  u64 n = N((obj) H(ip)[1].ll);
+  u64 n = N((ob) H(ip)[1].ll);
   Have(n + 1);
   vec t = (vec) hp;
   hp += n + 1;
@@ -35,7 +35,7 @@ Vm(vget_u) {
   Go(ret, ary->xs[idx]); }
 
 Vm(vec_u) {
-  obj n = N(Argc);
+  ob n = N(Argc);
   Have(n + 1);
   vec t = (vec) hp;
   hp += 1 + n;

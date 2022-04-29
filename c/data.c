@@ -36,7 +36,7 @@ Vm(push) { Have1(); *--sp = xp; Next(1); }
 // set a local variable
 Vm(loc_) { Ref(V(Locs)->xs) = xp; Next(2); }
 // set a global variable
-Vm(tbind) { CallC(tbl_set(v, Top, (obj) H(ip)[1].ll, xp)); Next(2); }
+Vm(tbind) { CallC(tbl_set(v, Top, (ob) H(ip)[1].ll, xp)); Next(2); }
 
 // allocate local variable array
 Vm(locals) {
@@ -53,7 +53,7 @@ Vm(locals) {
 // that would have been done by the compiler if the function
 // had been bound early.
 Vm(lbind) {
-  ob w = (obj) H(ip)[1].ll, d = AB(w), y = A(w);
+  ob w = (ob) H(ip)[1].ll, d = AB(w), y = A(w);
   if (!(w = tbl_get(v, d, xp = BB(w)))) {
     char *nom = nilp(Y(xp)->nom) ? "()" : S(Y(xp)->nom)->text;
     return Pack(), err(v, "free variable : %s", nom); }
@@ -61,7 +61,7 @@ Vm(lbind) {
   if (y != _N(8)) Tc(xp, N(y)); // do the type check
   vm *q = (vm*) H(ip)[2].ll; // omit the arity check if possible
   if (q == call || q == rec) {
-    obj aa = (obj) H(ip)[3].ll;
+    ob aa = (ob) H(ip)[3].ll;
     if (H(xp)[0].ll == (vm*) arity && aa >= (ob) H(xp)[1].ll) xp += word * 2; }
   H(ip)[0].ll = (vm*) imm;
   H(ip)[1].ll = (vm*) xp;

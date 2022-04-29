@@ -2,7 +2,7 @@
 #include "terp.h"
 #include <string.h>
 
-static NoInline u1 eql_(obj a, obj b) { return eql(a, b); }
+static NoInline u1 eql_(ob a, ob b) { return eql(a, b); }
 
 static NoInline u1 eql_two(two a, two b) {
   return eql_(a->a, b->a) && eql_(a->b, b->b); }
@@ -11,7 +11,7 @@ static NoInline u1 eql_str(str a, str b) {
   return a->len == b->len &&
     strcmp(a->text, b->text) == 0; }
 
-Inline u1 eql(obj a, obj b) {
+Inline u1 eql(ob a, ob b) {
   return a == b || (kind(a) == kind(b) &&
     ((twop(a) && eql_two(gettwo(a), gettwo(b))) ||
      (strp(a) && eql_str(getstr(a), getstr(b))))); }
@@ -25,7 +25,7 @@ BINOP(eq, eql(xp, *sp++) ? ok : nil)
 cmp(lt, LT) cmp(lteq, LE) cmp(gteq, GE) cmp(gt, GT)
 #undef cmp
 #define cmp(op, n) Vm(n##_u) {\
-  obj n = N(Argc), *xs = Argv, m, *l;\
+  ob n = N(Argc), *xs = Argv, m, *l;\
   switch (n) {\
     case 0: Go(ret, nil);\
     default: for (l = xs + n - 1, m = *xs; xs < l; m= *++xs)\
