@@ -62,7 +62,7 @@ Vm(lbind) {
   vm *q = (vm*) H(ip)[2].ll; // omit the arity check if possible
   if (q == call || q == rec) {
     ob aa = (ob) H(ip)[3].ll;
-    if (H(xp)[0].ll == (vm*) arity && aa >= (ob) H(xp)[1].ll) xp += word * 2; }
+    if (H(xp)[0].ll == (vm*) arity && aa >= (ob) H(xp)[1].ll) xp += sizeof(void*) * 2; }
   H(ip)[0].ll = (vm*) imm;
   H(ip)[1].ll = (vm*) xp;
   Next(2); }

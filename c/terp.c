@@ -159,7 +159,7 @@ Vm(call) {
   ob adic = (ob) H(ip)[1].ll;
   i64 off = fp - (ob*) ((i64) sp + adic - Num);
   fp = sp -= Width(fr);
-  Retp = ip + 2 * word;
+  Retp = ip + 2 * sizeof(void*);
   Subr = _N(off);
   Clos = nil;
   Argc = adic;

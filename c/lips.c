@@ -19,7 +19,7 @@ en li_ini(void) {
   v->rand = lcprng(t0 * mix);
   v->len = 1;
   v->pool = NULL;
-  v->root = NULL;
+  v->mm = NULL;
   v->fp = v->hp = v->sp = (void*) sizeof (void*);
   v->ip = v->xp = v->syms = nil;
   set64(v->glob, nil, NGlobs);

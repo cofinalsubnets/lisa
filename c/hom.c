@@ -97,7 +97,7 @@ static ob tupl(en v, ...) {
 
 // emit code backwards like cons
 SI ob em1(vm *i, ob k) {
-  return k -= word, H(k)->ll = (vm*) i, k; }
+  return k -= sizeof(void*), H(k)->ll = (vm*) i, k; }
 
 SI ob em2(vm *i, ob j, ob k) {
   return em1(i, em1((vm*)j, k)); }
@@ -486,14 +486,14 @@ Vm(hfin_u) {
   button(H(a))[1].ll = (vm*) a;
   Go(ret, a); }
 
-Vm(emx) { yo h = (yo) *sp++ - 1; h->ll = (vm*) xp;    Ap(ip+word, (ob) h); }
-Vm(emi) { yo h = (yo) *sp++ - 1; h->ll = (vm*) N(xp); Ap(ip+word, (ob) h); }
+Vm(emx) { yo h = (yo) *sp++ - 1; h->ll = (vm*) xp;    Ap(ip+sizeof(void*), (ob) h); }
+Vm(emi) { yo h = (yo) *sp++ - 1; h->ll = (vm*) N(xp); Ap(ip+sizeof(void*), (ob) h); }
 
 Vm(emx_u) {
  Arity(2);
  ob h = Argv[1];
  CheckType(h, Hom);
- h -= word;
+ h -= sizeof(void*);
  H(h)->ll = (vm*) Argv[0];
  Go(ret, h); }
 
@@ -502,7 +502,7 @@ Vm(emi_u) {
  Tc(Argv[0], Num);
  ob h = Argv[1];
  Tc(h, Hom);
- h -= word;
+ h -= sizeof(void*);
  H(h)->ll = (vm*) N(Argv[0]);
  Go(ret, h); }
 
@@ -606,7 +606,7 @@ static Vm(encl) {
   at[3].ll = NULL;
   at[4].ll = (vm*) at;
 
-  Ap(ip + word * 2, (ob) at); }
+  Ap(ip + sizeof(void*) * 2, (ob) at); }
 
 Vm(encll) { Go(encl, Locs); }
 Vm(encln) { Go(encl, nil); }
