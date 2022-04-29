@@ -1,6 +1,5 @@
 #include "lips.h"
 #include "terp.h"
-#include "write.h"
 
 ////
 /// bootstrap thread compiler

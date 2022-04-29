@@ -1,5 +1,4 @@
 #include "lips.h"
-#include "write.h"
 #include "terp.h"
 
 typedef u0 writer(lips, obj, FILE*);

@@ -1,6 +1,5 @@
 #include "lips.h"
 #include "terp.h"
-#include "write.h"
 
 // errors
 Vm(fail) { return Pack(), err(v, "fail"); }
