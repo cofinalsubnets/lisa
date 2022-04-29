@@ -86,7 +86,7 @@ Vm(vararg) {
     Have1();
     cpy64(fp-1, fp, Width(fr) + N(Argc));
     sp = --fp;
-    Argc += Word;
+    Argc += sizeof(void*);
     Argv[reqd] = nil;
     Next(2); }
   // in this case we just keep the existing slots.
@@ -105,7 +105,7 @@ Vm(vararg) {
 
 // type predicates
 #define Tp(t)\
-  Vm(t##pp) { Ap(ip+Word, (t##p(xp)?ok:nil)); }\
+  Vm(t##pp) { Ap(ip+sizeof(void*), (t##p(xp)?ok:nil)); }\
   Vm(t##p_u) {\
     for (ob *xs = Argv, *l = xs + N(Argc); xs < l;)\
       if (!t##p(*xs++)) Go(ret, nil);\
@@ -190,7 +190,7 @@ Vm(fail) { return Pack(), err(v, "fail"); }
 
 #define type_err_msg "wrong type : %s for %s"
 Vm(type_error) {
-  class exp = v->xp, act = kind(xp);
+  class exp = v->xp, act = Q(xp);
   return Pack(), err(v, type_err_msg, tnom(act), tnom(exp)); }
 
 Vm(oob_error) {
@@ -206,7 +206,7 @@ Vm(div_error) { return Pack(), err(v, "/ 0"); }
 
 // type/arity checking
 #define DTc(n, t) Vm(n) {\
-  if (kind(xp-t)==0) Next(1);\
+  if (Q(xp-t)==0) Next(1);\
   v->xp = t; Jump(type_error); }
 DTc(idZ, Num) DTc(idH, Hom) DTc(idT, Tbl) DTc(id2, Two)
 Vm(arity) {

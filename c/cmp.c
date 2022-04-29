@@ -12,7 +12,7 @@ static NoInline u1 eql_str(str a, str b) {
     strcmp(a->text, b->text) == 0; }
 
 Inline u1 eql(ob a, ob b) {
-  return a == b || (kind(a) == kind(b) &&
+  return a == b || (Q(a) == Q(b) &&
     ((twop(a) && eql_two(gettwo(a), gettwo(b))) ||
      (strp(a) && eql_str(getstr(a), getstr(b))))); }
 

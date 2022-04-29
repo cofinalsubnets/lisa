@@ -73,8 +73,6 @@ u1 eql(ob, ob), please(en, u64),
  write_file(en, const char*, const char*);
 
 #define nil (~(ob)0)
-#define Word (sizeof(ob))
-#define kind(x) ((x)&7)
 #define bind(v, x) if(!((v)=(x)))return 0
 
 #define Inline inline __attribute__((always_inline))
@@ -123,6 +121,7 @@ BWDQ(memn)
 #define with(y,...) (mm(&(y)),(__VA_ARGS__),um)
 #define Width(t) b2w(sizeof(struct t))
 
+SI class Q(ob _) { return _ & (sizeof(void*) - 1); }
 // linear congruential pseudorandom number generator
 // the multiplier comes from "Computationally Easy, Spectrally
 // Good Multipliers for Congruential Pseudorandom Number
@@ -136,34 +135,34 @@ SI u1 nilp(ob x) { return x == nil; }
 SI const char *tnom(class t) { return (const char*) (tnoms + t); }
 
 //num.h
-SI u1 nump(ob x) { return kind(x) == Num; }
+SI u1 nump(ob x) { return Q(x) == Num; }
 SI i64 getnum(ob x) { return x >> 3; }
 SI ob putnum(i64 n) { return (n << 3) + Num; }
 //str.h
 SI str getstr(ob x) { return (str) (x - Str); }
 SI ob putstr(str s) { return (ob) s + Str; }
-SI u1 strp(ob x) { return kind(x) == Str; }
+SI u1 strp(ob x) { return Q(x) == Str; }
 //hom.h
 SI yo F(yo h) { return (yo) h->sh; }
 SI vm *G(yo h) { return h->ll; }
 SI yo gethom(ob x) { return (yo) (x - Hom); }
 SI ob puthom(yo h) { return (ob) h + Hom; }
 SI yo button(yo h) { while (G(h)) h = F(h); return h; }
-SI u1 homp(ob x) { return kind(x) == Hom; }
+SI u1 homp(ob x) { return Q(x) == Hom; }
 //sym.h
 SI sym getsym(ob x) { return (sym) (x - Sym); }
 SI ob putsym(u0 *y) { return (ob) y + Sym; }
-SI u1 symp(ob x) { return kind(x) == Sym; }
+SI u1 symp(ob x) { return Q(x) == Sym; }
 SI tbl gettbl(ob x) { return (tbl) (x - Tbl); }
 SI ob puttbl(tbl t) { return (ob) t + Tbl; }
-SI u1 tblp(ob x) { return kind(x) == Tbl; }
+SI u1 tblp(ob x) { return Q(x) == Tbl; }
 SI vec getvec(ob x) { return (vec) (x - Vec); }
 SI ob putvec(vec v) { return (ob) v + Vec; }
-SI u1 vecp(ob x) { return kind(x) == Vec; }
+SI u1 vecp(ob x) { return Q(x) == Vec; }
 
 SI two gettwo(ob x) { return (two) (x - Two); }
 SI ob puttwo(u0 *x) { return (ob) x + Two; }
-SI u1 twop(ob x) { return kind(x) == Two; }
+SI u1 twop(ob x) { return Q(x) == Two; }
 SI u64 llen(ob l) {
   for (u64 i = 0;; l = B(l), i++)
     if (!twop(l)) return i; }

@@ -95,7 +95,7 @@ insts(ninl)
 #define Ap(f, x) return ip = f, ((vm*) ((yo)(ip))->ll)(v, ip, fp, sp, hp, x)
 #define Go(f, x) return f(v, ip, fp, sp, hp, x)
 #define Next(n) Ap(ip + w2b(n), xp)
-#define CheckType(x,t) if(kind((x))-(t)){xp=x,v->xp=t;Jump(type_error);}
+#define CheckType(x,t) if(Q((x))-(t)){xp=x,v->xp=t;Jump(type_error);}
 #define Arity(n) if(_N(n)>Argc)Jump((v->xp=n,ary_error))
 #define Ary Arity
 #define Tc CheckType

@@ -127,7 +127,7 @@ static copier *copiers[] = {
   [Hom] = cphom, [Num] = cpid, [Two] = cptwo, [Vec] = cpvec,
   [Str] = cpstr, [Tbl] = cptbl, [Sym] = cpsym, [Nil] = cpid, };
 
-static Inline Gc(cp) { return copiers[kind(x)](v, x, len0, pool0); }
+static Inline Gc(cp) { return copiers[Q(x)](v, x, len0, pool0); }
 
 #define stale(o) inb((ob*)(o),pool0,pool0+len0)
 Gc(cphom) {

@@ -19,7 +19,7 @@ static hasher *hashers[] = {
   [Nil] = hash_nil, [Hom] = hash_hom, [Two] = hash_two, [Vec] = hash_vec,
   [Str] = hash_str, [Num] = hash_num, [Sym] = hash_sym, [Tbl] = hash_nil };
 
-Inline u64 hash(en v, ob x) { return hashers[kind(x)](v, x); }
+Inline u64 hash(en v, ob x) { return hashers[Q(x)](v, x); }
 
 SI u64 ror64(u64 x, u64 n) { return (x<<(64-n))|(x>>n); }
 static u64 hash_sym(en v, ob y) { return getsym(y)->code; }
@@ -27,7 +27,7 @@ static u64 hash_two(en v, ob w) { return ror64(hash(v, A(w)) * hash(v, B(w)), 32
 static u64 hash_hom(en v, ob h) { return hash(v, homnom(v, h)) ^ mix; }
 static u64 hash_num(en v, ob n) { return ror64(mix * n, 16); }
 static u64 hash_vec(en v, ob x) { return ror64(mix * V(x)->len, 32); }
-static u64 hash_nil(en v, ob _) { return ror64(mix * kind(nil), 48); }
+static u64 hash_nil(en v, ob _) { return ror64(mix * Q(nil), 48); }
 static u64 hash_str(en v, ob x) {
   str s = S(x);
   u64 len = s->len;

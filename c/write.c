@@ -30,10 +30,11 @@ static u0 vec_out(en v, ob x, FILE *o) {
 
 static u0 emhomn(en v, ob x, FILE *o) {
   fputc('\\', o);
-  switch (kind(x)) {
+  switch (Q(x)) {
     case Sym: return sym_out(v, x, o);
     case Two: if (symp(A(x))) sym_out(v, A(x), o);
-              emhomn(v, B(x), o); } }
+              emhomn(v, B(x), o);
+    default: } }
 
 static u0 hom_out(en v, ob x, FILE *o) {
   emhomn(v, homnom(v, x), o); }
@@ -61,8 +62,7 @@ static u0 two_out(en v, ob x, FILE *o) {
   if (quotate(v, gettwo(x))) fputc('\'', o), emit(v, A(B(x)), o);
   else fputc('(', o), two_out_(v, gettwo(x), o); }
 
-Inline u0 emit(en v, ob x, FILE *o) {
-  writers[kind(x)](v, x, o); }
+Inline u0 emit(en v, ob x, FILE *o) { writers[Q(x)](v, x, o); }
 
 // print to console
 Vm(em_u) {
