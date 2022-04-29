@@ -75,11 +75,11 @@ insts(ninl)
 #define Unpack() (fp=v->fp,hp=v->hp,sp=v->sp,ip=v->ip,xp=v->xp)
 #define CallC(...) (Pack(), (__VA_ARGS__), Unpack())
 
-#define Clos ((frame)fp)->clos
-#define Retp ((frame)fp)->retp
-#define Subr ((frame)fp)->subd
-#define Argc ((frame)fp)->argc
-#define Argv ((frame)fp)->argv
+#define Clos ((fr)fp)->clos
+#define Retp ((fr)fp)->retp
+#define Subr ((fr)fp)->subd
+#define Argc ((fr)fp)->argc
+#define Argv ((fr)fp)->argv
 #define Locs fp[-1]
 // the pointer to the local variables array isn't in the frame struct. it
 // isn't present for all functions, but if it is it's in the word of memory

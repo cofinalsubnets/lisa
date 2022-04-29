@@ -25,7 +25,7 @@ typedef enum { Hom = 0, Num = 1, Two = 2, Vec = 3,
 
 // current function stack frame
 typedef struct fr {
-  ob clos, retp, subd, argc, argv[]; } *fr, *frame;
+  ob clos, retp, subd, argc, argv[]; } *fr;
 
 // list of addresses of live values preserved by garbage
 // collection
@@ -47,7 +47,7 @@ typedef struct en {
 } *run, *lips, *en;
 
 // this is the type of interpreter functions
-typedef obj terp(lips, obj, mem, mem, mem, obj);
+typedef ob terp(en, ob, ob*, ob*, ob*, ob);
 typedef terp **hom; // function pointer pointer
 typedef struct yo *yo;
 typedef ob vm(en, yo, fr, ob*, ob*, ob);
@@ -104,7 +104,7 @@ SI obj putnum(i64 n) { return (n << 3) + Num; }
 typedef struct str { u64 len; char text[]; } *str;
 obj string(lips, const char*);
 SI str getstr(obj x) { return (str) (x - Str); }
-SI obj putstr(str s) { return (obj) s + Str; }
+SI ob putstr(str s) { return (ob) s + Str; }
 SI u1 strp(obj x) { return kind(x) == Str; }
 #define S(x) getstr(x)
 #define _S(x) putstr(x)
@@ -112,7 +112,7 @@ SI u1 strp(obj x) { return kind(x) == Str; }
 SI hom F(hom h) { return h + 1; }
 SI terp *G(hom h) { return *h; }
 SI hom gethom(obj x) { return (hom) (x - Hom); }
-SI obj puthom(hom h) { return (obj) h + Hom; }
+SI ob puthom(hom h) { return (ob) h + Hom; }
 SI hom button(hom h) { while (*h) h++; return h; }
 SI u1 homp(obj x) { return kind(x) == Hom; }
 #define H(x)  gethom(x)

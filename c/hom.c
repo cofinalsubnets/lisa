@@ -17,7 +17,7 @@
 
 
 // " compilation environments "
-typedef struct { obj arg, loc, clo, par, nom, sig; } *cenv;
+typedef struct { ob arg, loc, clo, par, nom, sig; } *cenv;
 #define Ce(x) ((cenv)(V(x)->xs))
 // the current lexical environment is passed to compiler
 // functions as a pointer to an object, either a tuple with a
@@ -36,13 +36,13 @@ typedef struct { obj arg, loc, clo, par, nom, sig; } *cenv;
 // signature is n; otherwise it's -n-1.
 
 static u1 scan(run, mem, obj);
-static obj comp_lambda_clo(run, mem, obj, obj), ltu(run, mem, obj, obj);
-typedef hom c1(run, mem, u64), c2(run, mem, u64, obj);
-static c1 comp_expr_, comp_let_bind, emit_i, emit_i_d, comp_alloc;
-static c2 comp_expr, comp_sym, comp_list, comp_imm;
+static obj yo_yo_clo(run, mem, obj, obj), ltu(run, mem, obj, obj);
+typedef yo c1(en, ob*, u64), c2(en, ob*, u64, ob);
+static c1 xpn_yo_, let_yo_bind, emit_i, emit_i_d, alloc_yo;
+static c2 xpn_yo, var_yo, form_yo, im_yo;
 
 enum { Here, Loc, Arg, Clo, Wait };
-#define CO(nom,...) static hom nom(run v, mem e, u64 m, ##__VA_ARGS__)
+#define CO(nom,...) static yo nom(en v, ob* e, u64 m, ##__VA_ARGS__)
 #define inptr(x) _N((i64)(x))
 
 // helper functions for lists
@@ -96,19 +96,19 @@ static obj tupl(run v, ...) {
  return _V(t); }
 
 // emit code backwards like cons
-SI obj em1(terp *i, obj k) {
+SI ob em1(terp *i, ob k) {
   return k -= word, *H(k) = i, k; }
 
-SI obj em2(terp *i, obj j, obj k) {
+SI ob em2(terp *i, ob j, ob k) {
   return em1(i, em1((terp*)j, k)); }
 
-SI hom ee1(terp *i, hom k) {
-  return *--k = i, k; }
+SI yo ee1(terp *i, yo k) {
+  return (--k)->ll = (vm*) i, k; }
 
-SI hom ee2(terp *i, obj x, hom k) {
+SI yo ee2(terp *i, obj x, yo k) {
   return ee1(i, ee1((terp*) x, k)); }
 
-static hom imx(run v, mem e, i64 m, terp *i, obj x) {
+static yo imx(run v, mem e, i64 m, terp *i, obj x) {
   bind(x, Push(inptr(i), x));
   return emit_i_d(v, e, m); }
 
@@ -162,11 +162,11 @@ SI obj new_scope(run v, mem e, obj a, obj n) {
   return tupl(v, a, nil, nil, e ? *e : nil, n, _N(s), (obj)0); }
 
 SI obj comp_body(run v, mem e, obj x) {
-  bind(x, Push(inptr(comp_expr_), x,
+  bind(x, Push(inptr(xpn_yo_), x,
                inptr(emit_i), inptr(ret),
-               inptr(comp_alloc)));
+               inptr(alloc_yo)));
   scan(v, e, v->sp[1]);
-  bind(x, _H(Ccc(4))); // 4 = 2 + 2
+  bind(x, (ob) Ccc(4)); // 4 = 2 + 2
   i64 i = llen(loc(*e));
   if (i) x = em2(locals, _N(i), x);
   i = N(asig(*e));
@@ -192,52 +192,52 @@ SI obj ltu(run v, mem e, obj n, obj l) {
   return um, um, um, l; fail:
   return um, um, um, 0; }
 
-SI obj comp_lambda_clo(run v, mem e, obj arg, obj seq) {
+SI obj yo_yo_clo(run v, mem e, obj arg, obj seq) {
   i64 i = llen(arg);
   mm(&arg), mm(&seq);
   u1 _;
   Bind(_, Push(
     inptr(emit_i_d), inptr(take), _N(i),
-    inptr(comp_alloc)));
+    inptr(alloc_yo)));
   while (twop(arg)) {
     Bind(_, Push(
-      inptr(comp_expr_), A(arg),
+      inptr(xpn_yo_), A(arg),
       inptr(emit_i), inptr(push)));
     arg = B(arg); }
 
-  Bind(arg, _H(Ccc(0)));
+  Bind(arg, (ob) Ccc(0));
   return um, um, pair(v, seq, arg); fail:
   return um, um, 0; }
 
-CO(comp_lambda, obj x) {
+CO(yo_yo, obj x) {
  terp* j = imm;
- obj k, nom = *v->sp == inptr(comp_let_bind) ? v->sp[1] : nil;
- with(nom, with(x, k = _H(Ccc(m+2))));
+ obj k, nom = *v->sp == inptr(let_yo_bind) ? v->sp[1] : nil;
+ with(nom, with(x, k = (ob) Ccc(m+2)));
  bind(k, k);
  mm(&k);
  if (twop(x = ltu(v, e, nom, x)))
    j = e && twop(loc(*e)) ? encll : encln,
-   x = comp_lambda_clo(v, e, A(x), B(x));
+   x = yo_yo_clo(v, e, A(x), B(x));
  um;
  bind(x, x);
- return ee2(j, x, H(k)); }
+ return ee2(j, x, (yo) k); }
 
-CO(comp_imm, obj x) {
+CO(im_yo, obj x) {
   bind(x, Push(inptr(imm), x));
   return emit_i_d(v, e, m); }
 
-CO(comp_let_bind) {
+CO(let_yo_bind) {
   obj y = *v->sp++;
   return e ? imx(v, e, m, loc_, _N(lidx(loc(*e), y))) :
              imx(v, e, m, tbind, y); }
 
-static u1 comp_let_r(run v, mem e, obj x) {
+static u1 let_yo_r(run v, mem e, obj x) {
   u1 _ = true;
   if (twop(x)) {
     bind(x, rw_let_fn(v, x));
-    with(x, _ = comp_let_r(v, e, BB(x)));
+    with(x, _ = let_yo_r(v, e, BB(x)));
     bind(_, _);
-    bind(_, Push(inptr(comp_expr_), AB(x), inptr(comp_let_bind), A(x))); }
+    bind(_, Push(inptr(xpn_yo_), AB(x), inptr(let_yo_bind), A(x))); }
   return _; }
 
 // syntactic sugar for define
@@ -251,12 +251,12 @@ SI obj def_sug(run v, obj x) {
   bind(x, pair(v, La, x));
   return pair(v, x, nil); }
 
-CO(comp_let, obj x) {
-  if (!twop(B(x))) return comp_imm(v, e, m, nil);
+CO(let_yo, obj x) {
+  if (!twop(B(x))) return im_yo(v, e, m, nil);
   if (llen(B(x)) % 2) {
     bind(x, def_sug(v, x));
-    return comp_expr(v, e, m, x); }
-  bind(x, comp_let_r(v, e, B(x)));
+    return xpn_yo(v, e, m, x); }
+  bind(x, let_yo_r(v, e, B(x)));
   return Ccc(m); }
 
 // the following functions are "post" or "pre"
@@ -268,73 +268,73 @@ CO(comp_let, obj x) {
 
 // before generating anything, store the
 // exit address in stack 2
-CO(comp_if_pre) {
+CO(if_yo_pre) {
  obj x;
- bind(x, _H(Ccc(m)));
+ bind(x, (ob) Ccc(m));
  bind(x, pair(v, x, S2));
- return H(A(S2 = x)); }
+ return (yo) A(S2 = x); }
 
 // before generating a branch emit a jump to
 // the top of stack 2
-CO(comp_if_pre_con) {
-  hom x, k;
+CO(if_yo_pre_con) {
+  yo x, k;
   bind(x, Ccc(m + 2));
-  k = H(A(S2));
-  return *k == ret ? ee1(ret, x) : ee2(jump, _H(k), x); }
+  k = (yo) A(S2);
+  return k->ll == (vm*) ret ? ee1(ret, x) : ee2(jump, (ob) k, x); }
 
 // after generating a branch store its address
 // in stack 1
-CO(comp_if_post_con) {
- obj x;
- bind(x, _H(Ccc(m)));
+CO(if_yo_post_con) {
+ ob x;
+ bind(x, (ob) Ccc(m));
  bind(x, pair(v, x, S1));
- return H(A(S1 = x)); }
+ return (yo) A(S1 = x); }
 
 // before generating an antecedent emit a branch to
 // the top of stack 1
-CO(comp_if_pre_ant) {
- hom x;
+CO(if_yo_pre_ant) {
+ yo x;
  bind(x, Ccc(m+2));
  x = ee2(branch, A(S1), x);
  S1 = B(S1);
  return x; }
 
-static u1 comp_if_loop(run v, mem e, obj x) {
+static u1 if_yo_loop(run v, mem e, obj x) {
   if (!twop(x)) bind(x, pair(v, nil, nil));
 
   if (!twop(B(x))) return
     Push(
-      inptr(comp_expr_), A(x),
-      inptr(comp_if_pre_con));
+      inptr(xpn_yo_), A(x),
+      inptr(if_yo_pre_con));
 
   u1 _;
   with(x,
     _ = Push(
-      inptr(comp_if_post_con),
-      inptr(comp_expr_), AB(x),
-      inptr(comp_if_pre_con)));
+      inptr(if_yo_post_con),
+      inptr(xpn_yo_), AB(x),
+      inptr(if_yo_pre_con)));
   bind(_, _);
-  with(x, _ = comp_if_loop(v, e, BB(x)));
+  with(x, _ = if_yo_loop(v, e, BB(x)));
   bind(_, _);
   return Push(
-    inptr(comp_expr_), A(x),
-    inptr(comp_if_pre_ant)); }
+    inptr(xpn_yo_), A(x),
+    inptr(if_yo_pre_ant)); }
 
-CO(comp_if, obj x) {
+CO(if_yo, obj x) {
   u1 _;
-  with(x, _ = Push(inptr(comp_if_pre)));
+  with(x, _ = Push(inptr(if_yo_pre)));
   bind(_, _);
-  bind(_, comp_if_loop(v, e, B(x)));
-  hom k;
+  bind(_, if_yo_loop(v, e, B(x)));
+  yo k;
   bind(k, Ccc(m));
   S2 = B(S2);
   return k; }
 
 CO(emit_call) {
   obj a = *v->sp++;
-  hom k;
+  yo k;
   bind(k, Ccc(m + 2));
-  return ee2(*k == ret ? rec : call, a, k); }
+  return ee2(k->ll == (vm*) ret ? rec : call, a, k); }
 
 static obj lookup_mod(run v, obj x) {
   return tbl_get(v, Top, x); }
@@ -349,20 +349,20 @@ static obj lookup_lex(run v, obj e, obj y) {
     lidx(clo(e), y) > -1 ? pair(v, _N(Clo), e) :
     lookup_lex(v, par(e), y); }
 
-CO(comp_sym, obj x) {
+CO(var_yo, obj x) {
   obj y, q;
   with(x, q = lookup_lex(v, e ? *e:nil, x));
   bind(q, q);
   y = A(q);
   switch (N(y)) {
-    case Here: return comp_imm(v, e, m, B(q));
+    case Here: return im_yo(v, e, m, B(q));
     case Wait:
       bind(x, pair(v, B(q), x));
-      with(x, y = _H(Ccc(m+2)));
+      with(x, y = (ob) Ccc(m+2));
       bind(y, y);
       with(y, x = pair(v, _N(8), x));
       bind(x, x);
-      return ee2(lbind, x, H(y));
+      return ee2(lbind, x, (yo) y);
     default:
       if (B(q) == *e) switch (N(y)) {
         case Loc:
@@ -377,72 +377,72 @@ CO(comp_sym, obj x) {
       clo(*e) = q;
       return imx(v, e, m, clo, _N(y)); } }
 
-CO(comp_expr_) { return comp_expr(v, e, m, *v->sp++); }
-CO(comp_expr, obj x) { return (symp(x) ? comp_sym :
-                               twop(x) ? comp_list :
-                                         comp_imm)(v, e, m, x); }
+CO(xpn_yo_) { return xpn_yo(v, e, m, *v->sp++); }
+CO(xpn_yo, obj x) { return (symp(x) ? var_yo :
+                               twop(x) ? form_yo :
+                                         im_yo)(v, e, m, x); }
 
-CO(comp_call, obj fun, obj args) {
+CO(ap_yo, ob fun, ob args) {
   mm(&args);
   Bind(fun, Push(
-    inptr(comp_expr_), fun,
+    inptr(xpn_yo_), fun,
     inptr(emit_i), inptr(idH),
     inptr(emit_call), _N(llen(args))));
   while (twop(args)) {
     Bind(fun, Push(
-      inptr(comp_expr_), A(args),
+      inptr(xpn_yo_), A(args),
       inptr(emit_i), inptr(push)));
     args = B(args); }
 
   return um, Ccc(m); fail:
   return um, NULL; }
 
-static u1 comp_seq_loop(run v, mem e, obj x) {
+static u1 seq_yo_loop(run v, mem e, obj x) {
   u1 _ = true;
   if (twop(x)) {
-    with(x, _ = comp_seq_loop(v, e, B(x)));
+    with(x, _ = seq_yo_loop(v, e, B(x)));
     bind(_, _);
-    bind(_, Push(inptr(comp_expr_), A(x))); }
+    bind(_, Push(inptr(xpn_yo_), A(x))); }
   return _; }
 
-CO(comp_list, obj x) {
+CO(form_yo, obj x) {
   obj z = A(x);
-  if (z == If) return comp_if(v, e, m, x);
-  if (z == De) return comp_let(v, e, m, x);
-  if (z == La) return comp_lambda(v, e, m, x);
+  if (z == If) return if_yo(v, e, m, x);
+  if (z == De) return let_yo(v, e, m, x);
+  if (z == La) return yo_yo(v, e, m, x);
   if (z == Se) {
     if (!twop(x = B(x))) bind(x, pair(v, x, nil));
-    bind(x, comp_seq_loop(v, e, x));
+    bind(x, seq_yo_loop(v, e, x));
     return Ccc(m); }
   if (z == Qt) {
     x = twop(x = B(x)) ? A(x) : x;
-    return comp_imm(v, e, m, x); }
-  return comp_call(v, e, m, A(x), B(x)); }
+    return im_yo(v, e, m, x); }
+  return ap_yo(v, e, m, A(x), B(x)); }
 
 CO(emit_i) {
  terp* i = (terp*) N(*v->sp++);
- hom k;
+ yo k;
  bind(k, Ccc(m+1));
  return ee1(i, k); }
 
 CO(emit_i_d) {
  terp* i = (terp*) N(*v->sp++);
  obj x = *v->sp++;
- hom k;
+ yo k;
  with(x, k = Ccc(m+2));
  bind(k, k);
  return ee2(i, x, k); }
 
-static hom hini(run v, u64 n) {
- hom a;
+static yo hini(en v, u64 n) {
+ yo a;
  bind(a, cells(v, n + 2));
- a[n] = NULL;
- a[n+1] = (terp*) a;
+ a[n].ll = NULL;
+ a[n+1].ll = (vm*) a;
  set64((mem) a, nil, n);
  return a + n; }
 
-CO(comp_alloc) {
- hom k;
+CO(alloc_yo) {
+ yo k;
  bind(k, hini(v, m+1));
  return ee1((terp*)(e ? name(*e) : nil), k); }
 
@@ -455,40 +455,40 @@ obj eval(run v, obj x) {
 // return to C
 Vm(yield) { Pack(); return xp; }
 static NoInline obj apply(run v, obj f, obj x) {
- Push(f, x);
- hom h;
- bind(h, cells(v, 5));
- h[0] = call;
- h[1] = (terp*)_N(2);
- h[2] = yield;
- h[3] = NULL;
- h[4] = (terp*) h;
- f = _H(h), x = tbl_get(v, Top, App);
- return call(v, f, v->fp, v->sp, v->hp, x); }
+  Push(f, x);
+  yo h;
+  bind(h, cells(v, 5));
+  h[0].ll = (vm*) call;
+  h[1].ll = (vm*) _N(2);
+  h[2].ll = (vm*) yield;
+  h[3].ll = NULL;
+  h[4].ll = (vm*) h;
+  f = (ob) h, x = tbl_get(v, Top, App);
+  return call(v, f, v->fp, v->sp, v->hp, x); }
 
 // instructions used by the compiler
 Vm(hom_u) {
- obj x;
- Ary(1);
- Tc(x = *Argv, Num);
- i64 len = N(x) + 2;
- Have(len);
- hom h = (hom) hp;
- hp += len;
- set64((mem) h, nil, len);
- h[len-1] = (terp*) h;
- h[len-2] = NULL;
- Go(ret, _H(h+len-2)); }
+  ob x;
+  Arity(1);
+  TypeCheck(x = *Argv, Num);
+  i64 len = N(x) + 2;
+  Have(len);
+  yo h = (yo) hp;
+  hp += len;
+  set64((mem) h, nil, len);
+  h[len-1].ll = (vm*) h;
+  h[len-2].ll = NULL;
+  Go(ret, (ob) (h+len-2)); }
 
 Vm(hfin_u) {
- Arity(1);
- obj a = *Argv;
- Tc(a, Hom);
- button(H(a))[1] = (terp*) a;
- Go(ret, a); }
+  Arity(1);
+  obj a = *Argv;
+  Tc(a, Hom);
+  button(H(a))[1] = (terp*) a;
+  Go(ret, a); }
 
-Vm(emx) { hom h = H(*sp++ - word); *h = (terp*) xp;    Ap(ip+word, _H(h)); }
-Vm(emi) { hom h = H(*sp++ - word); *h = (terp*) N(xp); Ap(ip+word, _H(h)); }
+Vm(emx) { yo h = (yo) *sp++ - 1; h->ll = (vm*) xp;    Ap(ip+word, (ob) h); }
+Vm(emi) { yo h = (yo) *sp++ - 1; h->ll = (vm*) N(xp); Ap(ip+word, (ob) h); }
 
 Vm(emx_u) {
  Arity(2);
@@ -516,9 +516,9 @@ Vm(hseek_u) {
   Tc(Argv[1], Num);
   Go(ret, _H(H(Argv[0]) + N(Argv[1]))); }
 
-obj analyze(run v, obj x) {
-  with(x, Push(inptr(emit_i), inptr(ret), inptr(comp_alloc)));
-  return _H(comp_expr(v, NULL, 0, x)); }
+ob analyze(en v, ob x) {
+  with(x, Push(inptr(emit_i), inptr(ret), inptr(alloc_yo)));
+  return (ob) xpn_yo(v, NULL, 0, x); }
 
 Vm(ev_u) {
   Ary(1);
@@ -571,37 +571,37 @@ static Vm(clos0) {
 // the next few functions create and store
 // lexical environments.
 static Vm(encl) {
- i64 n = N(Argc);
- n += n ? 12 : 11;
- Have(n);
- obj x = (obj) H(ip)[1], arg = nil;
- mem block = hp;
- hp += n;
- if (n > 11) {
-  n -= 12;
-  vec t = (vec) block;
-  block += 1 + n;
-  t->len = n;
-  while (n--) t->xs[n] = Argv[n];
-  arg = putvec(t); }
+  i64 n = N(Argc);
+  n += n ? 12 : 11;
+  Have(n);
+  obj x = (obj) H(ip)[1], arg = nil;
+  mem block = hp;
+  hp += n;
+  if (n > 11) {
+    n -= 12;
+    vec t = (vec) block;
+    block += 1 + n;
+    t->len = n;
+    while (n--) t->xs[n] = Argv[n];
+    arg = putvec(t); }
 
- vec t = (vec) block; // compiler thread closure array (1 length 5 elements)
- hom at = (hom) (block+6); // compiler thread (1 instruction 2 data 2 tag)
+  vec t = (vec) block; // compiler thread closure array (1 length 5 elements)
+  yo at = (yo) (block+6); // compiler thread (1 instruction 2 data 2 tag)
 
- t->len = 5; // initialize alpha closure
- t->xs[0] = arg;
- t->xs[1] = xp; // Locs or nil
- t->xs[2] = Clos;
- t->xs[3] = B(x);
- t->xs[4] = _H(at);
+  t->len = 5; // initialize alpha closure
+  t->xs[0] = arg;
+  t->xs[1] = xp; // Locs or nil
+  t->xs[2] = Clos;
+  t->xs[3] = B(x);
+  t->xs[4] = (ob) at;
 
- at[0] = clos0;
- at[1] = (terp*) putvec(t);
- at[2] = (terp*) A(x);
- at[3] = 0;
- at[4] = (terp*) at;
+  at[0].ll = (vm*) clos0;
+  at[1].ll = (vm*) putvec(t);
+  at[2].ll = (vm*) A(x);
+  at[3].ll = NULL;
+  at[4].ll = (vm*) at;
 
- Ap(ip + word * 2, _H(at)); }
+  Ap(ip + word * 2, (ob) at); }
 
 Vm(encll) { Go(encl, Locs); }
 Vm(encln) { Go(encl, nil); }
@@ -617,21 +617,21 @@ NoInline obj homnom(run v, obj x) {
   return inb ? x : nil; }
 
 Vm(hnom_u) {
-  Ary(1);
-  Tc(*Argv, Hom);
+  Arity(1);
+  TypeCheck(*Argv, Hom);
   xp = homnom(v, *Argv);
   Jump(ret); }
 
-obj sequence(run v, obj a, obj b) {
-  hom h;
+ob sequence(en v, ob a, ob b) {
+  yo h;
   with(a, with(b, h = cells(v, 8)));
   bind(h, h);
-  h[0] = imm;
-  h[1] = (terp*) a;
-  h[2] = call;
-  h[3] = (terp*) _N(0);
-  h[4] = jump;
-  h[5] = (terp*) b;
-  h[6] = NULL;
-  h[7] = (terp*) h;
-  return _H(h); }
+  h[0].ll = (vm*) imm;
+  h[1].ll = (vm*) a;
+  h[2].ll = (vm*) call;
+  h[3].ll = (vm*) _N(0);
+  h[4].ll = (vm*) jump;
+  h[5].ll = (vm*) b;
+  h[6].ll = NULL;
+  h[7].ll = (vm*) h;
+  return (ob) h; }
