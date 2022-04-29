@@ -14,8 +14,8 @@
 // when generating conditionals.
 //
 // this compiler emits runtime type checks for safety but does
-// (almost) no optimizations or static typing since all it has
-// to do is bootstrap the main compiler.
+// minimal optimization and analysis since all it has to do
+// is bootstrap the main compiler.
 
 
 // " compilation environments "
@@ -98,16 +98,16 @@ static obj tupl(run v, ...) {
  return _V(t); }
 
 // emit code backwards like cons
-static Inline obj em1(terp *i, obj k) {
+SI obj em1(terp *i, obj k) {
   return k -= word, *H(k) = i, k; }
 
-static Inline obj em2(terp *i, obj j, obj k) {
+SI obj em2(terp *i, obj j, obj k) {
   return em1(i, em1((terp*)j, k)); }
 
-static Inline hom ee1(terp *i, hom k) {
+SI hom ee1(terp *i, hom k) {
   return *--k = i, k; }
 
-static Inline hom ee2(terp *i, obj x, hom k) {
+SI hom ee2(terp *i, obj x, hom k) {
   return ee1(i, ee1((terp*) x, k)); }
 
 static hom imx(run v, mem e, i64 m, terp *i, obj x) {
@@ -157,13 +157,13 @@ static obj asign(run v, obj a, i64 i, mem m) {
   bind(x, x);
   return pair(v, A(a), x); }
 
-static Inline obj new_scope(run v, mem e, obj a, obj n) {
+SI obj new_scope(run v, mem e, obj a, obj n) {
   i64 s = 0;
   with(n, a = asign(v, a, 0, &s));
   bind(a, a);
   return tupl(v, a, nil, nil, e ? *e : nil, n, _N(s), (obj)0); }
 
-static Inline obj comp_body(run v, mem e, obj x) {
+SI obj comp_body(run v, mem e, obj x) {
   bind(x, Push(inptr(comp_expr_), x,
                inptr(emit_i), inptr(ret),
                inptr(comp_alloc)));
@@ -182,7 +182,7 @@ static Inline obj comp_body(run v, mem e, obj x) {
 // (in the former case the car is the list of free variables
 // and the cdr is a hom that assumes the missing variables
 // are available in the closure).
-static Inline obj ltu(run v, mem e, obj n, obj l) {
+SI obj ltu(run v, mem e, obj n, obj l) {
   obj y = nil;
   l = B(l);
   mm(&n); mm(&y); mm(&l);
@@ -194,7 +194,7 @@ static Inline obj ltu(run v, mem e, obj n, obj l) {
   return um, um, um, l; fail:
   return um, um, um, 0; }
 
-static Inline obj comp_lambda_clo(run v, mem e, obj arg, obj seq) {
+SI obj comp_lambda_clo(run v, mem e, obj arg, obj seq) {
   i64 i = llen(arg);
   mm(&arg), mm(&seq);
   u1 _;
@@ -243,7 +243,7 @@ static u1 comp_let_r(run v, mem e, obj x) {
   return _; }
 
 // syntactic sugar for define
-static Inline obj def_sug(run v, obj x) {
+SI obj def_sug(run v, obj x) {
   obj y = nil;
   with(y, x = linitp(v, x, &y));
   bind(x, x);

@@ -2,8 +2,8 @@
 #include "terp.h"
 #include <time.h>
 Vm(exit_u) { exit(N(Argc) ? N(*Argv) : EXIT_SUCCESS); }
-Vm(sys_u) { Ary(1);
-            Tc(*Argv, Str);
+Vm(sys_u) { Arity(1);
+            TypeCheck(*Argv, Str);
             str s = S(*Argv);
             xp = _N(system(s->text));
             Jump(ret); }
@@ -15,8 +15,8 @@ Vm(clock_u) {
   Jump(ret); }
 
 Vm(sleep_u) {
-  Ary(1);
-  Tc(*Argv, Num);
+  Arity(1);
+  TypeCheck(*Argv, Num);
   struct timespec ts;
   ldiv_t ld = ldiv(N(*Argv), 1000);
   ts.tv_sec = ld.quot;

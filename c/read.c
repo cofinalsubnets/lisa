@@ -149,6 +149,7 @@ obj read_path(lips v, const char *path) {
 
 Vm(par_u) {
   CallC(xp = parse(v, stdin),
+        // collapses two kinds of failure into one
         v->xp = !xp ? nil : pair(v, xp, nil));
   bind(xp, xp);
   Jump(ret); }

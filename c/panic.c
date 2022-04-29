@@ -32,7 +32,7 @@ Vm(arity) {
   if (reqd <= Argc) Next(2);
   else Jump((v->xp = N(reqd), ary_error)); }
 
-static Inline u0 show_call(lips v, obj ip, mem fp) {
+SI u0 show_call(lips v, obj ip, mem fp) {
   fputc('(', stderr);
   emit(v, ip, stderr);
   for (i64 i = 0, argc = N(Argc); i < argc;)

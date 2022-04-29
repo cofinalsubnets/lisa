@@ -1,9 +1,9 @@
 #include "lips.h"
 
-static Inline i64 tbl_idx(u64 cap, u64 co) {
+SI i64 tbl_idx(u64 cap, u64 co) {
   return co & ((1 << cap) - 1); }
 
-static Inline u64 tbl_load(obj t) {
+SI u64 tbl_load(obj t) {
   return T(t)->len >> T(t)->cap; }
 
 
@@ -13,37 +13,21 @@ static ent tbl_ent(lips v, obj u, obj k) {
   for (; e; e = e->next) if (eql(e->key, k)) return e;
   return NULL; }
 
-
-static Inline u64 ror64(u64 x, u64 n) {
-  return (x<<(64-n))|(x>>n); }
-
 typedef u64 hasher(lips, obj);
 static hasher hash_sym, hash_str, hash_two, hash_hom, hash_num, hash_vec, hash_nil;
 static hasher *hashers[] = {
-  [Nil] = hash_nil,
-  [Hom] = hash_hom,
-  [Two] = hash_two,
-  [Vec] = hash_vec,
-  [Str] = hash_str,
-  [Num] = hash_num,
-  [Sym] = hash_sym,
-  [Tbl] = hash_nil };
+  [Nil] = hash_nil, [Hom] = hash_hom, [Two] = hash_two, [Vec] = hash_vec,
+  [Str] = hash_str, [Num] = hash_num, [Sym] = hash_sym, [Tbl] = hash_nil };
 
-Inline u64 hash(lips v, obj x) {
-  return hashers[kind(x)](v, x); }
+Inline u64 hash(lips v, obj x) { return hashers[kind(x)](v, x); }
 
-static u64 hash_sym(lips v, obj y) {
-  return getsym(y)->code; }
-static u64 hash_two(lips v, obj w) {
-  return ror64(hash(v, A(w)) * hash(v, B(w)), 32); }
-static u64 hash_hom(lips v, obj h) {
-  return hash(v, homnom(v, h)) ^ mix; }
-static u64 hash_num(lips v, obj n) {
-  return ror64(mix * n, 16); }
-static u64 hash_vec(lips v, obj x) {
-  return ror64(mix * V(x)->len, 32); }
-static u64 hash_nil(lips v, obj _) {
-  return ror64(mix * kind(nil), 48); }
+SI u64 ror64(u64 x, u64 n) { return (x<<(64-n))|(x>>n); }
+static u64 hash_sym(lips v, obj y) { return getsym(y)->code; }
+static u64 hash_two(lips v, obj w) { return ror64(hash(v, A(w)) * hash(v, B(w)), 32); }
+static u64 hash_hom(lips v, obj h) { return hash(v, homnom(v, h)) ^ mix; }
+static u64 hash_num(lips v, obj n) { return ror64(mix * n, 16); }
+static u64 hash_vec(lips v, obj x) { return ror64(mix * V(x)->len, 32); }
+static u64 hash_nil(lips v, obj _) { return ror64(mix * kind(nil), 48); }
 static u64 hash_str(lips v, obj x) {
   str s = S(x);
   u64 len = s->len;
@@ -61,11 +45,9 @@ static u0 tbl_fit(lips v, obj t) {
 
   // collect all entries
   for (u64 i = 1 << u->cap; i--;)
-    for (f = u->tab[i], u->tab[i] = NULL; f;)
-      g = f->next,
-      f->next = e,
-      e = f,
-      f = g;
+    for (f = u->tab[i], u->tab[i] = NULL; f;
+      g = f->next, f->next = e,
+      e = f, f = g);
 
   // shrink bucket array
   while (u->cap && tbl_load(t) < 1) u->cap--;

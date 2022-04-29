@@ -1,6 +1,8 @@
 #include "lips.h"
 #include "mem.h"
 #include "terp.h"
+#include <stdlib.h>
+#include <time.h>
 
 typedef obj copier(run, obj, u64, mem);
 static Inline copier cp;
@@ -29,10 +31,8 @@ Vm(gc) {
   Unpack();
   Next(0); }
 
-#include <stdlib.h>
-#include <time.h>
 // a simple copying garbage collector
-
+//
 // the first step in copying is to allocate
 // a new pool of the given length, which must
 // be at least enough to support the actual
@@ -125,17 +125,10 @@ static Gc(cpid) { return x; }
 // new locations, which effectively destroys the
 // old data.
 static copier *copiers[] = {
-  [Hom] = cphom,
-  [Num] = cpid,
-  [Two] = cptwo,
-  [Vec] = cpvec,
-  [Str] = cpstr,
-  [Tbl] = cptbl,
-  [Sym] = cpsym,
-  [Nil] = cpid, };
+  [Hom] = cphom, [Num] = cpid, [Two] = cptwo, [Vec] = cpvec,
+  [Str] = cpstr, [Tbl] = cptbl, [Sym] = cpsym, [Nil] = cpid, };
 
-static Inline Gc(cp) {
-  return copiers[kind(x)](v, x, len0, pool0); }
+static Inline Gc(cp) { return copiers[kind(x)](v, x, len0, pool0); }
 
 #define stale(o) inb((mem)(o),pool0,pool0+len0)
 Gc(cphom) {

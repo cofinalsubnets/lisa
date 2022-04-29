@@ -14,8 +14,10 @@ objects=$(patsubst %.c,%.o,$(sources))
 
 ifeq ($(shell id -u), 0)
 PREFIX ?= /usr/local
+V ?= /usr/share/vim/vimfiles
 else
 PREFIX ?= $(HOME)/.local
+V ?= $(HOME)/.vim
 endif
 
 CPPFLAGS=-DPREFIX=\"$(PREFIX)\"
@@ -45,10 +47,14 @@ install: $(files)
 uninstall:
 	rm -f $(files)
 
-install-vim:
-	make -C vim install
+vimfiles=syntax/lips.vim ftdetect/lips.vim
+
+$V/%: vim/%
+	install -D $^ $@
+
+install-vim: $(addprefix $V/,$(vimfiles))
 uninstall-vim:
-	make -C vim uninstall
+	rm -f $(addprefix $V/,$(vimfiles))
 
 clean:
 	rm -rf `git check-ignore * */*`

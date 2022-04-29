@@ -62,14 +62,15 @@ extern const uint32_t *tnoms;
 
 #define Inline inline __attribute__((always_inline))
 #define NoInline __attribute__((noinline))
+#define SI static Inline
 #define memn(n)\
-  static Inline u0 set##n(u0*_d,u##n i,u64 l) {\
+  SI u0 set##n(u0*_d,u##n i,u64 l) {\
     for(u##n*d=_d;l--;*d++=i); }\
-  static Inline u0 cpy##n(u0*_d,const u0*_s, u64 l) {\
+  SI u0 cpy##n(u0*_d,const u0*_s, u64 l) {\
     u##n*d=_d; const u##n*s=_s; while (l--) *d++=*s++; }\
-  static Inline u0 cpy##n##r(u0*_d,const u0*_s, u64 l) {\
+  SI u0 cpy##n##r(u0*_d,const u0*_s, u64 l) {\
     u##n*d=_d; const u##n*s=_s; while (l--) d[l]=s[l]; }\
-  static Inline u0 mov##n(u0*_d,const u0*_s, u64 l) {\
+  SI u0 mov##n(u0*_d,const u0*_s, u64 l) {\
     if (_d<_s) cpy##n(_d, _s, l);\
     else if (_d>_s) cpy##n##r(_d, _s, l); }
 BWDQ(memn)
@@ -80,39 +81,38 @@ BWDQ(memn)
 // the multiplier comes from "Computationally Easy, Spectrally
 // Good Multipliers for Congruential Pseudorandom Number
 // Generators" by Steele & Vigna
-static Inline i64 lcprng(i64 s) {
-  return (s * 0xaf251af3b0f025b5ll + 1) >> 8; }
+SI i64 lcprng(i64 s) { return (s * 0xaf251af3b0f025b5ll + 1) >> 8; }
 
-static Inline u64 w2b(u64 w) { return w * 8; }
-static Inline u64 b2w(u64 b) { return b / 8 + (b % 8 && 1); }
+SI u64 w2b(u64 w) { return w * 8; }
+SI u64 b2w(u64 b) { return b / 8 + (b % 8 && 1); }
 
-static Inline u1 nilp(obj x) { return x == nil; }
-static Inline const char *tnom(class t) { return (const char*) (tnoms + t); }
+SI u1 nilp(obj x) { return x == nil; }
+SI const char *tnom(class t) { return (const char*) (tnoms + t); }
 
 //cmp.h
 u1 eql(obj, obj);
 
 //num.h
-static Inline u1 nump(obj x) { return kind(x) == Num; }
-static Inline i64 getnum(obj x) { return x >> 3; }
-static Inline obj putnum(i64 n) { return (n << 3) + Num; }
+SI u1 nump(obj x) { return kind(x) == Num; }
+SI i64 getnum(obj x) { return x >> 3; }
+SI obj putnum(i64 n) { return (n << 3) + Num; }
 #define N(x) getnum(x)
 #define _N(x) putnum(x)
 //str.h
 typedef struct str { u64 len; char text[]; } *str;
 obj string(lips, const char*);
-static Inline str getstr(obj x) { return (str) (x - Str); }
-static Inline obj putstr(str s) { return (obj) s + Str; }
-static Inline u1 strp(obj x) { return kind(x) == Str; }
+SI str getstr(obj x) { return (str) (x - Str); }
+SI obj putstr(str s) { return (obj) s + Str; }
+SI u1 strp(obj x) { return kind(x) == Str; }
 #define S(x) getstr(x)
 #define _S(x) putstr(x)
 //hom.h
-static Inline hom F(hom h) { return h + 1; }
-static Inline terp *G(hom h) { return *h; }
-static Inline hom gethom(obj x) { return (hom) (x - Hom); }
-static Inline obj puthom(hom h) { return (obj) h + Hom; }
-static Inline hom button(hom h) { while (*h) h++; return h; }
-static Inline u1 homp(obj x) { return kind(x) == Hom; }
+SI hom F(hom h) { return h + 1; }
+SI terp *G(hom h) { return *h; }
+SI hom gethom(obj x) { return (hom) (x - Hom); }
+SI obj puthom(hom h) { return (obj) h + Hom; }
+SI hom button(hom h) { while (*h) h++; return h; }
+SI u1 homp(obj x) { return kind(x) == Hom; }
 #define H(x)  gethom(x)
 #define _H(x) puthom(x)
 #define FF(x) F(F(x))
@@ -128,9 +128,9 @@ obj
  sskc(lips, mem, obj);
 #define Y(x) getsym(x)
 #define _Y(x) putsym(x)
-static Inline sym getsym(obj x) { return (sym) (x - Sym); }
-static Inline obj putsym(u0 *y) { return (obj) y + Sym; }
-static Inline u1 symp(obj x) { return kind(x) == Sym; }
+SI sym getsym(obj x) { return (sym) (x - Sym); }
+SI obj putsym(u0 *y) { return (obj) y + Sym; }
+SI u1 symp(obj x) { return kind(x) == Sym; }
 // tbl.h
 typedef struct ent { obj key, val; struct ent *next; } *ent; // tables
 typedef struct tbl { u64 len, cap; ent *tab; } *tbl;
@@ -140,9 +140,9 @@ obj tblkeys(lips, obj),
     tbl_set(lips, obj, obj, obj),
     tbl_set_s(lips, obj, obj, obj),
     tbl_get(lips, obj, obj);
-static Inline tbl gettbl(obj x) { return (tbl) (x - Tbl); }
-static Inline obj puttbl(tbl t) { return (obj) t + Tbl; }
-static Inline u1 tblp(obj x) { return kind(x) == Tbl; }
+SI tbl gettbl(obj x) { return (tbl) (x - Tbl); }
+SI obj puttbl(tbl t) { return (obj) t + Tbl; }
+SI u1 tblp(obj x) { return kind(x) == Tbl; }
 #define mix ((u64)2708237354241864315)
 #define T(x) gettbl(x)
 #define _T(x) puttbl(x)
@@ -150,9 +150,9 @@ static Inline u1 tblp(obj x) { return kind(x) == Tbl; }
 typedef struct vec { u64 len; obj xs[]; } *vec;
 #define V(x) getvec(x)
 #define _V(x) putvec(x)
-static Inline vec getvec(obj x) { return (vec) (x - Vec); }
-static Inline obj putvec(vec v) { return (obj) v + Vec; }
-static Inline u1 vecp(obj x) { return kind(x) == Vec; }
+SI vec getvec(obj x) { return (vec) (x - Vec); }
+SI obj putvec(vec v) { return (obj) v + Vec; }
+SI u1 vecp(obj x) { return kind(x) == Vec; }
 
 // two.h
 typedef struct two { obj a, b; } *two;
@@ -165,10 +165,10 @@ obj pair(lips, obj, obj);
 #define BB(o) B(B(o))
 //#define W(x) gettwo(x)
 //#define _W(w) puttwo(w)
-static Inline two gettwo(obj x) { return (two) (x - Two); }
-static Inline obj puttwo(u0 *x) { return (obj) x + Two; }
-static Inline u1 twop(obj x) { return kind(x) == Two; }
-static Inline u64 llen(obj l) {
+SI two gettwo(obj x) { return (two) (x - Two); }
+SI obj puttwo(u0 *x) { return (obj) x + Two; }
+SI u1 twop(obj x) { return kind(x) == Two; }
+SI u64 llen(obj l) {
   for (u64 i = 0;; l = B(l), i++)
     if (!twop(l)) return i; }
 
