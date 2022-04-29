@@ -131,19 +131,19 @@ static Inline Gc(cp) { return copiers[kind(x)](v, x, len0, pool0); }
 
 #define stale(o) inb((mem)(o),pool0,pool0+len0)
 Gc(cphom) {
-  hom src = H(x);
-  if (fresh(*src)) return (obj) *src;
-  hom end = button(src), start = (hom) end[1],
-      dst = bump(v, end - start + 2), j = dst;
-  for (hom k = start; k < end;)
-    j[0] = k[0],
-    k++[0] = (terp*) _H(j++);
-  j[0] = NULL;
-  j[1] = (terp*) dst;
+  yo src = H(x);
+  if (fresh(src->ll)) return (ob) src->ll;
+  yo end = button(src), start = (yo) end[1].ll,
+     dst = bump(v, end - start + 2), j = dst;
+  for (yo k = start; k < end;)
+    j->ll = k->ll,
+    k++->ll = (vm*) (ob) (j++);
+  j[0].ll = NULL;
+  j[1].ll = (vm*) dst;
   for (obj u; j-- > dst;
-    u = (obj) *j,
-    *j = (terp*) (!stale(u) ? u : cp(v, u, len0, pool0)));
-  return _H(dst += src - start); }
+    u = (ob) j->ll,
+    j->ll = (vm*) (!stale(u) ? u : cp(v, u, len0, pool0)));
+  return (ob) (dst += src - start); }
 
 Gc(cpstr) {
   str dst, src = S(x);

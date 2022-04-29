@@ -66,7 +66,7 @@ insts(ninl)
 
 // when the interpreter isn't running, the state variables that
 // would normally be in registers are stored in slots on the
-// vm structure. however while the interpreter is running it
+// vm structure. phowever while the interpreter is running it
 // uses these struct slots to pass and return extra values
 // without using the stack. so the interpreter has to restore
 // the current values in the vm struct before it makes any
@@ -93,7 +93,7 @@ insts(ninl)
 // the return value of a terp function is usually a call
 // to another terp function.
 #define Jump(f, ...) return (f)(v, ip, fp, sp, hp, xp, ##__VA_ARGS__)
-#define Ap(f, x) return ip = f, (*H(ip))(v, ip, fp, sp, hp, x)
+#define Ap(f, x) return ip = f, ((terp*) ((yo)(ip))->ll)(v, ip, fp, sp, hp, x)
 #define Go(f, x) return f(v, ip, fp, sp, hp, x)
 #define Next(n) Ap(ip + w2b(n), xp)
 #define CheckType(x,t) if(kind((x))-(t)){xp=x,v->xp=t;Jump(type_error);}

@@ -20,10 +20,14 @@ static const char *help =
   "  -i start repl unconditionally\n"
   "  -_ don't bootstrap\n";
 
-static obj scrp(lips, const char*), scrr(lips, u1, const char**);
-static lips init(u1, const char*, char **);
+static ob scrp(en, const char*), scrr(en, u1, const char**);
+static en init(u1, const char*, char **);
 
-static obj li_go(lips);
+// unpack state & jump into thread
+static NoInline ob go(en v) {
+  ob xp, ip, *sp, *hp, *fp;
+  Unpack();
+  Next(0); }
 
 int main(int argc, char **argv) {
   for (u1 shell = argc == 1, boot = true;;)
@@ -34,20 +38,10 @@ int main(int argc, char **argv) {
       case 'h': fprintf(stdout, help, *argv); continue;
       case -1:
         if (argc == optind && !shell) return EXIT_SUCCESS;
-        lips v = init(shell, boot ? BOOT : NULL,  argv + optind);
-        return v && li_go(v) ? EXIT_SUCCESS : EXIT_FAILURE; } }
+        en v = init(shell, boot ? BOOT : NULL,  argv + optind);
+        return v && go(v) ? EXIT_SUCCESS : EXIT_FAILURE; } }
 
-// unpack state & jump into thread
-//
-// go : obj lips
-obj li_go(lips v) {
-  obj xp, ip, *sp, *hp, *fp;
-  Unpack();
-  Next(0); }
-
-// make a lips instance for these opts
-//
-// init : lips bool string? strings
+// init : en u1 string? strings
 static lips init(u1 shell, const char *boot, char **paths) {
   lips v;
   obj y, x;
@@ -74,8 +68,8 @@ static Vm(li_repl) {
 // functions to compile scripts into a program
 //
 // scr_ : two lips stream
-static obj scr_(lips v, FILE *in) {
-  obj y, x = parse(v, in);
+static ob scr_(lips v, FILE *in) {
+  ob y, x = parse(v, in);
   if (!x) return feof(in) ? nil : 0;
   bind(x, pair(v, x, nil));
   bind(x, pair(v, Qt, x));
@@ -86,26 +80,26 @@ static obj scr_(lips v, FILE *in) {
   return pair(v, x, y); }
 
 // scrp : hom lips string
-static obj scrp(lips v, const char *path) {
+static ob scrp(en v, const char *path) {
   FILE *in = fopen(path, "r");
   if (!in) return err(v, "%s : %s", path, strerror(errno));
-  obj x = scr_(v, in);
+  ob x = scr_(v, in);
   fclose(in);
   bind(x, x);
   bind(x, pair(v, Se, x));
   return analyze(v, x); }
 
 // scrr : hom lips bool strings
-static obj scrr(lips v, u1 shell, const char **paths) {
-  hom h;
-  obj x, y;
+static ob scrr(en v, u1 shell, const char **paths) {
+  yo h;
+  ob x, y;
   const char *path = *paths;
   if (!path) {
     bind(h, cells(v, 3));
-    h[0] = shell ? li_repl : li_fin_ok;
-    h[1] = NULL;
-    h[2] = (terp*) h;
-    return _H(h); }
+    h[0].ll = (vm*) (shell ? li_repl : li_fin_ok);
+    h[1].ll = NULL;
+    h[2].ll = (vm*) h;
+    return (ob) h; }
   bind(y, scrr(v, shell, paths+1));
   with(y, x = scrp(v, path));
   bind(x, x);

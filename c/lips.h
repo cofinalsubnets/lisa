@@ -95,25 +95,25 @@ SI const char *tnom(class t) { return (const char*) (tnoms + t); }
 u1 eql(obj, obj);
 
 //num.h
-SI u1 nump(obj x) { return kind(x) == Num; }
-SI i64 getnum(obj x) { return x >> 3; }
-SI obj putnum(i64 n) { return (n << 3) + Num; }
+SI u1 nump(ob x) { return kind(x) == Num; }
+SI i64 getnum(ob x) { return x >> 3; }
+SI ob putnum(i64 n) { return (n << 3) + Num; }
 #define N(x) getnum(x)
 #define _N(x) putnum(x)
 //str.h
 typedef struct str { u64 len; char text[]; } *str;
-obj string(lips, const char*);
+ob string(lips, const char*);
 SI str getstr(obj x) { return (str) (x - Str); }
 SI ob putstr(str s) { return (ob) s + Str; }
 SI u1 strp(obj x) { return kind(x) == Str; }
 #define S(x) getstr(x)
 #define _S(x) putstr(x)
 //hom.h
-SI hom F(hom h) { return h + 1; }
-SI terp *G(hom h) { return *h; }
-SI hom gethom(obj x) { return (hom) (x - Hom); }
-SI ob puthom(hom h) { return (ob) h + Hom; }
-SI hom button(hom h) { while (*h) h++; return h; }
+SI yo F(yo h) { return (yo) h->sh; }
+SI vm *G(yo h) { return h->ll; }
+SI yo gethom(ob x) { return (yo) (x - Hom); }
+SI ob puthom(yo h) { return (ob) h + Hom; }
+SI yo button(yo h) { while (G(h)) h = F(h); return h; }
 SI u1 homp(obj x) { return kind(x) == Hom; }
 #define H(x)  gethom(x)
 #define _H(x) puthom(x)

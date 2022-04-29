@@ -3,7 +3,7 @@
 
 // this is used to create closures.
 Vm(take) {
-  u64 n = N((obj) H(ip)[1]);
+  u64 n = N((obj) H(ip)[1].ll);
   Have(n + 1);
   vec t = (vec) hp;
   hp += n + 1;

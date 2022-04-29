@@ -56,28 +56,28 @@ Vm(ccc_u) {
   t->len = depth + 1;
   t->xs[0] = _N(fp - sp);
   cpy64(t->xs+1, sp, depth);
-  hom c = (hom) hp;
+  yo c = (yo) hp;
   hp += 4;
-  c[0] = cont;
-  c[1] = (terp*) _V(t);
-  c[2] = NULL;
-  c[3] = (terp*) c;
-  *Argv = _H(c);
+  c[0].ll = (vm*) cont;
+  c[1].ll = (vm*) _V(t);
+  c[2].ll = NULL;
+  c[3].ll = (vm*) c;
+  *Argv = (ob) c;
   Ap(ip, nil); }
 
 // call a continuation
 Vm(cont) {
- vec t = V((obj) H(ip)[1]);
- Have(t->len - 1);
- xp = N(Argc) == 0 ? nil : *Argv;
- i64 off = N(t->xs[0]);
- sp = v->pool + v->len - (t->len - 1);
- fp = sp + off;
- cpy64(sp, t->xs+1, t->len-1);
- Jump(ret); }
+  vec t = V((ob) H(ip)[1].ll);
+  Have(t->len - 1);
+  xp = N(Argc) == 0 ? nil : *Argv;
+  i64 off = N(t->xs[0]);
+  sp = v->pool + v->len - (t->len - 1);
+  fp = sp + off;
+  cpy64(sp, t->xs+1, t->len-1);
+  Jump(ret); }
 
 Vm(vararg) {
-  i64 reqd = N((i64) H(ip)[1]),
+  i64 reqd = N((i64) H(ip)[1].ll),
       vdic = N(Argc) - reqd;
   Arity(reqd);
   // in this case we need to add another argument
@@ -93,16 +93,15 @@ Vm(vararg) {
   // the path is knowable at compile time in many cases
   // so maybe vararg should be two or more different
   // functions.
-  else {
-    Have(2 * vdic);
-    two t = (two) hp;
-    hp += 2 * vdic;
-    for (i64 i = vdic; i--;
-      t[i].a = Argv[reqd + i],
-      t[i].b = puttwo(t+i+1));
-    t[vdic-1].b = nil;
-    Argv[reqd] = puttwo(t);
-    Next(2); } }
+  Have(2 * vdic);
+  two t = (two) hp;
+  hp += 2 * vdic;
+  for (i64 i = vdic; i--;
+    t[i].a = Argv[reqd + i],
+    t[i].b = puttwo(t+i+1));
+  t[vdic-1].b = nil;
+  Argv[reqd] = puttwo(t);
+  Next(2); }
 
 // type predicates
 #define Tp(t)\
@@ -122,7 +121,7 @@ static terp recne;
 /// Branch Instructions
 //
 // unconditional jump
-Vm(jump) { Ap((obj) H(ip)[1], xp); }
+Vm(jump) { Ap((ob) H(ip)[1].ll, xp); }
 
 // conditional jumps
 //
@@ -149,29 +148,29 @@ Br(brgteq,  *sp++ >= xp, GF, xp, FF, nil)
 
 // return from a function
 Vm(ret) {
- ip = Retp;
- sp = (mem) ((i64) Argv + Argc - Num);
- fp = (mem) ((i64)   sp + Subr - Num);
- Next(0); }
+  ip = Retp;
+  sp = (mem) ((i64) Argv + Argc - Num);
+  fp = (mem) ((i64)   sp + Subr - Num);
+  Next(0); }
 
 // "inner" function call
 Vm(call) {
- Have(Width(fr));
- obj adic = (obj) H(ip)[1];
- i64 off = fp - (mem) ((i64) sp + adic - Num);
- fp = sp -= Width(fr);
- Retp = ip + 2 * word;
- Subr = _N(off);
- Clos = nil;
- Argc = adic;
- Ap(xp, nil); }
+  Have(Width(fr));
+  ob adic = (ob) H(ip)[1].ll;
+  i64 off = fp - (mem) ((i64) sp + adic - Num);
+  fp = sp -= Width(fr);
+  Retp = ip + 2 * word;
+  Subr = _N(off);
+  Clos = nil;
+  Argc = adic;
+  Ap(xp, nil); }
 
 // tail call
 Vm(rec) {
- if (Argc != (ip = (obj) H(ip)[1])) Jump(recne);
- cpy64(Argv, sp, ip = getnum(ip));
- sp = fp;
- Ap(xp, nil); }
+  if (Argc != (ip = (ob) H(ip)[1].ll)) Jump(recne);
+  cpy64(Argv, sp, ip = getnum(ip));
+  sp = fp;
+  Ap(xp, nil); }
 
 // tail call with different arity
 static Vm(recne) {
@@ -185,3 +184,58 @@ static Vm(recne) {
  ip = xp;
  Clos = xp = nil;
  Next(0); }
+
+// errors
+Vm(fail) { return Pack(), err(v, "fail"); }
+
+#define type_err_msg "wrong type : %s for %s"
+Vm(type_error) {
+  class exp = v->xp, act = kind(xp);
+  return Pack(), err(v, type_err_msg, tnom(act), tnom(exp)); }
+
+Vm(oob_error) {
+  i64 a = v->xp, b = v->ip;
+  return Pack(), err(v, "oob : %d >= %d", a, b); }
+
+#define arity_err_msg "wrong arity : %d of %d"
+Vm(ary_error) {
+  i64 a = N(Argc), b = v->xp;
+  return Pack(), err(v, arity_err_msg, a, b); }
+
+Vm(div_error) { return Pack(), err(v, "/ 0"); }
+
+// type/arity checking
+#define DTc(n, t) Vm(n) {\
+  if (kind(xp-t)==0) Next(1);\
+  v->xp = t; Jump(type_error); }
+DTc(idZ, Num) DTc(idH, Hom) DTc(idT, Tbl) DTc(id2, Two)
+Vm(arity) {
+  ob reqd = (ob) H(ip)[1].ll;
+  if (reqd <= Argc) Next(2);
+  else Jump((v->xp = N(reqd), ary_error)); }
+
+SI u0 show_call(en v, ob ip, ob* fp) {
+  fputc('(', stderr);
+  emit(v, ip, stderr);
+  for (i64 i = 0, argc = N(Argc); i < argc;)
+    fputc(' ', stderr), emit(v, Argv[i++], stderr);
+  fputc(')', stderr); }
+
+NoInline ob err(en v, const char *msg, ...) {
+  ob ip = v->ip, *fp = v->fp,
+     *top = v->pool + v->len;
+  fputs("# ", stderr);
+  if (fp < top) show_call(v, ip, fp), fputs(" : ", stderr);
+  va_list xs;
+  va_start(xs, msg), vfprintf(stderr, msg, xs), va_end(xs);
+  fputc('\n', stderr);
+  // print backtrace
+  if (fp < top) for (;;) {
+    ip = Retp, fp += Width(fr) + N(Argc) + N(Subr);
+    if (fp == top) break;
+    fputs("# in ", stderr);
+    show_call(v, ip, fp);
+    fputc('\n', stderr); }
+  v->fp = v->sp = v->pool + v->len;
+  v->xp = v->ip = nil;
+  return 0; }

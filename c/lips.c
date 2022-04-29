@@ -58,4 +58,4 @@ static NoInline u1 prim(run v, const char *a, terp *i) {
   prim[1] = (terp*) nom;
   prim[2] = NULL;
   prim[3] = (terp*) prim;
-  return !!tbl_set(v, Top, A(nom), _H(prim)); }
+  return !!tbl_set(v, Top, A(nom), (ob) prim); }
