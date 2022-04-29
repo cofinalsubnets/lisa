@@ -39,7 +39,6 @@ ob intern(en v, ob x) {
     bind(o, o); }
   return sskc(v, &v->syms, x); }
 
-#include "terp.h"
 Vm(gsym_u) {
   if (Argc > _N(0) && strp(*Argv)) {
     CallC(v->xp = intern(v, *Argv));

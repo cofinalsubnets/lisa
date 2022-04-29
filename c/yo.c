@@ -35,9 +35,9 @@ typedef struct { ob arg, loc, clo, par, nom, sig; } *cenv;
 // then if f takes a fixed number of arguments the arity
 // signature is n; otherwise it's -n-1.
 
+typedef yo c1(en, ob*, u64), c2(en, ob*, u64, ob);
 static u1 scan(en, ob*, ob);
 static ob yo_yo_clo(en, ob*, ob, ob), ltu(en, ob*, ob, ob);
-typedef yo c1(en, ob*, u64), c2(en, ob*, u64, ob);
 static c1 xpn_yo_, let_yo_bind, em_i, em_i_d, mk_yo;
 static c2 xpn_yo, var_yo, form_yo, im_yo;
 

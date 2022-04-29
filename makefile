@@ -24,7 +24,7 @@ CPPFLAGS=-DPREFIX=\"$(PREFIX)\"
 CFLAGS=-std=gnu17 -g -O2 -flto -Wall -Werror\
 	-Wstrict-prototypes -Wno-shift-negative-value\
 	-fno-stack-protector -fno-unroll-loops\
-	-fno-align-functions
+	-fno-inline -fno-align-functions
 
 run_repl=bin/$(nom).bin -_i $(libs) test/*.$(nom)
 run_tests=bin/$(nom).bin -_ $(libs) $(tests)
