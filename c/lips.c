@@ -12,7 +12,7 @@ u0 li_fin(run v) { if (v) free(v->pool), free(v); }
 // lips constructor
 run li_ini(void) {
   run v; obj _;
-  bind(v, malloc(sizeof(struct run)));
+  bind(v, malloc(sizeof(struct en)));
 
   u64 t0 = clock();
   v->t0 = t0;

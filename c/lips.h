@@ -17,39 +17,41 @@ BWDQ(I)
 typedef void u0;
 typedef bool u1;
 typedef i8 i1;
-typedef i64 obj, *mem;
+typedef i64 ob, obj, *mem;
 
 // the 3 least bits of each pointer are a type tag
 typedef enum { Hom = 0, Num = 1, Two = 2, Vec = 3,
                Str = 4, Tbl = 5, Sym = 6, Nil = 7 } class;
 
 // current function stack frame
-typedef struct frame {
-  obj clos, retp, subd, argc, argv[]; } *frame;
+typedef struct fr {
+  ob clos, retp, subd, argc, argv[]; } *fr, *frame;
 
 // list of addresses of live values preserved by garbage
 // collection
-typedef struct root { mem one; struct root *next; } *root;
+typedef struct root { ob* one; struct root *next; } *root;
 
 // indices to a global (thread-local) table of constants
-enum {
- Def, Cond, Lamb, Quote, Seq, Splat,
- Topl, Macs, Eval, Apply, NGlobs };
+enum { Def, Cond, Lamb, Quote, Seq, Splat,
+       Topl, Macs, Eval, Apply, NGlobs };
 
 // this structure holds runtime state.
 // most runtime functions take a pointer to this as the
 // first argument.
-typedef struct run {
-  obj ip, xp, *fp, *hp, *sp, // interpreter state
-      syms, glob[NGlobs], // symbols & globals
-      rand, // random state
-      t0, len, *pool; // memory state
+typedef struct en {
+  ob ip, xp, *fp, *hp, *sp; // interpreter state
+  ob syms, glob[NGlobs], // symbols & globals
+     rand, // random state
+     t0, len, *pool; // memory state
   root root; // gc protection list
-} *run, *lips;
+} *run, *lips, *en;
 
 // this is the type of interpreter functions
 typedef obj terp(lips, obj, mem, mem, mem, obj);
 typedef terp **hom; // function pointer pointer
+typedef struct yo *yo;
+typedef ob vm(en, yo, fr, ob*, ob*, ob);
+struct yo { vm *ll, *sh[]; };
 
 // a packed array of 4-byte strings.
 extern const uint32_t *tnoms;

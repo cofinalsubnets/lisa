@@ -47,7 +47,7 @@ NoInline obj err(lips v, const char *msg, ...) {
   fputc('\n', stderr);
   // print backtrace
   if (fp < top) for (;;) {
-    ip = Retp, fp += Width(frame) + N(Argc) + N(Subr);
+    ip = Retp, fp += Width(fr) + N(Argc) + N(Subr);
     if (fp == top) break;
     fputs("# in ", stderr);
     show_call(v, ip, fp);

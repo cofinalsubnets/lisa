@@ -553,13 +553,13 @@ static Vm(clos0) {
      arg = V(ec)->xs[0],
      loc = V(ec)->xs[1];
  u64 adic = nilp(arg) ? 0 : V(arg)->len;
- Have(Width(frame) + adic + 1);
+ Have(Width(fr) + adic + 1);
  i64 off = (mem) fp - sp;
  *H(ip) = clos1;
  sp -= adic;
  cpy64(sp, V(arg)->xs, adic);
  ec = (obj) H(ip)[1];
- fp = sp -= Width(frame);
+ fp = sp -= Width(fr);
  Retp = ip;
  Subr = _N(off);
  Argc = _N(adic);

@@ -32,7 +32,7 @@ Vm(ap_u) {
   obj off = Subr, rp = Retp;
   sp = Argv + N(Argc) - adic;
   for (u64 j = 0; j < adic; y = B(y)) sp[j++] = A(y);
-  fp = sp -= Width(frame);
+  fp = sp -= Width(fr);
   Retp = rp;
   Argc = _N(adic);
   Subr = off;
@@ -84,7 +84,7 @@ Vm(vararg) {
   // slot to hold the nil.
   if (!vdic) {
     Have1();
-    cpy64(fp-1, fp, Width(frame) + N(Argc));
+    cpy64(fp-1, fp, Width(fr) + N(Argc));
     sp = --fp;
     Argc += Word;
     Argv[reqd] = nil;
@@ -156,10 +156,10 @@ Vm(ret) {
 
 // "inner" function call
 Vm(call) {
- Have(Width(frame));
+ Have(Width(fr));
  obj adic = (obj) H(ip)[1];
  i64 off = fp - (mem) ((i64) sp + adic - Num);
- fp = sp -= Width(frame);
+ fp = sp -= Width(fr);
  Retp = ip + 2 * word;
  Subr = _N(off);
  Clos = nil;
@@ -178,7 +178,7 @@ static Vm(recne) {
  v->xp = Subr, v->ip = Retp; // save return info
  fp = Argv + N(Argc - ip);
  cpy64r(fp, sp, N(ip)); // copy from high to low
- sp = fp -= Width(frame);
+ sp = fp -= Width(fr);
  Retp = v->ip;
  Argc = ip;
  Subr = v->xp;
