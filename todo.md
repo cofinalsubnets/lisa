@@ -12,10 +12,8 @@
 - extended types
 - type inference
 - variable renaming
-- inlining
+- function inlining
 - symbols hash
-- generational gc
-- semispace gc
+- semispace & generational gc
 - hom type in vm fn signature
-- subexpression interleaving
 - 32-bit compatible

@@ -1,10 +1,24 @@
 #include "lips.h"
-#include "terp.h"
+#include "vm.h"
 #include <time.h>
 
 // initialization helpers
-static u1 inst(en, const char*, vm*) NoInline,
-          prim(en, const char*, vm*) NoInline;
+SNI u1 inst(en v, const char *a, vm *b) {
+  ob z;
+  bind(z, interns(v, a));
+  return !!tbl_set(v, Top, z, _N((i64) b)); }
+
+SNI u1 prim(en v, const char *a, vm *i) {
+  ob nom;
+  yo prim;
+  bind(nom, pair(v, interns(v, a), nil));
+  with(nom, prim = cells(v, 4));
+  bind(prim, prim);
+  prim[0].ll = i;
+  prim[1].ll = (vm*) nom;
+  prim[2].ll = NULL;
+  prim[3].ll = (vm*) prim;
+  return !!tbl_set(v, Top, A(nom), (ob) prim); }
 
 // lips destructor
 u0 li_fin(en v) { if (v) free(v->pool), free(v); }
@@ -43,20 +57,3 @@ en li_ini(void) {
   def("_macros", Mac);
   return v; fail:
   return li_fin(v), NULL; }
-
-static NoInline u1 inst(en v, const char *a, vm *b) {
-  ob z;
-  bind(z, interns(v, a));
-  return !!tbl_set(v, Top, z, _N((i64) b)); }
-
-static NoInline u1 prim(en v, const char *a, vm *i) {
-  ob nom;
-  yo prim;
-  bind(nom, pair(v, interns(v, a), nil));
-  with(nom, prim = cells(v, 4));
-  bind(prim, prim);
-  prim[0].ll = i;
-  prim[1].ll = (vm*) nom;
-  prim[2].ll = NULL;
-  prim[3].ll = (vm*) prim;
-  return !!tbl_set(v, Top, A(nom), (ob) prim); }

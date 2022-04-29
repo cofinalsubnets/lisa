@@ -1,4 +1,4 @@
-test:
-	make -C .. test
+_:
+	make -C ..
 %:
 	make -C .. $@

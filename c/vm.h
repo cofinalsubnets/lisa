@@ -102,9 +102,6 @@ insts(ninl)
 #define TypeCheck Tc
 #define ok _N(1)
 
-#define OP(nom, x, n) Vm(nom) { xp = (x); Next(n); }
-#define OP1(nom, x) OP(nom, x, 1)
-#define OP2(nom, x) OP(nom, x, 2)
 
 #define Have(n) if (sp - hp < n) Jump((v->xp=n,gc))
 #define Have1() if (hp == sp) Jump((v->xp=1,gc)) // common case, faster comparison

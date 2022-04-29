@@ -1,5 +1,5 @@
 #include "lips.h"
-#include "terp.h"
+#include "vm.h"
 #include <stdlib.h>
 #include <unistd.h>
 #include <getopt.h>
@@ -60,10 +60,10 @@ static en init(u1 shell, const char *boot, char **paths) {
 static Vm(li_fin_ok) { return li_fin(v), nil; }
 // li_repl : nil lips
 static Vm(li_repl) {
-  for (Pack();;)
+  for (Pack();;) {
     if ((xp = parse(v, stdin))) {
       if ((xp = eval(v, xp))) emsep(v, xp, stdout, '\n'); }
-    else if (feof(stdin)) return li_fin(v), nil; }
+    else if (feof(stdin)) return li_fin(v), nil; } }
 
 // functions to compile scripts into a program
 //
