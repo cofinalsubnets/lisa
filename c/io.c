@@ -159,12 +159,20 @@ Vm(slurp) {
         v->xp = xp ? xp : nil);
   return ApC(ret, xp); }
 
-typedef void writer(mo, ob, FILE*);
-static writer nil_out, two_out, num_out, vec_out,
-              str_out, sym_out, tbl_out, hom_out;
+typedef void
+  writer(mo, ob, FILE*);
+
+static writer
+  nil_out, two_out,
+  num_out, vec_out,
+  str_out, sym_out,
+  tbl_out, hom_out;
+
 writer *writers[] = {
-  [Hom] = hom_out, [Num] = num_out, [Tbl] = tbl_out, [Nil] = nil_out,
-  [Str] = str_out, [Vec] = vec_out, [Sym] = sym_out, [Two] = two_out, };
+  [Hom] = hom_out, [Num] = num_out,
+  [Tbl] = tbl_out, [Nil] = nil_out,
+  [Str] = str_out, [Vec] = vec_out,
+  [Sym] = sym_out, [Two] = two_out, };
 
 static void nil_out(mo v, ob x, FILE *o) { fputs("()", o); }
 static void num_out(mo v, ob x, FILE *o) {
@@ -201,16 +209,20 @@ static void str_out(mo v, ob x, FILE *o) {
   fputc('"', o); }
 
 static void two_out_(mo v, two w, FILE *o) {
-  twop(w->b) ? (emsep(v, w->a, o, ' '),
-                two_out_(v, gettwo(w->b), o)) :
-               emsep(v, w->a, o, ')'); }
+  if (!twop(w->b)) emsep(v, w->a, o, ')');
+  else { emsep(v, w->a, o, ' ');
+         two_out_(v, gettwo(w->b), o); } }
 
-static Inline bool quotate(mo v, two w) {
+static Inline bool is_quotation(mo v, two w) {
   return w->a == Qt && twop(w->b) && nilp(B(w->b)); }
 
 static void two_out(mo v, ob x, FILE *o) {
-  if (quotate(v, gettwo(x))) fputc('\'', o), emit(v, A(B(x)), o);
-  else fputc('(', o), two_out_(v, gettwo(x), o); }
+  if (is_quotation(v, gettwo(x))) {
+    fputc('\'', o);
+    emit(v, A(B(x)), o); }
+  else {
+    fputc('(', o);
+    two_out_(v, gettwo(x), o); } }
 
 
 // print to console

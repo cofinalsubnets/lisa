@@ -35,14 +35,14 @@ typedef struct { ob arg, loc, clo, par, nom, sig; } *cenv;
 // then if f takes a fixed number of arguments the arity
 // signature is n; otherwise it's -n-1.
 
-static bool scan(en, ob*, ob);
-static ob yo_yo_clo(en, ob*, ob, ob), ltu(en, ob*, ob, ob);
-typedef yo c1(en, ob*, u64), c2(en, ob*, u64, ob);
+static bool scan(mo, ob*, ob);
+static ob yo_yo_clo(mo, ob*, ob, ob), ltu(mo, ob*, ob, ob);
+typedef yo c1(mo, ob*, u64), c2(mo, ob*, u64, ob);
 static c1 xpn_yo_, let_yo_bind, em_i, em_i_d, mk_yo;
 static c2 xpn_yo, var_yo, form_yo, im_yo;
 
 enum { Here, Loc, Arg, Clo, Wait };
-#define CO(nom,...) static yo nom(en v, ob* e, u64 m, ##__VA_ARGS__)
+#define CO(nom,...) static yo nom(mo v, ob* e, u64 m, ##__VA_ARGS__)
 #define Put(x) putnum((i64)(x))
 
 // helper functions for lists
@@ -51,20 +51,20 @@ static i64 lidx(ob l, ob x) {
     if (x == A(l)) return i;
   return -1; }
 
-static ob linitp(en v, ob x, ob* d) {
+static ob linitp(mo v, ob x, ob* d) {
   ob y;
   if (!twop(B(x))) return *d = x, nil;
   with(x, y = linitp(v, B(x), d));
   bind(y, y);
   return pair(v, A(x), y); }
 
-static ob snoc(en v, ob l, ob x) {
+static ob snoc(mo v, ob l, ob x) {
   if (!twop(l)) return pair(v, x, l);
   with(l, x = snoc(v, B(l), x));
   bind(x, x);
   return pair(v, A(l), x); }
 
-static bool pushss(en v, i64 i, va_list xs) {
+static bool pushss(mo v, i64 i, va_list xs) {
   bool _;
   ob x = va_arg(xs, ob);
   if (!x) return Avail >= i || please(v, i);
@@ -73,14 +73,14 @@ static bool pushss(en v, i64 i, va_list xs) {
   *--v->sp = x;
   return _; }
 
-static bool pushs(en v, ...) {
+static bool pushs(mo v, ...) {
   va_list xs; bool _;
   va_start(xs, v);
   _ = pushss(v, 0, xs);
   va_end(xs);
   return _; }
 
-static vec tuplr(en v, i64 i, va_list xs) {
+static vec tuplr(mo v, i64 i, va_list xs) {
   vec t;
   ob x = va_arg(xs, ob);
   if (!x) {
@@ -92,7 +92,7 @@ static vec tuplr(en v, i64 i, va_list xs) {
     t->xs[i] = x; }
   return t; }
 
-static ob tupl(en v, ...) {
+static ob tupl(mo v, ...) {
  va_list xs; vec t;
  va_start(xs, v), t = tuplr(v, 0, xs), va_end(xs);
  bind(t, t);
@@ -104,12 +104,12 @@ static Inline yo em2(ll *i, ob j, yo k) { return em1(i, em1((ll*)j, k)); }
 static Inline yo ee1(ll *i, yo k) { return (--k)->ll = (ll*) i, k; }
 static Inline yo ee2(ll *i, ob x, yo k) { return ee1(i, ee1((ll*) x, k)); }
 
-static yo imx(en v, ob *e, i64 m, ll *i, ob x) {
+static yo imx(mo v, ob *e, i64 m, ll *i, ob x) {
   bind(x, Push(Put(i), x));
   return em_i_d(v, e, m); }
 
 #define Bind(v, x) if(!((v)=(x)))goto fail
-static NoInline ob rw_let_fn(en v, ob x) {
+static NoInline ob rw_let_fn(mo v, ob x) {
   ob y;
   for (mm(&x); twop(A(x));) {
     Bind(y, snoc(v, BA(x), AB(x)));
@@ -119,7 +119,7 @@ static NoInline ob rw_let_fn(en v, ob x) {
   return um, x; fail:
   return um, 0; }
 
-static int scan_def(en v, ob *e, ob x) {
+static int scan_def(mo v, ob *e, ob x) {
   if (!twop(x)) return 1; // this is an even case so export all the definitions to the local scope
   if (!twop(B(x))) return 0; // this is an odd case so ignore these, they'll be imported after the rewrite
   mm(&x);
@@ -133,7 +133,7 @@ static int scan_def(en v, ob *e, ob x) {
   return um, r; fail:
   return um, -1; }
 
-static bool scan(en v, ob* e, ob x) {
+static bool scan(mo v, ob* e, ob x) {
   if (!twop(x) || A(x) == La || A(x) == Qt) return true;
   if (A(x) == De) return scan_def(v, e, B(x)) != -1;
   mm(&x);
@@ -141,7 +141,7 @@ static bool scan(en v, ob* e, ob x) {
     if (!scan(v, e, A(x))) return um, false;
   return um, true; }
 
-static ob asign(en v, ob a, i64 i, ob*m) {
+static ob asign(mo v, ob a, i64 i, ob*m) {
   ob x;
   if (!twop(a)) return *m = i, a;
   if (twop(B(a)) && AB(a) == Va) {
@@ -151,13 +151,13 @@ static ob asign(en v, ob a, i64 i, ob*m) {
   bind(x, x);
   return pair(v, A(a), x); }
 
-static Inline ob new_scope(en v, ob*e, ob a, ob n) {
+static Inline ob new_scope(mo v, ob*e, ob a, ob n) {
   i64 s = 0;
   with(n, a = asign(v, a, 0, &s));
   bind(a, a);
   return tupl(v, a, nil, nil, e ? *e : nil, n, putnum(s), (ob)0); }
 
-static Inline ob comp_body(en v, ob*e, ob x) {
+static Inline ob comp_body(mo v, ob*e, ob x) {
   bind(x, Push(Put(xpn_yo_), x,
                Put(em_i), Put(ret),
                Put(mk_yo)));
@@ -176,7 +176,7 @@ static Inline ob comp_body(en v, ob*e, ob x) {
 // (in the former case the car is the list of free variables
 // and the cdr is a hom that assumes the missing variables
 // are available in the closure).
-static Inline ob ltu(en v, ob* e, ob n, ob l) {
+static Inline ob ltu(mo v, ob* e, ob n, ob l) {
   ob y = nil;
   l = B(l);
   mm(&n); mm(&y); mm(&l);
@@ -188,7 +188,7 @@ static Inline ob ltu(en v, ob* e, ob n, ob l) {
   return um, um, um, l; fail:
   return um, um, um, 0; }
 
-static Inline ob yo_yo_clo(en v, ob*e, ob arg, ob seq) {
+static Inline ob yo_yo_clo(mo v, ob*e, ob arg, ob seq) {
   i64 i = llen(arg);
   mm(&arg), mm(&seq);
   bool _;
@@ -227,7 +227,7 @@ CO(let_yo_bind) {
   return e ? imx(v, e, m, loc_, putnum(lidx(loc(*e), y))) :
              imx(v, e, m, tbind, y); }
 
-static bool let_yo_r(en v, ob*e, ob x) {
+static bool let_yo_r(mo v, ob*e, ob x) {
   bool _ = true;
   if (twop(x)) {
     bind(x, rw_let_fn(v, x));
@@ -237,7 +237,7 @@ static bool let_yo_r(en v, ob*e, ob x) {
   return _; }
 
 // syntactic sugar for define
-static Inline ob def_sug(en v, ob x) {
+static Inline ob def_sug(mo v, ob x) {
   ob y = nil;
   with(y, x = linitp(v, x, &y));
   bind(x, x);
@@ -295,7 +295,7 @@ CO(if_yo_pre_ant) {
   v->xp = B(v->xp);
   return x; }
 
-static bool if_yo_loop(en v, ob*e, ob x) {
+static bool if_yo_loop(mo v, ob*e, ob x) {
   bool _;
   if (!twop(x)) bind(x, pair(v, nil, nil));
   if (!twop(B(x)))
@@ -328,10 +328,10 @@ CO(em_call) {
   bind(k, Pull(m + 2));
   return ee2(k->ll == ret ? rec : call, a, k); }
 
-static ob lookup_mod(en v, ob x) {
+static ob lookup_mod(mo v, ob x) {
   return tbl_get(v, Top, x); }
 
-static ob lookup_lex(en v, ob e, ob y) {
+static ob lookup_lex(mo v, ob e, ob y) {
   if (nilp(e)) {
     ob q = lookup_mod(v, y);
     return q ? pair(v, putnum(Here), q) : pair(v, putnum(Wait), Top); }
@@ -389,7 +389,7 @@ CO(ap_yo, ob fun, ob args) {
   return um, Pull(m); fail:
   return um, NULL; }
 
-static bool seq_yo_loop(en v, ob*e, ob x) {
+static bool seq_yo_loop(mo v, ob*e, ob x) {
   bool _ = true;
   if (twop(x)) {
     with(x, _ = seq_yo_loop(v, e, B(x)));
@@ -425,7 +425,7 @@ CO(em_i_d) {
   bind(k, k);
   return ee2(i, x, k); }
 
-static yo hini(en v, u64 n) {
+static yo hini(mo v, u64 n) {
   yo a;
   bind(a, cells(v, n + 2));
   a[n].ll = NULL;
@@ -438,15 +438,15 @@ CO(mk_yo) {
   bind(k, hini(v, m+1));
   return ee1((ll*)(e ? name(*e) : nil), k); }
 
-static ob apply(en, ob, ob) NoInline;
-ob eval(en v, ob x) {
+static ob apply(mo, ob, ob) NoInline;
+ob eval(mo v, ob x) {
   ob args;
   bind(args, pair(v, x, nil));
   return apply(v, homp(Eva) ? Eva : tbl_get(v, Top, Eva), args); }
 
 // return to C
 Ll(yield) { Pack(); return xp; }
-static NoInline ob apply(en v, ob f, ob x) {
+static NoInline ob apply(mo v, ob f, ob x) {
   Push(f, x);
   yo h;
   bind(h, cells(v, 5));
@@ -522,7 +522,7 @@ Ll(hseek_u) {
   TypeCheck(Argv[1], Num);
   return ApC(ret, puthom(gethom(Argv[0]) + getnum(Argv[1]))); }
 
-ob analyze(en v, ob x) {
+ob analyze(mo v, ob x) {
   with(x, Push(Put(em_i), Put(ret), Put(mk_yo)));
   return (ob) xpn_yo(v, NULL, 0, x); }
 
@@ -616,7 +616,7 @@ static Vm(encl) {
 Ll(encll) { return ApC(encl, Locs); }
 Ll(encln) { return ApC(encl, nil); }
 
-NoInline ob homnom(en v, ob x) {
+NoInline ob homnom(mo v, ob x) {
   ll *k = (ll*) gethom(x)->ll;
   if (k == clos || k == clos0 || k == clos1)
     return homnom(v, (ob) gethom(x)[2].ll);
@@ -631,7 +631,7 @@ Ll(hnom_u) {
   TypeCheck(*Argv, Hom);
   return ApC(ret, homnom(v, *Argv)); }
 
-ob sequence(en v, ob a, ob b) {
+ob sequence(mo v, ob a, ob b) {
   yo h;
   with(a, with(b, h = cells(v, 8)));
   bind(h, h);

@@ -24,17 +24,16 @@ typedef struct fr { ob clos, retp, subd, argc, argv[]; } *fr;
 
 // list of addresses of live values preserved by garbage
 // collection
-typedef struct mm { ob*it; struct mm*et; } *mm;
+typedef struct mm { ob *it; struct mm *et; } *mm;
 
 // indices to a global (thread-local) table of constants
 enum { Def, Cond, Lamb, Quote, Seq, Splat,
        Topl, Macs, Eval, Apply, NGlobs };
 
-typedef struct yo *yo; // よ
-typedef struct mo *mo, *en;
-// this structure holds runtime state.
-// most runtime functions take a pointer to this as the
-// first argument.
+typedef struct yo *yo; // よ // embed
+typedef struct mo *mo; // state // time order
+typedef ob ll(mo, ob, ob*, ob*, ob*, ob); // FIXME mo yo ob ob* ob* fr
+struct yo { ll *ll, *sh[]; }; // puLLback / puSHout
 struct mo {
   yo ip;
   fr fp;
@@ -45,10 +44,6 @@ struct mo {
   mm mm; // gc protection list
 };
 
-// this is the type of interpreter functions
-// FIXME en yo fr ob* ob* ob
-typedef ob ll(mo, ob, ob*, ob*, ob*, ob);
-struct yo { ll *ll, *sh[]; }; // puLLback / puSHout
 typedef struct str { u64 len; char text[]; } *str;
 typedef struct sym { ob nom, code, l, r; } *sym;
 typedef struct ent { ob key, val; struct ent *next; } *ent; // tables
@@ -135,14 +130,28 @@ BWDQ(memn)
 #define gettwo(_) ((two)((_)-Two))
 #define puttwo(_) ((ob)(_)+Two)
 
-static Inline yo button(yo h) { while (G(h)) h = F(h); return h; }
-static Inline u64 llen(ob l) { for (u64 i = 0;; l = B(l), i++) if (!twop(l)) return i; }
 extern void (*writers[])(mo, ob, FILE*);
-static Inline void emit(mo v, ob x, FILE *o) { writers[Q(x)](v, x, o); }
-static Inline void emsep(en v, ob x, FILE *o, char s) { emit(v, x, o), fputc(s, o); }
-static Inline i64 lcprng(i64 s) {
-  const i64 steele_vigna_2021 = 0xaf251af3b0f025b5ll;
+
+static Inline yo button(yo h) {
+  while (G(h)) h = F(h);
+  return h; }
+
+static Inline u64 llen(ob l) {
+  u64 i = 0;
+  while (twop(l)) l = B(l), i++;
+  return i; }
+
+static Inline void emit(mo v, ob x, FILE *o) {
+  writers[Q(x)](v, x, o); }
+
+static Inline void emsep(mo v, ob x, FILE *o, char s) {
+  emit(v, x, o);
+  fputc(s, o); }
+
+static Inline ob lcprng(ob s) {
+  const ob steele_vigna_2021 = 0xaf251af3b0f025b5;
   return (s * steele_vigna_2021 + 1) >> 8; }
+
 static Inline u64 b2w(u64 b) {
   return b / sizeof(ob) + (b % sizeof(ob) && 1); }
 

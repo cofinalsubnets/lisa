@@ -4,9 +4,9 @@
 #include <time.h>
 #include <string.h>
 
-typedef ob copier(en, ob, u64, ob*);
+typedef ob copier(mo, ob, u64, ob*);
 static Inline copier cp;
-#define Gc(n) ob n(en v, ob x, u64 len0, ob*pool0)
+#define Gc(n) ob n(mo v, ob x, u64 len0, ob*pool0)
 
 static const u64 mix = 2708237354241864315;
 #define inb(o,l,u) (o>=l&&o<u)
@@ -15,12 +15,12 @@ static const u64 mix = 2708237354241864315;
 #define CP(x) COPY(x,x)
 
 // unchecked allocator -- make sure there's enough memory!
-static void* bump(en v, u64 n) {
+static void* bump(mo v, u64 n) {
   void* x = v->hp;
   return v->hp += n, x; }
 
 // general purpose memory allocator
-void* cells(en v, u64 n) {
+void* cells(mo v, u64 n) {
   return Avail >= n || please(v, n) ? bump(v, n) : 0; }
 
 #define oom_err_msg "out of memory : %d + %d"
@@ -55,7 +55,7 @@ Vm(gc) {
 // t values come from clock(). if t0 < t1 < t2 then
 // u will be >= 1. however, sometimes t1 == t2. in that case
 // u = 1.
-static clock_t copy(en v, u64 len1) {
+static clock_t copy(mo v, u64 len1) {
   ob* pool1;
   clock_t t0, t1 = clock(), t2;
   bind(pool1, malloc(len1 * sizeof(ob)));
@@ -109,7 +109,7 @@ static clock_t copy(en v, u64 len1) {
 // the cost of more memory use under pressure.
 #define growp (allocd > len || vit < 32) // lower bound
 #define shrinkp (allocd < (len>>1) && vit >= 128) // upper bound
-bool please(en v, u64 req) {
+bool please(mo v, u64 req) {
   i64 len = v->len, vit;
   bind(vit, copy(v, len));
   i64 allocd = len - (Avail - req);
@@ -164,7 +164,7 @@ Gc(cpsym) {
   else dst = getsym(sskc(v, &v->syms, cp(v, src->nom, len0, pool0)));
   return src->nom = putsym(dst); }
 
-static ent cpent(en v, ent src, i64 len0, ob *pool0) {
+static ent cpent(mo v, ent src, i64 len0, ob *pool0) {
   bind(src, src);
   ent dst = (ent) bump(v, Width(ent));
   dst->next = cpent(v, src->next, len0, pool0);
@@ -207,7 +207,7 @@ Gc(cpvec) {
   return putvec(dst); }
 
 // functions for pairs and lists
-ob pair(en v, ob a, ob b) {
+ob pair(mo v, ob a, ob b) {
   two w;
   with(a, with(b, w = cells(v, 2)));
   bind(w, w);
@@ -221,28 +221,28 @@ static Inline u64 tbl_load(ob t) {
   return gettbl(t)->len >> gettbl(t)->cap; }
 
 
-static ent tbl_ent(en v, ob u, ob k) {
+static ent tbl_ent(mo v, ob u, ob k) {
   tbl t = gettbl(u);
   ent e = t->tab[tbl_idx(t->cap, hash(v, k))];
   for (; e; e = e->next) if (eql(e->key, k)) return e;
   return NULL; }
 
-typedef u64 hasher(en, ob);
+typedef u64 hasher(mo, ob);
 static hasher hash_sym, hash_str, hash_two, hash_hom, hash_num, hash_vec, hash_nil;
 static hasher *hashers[] = {
   [Nil] = hash_nil, [Hom] = hash_hom, [Two] = hash_two, [Vec] = hash_vec,
   [Str] = hash_str, [Num] = hash_num, [Sym] = hash_sym, [Tbl] = hash_nil };
 
-Inline u64 hash(en v, ob x) { return hashers[Q(x)](v, x); }
+Inline u64 hash(mo v, ob x) { return hashers[Q(x)](v, x); }
 
 static Inline u64 ror64(u64 x, u64 n) { return (x<<(64-n))|(x>>n); }
-static u64 hash_sym(en v, ob y) { return getsym(y)->code; }
-static u64 hash_two(en v, ob w) { return ror64(hash(v, A(w)) * hash(v, B(w)), 32); }
-static u64 hash_hom(en v, ob h) { return hash(v, homnom(v, h)) ^ mix; }
-static u64 hash_num(en v, ob n) { return ror64(mix * n, 16); }
-static u64 hash_vec(en v, ob x) { return ror64(mix * getvec(x)->len, 32); }
-static u64 hash_nil(en v, ob _) { return ror64(mix * Q(nil), 48); }
-static u64 hash_str(en v, ob x) {
+static u64 hash_sym(mo v, ob y) { return getsym(y)->code; }
+static u64 hash_two(mo v, ob w) { return ror64(hash(v, A(w)) * hash(v, B(w)), 32); }
+static u64 hash_hom(mo v, ob h) { return hash(v, homnom(v, h)) ^ mix; }
+static u64 hash_num(mo v, ob n) { return ror64(mix * n, 16); }
+static u64 hash_vec(mo v, ob x) { return ror64(mix * getvec(x)->len, 32); }
+static u64 hash_nil(mo v, ob _) { return ror64(mix * Q(nil), 48); }
+static u64 hash_str(mo v, ob x) {
   str s = getstr(x);
   u64 len = s->len;
   char *us = s->text;
@@ -251,7 +251,7 @@ static u64 hash_str(en v, ob x) {
 
 // shrinking a table never allocates memory, so it's safe
 // to do at any time.
-static void tbl_fit(en v, ob t) {
+static void tbl_fit(mo v, ob t) {
   if (tbl_load(t)) return;
 
   ent e = NULL, f, g;
@@ -274,7 +274,7 @@ static void tbl_fit(en v, ob t) {
     u->tab[i] = e,
     e = f; } }
 
-static ob tbl_del(en v, ob t, ob key) {
+static ob tbl_del(mo v, ob t, ob key) {
   tbl y = gettbl(t);
   ob val = nil;
   i64 b = tbl_idx(y->cap, hash(v, key));
@@ -294,7 +294,7 @@ static ob tbl_del(en v, ob t, ob key) {
 // tbl_grow(vm, tbl, new_size): destructively resize a hash table.
 // new_size words of memory are allocated for the new bucket array.
 // the old table entries are reused to populate the modified table.
-static ob tbl_grow(en v, ob t) {
+static ob tbl_grow(mo v, ob t) {
   ent *tab0, *tab1;
   u64 cap0 = gettbl(t)->cap, cap1 = cap0 + 1;
   with(t, tab1 = cells(v, 1<<cap1));
@@ -311,7 +311,7 @@ static ob tbl_grow(en v, ob t) {
   gettbl(t)->cap = cap1, gettbl(t)->tab = tab1;
   return t; }
 
-ob tbl_set_s(en v, ob t, ob k, ob x) {
+ob tbl_set_s(mo v, ob t, ob k, ob x) {
   u64 i = tbl_idx(gettbl(t)->cap, hash(v, k));
   ent e = tbl_ent(v, t, k);
   if (e) return e->val = x;
@@ -327,41 +327,41 @@ ob tbl_set_s(en v, ob t, ob k, ob x) {
 
   return x; }
 
-ob tbl_set(en v, ob t, ob k, ob x) {
+ob tbl_set(mo v, ob t, ob k, ob x) {
   with(t, x = tbl_set_s(v, t, k, x));
   bind(x, x);
   if (tbl_load(t) > 1) with(x, t = tbl_grow(v, t));
   bind(t, t);
   return x; }
 
-ob tbl_get(en v, ob t, ob k) {
+ob tbl_get(mo v, ob t, ob k) {
   ent e = tbl_ent(v, t, k);
   return e ? e->val : 0; }
 
-ob table(en v) {
+ob table(mo v) {
   tbl t;
   bind(t, cells(v, Width(tbl) + 1));
   ent *b = (ent*)(t+1);
   t->len = t->cap = 0, t->tab = b, *b = NULL;
   return puttbl(t); }
 
-static ob tblkeys_j(en v, ent e, ob l) {
+static ob tblkeys_j(mo v, ent e, ob l) {
   if (!e) return l;
   ob x = e->key;
   with(x, l = tblkeys_j(v, e->next, l));
   bind(l, l);
   return pair(v, x, l); }
 
-static ob tblkeys_i(en v, ob t, i64 i) {
+static ob tblkeys_i(mo v, ob t, i64 i) {
   ob k;
   if (i == 1 << gettbl(t)->cap) return nil;
   with(t, k = tblkeys_i(v, t, i+1));
   bind(k, k);
   return tblkeys_j(v, gettbl(t)->tab[i], k); }
 
-Inline ob tblkeys(en v, ob t) { return tblkeys_i(v, t, 0); }
+Inline ob tblkeys(mo v, ob t) { return tblkeys_i(v, t, 0); }
 
-ob string(en v, const char* c) {
+ob string(mo v, const char* c) {
   i64 bs = 1 + strlen(c);
   str o;
   bind(o, cells(v, Width(str) + b2w(bs)));
@@ -453,14 +453,14 @@ Vm(strmk) {
 // existing code is unsuitable because it dynamically resizes
 // the table and unpredictable memory allocation isn't safe
 // during garbage collection.
-ob interns(en v, const char *s) {
+ob interns(mo v, const char *s) {
   ob _;
   bind(_, string(v, s));
   return intern(v, _); }
 
 
 // FIXME this is too bad
-ob sskc(en v, ob*y, ob x) {
+ob sskc(mo v, ob*y, ob x) {
   sym z;
   if (!nilp(*y)) {
     z = getsym(*y);
@@ -473,7 +473,7 @@ ob sskc(en v, ob*y, ob x) {
   z->l = z->r = nil;
   return *y = putsym(z); }
 
-ob intern(en v, ob x) {
+ob intern(mo v, ob x) {
   if (Avail < Width(sym)) {
     bool o;
     with(x, o = please(v, Width(sym)));

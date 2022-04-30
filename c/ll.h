@@ -1,7 +1,7 @@
 #ifndef _terp_h
 #define _terp_h
 ll gc, type_error, oob_error, ary_error, div_error, yield;
-ob err(en, const char*, ...) NoInline;
+ob err(mo, const char*, ...) NoInline;
 
 #define insts(_)\
  _(tget, 0) _(tset, 0) _(thas, 0) _(tlen, 0) _(arity, 0)\
@@ -47,7 +47,7 @@ insts(ninl)
 #undef ninl
 
 // " the interpreter "
-#define Ll(n,...) NoInline ob n(en v, ob ip, ob*fp, ob*sp, ob*hp, ob xp, ##__VA_ARGS__)
+#define Ll(n,...) NoInline ob n(mo v, ob ip, ob*fp, ob*sp, ob*hp, ob xp, ##__VA_ARGS__)
 #define Vm Ll
 // the arguments to a terp function collectively represent the
 // runtime state, and the  return value is the result of the
