@@ -459,7 +459,7 @@ SNI ob apply(en v, ob f, ob x) {
   h[3].ll = NULL;
   h[4].ll = (vm*) h;
   f = (ob) h, x = tbl_get(v, Top, App);
-  return call(v, f, v->fp, v->sp, v->hp, x); }
+  return call(v, f, (ob*) v->fp, v->sp, v->hp, x); }
 
 // instructions used by the compiler
 Vm(hom_u) {

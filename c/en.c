@@ -34,7 +34,7 @@ en li_ini(void) {
   v->len = 1;
   v->pool = NULL;
   v->mm = NULL;
-  v->fp = v->hp = v->sp = (void*) sizeof (void*);
+  v->fp = (fr) (v->hp = v->sp = (void*) sizeof (void*));
   v->ip = v->xp = v->syms = nil;
   set64(v->glob, nil, NGlobs);
 

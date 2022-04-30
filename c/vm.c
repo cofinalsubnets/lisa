@@ -242,7 +242,7 @@ NoInline ob err(en v, const char *msg, ...) {
     fputs("# in ", stderr);
     show_call(v, ip, fp);
     fputc('\n', stderr); }
-  v->fp = v->sp = v->pool + v->len;
+  v->fp = (fr) (v->sp = v->pool + v->len);
   v->xp = v->ip = nil;
   return 0; }
 

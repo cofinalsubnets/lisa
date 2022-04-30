@@ -37,7 +37,8 @@ enum { Def, Cond, Lamb, Quote, Seq, Splat,
 // most runtime functions take a pointer to this as the
 // first argument.
 typedef struct en {
-  ob ip, xp, *fp, *hp, *sp; // interpreter state
+  fr fp;
+  ob ip, xp, *hp, *sp; // interpreter state
   ob syms, glob[NGlobs], // symbols & globals
      rand, // random state
      t0, len, *pool; // memory state

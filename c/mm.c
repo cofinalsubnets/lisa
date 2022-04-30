@@ -66,7 +66,7 @@ static clock_t copy(en v, u64 len1) {
   i64 shift = pool1 + len1 - top0;
 
   v->sp = sp0 + shift;
-  v->fp = v->fp + shift;
+  v->fp = (fr) ((ob*) v->fp + shift);
   v->len = len1;
   v->pool = v->hp = pool1;
   v->syms = nil;
