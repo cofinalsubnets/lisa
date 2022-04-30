@@ -101,7 +101,6 @@ BWDQ(memn)
 #define FG(x) F(G(x))
 #define GF(x) G(F(x))
 #define GG(x) G(G(x))
-#define mix ((u64)2708237354241864315)
 #define A(o) gettwo(o)->a
 #define B(o) gettwo(o)->b
 #define AA(o) A(A(o))
@@ -113,33 +112,28 @@ BWDQ(memn)
 #define um (v->mm=v->mm->et)
 #define with(y,...) (mm(&(y)),(__VA_ARGS__),um)
 #define Width(t) b2w(sizeof(struct t))
-#define Sob sizeof(ob)
-#define Re return
 
-static Inline enum class Q(ob _) { Re _ & (Sob - 1); }
-static i64 steele_vigna_2021 = 0xaf251af3b0f025b5ll;
-static Inline i64 lcprng(i64 s) { Re (s * steele_vigna_2021 + 1) >> 8; }
-static Inline u64 b2w(u64 b) { Re b / Sob + (b % Sob && 1); }
+#define Q(_) ((_)&(sizeof(ob)-1))
+static Inline i64 lcprng(i64 s) {
+  const i64 steele_vigna_2021 = 0xaf251af3b0f025b5ll;
+  return (s * steele_vigna_2021 + 1) >> 8; }
+static Inline u64 b2w(u64 b) {
+  return b / sizeof(ob) + (b % sizeof(ob) && 1); }
 
-static Inline bool nilp(ob x) { Re x == nil; }
-static Inline const char *tnom(enum class t) {
-  Re (const char*) (tnoms + t); }
+#define nilp(_) ((_)==nil)
+#define tnom(_) ((const char*)(tnoms+(_)))
 
-//num.h
-static Inline bool nump(ob x) { return Q(x) == Num; }
-static Inline i64 getnum(ob x) { return x >> 3; }
-static Inline ob putnum(i64 n) { return (n << 3) + Num; }
-//str.h
-static Inline str getstr(ob x) { return (str) (x - Str); }
-static Inline ob putstr(str s) { return (ob) s + Str; }
-static Inline u1 strp(ob x) { return Q(x) == Str; }
-//hom.h
-static Inline yo F(yo h) { return (yo) h->sh; }
-static Inline ll *G(yo h) { return h->ll; }
-static Inline yo gethom(ob x) { return (yo) x; }
-static Inline ob puthom(yo h) { return (ob) h; }
-static Inline yo button(yo h) { while (G(h)) h = F(h); return h; }
-static Inline u1 homp(ob x) { return Q(x) == Hom; }
+#define nump(_) (Q(_)==Num)
+#define strp(_) (Q(_)==Str)
+#define getnum(_) ((_)>>3)
+#define putnum(_) (((_)<<3)+Num)
+#define getstr(_) ((str)((_)-Str))
+#define putstr(_) ((ob)(_)+Str)
+#define F(_) ((yo)(_)+1)
+#define G(_) (((yo)(_))->ll)
+#define homp(_) (Q(_)==Hom)
+#define puthom(_) ((ob)(_))
+#define gethom(_) ((yo)(_))
 //sym.h
 static Inline sym getsym(ob x) { return (sym) (x - Sym); }
 static Inline ob putsym(u0 *y) { return (ob) y + Sym; }

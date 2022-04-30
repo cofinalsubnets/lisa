@@ -28,9 +28,7 @@ mo ini(void) {
   mo v; ob _;
   bind(v, malloc(sizeof(struct mo)));
 
-  u64 t0 = clock();
-  v->t0 = t0;
-  v->rand = lcprng(t0 * mix);
+  v->rand = lcprng(v->t0 = clock());
   v->len = 1;
   v->pool = NULL;
   v->mm = NULL;

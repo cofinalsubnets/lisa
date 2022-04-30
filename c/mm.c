@@ -8,6 +8,7 @@ typedef ob copier(en, ob, u64, ob*);
 static Inline copier cp;
 #define Gc(n) ob n(en v, ob x, u64 len0, ob*pool0)
 
+static const u64 mix = 2708237354241864315;
 #define inb(o,l,u) (o>=l&&o<u)
 #define fresh(o) inb((ob*)(o),v->pool,v->pool+v->len)
 #define COPY(dst,src) (dst=cp(v,src,len0,pool0))
