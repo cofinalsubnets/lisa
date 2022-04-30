@@ -15,12 +15,12 @@ static const u64 mix = 2708237354241864315;
 #define CP(x) COPY(x,x)
 
 // unchecked allocator -- make sure there's enough memory!
-static u0* bump(en v, u64 n) {
-  u0* x = v->hp;
+static void* bump(en v, u64 n) {
+  void* x = v->hp;
   return v->hp += n, x; }
 
 // general purpose memory allocator
-u0* cells(en v, u64 n) {
+void* cells(en v, u64 n) {
   return Avail >= n || please(v, n) ? bump(v, n) : 0; }
 
 #define oom_err_msg "out of memory : %d + %d"
@@ -84,7 +84,7 @@ static clock_t copy(en v, u64 len1) {
   t1 = t2 - t1;
   return t1 ? (t2 - t0) / t1 : 1; }
 
-// please : li x i64 -> u1
+// please : li x i64 -> bool
 //
 // try to return with at least req words of available memory.
 // return true on success, false otherwise. this function also
@@ -109,7 +109,7 @@ static clock_t copy(en v, u64 len1) {
 // the cost of more memory use under pressure.
 #define growp (allocd > len || vit < 32) // lower bound
 #define shrinkp (allocd < (len>>1) && vit >= 128) // upper bound
-u1 please(en v, u64 req) {
+bool please(en v, u64 req) {
   i64 len = v->len, vit;
   bind(vit, copy(v, len));
   i64 allocd = len - (Avail - req);
@@ -140,12 +140,12 @@ Gc(cphom) {
      dst = bump(v, end - start + 2), j = dst;
   for (yo k = start; k < end;)
     j->ll = k->ll,
-    k++->ll = (vm*) (ob) (j++);
+    k++->ll = (ll*) j++;
   j[0].ll = NULL;
-  j[1].ll = (vm*) dst;
+  j[1].ll = (ll*) dst;
   for (ob u; j-- > dst;
     u = (ob) j->ll,
-    j->ll = (vm*) (!stale(u) ? u : cp(v, u, len0, pool0)));
+    j->ll = (ll*) (!stale(u) ? u : cp(v, u, len0, pool0)));
   return (ob) (dst += src - start); }
 
 Gc(cpstr) {
@@ -214,10 +214,10 @@ ob pair(en v, ob a, ob b) {
   w->a = a, w->b = b;
   return puttwo(w); }
 
-SI i64 tbl_idx(u64 cap, u64 co) {
+static Inline i64 tbl_idx(u64 cap, u64 co) {
   return co & ((1 << cap) - 1); }
 
-SI u64 tbl_load(ob t) {
+static Inline u64 tbl_load(ob t) {
   return gettbl(t)->len >> gettbl(t)->cap; }
 
 
@@ -235,7 +235,7 @@ static hasher *hashers[] = {
 
 Inline u64 hash(en v, ob x) { return hashers[Q(x)](v, x); }
 
-SI u64 ror64(u64 x, u64 n) { return (x<<(64-n))|(x>>n); }
+static Inline u64 ror64(u64 x, u64 n) { return (x<<(64-n))|(x>>n); }
 static u64 hash_sym(en v, ob y) { return getsym(y)->code; }
 static u64 hash_two(en v, ob w) { return ror64(hash(v, A(w)) * hash(v, B(w)), 32); }
 static u64 hash_hom(en v, ob h) { return hash(v, homnom(v, h)) ^ mix; }
@@ -251,7 +251,7 @@ static u64 hash_str(en v, ob x) {
 
 // shrinking a table never allocates memory, so it's safe
 // to do at any time.
-static u0 tbl_fit(en v, ob t) {
+static void tbl_fit(en v, ob t) {
   if (tbl_load(t)) return;
 
   ent e = NULL, f, g;
@@ -475,7 +475,7 @@ ob sskc(en v, ob*y, ob x) {
 
 ob intern(en v, ob x) {
   if (Avail < Width(sym)) {
-    u1 o;
+    bool o;
     with(x, o = please(v, Width(sym)));
     bind(o, o); }
   return sskc(v, &v->syms, x); }

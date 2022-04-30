@@ -62,10 +62,10 @@ Ll(ccc_u) {
   cpy64(t->xs+1, sp, depth);
   yo c = (yo) hp;
   hp += 4;
-  c[0].ll = (vm*) cont;
-  c[1].ll = (vm*) putvec(t);
+  c[0].ll = cont;
+  c[1].ll = (ll*) putvec(t);
   c[2].ll = NULL;
-  c[3].ll = (vm*) c;
+  c[3].ll = (ll*) c;
   *Argv = (ob) c;
   return ApY(ip, nil); }
 
@@ -109,28 +109,28 @@ Ll(vararg) {
 
 // type predicates
 #define Tp(t)\
-  Vm(t##pp) { return ApN(1, (t##p(xp)?N1:nil)); }\
-  Vm(t##p_u) {\
+  Ll(t##pp) { return ApN(1, (t##p(xp)?N1:nil)); }\
+  Ll(t##p_u) {\
     for (ob *xs = Argv, *l = xs + getnum(Argc); xs < l;)\
       if (!t##p(*xs++)) return ApC(ret, nil);\
     return ApC(ret, N1); }
 Tp(num) Tp(hom) Tp(two) Tp(sym) Tp(str) Tp(tbl) Tp(vec) Tp(nil)
 
 // stack manipulation
-Vm(dupl) { Have1(); --sp; sp[0] = sp[1]; return ApN(1, xp); }
+Ll(dupl) { Have1(); --sp; sp[0] = sp[1]; return ApN(1, xp); }
 
-static vm recne;
+static ll recne;
 
 ////
 /// Branch Instructions
 //
 // unconditional jump
-Vm(jump) { return ApY((ob) IP[1].ll, xp); }
+Ll(jump) { return ApY((ob) IP[1].ll, xp); }
 
 // conditional jumps
 //
 // args: test, yes addr, yes val, no addr, no val
-#define Br(nom, test, a, x, b, y) Vm(nom) {\
+#define Br(nom, test, a, x, b, y) Ll(nom) {\
   if (test) return ApY((ob)a(IP),x);\
   else return ApY((ob)b(IP),y); }
 // combined test/branch instructions
@@ -151,14 +151,14 @@ Br(brgteq,  *sp++ >= xp, GF, xp, FF, nil)
 #undef Br
 
 // return from a function
-Vm(ret) {
+Ll(ret) {
   ip = Retp;
   sp = (ob*) ((i64) Argv + Argc - Num);
   fp = (ob*) ((i64)   sp + Subr - Num);
   return ApY(ip, xp); }
 
 // "inner" function call
-Vm(call) {
+Ll(call) {
   Have(Width(fr));
   ob adic = (ob) IP[1].ll;
   i64 off = fp - (ob*) ((i64) sp + adic - Num);
@@ -170,14 +170,14 @@ Vm(call) {
   return ApY(xp, nil); }
 
 // tail call
-Vm(rec) {
+Ll(rec) {
   if (Argc != (ip = (ob) IP[1].ll)) return ApC(recne, xp);
   cpy64(Argv, sp, ip = getnum(ip));
   sp = fp;
   return ApY(xp, nil); }
 
 // tail call with different arity
-static Vm(recne) {
+static Ll(recne) {
  v->xp = Subr;
  v->ip = (yo) Retp; // save return info
  fp = Argv + getnum(Argc - ip);
@@ -189,35 +189,35 @@ static Vm(recne) {
  return ApY(xp, Clos = nil); }
 
 // errors
-Vm(fail) { return Pack(), err(v, "fail"); }
+Ll(fail) { return Pack(), err(v, "fail"); }
 
 #define type_err_msg "wrong type : %s for %s"
-Vm(type_error) {
+Ll(type_error) {
   enum class exp = v->xp, act = Q(xp);
   return Pack(), err(v, type_err_msg, tnom(act), tnom(exp)); }
 
-Vm(oob_error) {
+Ll(oob_error) {
   i64 a = v->xp, b = (i64) v->ip;
   return Pack(), err(v, "oob : %d >= %d", a, b); }
 
 #define arity_err_msg "wrong arity : %d of %d"
-Vm(ary_error) {
+Ll(ary_error) {
   i64 a = getnum(Argc), b = v->xp;
   return Pack(), err(v, arity_err_msg, a, b); }
 
-Vm(div_error) { return Pack(), err(v, "/ 0"); }
+Ll(div_error) { return Pack(), err(v, "/ 0"); }
 
 // type/arity checking
-#define DTc(n, t) Vm(n) {\
+#define DTc(n, t) Ll(n) {\
   if (Q(xp-t)==0) return ApN(1, xp);\
   return v->xp = t, ApC(type_error, xp); }
 DTc(idZ, Num) DTc(idH, Hom) DTc(idT, Tbl) DTc(id2, Two)
-Vm(arity) {
+Ll(arity) {
   ob reqd = (ob) IP[1].ll;
   if (reqd <= Argc) return ApN(2, xp);
   else return v->xp = getnum(reqd), ApC(ary_error, xp); }
 
-SI u0 show_call(en v, yo ip, fr fp) {
+static Inline void show_call(en v, yo ip, fr fp) {
   fputc('(', stderr);
   emit(v, (ob) ip, stderr);
   for (i64 i = 0, argc = getnum(fp->argc); i < argc;)
@@ -253,7 +253,7 @@ NoInline ob err(en v, const char *msg, ...) {
     TypeCheck(x, Num);}\
   return ApC(ret, putnum(xp));}
 
-#define mm_u0(_c,_v,_z,op){\
+#define mm_void(_c,_v,_z,op){\
   ob x,*xs=_v,*l=xs+_c;\
   for(xp=_z;xs<l;xp=xp op getnum(x)){\
     x = *xs++;\
@@ -261,47 +261,47 @@ NoInline ob err(en v, const char *msg, ...) {
     if (x == N0) return ApC(div_error, xp);}\
   return ApC(ret, putnum(xp));}
 
-Vm(sub_u) {
+Ll(sub_u) {
   if (!(xp = getnum(Argc))) return ApC(ret, N0);
   TypeCheck(*Argv, Num);
   if (xp == 1) return ApC(ret, putnum(-getnum(*Argv)));
   mm_u(xp-1,Argv+1,getnum(*Argv),-); }
 
-Vm(sar_u) {
+Ll(sar_u) {
   if (Argc == N0) return ApC(ret, N0);
   TypeCheck(*Argv, Num);
   mm_u(getnum(Argc)-1, Argv+1, getnum(*Argv), >>); }
 
-Vm(sal_u) {
+Ll(sal_u) {
   if (Argc == N0) return ApC(ret, N0);
   TypeCheck(*Argv, Num);
   mm_u(getnum(Argc)-1, Argv+1, getnum(*Argv), <<); }
 
-Vm(dqv) {
+Ll(dqv) {
   if (xp == N0) return ApC(div_error, xp);
   xp = putnum(getnum(*sp++) / getnum(xp));
   return ApN(1, xp); }
 
-Vm(div_u) {
+Ll(div_u) {
   if (!(xp = getnum(Argc))) return ApC(ret, N1);
   TypeCheck(*Argv, Num);
-  mm_u0(xp-1, Argv+1, getnum(*Argv), /); }
+  mm_void(xp-1, Argv+1, getnum(*Argv), /); }
 
-Vm(mod) {
+Ll(mod) {
   if (xp == N0) return ApC(div_error, xp);
   xp = putnum(getnum(*sp++) % getnum(xp));
   return ApN(1, xp); }
 
-Vm(mod_u) {
+Ll(mod_u) {
   if (!(xp = getnum(Argc))) return ApC(ret, N1);
   TypeCheck(*Argv, Num);
-  mm_u0(xp-1, Argv+1, getnum(*Argv), %); }
+  mm_void(xp-1, Argv+1, getnum(*Argv), %); }
 
-Vm(rnd_u) {
+Ll(rnd_u) {
   xp = putnum(v->rand = lcprng(v->rand));
   return ApC(ret, xp); }
 
-#define OP(nom, x, n) Vm(nom) { xp = (x); return ApN(n, xp); }
+#define OP(nom, x, n) Ll(nom) { xp = (x); return ApN(n, xp); }
 #define OP1(nom, x) OP(nom, x, 1)
 OP1(neg, putnum(-getnum(xp)))
 BINOP(add,  xp + *sp++ - Num)
@@ -313,7 +313,7 @@ BINOP(sub,  *sp++ - xp + Num)
 BINOP(sar,  putnum(getnum(*sp++) >> getnum(xp)))
 BINOP(sal,  putnum(getnum(*sp++) << getnum(xp)))
 
-#define UBINOP(nom, dflt, op) Vm(nom##_u) { mm_u(getnum(Argc), Argv, dflt, op); }
+#define UBINOP(nom, dflt, op) Ll(nom##_u) { mm_u(getnum(Argc), Argv, dflt, op); }
 
 UBINOP(add, 0, +)
 UBINOP(bor, 0, |)
@@ -322,16 +322,16 @@ UBINOP(mul, 1, *)
 UBINOP(band, -1, &)
 #include <string.h>
 
-static NoInline u1 eql_(ob a, ob b) { return eql(a, b); }
+static NoInline bool eql_(ob a, ob b) { return eql(a, b); }
 
-static NoInline u1 eql_two(two a, two b) {
+static NoInline bool eql_two(two a, two b) {
   return eql_(a->a, b->a) && eql_(a->b, b->b); }
 
-static NoInline u1 eql_str(str a, str b) {
+static NoInline bool eql_str(str a, str b) {
   return a->len == b->len &&
     strcmp(a->text, b->text) == 0; }
 
-Inline u1 eql(ob a, ob b) {
+Inline bool eql(ob a, ob b) {
   return a == b || (Q(a) == Q(b) &&
     ((twop(a) && eql_two(gettwo(a), gettwo(b))) ||
      (strp(a) && eql_str(getstr(a), getstr(b))))); }
@@ -424,7 +424,7 @@ Vm(lbind) {
     if (x[0].ll == arity && IP[3].ll >= x[1].ll)
       xp = (ob) (x + 2); }
   IP[0].ll = imm;
-  IP[1].ll = (vm*) xp;
+  IP[1].ll = (ll*) xp;
   return ApN(2, xp); }
 
 

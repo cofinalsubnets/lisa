@@ -76,7 +76,7 @@ static Inline ob grow_buffer(mo v, ob s) {
   cpy64(t->text, getstr(s)->text, l);
   return putstr(t); }
 
-SNI ob reloop(mo v, FILE *i, ob x, u64 n, read_loop *loop) {
+static NoInline ob reloop(mo v, FILE *i, ob x, u64 n, read_loop *loop) {
   bind(x, grow_buffer(v, x));
   return loop(v, i, getstr(x), n, 2 * n); }
 
@@ -107,7 +107,7 @@ static ob read_file_loop(mo v, FILE *p, str o, u64 n, u64 lim) {
     default: o->text[n++] = x; }
   return reloop(v, p, putstr(o), lim, read_file_loop); }
 
-SNI ob read_num_base(const char *in, int base) {
+static NoInline ob read_num_base(const char *in, int base) {
   static const char *digits = "0123456789abcdef";
   int c = tolower(*in++);
   if (!c) return nil; // fail to parse empty string
@@ -120,7 +120,7 @@ SNI ob read_num_base(const char *in, int base) {
   } while ((c = tolower(*in++)));
   return putnum(out); }
 
-SNI ob read_num(const char *s) {
+static NoInline ob read_num(const char *s) {
   ob n;
   switch (*s) {
     case '-': return nump(n = read_num(s+1)) ? putnum(-getnum(n)) : n;
@@ -159,26 +159,26 @@ Vm(slurp) {
         v->xp = xp ? xp : nil);
   return ApC(ret, xp); }
 
-typedef u0 writer(mo, ob, FILE*);
+typedef void writer(mo, ob, FILE*);
 static writer nil_out, two_out, num_out, vec_out,
               str_out, sym_out, tbl_out, hom_out;
 writer *writers[] = {
   [Hom] = hom_out, [Num] = num_out, [Tbl] = tbl_out, [Nil] = nil_out,
   [Str] = str_out, [Vec] = vec_out, [Sym] = sym_out, [Two] = two_out, };
 
-static u0 nil_out(mo v, ob x, FILE *o) { fputs("()", o); }
-static u0 num_out(mo v, ob x, FILE *o) {
+static void nil_out(mo v, ob x, FILE *o) { fputs("()", o); }
+static void num_out(mo v, ob x, FILE *o) {
   fprintf(o, "%ld", getnum(x)); }
-static u0 sym_out(mo v, ob x, FILE *o) {
+static void sym_out(mo v, ob x, FILE *o) {
   sym y = getsym(x);
   nilp(y->nom) ? fprintf(o, "#sym@%lx", (long) y) :
                  fputs(getstr(y->nom)->text, o); }
 
-static u0 vec_out(mo v, ob x, FILE *o) {
+static void vec_out(mo v, ob x, FILE *o) {
   vec e = getvec(x);
   fprintf(o, "#vec:%ld", (long) e->len); }
 
-static u0 emhomn(mo v, ob x, FILE *o) {
+static void emhomn(mo v, ob x, FILE *o) {
   fputc('\\', o);
   switch (Q(x)) {
     case Sym: return sym_out(v, x, o);
@@ -186,21 +186,21 @@ static u0 emhomn(mo v, ob x, FILE *o) {
               emhomn(v, B(x), o);
     default: } }
 
-static u0 hom_out(mo v, ob x, FILE *o) {
+static void hom_out(mo v, ob x, FILE *o) {
   emhomn(v, homnom(v, x), o); }
 
-static u0 tbl_out(mo v, ob x, FILE *o) {
+static void tbl_out(mo v, ob x, FILE *o) {
   tbl t = gettbl(x);
   fprintf(o, "#tbl:%ld/%ld", (long)t->len, (long)t->cap); }
 
-static u0 str_out(mo v, ob x, FILE *o) {
+static void str_out(mo v, ob x, FILE *o) {
   str s = getstr(x);
   fputc('"', o);
   for (char *t = s->text; *t; fputc(*t++, o))
     if (*t == '"') fputc('\\', o);
   fputc('"', o); }
 
-static u0 two_out_(mo v, two w, FILE *o) {
+static void two_out_(mo v, two w, FILE *o) {
   twop(w->b) ? (emsep(v, w->a, o, ' '),
                 two_out_(v, gettwo(w->b), o)) :
                emsep(v, w->a, o, ')'); }

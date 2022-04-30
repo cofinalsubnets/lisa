@@ -1,6 +1,6 @@
 #ifndef _terp_h
 #define _terp_h
-vm gc, type_error, oob_error, ary_error, div_error, yield;
+ll gc, type_error, oob_error, ary_error, div_error, yield;
 ob err(en, const char*, ...) NoInline;
 
 #define insts(_)\
@@ -43,7 +43,7 @@ ob err(en, const char*, ...) NoInline;
  _(vecp_u, "vecp") _(symp_u, "symp") _(strp_u, "strp")\
  _(nilp_u, "nilp") _(rnd_u, "rand")
 
-#define ninl(x, _) vm x NoInline;
+#define ninl(x, _) ll x NoInline;
 insts(ninl)
 #undef ninl
 

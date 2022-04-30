@@ -20,17 +20,17 @@ static const char *help =
   "  -i start repl unconditionally\n"
   "  -_ don't bootstrap\n";
 
-static ob scrp(en, const char*), scrr(en, u1, const char**);
-static en init(u1, const char*, char **);
+static ob scrp(mo, const char*), scrr(mo, bool, const char**);
+static mo init(bool, const char*, char **);
 
 // unpack state & jump into thread
-static NoInline ob go(en v) {
+static NoInline ob go(mo v) {
   ob xp, ip, *sp, *hp, *fp;
   Unpack();
   return ApY(ip, xp); }
 
 int main(int argc, char **argv) {
-  for (u1 shell = argc == 1, boot = true;;)
+  for (bool shell = argc == 1, boot = true;;)
     switch (getopt(argc, argv, "hi_")) {
       default: return EXIT_FAILURE;
       case '_': boot = false; continue;
@@ -38,12 +38,12 @@ int main(int argc, char **argv) {
       case 'h': fprintf(stdout, help, *argv); continue;
       case -1:
         if (argc == optind && !shell) return EXIT_SUCCESS;
-        en v = init(shell, boot ? BOOT : NULL,  argv + optind);
+        mo v = init(shell, boot ? BOOT : NULL,  argv + optind);
         return v && go(v) ? EXIT_SUCCESS : EXIT_FAILURE; } }
 
-// init : en u1 string? strings
-static en init(u1 shell, const char *boot, char **paths) {
-  en v;
+// init : mo bool string? strings
+static mo init(bool shell, const char *boot, char **paths) {
+  mo v;
   ob y, x;
   bind(v, ini());
   bind(x, scrr(v, shell, (const char **) paths));
@@ -67,8 +67,8 @@ static Vm(repl) {
 
 // functions to compile scripts into a program
 //
-// scr_ : two en stream
-static ob scr_(en v, FILE *in) {
+// scr_ : two mo stream
+static ob scr_(mo v, FILE *in) {
   ob y, x = parse(v, in);
   if (!x) return feof(in) ? nil : 0;
   bind(x, pair(v, x, nil));
@@ -79,8 +79,8 @@ static ob scr_(en v, FILE *in) {
   bind(y, y);
   return pair(v, x, y); }
 
-// scrp : yo en string
-static ob scrp(en v, const char *path) {
+// scrp : yo mo string
+static ob scrp(mo v, const char *path) {
   FILE *in = fopen(path, "r");
   if (!in) return err(v, "%s : %s", path, strerror(errno));
   ob x = scr_(v, in);
@@ -89,16 +89,16 @@ static ob scrp(en v, const char *path) {
   bind(x, pair(v, Se, x));
   return analyze(v, x); }
 
-// scrr : yo en bool strings
-static ob scrr(en v, u1 shell, const char **paths) {
+// scrr : yo mo bool strings
+static ob scrr(mo v, bool shell, const char **paths) {
   yo h;
   ob x, y;
   const char *path = *paths;
   if (!path) {
     bind(h, cells(v, 3));
-    h[0].ll = (vm*) (shell ? repl : fin_ok);
+    h[0].ll = shell ? repl : fin_ok;
     h[1].ll = NULL;
-    h[2].ll = (vm*) h;
+    h[2].ll = (ll*) h;
     return (ob) h; }
   bind(y, scrr(v, shell, paths+1));
   with(y, x = scrp(v, path));

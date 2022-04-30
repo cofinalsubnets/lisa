@@ -8,14 +8,10 @@
 
 // thanks !!
 
-typedef void u0;
-typedef bool u1;
-
 #define BWDQ(_) _(8) _(16) _(32) _(64)
 #define I(n) typedef int##n##_t i##n; typedef uint##n##_t u##n;
 BWDQ(I)
 #undef I
-typedef i8 i1;
 typedef i64 ob;
 
 
@@ -52,7 +48,6 @@ struct mo {
 // this is the type of interpreter functions
 // FIXME en yo fr ob* ob* ob
 typedef ob ll(mo, ob, ob*, ob*, ob*, ob);
-typedef ll vm;
 struct yo { ll *ll, *sh[]; }; // puLLback / puSHout
 typedef struct str { u64 len; char text[]; } *str;
 typedef struct sym { ob nom, code, l, r; } *sym;
@@ -82,16 +77,14 @@ bool eql(ob, ob), please(mo, u64);
 
 #define Inline inline __attribute__((always_inline))
 #define NoInline __attribute__((noinline))
-#define SI static Inline
-#define SNI static NoInline
 #define memn(n)\
-  static Inline u0 set##n(u0*_d,u##n i,u64 l) {\
+  static Inline void set##n(void*_d,u##n i,u64 l) {\
     for(u##n*d=_d;l--;*d++=i); }\
-  static Inline u0 cpy##n(u0*_d,const u0*_s, u64 l) {\
+  static Inline void cpy##n(void*_d,const void*_s, u64 l) {\
     u##n*d=_d; const u##n*s=_s; while (l--) *d++=*s++; }\
-  static Inline u0 cpy##n##r(u0*_d,const u0*_s, u64 l) {\
+  static Inline void cpy##n##r(void*_d,const void*_s, u64 l) {\
     u##n*d=_d; const u##n*s=_s; while (l--) d[l]=s[l]; }\
-  static Inline u0 mov##n(u0*_d,const u0*_s, u64 l) {\
+  static Inline void mov##n(void*_d,const void*_s, u64 l) {\
     if (_d<_s) cpy##n(_d, _s, l);\
     else if (_d>_s) cpy##n##r(_d, _s, l); }
 BWDQ(memn)
