@@ -74,20 +74,22 @@ static u1 pushss(en v, i64 i, va_list xs) {
 
 static u1 pushs(en v, ...) {
   va_list xs; u1 _;
-  va_start(xs, v), _ = pushss(v, 0, xs), va_end(xs);
+  va_start(xs, v);
+  _ = pushss(v, 0, xs);
+  va_end(xs);
   return _; }
 
 static vec tuplr(en v, i64 i, va_list xs) {
- vec t;
- ob x = va_arg(xs, ob);
- if (!x) {
-   bind(t, cells(v, Width(vec) + i));
-   t->len = i; }
- else {
-   with(x, t = tuplr(v, i+1, xs));
-   bind(t, t);
-   t->xs[i] = x; }
- return t; }
+  vec t;
+  ob x = va_arg(xs, ob);
+  if (!x) {
+    bind(t, cells(v, Width(vec) + i));
+    t->len = i; }
+  else {
+    with(x, t = tuplr(v, i+1, xs));
+    bind(t, t);
+    t->xs[i] = x; }
+  return t; }
 
 static ob tupl(en v, ...) {
  va_list xs; vec t;
@@ -98,15 +100,9 @@ static ob tupl(en v, ...) {
 // emit code backwards like cons
 SI ob em1(vm *i, ob k) {
   return k -= sizeof(void*), H(k)->ll = (vm*) i, k; }
-
-SI ob em2(vm *i, ob j, ob k) {
-  return em1(i, em1((vm*)j, k)); }
-
-SI yo ee1(vm *i, yo k) {
-  return (--k)->ll = (vm*) i, k; }
-
-SI yo ee2(vm *i, ob x, yo k) {
-  return ee1(i, ee1((vm*) x, k)); }
+SI ob em2(vm *i, ob j, ob k) { return em1(i, em1((vm*)j, k)); }
+SI yo ee1(vm *i, yo k) { return (--k)->ll = (vm*) i, k; }
+SI yo ee2(vm *i, ob x, yo k) { return ee1(i, ee1((vm*) x, k)); }
 
 static yo imx(en v, ob *e, i64 m, vm *i, ob x) {
   bind(x, Push(Put(i), x));
