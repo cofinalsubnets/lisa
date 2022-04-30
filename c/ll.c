@@ -114,7 +114,7 @@ Ll(vararg) {
     for (ob *xs = Argv, *l = xs + getnum(Argc); xs < l;)\
       if (!t##p(*xs++)) return ApC(ret, nil);\
     return ApC(ret, N1); }
-Tp(num) Tp(hom) Tp(two) Tp(sym) Tp(str) Tp(tbl) Tp(vec) Tp(nil)
+Tp(num) Tp(hom) Tp(two) Tp(sym) Tp(str) Tp(tbl) Tp(nil)
 
 // stack manipulation
 Ll(dupl) { Have1(); --sp; sp[0] = sp[1]; return ApN(1, xp); }

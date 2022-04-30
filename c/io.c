@@ -159,71 +159,46 @@ Vm(slurp) {
         v->xp = xp ? xp : nil);
   return ApC(ret, xp); }
 
-typedef void
-  writer(mo, ob, FILE*);
-
-static writer
-  nil_out, two_out,
-  num_out, vec_out,
-  str_out, sym_out,
-  tbl_out, hom_out;
-
-writer *writers[] = {
-  [Hom] = hom_out, [Num] = num_out,
-  [Tbl] = tbl_out, [Nil] = nil_out,
-  [Str] = str_out, [Vec] = vec_out,
-  [Sym] = sym_out, [Two] = two_out, };
-
-static void nil_out(mo v, ob x, FILE *o) { fputs("()", o); }
-static void num_out(mo v, ob x, FILE *o) {
-  fprintf(o, "%ld", getnum(x)); }
-static void sym_out(mo v, ob x, FILE *o) {
-  sym y = getsym(x);
-  nilp(y->nom) ? fprintf(o, "#sym@%lx", (long) y) :
-                 fputs(getstr(y->nom)->text, o); }
-
-static void vec_out(mo v, ob x, FILE *o) {
-  vec e = getvec(x);
-  fprintf(o, "#vec:%ld", (long) e->len); }
+typedef void writer(mo, ob, FILE*);
 
 static void emhomn(mo v, ob x, FILE *o) {
   fputc('\\', o);
   switch (Q(x)) {
-    case Sym: return sym_out(v, x, o);
-    case Two: if (symp(A(x))) sym_out(v, A(x), o);
+    case Sym: return emit(v, x, o);
+    case Two: if (symp(A(x))) emit(v, A(x), o);
               emhomn(v, B(x), o);
     default: } }
 
-static void hom_out(mo v, ob x, FILE *o) {
-  emhomn(v, homnom(v, x), o); }
-
-static void tbl_out(mo v, ob x, FILE *o) {
-  tbl t = gettbl(x);
-  fprintf(o, "#tbl:%ld/%ld", (long)t->len, (long)t->cap); }
-
-static void str_out(mo v, ob x, FILE *o) {
-  str s = getstr(x);
-  fputc('"', o);
-  for (char *t = s->text; *t; fputc(*t++, o))
-    if (*t == '"') fputc('\\', o);
-  fputc('"', o); }
-
-static void two_out_(mo v, two w, FILE *o) {
-  if (!twop(w->b)) emsep(v, w->a, o, ')');
-  else { emsep(v, w->a, o, ' ');
-         two_out_(v, gettwo(w->b), o); } }
-
-static Inline bool is_quotation(mo v, two w) {
-  return w->a == Qt && twop(w->b) && nilp(B(w->b)); }
-
-static void two_out(mo v, ob x, FILE *o) {
-  if (is_quotation(v, gettwo(x))) {
-    fputc('\'', o);
-    emit(v, A(B(x)), o); }
-  else {
-    fputc('(', o);
-    two_out_(v, gettwo(x), o); } }
-
+void emit(st v, ob x, FILE *o) {
+  enum class q = Q(x);
+  switch (q) {
+    case Two: {
+      bool is_quotation = A(x) == Qt && twop(B(x)) && nilp(BB(x));
+      if (is_quotation) return
+        fputc('\'', o),
+        emit(v, A(B(x)), o);
+      for (fputc('(', o);; x = B(x)) {
+        emit(v, A(x), o);
+        if (!twop(B(x))) break;
+        fputc(' ', o); }
+      return (void) fputc(')', o); }
+    case Str: {
+      str s = getstr(x);
+      fputc('"', o);
+      for (char *t = s->text; *t; fputc(*t++, o))
+        if (*t == '"') fputc('\\', o);
+      return (void) fputc('"', o); }
+    case Tbl: {
+      tbl t = gettbl(x);
+      return (void) fprintf(o, "#tbl:%ld/%ld", t->len, t->cap); }
+    case Hom: return emhomn(v, homnom(v, x), o);
+    case Sym: {
+      sym y = getsym(x);
+      if (nilp(y->nom)) fprintf(o, "#sym@%lx", (long) y);
+      else fputs(getstr(y->nom)->text, o);
+      return; }
+    case Num: fprintf(o, "%ld", getnum(x)); return;
+    default: fputs("()", o); } }
 
 // print to console
 Ll(em_u) {

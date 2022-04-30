@@ -18,7 +18,7 @@
 
 // " compilation environments "
 typedef struct { ob arg, loc, clo, par, nom, sig; } *cenv;
-#define Ce(x) ((cenv)(getvec(x)->xs))
+#define Ce(x) ((cenv)(x))
 // the current lexical environment is passed to compiler
 // functions as a pointer to an object, either a tuple with a
 // structure specified below, or nil for toplevel. it's a
@@ -64,6 +64,14 @@ static ob snoc(mo v, ob l, ob x) {
   bind(x, x);
   return pair(v, A(l), x); }
 
+static yo ini_yo(mo v, u64 n) {
+  yo a;
+  bind(a, cells(v, n + 2));
+  a[n].ll = NULL;
+  a[n+1].ll = (ll*) a;
+  set64((ob*) a, nil, n);
+  return a + n; }
+
 static bool pushss(mo v, i64 i, va_list xs) {
   bool _;
   ob x = va_arg(xs, ob);
@@ -74,35 +82,34 @@ static bool pushss(mo v, i64 i, va_list xs) {
   return _; }
 
 static bool pushs(mo v, ...) {
-  va_list xs; bool _;
+  va_list xs;
   va_start(xs, v);
-  _ = pushss(v, 0, xs);
+  bool _ = pushss(v, 0, xs);
   va_end(xs);
   return _; }
 
-static vec tuplr(mo v, i64 i, va_list xs) {
-  vec t;
-  ob x = va_arg(xs, ob);
-  if (!x) {
-    bind(t, cells(v, Width(vec) + i));
-    t->len = i; }
-  else {
-    with(x, t = tuplr(v, i+1, xs));
-    bind(t, t);
-    t->xs[i] = x; }
-  return t; }
-
-static ob tupl(mo v, ...) {
- va_list xs; vec t;
- va_start(xs, v), t = tuplr(v, 0, xs), va_end(xs);
- bind(t, t);
- return putvec(t); }
 
 // emit code backwards like cons
 static Inline yo em1(ll *i, yo k) { return (--k)->ll = i, k; }
 static Inline yo em2(ll *i, ob j, yo k) { return em1(i, em1((ll*)j, k)); }
 static Inline yo ee1(ll *i, yo k) { return (--k)->ll = (ll*) i, k; }
 static Inline yo ee2(ll *i, ob x, yo k) { return ee1(i, ee1((ll*) x, k)); }
+
+static yo tuplr(st v, u64 i, va_list xs) {
+  ob x = va_arg(xs, ob);
+  if (!x) return ini_yo(v, i);
+  yo k;
+  with(x, k = tuplr(v, i+1, xs));
+  bind(k, k);
+  return ee1((ll*) x, k); }
+
+static ob tupl(mo v, ...) {
+  yo t;
+  va_list xs;
+  va_start(xs, v);
+  t = tuplr(v, 0, xs);
+  va_end(xs);
+  return (ob) t; }
 
 static yo imx(mo v, ob *e, i64 m, ll *i, ob x) {
   bind(x, Push(Put(i), x));
@@ -425,17 +432,9 @@ CO(em_i_d) {
   bind(k, k);
   return ee2(i, x, k); }
 
-static yo hini(mo v, u64 n) {
-  yo a;
-  bind(a, cells(v, n + 2));
-  a[n].ll = NULL;
-  a[n+1].ll = (ll*) a;
-  set64((ob*) a, nil, n);
-  return a + n; }
-
 CO(mk_yo) {
   yo k;
-  bind(k, hini(v, m+1));
+  bind(k, ini_yo(v, m+1));
   return ee1((ll*)(e ? name(*e) : nil), k); }
 
 static ob apply(mo, ob, ob) NoInline;

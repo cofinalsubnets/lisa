@@ -31,18 +31,18 @@ enum { Def, Cond, Lamb, Quote, Seq, Splat,
        Topl, Macs, Eval, Apply, NGlobs };
 
 typedef struct yo *yo; // よ // embed
-typedef struct mo *mo; // state // time order
-typedef ob ll(mo, ob, ob*, ob*, ob*, ob); // FIXME mo yo ob ob* ob* fr
+typedef struct st *st, *mo; // state // time order
+typedef ob ll(st, ob, ob*, ob*, ob*, ob); // FIXME st yo ob ob* ob* fr
 struct yo { ll *ll, *sh[]; }; // puLLback / puSHout
-struct mo {
+struct st {
   yo ip;
   fr fp;
-  ob *hp, *sp, xp; // interpreter state
-  ob syms, glob[NGlobs], // symbols & globals
+  ob *hp, *sp, xp, // interpreter state
+     syms,
+     glob[NGlobs],
      rand, // random state
      t0, len, *pool; // memory state
-  mm mm; // gc protection list
-};
+  mm mm; }; // gc protection list
 
 typedef struct str { u64 len; char text[]; } *str;
 typedef struct sym { ob nom, code, l, r; } *sym;
@@ -53,19 +53,19 @@ typedef struct two { ob a, b; } *two;
 
 // a packed array of 4-byte strings.
 extern const uint32_t *tnoms;
-mo ini(void);
-u64 hash(mo, ob);
-ob eval(mo, ob), homnom(mo, ob),
-   analyze(mo, ob), sequence(mo, ob, ob),
-   string(mo, const char*), intern(mo, ob),
-   interns(mo, const char*), sskc(mo, ob*, ob),
-   tblkeys(mo, ob), table(mo), tbl_set(mo, ob, ob, ob),
-   tbl_set_s(mo, ob, ob, ob), tbl_get(mo, ob, ob),
-   pair(mo, ob, ob),
-   parse(mo, FILE*),
-   read_path(mo, const char*), read_file(mo, FILE*);
-void fin(mo), *cells(mo, u64);
-bool eql(ob, ob), please(mo, u64);
+st ini(void);
+u64 hash(st, ob);
+ob eval(st, ob), homnom(st, ob),
+   analyze(st, ob), sequence(st, ob, ob),
+   string(st, const char*), intern(st, ob),
+   interns(st, const char*), sskc(st, ob*, ob),
+   tblkeys(st, ob), table(st), tbl_set(st, ob, ob, ob),
+   tbl_set_s(st, ob, ob, ob), tbl_get(st, ob, ob),
+   pair(st, ob, ob),
+   parse(st, FILE*),
+   read_path(st, const char*), read_file(st, FILE*);
+void fin(st), *cells(st, u64), emit(st, ob, FILE*);
+bool eql(ob, ob), please(st, u64);
 
 #define nil (~(ob)0)
 #define bind(v, x) if(!((v)=(x)))return 0
@@ -121,7 +121,6 @@ BWDQ(memn)
 #define putsym(_) ((ob)(_)+Sym)
 #define symp(_) (Q(_)==Sym)
 #define tblp(_) (Q(_)==Tbl)
-#define vecp(_) (Q(_)==Vec)
 #define gettbl(_) ((tbl)((_)-Tbl))
 #define puttbl(_) ((ob)(_)+Tbl)
 #define getvec(_) ((vec)((_)-Vec))
@@ -129,8 +128,6 @@ BWDQ(memn)
 #define twop(_) (Q(_)==Two)
 #define gettwo(_) ((two)((_)-Two))
 #define puttwo(_) ((ob)(_)+Two)
-
-extern void (*writers[])(mo, ob, FILE*);
 
 static Inline yo button(yo h) {
   while (G(h)) h = F(h);
@@ -141,12 +138,8 @@ static Inline u64 llen(ob l) {
   while (twop(l)) l = B(l), i++;
   return i; }
 
-static Inline void emit(mo v, ob x, FILE *o) {
-  writers[Q(x)](v, x, o); }
 
-static Inline void emsep(mo v, ob x, FILE *o, char s) {
-  emit(v, x, o);
-  fputc(s, o); }
+#define emsep(v,x,o,s) ((void)(emit(v,x,o),fputc(s,o)))
 
 static Inline ob lcprng(ob s) {
   const ob steele_vigna_2021 = 0xaf251af3b0f025b5;

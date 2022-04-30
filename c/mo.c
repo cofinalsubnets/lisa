@@ -3,12 +3,12 @@
 #include <time.h>
 
 // initialization helpers
-static NoInline bool inst(mo v, const char *a, ll *b) {
+static NoInline bool inst(st v, const char *a, ll *b) {
   ob z;
   bind(z, interns(v, a));
   return !!tbl_set(v, Top, z, putnum((i64) b)); }
 
-static NoInline bool prim(mo v, const char *a, ll *i) {
+static NoInline bool prim(st v, const char *a, ll *i) {
   ob nom;
   yo prim;
   bind(nom, pair(v, interns(v, a), nil));
@@ -21,12 +21,13 @@ static NoInline bool prim(mo v, const char *a, ll *i) {
   return !!tbl_set(v, Top, A(nom), (ob) prim); }
 
 // lips destructor
-void fin(mo v) { if (v) free(v->pool), free(v); }
+void fin(st v) { if (v) free(v->pool), free(v); }
 
 // lips constructor
-mo ini(void) {
-  mo v; ob _;
-  bind(v, malloc(sizeof(struct mo)));
+st ini(void) {
+  st v;
+  ob _;
+  bind(v, malloc(sizeof(struct st)));
 
   v->rand = lcprng(v->t0 = clock());
   v->len = 1;
