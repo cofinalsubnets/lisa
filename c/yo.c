@@ -5,9 +5,9 @@
 /// bootstrap thread compiler
 //
 // passes continuations by pushing function pointers
-// onto the main stack with Push and calling them with Ccc
-#define Push(...) pushs(v,__VA_ARGS__,NULL)
-#define Ccc(m) ((c1*)getnum(*v->sp++))(v,e,m)
+// onto the main stack with Push and calling them with Pull
+#define Push(...) pushs(v, __VA_ARGS__, (ob) 0)
+#define Pull(m) ((c1*)getnum(*v->sp++))(v,e,m)
 // also uses Xp and Ip as stacks for storing code entry points
 // when generating conditionals.
 //
@@ -35,9 +35,9 @@ typedef struct { ob arg, loc, clo, par, nom, sig; } *cenv;
 // then if f takes a fixed number of arguments the arity
 // signature is n; otherwise it's -n-1.
 
-typedef yo c1(en, ob*, u64), c2(en, ob*, u64, ob);
 static u1 scan(en, ob*, ob);
 static ob yo_yo_clo(en, ob*, ob, ob), ltu(en, ob*, ob, ob);
+typedef yo c1(en, ob*, u64), c2(en, ob*, u64, ob);
 static c1 xpn_yo_, let_yo_bind, em_i, em_i_d, mk_yo;
 static c2 xpn_yo, var_yo, form_yo, im_yo;
 
@@ -47,7 +47,8 @@ enum { Here, Loc, Arg, Clo, Wait };
 
 // helper functions for lists
 static i64 lidx(ob l, ob x) {
-  for (i64 i = 0; twop(l); l = B(l), i++) if (x == A(l)) return i;
+  for (i64 i = 0; twop(l); l = B(l), i++)
+    if (x == A(l)) return i;
   return -1; }
 
 static ob linitp(en v, ob x, ob* d) {
@@ -98,9 +99,8 @@ static ob tupl(en v, ...) {
  return putvec(t); }
 
 // emit code backwards like cons
-SI ob em1(vm *i, ob k) {
-  return k -= sizeof(void*), gethom(k)->ll = (vm*) i, k; }
-SI ob em2(vm *i, ob j, ob k) { return em1(i, em1((vm*)j, k)); }
+SI yo em1(vm *i, yo k) { return (--k)->ll = i, k; }
+SI yo em2(vm *i, ob j, yo k) { return em1(i, em1((vm*)j, k)); }
 SI yo ee1(vm *i, yo k) { return (--k)->ll = (vm*) i, k; }
 SI yo ee2(vm *i, ob x, yo k) { return ee1(i, ee1((vm*) x, k)); }
 
@@ -162,12 +162,12 @@ SI ob comp_body(en v, ob*e, ob x) {
                Put(em_i), Put(ret),
                Put(mk_yo)));
   scan(v, e, v->sp[1]);
-  bind(x, (ob) Ccc(4)); // 4 = 2 + 2
+  bind(x, (ob) Pull(4)); // 4 = 2 + 2
   i64 i = llen(loc(*e));
-  if (i) x = em2(locals, putnum(i), x);
+  if (i) x = (ob) em2(locals, putnum(i), (yo) x);
   i = getnum(asig(*e));
-  if (i > 0) x = em2(arity, putnum(i), x);
-  else if (i < 0) x = em2(vararg, putnum(-i-1), x);
+  if (i > 0) x = (ob) em2(arity, putnum(i), (yo) x);
+  else if (i < 0) x = (ob) em2(vararg, putnum(-i-1), (yo) x);
   button(gethom(x))[1].ll = (vm*) x;
   return twop(clo(*e)) ? pair(v, clo(*e), x) : x; }
 
@@ -201,14 +201,14 @@ SI ob yo_yo_clo(en v, ob*e, ob arg, ob seq) {
       Put(em_i), Put(push)));
     arg = B(arg); }
 
-  Bind(arg, (ob) Ccc(0));
+  Bind(arg, (ob) Pull(0));
   return um, um, pair(v, seq, arg); fail:
   return um, um, 0; }
 
 CO(yo_yo, ob x) {
  vm* j = imm;
  ob k, nom = *v->sp == Put(let_yo_bind) ? v->sp[1] : nil;
- with(nom, with(x, k = (ob) Ccc(m+2)));
+ with(nom, with(x, k = (ob) Pull(m+2)));
  bind(k, k);
  mm(&k);
  if (twop(x = ltu(v, e, nom, x)))
@@ -253,56 +253,53 @@ CO(let_yo, ob x) {
     bind(x, def_sug(v, x));
     return xpn_yo(v, e, m, x); }
   bind(x, let_yo_r(v, e, B(x)));
-  return Ccc(m); }
+  return Pull(m); }
 
 // the following functions are "post" or "pre"
 // the antecedent/consequent in the sense of
 // return order, ie. "pre_con" runs immediately
 // before the consequent code is generated.
-#define S1 v->xp
-#define S2 v->ip
 
 // before generating anything, store the
 // exit address in stack 2
 CO(if_yo_pre) {
- ob x;
- bind(x, (ob) Ccc(m));
- bind(x, pair(v, x, S2));
- return (yo) A(S2 = x); }
+  ob x;
+  bind(x, (ob) Pull(m));
+  bind(x, pair(v, x, v->ip));
+  v->ip = x;
+  return (yo) A(x); }
 
 // before generating a branch emit a jump to
 // the top of stack 2
 CO(if_yo_pre_con) {
   yo x, k;
-  bind(x, Ccc(m + 2));
-  k = (yo) A(S2);
+  bind(x, Pull(m + 2));
+  k = (yo) A(v->ip);
   return k->ll == (vm*) ret ? ee1(ret, x) : ee2(jump, (ob) k, x); }
 
 // after generating a branch store its address
 // in stack 1
 CO(if_yo_post_con) {
- ob x;
- bind(x, (ob) Ccc(m));
- bind(x, pair(v, x, S1));
- return (yo) A(S1 = x); }
+  ob x;
+  bind(x, (ob) Pull(m));
+  bind(x, pair(v, x, v->xp));
+  v->xp = x;
+  return (yo) A(x); }
 
 // before generating an antecedent emit a branch to
 // the top of stack 1
 CO(if_yo_pre_ant) {
- yo x;
- bind(x, Ccc(m+2));
- x = ee2(branch, A(S1), x);
- S1 = B(S1);
- return x; }
+  yo x;
+  bind(x, Pull(m+2));
+  x = ee2(branch, A(v->xp), x);
+  v->xp = B(v->xp);
+  return x; }
 
 static u1 if_yo_loop(en v, ob*e, ob x) {
   u1 _;
-
   if (!twop(x)) bind(x, pair(v, nil, nil));
-
   if (!twop(B(x)))
     return Push(Put(xpn_yo_), A(x), Put(if_yo_pre_con));
-
   with(x,
     _ = Push(
       Put(if_yo_post_con),
@@ -321,14 +318,14 @@ CO(if_yo, ob x) {
   bind(_, _);
   bind(_, if_yo_loop(v, e, B(x)));
   yo k;
-  bind(k, Ccc(m));
-  S2 = B(S2);
+  bind(k, Pull(m));
+  v->ip = B(v->ip);
   return k; }
 
 CO(em_call) {
   ob a = *v->sp++;
   yo k;
-  bind(k, Ccc(m + 2));
+  bind(k, Pull(m + 2));
   return ee2(k->ll == (vm*) ret ? rec : call, a, k); }
 
 static ob lookup_mod(en v, ob x) {
@@ -353,7 +350,7 @@ CO(var_yo, ob x) {
     case Here: return im_yo(v, e, m, B(q));
     case Wait:
       bind(x, pair(v, B(q), x));
-      with(x, y = (ob) Ccc(m+2));
+      with(x, y = (ob) Pull(m+2));
       bind(y, y);
       with(y, x = pair(v, putnum(sizeof(ob)), x));
       bind(x, x);
@@ -389,7 +386,7 @@ CO(ap_yo, ob fun, ob args) {
       Put(em_i), Put(push)));
     args = B(args); }
 
-  return um, Ccc(m); fail:
+  return um, Pull(m); fail:
   return um, NULL; }
 
 static u1 seq_yo_loop(en v, ob*e, ob x) {
@@ -408,7 +405,7 @@ CO(form_yo, ob x) {
   if (z == Se) {
     if (!twop(x = B(x))) bind(x, pair(v, x, nil));
     bind(x, seq_yo_loop(v, e, x));
-    return Ccc(m); }
+    return Pull(m); }
   if (z == Qt) {
     x = twop(x = B(x)) ? A(x) : x;
     return im_yo(v, e, m, x); }
@@ -417,14 +414,14 @@ CO(form_yo, ob x) {
 CO(em_i) {
   vm* i = (vm*) getnum(*v->sp++);
   yo k;
-  bind(k, Ccc(m+1));
+  bind(k, Pull(m+1));
   return ee1(i, k); }
 
 CO(em_i_d) {
   vm* i = (vm*) getnum(*v->sp++);
   ob x = *v->sp++;
   yo k;
-  with(x, k = Ccc(m+2));
+  with(x, k = Pull(m+2));
   bind(k, k);
   return ee2(i, x, k); }
 
@@ -453,13 +450,13 @@ SNI ob apply(en v, ob f, ob x) {
   Push(f, x);
   yo h;
   bind(h, cells(v, 5));
-  h[0].ll = (vm*) call;
+  h[0].ll = call;
   h[1].ll = (vm*) putnum(2);
-  h[2].ll = (vm*) yield;
+  h[2].ll = yield;
   h[3].ll = NULL;
   h[4].ll = (vm*) h;
-  f = (ob) h, x = tbl_get(v, Top, App);
-  return call(v, f, (ob*) v->fp, v->sp, v->hp, x); }
+  x = tbl_get(v, Top, App);
+  return call(v, (ob) h, (ob*) v->fp, v->sp, v->hp, x); }
 
 // instructions used by the compiler
 Vm(hom_u) {
