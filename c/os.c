@@ -1,5 +1,5 @@
 #include "lips.h"
-#include "vm.h"
+#include "ll.h"
 #include <time.h>
 Vm(exit_u) { exit(getnum(Argc) ? getnum(*Argv) : EXIT_SUCCESS); }
 Vm(sys_u) { Arity(1);

@@ -1,5 +1,5 @@
 #include "lips.h"
-#include "vm.h"
+#include "ll.h"
 
 ////
 /// bootstrap thread compiler

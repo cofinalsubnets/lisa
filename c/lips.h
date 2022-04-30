@@ -50,8 +50,9 @@ typedef struct en {
 
 // this is the type of interpreter functions
 // FIXME en yo fr ob* ob* ob
-typedef ob vm(en, ob, ob*, ob*, ob*, ob);
-struct yo { vm *ll, *sh[]; }; // puLLback / puSHout
+typedef ob ll(en, ob, ob*, ob*, ob*, ob);
+typedef ll vm;
+struct yo { ll *ll, *sh[]; }; // puLLback / puSHout
 typedef struct str { u64 len; char text[]; } *str;
 typedef struct sym { ob nom, code, l, r; } *sym;
 typedef struct ent { ob key, val; struct ent *next; } *ent; // tables
