@@ -468,27 +468,34 @@ Vm(hom_u) {
   yo h = (yo) hp;
   hp += len;
   set64((ob*) h, nil, len);
-  h[len-1].ll = (vm*) h;
+  h[len-1].ll = (ll*) h;
   h[len-2].ll = NULL;
-  Go(ret, (ob) (h+len-2)); }
+  return ApC(ret, (ob) (h+len-2)); }
 
 Vm(hfin_u) {
   Arity(1);
   ob a = *Argv;
-  Tc(a, Hom);
-  button(gethom(a))[1].ll = (vm*) a;
-  Go(ret, a); }
+  TypeCheck(a, Hom);
+  button(gethom(a))[1].ll = (ll*) a;
+  return ApC(ret, a); }
 
-Vm(emx) { yo h = (yo) *sp++ - 1; h->ll = (vm*) xp;    Ap(ip+sizeof(void*), (ob) h); }
-Vm(emi) { yo h = (yo) *sp++ - 1; h->ll = (vm*) getnum(xp); Ap(ip+sizeof(void*), (ob) h); }
+Vm(emx) {
+  yo h = (yo) *sp++ - 1;
+  h->ll = (ll*) xp;
+  return ApN(1, (ob) h); }
+
+Vm(emi) {
+  yo h = (yo) *sp++ - 1;
+  h->ll = (ll*) getnum(xp);
+  return ApN(1, (ob) h); }
 
 Vm(emx_u) {
  Arity(2);
  ob h = Argv[1];
  CheckType(h, Hom);
- h -= sizeof(void*);
- gethom(h)->ll = (vm*) Argv[0];
- Go(ret, h); }
+ h -= sizeof(yo);
+ gethom(h)->ll = (ll*) Argv[0];
+ return ApC(ret, h); }
 
 Vm(emi_u) {
  Ary(2);
@@ -497,46 +504,52 @@ Vm(emi_u) {
  Tc(h, Hom);
  h -= sizeof(void*);
  gethom(h)->ll = (vm*) getnum(Argv[0]);
- Go(ret, h); }
+ return ApC(ret, h); }
 
 Vm(hgeti_u) {
   Arity(1);
   TypeCheck(*Argv, Hom);
-  Go(ret, Put(gethom(*Argv)->ll)); }
+  return ApC(ret, Put(gethom(*Argv)->ll)); }
+
 Vm(hgetx_u) {
   Arity(1);
   TypeCheck(*Argv, Hom);
-  Go(ret, (ob) gethom(*Argv)->ll); }
+  return ApC(ret, (ob) gethom(*Argv)->ll); }
 
 Vm(hseek_u) {
   Ary(2);
   Tc(Argv[0], Hom);
   Tc(Argv[1], Num);
-  Go(ret, puthom(gethom(Argv[0]) + getnum(Argv[1]))); }
+  return ApC(ret, puthom(gethom(Argv[0]) + getnum(Argv[1]))); }
 
 ob analyze(en v, ob x) {
   with(x, Push(Put(em_i), Put(ret), Put(mk_yo)));
   return (ob) xpn_yo(v, NULL, 0, x); }
 
 Vm(ev_u) {
-  Ary(1);
+  Arity(1);
   if (homp(Eva)) ip = Eva;
   else { Pack();
          bind(v->ip, (yo) analyze(v, *Argv));
          Unpack(); }
-  Next(0); }
+  return ApY(ip, xp); }
 
 Vm(bootstrap) {
-  Ary(1);
+  Arity(1);
   xp = *Argv;
-  Tc(xp, Hom);
+  TypeCheck(xp, Hom);
   // neither intern nor tbl_set will allocate if ev is already interned / defined
   tbl_set(v, Top, interns(v, "ev"), Eva = xp);
-  Jump(ret); }
+  return ApC(ret, xp); }
 
-static Vm(clos) { Clos = (ob) IP[1].ll; Ap((ob) IP[2].ll, xp); }
+static Vm(clos) {
+  Clos = (ob) IP[1].ll;
+  return ApY((ob) IP[2].ll, xp); }
 // finalize function instance closure
-static Vm(clos1) { IP->ll = (vm*) clos; IP[1].ll = (vm*) xp; Next(0); }
+static Vm(clos1) {
+  IP->ll = (vm*) clos;
+  IP[1].ll = (vm*) xp;
+  return ApY(ip, xp); }
 
 // this function is run the first time a user
 // function with a closure is called. its
@@ -563,8 +576,7 @@ static Vm(clos0) {
   Argc = putnum(adic);
   Clos = getvec(ec)->xs[2];
   if (!nilp(loc)) *--sp = loc;
-  ip = getvec(ec)->xs[3];
-  Next(0); }
+  return ApY(getvec(ec)->xs[3], xp); }
 
 // the next few functions create and store
 // lexical environments.
@@ -599,10 +611,10 @@ static Vm(encl) {
   at[3].ll = NULL;
   at[4].ll = (vm*) at;
 
-  Ap((ob) (IP + 2), (ob) at); }
+  return ApN(2, (ob) at); }
 
-Vm(encll) { Go(encl, Locs); }
-Vm(encln) { Go(encl, nil); }
+Vm(encll) { return ApC(encl, Locs); }
+Vm(encln) { return ApC(encl, nil); }
 
 NoInline ob homnom(en v, ob x) {
   vm *k = (vm*) gethom(x)->ll;
@@ -617,8 +629,7 @@ NoInline ob homnom(en v, ob x) {
 Vm(hnom_u) {
   Arity(1);
   TypeCheck(*Argv, Hom);
-  xp = homnom(v, *Argv);
-  Jump(ret); }
+  return ApC(ret, homnom(v, *Argv)); }
 
 ob sequence(en v, ob a, ob b) {
   yo h;

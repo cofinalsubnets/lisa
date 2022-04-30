@@ -38,7 +38,7 @@ typedef struct yo *yo; // よ
 // this structure holds runtime state.
 // most runtime functions take a pointer to this as the
 // first argument.
-typedef struct en {
+typedef struct mo {
   yo ip;
   fr fp;
   ob *hp, *sp, xp; // interpreter state
@@ -46,11 +46,11 @@ typedef struct en {
      rand, // random state
      t0, len, *pool; // memory state
   mm mm; // gc protection list
-} *en;
+} *mo, *en;
 
 // this is the type of interpreter functions
 // FIXME en yo fr ob* ob* ob
-typedef ob ll(en, ob, ob*, ob*, ob*, ob);
+typedef ob ll(mo, ob, ob*, ob*, ob*, ob);
 typedef ll vm;
 struct yo { ll *ll, *sh[]; }; // puLLback / puSHout
 typedef struct str { u64 len; char text[]; } *str;
@@ -135,7 +135,7 @@ SI ob putstr(str s) { return (ob) s + Str; }
 SI u1 strp(ob x) { return Q(x) == Str; }
 //hom.h
 SI yo F(yo h) { return (yo) h->sh; }
-SI vm *G(yo h) { return h->ll; }
+SI ll *G(yo h) { return h->ll; }
 SI yo gethom(ob x) { return (yo) x; }
 SI ob puthom(yo h) { return (ob) h; }
 SI yo button(yo h) { while (G(h)) h = F(h); return h; }

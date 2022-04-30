@@ -149,7 +149,7 @@ Vm(par_u) {
         // collapses two kinds of failure into one
         v->xp = !xp ? nil : pair(v, xp, nil));
   bind(xp, xp);
-  Jump(ret); }
+  return ApC(ret, xp); }
 
 Vm(slurp) {
   Arity(1);
@@ -157,7 +157,7 @@ Vm(slurp) {
   Tc(xp, Str);
   CallC(xp = read_path(v, getstr(xp)->text),
         v->xp = xp ? xp : nil);
-  Jump(ret); }
+  return ApC(ret, xp); }
 
 typedef u0 writer(en, ob, FILE*);
 static writer nil_out, two_out, num_out, vec_out,
@@ -222,12 +222,12 @@ Vm(em_u) {
       emsep(v, Argv[i], stdout, ' ');
     emit(v, xp = Argv[i], stdout); }
   fputc('\n', stdout);
-  Jump(ret); }
+  return ApC(ret, xp); }
 
 Vm(putc_u) {
   Arity(1);
   fputc(getnum(*Argv), stdout);
-  Jump(ret); }
+  return ApC(ret, xp); }
 
 Vm(dump) {
   Arity(2);
@@ -236,7 +236,7 @@ Vm(dump) {
   char *p = getstr(Argv[0])->text,
        *d = getstr(Argv[1])->text;
   write_file(v, p, d); // FIXME handle failure
-  Jump(ret); }
+  return ApC(ret, xp); }
 
 u1 write_file(en v, const char *path, const char *text) {
   FILE *out;

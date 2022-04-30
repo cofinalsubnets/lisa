@@ -371,7 +371,7 @@ Vm(tbld) {
   Ary(2);
   Tc(Argv[0], Tbl);
   CallC(v->xp = tbl_del(v, Argv[0], Argv[1]));
-  Jump(ret); }
+  return ApC(ret, xp); }
 
 
 // string instructions
@@ -379,7 +379,7 @@ Vm(strl) {
   Arity(1);
   CheckType(*Argv, Str);
   xp = putnum(getstr(*Argv)->len-1);
-  Jump(ret); }
+  return ApC(ret, xp); }
 
 Vm(strg) {
   Arity(2);
@@ -388,7 +388,7 @@ Vm(strg) {
   xp = getnum(Argv[1]) < getstr(Argv[0])->len-1 ?
        putnum(getstr(Argv[0])->text[getnum(Argv[1])]) :
        nil;
-  Jump(ret); }
+  return ApC(ret, xp); }
 
 Vm(strconc) {
   i64 l = getnum(Argc), sum = 0, i = 0;
@@ -406,7 +406,7 @@ Vm(strconc) {
     str x = getstr(Argv[--i]);
     sum -= x->len - 1;
     cpy8(d->text+sum, x->text, x->len - 1); }
-  Go(ret, putstr(d)); }
+  return ApC(ret, putstr(d)); }
 
 #define min(a,b)(a<b?a:b)
 #define max(a,b)(a>b?a:b)
@@ -427,7 +427,7 @@ Vm(strs) {
   dst->len = ub - lb + 1;
   dst->text[ub - lb] = 0;
   cpy8(dst->text, src->text + lb, ub - lb);
-  Go(ret, putstr(dst)); }
+  return ApC(ret, putstr(dst)); }
 
 Vm(strmk) {
   i64 i = 0, bytes = getnum(Argc)+1, words = 1 + b2w(bytes);
@@ -482,13 +482,13 @@ ob intern(en v, ob x) {
 Vm(gsym_u) {
   if (Argc > putnum(0) && strp(*Argv)) {
     CallC(v->xp = intern(v, *Argv));
-    Jump(ret); }
+    return ApC(ret, xp); }
   Have(Width(sym));
   sym y = (sym) hp;
   hp += Width(sym);
   y->nom = y->l = y->r = nil;
   y->code = v->rand = lcprng(v->rand);
-  Go(ret, putsym(y)); }
+  return ApC(ret, putsym(y)); }
 
 Vm(ystr_u) {
   Arity(1);

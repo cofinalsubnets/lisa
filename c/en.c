@@ -3,30 +3,30 @@
 #include <time.h>
 
 // initialization helpers
-SNI u1 inst(en v, const char *a, vm *b) {
+static NoInline bool inst(mo v, const char *a, ll *b) {
   ob z;
   bind(z, interns(v, a));
   return !!tbl_set(v, Top, z, putnum((i64) b)); }
 
-SNI u1 prim(en v, const char *a, vm *i) {
+static NoInline bool prim(mo v, const char *a, ll *i) {
   ob nom;
   yo prim;
   bind(nom, pair(v, interns(v, a), nil));
   with(nom, prim = cells(v, 4));
   bind(prim, prim);
   prim[0].ll = i;
-  prim[1].ll = (vm*) nom;
+  prim[1].ll = (ll*) nom;
   prim[2].ll = NULL;
-  prim[3].ll = (vm*) prim;
+  prim[3].ll = (ll*) prim;
   return !!tbl_set(v, Top, A(nom), (ob) prim); }
 
 // lips destructor
-u0 li_fin(en v) { if (v) free(v->pool), free(v); }
+void li_fin(en v) { if (v) free(v->pool), free(v); }
 
 // lips constructor
-en li_ini(void) {
-  en v; ob _;
-  bind(v, malloc(sizeof(struct en)));
+mo li_ini(void) {
+  mo v; ob _;
+  bind(v, malloc(sizeof(struct mo)));
 
   u64 t0 = clock();
   v->t0 = t0;

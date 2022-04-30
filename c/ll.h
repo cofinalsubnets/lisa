@@ -48,7 +48,8 @@ insts(ninl)
 #undef ninl
 
 // " the interpreter "
-#define Vm(n,...) NoInline ob n(en v, ob ip, ob*fp, ob*sp, ob*hp, ob xp, ##__VA_ARGS__)
+#define Ll(n,...) NoInline ob n(en v, ob ip, ob*fp, ob*sp, ob*hp, ob xp, ##__VA_ARGS__)
+#define Vm Ll
 // the arguments to a terp function collectively represent the
 // runtime state, and the  return value is the result of the
 // program. there are six arguments because that's the number
@@ -91,12 +92,13 @@ insts(ninl)
 
 // the return value of a terp function is usually a call
 // to another terp function.
-#define Jump(f, ...) return (f)(v, ip, fp, sp, hp, xp, ##__VA_ARGS__)
-#define Ap(f, x) return ip = f, ((vm*) ((yo)(ip))->ll)(v, ip, fp, sp, hp, x)
-#define Go(f, x) return f(v, ip, fp, sp, hp, x)
-#define Next(n) Ap((ob) ((yo) ip + (n)), xp)
-#define CheckType(x,t) if(Q((x))-(t)){xp=x,v->xp=t;Jump(type_error);}
-#define Arity(n) if(putnum(n)>Argc)Jump((v->xp=n,ary_error))
+#define ApY(f, x) (ip = (f), ((yo)(ip))->ll(v, ip, fp, sp, hp, (x)))
+#define ApC(f, x) (f)(v, ip, fp, sp, hp, (x))
+#define ApN(n, x) ApY((ob)((yo)ip+(n)), (x))
+#define Go(f, x) return ApC(f, x)
+#define Next(n) return ApN(n, xp)
+#define CheckType(x,t) if(Q((x))-(t)){xp=x,v->xp=t;return ApC(type_error, xp);}
+#define Arity(n) if(putnum(n)>Argc){ return ApC((v->xp=n,ary_error), xp); }
 #define Ary Arity
 #define Tc CheckType
 #define TypeCheck Tc
@@ -105,8 +107,8 @@ insts(ninl)
 #define N0 putnum(0)
 
 
-#define Have(n) if (sp - hp < n) Jump((v->xp=n,gc))
-#define Have1() if (hp == sp) Jump((v->xp=1,gc)) // common case, faster comparison
+#define Have(n) if (sp - hp < n) return ApC((v->xp=n,gc), xp)
+#define Have1() if (hp == sp) return ApC((v->xp=1,gc), xp) // common case, faster comparison
 
 #define BINOP(nom, xpn) Vm(nom) { xp = (xpn); Next(1); }
 
