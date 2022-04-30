@@ -6,7 +6,7 @@
 SNI u1 inst(en v, const char *a, vm *b) {
   ob z;
   bind(z, interns(v, a));
-  return !!tbl_set(v, Top, z, _N((i64) b)); }
+  return !!tbl_set(v, Top, z, putnum((i64) b)); }
 
 SNI u1 prim(en v, const char *a, vm *i) {
   ob nom;

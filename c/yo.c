@@ -7,7 +7,7 @@
 // passes continuations by pushing function pointers
 // onto the main stack with Push and calling them with Ccc
 #define Push(...) pushs(v,__VA_ARGS__,NULL)
-#define Ccc(m) ((c1*)N(*v->sp++))(v,e,m)
+#define Ccc(m) ((c1*)getnum(*v->sp++))(v,e,m)
 // also uses Xp and Ip as stacks for storing code entry points
 // when generating conditionals.
 //
@@ -18,7 +18,7 @@
 
 // " compilation environments "
 typedef struct { ob arg, loc, clo, par, nom, sig; } *cenv;
-#define Ce(x) ((cenv)(V(x)->xs))
+#define Ce(x) ((cenv)(getvec(x)->xs))
 // the current lexical environment is passed to compiler
 // functions as a pointer to an object, either a tuple with a
 // structure specified below, or nil for toplevel. it's a
@@ -43,7 +43,7 @@ static c2 xpn_yo, var_yo, form_yo, im_yo;
 
 enum { Here, Loc, Arg, Clo, Wait };
 #define CO(nom,...) static yo nom(en v, ob* e, u64 m, ##__VA_ARGS__)
-#define Put(x) _N((i64)(x))
+#define Put(x) putnum((i64)(x))
 
 // helper functions for lists
 static i64 lidx(ob l, ob x) {
@@ -95,11 +95,11 @@ static ob tupl(en v, ...) {
  va_list xs; vec t;
  va_start(xs, v), t = tuplr(v, 0, xs), va_end(xs);
  bind(t, t);
- return _V(t); }
+ return putvec(t); }
 
 // emit code backwards like cons
 SI ob em1(vm *i, ob k) {
-  return k -= sizeof(void*), H(k)->ll = (vm*) i, k; }
+  return k -= sizeof(void*), gethom(k)->ll = (vm*) i, k; }
 SI ob em2(vm *i, ob j, ob k) { return em1(i, em1((vm*)j, k)); }
 SI yo ee1(vm *i, yo k) { return (--k)->ll = (vm*) i, k; }
 SI yo ee2(vm *i, ob x, yo k) { return ee1(i, ee1((vm*) x, k)); }
@@ -155,7 +155,7 @@ SI ob new_scope(en v, ob*e, ob a, ob n) {
   i64 s = 0;
   with(n, a = asign(v, a, 0, &s));
   bind(a, a);
-  return tupl(v, a, nil, nil, e ? *e : nil, n, _N(s), (ob)0); }
+  return tupl(v, a, nil, nil, e ? *e : nil, n, putnum(s), (ob)0); }
 
 SI ob comp_body(en v, ob*e, ob x) {
   bind(x, Push(Put(xpn_yo_), x,
@@ -164,11 +164,11 @@ SI ob comp_body(en v, ob*e, ob x) {
   scan(v, e, v->sp[1]);
   bind(x, (ob) Ccc(4)); // 4 = 2 + 2
   i64 i = llen(loc(*e));
-  if (i) x = em2(locals, _N(i), x);
-  i = N(asig(*e));
-  if (i > 0) x = em2(arity, _N(i), x);
-  else if (i < 0) x = em2(vararg, _N(-i-1), x);
-  button(H(x))[1].ll = (vm*) x;
+  if (i) x = em2(locals, putnum(i), x);
+  i = getnum(asig(*e));
+  if (i > 0) x = em2(arity, putnum(i), x);
+  else if (i < 0) x = em2(vararg, putnum(-i-1), x);
+  button(gethom(x))[1].ll = (vm*) x;
   return twop(clo(*e)) ? pair(v, clo(*e), x) : x; }
 
 // takes a lambda expr, returns either a pair or or a
@@ -193,7 +193,7 @@ SI ob yo_yo_clo(en v, ob*e, ob arg, ob seq) {
   mm(&arg), mm(&seq);
   u1 _;
   Bind(_, Push(
-    Put(em_i_d), Put(take), _N(i),
+    Put(em_i_d), Put(take), putnum(i),
     Put(mk_yo)));
   while (twop(arg)) {
     Bind(_, Push(
@@ -224,7 +224,7 @@ CO(im_yo, ob x) {
 
 CO(let_yo_bind) {
   ob y = *v->sp++;
-  return e ? imx(v, e, m, loc_, _N(lidx(loc(*e), y))) :
+  return e ? imx(v, e, m, loc_, putnum(lidx(loc(*e), y))) :
              imx(v, e, m, tbind, y); }
 
 static u1 let_yo_r(en v, ob*e, ob x) {
@@ -337,11 +337,11 @@ static ob lookup_mod(en v, ob x) {
 static ob lookup_lex(en v, ob e, ob y) {
   if (nilp(e)) {
     ob q = lookup_mod(v, y);
-    return q ? pair(v, _N(Here), q) : pair(v, _N(Wait), Top); }
+    return q ? pair(v, putnum(Here), q) : pair(v, putnum(Wait), Top); }
   return
-    lidx(loc(e), y) > -1 ? pair(v, _N(Loc), e) :
-    lidx(arg(e), y) > -1 ? pair(v, _N(Arg), e) :
-    lidx(clo(e), y) > -1 ? pair(v, _N(Clo), e) :
+    lidx(loc(e), y) > -1 ? pair(v, putnum(Loc), e) :
+    lidx(arg(e), y) > -1 ? pair(v, putnum(Arg), e) :
+    lidx(clo(e), y) > -1 ? pair(v, putnum(Clo), e) :
     lookup_lex(v, par(e), y); }
 
 CO(var_yo, ob x) {
@@ -349,28 +349,28 @@ CO(var_yo, ob x) {
   with(x, q = lookup_lex(v, e ? *e:nil, x));
   bind(q, q);
   y = A(q);
-  switch (N(y)) {
+  switch (getnum(y)) {
     case Here: return im_yo(v, e, m, B(q));
     case Wait:
       bind(x, pair(v, B(q), x));
       with(x, y = (ob) Ccc(m+2));
       bind(y, y);
-      with(y, x = pair(v, _N(8), x));
+      with(y, x = pair(v, putnum(sizeof(ob)), x));
       bind(x, x);
       return ee2(lbind, x, (yo) y);
     default:
-      if (B(q) == *e) switch (N(y)) {
+      if (B(q) == *e) switch (getnum(y)) {
         case Loc:
-          return imx(v, e, m, loc, _N(lidx(loc(*e), x)));
+          return imx(v, e, m, loc, putnum(lidx(loc(*e), x)));
         case Arg:
-          return imx(v, e, m, arg, _N(lidx(arg(*e), x)));
+          return imx(v, e, m, arg, putnum(lidx(arg(*e), x)));
         default:
-          return imx(v, e, m, clo, _N(lidx(clo(*e), x))); }
+          return imx(v, e, m, clo, putnum(lidx(clo(*e), x))); }
       y = llen(clo(*e));
       with(x, q = snoc(v, clo(*e), x));
       bind(q, q);
       clo(*e) = q;
-      return imx(v, e, m, clo, _N(y)); } }
+      return imx(v, e, m, clo, putnum(y)); } }
 
 CO(xpn_yo_) { return xpn_yo(v, e, m, *v->sp++); }
 CO(xpn_yo, ob x) { return (symp(x) ? var_yo :
@@ -382,7 +382,7 @@ CO(ap_yo, ob fun, ob args) {
   Bind(fun, Push(
     Put(xpn_yo_), fun,
     Put(em_i), Put(idH),
-    Put(em_call), _N(llen(args))));
+    Put(em_call), putnum(llen(args))));
   while (twop(args)) {
     Bind(fun, Push(
       Put(xpn_yo_), A(args),
@@ -415,13 +415,13 @@ CO(form_yo, ob x) {
   return ap_yo(v, e, m, A(x), B(x)); }
 
 CO(em_i) {
-  vm* i = (vm*) N(*v->sp++);
+  vm* i = (vm*) getnum(*v->sp++);
   yo k;
   bind(k, Ccc(m+1));
   return ee1(i, k); }
 
 CO(em_i_d) {
-  vm* i = (vm*) N(*v->sp++);
+  vm* i = (vm*) getnum(*v->sp++);
   ob x = *v->sp++;
   yo k;
   with(x, k = Ccc(m+2));
@@ -454,7 +454,7 @@ SNI ob apply(en v, ob f, ob x) {
   yo h;
   bind(h, cells(v, 5));
   h[0].ll = (vm*) call;
-  h[1].ll = (vm*) _N(2);
+  h[1].ll = (vm*) putnum(2);
   h[2].ll = (vm*) yield;
   h[3].ll = NULL;
   h[4].ll = (vm*) h;
@@ -466,7 +466,7 @@ Vm(hom_u) {
   ob x;
   Arity(1);
   TypeCheck(x = *Argv, Num);
-  i64 len = N(x) + 2;
+  i64 len = getnum(x) + 2;
   Have(len);
   yo h = (yo) hp;
   hp += len;
@@ -479,18 +479,18 @@ Vm(hfin_u) {
   Arity(1);
   ob a = *Argv;
   Tc(a, Hom);
-  button(H(a))[1].ll = (vm*) a;
+  button(gethom(a))[1].ll = (vm*) a;
   Go(ret, a); }
 
 Vm(emx) { yo h = (yo) *sp++ - 1; h->ll = (vm*) xp;    Ap(ip+sizeof(void*), (ob) h); }
-Vm(emi) { yo h = (yo) *sp++ - 1; h->ll = (vm*) N(xp); Ap(ip+sizeof(void*), (ob) h); }
+Vm(emi) { yo h = (yo) *sp++ - 1; h->ll = (vm*) getnum(xp); Ap(ip+sizeof(void*), (ob) h); }
 
 Vm(emx_u) {
  Arity(2);
  ob h = Argv[1];
  CheckType(h, Hom);
  h -= sizeof(void*);
- H(h)->ll = (vm*) Argv[0];
+ gethom(h)->ll = (vm*) Argv[0];
  Go(ret, h); }
 
 Vm(emi_u) {
@@ -499,23 +499,23 @@ Vm(emi_u) {
  ob h = Argv[1];
  Tc(h, Hom);
  h -= sizeof(void*);
- H(h)->ll = (vm*) N(Argv[0]);
+ gethom(h)->ll = (vm*) getnum(Argv[0]);
  Go(ret, h); }
 
 Vm(hgeti_u) {
   Arity(1);
   TypeCheck(*Argv, Hom);
-  Go(ret, Put(H(*Argv)->ll)); }
+  Go(ret, Put(gethom(*Argv)->ll)); }
 Vm(hgetx_u) {
   Arity(1);
   TypeCheck(*Argv, Hom);
-  Go(ret, (ob) H(*Argv)->ll); }
+  Go(ret, (ob) gethom(*Argv)->ll); }
 
 Vm(hseek_u) {
   Ary(2);
   Tc(Argv[0], Hom);
   Tc(Argv[1], Num);
-  Go(ret, _H(H(Argv[0]) + N(Argv[1]))); }
+  Go(ret, puthom(gethom(Argv[0]) + getnum(Argv[1]))); }
 
 ob analyze(en v, ob x) {
   with(x, Push(Put(em_i), Put(ret), Put(mk_yo)));
@@ -537,9 +537,9 @@ Vm(bootstrap) {
   tbl_set(v, Top, interns(v, "ev"), Eva = xp);
   Jump(ret); }
 
-static Vm(clos) { Clos = (ob) H(ip)[1].ll; Ap((ob) H(ip)[2].ll, xp); }
+static Vm(clos) { Clos = (ob) gethom(ip)[1].ll; Ap((ob) gethom(ip)[2].ll, xp); }
 // finalize function instance closure
-static Vm(clos1) { H(ip)->ll = (vm*) clos; H(ip)[1].ll = (vm*) xp; Next(0); }
+static Vm(clos1) { gethom(ip)->ll = (vm*) clos; gethom(ip)[1].ll = (vm*) xp; Next(0); }
 
 // this function is run the first time a user
 // function with a closure is called. its
@@ -550,32 +550,32 @@ static Vm(clos1) { H(ip)->ll = (vm*) clos; H(ip)[1].ll = (vm*) xp; Next(0); }
 // instruction that sets the closure and enters
 // the function.
 static Vm(clos0) {
- ob ec  = (ob) H(ip)[1].ll,
-    arg = V(ec)->xs[0],
-    loc = V(ec)->xs[1];
- u64 adic = nilp(arg) ? 0 : V(arg)->len;
+ ob ec  = (ob) gethom(ip)[1].ll,
+    arg = getvec(ec)->xs[0],
+    loc = getvec(ec)->xs[1];
+ u64 adic = nilp(arg) ? 0 : getvec(arg)->len;
  Have(Width(fr) + adic + 1);
  i64 off = (ob*) fp - sp;
- H(ip)->ll = (vm*) clos1;
+ gethom(ip)->ll = (vm*) clos1;
  sp -= adic;
- cpy64(sp, V(arg)->xs, adic);
- ec = (ob) H(ip)[1].ll;
+ cpy64(sp, getvec(arg)->xs, adic);
+ ec = (ob) gethom(ip)[1].ll;
  fp = sp -= Width(fr);
  Retp = ip;
- Subr = _N(off);
- Argc = _N(adic);
- Clos = V(ec)->xs[2];
+ Subr = putnum(off);
+ Argc = putnum(adic);
+ Clos = getvec(ec)->xs[2];
  if (!nilp(loc)) *--sp = loc;
- ip = V(ec)->xs[3];
+ ip = getvec(ec)->xs[3];
  Next(0); }
 
 // the next few functions create and store
 // lexical environments.
 static Vm(encl) {
-  i64 n = N(Argc);
+  i64 n = getnum(Argc);
   n += n ? 12 : 11;
   Have(n);
-  ob x = (ob) H(ip)[1].ll, arg = nil;
+  ob x = (ob) gethom(ip)[1].ll, arg = nil;
   ob* block = hp;
   hp += n;
   if (n > 11) {
@@ -602,16 +602,16 @@ static Vm(encl) {
   at[3].ll = NULL;
   at[4].ll = (vm*) at;
 
-  Ap(ip + sizeof(void*) * 2, (ob) at); }
+  Ap(ip + 2 * sizeof(ob), (ob) at); }
 
 Vm(encll) { Go(encl, Locs); }
 Vm(encln) { Go(encl, nil); }
 
 NoInline ob homnom(en v, ob x) {
-  vm *k = (vm*) H(x)->ll;
+  vm *k = (vm*) gethom(x)->ll;
   if (k == clos || k == clos0 || k == clos1)
-    return homnom(v, (ob) H(x)[2].ll);
-  ob* h = (ob*) H(x);
+    return homnom(v, (ob) gethom(x)[2].ll);
+  ob* h = (ob*) gethom(x);
   while (*h) h++;
   x = h[-1];
   int inb = (ob*) x >= v->pool && (ob*) x < v->pool+v->len;
@@ -630,7 +630,7 @@ ob sequence(en v, ob a, ob b) {
   h[0].ll = (vm*) imm;
   h[1].ll = (vm*) a;
   h[2].ll = (vm*) call;
-  h[3].ll = (vm*) _N(0);
+  h[3].ll = (vm*) N0;
   h[4].ll = (vm*) jump;
   h[5].ll = (vm*) b;
   h[6].ll = NULL;

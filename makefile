@@ -12,13 +12,8 @@ headers=$(sort $(wildcard c/*.h))
 sources=$(sort $(wildcard c/*.c))
 objects=$(patsubst %.c,%.o,$(sources))
 
-ifeq ($(shell id -u), 0)
-PREFIX ?= /usr/local
-V ?= /usr/share/vim/vimfiles
-else
 PREFIX ?= $(HOME)/.local
-V ?= $(HOME)/.vim
-endif
+VIMPREFIX ?= $(HOME)/.vim
 
 CPPFLAGS=-DPREFIX=\"$(PREFIX)\"
 CFLAGS=-std=gnu17 -g -O2 -flto -Wall -Werror\
@@ -76,6 +71,4 @@ bits: bin/$(nom) bin/$(nom).bin
 repl: bin/$(nom)
 	which rlwrap && rlwrap $(run_repl) || $(run_repl)
 
-.PHONY:\
- 	test clean perf valg sloc bits repl\
-	install uninstall install-vim uninstall-vim
+.PHONY: test clean perf valg sloc bits repl install uninstall install-vim uninstall-vim

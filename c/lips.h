@@ -92,23 +92,11 @@ u1 eql(ob, ob), please(en, u64),
 BWDQ(memn)
 #undef memn
 #undef BWDQ
-#define S(x) getstr(x)
-#define _S(x) putstr(x)
-#define H(x)  gethom(x)
-#define _H(x) puthom(x)
 #define FF(x) F(F(x))
 #define FG(x) F(G(x))
 #define GF(x) G(F(x))
 #define GG(x) G(G(x))
-#define Y(x) getsym(x)
-#define _Y(x) putsym(x)
 #define mix ((u64)2708237354241864315)
-#define T(x) gettbl(x)
-#define _T(x) puttbl(x)
-#define V(x) getvec(x)
-#define _V(x) putvec(x)
-#define N(x) getnum(x)
-#define _N(x) putnum(x)
 #define A(o) gettwo(o)->a
 #define B(o) gettwo(o)->b
 #define AA(o) A(A(o))
@@ -121,15 +109,13 @@ BWDQ(memn)
 #define with(y,...) (mm(&(y)),(__VA_ARGS__),um)
 #define Width(t) b2w(sizeof(struct t))
 
-SI class Q(ob _) { return _ & (sizeof(void*) - 1); }
+SI class Q(ob _) { return _ & (sizeof(ob) - 1); }
 // linear congruential pseudorandom number generator
 // the multiplier comes from "Computationally Easy, Spectrally
 // Good Multipliers for Congruential Pseudorandom Number
 // Generators" by Steele & Vigna
 SI i64 lcprng(i64 s) { return (s * 0xaf251af3b0f025b5ll + 1) >> 8; }
-
-SI u64 w2b(u64 w) { return w * 8; }
-SI u64 b2w(u64 b) { return b / 8 + (b % 8 && 1); }
+SI u64 b2w(u64 b) { return b / sizeof(ob) + (b % sizeof(ob) && 1); }
 
 SI u1 nilp(ob x) { return x == nil; }
 SI const char *tnom(class t) { return (const char*) (tnoms + t); }
@@ -145,8 +131,8 @@ SI u1 strp(ob x) { return Q(x) == Str; }
 //hom.h
 SI yo F(yo h) { return (yo) h->sh; }
 SI vm *G(yo h) { return h->ll; }
-SI yo gethom(ob x) { return (yo) (x - Hom); }
-SI ob puthom(yo h) { return (ob) h + Hom; }
+SI yo gethom(ob x) { return (yo) x; }
+SI ob puthom(yo h) { return (ob) h; }
 SI yo button(yo h) { while (G(h)) h = F(h); return h; }
 SI u1 homp(ob x) { return Q(x) == Hom; }
 //sym.h
@@ -155,10 +141,8 @@ SI ob putsym(u0 *y) { return (ob) y + Sym; }
 SI u1 symp(ob x) { return Q(x) == Sym; }
 SI tbl gettbl(ob x) { return (tbl) (x - Tbl); }
 SI ob puttbl(tbl t) { return (ob) t + Tbl; }
-SI u1 tblp(ob x) { return Q(x) == Tbl; }
 SI vec getvec(ob x) { return (vec) (x - Vec); }
 SI ob putvec(vec v) { return (ob) v + Vec; }
-SI u1 vecp(ob x) { return Q(x) == Vec; }
 
 SI two gettwo(ob x) { return (two) (x - Two); }
 SI ob puttwo(u0 *x) { return (ob) x + Two; }

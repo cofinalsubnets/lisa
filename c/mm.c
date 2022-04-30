@@ -57,7 +57,7 @@ Vm(gc) {
 static clock_t copy(en v, u64 len1) {
   ob* pool1;
   clock_t t0, t1 = clock(), t2;
-  bind(pool1, malloc(w2b(len1)));
+  bind(pool1, malloc(len1 * sizeof(ob)));
 
   u64 len0 = v->len;
   ob *pool0 = v->pool,
@@ -132,7 +132,7 @@ static Inline Gc(cp) { return copiers[Q(x)](v, x, len0, pool0); }
 
 #define stale(o) inb((ob*)(o),pool0,pool0+len0)
 Gc(cphom) {
-  yo src = H(x);
+  yo src = gethom(x);
   if (fresh(src->ll)) return (ob) src->ll;
   yo end = button(src), start = (yo) end[1].ll,
      dst = bump(v, end - start + 2), j = dst;
@@ -147,12 +147,12 @@ Gc(cphom) {
   return (ob) (dst += src - start); }
 
 Gc(cpstr) {
-  str dst, src = S(x);
+  str dst, src = getstr(x);
   return src->len == 0 ? *(ob*)src->text :
     (dst = bump(v, Width(str) + b2w(src->len)),
      cpy64(dst->text, src->text, b2w(src->len)),
      dst->len = src->len, src->len = 0,
-     *(ob*) src->text = _S(dst)); }
+     *(ob*) src->text = putstr(dst)); }
 
 Gc(cpsym) {
   sym src = getsym(x), dst;
@@ -194,7 +194,7 @@ Gc(cptwo) {
   return dst; }
 
 Gc(cpvec) {
-  vec dst, src = V(x);
+  vec dst, src = getvec(x);
   if (fresh(*src->xs)) return *src->xs;
   dst = bump(v, Width(vec) + src->len);
   i64 i, l = dst->len = src->len;
@@ -202,7 +202,7 @@ Gc(cpvec) {
   src->xs[0] = putvec(dst);
   for (CP(dst->xs[0]), i = 1; i < l; ++i)
     COPY(dst->xs[i], src->xs[i]);
-  return _V(dst); }
+  return putvec(dst); }
 
 // functions for pairs and lists
 ob pair(en v, ob a, ob b) {
@@ -216,7 +216,7 @@ SI i64 tbl_idx(u64 cap, u64 co) {
   return co & ((1 << cap) - 1); }
 
 SI u64 tbl_load(ob t) {
-  return T(t)->len >> T(t)->cap; }
+  return gettbl(t)->len >> gettbl(t)->cap; }
 
 
 static ent tbl_ent(en v, ob u, ob k) {
@@ -238,10 +238,10 @@ static u64 hash_sym(en v, ob y) { return getsym(y)->code; }
 static u64 hash_two(en v, ob w) { return ror64(hash(v, A(w)) * hash(v, B(w)), 32); }
 static u64 hash_hom(en v, ob h) { return hash(v, homnom(v, h)) ^ mix; }
 static u64 hash_num(en v, ob n) { return ror64(mix * n, 16); }
-static u64 hash_vec(en v, ob x) { return ror64(mix * V(x)->len, 32); }
+static u64 hash_vec(en v, ob x) { return ror64(mix * getvec(x)->len, 32); }
 static u64 hash_nil(en v, ob _) { return ror64(mix * Q(nil), 48); }
 static u64 hash_str(en v, ob x) {
-  str s = S(x);
+  str s = getstr(x);
   u64 len = s->len;
   char *us = s->text;
   for (u64 h = 1;; h ^= *us++, h *= mix)
@@ -253,7 +253,7 @@ static u0 tbl_fit(en v, ob t) {
   if (tbl_load(t)) return;
 
   ent e = NULL, f, g;
-  tbl u = T(t);
+  tbl u = gettbl(t);
 
   // collect all entries
   for (u64 i = 1 << u->cap; i--;)
@@ -294,11 +294,11 @@ static ob tbl_del(en v, ob t, ob key) {
 // the old table entries are reused to populate the modified table.
 static ob tbl_grow(en v, ob t) {
   ent *tab0, *tab1;
-  u64 cap0 = T(t)->cap, cap1 = cap0 + 1;
+  u64 cap0 = gettbl(t)->cap, cap1 = cap0 + 1;
   with(t, tab1 = cells(v, 1<<cap1));
   bind(tab1, tab1);
   set64(tab1, 0, 1<<cap1);
-  tab0 = T(t)->tab;
+  tab0 = gettbl(t)->tab;
 
   for (u64 i, cap = 1 << cap0; cap--;)
     for (ent e, es = tab0[cap]; es;
@@ -306,7 +306,7 @@ static ob tbl_grow(en v, ob t) {
       i = tbl_idx(cap1, hash(v, e->key)),
       e->next = tab1[i], tab1[i] = e);
 
-  T(t)->cap = cap1, T(t)->tab = tab1;
+  gettbl(t)->cap = cap1, gettbl(t)->tab = tab1;
   return t; }
 
 ob tbl_set_s(en v, ob t, ob k, ob x) {
@@ -364,7 +364,7 @@ ob string(en v, const char* c) {
   str o;
   bind(o, cells(v, Width(str) + b2w(bs)));
   cpy8(o->text, c, o->len = bs);
-  return _S(o); }
+  return putstr(o); }
 
 Vm(tbld) {
   Ary(2);
@@ -377,24 +377,24 @@ Vm(tbld) {
 Vm(strl) {
   Arity(1);
   CheckType(*Argv, Str);
-  xp = _N(S(*Argv)->len-1);
+  xp = putnum(getstr(*Argv)->len-1);
   Jump(ret); }
 
 Vm(strg) {
   Arity(2);
   CheckType(Argv[0], Str);
   CheckType(Argv[1], Num);
-  xp = N(Argv[1]) < S(Argv[0])->len-1 ?
-       _N(S(Argv[0])->text[N(Argv[1])]) :
+  xp = getnum(Argv[1]) < getstr(Argv[0])->len-1 ?
+       putnum(getstr(Argv[0])->text[getnum(Argv[1])]) :
        nil;
   Jump(ret); }
 
 Vm(strconc) {
-  i64 l = N(Argc), sum = 0, i = 0;
+  i64 l = getnum(Argc), sum = 0, i = 0;
   while (i < l) {
     ob x = Argv[i++];
     CheckType(x, Str);
-    sum += S(x)->len - 1; }
+    sum += getstr(x)->len - 1; }
   i64 words = b2w(sum+1) + 1;
   Have(words);
   str d = (str) hp;
@@ -402,10 +402,10 @@ Vm(strconc) {
   d->len = sum + 1;
   d->text[sum] = 0;
   while (i) {
-    str x = S(Argv[--i]);
+    str x = getstr(Argv[--i]);
     sum -= x->len - 1;
     cpy8(d->text+sum, x->text, x->len - 1); }
-  Go(ret, _S(d)); }
+  Go(ret, putstr(d)); }
 
 #define min(a,b)(a<b?a:b)
 #define max(a,b)(a>b?a:b)
@@ -414,8 +414,8 @@ Vm(strs) {
   CheckType(Argv[0], Str);
   CheckType(Argv[1], Num);
   CheckType(Argv[2], Num);
-  str src = S(Argv[0]);
-  i64 lb = N(Argv[1]), ub = N(Argv[2]);
+  str src = getstr(Argv[0]);
+  i64 lb = getnum(Argv[1]), ub = getnum(Argv[2]);
   lb = max(lb, 0);
   ub = min(ub, src->len-1);
   ub = max(ub, lb);
@@ -426,20 +426,20 @@ Vm(strs) {
   dst->len = ub - lb + 1;
   dst->text[ub - lb] = 0;
   cpy8(dst->text, src->text + lb, ub - lb);
-  Go(ret, _S(dst)); }
+  Go(ret, putstr(dst)); }
 
 Vm(strmk) {
-  i64 i = 0, bytes = N(Argc)+1, words = 1 + b2w(bytes);
+  i64 i = 0, bytes = getnum(Argc)+1, words = 1 + b2w(bytes);
   Have(words);
   str s = (str) hp;
   hp += words;
-  for (ob x; i < bytes-1; s->text[i++] = N(x)) {
+  for (ob x; i < bytes-1; s->text[i++] = getnum(x)) {
     x = Argv[i];
     Tc(x, Num);
-    if (x == _N(0)) break; }
+    if (x == putnum(0)) break; }
   s->text[i] = 0;
   s->len = i+1;
-  Go(ret, _S(s)); }
+  Go(ret, putstr(s)); }
 
 //symbols
 
@@ -462,7 +462,7 @@ ob sskc(en v, ob*y, ob x) {
   sym z;
   if (!nilp(*y)) {
     z = getsym(*y);
-    int i = strcmp(S(z->nom)->text, S(x)->text);
+    int i = strcmp(getstr(z->nom)->text, getstr(x)->text);
     return i == 0 ? *y : sskc(v, i < 0 ? &z->r : &z->l, x); }
   // the caller must ensure Avail >= Width(sym) because to GC
   // here would cause the tree to be rebuilt
@@ -479,7 +479,7 @@ ob intern(en v, ob x) {
   return sskc(v, &v->syms, x); }
 
 Vm(gsym_u) {
-  if (Argc > _N(0) && strp(*Argv)) {
+  if (Argc > putnum(0) && strp(*Argv)) {
     CallC(v->xp = intern(v, *Argv));
     Jump(ret); }
   Have(Width(sym));

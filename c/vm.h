@@ -94,13 +94,15 @@ insts(ninl)
 #define Jump(f, ...) return (f)(v, ip, fp, sp, hp, xp, ##__VA_ARGS__)
 #define Ap(f, x) return ip = f, ((vm*) ((yo)(ip))->ll)(v, ip, fp, sp, hp, x)
 #define Go(f, x) return f(v, ip, fp, sp, hp, x)
-#define Next(n) Ap(ip + w2b(n), xp)
+#define Next(n) Ap(ip + (n) * sizeof(ob), xp)
 #define CheckType(x,t) if(Q((x))-(t)){xp=x,v->xp=t;Jump(type_error);}
-#define Arity(n) if(_N(n)>Argc)Jump((v->xp=n,ary_error))
+#define Arity(n) if(putnum(n)>Argc)Jump((v->xp=n,ary_error))
 #define Ary Arity
 #define Tc CheckType
 #define TypeCheck Tc
-#define ok _N(1)
+#define ok N1
+#define N1 putnum(1)
+#define N0 putnum(0)
 
 
 #define Have(n) if (sp - hp < n) Jump((v->xp=n,gc))

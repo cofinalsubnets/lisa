@@ -30,11 +30,13 @@ Vm(ap_u) {
   u64 adic = llen(y);
   Have(adic);
   ob off = Subr, rp = Retp;
-  sp = Argv + N(Argc) - adic;
-  for (u64 j = 0; j < adic; y = B(y)) sp[j++] = A(y);
+  sp = Argv + getnum(Argc) - adic;
+  for (u64 j = 0; j < adic;
+    sp[j++] = gettwo(y)->a,
+    y = gettwo(y)->b);
   fp = sp -= Width(fr);
   Retp = rp;
-  Argc = _N(adic);
+  Argc = putnum(adic);
   Subr = off;
   Clos = nil;
   Ap(x, nil); }
@@ -54,12 +56,12 @@ Vm(ccc_u) {
   vec t = (vec) hp;
   hp += depth + 2;
   t->len = depth + 1;
-  t->xs[0] = _N(fp - sp);
+  t->xs[0] = putnum(fp - sp);
   cpy64(t->xs+1, sp, depth);
   yo c = (yo) hp;
   hp += 4;
   c[0].ll = (vm*) cont;
-  c[1].ll = (vm*) _V(t);
+  c[1].ll = (vm*) putvec(t);
   c[2].ll = NULL;
   c[3].ll = (vm*) c;
   *Argv = (ob) c;
@@ -67,24 +69,24 @@ Vm(ccc_u) {
 
 // call a continuation
 Vm(cont) {
-  vec t = V((ob) H(ip)[1].ll);
+  vec t = getvec((ob) gethom(ip)[1].ll);
   Have(t->len - 1);
-  xp = N(Argc) == 0 ? nil : *Argv;
-  i64 off = N(t->xs[0]);
+  xp = getnum(Argc) == 0 ? nil : *Argv;
+  i64 off = getnum(t->xs[0]);
   sp = v->pool + v->len - (t->len - 1);
   fp = sp + off;
   cpy64(sp, t->xs+1, t->len-1);
   Jump(ret); }
 
 Vm(vararg) {
-  i64 reqd = N((i64) H(ip)[1].ll),
-      vdic = N(Argc) - reqd;
+  i64 reqd = getnum((i64) gethom(ip)[1].ll),
+      vdic = getnum(Argc) - reqd;
   Arity(reqd);
   // in this case we need to add another argument
   // slot to hold the nil.
   if (!vdic) {
     Have1();
-    cpy64(fp-1, fp, Width(fr) + N(Argc));
+    cpy64(fp-1, fp, Width(fr) + getnum(Argc));
     sp = --fp;
     Argc += sizeof(void*);
     Argv[reqd] = nil;
@@ -103,11 +105,13 @@ Vm(vararg) {
   Argv[reqd] = puttwo(t);
   Next(2); }
 
+SI u1 vecp(ob x) { return Q(x) == Vec; }
+SI u1 tblp(ob x) { return Q(x) == Tbl; }
 // type predicates
 #define Tp(t)\
   Vm(t##pp) { Ap(ip+sizeof(void*), (t##p(xp)?ok:nil)); }\
   Vm(t##p_u) {\
-    for (ob *xs = Argv, *l = xs + N(Argc); xs < l;)\
+    for (ob *xs = Argv, *l = xs + getnum(Argc); xs < l;)\
       if (!t##p(*xs++)) Go(ret, nil);\
     Go(ret, ok); }
 Tp(num) Tp(hom) Tp(two) Tp(sym) Tp(str) Tp(tbl) Tp(vec) Tp(nil)
@@ -121,14 +125,14 @@ static vm recne;
 /// Branch Instructions
 //
 // unconditional jump
-Vm(jump) { Ap((ob) H(ip)[1].ll, xp); }
+Vm(jump) { Ap((ob) gethom(ip)[1].ll, xp); }
 
 // conditional jumps
 //
 // args: test, yes addr, yes val, no addr, no val
 #define Br(nom, test, a, x, b, y) Vm(nom) {\
-  if (test) Ap((ob)a(H(ip)),x);\
-  else Ap((ob)b(H(ip)),y); }
+  if (test) Ap((ob)a(gethom(ip)),x);\
+  else Ap((ob)b(gethom(ip)),y); }
 // combined test/branch instructions
 Br(branch, xp != nil, GF, xp, FF, xp)
 Br(barnch, xp != nil, FF, xp, GF, xp)
@@ -156,18 +160,18 @@ Vm(ret) {
 // "inner" function call
 Vm(call) {
   Have(Width(fr));
-  ob adic = (ob) H(ip)[1].ll;
+  ob adic = (ob) gethom(ip)[1].ll;
   i64 off = fp - (ob*) ((i64) sp + adic - Num);
   fp = sp -= Width(fr);
   Retp = ip + 2 * sizeof(void*);
-  Subr = _N(off);
+  Subr = putnum(off);
   Clos = nil;
   Argc = adic;
   Ap(xp, nil); }
 
 // tail call
 Vm(rec) {
-  if (Argc != (ip = (ob) H(ip)[1].ll)) Jump(recne);
+  if (Argc != (ip = (ob) gethom(ip)[1].ll)) Jump(recne);
   cpy64(Argv, sp, ip = getnum(ip));
   sp = fp;
   Ap(xp, nil); }
@@ -175,8 +179,8 @@ Vm(rec) {
 // tail call with different arity
 static Vm(recne) {
  v->xp = Subr, v->ip = Retp; // save return info
- fp = Argv + N(Argc - ip);
- cpy64r(fp, sp, N(ip)); // copy from high to low
+ fp = Argv + getnum(Argc - ip);
+ cpy64r(fp, sp, getnum(ip)); // copy from high to low
  sp = fp -= Width(fr);
  Retp = v->ip;
  Argc = ip;
@@ -199,7 +203,7 @@ Vm(oob_error) {
 
 #define arity_err_msg "wrong arity : %d of %d"
 Vm(ary_error) {
-  i64 a = N(Argc), b = v->xp;
+  i64 a = getnum(Argc), b = v->xp;
   return Pack(), err(v, arity_err_msg, a, b); }
 
 Vm(div_error) { return Pack(), err(v, "/ 0"); }
@@ -210,14 +214,14 @@ Vm(div_error) { return Pack(), err(v, "/ 0"); }
   v->xp = t; Jump(type_error); }
 DTc(idZ, Num) DTc(idH, Hom) DTc(idT, Tbl) DTc(id2, Two)
 Vm(arity) {
-  ob reqd = (ob) H(ip)[1].ll;
+  ob reqd = (ob) gethom(ip)[1].ll;
   if (reqd <= Argc) Next(2);
-  else Jump((v->xp = N(reqd), ary_error)); }
+  else Jump((v->xp = getnum(reqd), ary_error)); }
 
 SI u0 show_call(en v, ob ip, ob* fp) {
   fputc('(', stderr);
   emit(v, ip, stderr);
-  for (i64 i = 0, argc = N(Argc); i < argc;)
+  for (i64 i = 0, argc = getnum(Argc); i < argc;)
     fputc(' ', stderr), emit(v, Argv[i++], stderr);
   fputc(')', stderr); }
 
@@ -231,7 +235,7 @@ NoInline ob err(en v, const char *msg, ...) {
   fputc('\n', stderr);
   // print backtrace
   if (fp < top) for (;;) {
-    ip = Retp, fp += Width(fr) + N(Argc) + N(Subr);
+    ip = Retp, fp += Width(fr) + getnum(Argc) + getnum(Subr);
     if (fp == top) break;
     fputs("# in ", stderr);
     show_call(v, ip, fp);
@@ -243,68 +247,68 @@ NoInline ob err(en v, const char *msg, ...) {
 
 #define mm_u(_c,_v,_z,op){\
  ob x,*xs=_v,*l=xs+_c;\
- for(xp=_z;xs<l;xp=xp op N(x)){\
+ for(xp=_z;xs<l;xp=xp op getnum(x)){\
   x = *xs++; Tc(x, Num);}\
- Go(ret, _N(xp));}
+ Go(ret, putnum(xp));}
 
 #define mm_u0(_c,_v,_z,op){\
  ob x,*xs=_v,*l=xs+_c;\
- for(xp=_z;xs<l;xp=xp op N(x)){\
+ for(xp=_z;xs<l;xp=xp op getnum(x)){\
   x = *xs++; Tc(x, Num);\
-  if (x == _N(0)) Jump(div_error);}\
- Go(ret, _N(xp));}
+  if (x == putnum(0)) Jump(div_error);}\
+ Go(ret, putnum(xp));}
 
 Vm(sub_u) {
-  if (!(xp = N(Argc))) Go(ret, _N(0));
+  if (!(xp = getnum(Argc))) Go(ret, putnum(0));
   TypeCheck(*Argv, Num);
-  if (xp == 1) Go(ret, _N(-N(*Argv)));
-  mm_u(xp-1,Argv+1,N(*Argv),-); }
+  if (xp == 1) Go(ret, putnum(-getnum(*Argv)));
+  mm_u(xp-1,Argv+1,getnum(*Argv),-); }
 
 Vm(sar_u) {
-  if (Argc == _N(0)) Go(ret, _N(0));
+  if (Argc == putnum(0)) Go(ret, putnum(0));
   TypeCheck(*Argv, Num);
-  mm_u(N(Argc)-1, Argv+1, N(*Argv), >>); }
+  mm_u(getnum(Argc)-1, Argv+1, getnum(*Argv), >>); }
 
 Vm(sal_u) {
-  if (Argc == _N(0)) Go(ret, _N(0));
+  if (Argc == putnum(0)) Go(ret, putnum(0));
   TypeCheck(*Argv, Num);
-  mm_u(N(Argc)-1, Argv+1, N(*Argv), <<); }
+  mm_u(getnum(Argc)-1, Argv+1, getnum(*Argv), <<); }
 
 Vm(dqv) {
-  if (xp == _N(0)) Jump(div_error);
-  xp = _N(N(*sp++) / N(xp));
+  if (xp == putnum(0)) Jump(div_error);
+  xp = putnum(getnum(*sp++) / getnum(xp));
   Next(1); }
 
 Vm(div_u) {
-  if (!(xp = N(Argc))) Go(ret, ok);
+  if (!(xp = getnum(Argc))) Go(ret, ok);
   Tc(*Argv, Num);
-  mm_u0(xp-1,Argv+1,N(*Argv),/); }
+  mm_u0(xp-1, Argv+1, getnum(*Argv), /); }
 
 Vm(mod) {
-  if (xp == _N(0)) Jump(div_error);
-  xp = _N(N(*sp++) % N(xp));
+  if (xp == putnum(0)) Jump(div_error);
+  xp = putnum(getnum(*sp++) % getnum(xp));
   Next(1); }
 
 Vm(mod_u) {
-  if (!(xp = N(Argc))) Go(ret, ok);
+  if (!(xp = getnum(Argc))) Go(ret, ok);
   Tc(*Argv, Num);
-  mm_u0(xp-1,Argv+1,N(*Argv),%); }
+  mm_u0(xp-1, Argv+1, getnum(*Argv), %); }
 
-Vm(rnd_u) { Go(ret, _N(v->rand = lcprng(v->rand))); }
+Vm(rnd_u) { Go(ret, putnum(v->rand = lcprng(v->rand))); }
 
 #define OP(nom, x, n) Vm(nom) { xp = (x); Next(n); }
 #define OP1(nom, x) OP(nom, x, 1)
-OP1(neg, _N(-N(xp)))
+OP1(neg, putnum(-getnum(xp)))
 BINOP(add,  xp + *sp++ - Num)
 BINOP(bor,  xp | *sp++)
 BINOP(bxor, (xp ^ *sp++) | Num)
-BINOP(mul,  _N(N(*sp++)  * N(xp)))
+BINOP(mul,  putnum(getnum(*sp++) * getnum(xp)))
 BINOP(band, xp & *sp++)
 BINOP(sub,  *sp++ - xp + Num)
-BINOP(sar,  _N(N(*sp++) >> N(xp)))
-BINOP(sal,  _N(N(*sp++) << N(xp)))
+BINOP(sar,  putnum(getnum(*sp++) >> getnum(xp)))
+BINOP(sal,  putnum(getnum(*sp++) << getnum(xp)))
 
-#define UBINOP(nom, dflt, op) Vm(nom##_u) { mm_u(N(Argc), Argv, dflt, op); }
+#define UBINOP(nom, dflt, op) Vm(nom##_u) { mm_u(getnum(Argc), Argv, dflt, op); }
 
 UBINOP(add, 0, +)
 UBINOP(bor, 0, |)
@@ -336,7 +340,7 @@ BINOP(eq, eql(xp, *sp++) ? ok : nil)
 cmp(lt, LT) cmp(lteq, LE) cmp(gteq, GE) cmp(gt, GT)
 #undef cmp
 #define cmp(op, n) Vm(n##_u) {\
-  ob n = N(Argc), *xs = Argv, m, *l;\
+  ob n = getnum(Argc), *xs = Argv, m, *l;\
   switch (n) {\
     case 0: Go(ret, nil);\
     default: for (l = xs + n - 1, m = *xs; xs < l; m= *++xs)\
@@ -349,13 +353,13 @@ cmp(LT, lt) cmp(LE, lteq) cmp(GE, gteq) cmp(GT, gt) cmp(eql, eq)
 //
 // constants
 OP1(unit, nil)
-OP1(one, _N(1))
-OP1(zero, _N(0))
+OP1(one, putnum(1))
+OP1(zero, putnum(0))
 // immediate value from thread
-OP2(imm, (ob) H(ip)[1].ll)
+OP2(imm, (ob) gethom(ip)[1].ll)
 
 // indexed references
-#define Ref(b) (*(i64*)((i64)(b)+(i64)H(ip)[1].ll-Num))
+#define Ref(b) (*(i64*)((i64)(b)+(i64)gethom(ip)[1].ll-Num))
 // pointer arithmetic works because fixnums are premultiplied by W
 
 // function arguments
@@ -363,13 +367,13 @@ OP2(arg, Ref(Argv))
 OP1(arg0, Argv[0])
 OP1(arg1, Argv[1])
 // local variables
-OP2(loc, Ref(V(Locs)->xs))
-OP1(loc0, V(Locs)->xs[0])
-OP1(loc1, V(Locs)->xs[1])
+OP2(loc, Ref(getvec(Locs)->xs))
+OP1(loc0, getvec(Locs)->xs[0])
+OP1(loc1, getvec(Locs)->xs[1])
 // closure variables
-OP2(clo, Ref(V(Clos)->xs))
-OP1(clo0, V(Clos)->xs[0])
-OP1(clo1, V(Clos)->xs[1])
+OP2(clo, Ref(getvec(Clos)->xs))
+OP1(clo0, getvec(Clos)->xs[0])
+OP1(clo1, getvec(Clos)->xs[1])
 
 ////
 /// Store Instructions
@@ -377,18 +381,18 @@ OP1(clo1, V(Clos)->xs[1])
 // stack push
 Vm(push) { Have1(); *--sp = xp; Next(1); }
 // set a local variable
-Vm(loc_) { Ref(V(Locs)->xs) = xp; Next(2); }
+Vm(loc_) { Ref(getvec(Locs)->xs) = xp; Next(2); }
 // set a global variable
-Vm(tbind) { CallC(tbl_set(v, Top, (ob) H(ip)[1].ll, xp)); Next(2); }
+Vm(tbind) { CallC(tbl_set(v, Top, (ob) gethom(ip)[1].ll, xp)); Next(2); }
 
 // allocate local variable array
 Vm(locals) {
-  i64 n = N((i64) H(ip)[1].ll);
+  i64 n = getnum((i64) gethom(ip)[1].ll);
   Have(n + 2);
   vec t = (vec) hp;
   set64(t->xs, nil, t->len = n);
   hp += n + 1;
-  *--sp = _V(t);
+  *--sp = putvec(t);
   Next(2); }
 
 // late binding
@@ -396,31 +400,31 @@ Vm(locals) {
 // that would have been done by the compiler if the function
 // had been bound early.
 Vm(lbind) {
-  ob w = (ob) H(ip)[1].ll, d = AB(w), y = A(w);
+  ob w = (ob) gethom(ip)[1].ll, d = AB(w), y = A(w);
   if (!(w = tbl_get(v, d, xp = BB(w)))) {
-    char *nom = nilp(Y(xp)->nom) ? "()" : S(Y(xp)->nom)->text;
+    char *nom = nilp(getsym(xp)->nom) ? "()" : getstr(getsym(xp)->nom)->text;
     return Pack(), err(v, "free variable : %s", nom); }
   xp = w;
-  if (y != _N(8)) Tc(xp, N(y)); // do the type check
-  vm *q = (vm*) H(ip)[2].ll; // omit the arity check if possible
+  if (y != putnum(sizeof(ob))) Tc(xp, getnum(y)); // do the type check
+  vm *q = (vm*) gethom(ip)[2].ll; // omit the arity check if possible
   if (q == call || q == rec) {
-    ob aa = (ob) H(ip)[3].ll;
-    if (H(xp)[0].ll == (vm*) arity && aa >= (ob) H(xp)[1].ll) xp += sizeof(void*) * 2; }
-  H(ip)[0].ll = (vm*) imm;
-  H(ip)[1].ll = (vm*) xp;
+    ob aa = (ob) gethom(ip)[3].ll;
+    if (gethom(xp)[0].ll == (vm*) arity && aa >= (ob) gethom(xp)[1].ll) xp += sizeof(void*) * 2; }
+  gethom(ip)[0].ll = (vm*) imm;
+  gethom(ip)[1].ll = (vm*) xp;
   Next(2); }
 
 
 // hash tables
 Vm(tblg) {
-  Ary(2);
-  Tc(Argv[0], Tbl);
+  Arity(2);
+  TypeCheck(Argv[0], Tbl);
   xp = tbl_get(v, Argv[0], Argv[1]);
   Go(ret, xp ? xp : nil); }
 
 OP1(tget, (xp = tbl_get(v, xp, *sp++)) ? xp : nil)
 OP1(thas, tbl_get(v, xp, *sp++) ? ok : nil)
-OP1(tlen, _N(gettbl(xp)->len))
+OP1(tlen, putnum(gettbl(xp)->len))
 
 Vm(tkeys) {
   CallC(v->xp = tblkeys(v, xp));
@@ -441,31 +445,31 @@ static ob tblss(en v, i64 i, i64 l) {
   return tblss(v, i+2, l); }
 
 Vm(tbls) {
-  Ary(1);
+  Arity(1);
   xp = *Argv;
-  Tc(xp, Tbl);
-  CallC(v->xp = tblss(v, 1, N(Argc)));
+  TypeCheck(xp, Tbl);
+  CallC(v->xp = tblss(v, 1, getnum(Argc)));
   bind(xp, xp);
   Jump(ret); }
 
 Vm(tblmk) {
   Pack();
   bind(v->xp, table(v)); // xp <- table
-  bind(xp, tblss(v, 0, N(Argc))); // _ <- updates
+  bind(xp, tblss(v, 0, getnum(Argc))); // _ <- updates
   Unpack();
   Jump(ret); }
 
 Vm(tblks) {
-  Ary(1);
-  Tc(*Argv, Tbl);
+  Arity(1);
+  TypeCheck(*Argv, Tbl);
   CallC(v->xp = tblkeys(v, *Argv));
   bind(xp, xp);
   Jump(ret); }
 
 Vm(tbll) {
-  Ary(1);
-  Tc(*Argv, Tbl);
-  Go(ret, _N(gettbl(*Argv)->len)); }
+  Arity(1);
+  TypeCheck(*Argv, Tbl);
+  Go(ret, putnum(gettbl(*Argv)->len)); }
 
 Vm(tset) {
   ob x = *sp++, y = *sp++;
@@ -503,21 +507,21 @@ Vm(cons_u) {
 
 // this is used to create closures.
 Vm(take) {
-  u64 n = N((ob) H(ip)[1].ll);
+  u64 n = getnum((ob) gethom(ip)[1].ll);
   Have(n + 1);
   vec t = (vec) hp;
   hp += n + 1;
   t->len = n;
   cpy64(t->xs, sp, n);
   sp += n;
-  Go(ret, _V(t)); }
+  Go(ret, putvec(t)); }
 
 Vm(vset_u) {
   Arity(3);
   CheckType(Argv[0], Vec);
   CheckType(Argv[1], Num);
-  i64 idx = N(Argv[1]);
-  vec ary = V(Argv[0]);
+  i64 idx = getnum(Argv[1]);
+  vec ary = getvec(Argv[0]);
   if (idx < 0 || idx >= ary->len) {
     v->xp = idx, v->ip = ary->len;
     Jump(oob_error); }
@@ -527,15 +531,15 @@ Vm(vget_u) {
   Arity(2);
   CheckType(Argv[0], Vec);
   CheckType(Argv[1], Num);
-  i64 idx = N(Argv[1]);
-  vec ary = V(Argv[0]);
+  i64 idx = getnum(Argv[1]);
+  vec ary = getvec(Argv[0]);
   if (idx < 0 || idx >= ary->len) {
     v->xp = idx, v->ip = ary->len;
     Jump(oob_error); }
   Go(ret, ary->xs[idx]); }
 
 Vm(vec_u) {
-  ob n = N(Argc);
+  ob n = getnum(Argc);
   Have(n + 1);
   vec t = (vec) hp;
   hp += 1 + n;
