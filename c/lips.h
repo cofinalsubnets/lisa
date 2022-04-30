@@ -114,11 +114,6 @@ BWDQ(memn)
 #define Width(t) b2w(sizeof(struct t))
 
 #define Q(_) ((_)&(sizeof(ob)-1))
-static Inline i64 lcprng(i64 s) {
-  const i64 steele_vigna_2021 = 0xaf251af3b0f025b5ll;
-  return (s * steele_vigna_2021 + 1) >> 8; }
-static Inline u64 b2w(u64 b) {
-  return b / sizeof(ob) + (b % sizeof(ob) && 1); }
 
 #define nilp(_) ((_)==nil)
 #define tnom(_) ((const char*)(tnoms+(_)))
@@ -134,25 +129,31 @@ static Inline u64 b2w(u64 b) {
 #define homp(_) (Q(_)==Hom)
 #define puthom(_) ((ob)(_))
 #define gethom(_) ((yo)(_))
-//sym.h
-static Inline sym getsym(ob x) { return (sym) (x - Sym); }
-static Inline ob putsym(u0 *y) { return (ob) y + Sym; }
-static Inline u1 symp(ob x) { return Q(x) == Sym; }
-static Inline tbl gettbl(ob x) { return (tbl) (x - Tbl); }
-static Inline ob puttbl(tbl t) { return (ob) t + Tbl; }
-static Inline vec getvec(ob x) { return (vec) (x - Vec); }
-static Inline ob putvec(vec v) { return (ob) v + Vec; }
+#define getsym(_) ((sym)((_)-Sym))
+#define putsym(_) ((ob)(_)+Sym)
+#define symp(_) (Q(_)==Sym)
+#define tblp(_) (Q(_)==Tbl)
+#define vecp(_) (Q(_)==Vec)
+#define gettbl(_) ((tbl)((_)-Tbl))
+#define puttbl(_) ((ob)(_)+Tbl)
+#define getvec(_) ((vec)((_)-Vec))
+#define putvec(_) ((ob)(_)+Vec)
+#define twop(_) (Q(_)==Two)
+#define gettwo(_) ((two)((_)-Two))
+#define puttwo(_) ((ob)(_)+Two)
 
-static Inline two gettwo(ob x) { return (two) (x - Two); }
-static Inline ob puttwo(u0 *x) { return (ob) x + Two; }
-static Inline u1 twop(ob x) { return Q(x) == Two; }
-static Inline u64 llen(ob l) { for (u64 i = 0;; l = B(l), i++)
-                      if (!twop(l)) return i; }
-
-
+static Inline yo button(yo h) { while (G(h)) h = F(h); return h; }
+static Inline u64 llen(ob l) { for (u64 i = 0;; l = B(l), i++) if (!twop(l)) return i; }
 extern void (*writers[])(mo, ob, FILE*);
 static Inline void emit(mo v, ob x, FILE *o) { writers[Q(x)](v, x, o); }
 static Inline void emsep(en v, ob x, FILE *o, char s) { emit(v, x, o), fputc(s, o); }
+static Inline i64 lcprng(i64 s) {
+  const i64 steele_vigna_2021 = 0xaf251af3b0f025b5ll;
+  return (s * steele_vigna_2021 + 1) >> 8; }
+static Inline u64 b2w(u64 b) {
+  return b / sizeof(ob) + (b % sizeof(ob) && 1); }
+
+// XXX FIXME XXX
 _Static_assert(sizeof(void*) == sizeof(int64_t), "64 bit pointers");
 _Static_assert(-1 >> 1 == -1, "sign-extended bit shifts");
 #endif

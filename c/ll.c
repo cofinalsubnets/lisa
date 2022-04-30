@@ -105,8 +105,6 @@ Ll(vararg) {
   Argv[reqd] = puttwo(t);
   return ApN(2, xp); }
 
-static Inline bool vecp(ob x) { return Q(x) == Vec; }
-static Inline bool tblp(ob x) { return Q(x) == Tbl; }
 // type predicates
 #define Tp(t)\
   Vm(t##pp) { return ApN(1, (t##p(xp)?ok:nil)); }\
