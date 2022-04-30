@@ -95,22 +95,16 @@ insts(ninl)
 #define ApY(f, x) (ip = (f), ((yo)(ip))->ll(v, ip, fp, sp, hp, (x)))
 #define ApC(f, x) (f)(v, ip, fp, sp, hp, (x))
 #define ApN(n, x) ApY((ob)((yo)ip+(n)), (x))
-#define Go(f, x) return ApC(f, x)
-#define Next(n) return ApN(n, xp)
 #define CheckType(x,t) if(Q((x))-(t)){xp=x,v->xp=t;return ApC(type_error, xp);}
 #define Arity(n) if(putnum(n)>Argc){ return ApC((v->xp=n,ary_error), xp); }
-#define Ary Arity
 #define Tc CheckType
 #define TypeCheck Tc
-#define ok N1
-#define N1 putnum(1)
 #define N0 putnum(0)
-
 
 #define Have(n) if (sp - hp < n) return ApC((v->xp=n,gc), xp)
 #define Have1() if (hp == sp) return ApC((v->xp=1,gc), xp) // common case, faster comparison
 
-#define BINOP(nom, xpn) Vm(nom) { xp = (xpn); Next(1); }
+#define BINOP(nom, xpn) Vm(nom) { xp = (xpn); return ApN(1, xp); }
 
 #define If v->glob[Cond]
 #define De v->glob[Def]

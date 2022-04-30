@@ -30,7 +30,7 @@ Vm(gc) {
   Pack();
   if (!please(v, req)) return err(v, oom_err_msg, v->len, req); 
   Unpack();
-  Next(0); }
+  return ApY(ip, xp); }
 
 // a simple copying garbage collector
 //
@@ -369,8 +369,8 @@ ob string(en v, const char* c) {
   return putstr(o); }
 
 Vm(tbld) {
-  Ary(2);
-  Tc(Argv[0], Tbl);
+  Arity(2);
+  TypeCheck(Argv[0], Tbl);
   CallC(v->xp = tbl_del(v, Argv[0], Argv[1]));
   return ApC(ret, xp); }
 
@@ -441,7 +441,7 @@ Vm(strmk) {
     if (x == putnum(0)) break; }
   s->text[i] = 0;
   s->len = i+1;
-  Go(ret, putstr(s)); }
+  return ApC(ret, putstr(s)); }
 
 //symbols
 
@@ -495,4 +495,4 @@ Vm(ystr_u) {
   Arity(1);
   xp = *Argv;
   CheckType(xp, Sym);
-  Go(ret, getsym(xp)->nom); }
+  return ApC(ret, getsym(xp)->nom); }

@@ -498,10 +498,10 @@ Vm(emx_u) {
  return ApC(ret, h); }
 
 Vm(emi_u) {
- Ary(2);
- Tc(Argv[0], Num);
+ Arity(2);
+ TypeCheck(Argv[0], Num);
  ob h = Argv[1];
- Tc(h, Hom);
+ TypeCheck(h, Hom);
  h -= sizeof(void*);
  gethom(h)->ll = (vm*) getnum(Argv[0]);
  return ApC(ret, h); }
@@ -517,9 +517,9 @@ Vm(hgetx_u) {
   return ApC(ret, (ob) gethom(*Argv)->ll); }
 
 Vm(hseek_u) {
-  Ary(2);
-  Tc(Argv[0], Hom);
-  Tc(Argv[1], Num);
+  Arity(2);
+  TypeCheck(Argv[0], Hom);
+  TypeCheck(Argv[1], Num);
   return ApC(ret, puthom(gethom(Argv[0]) + getnum(Argv[1]))); }
 
 ob analyze(en v, ob x) {

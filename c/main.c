@@ -27,7 +27,7 @@ static en init(u1, const char*, char **);
 static NoInline ob go(en v) {
   ob xp, ip, *sp, *hp, *fp;
   Unpack();
-  Next(0); }
+  return ApY(ip, xp); }
 
 int main(int argc, char **argv) {
   for (u1 shell = argc == 1, boot = true;;)

@@ -1,6 +1,8 @@
 #include "lips.h"
 #include "ll.h"
 
+#define N1 putnum(1)
+
 // " the virtual machine "
 // It's a stack machine with one free register that runs on
 // top of the C compiler's calling convention. This lets us
@@ -107,7 +109,7 @@ Ll(vararg) {
 
 // type predicates
 #define Tp(t)\
-  Vm(t##pp) { return ApN(1, (t##p(xp)?ok:nil)); }\
+  Vm(t##pp) { return ApN(1, (t##p(xp)?N1:nil)); }\
   Vm(t##p_u) {\
     for (ob *xs = Argv, *l = xs + getnum(Argc); xs < l;)\
       if (!t##p(*xs++)) return ApC(ret, nil);\
@@ -338,7 +340,7 @@ Inline u1 eql(ob a, ob b) {
 #define LE(a,b) (a<=b)
 #define GE(a,b) (a>=b)
 #define GT(a,b) (a>b)
-BINOP(eq, eql(xp, *sp++) ? ok : nil)
+BINOP(eq, eql(xp, *sp++) ? N1 : nil)
 #define cmp(n, op) BINOP(n, op(*sp++, xp) ? xp : nil)
 cmp(lt, LT) cmp(lteq, LE) cmp(gteq, GE) cmp(gt, GT)
 #undef cmp
@@ -434,7 +436,7 @@ Vm(tblg) {
   return ApC(ret, xp ? xp : nil); }
 
 OP1(tget, (xp = tbl_get(v, xp, *sp++)) ? xp : nil)
-OP1(thas, tbl_get(v, xp, *sp++) ? ok : nil)
+OP1(thas, tbl_get(v, xp, *sp++) ? N1 : nil)
 OP1(tlen, putnum(gettbl(xp)->len))
 
 Vm(tkeys) {
@@ -446,7 +448,7 @@ Vm(tblc) {
   Arity(2);
   TypeCheck(Argv[0], Tbl);
   xp = tbl_get(v, Argv[0], Argv[1]);
-  return ApC(ret, xp ? ok : nil); }
+  return ApC(ret, xp ? N1 : nil); }
 
 static ob tblss(en v, i64 i, i64 l) {
   fr fp = (fr) v->fp;
