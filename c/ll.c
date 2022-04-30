@@ -217,14 +217,14 @@ Ll(arity) {
   if (reqd <= Argc) return ApN(2, xp);
   else return v->xp = getnum(reqd), ApC(ary_error, xp); }
 
-static Inline void show_call(en v, yo ip, fr fp) {
+static Inline void show_call(mo v, yo ip, fr fp) {
   fputc('(', stderr);
   emit(v, (ob) ip, stderr);
   for (i64 i = 0, argc = getnum(fp->argc); i < argc;)
     fputc(' ', stderr), emit(v, fp->argv[i++], stderr);
   fputc(')', stderr); }
 
-NoInline ob err(en v, const char *msg, ...) {
+NoInline ob err(mo v, const char *msg, ...) {
   yo ip = (yo) v->ip;
   fr fp = (fr) v->fp,
      top = (fr) (v->pool + v->len);
@@ -344,7 +344,7 @@ BINOP(eq, eql(xp, *sp++) ? N1 : nil)
 #define cmp(n, op) BINOP(n, op(*sp++, xp) ? xp : nil)
 cmp(lt, LT) cmp(lteq, LE) cmp(gteq, GE) cmp(gt, GT)
 #undef cmp
-#define cmp(op, n) Vm(n##_u) {\
+#define cmp(op, n) Ll(n##_u) {\
   ob n = getnum(Argc), *xs = Argv, m, *l;\
   switch (n) {\
     case 0: return ApC(ret, nil);\
@@ -450,7 +450,7 @@ Vm(tblc) {
   xp = tbl_get(v, Argv[0], Argv[1]);
   return ApC(ret, xp ? N1 : nil); }
 
-static ob tblss(en v, i64 i, i64 l) {
+static ob tblss(mo v, i64 i, i64 l) {
   fr fp = (fr) v->fp;
   if (i > l-2) return fp->argv[i-1];
   ob _;
@@ -527,36 +527,4 @@ Vm(take) {
   t->len = n;
   cpy64(t->xs, sp, n);
   sp += n;
-  return ApC(ret, putvec(t)); }
-
-Vm(vset_u) {
-  Arity(3);
-  CheckType(Argv[0], Vec);
-  CheckType(Argv[1], Num);
-  i64 idx = getnum(Argv[1]);
-  vec ary = getvec(Argv[0]);
-  if (idx < 0 || idx >= ary->len) {
-    v->xp = idx;
-    v->ip = (yo) ary->len;
-    return ApC(oob_error, xp); }
-  return ApC(ret, ary->xs[idx] = Argv[2]); }
-
-Vm(vget_u) {
-  Arity(2);
-  CheckType(Argv[0], Vec);
-  CheckType(Argv[1], Num);
-  i64 idx = getnum(Argv[1]);
-  vec ary = getvec(Argv[0]);
-  if (idx < 0 || idx >= ary->len) {
-    v->xp = idx;
-    v->ip = (yo) ary->len;
-    return ApC(oob_error, xp); }
-  return ApC(ret, ary->xs[idx]); }
-
-Vm(vec_u) {
-  ob n = getnum(Argc);
-  Have(n + 1);
-  vec t = (vec) hp;
-  hp += 1 + n;
-  cpy64(t->xs, Argv, t->len = n);
   return ApC(ret, putvec(t)); }

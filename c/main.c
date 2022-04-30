@@ -91,15 +91,15 @@ static ob scrp(mo v, const char *path) {
 
 // scrr : yo mo bool strings
 static ob scrr(mo v, bool shell, const char **paths) {
-  yo h;
+  yo k;
   ob x, y;
   const char *path = *paths;
   if (!path) {
-    bind(h, cells(v, 3));
-    h[0].ll = shell ? repl : fin_ok;
-    h[1].ll = NULL;
-    h[2].ll = (ll*) h;
-    return (ob) h; }
+    bind(k, cells(v, 3));
+    k[0].ll = shell ? repl : fin_ok;
+    k[1].ll = NULL;
+    k[2].ll = (ll*) k;
+    return (ob) k; }
   bind(y, scrr(v, shell, paths+1));
   with(y, x = scrp(v, path));
   bind(x, x);

@@ -14,7 +14,7 @@ ob err(en, const char*, ...) NoInline;
  _(mul, 0) _(dqv, 0) _(mod, 0) _(neg, 0) _(lt, 0)\
  _(lteq, 0) _(eq, 0) _(gteq, 0) _(gt, 0) _(twopp, 0)\
  _(numpp, 0) _(nilpp, 0) _(strpp, 0) _(tblpp, 0) _(sympp, 0)\
- _(hompp, 0) _(vecpp, 0) _(car, 0) _(cdr, 0) _(cons, 0)\
+ _(hompp, 0) _(car, 0) _(cdr, 0) _(cons, 0)\
  _(unit, 0) _(one, 0) _(zero, 0) _(arg0, 0) _(arg1, 0)\
  _(loc0, 0) _(loc1, 0) _(clo0, 0) _(clo1, 0)\
  _(brlt, 0) _(brlteq, 0) _(breq, 0) _(brgteq, 0) _(brlt2, 0)\
@@ -36,11 +36,10 @@ ob err(en, const char*, ...) NoInline;
  _(ccc_u, "ccc") _(putc_u, "putc") _(ystr_u, "ystr")\
  _(slurp, "slurp") _(dump, "dump") _(hnom_u, "hnom")\
  _(emx_u, "emx") _(emi_u, "emi") _(em_u, ".") _(ev_u, "ev")\
- _(ap_u, "ap") _(vget_u, "vget")\
- _(vset_u, "vset") _(vec_u, tnom(Vec)) _(hgeti_u, "hgeti")\
+ _(ap_u, "ap") _(hgeti_u, "hgeti")\
  _(hfin_u, "hfin") _(hgetx_u, "hgetx") _(twop_u, "twop")\
  _(nump_u, "nump") _(homp_u, "homp") _(tblp_u, "tblp")\
- _(vecp_u, "vecp") _(symp_u, "symp") _(strp_u, "strp")\
+ _(symp_u, "symp") _(strp_u, "strp")\
  _(nilp_u, "nilp") _(rnd_u, "rand")
 
 #define ninl(x, _) ll x NoInline;

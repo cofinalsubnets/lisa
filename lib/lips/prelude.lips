@@ -153,7 +153,7 @@
    pure (set
     L X A B Q + - * / % & | ^ << >> I K flip iota rho inc dec co
     = ~ <= >= < > cu const snoc init last rev del memq at idx len
-    twop nilp symp nump tblp strp vecp homp
+    twop nilp symp nump tblp strp homp
     && || scat slen sget ssub str)
 
    ; we should have an impure set instead and infer from that
@@ -314,7 +314,6 @@
    symp (nary i-sympp () ())
    strp (nary i-strpp () ())
    tblp (nary i-tblpp () ())
-   vecp (nary i-vecpp () ())
    fail (nary (hgeti fail) ())))
 
    ) (: ; new let expn makes sure ^^^ exist & don't make a closure vvv
@@ -324,7 +323,7 @@
 
  (type-sym x) (?
   (homp x) 'hom (nump x) 'num
-  (twop x) 'two (vecp x) 'vec
+  (twop x) 'two
   (symp x) 'sym (strp x) 'str
   (tblp x) 'tbl          'nil)
 
