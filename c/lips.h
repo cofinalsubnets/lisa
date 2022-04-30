@@ -35,10 +35,11 @@ enum { Def, Cond, Lamb, Quote, Seq, Splat,
        Topl, Macs, Eval, Apply, NGlobs };
 
 typedef struct yo *yo; // よ
+typedef struct mo *mo, *en;
 // this structure holds runtime state.
 // most runtime functions take a pointer to this as the
 // first argument.
-typedef struct mo {
+struct mo {
   yo ip;
   fr fp;
   ob *hp, *sp, xp; // interpreter state
@@ -46,7 +47,7 @@ typedef struct mo {
      rand, // random state
      t0, len, *pool; // memory state
   mm mm; // gc protection list
-} *mo, *en;
+};
 
 // this is the type of interpreter functions
 // FIXME en yo fr ob* ob* ob
@@ -62,20 +63,19 @@ typedef struct two { ob a, b; } *two;
 
 // a packed array of 4-byte strings.
 extern const uint32_t *tnoms;
-en li_ini(u0);
-u64 hash(en, ob);
-ob eval(en, ob), homnom(en, ob),
-   analyze(en, ob), sequence(en, ob, ob),
-   string(en, const char*), intern(en, ob),
-   interns(en, const char*), sskc(en, ob*, ob),
-   tblkeys(en, ob), table(en), tbl_set(en, ob, ob, ob),
-   tbl_set_s(en, ob, ob, ob), tbl_get(en, ob, ob),
-   pair(en, ob, ob),
-   parse(en, FILE*),
-   read_path(en, const char*), read_file(en, FILE*);
-u0 li_fin(en), *cells(en, u64), emit(en, ob, FILE*);
-u1 eql(ob, ob), please(en, u64),
- write_file(en, const char*, const char*);
+mo ini(void);
+u64 hash(mo, ob);
+ob eval(mo, ob), homnom(mo, ob),
+   analyze(mo, ob), sequence(mo, ob, ob),
+   string(mo, const char*), intern(mo, ob),
+   interns(mo, const char*), sskc(mo, ob*, ob),
+   tblkeys(mo, ob), table(mo), tbl_set(mo, ob, ob, ob),
+   tbl_set_s(mo, ob, ob, ob), tbl_get(mo, ob, ob),
+   pair(mo, ob, ob),
+   parse(mo, FILE*),
+   read_path(mo, const char*), read_file(mo, FILE*);
+void fin(mo), *cells(mo, u64);
+bool eql(ob, ob), please(mo, u64);
 
 #define nil (~(ob)0)
 #define bind(v, x) if(!((v)=(x)))return 0
@@ -85,13 +85,13 @@ u1 eql(ob, ob), please(en, u64),
 #define SI static Inline
 #define SNI static NoInline
 #define memn(n)\
-  SI u0 set##n(u0*_d,u##n i,u64 l) {\
+  static Inline u0 set##n(u0*_d,u##n i,u64 l) {\
     for(u##n*d=_d;l--;*d++=i); }\
-  SI u0 cpy##n(u0*_d,const u0*_s, u64 l) {\
+  static Inline u0 cpy##n(u0*_d,const u0*_s, u64 l) {\
     u##n*d=_d; const u##n*s=_s; while (l--) *d++=*s++; }\
-  SI u0 cpy##n##r(u0*_d,const u0*_s, u64 l) {\
+  static Inline u0 cpy##n##r(u0*_d,const u0*_s, u64 l) {\
     u##n*d=_d; const u##n*s=_s; while (l--) d[l]=s[l]; }\
-  SI u0 mov##n(u0*_d,const u0*_s, u64 l) {\
+  static Inline u0 mov##n(u0*_d,const u0*_s, u64 l) {\
     if (_d<_s) cpy##n(_d, _s, l);\
     else if (_d>_s) cpy##n##r(_d, _s, l); }
 BWDQ(memn)
@@ -116,47 +116,49 @@ BWDQ(memn)
 #define Sob sizeof(ob)
 #define Re return
 
-SI enum class Q(ob _) { Re _ & (Sob - 1); }
+static Inline enum class Q(ob _) { Re _ & (Sob - 1); }
 static i64 steele_vigna_2021 = 0xaf251af3b0f025b5ll;
-SI i64 lcprng(i64 s) { Re (s * steele_vigna_2021 + 1) >> 8; }
-SI u64 b2w(u64 b) { Re b / Sob + (b % Sob && 1); }
+static Inline i64 lcprng(i64 s) { Re (s * steele_vigna_2021 + 1) >> 8; }
+static Inline u64 b2w(u64 b) { Re b / Sob + (b % Sob && 1); }
 
-SI u1 nilp(ob x) { Re x == nil; }
-SI const char *tnom(enum class t) {
+static Inline bool nilp(ob x) { Re x == nil; }
+static Inline const char *tnom(enum class t) {
   Re (const char*) (tnoms + t); }
 
 //num.h
-SI u1 nump(ob x) { return Q(x) == Num; }
-SI i64 getnum(ob x) { return x >> 3; }
-SI ob putnum(i64 n) { return (n << 3) + Num; }
+static Inline bool nump(ob x) { return Q(x) == Num; }
+static Inline i64 getnum(ob x) { return x >> 3; }
+static Inline ob putnum(i64 n) { return (n << 3) + Num; }
 //str.h
-SI str getstr(ob x) { return (str) (x - Str); }
-SI ob putstr(str s) { return (ob) s + Str; }
-SI u1 strp(ob x) { return Q(x) == Str; }
+static Inline str getstr(ob x) { return (str) (x - Str); }
+static Inline ob putstr(str s) { return (ob) s + Str; }
+static Inline u1 strp(ob x) { return Q(x) == Str; }
 //hom.h
-SI yo F(yo h) { return (yo) h->sh; }
-SI ll *G(yo h) { return h->ll; }
-SI yo gethom(ob x) { return (yo) x; }
-SI ob puthom(yo h) { return (ob) h; }
-SI yo button(yo h) { while (G(h)) h = F(h); return h; }
-SI u1 homp(ob x) { return Q(x) == Hom; }
+static Inline yo F(yo h) { return (yo) h->sh; }
+static Inline ll *G(yo h) { return h->ll; }
+static Inline yo gethom(ob x) { return (yo) x; }
+static Inline ob puthom(yo h) { return (ob) h; }
+static Inline yo button(yo h) { while (G(h)) h = F(h); return h; }
+static Inline u1 homp(ob x) { return Q(x) == Hom; }
 //sym.h
-SI sym getsym(ob x) { return (sym) (x - Sym); }
-SI ob putsym(u0 *y) { return (ob) y + Sym; }
-SI u1 symp(ob x) { return Q(x) == Sym; }
-SI tbl gettbl(ob x) { return (tbl) (x - Tbl); }
-SI ob puttbl(tbl t) { return (ob) t + Tbl; }
-SI vec getvec(ob x) { return (vec) (x - Vec); }
-SI ob putvec(vec v) { return (ob) v + Vec; }
+static Inline sym getsym(ob x) { return (sym) (x - Sym); }
+static Inline ob putsym(u0 *y) { return (ob) y + Sym; }
+static Inline u1 symp(ob x) { return Q(x) == Sym; }
+static Inline tbl gettbl(ob x) { return (tbl) (x - Tbl); }
+static Inline ob puttbl(tbl t) { return (ob) t + Tbl; }
+static Inline vec getvec(ob x) { return (vec) (x - Vec); }
+static Inline ob putvec(vec v) { return (ob) v + Vec; }
 
-SI two gettwo(ob x) { return (two) (x - Two); }
-SI ob puttwo(u0 *x) { return (ob) x + Two; }
-SI u1 twop(ob x) { return Q(x) == Two; }
-SI u64 llen(ob l) { for (u64 i = 0;; l = B(l), i++)
+static Inline two gettwo(ob x) { return (two) (x - Two); }
+static Inline ob puttwo(u0 *x) { return (ob) x + Two; }
+static Inline u1 twop(ob x) { return Q(x) == Two; }
+static Inline u64 llen(ob l) { for (u64 i = 0;; l = B(l), i++)
                       if (!twop(l)) return i; }
 
 
-SI u0 emsep(en v, ob x, FILE *o, char s) { emit(v, x, o), fputc(s, o); }
+extern void (*writers[])(mo, ob, FILE*);
+static Inline void emit(mo v, ob x, FILE *o) { writers[Q(x)](v, x, o); }
+static Inline void emsep(en v, ob x, FILE *o, char s) { emit(v, x, o), fputc(s, o); }
 _Static_assert(sizeof(void*) == sizeof(int64_t), "64 bit pointers");
 _Static_assert(-1 >> 1 == -1, "sign-extended bit shifts");
 #endif

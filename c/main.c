@@ -45,7 +45,7 @@ int main(int argc, char **argv) {
 static en init(u1 shell, const char *boot, char **paths) {
   en v;
   ob y, x;
-  bind(v, li_ini());
+  bind(v, ini());
   bind(x, scrr(v, shell, (const char **) paths));
   if (boot) {
     with(x, y = scrp(v, boot));
@@ -56,14 +56,14 @@ static en init(u1 shell, const char *boot, char **paths) {
 
 // vm functions to yield from the main thread
 //
-// li_fin_ok : nil lips
-static Vm(li_fin_ok) { return li_fin(v), nil; }
-// li_repl : nil lips
-static Vm(li_repl) {
+// fin_ok : nil lips
+static Vm(fin_ok) { return fin(v), nil; }
+// repl : nil lips
+static Vm(repl) {
   for (Pack();;) {
     if ((xp = parse(v, stdin))) {
       if ((xp = eval(v, xp))) emsep(v, xp, stdout, '\n'); }
-    else if (feof(stdin)) return li_fin(v), nil; } }
+    else if (feof(stdin)) return fin(v), nil; } }
 
 // functions to compile scripts into a program
 //
@@ -96,7 +96,7 @@ static ob scrr(en v, u1 shell, const char **paths) {
   const char *path = *paths;
   if (!path) {
     bind(h, cells(v, 3));
-    h[0].ll = (vm*) (shell ? li_repl : li_fin_ok);
+    h[0].ll = (vm*) (shell ? repl : fin_ok);
     h[1].ll = NULL;
     h[2].ll = (vm*) h;
     return (ob) h; }

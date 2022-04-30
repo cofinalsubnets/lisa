@@ -21,10 +21,10 @@ static NoInline bool prim(mo v, const char *a, ll *i) {
   return !!tbl_set(v, Top, A(nom), (ob) prim); }
 
 // lips destructor
-void li_fin(en v) { if (v) free(v->pool), free(v); }
+void fin(mo v) { if (v) free(v->pool), free(v); }
 
 // lips constructor
-mo li_ini(void) {
+mo ini(void) {
   mo v; ob _;
   bind(v, malloc(sizeof(struct mo)));
 
@@ -56,4 +56,4 @@ mo li_ini(void) {
   def("_ns", Top);
   def("_macros", Mac);
   return v; fail:
-  return li_fin(v), NULL; }
+  return fin(v), NULL; }

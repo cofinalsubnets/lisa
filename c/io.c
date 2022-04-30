@@ -13,20 +13,20 @@ const u32 *tnoms = (u32*)
 //
 
 typedef FILE *io;
-typedef ob read_loop(en, io, str, u64, u64);
-static ob two_in(en, io), read_num(const char*),
-          str_in(en, io), read_atom(en, io);
+typedef ob read_loop(mo, io, str, u64, u64);
+static ob two_in(mo, io), read_num(const char*),
+          str_in(mo, io), read_atom(mo, io);
 static read_loop str_loop, atom_loop;
 
-SI ob read_buf(en v, io i, read_loop *loop) {
+static Inline ob read_buf(mo v, io i, read_loop *loop) {
   str c;
   bind(c, cells(v, 2));
   return loop(v, i, c, 0, c->len = 8); }
 
-SI ob str_in(en v, io i) {
+static Inline ob str_in(mo v, io i) {
   return read_buf(v, i, str_loop); }
 
-SI ob read_atom(en v, io i) {
+static Inline ob read_atom(mo v, io i) {
   return read_buf(v, i, atom_loop); }
 
 static int read_char(FILE *i) {
@@ -36,13 +36,13 @@ static int read_char(FILE *i) {
     case ' ': case '\t': case '\n': continue;
     default: return c; } }
 
-ob read_quoted(en v, FILE *i) {
+ob read_quoted(mo v, FILE *i) {
   ob x;
   bind(x, parse(v, i));
   bind(x, pair(v, x, nil));
   return pair(v, Qt, x); }
 
-ob parse(en v, FILE* i) {
+ob parse(mo v, FILE* i) {
   int c = read_char(i);
   ob x, y;
   switch (c) {
@@ -55,7 +55,7 @@ ob parse(en v, FILE* i) {
              y = read_num(getstr(x)->text);
              return nump(y) ? y : intern(v, x); } }
 
-static ob two_in(en v, FILE *i) {
+static ob two_in(mo v, FILE *i) {
   ob x, y, c = read_char(i);
   switch (c) {
     case EOF: return 0;
@@ -67,7 +67,7 @@ static ob two_in(en v, FILE *i) {
       bind(y, y);
       return pair(v, x, y); } }
 
-SI ob grow_buffer(en v, ob s) {
+static Inline ob grow_buffer(mo v, ob s) {
   u64 l = b2w(getstr(s)->len);
   str t;
   with(s, t = cells(v, 2 * l + 1));
@@ -76,11 +76,11 @@ SI ob grow_buffer(en v, ob s) {
   cpy64(t->text, getstr(s)->text, l);
   return putstr(t); }
 
-SNI ob reloop(en v, FILE *i, ob x, u64 n, read_loop *loop) {
+SNI ob reloop(mo v, FILE *i, ob x, u64 n, read_loop *loop) {
   bind(x, grow_buffer(v, x));
   return loop(v, i, getstr(x), n, 2 * n); }
 
-static ob atom_loop(en v, FILE *p, str o, u64 n, u64 lim) {
+static ob atom_loop(mo v, FILE *p, str o, u64 n, u64 lim) {
   ob x;
   while (n < lim) switch (x = getc(p)) {
     case ' ': case '\n': case '\t': case ';': case '#':
@@ -92,7 +92,7 @@ static ob atom_loop(en v, FILE *p, str o, u64 n, u64 lim) {
     default: o->text[n++] = x; }
   return reloop(v, p, putstr(o), lim, atom_loop); }
 
-static ob str_loop(en v, FILE *p, str o, u64 n, u64 lim) {
+static ob str_loop(mo v, FILE *p, str o, u64 n, u64 lim) {
   ob x;
   while (n < lim) switch (x = getc(p)) {
     case '\\': if ((x = getc(p)) == EOF) {
@@ -100,7 +100,7 @@ static ob str_loop(en v, FILE *p, str o, u64 n, u64 lim) {
     default: o->text[n++] = x; }
   return reloop(v, p, putstr(o), lim, str_loop); }
 
-static ob read_file_loop(en v, FILE *p, str o, u64 n, u64 lim) {
+static ob read_file_loop(mo v, FILE *p, str o, u64 n, u64 lim) {
   ob x;
   while (n < lim) switch (x = getc(p)) {
     case EOF: o->text[n++] = 0, o->len = n; return putstr(o);
@@ -134,12 +134,12 @@ SNI ob read_num(const char *s) {
   return read_num_base(s, 10); }
 
 
-ob read_file(en v, FILE *i) {
+ob read_file(mo v, FILE *i) {
   ob s = read_buf(v, i, read_file_loop);
   fclose(i);
   return s; }
 
-ob read_path(en v, const char *path) {
+ob read_path(mo v, const char *path) {
   FILE *in;
   bind(in, fopen(path, "r"));
   return read_file(v, in); }
@@ -159,26 +159,26 @@ Vm(slurp) {
         v->xp = xp ? xp : nil);
   return ApC(ret, xp); }
 
-typedef u0 writer(en, ob, FILE*);
+typedef u0 writer(mo, ob, FILE*);
 static writer nil_out, two_out, num_out, vec_out,
               str_out, sym_out, tbl_out, hom_out;
-static writer *writers[] = {
+writer *writers[] = {
   [Hom] = hom_out, [Num] = num_out, [Tbl] = tbl_out, [Nil] = nil_out,
   [Str] = str_out, [Vec] = vec_out, [Sym] = sym_out, [Two] = two_out, };
 
-static u0 nil_out(en v, ob x, FILE *o) { fputs("()", o); }
-static u0 num_out(en v, ob x, FILE *o) {
+static u0 nil_out(mo v, ob x, FILE *o) { fputs("()", o); }
+static u0 num_out(mo v, ob x, FILE *o) {
   fprintf(o, "%ld", getnum(x)); }
-static u0 sym_out(en v, ob x, FILE *o) {
+static u0 sym_out(mo v, ob x, FILE *o) {
   sym y = getsym(x);
   nilp(y->nom) ? fprintf(o, "#sym@%lx", (long) y) :
                  fputs(getstr(y->nom)->text, o); }
 
-static u0 vec_out(en v, ob x, FILE *o) {
+static u0 vec_out(mo v, ob x, FILE *o) {
   vec e = getvec(x);
   fprintf(o, "#vec:%ld", (long) e->len); }
 
-static u0 emhomn(en v, ob x, FILE *o) {
+static u0 emhomn(mo v, ob x, FILE *o) {
   fputc('\\', o);
   switch (Q(x)) {
     case Sym: return sym_out(v, x, o);
@@ -186,36 +186,35 @@ static u0 emhomn(en v, ob x, FILE *o) {
               emhomn(v, B(x), o);
     default: } }
 
-static u0 hom_out(en v, ob x, FILE *o) {
+static u0 hom_out(mo v, ob x, FILE *o) {
   emhomn(v, homnom(v, x), o); }
 
-static u0 tbl_out(en v, ob x, FILE *o) {
+static u0 tbl_out(mo v, ob x, FILE *o) {
   tbl t = gettbl(x);
   fprintf(o, "#tbl:%ld/%ld", (long)t->len, (long)t->cap); }
 
-static u0 str_out(en v, ob x, FILE *o) {
+static u0 str_out(mo v, ob x, FILE *o) {
   str s = getstr(x);
   fputc('"', o);
   for (char *t = s->text; *t; fputc(*t++, o))
     if (*t == '"') fputc('\\', o);
   fputc('"', o); }
 
-static u0 two_out_(en v, two w, FILE *o) {
+static u0 two_out_(mo v, two w, FILE *o) {
   twop(w->b) ? (emsep(v, w->a, o, ' '),
                 two_out_(v, gettwo(w->b), o)) :
                emsep(v, w->a, o, ')'); }
 
-SI u1 quotate(en v, two w) {
+static Inline bool quotate(mo v, two w) {
   return w->a == Qt && twop(w->b) && nilp(B(w->b)); }
 
-static u0 two_out(en v, ob x, FILE *o) {
+static void two_out(mo v, ob x, FILE *o) {
   if (quotate(v, gettwo(x))) fputc('\'', o), emit(v, A(B(x)), o);
   else fputc('(', o), two_out_(v, gettwo(x), o); }
 
-Inline u0 emit(en v, ob x, FILE *o) { writers[Q(x)](v, x, o); }
 
 // print to console
-Vm(em_u) {
+Ll(em_u) {
   u64 l = getnum(Argc), i;
   if (l) {
     for (i = 0; i < l - 1; i++)
@@ -224,10 +223,19 @@ Vm(em_u) {
   fputc('\n', stdout);
   return ApC(ret, xp); }
 
-Vm(putc_u) {
+Ll(putc_u) {
   Arity(1);
   fputc(getnum(*Argv), stdout);
   return ApC(ret, xp); }
+
+static bool write_file(mo v, const char *path, const char *text) {
+  FILE *out;
+  bind(out, fopen(path, "w"));
+  bool r = true;
+  for (char c = *text; r && c; c = *++text)
+    r = fputc(c, out) != EOF;
+  fclose(out);
+  return r; }
 
 Vm(dump) {
   Arity(2);
@@ -237,12 +245,3 @@ Vm(dump) {
        *d = getstr(Argv[1])->text;
   write_file(v, p, d); // FIXME handle failure
   return ApC(ret, xp); }
-
-u1 write_file(en v, const char *path, const char *text) {
-  FILE *out;
-  bind(out, fopen(path, "w"));
-  u1 r = true;
-  for (char c = *text; r && c; c = *++text)
-    r = fputc(c, out) != EOF;
-  fclose(out);
-  return r; }
