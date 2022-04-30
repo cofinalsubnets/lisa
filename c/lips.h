@@ -18,9 +18,10 @@ BWDQ(I)
 typedef i8 i1;
 typedef i64 ob;
 
+
 // the 3 least bits of each pointer are a type tag
-typedef enum { Hom = 0, Num = 1, Two = 2, Vec = 3,
-               Str = 4, Tbl = 5, Sym = 6, Nil = 7 } class;
+enum class { Hom = 0, Num = 1, Two = 2, Vec = 3,
+             Str = 4, Tbl = 5, Sym = 6, Nil = 7 };
 
 // current function stack frame
 typedef struct fr { ob clos, retp, subd, argc, argv[]; } *fr;
@@ -33,12 +34,14 @@ typedef struct mm { ob*it; struct mm*et; } *mm;
 enum { Def, Cond, Lamb, Quote, Seq, Splat,
        Topl, Macs, Eval, Apply, NGlobs };
 
+typedef struct yo *yo; // よ
 // this structure holds runtime state.
 // most runtime functions take a pointer to this as the
 // first argument.
 typedef struct en {
+  yo ip;
   fr fp;
-  ob ip, xp, *hp, *sp; // interpreter state
+  ob *hp, *sp, xp; // interpreter state
   ob syms, glob[NGlobs], // symbols & globals
      rand, // random state
      t0, len, *pool; // memory state
@@ -48,7 +51,6 @@ typedef struct en {
 // this is the type of interpreter functions
 // FIXME en yo fr ob* ob* ob
 typedef ob vm(en, ob, ob*, ob*, ob*, ob);
-typedef struct yo *yo; // YOneda embedding
 struct yo { vm *ll, *sh[]; }; // puLLback / puSHout
 typedef struct str { u64 len; char text[]; } *str;
 typedef struct sym { ob nom, code, l, r; } *sym;
@@ -110,17 +112,17 @@ BWDQ(memn)
 #define um (v->mm=v->mm->et)
 #define with(y,...) (mm(&(y)),(__VA_ARGS__),um)
 #define Width(t) b2w(sizeof(struct t))
+#define Sob sizeof(ob)
+#define Re return
 
-SI class Q(ob _) { return _ & (sizeof(ob) - 1); }
-// linear congruential pseudorandom number generator
-// the multiplier comes from "Computationally Easy, Spectrally
-// Good Multipliers for Congruential Pseudorandom Number
-// Generators" by Steele & Vigna
-SI i64 lcprng(i64 s) { return (s * 0xaf251af3b0f025b5ll + 1) >> 8; }
-SI u64 b2w(u64 b) { return b / sizeof(ob) + (b % sizeof(ob) && 1); }
+SI enum class Q(ob _) { Re _ & (Sob - 1); }
+static i64 steele_vigna_2021 = 0xaf251af3b0f025b5ll;
+SI i64 lcprng(i64 s) { Re (s * steele_vigna_2021 + 1) >> 8; }
+SI u64 b2w(u64 b) { Re b / Sob + (b % Sob && 1); }
 
-SI u1 nilp(ob x) { return x == nil; }
-SI const char *tnom(class t) { return (const char*) (tnoms + t); }
+SI u1 nilp(ob x) { Re x == nil; }
+SI const char *tnom(enum class t) {
+  Re (const char*) (tnoms + t); }
 
 //num.h
 SI u1 nump(ob x) { return Q(x) == Num; }
@@ -149,9 +151,8 @@ SI ob putvec(vec v) { return (ob) v + Vec; }
 SI two gettwo(ob x) { return (two) (x - Two); }
 SI ob puttwo(u0 *x) { return (ob) x + Two; }
 SI u1 twop(ob x) { return Q(x) == Two; }
-SI u64 llen(ob l) {
-  for (u64 i = 0;; l = B(l), i++)
-    if (!twop(l)) return i; }
+SI u64 llen(ob l) { for (u64 i = 0;; l = B(l), i++)
+                      if (!twop(l)) return i; }
 
 
 SI u0 emsep(en v, ob x, FILE *o, char s) { emit(v, x, o), fputc(s, o); }

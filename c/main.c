@@ -51,7 +51,7 @@ static en init(u1 shell, const char *boot, char **paths) {
     with(x, y = scrp(v, boot));
     bind(y, y);
     bind(x, sequence(v, y, x)); }
-  v->ip = x;
+  v->ip = (yo) x;
   return v; }
 
 // vm functions to yield from the main thread

@@ -163,7 +163,7 @@ Vm(call) {
   ob adic = (ob) IP[1].ll;
   i64 off = fp - (ob*) ((i64) sp + adic - Num);
   fp = sp -= Width(fr);
-  Retp = ip + 2 * sizeof(void*);
+  Retp = (ob)((yo)ip+2);
   Subr = putnum(off);
   Clos = nil;
   Argc = adic;
@@ -178,11 +178,12 @@ Vm(rec) {
 
 // tail call with different arity
 static Vm(recne) {
- v->xp = Subr, v->ip = Retp; // save return info
+ v->xp = Subr;
+ v->ip = (yo) Retp; // save return info
  fp = Argv + getnum(Argc - ip);
  cpy64r(fp, sp, getnum(ip)); // copy from high to low
  sp = fp -= Width(fr);
- Retp = v->ip;
+ Retp = (ob) v->ip;
  Argc = ip;
  Subr = v->xp;
  ip = xp;
@@ -194,11 +195,11 @@ Vm(fail) { return Pack(), err(v, "fail"); }
 
 #define type_err_msg "wrong type : %s for %s"
 Vm(type_error) {
-  class exp = v->xp, act = Q(xp);
+  enum class exp = v->xp, act = Q(xp);
   return Pack(), err(v, type_err_msg, tnom(act), tnom(exp)); }
 
 Vm(oob_error) {
-  i64 a = v->xp, b = v->ip;
+  i64 a = v->xp, b = (i64) v->ip;
   return Pack(), err(v, "oob : %d >= %d", a, b); }
 
 #define arity_err_msg "wrong arity : %d of %d"
@@ -243,7 +244,7 @@ NoInline ob err(en v, const char *msg, ...) {
     show_call(v, ip, fp);
     fputc('\n', stderr); }
   v->fp = (fr) (v->sp = v->pool + v->len);
-  v->xp = v->ip = nil;
+  v->ip = (yo) (v->xp = nil);
   return 0; }
 
 
@@ -526,7 +527,8 @@ Vm(vset_u) {
   i64 idx = getnum(Argv[1]);
   vec ary = getvec(Argv[0]);
   if (idx < 0 || idx >= ary->len) {
-    v->xp = idx, v->ip = ary->len;
+    v->xp = idx;
+    v->ip = (yo) ary->len;
     Jump(oob_error); }
   Go(ret, ary->xs[idx] = Argv[2]); }
 
@@ -537,7 +539,8 @@ Vm(vget_u) {
   i64 idx = getnum(Argv[1]);
   vec ary = getvec(Argv[0]);
   if (idx < 0 || idx >= ary->len) {
-    v->xp = idx, v->ip = ary->len;
+    v->xp = idx;
+    v->ip = (yo) ary->len;
     Jump(oob_error); }
   Go(ret, ary->xs[idx]); }
 

@@ -265,8 +265,8 @@ CO(let_yo, ob x) {
 CO(if_yo_pre) {
   ob x;
   bind(x, (ob) Pull(m));
-  bind(x, pair(v, x, v->ip));
-  v->ip = x;
+  bind(x, pair(v, x, (ob) v->ip));
+  v->ip = (yo) x;
   return (yo) A(x); }
 
 // before generating a branch emit a jump to
@@ -274,7 +274,7 @@ CO(if_yo_pre) {
 CO(if_yo_pre_con) {
   yo x, k;
   bind(x, Pull(m + 2));
-  k = (yo) A(v->ip);
+  k = (yo) A((ob) v->ip);
   return k->ll == (vm*) ret ? ee1(ret, x) : ee2(jump, (ob) k, x); }
 
 // after generating a branch store its address
@@ -319,7 +319,7 @@ CO(if_yo, ob x) {
   bind(_, if_yo_loop(v, e, B(x)));
   yo k;
   bind(k, Pull(m));
-  v->ip = B(v->ip);
+  v->ip = (yo) B((ob) v->ip);
   return k; }
 
 CO(em_call) {
@@ -522,7 +522,7 @@ Vm(ev_u) {
   Ary(1);
   if (homp(Eva)) ip = Eva;
   else { Pack();
-         bind(v->ip, analyze(v, *Argv));
+         bind(v->ip, (yo) analyze(v, *Argv));
          Unpack(); }
   Next(0); }
 

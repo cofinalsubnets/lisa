@@ -35,7 +35,7 @@ en li_ini(void) {
   v->pool = NULL;
   v->mm = NULL;
   v->fp = (fr) (v->hp = v->sp = (void*) sizeof (void*));
-  v->ip = v->xp = v->syms = nil;
+  v->ip = (yo) (v->xp = v->syms = nil);
   set64(v->glob, nil, NGlobs);
 
 #define Bind(x) if(!(x))goto fail
