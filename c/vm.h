@@ -94,7 +94,7 @@ insts(ninl)
 #define Jump(f, ...) return (f)(v, ip, fp, sp, hp, xp, ##__VA_ARGS__)
 #define Ap(f, x) return ip = f, ((vm*) ((yo)(ip))->ll)(v, ip, fp, sp, hp, x)
 #define Go(f, x) return f(v, ip, fp, sp, hp, x)
-#define Next(n) Ap(ip + (n) * sizeof(ob), xp)
+#define Next(n) Ap((ob) ((yo) ip + (n)), xp)
 #define CheckType(x,t) if(Q((x))-(t)){xp=x,v->xp=t;Jump(type_error);}
 #define Arity(n) if(putnum(n)>Argc)Jump((v->xp=n,ary_error))
 #define Ary Arity
@@ -120,4 +120,5 @@ insts(ninl)
 #define Mac v->glob[Macs]
 #define Eva v->glob[Eval]
 #define App v->glob[Apply]
+#define IP gethom(ip)
 #endif

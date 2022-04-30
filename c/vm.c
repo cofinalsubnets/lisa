@@ -69,7 +69,7 @@ Vm(ccc_u) {
 
 // call a continuation
 Vm(cont) {
-  vec t = getvec((ob) gethom(ip)[1].ll);
+  vec t = getvec((ob) IP[1].ll);
   Have(t->len - 1);
   xp = getnum(Argc) == 0 ? nil : *Argv;
   i64 off = getnum(t->xs[0]);
@@ -79,7 +79,7 @@ Vm(cont) {
   Jump(ret); }
 
 Vm(vararg) {
-  i64 reqd = getnum((i64) gethom(ip)[1].ll),
+  i64 reqd = getnum((i64) IP[1].ll),
       vdic = getnum(Argc) - reqd;
   Arity(reqd);
   // in this case we need to add another argument
@@ -125,14 +125,14 @@ static vm recne;
 /// Branch Instructions
 //
 // unconditional jump
-Vm(jump) { Ap((ob) gethom(ip)[1].ll, xp); }
+Vm(jump) { Ap((ob) IP[1].ll, xp); }
 
 // conditional jumps
 //
 // args: test, yes addr, yes val, no addr, no val
 #define Br(nom, test, a, x, b, y) Vm(nom) {\
-  if (test) Ap((ob)a(gethom(ip)),x);\
-  else Ap((ob)b(gethom(ip)),y); }
+  if (test) Ap((ob)a(IP),x);\
+  else Ap((ob)b(IP),y); }
 // combined test/branch instructions
 Br(branch, xp != nil, GF, xp, FF, xp)
 Br(barnch, xp != nil, FF, xp, GF, xp)
@@ -160,7 +160,7 @@ Vm(ret) {
 // "inner" function call
 Vm(call) {
   Have(Width(fr));
-  ob adic = (ob) gethom(ip)[1].ll;
+  ob adic = (ob) IP[1].ll;
   i64 off = fp - (ob*) ((i64) sp + adic - Num);
   fp = sp -= Width(fr);
   Retp = ip + 2 * sizeof(void*);
@@ -171,7 +171,7 @@ Vm(call) {
 
 // tail call
 Vm(rec) {
-  if (Argc != (ip = (ob) gethom(ip)[1].ll)) Jump(recne);
+  if (Argc != (ip = (ob) IP[1].ll)) Jump(recne);
   cpy64(Argv, sp, ip = getnum(ip));
   sp = fp;
   Ap(xp, nil); }
@@ -214,20 +214,21 @@ Vm(div_error) { return Pack(), err(v, "/ 0"); }
   v->xp = t; Jump(type_error); }
 DTc(idZ, Num) DTc(idH, Hom) DTc(idT, Tbl) DTc(id2, Two)
 Vm(arity) {
-  ob reqd = (ob) gethom(ip)[1].ll;
+  ob reqd = (ob) IP[1].ll;
   if (reqd <= Argc) Next(2);
   else Jump((v->xp = getnum(reqd), ary_error)); }
 
-SI u0 show_call(en v, ob ip, ob* fp) {
+SI u0 show_call(en v, yo ip, fr fp) {
   fputc('(', stderr);
-  emit(v, ip, stderr);
-  for (i64 i = 0, argc = getnum(Argc); i < argc;)
-    fputc(' ', stderr), emit(v, Argv[i++], stderr);
+  emit(v, (ob) ip, stderr);
+  for (i64 i = 0, argc = getnum(fp->argc); i < argc;)
+    fputc(' ', stderr), emit(v, fp->argv[i++], stderr);
   fputc(')', stderr); }
 
 NoInline ob err(en v, const char *msg, ...) {
-  ob ip = v->ip, *fp = v->fp,
-     *top = v->pool + v->len;
+  yo ip = (yo) v->ip;
+  fr fp = (fr) v->fp,
+     top = (fr) (v->pool + v->len);
   fputs("# ", stderr);
   if (fp < top) show_call(v, ip, fp), fputs(" : ", stderr);
   va_list xs;
@@ -235,7 +236,8 @@ NoInline ob err(en v, const char *msg, ...) {
   fputc('\n', stderr);
   // print backtrace
   if (fp < top) for (;;) {
-    ip = Retp, fp += Width(fr) + getnum(Argc) + getnum(Subr);
+    ip = (yo) fp->retp;
+    fp = (fr) ((ob*) fp + Width(fr) + getnum(fp->argc) + getnum(fp->subd));
     if (fp == top) break;
     fputs("# in ", stderr);
     show_call(v, ip, fp);
@@ -246,17 +248,17 @@ NoInline ob err(en v, const char *msg, ...) {
 
 
 #define mm_u(_c,_v,_z,op){\
- ob x,*xs=_v,*l=xs+_c;\
- for(xp=_z;xs<l;xp=xp op getnum(x)){\
-  x = *xs++; Tc(x, Num);}\
- Go(ret, putnum(xp));}
+  ob x,*xs=_v,*l=xs+_c;\
+  for(xp=_z;xs<l;xp=xp op getnum(x)){\
+    x = *xs++; Tc(x, Num);}\
+  Go(ret, putnum(xp));}
 
 #define mm_u0(_c,_v,_z,op){\
- ob x,*xs=_v,*l=xs+_c;\
- for(xp=_z;xs<l;xp=xp op getnum(x)){\
-  x = *xs++; Tc(x, Num);\
-  if (x == putnum(0)) Jump(div_error);}\
- Go(ret, putnum(xp));}
+  ob x,*xs=_v,*l=xs+_c;\
+  for(xp=_z;xs<l;xp=xp op getnum(x)){\
+    x = *xs++; Tc(x, Num);\
+    if (x == putnum(0)) Jump(div_error);}\
+  Go(ret, putnum(xp));}
 
 Vm(sub_u) {
   if (!(xp = getnum(Argc))) Go(ret, putnum(0));
@@ -356,10 +358,10 @@ OP1(unit, nil)
 OP1(one, putnum(1))
 OP1(zero, putnum(0))
 // immediate value from thread
-OP2(imm, (ob) gethom(ip)[1].ll)
+OP2(imm, (ob) IP[1].ll)
 
 // indexed references
-#define Ref(b) (*(i64*)((i64)(b)+(i64)gethom(ip)[1].ll-Num))
+#define Ref(b) (*(i64*)((i64)(b)+(i64)IP[1].ll-Num))
 // pointer arithmetic works because fixnums are premultiplied by W
 
 // function arguments
@@ -383,11 +385,11 @@ Vm(push) { Have1(); *--sp = xp; Next(1); }
 // set a local variable
 Vm(loc_) { Ref(getvec(Locs)->xs) = xp; Next(2); }
 // set a global variable
-Vm(tbind) { CallC(tbl_set(v, Top, (ob) gethom(ip)[1].ll, xp)); Next(2); }
+Vm(tbind) { CallC(tbl_set(v, Top, (ob) IP[1].ll, xp)); Next(2); }
 
 // allocate local variable array
 Vm(locals) {
-  i64 n = getnum((i64) gethom(ip)[1].ll);
+  i64 n = getnum((i64) IP[1].ll);
   Have(n + 2);
   vec t = (vec) hp;
   set64(t->xs, nil, t->len = n);
@@ -400,18 +402,19 @@ Vm(locals) {
 // that would have been done by the compiler if the function
 // had been bound early.
 Vm(lbind) {
-  ob w = (ob) gethom(ip)[1].ll, d = AB(w), y = A(w);
+  ob w = (ob) IP[1].ll, d = AB(w), y = A(w);
   if (!(w = tbl_get(v, d, xp = BB(w)))) {
     char *nom = nilp(getsym(xp)->nom) ? "()" : getstr(getsym(xp)->nom)->text;
     return Pack(), err(v, "free variable : %s", nom); }
   xp = w;
   if (y != putnum(sizeof(ob))) Tc(xp, getnum(y)); // do the type check
-  vm *q = (vm*) gethom(ip)[2].ll; // omit the arity check if possible
-  if (q == call || q == rec) {
-    ob aa = (ob) gethom(ip)[3].ll;
-    if (gethom(xp)[0].ll == (vm*) arity && aa >= (ob) gethom(xp)[1].ll) xp += sizeof(void*) * 2; }
-  gethom(ip)[0].ll = (vm*) imm;
-  gethom(ip)[1].ll = (vm*) xp;
+  // omit the arity check if possible
+  if (IP[2].ll == call || IP[2].ll == rec) {
+    yo x = gethom(xp);
+    if (x[0].ll == arity && IP[3].ll >= x[1].ll)
+      xp = (ob) (x + 2); }
+  IP[0].ll = imm;
+  IP[1].ll = (vm*) xp;
   Next(2); }
 
 
@@ -432,16 +435,16 @@ Vm(tkeys) {
   Next(1); }
 
 Vm(tblc) {
-  Ary(2);
-  Tc(Argv[0], Tbl);
+  Arity(2);
+  TypeCheck(Argv[0], Tbl);
   xp = tbl_get(v, Argv[0], Argv[1]);
   Go(ret, xp ? ok : nil); }
 
 static ob tblss(en v, i64 i, i64 l) {
-  ob *fp = v->fp;
-  if (i > l-2) return Argv[i-1];
+  fr fp = (fr) v->fp;
+  if (i > l-2) return fp->argv[i-1];
   ob _;
-  bind(_, tbl_set(v, v->xp, Argv[i], Argv[i+1]));
+  bind(_, tbl_set(v, v->xp, fp->argv[i], fp->argv[i+1]));
   return tblss(v, i+2, l); }
 
 Vm(tbls) {
@@ -507,7 +510,7 @@ Vm(cons_u) {
 
 // this is used to create closures.
 Vm(take) {
-  u64 n = getnum((ob) gethom(ip)[1].ll);
+  u64 n = getnum((ob) IP[1].ll);
   Have(n + 1);
   vec t = (vec) hp;
   hp += n + 1;

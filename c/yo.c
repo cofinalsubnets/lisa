@@ -537,9 +537,9 @@ Vm(bootstrap) {
   tbl_set(v, Top, interns(v, "ev"), Eva = xp);
   Jump(ret); }
 
-static Vm(clos) { Clos = (ob) gethom(ip)[1].ll; Ap((ob) gethom(ip)[2].ll, xp); }
+static Vm(clos) { Clos = (ob) IP[1].ll; Ap((ob) IP[2].ll, xp); }
 // finalize function instance closure
-static Vm(clos1) { gethom(ip)->ll = (vm*) clos; gethom(ip)[1].ll = (vm*) xp; Next(0); }
+static Vm(clos1) { IP->ll = (vm*) clos; IP[1].ll = (vm*) xp; Next(0); }
 
 // this function is run the first time a user
 // function with a closure is called. its
@@ -550,24 +550,24 @@ static Vm(clos1) { gethom(ip)->ll = (vm*) clos; gethom(ip)[1].ll = (vm*) xp; Nex
 // instruction that sets the closure and enters
 // the function.
 static Vm(clos0) {
- ob ec  = (ob) gethom(ip)[1].ll,
-    arg = getvec(ec)->xs[0],
-    loc = getvec(ec)->xs[1];
- u64 adic = nilp(arg) ? 0 : getvec(arg)->len;
- Have(Width(fr) + adic + 1);
- i64 off = (ob*) fp - sp;
- gethom(ip)->ll = (vm*) clos1;
- sp -= adic;
- cpy64(sp, getvec(arg)->xs, adic);
- ec = (ob) gethom(ip)[1].ll;
- fp = sp -= Width(fr);
- Retp = ip;
- Subr = putnum(off);
- Argc = putnum(adic);
- Clos = getvec(ec)->xs[2];
- if (!nilp(loc)) *--sp = loc;
- ip = getvec(ec)->xs[3];
- Next(0); }
+  ob ec  = (ob) IP[1].ll,
+     arg = getvec(ec)->xs[0],
+     loc = getvec(ec)->xs[1];
+  u64 adic = nilp(arg) ? 0 : getvec(arg)->len;
+  Have(Width(fr) + adic + 1);
+  i64 off = (ob*) fp - sp;
+  IP->ll = clos1;
+  sp -= adic;
+  cpy64(sp, getvec(arg)->xs, adic);
+  ec = (ob) IP[1].ll;
+  fp = (void*) (sp -= Width(fr));
+  Retp = ip;
+  Subr = putnum(off);
+  Argc = putnum(adic);
+  Clos = getvec(ec)->xs[2];
+  if (!nilp(loc)) *--sp = loc;
+  ip = getvec(ec)->xs[3];
+  Next(0); }
 
 // the next few functions create and store
 // lexical environments.
@@ -575,7 +575,7 @@ static Vm(encl) {
   i64 n = getnum(Argc);
   n += n ? 12 : 11;
   Have(n);
-  ob x = (ob) gethom(ip)[1].ll, arg = nil;
+  ob x = (ob) IP[1].ll, arg = nil;
   ob* block = hp;
   hp += n;
   if (n > 11) {
@@ -596,13 +596,13 @@ static Vm(encl) {
   t->xs[3] = B(x);
   t->xs[4] = (ob) at;
 
-  at[0].ll = (vm*) clos0;
+  at[0].ll = clos0;
   at[1].ll = (vm*) putvec(t);
   at[2].ll = (vm*) A(x);
   at[3].ll = NULL;
   at[4].ll = (vm*) at;
 
-  Ap(ip + 2 * sizeof(ob), (ob) at); }
+  Ap((ob) (IP + 2), (ob) at); }
 
 Vm(encll) { Go(encl, Locs); }
 Vm(encln) { Go(encl, nil); }
@@ -627,11 +627,11 @@ ob sequence(en v, ob a, ob b) {
   yo h;
   with(a, with(b, h = cells(v, 8)));
   bind(h, h);
-  h[0].ll = (vm*) imm;
+  h[0].ll = imm;
   h[1].ll = (vm*) a;
-  h[2].ll = (vm*) call;
+  h[2].ll = call;
   h[3].ll = (vm*) N0;
-  h[4].ll = (vm*) jump;
+  h[4].ll = jump;
   h[5].ll = (vm*) b;
   h[6].ll = NULL;
   h[7].ll = (vm*) h;

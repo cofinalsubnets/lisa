@@ -45,9 +45,10 @@ typedef struct en {
 } *en;
 
 // this is the type of interpreter functions
-typedef struct yo *yo;
+// FIXME en yo fr ob* ob* ob
 typedef ob vm(en, ob, ob*, ob*, ob*, ob);
-struct yo { vm *ll, *sh[]; };
+typedef struct yo *yo; // YOneda embedding
+struct yo { vm *ll, *sh[]; }; // puLLback / puSHout
 typedef struct str { u64 len; char text[]; } *str;
 typedef struct sym { ob nom, code, l, r; } *sym;
 typedef struct ent { ob key, val; struct ent *next; } *ent; // tables
