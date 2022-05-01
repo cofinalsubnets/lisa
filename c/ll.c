@@ -95,8 +95,7 @@ Ll(jump) { return ApY((ob) ip[1].ll, xp); }
 //
 // args: test, yes addr, yes val, no addr, no val
 #define Br(nom, test, a, x, b, y) Ll(nom) {\
-  if (test) return ApY((ob)a(ip),x);\
-  else return ApY((ob)b(ip),y); }
+  return ApY(test ? (ob) a(ip) : (ob) b(ip), x); }
 // combined test/branch instructions
 Br(branch, xp != nil, GF, xp, FF, xp)
 Br(barnch, xp != nil, FF, xp, GF, xp)
@@ -124,20 +123,21 @@ Ll(ret) {
 // "inner" function call
 Ll(call) {
   Have(Width(fr));
-  ob adic = (ob) ip[1].ll;
-  intptr_t off = (ob*) fp - (ob*) ((ob) sp + adic - Num);
+  intptr_t adic = getnum((ob) ip[1].ll),
+           off = (ob*) fp - (sp + adic);
   fp = (void*) ((fr) sp - 1);
   sp = (ob*) fp;
-  Retp = (ob)(ip+2);
+  Retp = (ob) (ip + 2);
   Subr = putnum(off);
   Clos = nil;
-  Argc = adic;
+  Argc = putnum(adic);
   return ApY(xp, nil); }
 
 // tail call
 Ll(rec) {
-  if (Argc != (ob) (ip = (yo) ip[1].ll)) return ApC(recne, xp);
-  cpyptr(Argv, sp, getnum((ob)ip));
+  ip = (yo) ip[1].ll;
+  if (Argc != (ob) ip) return ApC(recne, xp);
+  cpyptr(Argv, sp, getnum((ob) ip));
   sp = (ob*) fp;
   return ApY(xp, nil); }
 
