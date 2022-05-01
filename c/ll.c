@@ -36,7 +36,8 @@ Ll(ap_u) {
   for (u64 j = 0; j < adic;
     sp[j++] = gettwo(y)->a,
     y = gettwo(y)->b);
-  fp = sp -= Width(fr);
+  fp = (void*) ((fr) sp - 1);
+  sp = (ob*) fp;
   Retp = rp;
   Argc = putnum(adic);
   Subr = off;
@@ -117,7 +118,7 @@ Br(brgteq,  *sp++ >= xp, GF, xp, FF, nil)
 Ll(ret) {
   ip = (yo) Retp;
   sp = (ob*) ((i64) Argv + Argc - Num);
-  fp = (ob*) ((i64)   sp + Subr - Num);
+  fp = (void*) ((i64)   sp + Subr - Num);
   return ApY(ip, xp); }
 
 // "inner" function call
@@ -125,7 +126,8 @@ Ll(call) {
   Have(Width(fr));
   ob adic = (ob) IP[1].ll;
   i64 off = fp - (ob*) ((i64) sp + adic - Num);
-  fp = sp -= Width(fr);
+  fp = (void*) ((fr) sp - 1);
+  sp = (ob*) fp;
   Retp = (ob)(ip+2);
   Subr = putnum(off);
   Clos = nil;
@@ -136,16 +138,18 @@ Ll(call) {
 Ll(rec) {
   if (Argc != (ob) (ip = (yo) IP[1].ll)) return ApC(recne, xp);
   cpy64(Argv, sp, getnum((ob)ip));
-  sp = fp;
+  sp = (ob*) fp;
   return ApY(xp, nil); }
 
 // tail call with different arity
 static Ll(recne) {
  v->xp = Subr;
  v->ip = (yo) Retp; // save return info
- fp = Argv + getnum(Argc - (ob) ip);
+ fp = (void*) (Argv + getnum(Argc - (ob) ip));
  cpy64r(fp, sp, getnum((ob)ip)); // copy from high to low
- sp = fp -= Width(fr);
+                                 //
+ sp = (ob*) (((fr) fp) - 1);
+ fp = (void*) sp;
  Retp = (ob) v->ip;
  Argc = (ob) ip;
  Subr = v->xp;
@@ -540,7 +544,8 @@ static Vm(clos0) {
   sp -= adic;
   cpy64(sp, (ob*) arg + 1, adic);
   ec = (ob*) IP[1].ll;
-  fp = (void*) (sp -= Width(fr));
+  fp = (void*) ((fr) sp - 1);
+  sp = (ob*) fp;
   Retp = (ob) ip;
   Subr = putnum(off);
   Argc = putnum(adic);
