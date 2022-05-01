@@ -581,29 +581,28 @@ static Vm(clos0) {
 // lexical environments.
 static Vm(encl) {
   i64 n = getnum(Argc);
-  n += n ? 13 : 12;
+  n += n ? 12 : 11;
   Have(n);
   ob x = (ob) IP[1].ll, arg = nil;
   ob* block = hp;
   hp += n;
-  if (n > 12) {
-    n -= 13;
+  if (n > 11) {
+    n -= 11;
     vec t = (vec) block;
-    block += 1 + n;
-    t->len = n;
+    block += n;
+    t->len = --n;
     while (n--) t->xs[n] = Argv[n];
     arg = putvec(t); }
 
-  yo t = (yo) block; // compiler thread closure array (1 length 5 elements)
-  yo at = (yo) (block+7); // compiler thread (1 instruction 2 data 2 tag)
+  yo t = (yo) block, // compiler thread closure array (1 length 5 elements)
+     at = t + 6; // compiler thread (1 instruction 2 data 2 tag)
 
   t[0].ll = (ll*) arg;
   t[1].ll = (ll*) xp; // Locs or nil
   t[2].ll = (ll*) Clos;
   t[3].ll = (ll*) B(x);
-  t[4].ll = (ll*) at;
-  t[5].ll = NULL;
-  t[6].ll = (ll*) t;
+  t[4].ll = NULL;
+  t[5].ll = (ll*) t;
 
   at[0].ll = clos0;
   at[1].ll = (ll*) t;
