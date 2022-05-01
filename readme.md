@@ -1,4 +1,4 @@
-# empathy
+# empath
 natural language
 
 ## build / install
@@ -14,7 +14,7 @@ are you on linux? `make` will probably work. otherwise, see
 
 ## special forms
 
-|  empathy    | scheme                     |
+|  empath     | scheme                     |
 |-------------|----------------------------|
 |`(, a b)`    |`(begin a b)`               |
 |`(\)`        |`(lambda _ #f)`             |

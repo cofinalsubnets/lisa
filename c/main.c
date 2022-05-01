@@ -10,7 +10,7 @@
 #ifndef PREFIX
 #define PREFIX "/usr/local"
 #endif
-#define BOOT PREFIX "/lib/empathy/prelude.em"
+#define BOOT PREFIX "/lib/empath/prelude.em"
 static const char *help =
   "usage: %s [options and scripts]\n"
   "with no arguments, start a repl\n"
@@ -72,9 +72,9 @@ static ob scr_(em v, FILE *in) {
   ob y, x = parse(v, in);
   if (!x) return feof(in) ? nil : 0;
   bind(x, pair(v, x, nil));
-  bind(x, pair(v, Qt, x));
+  bind(x, pair(v, v->glob[Quote], x));
   bind(x, pair(v, x, nil));
-  bind(x, pair(v, Eva, x));
+  bind(x, pair(v, v->glob[Eval], x));
   with(x, y = scr_(v, in));
   bind(y, y);
   return pair(v, x, y); }
@@ -86,7 +86,7 @@ static ob scrp(em v, const char *path) {
   ob x = scr_(v, in);
   fclose(in);
   bind(x, x);
-  bind(x, pair(v, Se, x));
+  bind(x, pair(v, v->glob[Seq], x));
   return analyze(v, x); }
 
 // scrr : yo em bool strings

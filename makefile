@@ -1,6 +1,6 @@
 LC_ALL=C
 
-nom=empathy
+nom=empath
 suff=em
 bins=bin/$(nom)
 docs=share/man/man1/$(nom).1

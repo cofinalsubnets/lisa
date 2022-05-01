@@ -36,7 +36,7 @@ ob read_quoted(em v, FILE *i) {
   ob x;
   bind(x, parse(v, i));
   bind(x, pair(v, x, nil));
-  return pair(v, Qt, x); }
+  return pair(v, v->glob[Quote], x); }
 
 ob parse(em v, FILE* i) {
   int c = read_char(i);
@@ -163,7 +163,7 @@ void emit(em v, ob x, FILE *o) {
 
     case Two: {
       bool is_quotation =
-        A(x) == Qt &&
+        A(x) == v->glob[Quote] &&
         twop(B(x)) &&
         nilp(BB(x));
 

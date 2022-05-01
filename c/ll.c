@@ -33,9 +33,8 @@ Ll(ap_u) {
   Have(adic);
   ob off = Subr, rp = Retp;
   sp = Argv + getnum(Argc) - adic;
-  for (u64 j = 0; j < adic;
-    sp[j++] = gettwo(y)->a,
-    y = gettwo(y)->b);
+  for (u64 j = 0; j < adic; sp[j++] = gettwo(y)->a,
+                            y = gettwo(y)->b);
   fp = (void*) ((fr) sp - 1);
   sp = (ob*) fp;
   Retp = rp;
@@ -45,7 +44,7 @@ Ll(ap_u) {
   return ApY(x, nil); }
 
 Ll(vararg) {
-  i64 reqd = getnum((i64) IP[1].ll),
+  i64 reqd = getnum((i64) ip[1].ll),
       vdic = getnum(Argc) - reqd;
   Arity(reqd);
   // in this case we need to add another argument
@@ -89,14 +88,14 @@ static ll recne;
 /// Branch Instructions
 //
 // unconditional jump
-Ll(jump) { return ApY((ob) IP[1].ll, xp); }
+Ll(jump) { return ApY((ob) ip[1].ll, xp); }
 
 // conditional jumps
 //
 // args: test, yes addr, yes val, no addr, no val
 #define Br(nom, test, a, x, b, y) Ll(nom) {\
-  if (test) return ApY((ob)a(IP),x);\
-  else return ApY((ob)b(IP),y); }
+  if (test) return ApY((ob)a(ip),x);\
+  else return ApY((ob)b(ip),y); }
 // combined test/branch instructions
 Br(branch, xp != nil, GF, xp, FF, xp)
 Br(barnch, xp != nil, FF, xp, GF, xp)
@@ -124,7 +123,7 @@ Ll(ret) {
 // "inner" function call
 Ll(call) {
   Have(Width(fr));
-  ob adic = (ob) IP[1].ll;
+  ob adic = (ob) ip[1].ll;
   i64 off = fp - (ob*) ((i64) sp + adic - Num);
   fp = (void*) ((fr) sp - 1);
   sp = (ob*) fp;
@@ -136,7 +135,7 @@ Ll(call) {
 
 // tail call
 Ll(rec) {
-  if (Argc != (ob) (ip = (yo) IP[1].ll)) return ApC(recne, xp);
+  if (Argc != (ob) (ip = (yo) ip[1].ll)) return ApC(recne, xp);
   cpy64(Argv, sp, getnum((ob)ip));
   sp = (ob*) fp;
   return ApY(xp, nil); }
@@ -181,7 +180,7 @@ Ll(div_error) { return Pack(), err(v, "/ 0"); }
 DTc(idZ, Num) DTc(idH, Hom)
 DTc(idT, Tbl) DTc(id2, Two)
 Ll(arity) {
-  ob reqd = (ob) IP[1].ll;
+  ob reqd = (ob) ip[1].ll;
   if (reqd <= Argc) return ApN(2, xp);
   else return v->xp = getnum(reqd), ApC(ary_error, xp); }
 
@@ -291,6 +290,7 @@ Ll(rnd_u) {
 
 #define OP(nom, x, n) Ll(nom) { xp = (x); return ApN(n, xp); }
 #define OP1(nom, x) OP(nom, x, 1)
+#define BINOP(nom, xpn) Vm(nom) { xp = (xpn); return ApN(1, xp); }
 OP1(neg, putnum(-getnum(xp)))
 BINOP(add,  xp + *sp++ - Num)
 BINOP(bor,  xp | *sp++)
@@ -349,10 +349,10 @@ OP1(unit, nil)
 OP1(one, N1)
 OP1(zero, N0)
 // immediate value from thread
-OP2(imm, (ob) IP[1].ll)
+OP2(imm, (ob) ip[1].ll)
 
 // indexed references
-#define Ref(b) (*(i64*)((i64)(b)+(i64)IP[1].ll-Num))
+#define Ref(b) (*(i64*)((i64)(b)+(i64)ip[1].ll-Num))
 // pointer arithmetic works because fixnums are premultiplied by W
 
 // function arguments
@@ -386,12 +386,12 @@ Vm(loc_) {
 
 // set a global variable
 Vm(tbind) {
-  CallC(tbl_set(v, Top, (ob) IP[1].ll, xp));
+  CallC(tbl_set(v, v->glob[Topl], (ob) ip[1].ll, xp));
   return ApN(2, xp); }
 
 // allocate local variable array
 Vm(locals) {
-  i64 n = getnum((i64) IP[1].ll);
+  i64 n = getnum((i64) ip[1].ll);
   Have(n + 3);
   ob *t = hp;
   hp += n + 2;
@@ -405,19 +405,19 @@ Vm(locals) {
 // that would have been done by the compiler if the function
 // had been bound early.
 Vm(lbind) {
-  ob w = (ob) IP[1].ll, d = AB(w), y = A(w);
+  ob w = (ob) ip[1].ll, d = AB(w), y = A(w);
   if (!(w = tbl_get(v, d, xp = BB(w)))) {
     char *nom = nilp(getsym(xp)->nom) ? "()" : getstr(getsym(xp)->nom)->text;
     return Pack(), err(v, "free variable : %s", nom); }
   xp = w;
   if (y != putnum(sizeof(ob))) Tc(xp, getnum(y)); // do the type check
   // omit the arity check if possible
-  if (IP[2].ll == call || IP[2].ll == rec) {
+  if (ip[2].ll == call || ip[2].ll == rec) {
     yo x = gethom(xp);
-    if (x[0].ll == arity && IP[3].ll >= x[1].ll)
+    if (x[0].ll == arity && ip[3].ll >= x[1].ll)
       xp = (ob) (x + 2); }
-  IP[0].ll = imm;
-  IP[1].ll = (ll*) xp;
+  ip[0].ll = imm;
+  ip[1].ll = (ll*) xp;
   return ApN(2, xp); }
 
 // hash tables
@@ -512,7 +512,7 @@ Ll(cons_u) {
 
 // this is used to create closures.
 Ll(take) {
-  u64 n = getnum((ob) IP[1].ll);
+  u64 n = getnum((ob) ip[1].ll);
   Have(n + 2);
   ob * t = hp;
   hp += n + 2;
@@ -523,13 +523,13 @@ Ll(take) {
   return ApC(ret, (ob) t); }
 
 static Ll(clos) {
-  Clos = (ob) IP[1].ll;
-  return ApY((ob) IP[2].ll, xp); }
+  Clos = (ob) ip[1].ll;
+  return ApY((ob) ip[2].ll, xp); }
 
 // finalize function instance closure
 static Ll(clos1) {
-  IP->ll = clos;
-  IP[1].ll = (ll*) xp;
+  ip->ll = clos;
+  ip[1].ll = (ll*) xp;
   return ApY(ip, xp); }
 
 // this function is run the first time a user
@@ -541,16 +541,16 @@ static Ll(clos1) {
 // instruction that sets the closure and enters
 // the function.
 static Vm(clos0) {
-  ob *ec  = (ob*) IP[1].ll,
+  ob *ec  = (ob*) ip[1].ll,
      arg = ec[0],
      loc = ec[1];
   u64 adic = nilp(arg) ? 0 : getnum(*(ob*)arg);
   Have(Width(fr) + adic + 1);
   i64 off = (ob*) fp - sp;
-  IP->ll = clos1;
+  ip->ll = clos1;
   sp -= adic;
   cpy64(sp, (ob*) arg + 1, adic);
-  ec = (ob*) IP[1].ll;
+  ec = (ob*) ip[1].ll;
   fp = (void*) ((fr) sp - 1);
   sp = (ob*) fp;
   Retp = (ob) ip;
@@ -566,7 +566,7 @@ static Vm(encl) {
   i64 n = getnum(Argc);
   n += n ? 14 : 11;
   Have(n);
-  ob x = (ob) IP[1].ll, arg = nil;
+  ob x = (ob) ip[1].ll, arg = nil;
   ob* block = hp;
   hp += n;
   if (n > 11) {

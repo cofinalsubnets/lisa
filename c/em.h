@@ -1,6 +1,6 @@
 #ifndef _em_h
 #define _em_h
-#include "empathy.h"
+#include "empath.h"
 #include "medi.h"
 
 // thanks !!
@@ -43,8 +43,6 @@ struct em {
   mm mm; }; // gc protection list
 
 
-#define Inline inline __attribute__((always_inline))
-#define NoInline __attribute__((noinline))
 #include <stdio.h>
 #include <stdbool.h>
 
@@ -124,6 +122,9 @@ extern const uint32_t *tnoms;
 #define gettwo(_) ((two)((_)-Two))
 #define puttwo(_) ((ob)(_)+Two)
 
+#define Inline inline __attribute__((always_inline))
+#define NoInline __attribute__((noinline))
+
 static Inline yo button(yo h) {
   while (G(h)) h = F(h);
   return h; }
@@ -139,7 +140,6 @@ static Inline u64 llen(ob l) {
 static Inline u64 b2w(u64 b) {
   return b / sizeof(ob) + (b % sizeof(ob) && 1); }
 
-ll gc, type_error, oob_error, ary_error, div_error, yield;
 
 #define insts(_)\
  _(tget, 0) _(tset, 0) _(thas, 0) _(tlen, 0) _(arity, 0)\
@@ -184,6 +184,8 @@ ll gc, type_error, oob_error, ary_error, div_error, yield;
 insts(ninl)
 #undef ninl
 
+ll gc, type_error, oob_error, ary_error, div_error;
+
 // " the interpreter "
 #define Vm Ll
 // the arguments to a terp function collectively represent the
@@ -226,31 +228,23 @@ insts(ninl)
 // performance and should be extended to the closure pointer, which is often
 // nil.
 
-// the return value of a terp function is usually a call
-// to another terp function.
-#define ApY(f, x) (ip = (yo)(f), ((yo)(ip))->ll(v, ip, fp, sp, hp, (x)))
-#define ApC(f, x) (f)(v, ip, fp, sp, hp, (x))
 #define ApN(n, x) ApY(ip+(n), (x))
-#define CheckType(x,t) if(Q((x))-(t)){xp=x,v->xp=t;return ApC(type_error, xp);}
-#define Arity(n) if(putnum(n)>Argc){ return ApC((v->xp=n,ary_error), xp); }
+#define ApC(f, x) (f)(v, ip, fp, sp, hp, (x))
+#define ApY(f, x) (ip = (yo)(f), ApC(ip->ll, (x)))
+
+#define Arity(n) if (putnum(n) > Argc) {\
+                   v->xp = n;\
+                   return ApC(ary_error, xp); }
+#define CheckType(x,t) if (Q((x)) - (t)) {\
+                         xp=x;\
+                         v->xp=t;\
+                         return ApC(type_error, xp);}
 #define Tc CheckType
 #define TypeCheck Tc
 #define N0 putnum(0)
 
-#define Have(n) if (sp - hp < n) return ApC((v->xp=n,gc), xp)
-#define Have1() if (hp == sp) return ApC((v->xp=1,gc), xp) // common case, faster comparison
-
-#define BINOP(nom, xpn) Vm(nom) { xp = (xpn); return ApN(1, xp); }
-
-#define If v->glob[Cond]
-#define De v->glob[Def]
-#define La v->glob[Lamb]
-#define Qt v->glob[Quote]
-#define Se v->glob[Seq]
-#define Va v->glob[Splat]
-#define Top v->glob[Topl]
-#define Mac v->glob[Macs]
-#define Eva v->glob[Eval]
-#define App v->glob[Apply]
-#define IP gethom(ip)
+#define Have1() if (hp == sp) return ApC((v->xp=1,gc), xp)
+#define Have(n) if (sp - hp < n) {\
+                  v->xp = n;\
+                  return ApC(gc, xp); }
 #endif

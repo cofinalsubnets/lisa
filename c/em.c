@@ -6,7 +6,7 @@
 static NoInline bool inst(em v, const char *a, ll *b) {
   ob z;
   bind(z, interns(v, a));
-  return !!tbl_set(v, Top, z, putnum((i64) b)); }
+  return !!tbl_set(v, v->glob[Topl], z, putnum((i64) b)); }
 
 static NoInline bool prim(em v, const char *a, ll *i) {
   ob nom;
@@ -18,7 +18,7 @@ static NoInline bool prim(em v, const char *a, ll *i) {
   prim[1].ll = (ll*) nom;
   prim[2].ll = NULL;
   prim[3].ll = (ll*) prim;
-  return !!tbl_set(v, Top, A(nom), (ob) prim); }
+  return !!tbl_set(v, v->glob[Topl], A(nom), (ob) prim); }
 
 // lips destructor
 void fin(em v) { if (v) free(v->pool), free(v); }
@@ -38,8 +38,8 @@ em ini(void) {
   set64(v->glob, nil, NGlobs);
 
 #define Bind(x) if(!(x))goto fail
-  Bind(Top = table(v));
-  Bind(Mac = table(v));
+  Bind(v->glob[Topl] = table(v));
+  Bind(v->glob[Macs] = table(v));
 #define register_inst(a, b)if(b){Bind(prim(v,b,a));}else{Bind(inst(v, "i-"#a,a));}
   insts(register_inst)
 #define bsym(i,s) Bind(v->glob[i]=interns(v,s))
@@ -51,8 +51,8 @@ em ini(void) {
   bsym(Quote, "`");
   bsym(Seq, ",");
   bsym(Splat, ".");
-#define def(s, x) Bind(_=interns(v,s));Bind(tbl_set(v,Top,_,x))
-  def("_ns", Top);
-  def("_macros", Mac);
+#define def(s, x) Bind(_=interns(v,s));Bind(tbl_set(v,v->glob[Topl],_,x))
+  def("_ns", v->glob[Topl]);
+  def("_macros", v->glob[Macs]);
   return v; fail:
   return fin(v), NULL; }
