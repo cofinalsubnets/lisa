@@ -24,7 +24,8 @@ static em init(bool, const char*, char **);
 
 // unpack state & jump into thread
 static NoInline ob go(em v) {
-  ob xp, ip, *sp, *hp, *fp;
+  yo ip;
+  ob xp, *sp, *hp, *fp;
   Unpack();
   return ApY(ip, xp); }
 

@@ -454,7 +454,7 @@ static NoInline ob apply(em v, ob f, ob x) {
   h[3].ll = NULL;
   h[4].ll = (ll*) h;
   x = tbl_get(v, Top, App);
-  return call(v, (ob) h, (ob*) v->fp, v->sp, v->hp, x); }
+  return call(v, h, (ob*) v->fp, v->sp, v->hp, x); }
 
 // instructions used by the compiler
 Ll(hom_u) {
@@ -526,7 +526,7 @@ ob analyze(em v, ob x) {
 
 Ll(ev_u) {
   Arity(1);
-  if (homp(Eva)) ip = Eva;
+  if (homp(Eva)) ip = (yo) Eva;
   else { Pack();
          bind(v->ip, (yo) analyze(v, *Argv));
          Unpack(); }

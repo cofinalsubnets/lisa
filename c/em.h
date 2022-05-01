@@ -11,15 +11,15 @@ _Static_assert(-1 == -1 >> 1, "signed >>");
 
 typedef int64_t ob; // thing
 typedef struct em *em; // time order
+typedef struct yo *yo; // embed
 // FIXME em yo ob ob* ob* fr
-#define Ll(n,...) ob n(em v, ob ip, ob*fp, ob*sp, ob*hp, ob xp, ##__VA_ARGS__)
+#define Ll(n,...) ob n(em v, yo ip, ob*fp, ob*sp, ob*hp, ob xp, ##__VA_ARGS__)
 typedef Ll(ll);
 
 // FIXME 3bit -> 2bit
 enum class { Hom = 0, Num = 1, Two = 2, Xxx = 3,
              Str = 4, Tbl = 5, Sym = 6, Nil = 7 };
 
-typedef struct yo { ll *ll, *sh[]; } *yo; // puLLback / puSHout
 typedef struct str { u64 len; char text[]; } *str;
 typedef struct sym { ob nom, code, l, r; } *sym;
 typedef struct ent { ob key, val; struct ent *next; } *ent; // tables
@@ -28,6 +28,7 @@ typedef struct two { ob a, b; } *two;
 typedef struct mm { ob *it; struct mm *et; } *mm;
 typedef struct fr { ob clos, retp, subd, argc, argv[]; } *fr;
 
+struct yo { ll *ll, *sh[]; }; // puLLback / puSHout
 // FIXME indices to a global (thread-local) table of constants
 enum { Def, Cond, Lamb, Quote, Seq, Splat,
        Topl, Macs, Eval, Apply, NGlobs };
@@ -206,8 +207,8 @@ insts(ninl)
 // without using the stack. so the interpreter has to restore
 // the current values in the vm struct before it makes any
 // "external" function calls.
-#define Pack() (v->ip=(yo)ip,v->sp=sp,v->hp=hp,v->fp=(fr)fp,v->xp=xp)
-#define Unpack() (fp=(ob*)v->fp,hp=v->hp,sp=v->sp,ip=(ob)v->ip,xp=v->xp)
+#define Pack() (v->ip=ip,v->sp=sp,v->hp=hp,v->fp=(fr)fp,v->xp=xp)
+#define Unpack() (fp=(ob*)v->fp,hp=v->hp,sp=v->sp,ip=v->ip,xp=v->xp)
 #define CallC(...) (Pack(), (__VA_ARGS__), Unpack())
 
 #define Clos ((fr)fp)->clos
@@ -227,9 +228,9 @@ insts(ninl)
 
 // the return value of a terp function is usually a call
 // to another terp function.
-#define ApY(f, x) (ip = (f), ((yo)(ip))->ll(v, ip, fp, sp, hp, (x)))
+#define ApY(f, x) (ip = (yo)(f), ((yo)(ip))->ll(v, ip, fp, sp, hp, (x)))
 #define ApC(f, x) (f)(v, ip, fp, sp, hp, (x))
-#define ApN(n, x) ApY((ob)((yo)ip+(n)), (x))
+#define ApN(n, x) ApY(ip+(n), (x))
 #define CheckType(x,t) if(Q((x))-(t)){xp=x,v->xp=t;return ApC(type_error, xp);}
 #define Arity(n) if(putnum(n)>Argc){ return ApC((v->xp=n,ary_error), xp); }
 #define Tc CheckType
