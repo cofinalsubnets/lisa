@@ -10,7 +10,6 @@ const u32 *tnoms = (u32*)
 ////
 /// " the parser "
 //
-
 typedef FILE *io;
 typedef ob read_loop(em, io, str, u64, u64);
 static ob two_in(em, io), read_num(const char*),
@@ -99,13 +98,6 @@ static ob str_loop(em v, FILE *p, str o, u64 n, u64 lim) {
     default: o->text[n++] = x; }
   return reloop(v, p, putstr(o), lim, str_loop); }
 
-static ob read_file_loop(em v, FILE *p, str o, u64 n, u64 lim) {
-  ob x;
-  while (n < lim) switch (x = getc(p)) {
-    case EOF: o->text[n++] = 0, o->len = n; return putstr(o);
-    default: o->text[n++] = x; }
-  return reloop(v, p, putstr(o), lim, read_file_loop); }
-
 static NoInline ob read_num_base(const char *in, int base) {
   static const char *digits = "0123456789abcdef";
   int c = cmin(*in++);
@@ -131,17 +123,6 @@ static NoInline ob read_num(const char *s) {
       case 'z': return read_num_base(s+2, 12);
       case 'x': return read_num_base(s+2, 16); } }
   return read_num_base(s, 10); }
-
-
-ob read_file(em v, FILE *i) {
-  ob s = read_buf(v, i, read_file_loop);
-  fclose(i);
-  return s; }
-
-ob read_path(em v, const char *path) {
-  FILE *in;
-  bind(in, fopen(path, "r"));
-  return read_file(v, in); }
 
 Vm(par_u) {
   CallC(xp = parse(v, stdin),

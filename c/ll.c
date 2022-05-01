@@ -408,7 +408,6 @@ Vm(lbind) {
   IP[1].ll = (ll*) xp;
   return ApN(2, xp); }
 
-
 // hash tables
 Vm(tblg) {
   Arity(2);
@@ -491,7 +490,7 @@ Vm(cdr_u) {
   TypeCheck(*Argv, Two);
   return ApC(ret, B(*Argv)); }
 
-Vm(cons_u) {
+Ll(cons_u) {
   Arity(2);
   Have(2);
   two w = (two) hp;
@@ -500,7 +499,7 @@ Vm(cons_u) {
   return ApC(ret, puttwo(w)); }
 
 // this is used to create closures.
-Vm(take) {
+Ll(take) {
   u64 n = getnum((ob) IP[1].ll);
   Have(n + 2);
   ob * t = hp;
@@ -514,6 +513,7 @@ Vm(take) {
 static Ll(clos) {
   Clos = (ob) IP[1].ll;
   return ApY((ob) IP[2].ll, xp); }
+
 // finalize function instance closure
 static Ll(clos1) {
   IP->ll = clos;

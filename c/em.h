@@ -9,12 +9,16 @@
 
 // thanks !!
 
-typedef struct empath *em; // time order
-typedef int64_t ob;
-typedef ob ll(em, ob, ob*, ob*, ob*, ob); // FIXME em yo ob ob* ob* fr
+// XXX FIXME XXX
+_Static_assert(sizeof(void*) == 8, "64bit");
+_Static_assert(-1 == -1 >> 1, "signed >>");
 
-// FIXME use 2 bits to be 32-bit compatible
-// the 3 least bits of each pointer are a type tag
+typedef int64_t ob; // thing
+typedef struct empath *em; // time order
+// FIXME em yo ob ob* ob* fr
+typedef ob ll(em, ob, ob*, ob*, ob*, ob);
+
+// FIXME 3bit -> 2bit
 enum class { Hom = 0, Num = 1, Two = 2, Xxx = 3,
              Str = 4, Tbl = 5, Sym = 6, Nil = 7 };
 
@@ -27,7 +31,7 @@ typedef struct two { ob a, b; } *two;
 typedef struct mm { ob *it; struct mm *et; } *mm;
 typedef struct fr { ob clos, retp, subd, argc, argv[]; } *fr;
 
-// indices to a global (thread-local) table of constants
+// FIXME indices to a global (thread-local) table of constants
 enum { Def, Cond, Lamb, Quote, Seq, Splat,
        Topl, Macs, Eval, Apply, NGlobs };
 
@@ -35,9 +39,9 @@ struct empath {
   yo ip;
   fr fp;
   ob *hp, *sp, xp, // interpreter state
+     rand, // random state
      syms,
      glob[NGlobs],
-     rand, // random state
      t0, len, *pool; // memory state
   mm mm; }; // gc protection list
 
@@ -56,9 +60,7 @@ ob eval(em, ob), homnom(em, ob),
    tbl_set_s(em, ob, ob, ob), tbl_get(em, ob, ob),
    pair(em, ob, ob),
    parse(em, FILE*),
-   err(em, const char*, ...) NoInline,
-   read_path(em, const char*),
-   read_file(em, FILE*);
+   err(em, const char*, ...) NoInline;
 void *cells(em, u64), emit(em, ob, FILE*);
 bool eql(ob, ob), please(em, u64);
 
@@ -237,7 +239,4 @@ insts(ninl)
 #define Eva v->glob[Eval]
 #define App v->glob[Apply]
 #define IP gethom(ip)
-// XXX FIXME XXX
-_Static_assert(sizeof(void*) == sizeof(int64_t), "64 bit pointers");
-_Static_assert(-1 >> 1 == -1, "sign-extended bit shifts");
 #endif
