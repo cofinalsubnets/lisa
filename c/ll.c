@@ -1,3 +1,4 @@
+#include <stdarg.h>
 #include "em.h"
 
 #define N1 putnum(1)

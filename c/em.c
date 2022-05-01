@@ -1,5 +1,6 @@
 #include "em.h"
 #include <time.h>
+#include <stdlib.h>
 
 // initialization helpers
 static NoInline bool inst(em v, const char *a, ll *b) {

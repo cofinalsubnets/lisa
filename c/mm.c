@@ -3,11 +3,23 @@
 #include <time.h>
 #include <string.h>
 
-typedef ob copier(em, ob, u64, ob*);
-static Inline copier cp;
 #define Gc(n) ob n(em v, ob x, u64 len0, ob*pool0)
+typedef Gc(copier);
+static copier
+  cphom, cptwo, cpsym, cpstr, cptbl, cpid,
+  *copiers[] = {
+    [Hom] = cphom, [Num] = cpid, [Two] = cptwo, [Xxx] = cpid,
+    [Str] = cpstr, [Tbl] = cptbl, [Sym] = cpsym, [Nil] = cpid, };
+static Inline Gc(cp) { return copiers[Q(x)](v, x, len0, pool0); }
+static Gc(cpid) { return x; }
 
-static const u64 mix = 2708237354241864315;
+// the exact method for copying an object into
+// the new pool depends on its type. copied
+// objects are used to store pointers to their
+// new locations, which effectively destroys the
+// old data.
+
+
 #define inb(o,l,u) (o>=l&&o<u)
 #define fresh(o) inb((ob*)(o),v->pool,v->pool+v->len)
 #define COPY(dst,src) (dst=cp(v,src,len0,pool0))
@@ -83,7 +95,7 @@ static clock_t copy(em v, u64 len1) {
   t1 = t2 - t1;
   return t1 ? (t2 - t0) / t1 : 1; }
 
-// please : li x i64 -> bool
+// please : u1 em i64
 //
 // try to return with at least req words of available memory.
 // return true on success, false otherwise. this function also
@@ -116,19 +128,6 @@ bool please(em v, u64 req) {
   else if (shrinkp) do len >>= 1, vit >>= 1; while (shrinkp);
   else return true; // no size change needed
   return copy(v, len) || allocd <= v->len; }
-
-static copier cphom, cptwo, cpsym, cpstr, cptbl;
-static Gc(cpid) { return x; }
-// the exact method for copying an object into
-// the new pool depends on its type. copied
-// objects are used to store pointers to their
-// new locations, which effectively destroys the
-// old data.
-static copier *copiers[] = {
-  [Hom] = cphom, [Num] = cpid, [Two] = cptwo, [Xxx] = cpid,
-  [Str] = cpstr, [Tbl] = cptbl, [Sym] = cpsym, [Nil] = cpid, };
-
-static Inline Gc(cp) { return copiers[Q(x)](v, x, len0, pool0); }
 
 #define stale(o) inb((ob*)(o),pool0,pool0+len0)
 Gc(cphom) {
@@ -215,21 +214,25 @@ static ent tbl_ent(em v, ob u, ob k) {
   for (; e; e = e->next) if (eql(e->key, k)) return e;
   return NULL; }
 
-typedef u64 hasher(em, ob);
-static hasher hash_sym, hash_str, hash_two, hash_hom, hash_num, hash_nil;
-static hasher *hashers[] = {
-  [Nil] = hash_nil, [Hom] = hash_hom, [Two] = hash_two, [Xxx] = hash_nil,
-  [Str] = hash_str, [Num] = hash_num, [Sym] = hash_sym, [Tbl] = hash_nil };
+#define Hash(n) u64 n(em v, ob x)
+typedef Hash(hasher);
+static hasher
+  hash_sym, hash_str, hash_two, hash_hom, hash_num, hash_nil,
+  *hashers[] = {
+    [Hom] = hash_hom, [Two] = hash_two,
+    [Str] = hash_str, [Num] = hash_num, [Sym] = hash_sym,
+    [Nil] = hash_nil, [Xxx] = hash_nil, [Tbl] = hash_nil, };
 
 Inline u64 hash(em v, ob x) { return hashers[Q(x)](v, x); }
 
+static const u64 mix = 2708237354241864315;
 static Inline u64 ror64(u64 x, u64 n) { return (x<<(64-n))|(x>>n); }
-static u64 hash_sym(em v, ob y) { return getsym(y)->code; }
-static u64 hash_two(em v, ob w) { return ror64(hash(v, A(w)) * hash(v, B(w)), 32); }
-static u64 hash_hom(em v, ob h) { return hash(v, homnom(v, h)) ^ mix; }
-static u64 hash_num(em v, ob n) { return ror64(mix * n, 16); }
-static u64 hash_nil(em v, ob _) { return ror64(mix * Q(nil), 48); }
-static u64 hash_str(em v, ob x) {
+static Hash(hash_sym) { return getsym(x)->code; }
+static Hash(hash_two) { return ror64(hash(v, A(x)) * hash(v, B(x)), 32); }
+static Hash(hash_hom) { return hash(v, homnom(v, x)) ^ mix; }
+static Hash(hash_num) { return ror64(mix * x, 16); }
+static Hash(hash_nil) { return ror64(mix * Q(x), 48); }
+static Hash(hash_str) {
   str s = getstr(x);
   u64 len = s->len;
   char *us = s->text;
@@ -254,12 +257,11 @@ static void tbl_fit(em v, ob t) {
   while (u->cap && tbl_load(t) < 1) u->cap--;
 
   // reinsert
-  while (e) {
-    u64 i = tbl_idx(u->cap, hash(v, e->key));
-    f = e->next,
-    e->next = u->tab[i],
-    u->tab[i] = e,
-    e = f; } }
+  while (e) { u64 i = tbl_idx(u->cap, hash(v, e->key));
+              f = e->next,
+              e->next = u->tab[i],
+              u->tab[i] = e,
+              e = f; } }
 
 static ob tbl_del(em v, ob t, ob key) {
   tbl y = gettbl(t);
@@ -306,9 +308,12 @@ ob tbl_set_s(em v, ob t, ob k, ob x) {
   // it's not here, so allocate an entry
   with(t, with(k, with(x, e = cells(v, Width(ent)))));
   bind(e, e);
-  e->key = k, e->val = x;
   tbl y = gettbl(t);
+
+  e->key = k;
+  e->val = x;
   e->next = y->tab[i];
+
   y->tab[i] = e;
   y->len += 1;
 

@@ -6,25 +6,23 @@
 const u32 *tnoms = (u32*)
   "hom\0num\0two\0vec\0str\0tbl\0sym\0nil";
 
-
 ////
 /// " the parser "
 //
-typedef FILE *io;
-typedef ob read_loop(em, io, str, u64, u64);
-static ob two_in(em, io), read_num(const char*),
-          str_in(em, io), read_atom(em, io);
+typedef ob read_loop(em, FILE*, str, u64, u64);
+static ob two_in(em, FILE*), read_num(const char*),
+          str_in(em, FILE*), read_atom(em, FILE*);
 static read_loop str_loop, atom_loop;
 
-static Inline ob read_buf(em v, io i, read_loop *loop) {
+static Inline ob read_buf(em v, FILE* i, read_loop *loop) {
   str c;
   bind(c, cells(v, 2));
   return loop(v, i, c, 0, c->len = 8); }
 
-static Inline ob str_in(em v, io i) {
+static Inline ob str_in(em v, FILE* i) {
   return read_buf(v, i, str_loop); }
 
-static Inline ob read_atom(em v, io i) {
+static Inline ob read_atom(em v, FILE* i) {
   return read_buf(v, i, atom_loop); }
 
 static int read_char(FILE *i) {
@@ -143,30 +141,42 @@ void emit(em v, ob x, FILE *o) {
     default: return (void) fputs("()", o);
     case Hom: return emhomn(v, homnom(v, x), o);
     case Num: return (void) fprintf(o, "%ld", getnum(x));
-    case Two: {
-      bool is_quotation = A(x) == Qt && twop(B(x)) && nilp(BB(x));
-      if (is_quotation) return
-        fputc('\'', o),
-        emit(v, A(B(x)), o);
-      for (fputc('(', o);; x = B(x)) {
-        emit(v, A(x), o);
-        if (!twop(B(x))) break;
-        fputc(' ', o); }
-      return (void) fputc(')', o); }
+
     case Str: {
       str s = getstr(x);
+
       fputc('"', o);
       for (char *t = s->text; *t; fputc(*t++, o))
         if (*t == '"') fputc('\\', o);
+
       return (void) fputc('"', o); }
+
     case Tbl: {
       tbl t = gettbl(x);
       return (void) fprintf(o, "#tbl:%ld/%ld", t->len, t->cap); }
+
     case Sym: {
       sym y = getsym(x);
       return (void) (nilp(y->nom) ?
         fprintf(o, "#sym@%lx", (long) y) :
-        fputs(getstr(y->nom)->text, o)); } } }
+        fputs(getstr(y->nom)->text, o)); }
+
+    case Two: {
+      bool is_quotation =
+        A(x) == Qt &&
+        twop(B(x)) &&
+        nilp(BB(x));
+
+      if (is_quotation)
+        return fputc('\'', o),
+               emit(v, A(B(x)), o);
+
+      for (fputc('(', o);; x = B(x)) {
+        emit(v, A(x), o);
+        if (!twop(B(x))) break;
+        fputc(' ', o); }
+
+      return (void) fputc(')', o); } } }
 
 // print to console
 Ll(show_u) {

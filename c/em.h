@@ -1,9 +1,5 @@
 #ifndef _em_h
 #define _em_h
-#include <stdarg.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdbool.h>
 #include "empathy.h"
 #include "medi.h"
 
@@ -16,7 +12,8 @@ _Static_assert(-1 == -1 >> 1, "signed >>");
 typedef int64_t ob; // thing
 typedef struct em *em; // time order
 // FIXME em yo ob ob* ob* fr
-typedef ob ll(em, ob, ob*, ob*, ob*, ob);
+#define Ll(n,...) ob n(em v, ob ip, ob*fp, ob*sp, ob*hp, ob xp, ##__VA_ARGS__)
+typedef Ll(ll);
 
 // FIXME 3bit -> 2bit
 enum class { Hom = 0, Num = 1, Two = 2, Xxx = 3,
@@ -40,14 +37,15 @@ struct em {
   fr fp;
   ob *hp, *sp, xp, // interpreter state
      rand, // random state
-     syms,
-     glob[NGlobs],
+     syms, glob[NGlobs],
      t0, len, *pool; // memory state
   mm mm; }; // gc protection list
 
 
 #define Inline inline __attribute__((always_inline))
 #define NoInline __attribute__((noinline))
+#include <stdio.h>
+#include <stdbool.h>
 
 void *cells(em, u64),
      emit(em, ob, FILE*);
@@ -56,19 +54,26 @@ bool eql(ob, ob),
 u64 hash(em, ob);
 ob eval(em, ob),
    // FIXME functions
-   analyze(em, ob), sequence(em, ob, ob), homnom(em, ob),
+   analyze(em, ob),
+   sequence(em, ob, ob),
+   homnom(em, ob),
    // FIXME strings
    string(em, const char*),
    // FIXME symbols
-   intern(em, ob), interns(em, const char*), sskc(em, ob*, ob),
+   intern(em, ob),
+   interns(em, const char*),
+   sskc(em, ob*, ob),
 
    // FIXME tables
-   tblkeys(em, ob), table(em), tbl_set(em, ob, ob, ob),
-   tbl_set_s(em, ob, ob, ob), tbl_get(em, ob, ob),
+   table(em),
+   tblkeys(em, ob),
+   tbl_set(em, ob, ob, ob),
+   tbl_set_s(em, ob, ob, ob),
+   tbl_get(em, ob, ob),
 
    pair(em, ob, ob),
    parse(em, FILE*),
-   err(em, const char*, ...) NoInline;
+   err(em, const char*, ...);
 
 // a packed array of 4-byte strings.
 extern const uint32_t *tnoms;
@@ -174,12 +179,11 @@ ll gc, type_error, oob_error, ary_error, div_error, yield;
  _(symp_u, "symp") _(strp_u, "strp")\
  _(nilp_u, "nilp") _(rnd_u, "rand")
 
-#define ninl(x, _) ll x NoInline;
+#define ninl(x, _) ll x;
 insts(ninl)
 #undef ninl
 
 // " the interpreter "
-#define Ll(n,...) NoInline ob n(em v, ob ip, ob*fp, ob*sp, ob*hp, ob xp, ##__VA_ARGS__)
 #define Vm Ll
 // the arguments to a terp function collectively represent the
 // runtime state, and the  return value is the result of the
