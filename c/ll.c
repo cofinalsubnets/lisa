@@ -52,8 +52,9 @@ Ll(vararg) {
   if (!vdic) {
     Have1();
     cpyptr(fp-1, fp, Width(fr) + getnum(Argc));
-    sp = --fp;
-    Argc += sizeof(void*);
+    fp = (void*) ((ob*) fp - 1);
+    sp = (ob*) fp;
+    Argc += sizeof(ob);
     Argv[reqd] = nil;
     return ApN(2, xp); }
   // in this case we just keep the existing slots.
