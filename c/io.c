@@ -108,7 +108,7 @@ static ob read_file_loop(em v, FILE *p, str o, u64 n, u64 lim) {
 
 static NoInline ob read_num_base(const char *in, int base) {
   static const char *digits = "0123456789abcdef";
-  int c = tolower(*in++);
+  int c = cmin(*in++);
   if (!c) return nil; // fail to parse empty string
   i64 out = 0;
   do {
@@ -116,7 +116,7 @@ static NoInline ob read_num_base(const char *in, int base) {
     for (const char *d = digits; *d && *d != c; d++, digit++);
     if (digit >= base) return nil; // fail to parse oob digit
     out = out * base + digit;
-  } while ((c = tolower(*in++)));
+  } while ((c = cmin(*in++)));
   return putnum(out); }
 
 static NoInline ob read_num(const char *s) {
@@ -124,7 +124,7 @@ static NoInline ob read_num(const char *s) {
   switch (*s) {
     case '-': return nump(n = read_num(s+1)) ? putnum(-getnum(n)) : n;
     case '+': return read_num(s+1);
-    case '0': switch (tolower(s[1])) {
+    case '0': switch (cmin(s[1])) {
       case 'b': return read_num_base(s+2, 2);
       case 'o': return read_num_base(s+2, 8);
       case 'd': return read_num_base(s+2, 10);
@@ -145,32 +145,23 @@ ob read_path(em v, const char *path) {
 
 Vm(par_u) {
   CallC(xp = parse(v, stdin),
-        // collapses two kinds of failure into one
         v->xp = !xp ? nil : pair(v, xp, nil));
   bind(xp, xp);
   return ApC(ret, xp); }
 
-Vm(slurp) {
-  Arity(1);
-  xp = *Argv;
-  Tc(xp, Str);
-  CallC(xp = read_path(v, getstr(xp)->text),
-        v->xp = xp ? xp : nil);
-  return ApC(ret, xp); }
-
-typedef void writer(em, ob, FILE*);
-
 static void emhomn(em v, ob x, FILE *o) {
   fputc('\\', o);
-  switch (Q(x)) {
-    case Sym: return emit(v, x, o);
-    case Two: if (symp(A(x))) emit(v, A(x), o);
-              emhomn(v, B(x), o);
-    default: } }
+  switch (Q(x)) { case Sym: return emit(v, x, o);
+                  case Two: if (symp(A(x))) emit(v, A(x), o);
+                            emhomn(v, B(x), o);
+                  default: } }
 
 void emit(em v, ob x, FILE *o) {
   enum class q = Q(x);
   switch (q) {
+    default: return (void) fputs("()", o);
+    case Hom: return emhomn(v, homnom(v, x), o);
+    case Num: return (void) fprintf(o, "%ld", getnum(x));
     case Two: {
       bool is_quotation = A(x) == Qt && twop(B(x)) && nilp(BB(x));
       if (is_quotation) return
@@ -190,44 +181,22 @@ void emit(em v, ob x, FILE *o) {
     case Tbl: {
       tbl t = gettbl(x);
       return (void) fprintf(o, "#tbl:%ld/%ld", t->len, t->cap); }
-    case Hom: return emhomn(v, homnom(v, x), o);
     case Sym: {
       sym y = getsym(x);
-      if (nilp(y->nom)) fprintf(o, "#sym@%lx", (long) y);
-      else fputs(getstr(y->nom)->text, o);
-      return; }
-    case Num: fprintf(o, "%ld", getnum(x)); return;
-    default: fputs("()", o); } }
+      return (void) (nilp(y->nom) ?
+        fprintf(o, "#sym@%lx", (long) y) :
+        fputs(getstr(y->nom)->text, o)); } } }
 
 // print to console
 Ll(show_u) {
   u64 l = getnum(Argc), i;
-  if (l) {
-    for (i = 0; i < l - 1; i++)
-      emsep(v, Argv[i], stdout, ' ');
-    emit(v, xp = Argv[i], stdout); }
+  if (l) { for (i = 0; i < l - 1; i++)
+             emsep(v, Argv[i], stdout, ' ');
+           emit(v, xp = Argv[i], stdout); }
   fputc('\n', stdout);
   return ApC(ret, xp); }
 
 Ll(putc_u) {
   Arity(1);
   fputc(getnum(*Argv), stdout);
-  return ApC(ret, xp); }
-
-static bool write_file(em v, const char *path, const char *text) {
-  FILE *out;
-  bind(out, fopen(path, "w"));
-  bool r = true;
-  for (char c = *text; r && c; c = *++text)
-    r = fputc(c, out) != EOF;
-  fclose(out);
-  return r; }
-
-Vm(dump) {
-  Arity(2);
-  TypeCheck(Argv[0], Str);
-  TypeCheck(Argv[1], Str);
-  char *p = getstr(Argv[0])->text,
-       *d = getstr(Argv[1])->text;
-  write_file(v, p, d); // FIXME handle failure
   return ApC(ret, xp); }

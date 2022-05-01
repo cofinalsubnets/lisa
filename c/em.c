@@ -26,7 +26,7 @@ void fin(em v) { if (v) free(v->pool), free(v); }
 em ini(void) {
   em v;
   ob _;
-  bind(v, malloc(sizeof(struct em)));
+  bind(v, malloc(sizeof(struct empath)));
 
   v->rand = lcprng(v->t0 = clock());
   v->len = 1;

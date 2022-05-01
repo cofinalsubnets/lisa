@@ -9,8 +9,9 @@
 
 // thanks !!
 
-typedef struct em *em; // time order
-typedef ob ll(em, ob, ob*, ob*, ob*, ob); // FIXME st yo ob ob* ob* fr
+typedef struct empath *em; // time order
+typedef int64_t ob;
+typedef ob ll(em, ob, ob*, ob*, ob*, ob); // FIXME em yo ob ob* ob* fr
 
 // FIXME use 2 bits to be 32-bit compatible
 // the 3 least bits of each pointer are a type tag
@@ -25,10 +26,12 @@ typedef struct tbl { u64 len, cap; ent *tab; } *tbl;
 typedef struct two { ob a, b; } *two;
 typedef struct mm { ob *it; struct mm *et; } *mm;
 typedef struct fr { ob clos, retp, subd, argc, argv[]; } *fr;
+
 // indices to a global (thread-local) table of constants
 enum { Def, Cond, Lamb, Quote, Seq, Splat,
        Topl, Macs, Eval, Apply, NGlobs };
-struct em {
+
+struct empath {
   yo ip;
   fr fp;
   ob *hp, *sp, xp, // interpreter state
@@ -39,6 +42,8 @@ struct em {
   mm mm; }; // gc protection list
 
 
+#define Inline inline __attribute__((always_inline))
+#define NoInline __attribute__((noinline))
 
 // a packed array of 4-byte strings.
 extern const uint32_t *tnoms;
@@ -150,7 +155,7 @@ ll gc, type_error, oob_error, ary_error, div_error, yield;
  _(bootstrap, "boot")\
  _(tblks, "tkeys") _(hseek_u, "hseek") _(fail, "fail")\
  _(putc_u, "putc") _(ystr_u, "ystr")\
- _(slurp, "slurp") _(dump, "dump") _(hnom_u, "hnom")\
+ _(hnom_u, "hnom")\
  _(emx_u, "emx") _(emi_u, "emi") _(show_u, ".") _(ev_u, "ev")\
  _(ap_u, "ap") _(hgeti_u, "hgeti")\
  _(hfin_u, "hfin") _(hgetx_u, "hgetx") _(twop_u, "twop")\
