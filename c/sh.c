@@ -10,9 +10,6 @@
 #define Pull(...) pushs(v, __VA_ARGS__, (ob) 0)
 #define Push(m) ((c1*)getnum(*v->sp++))(v,e,m)
 
-// FIXME please stop using v->{x,i}p as aux stacks for storing
-// code entry points when generating conditionals
-//
 // this phase does no optimization
 
 // " compilation environments "
@@ -28,8 +25,8 @@
 #define par(x)  ((ob*)(x))[3] // surrounding scope : tuple or nil
 #define name(x) ((ob*)(x))[4] // function name : a symbol or nil
 #define asig(x) ((ob*)(x))[5] // arity signature : an integer
-#define s1(x) ((ob*)(x))[6]
-#define s2(x) ((ob*)(x))[7]
+#define s1(x)   ((ob*)(x))[6]
+#define s2(x)   ((ob*)(x))[7]
 // for a function f let n be the number of required arguments.
 // then if f takes a fixed number of arguments the arity
 // signature is n; otherwise it's -n-1.
@@ -275,8 +272,8 @@ static Co(let_sh, ob x) {
 static Co(if_sh_pre) {
   ob x;
   bind(x, (ob) Push(m));
-  bind(x, pair(v, x, (ob) v->ip));
-  v->ip = (yo) x;
+  bind(x, pair(v, x, s2(*e)));
+  s2(*e) = x;
   return (yo) A(x); }
 
 // before generating a branch emit a jump to
@@ -284,7 +281,7 @@ static Co(if_sh_pre) {
 static Co(if_sh_pre_con) {
   yo x, k;
   bind(x, Push(m + 2));
-  k = (yo) A((ob) v->ip);
+  k = (yo) A(s2(*e));
   return k->ll == ret ? ee1(ret, x) : ee2(jump, (ob) k, x); }
 
 // after generating a branch store its address
@@ -329,7 +326,7 @@ static Co(if_sh, ob x) {
   bind(_, if_sh_loop(v, e, B(x)));
   yo k;
   bind(k, Push(m));
-  v->ip = (yo) B((ob) v->ip);
+  s2(*e) =  B(s2(*e));
   return k; }
 
 static Co(em_call) {

@@ -146,8 +146,7 @@ static Ll(recne) {
  v->xp = Subr;
  v->ip = (yo) Retp; // save return info
  fp = (void*) (Argv + getnum(Argc - (ob) ip));
- rcpyptr(fp, sp, getnum((ob)ip)); // copy from high to low
-                                 //
+ rcpyptr(fp, sp, getnum((ob) ip)); // copy from high to low
  sp = (ob*) (((fr) fp) - 1);
  fp = (void*) sp;
  Retp = (ob) v->ip;
