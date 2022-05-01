@@ -334,9 +334,9 @@ OP2(arg, Ref(Argv))
 OP1(arg0, Argv[0])
 OP1(arg1, Argv[1])
 // local variables
-OP2(loc, Ref(getvec(Locs)->xs))
-OP1(loc0, getvec(Locs)->xs[0])
-OP1(loc1, getvec(Locs)->xs[1])
+OP2(loc, Ref(((ob*)Locs)))
+OP1(loc0, ((ob*)Locs)[0])
+OP1(loc1, ((ob*)Locs)[1])
 // closure variables
 OP2(clo, Ref(getvec(Clos)->xs))
 OP1(clo0, getvec(Clos)->xs[0])
@@ -350,10 +350,12 @@ Vm(push) {
   Have1();
   *--sp = xp;
   return ApN(1, xp); }
+
 // set a local variable
 Vm(loc_) {
-  Ref(getvec(Locs)->xs) = xp;
+  Ref(((ob*)Locs)) = xp;
   return ApN(2, xp); }
+
 // set a global variable
 Vm(tbind) {
   CallC(tbl_set(v, Top, (ob) IP[1].ll, xp));
@@ -362,11 +364,12 @@ Vm(tbind) {
 // allocate local variable array
 Vm(locals) {
   i64 n = getnum((i64) IP[1].ll);
-  Have(n + 2);
-  vec t = (vec) hp;
-  set64(t->xs, nil, t->len = n);
-  hp += n + 1;
-  *--sp = putvec(t);
+  Have(n + 3);
+  ob *t = hp;
+  hp += n + 2;
+  set64(t, nil, n);
+  t[n] = 0;
+  *--sp = t[n+1] = (ob) t;
   return ApN(2, xp); }
 
 // late binding

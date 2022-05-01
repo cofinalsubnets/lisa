@@ -1,16 +1,13 @@
 #ifndef _em_h
 #define _em_h
-#include "empath.h"
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
+#include "empath.h"
+#include "medi.h"
 
 // thanks !!
-
-#define BWDQ(_) _(8) _(16) _(32) _(64)
-#define I(n) typedef int##n##_t i##n; typedef uint##n##_t u##n;
-BWDQ(I)
-#undef I
 
 // the 3 least bits of each pointer are a type tag
 enum class { Hom = 0, Num = 1, Two = 2, Vec = 3,
@@ -65,22 +62,6 @@ bool eql(ob, ob), please(em, u64);
 
 #define nil (~(ob)0)
 #define bind(v, x) if(!((v)=(x)))return 0
-
-#define Inline inline __attribute__((always_inline))
-#define NoInline __attribute__((noinline))
-#define memn(n)\
-  static Inline void set##n(void*_d,u##n i,u64 l) {\
-    for(u##n*d=_d;l--;*d++=i); }\
-  static Inline void cpy##n(void*_d,const void*_s, u64 l) {\
-    u##n*d=_d; const u##n*s=_s; while (l--) *d++=*s++; }\
-  static Inline void cpy##n##r(void*_d,const void*_s, u64 l) {\
-    u##n*d=_d; const u##n*s=_s; while (l--) d[l]=s[l]; }\
-  static Inline void mov##n(void*_d,const void*_s, u64 l) {\
-    if (_d<_s) cpy##n(_d, _s, l);\
-    else if (_d>_s) cpy##n##r(_d, _s, l); }
-BWDQ(memn)
-#undef memn
-#undef BWDQ
 #define FF(x) F(F(x))
 #define FG(x) F(G(x))
 #define GF(x) G(F(x))
@@ -136,10 +117,6 @@ static Inline u64 llen(ob l) {
 
 
 #define emsep(v,x,o,s) ((void)(emit(v,x,o),fputc(s,o)))
-
-static Inline ob lcprng(ob s) {
-  const ob steele_vigna_2021 = 0xaf251af3b0f025b5;
-  return (s * steele_vigna_2021 + 1) >> 8; }
 
 static Inline u64 b2w(u64 b) {
   return b / sizeof(ob) + (b % sizeof(ob) && 1); }
