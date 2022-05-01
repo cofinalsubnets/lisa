@@ -1,5 +1,5 @@
-# lips
-limiting lisp
+# empath
+limit language
 
 ## build / install
 are you on linux? `make` will probably work. otherwise, see

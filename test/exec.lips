@@ -20,8 +20,6 @@
             (tarai (- y 1) x z)
             (tarai (- z 1) x y)))
   (= 13 (tarai 12 13 14)))
- ; call/cc
- (= 1 (ccc (\ ret (, (ret 1) (fail "unreachable")))))
 
 
  ; church numerals

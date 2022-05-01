@@ -31,10 +31,10 @@ enum { Def, Cond, Lamb, Quote, Seq, Splat,
        Topl, Macs, Eval, Apply, NGlobs };
 
 typedef struct yo *yo; // よ // embed
-typedef struct st *st, *mo; // state // time order
-typedef ob ll(st, ob, ob*, ob*, ob*, ob); // FIXME st yo ob ob* ob* fr
+typedef struct em *em, *st, *mo; // state // time order
+typedef ob ll(em, ob, ob*, ob*, ob*, ob); // FIXME st yo ob ob* ob* fr
 struct yo { ll *ll, *sh[]; }; // puLLback / puSHout
-struct st {
+struct em {
   yo ip;
   fr fp;
   ob *hp, *sp, xp, // interpreter state

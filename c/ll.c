@@ -43,43 +43,6 @@ Ll(ap_u) {
   Clos = nil;
   return ApY(x, nil); }
 
-// continuations
-Ll(ccc_u) {
-  Arity(1);
-  TypeCheck(*Argv, Hom);
-  // we need space for:
-  // the entire stack
-  // the frame offset
-  // the length (to put it all in a tuple)
-  // the continuation thread (4 words)
-  u64 depth = v->pool + v->len - sp;
-  Have(depth + 6);
-  ip = *Argv;
-  vec t = (vec) hp;
-  hp += depth + 2;
-  t->len = depth + 1;
-  t->xs[0] = putnum(fp - sp);
-  cpy64(t->xs+1, sp, depth);
-  yo c = (yo) hp;
-  hp += 4;
-  c[0].ll = cont;
-  c[1].ll = (ll*) putvec(t);
-  c[2].ll = NULL;
-  c[3].ll = (ll*) c;
-  *Argv = (ob) c;
-  return ApY(ip, nil); }
-
-// call a continuation
-Ll(cont) {
-  vec t = getvec((ob) IP[1].ll);
-  Have(t->len - 1);
-  xp = getnum(Argc) == 0 ? nil : *Argv;
-  i64 off = getnum(t->xs[0]);
-  sp = v->pool + v->len - (t->len - 1);
-  fp = sp + off;
-  cpy64(sp, t->xs+1, t->len-1);
-  return ApC(ret, xp); }
-
 Ll(vararg) {
   i64 reqd = getnum((i64) IP[1].ll),
       vdic = getnum(Argc) - reqd;
@@ -217,14 +180,14 @@ Ll(arity) {
   if (reqd <= Argc) return ApN(2, xp);
   else return v->xp = getnum(reqd), ApC(ary_error, xp); }
 
-static Inline void show_call(mo v, yo ip, fr fp) {
+static Inline void show_call(em v, yo ip, fr fp) {
   fputc('(', stderr);
   emit(v, (ob) ip, stderr);
   for (i64 i = 0, argc = getnum(fp->argc); i < argc;)
     fputc(' ', stderr), emit(v, fp->argv[i++], stderr);
   fputc(')', stderr); }
 
-NoInline ob err(mo v, const char *msg, ...) {
+NoInline ob err(em v, const char *msg, ...) {
   yo ip = (yo) v->ip;
   fr fp = (fr) v->fp,
      top = (fr) (v->pool + v->len);
@@ -450,7 +413,7 @@ Vm(tblc) {
   xp = tbl_get(v, Argv[0], Argv[1]);
   return ApC(ret, xp ? N1 : nil); }
 
-static ob tblss(mo v, i64 i, i64 l) {
+static ob tblss(em v, i64 i, i64 l) {
   fr fp = (fr) v->fp;
   if (i > l-2) return fp->argv[i-1];
   ob _;

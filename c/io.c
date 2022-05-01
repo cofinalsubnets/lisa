@@ -13,20 +13,20 @@ const u32 *tnoms = (u32*)
 //
 
 typedef FILE *io;
-typedef ob read_loop(mo, io, str, u64, u64);
-static ob two_in(mo, io), read_num(const char*),
-          str_in(mo, io), read_atom(mo, io);
+typedef ob read_loop(em, io, str, u64, u64);
+static ob two_in(em, io), read_num(const char*),
+          str_in(em, io), read_atom(mo, io);
 static read_loop str_loop, atom_loop;
 
-static Inline ob read_buf(mo v, io i, read_loop *loop) {
+static Inline ob read_buf(em v, io i, read_loop *loop) {
   str c;
   bind(c, cells(v, 2));
   return loop(v, i, c, 0, c->len = 8); }
 
-static Inline ob str_in(mo v, io i) {
+static Inline ob str_in(em v, io i) {
   return read_buf(v, i, str_loop); }
 
-static Inline ob read_atom(mo v, io i) {
+static Inline ob read_atom(em v, io i) {
   return read_buf(v, i, atom_loop); }
 
 static int read_char(FILE *i) {
@@ -36,13 +36,13 @@ static int read_char(FILE *i) {
     case ' ': case '\t': case '\n': continue;
     default: return c; } }
 
-ob read_quoted(mo v, FILE *i) {
+ob read_quoted(em v, FILE *i) {
   ob x;
   bind(x, parse(v, i));
   bind(x, pair(v, x, nil));
   return pair(v, Qt, x); }
 
-ob parse(mo v, FILE* i) {
+ob parse(em v, FILE* i) {
   int c = read_char(i);
   ob x, y;
   switch (c) {
@@ -55,7 +55,7 @@ ob parse(mo v, FILE* i) {
              y = read_num(getstr(x)->text);
              return nump(y) ? y : intern(v, x); } }
 
-static ob two_in(mo v, FILE *i) {
+static ob two_in(em v, FILE *i) {
   ob x, y, c = read_char(i);
   switch (c) {
     case EOF: return 0;
@@ -67,7 +67,7 @@ static ob two_in(mo v, FILE *i) {
       bind(y, y);
       return pair(v, x, y); } }
 
-static Inline ob grow_buffer(mo v, ob s) {
+static Inline ob grow_buffer(em v, ob s) {
   u64 l = b2w(getstr(s)->len);
   str t;
   with(s, t = cells(v, 2 * l + 1));
@@ -76,11 +76,11 @@ static Inline ob grow_buffer(mo v, ob s) {
   cpy64(t->text, getstr(s)->text, l);
   return putstr(t); }
 
-static NoInline ob reloop(mo v, FILE *i, ob x, u64 n, read_loop *loop) {
+static NoInline ob reloop(em v, FILE *i, ob x, u64 n, read_loop *loop) {
   bind(x, grow_buffer(v, x));
   return loop(v, i, getstr(x), n, 2 * n); }
 
-static ob atom_loop(mo v, FILE *p, str o, u64 n, u64 lim) {
+static ob atom_loop(em v, FILE *p, str o, u64 n, u64 lim) {
   ob x;
   while (n < lim) switch (x = getc(p)) {
     case ' ': case '\n': case '\t': case ';': case '#':
@@ -92,7 +92,7 @@ static ob atom_loop(mo v, FILE *p, str o, u64 n, u64 lim) {
     default: o->text[n++] = x; }
   return reloop(v, p, putstr(o), lim, atom_loop); }
 
-static ob str_loop(mo v, FILE *p, str o, u64 n, u64 lim) {
+static ob str_loop(em v, FILE *p, str o, u64 n, u64 lim) {
   ob x;
   while (n < lim) switch (x = getc(p)) {
     case '\\': if ((x = getc(p)) == EOF) {
@@ -100,7 +100,7 @@ static ob str_loop(mo v, FILE *p, str o, u64 n, u64 lim) {
     default: o->text[n++] = x; }
   return reloop(v, p, putstr(o), lim, str_loop); }
 
-static ob read_file_loop(mo v, FILE *p, str o, u64 n, u64 lim) {
+static ob read_file_loop(em v, FILE *p, str o, u64 n, u64 lim) {
   ob x;
   while (n < lim) switch (x = getc(p)) {
     case EOF: o->text[n++] = 0, o->len = n; return putstr(o);
@@ -134,12 +134,12 @@ static NoInline ob read_num(const char *s) {
   return read_num_base(s, 10); }
 
 
-ob read_file(mo v, FILE *i) {
+ob read_file(em v, FILE *i) {
   ob s = read_buf(v, i, read_file_loop);
   fclose(i);
   return s; }
 
-ob read_path(mo v, const char *path) {
+ob read_path(em v, const char *path) {
   FILE *in;
   bind(in, fopen(path, "r"));
   return read_file(v, in); }
@@ -159,9 +159,9 @@ Vm(slurp) {
         v->xp = xp ? xp : nil);
   return ApC(ret, xp); }
 
-typedef void writer(mo, ob, FILE*);
+typedef void writer(em, ob, FILE*);
 
-static void emhomn(mo v, ob x, FILE *o) {
+static void emhomn(em v, ob x, FILE *o) {
   fputc('\\', o);
   switch (Q(x)) {
     case Sym: return emit(v, x, o);
@@ -215,7 +215,7 @@ Ll(putc_u) {
   fputc(getnum(*Argv), stdout);
   return ApC(ret, xp); }
 
-static bool write_file(mo v, const char *path, const char *text) {
+static bool write_file(em v, const char *path, const char *text) {
   FILE *out;
   bind(out, fopen(path, "w"));
   bool r = true;

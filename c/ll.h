@@ -19,7 +19,7 @@ ob err(mo, const char*, ...) NoInline;
  _(loc0, 0) _(loc1, 0) _(clo0, 0) _(clo1, 0)\
  _(brlt, 0) _(brlteq, 0) _(breq, 0) _(brgteq, 0) _(brlt2, 0)\
  _(brlteq2, 0) _(brgt2, 0) _(brgt, 0) _(brne, 0)\
- _(cont, 0) _(dupl, 0) _(emi, 0) _(emx, 0) _(vararg, 0)\
+ _(dupl, 0) _(emi, 0) _(emx, 0) _(vararg, 0)\
  _(gsym_u, tnom(Sym)) _(exit_u, "exit") _(sys_u, "sys")\
  _(par_u, "read") _(sar_u, ">>") _(sal_u, "<<") _(band_u, "&")\
  _(bor_u, "|") _(bxor_u, "^") _(clock_u, "clock")\
@@ -33,7 +33,7 @@ ob err(mo, const char*, ...) NoInline;
  _(tblc, "thas") _(tbls, "tset") _(tbld, "tdel")\
  _(bootstrap, "boot")\
  _(tblks, "tkeys") _(hseek_u, "hseek") _(fail, "fail")\
- _(ccc_u, "ccc") _(putc_u, "putc") _(ystr_u, "ystr")\
+ _(putc_u, "putc") _(ystr_u, "ystr")\
  _(slurp, "slurp") _(dump, "dump") _(hnom_u, "hnom")\
  _(emx_u, "emx") _(emi_u, "emi") _(em_u, ".") _(ev_u, "ev")\
  _(ap_u, "ap") _(hgeti_u, "hgeti")\
