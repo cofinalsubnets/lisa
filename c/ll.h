@@ -20,10 +20,10 @@ ob err(mo, const char*, ...) NoInline;
  _(brlt, 0) _(brlteq, 0) _(breq, 0) _(brgteq, 0) _(brlt2, 0)\
  _(brlteq2, 0) _(brgt2, 0) _(brgt, 0) _(brne, 0)\
  _(dupl, 0) _(emi, 0) _(emx, 0) _(vararg, 0)\
- _(gsym_u, tnom(Sym)) _(exit_u, "exit") _(sys_u, "sys")\
+ _(gsym_u, tnom(Sym))\
  _(par_u, "read") _(sar_u, ">>") _(sal_u, "<<") _(band_u, "&")\
- _(bor_u, "|") _(bxor_u, "^") _(clock_u, "clock")\
- _(sleep_u, "sleep") _(add_u, "+") _(hom_u, tnom(Hom))\
+ _(bor_u, "|") _(bxor_u, "^")\
+ _(add_u, "+") _(hom_u, tnom(Hom))\
  _(sub_u, "-") _(mul_u, "*") _(div_u, "/") _(mod_u, "%")\
  _(lt_u, "<") _(lteq_u, "<=") _(eq_u, "=") _(gteq_u, ">=")\
  _(gt_u, ">") _(car_u, "A") _(cdr_u, "B") _(cons_u, "X")\
