@@ -354,7 +354,7 @@ static ob tblkeys_i(em v, ob t, intptr_t i) {
 Inline ob tblkeys(em v, ob t) { return tblkeys_i(v, t, 0); }
 
 ob string(em v, const char* c) {
-  intptr_t bs = 1 + slen(c);
+  intptr_t bs = 1 + strlen(c);
   str o;
   bind(o, cells(v, Width(str) + b2w(bs)));
   memcpy(o->text, c, o->len = bs);
@@ -456,7 +456,7 @@ ob sskc(em v, ob*y, ob x) {
   sym z;
   if (!nilp(*y)) {
     z = getsym(*y);
-    int i = scmp(getstr(z->nom)->text, getstr(x)->text);
+    int i = strcmp(getstr(z->nom)->text, getstr(x)->text);
     return i == 0 ? *y : sskc(v, i < 0 ? &z->r : &z->l, x); }
   // the caller must ensure Avail >= Width(sym) because to GC
   // here would cause the tree to be rebuilt

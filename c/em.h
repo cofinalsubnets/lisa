@@ -14,7 +14,6 @@ typedef struct em *em; // embedding
 typedef struct sh *sh; // puSHout
 // FIXME em sh ob ob* ob* fr
 typedef ob ll(em, sh, ob*, ob*, ob*, ob); // puLLback
-                                          //
 #define Ll(n,...) ob n(em v, sh ip, ob*fp, ob*sp, ob*hp, ob xp, ##__VA_ARGS__)
 typedef struct sh { ll *ll; } *yo;
 

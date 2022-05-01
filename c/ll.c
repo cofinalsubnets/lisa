@@ -317,7 +317,7 @@ static NoInline bool eql_two(two a, two b) {
 
 static NoInline bool eql_str(str a, str b) {
   return a->len == b->len &&
-    scmp(a->text, b->text) == 0; }
+    strcmp(a->text, b->text) == 0; }
 
 Inline bool eql(ob a, ob b) {
   return a == b || (Q(a) == Q(b) &&
