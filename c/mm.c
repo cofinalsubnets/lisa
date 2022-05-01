@@ -136,14 +136,15 @@ Gc(cphom) {
   if (fresh(src->ll)) return (ob) src->ll;
   yo end = button(src), start = (yo) end[1].ll,
      dst = bump(v, end - start + 2), j = dst;
-  for (yo k = start; k < end;)
+  for (yo k = start; k < end;
     j->ll = k->ll,
-    k++->ll = (ll*) j++;
+    k++->ll = (ll*) j++);
   j[0].ll = NULL;
   j[1].ll = (ll*) dst;
   for (ob u; j-- > dst;
     u = (ob) j->ll,
-    j->ll = (ll*) (!stale(u) ? u : cp(v, u, len0, pool0)));
+    u = stale(u) ? cp(v, u, len0, pool0) : u,
+    j->ll = (ll*) u);
   return (ob) (dst += src - start); }
 
 Gc(cpstr) {

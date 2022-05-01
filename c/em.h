@@ -14,7 +14,7 @@ _Static_assert(sizeof(void*) == 8, "64bit");
 _Static_assert(-1 == -1 >> 1, "signed >>");
 
 typedef int64_t ob; // thing
-typedef struct empath *em; // time order
+typedef struct em *em; // time order
 // FIXME em yo ob ob* ob* fr
 typedef ob ll(em, ob, ob*, ob*, ob*, ob);
 
@@ -35,7 +35,7 @@ typedef struct fr { ob clos, retp, subd, argc, argv[]; } *fr;
 enum { Def, Cond, Lamb, Quote, Seq, Splat,
        Topl, Macs, Eval, Apply, NGlobs };
 
-struct empath {
+struct em {
   yo ip;
   fr fp;
   ob *hp, *sp, xp, // interpreter state
@@ -49,20 +49,29 @@ struct empath {
 #define Inline inline __attribute__((always_inline))
 #define NoInline __attribute__((noinline))
 
-// a packed array of 4-byte strings.
-extern const uint32_t *tnoms;
+void *cells(em, u64),
+     emit(em, ob, FILE*);
+bool eql(ob, ob),
+     please(em, u64);
 u64 hash(em, ob);
-ob eval(em, ob), homnom(em, ob),
-   analyze(em, ob), sequence(em, ob, ob),
-   string(em, const char*), intern(em, ob),
-   interns(em, const char*), sskc(em, ob*, ob),
+ob eval(em, ob),
+   // FIXME functions
+   analyze(em, ob), sequence(em, ob, ob), homnom(em, ob),
+   // FIXME strings
+   string(em, const char*),
+   // FIXME symbols
+   intern(em, ob), interns(em, const char*), sskc(em, ob*, ob),
+
+   // FIXME tables
    tblkeys(em, ob), table(em), tbl_set(em, ob, ob, ob),
    tbl_set_s(em, ob, ob, ob), tbl_get(em, ob, ob),
+
    pair(em, ob, ob),
    parse(em, FILE*),
    err(em, const char*, ...) NoInline;
-void *cells(em, u64), emit(em, ob, FILE*);
-bool eql(ob, ob), please(em, u64);
+
+// a packed array of 4-byte strings.
+extern const uint32_t *tnoms;
 
 #define nil (~(ob)0)
 #define bind(v, x) if(!((v)=(x)))return 0
