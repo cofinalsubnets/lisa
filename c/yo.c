@@ -559,53 +559,54 @@ static Ll(clos1) {
 // instruction that sets the closure and enters
 // the function.
 static Vm(clos0) {
-  ob ec  = (ob) IP[1].ll,
-     arg = getvec(ec)->xs[0],
-     loc = getvec(ec)->xs[1];
+  ob *ec  = (ob*) IP[1].ll,
+     arg = ec[0],
+     loc = ec[1];
   u64 adic = nilp(arg) ? 0 : getvec(arg)->len;
   Have(Width(fr) + adic + 1);
   i64 off = (ob*) fp - sp;
   IP->ll = clos1;
   sp -= adic;
   cpy64(sp, getvec(arg)->xs, adic);
-  ec = (ob) IP[1].ll;
+  ec = (ob*) IP[1].ll;
   fp = (void*) (sp -= Width(fr));
   Retp = ip;
   Subr = putnum(off);
   Argc = putnum(adic);
-  Clos = getvec(ec)->xs[2];
+  Clos = ec[2];
   if (!nilp(loc)) *--sp = loc;
-  return ApY(getvec(ec)->xs[3], xp); }
+  return ApY(ec[3], xp); }
 
 // the next few functions create and store
 // lexical environments.
 static Vm(encl) {
   i64 n = getnum(Argc);
-  n += n ? 12 : 11;
+  n += n ? 13 : 12;
   Have(n);
   ob x = (ob) IP[1].ll, arg = nil;
   ob* block = hp;
   hp += n;
-  if (n > 11) {
-    n -= 12;
+  if (n > 12) {
+    n -= 13;
     vec t = (vec) block;
     block += 1 + n;
     t->len = n;
     while (n--) t->xs[n] = Argv[n];
     arg = putvec(t); }
 
-  vec t = (vec) block; // compiler thread closure array (1 length 5 elements)
-  yo at = (yo) (block+6); // compiler thread (1 instruction 2 data 2 tag)
+  yo t = (yo) block; // compiler thread closure array (1 length 5 elements)
+  yo at = (yo) (block+7); // compiler thread (1 instruction 2 data 2 tag)
 
-  t->len = 5; // initialize alpha closure
-  t->xs[0] = arg;
-  t->xs[1] = xp; // Locs or nil
-  t->xs[2] = Clos;
-  t->xs[3] = B(x);
-  t->xs[4] = (ob) at;
+  t[0].ll = (ll*) arg;
+  t[1].ll = (ll*) xp; // Locs or nil
+  t[2].ll = (ll*) Clos;
+  t[3].ll = (ll*) B(x);
+  t[4].ll = (ll*) at;
+  t[5].ll = NULL;
+  t[6].ll = (ll*) t;
 
   at[0].ll = clos0;
-  at[1].ll = (ll*) putvec(t);
+  at[1].ll = (ll*) t;
   at[2].ll = (ll*) A(x);
   at[3].ll = NULL;
   at[4].ll = (ll*) at;
