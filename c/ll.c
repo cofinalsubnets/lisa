@@ -173,7 +173,8 @@ Ll(div_error) { return Pack(), err(v, "/ 0"); }
 #define DTc(n, t) Ll(n) {\
   if (Q(xp-t)==0) return ApN(1, xp);\
   return v->xp = t, ApC(type_error, xp); }
-DTc(idZ, Num) DTc(idH, Hom) DTc(idT, Tbl) DTc(id2, Two)
+DTc(idZ, Num) DTc(idH, Hom)
+DTc(idT, Tbl) DTc(id2, Two)
 Ll(arity) {
   ob reqd = (ob) IP[1].ll;
   if (reqd <= Argc) return ApN(2, xp);
@@ -190,12 +191,22 @@ NoInline ob err(em v, const char *msg, ...) {
   yo ip = (yo) v->ip;
   fr fp = (fr) v->fp,
      top = (fr) (v->pool + v->len);
+
+  // error line
   fputs("# ", stderr);
-  if (fp < top) show_call(v, ip, fp), fputs(" : ", stderr);
+
+  if (fp < top) {
+    show_call(v, ip, fp);
+    fputs(" : ", stderr); }
+
   va_list xs;
-  va_start(xs, msg), vfprintf(stderr, msg, xs), va_end(xs);
+  va_start(xs, msg);
+  vfprintf(stderr, msg, xs);
+  va_end(xs);
+
   fputc('\n', stderr);
-  // print backtrace
+
+  // backtrace
   if (fp < top) for (;;) {
     ip = (yo) fp->retp;
     fp = (fr) ((ob*) fp + Width(fr) + getnum(fp->argc) + getnum(fp->subd));
@@ -203,6 +214,9 @@ NoInline ob err(em v, const char *msg, ...) {
     fputs("# in ", stderr);
     show_call(v, ip, fp);
     fputc('\n', stderr); }
+
+
+  // reset and yield
   v->fp = (fr) (v->sp = v->pool + v->len);
   v->ip = (yo) (v->xp = nil);
   return 0; }
@@ -333,10 +347,12 @@ OP2(imm, (ob) IP[1].ll)
 OP2(arg, Ref(Argv))
 OP1(arg0, Argv[0])
 OP1(arg1, Argv[1])
+
 // local variables
 OP2(loc, Ref(((ob*)Locs)))
 OP1(loc0, ((ob*)Locs)[0])
 OP1(loc1, ((ob*)Locs)[1])
+
 // closure variables
 OP2(clo, Ref(getvec(Clos)->xs))
 OP1(clo0, getvec(Clos)->xs[0])
