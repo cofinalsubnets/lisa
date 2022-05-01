@@ -96,6 +96,9 @@ static ob str_loop(em v, FILE *p, str o, uintptr_t n, uintptr_t lim) {
     default: o->text[n++] = x; }
   return reloop(v, p, putstr(o), lim, str_loop); }
 
+static Inline int cmin(int c) {
+  return c >= 'A' && c <= 'Z' ? c + ('a'-'A') : c; }
+
 static NoInline ob read_num_base(const char *in, int base) {
   static const char *digits = "0123456789abcdef";
   int c = cmin(*in++);
