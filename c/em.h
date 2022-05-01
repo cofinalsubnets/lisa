@@ -15,10 +15,11 @@ typedef struct yo *yo; // embed
 // FIXME em yo ob ob* ob* fr
 #define Ll(n,...) ob n(em v, yo ip, ob*fp, ob*sp, ob*hp, ob xp, ##__VA_ARGS__)
 typedef Ll(ll);
+struct yo { ll *ll, *sh[]; }; // puLLback / puSHout
 
 // FIXME 3bit -> 2bit
 enum class { Hom = 0, Num = 1, Two = 2, Xxx = 3,
-             Str = 4, Tbl = 5, Sym = 6, Nil = 7 };
+             Str = 4, Tbl = 5, Sym = 6, Nil = 7, };
 
 typedef struct str { u64 len; char text[]; } *str;
 typedef struct sym { ob nom, code, l, r; } *sym;
@@ -28,7 +29,6 @@ typedef struct two { ob a, b; } *two;
 typedef struct mm { ob *it; struct mm *et; } *mm;
 typedef struct fr { ob clos, retp, subd, argc, argv[]; } *fr;
 
-struct yo { ll *ll, *sh[]; }; // puLLback / puSHout
 // FIXME indices to a global (thread-local) table of constants
 enum { Def, Cond, Lamb, Quote, Seq, Splat,
        Topl, Macs, Eval, Apply, NGlobs };
