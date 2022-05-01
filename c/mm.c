@@ -3,7 +3,7 @@
 #include <time.h>
 #include <string.h>
 
-#define Gc(n) ob n(em v, ob x, u64 len0, ob*pool0)
+#define Gc(n) ob n(em v, ob x, uintptr_t len0, ob*pool0)
 typedef Gc(copier);
 static copier
   cphom, cptwo, cpsym, cpstr, cptbl, cpid,
@@ -26,18 +26,18 @@ static Gc(cpid) { return x; }
 #define CP(x) COPY(x,x)
 
 // unchecked allocator -- make sure there's enough memory!
-static void* bump(em v, u64 n) {
+static void* bump(em v, uintptr_t n) {
   void* x = v->hp;
   return v->hp += n, x; }
 
 // general purpose memory allocator
-void* cells(em v, u64 n) {
+void* cells(em v, uintptr_t n) {
   return Avail >= n || please(v, n) ? bump(v, n) : 0; }
 
 #define oom_err_msg "out of memory : %d + %d"
 // Run a GC cycle from inside the VM
 Vm(gc) {
-  u64 req = v->xp;
+  uintptr_t req = v->xp;
   Pack();
   if (!please(v, req)) return err(v, oom_err_msg, v->len, req); 
   Unpack();
@@ -66,16 +66,16 @@ Vm(gc) {
 // t values come from clock(). if t0 < t1 < t2 then
 // u will be >= 1. however, sometimes t1 == t2. in that case
 // u = 1.
-static clock_t copy(em v, u64 len1) {
+static clock_t copy(em v, uintptr_t len1) {
   ob* pool1;
   clock_t t0, t1 = clock(), t2;
   bind(pool1, malloc(len1 * sizeof(ob)));
 
-  u64 len0 = v->len;
+  uintptr_t len0 = v->len;
   ob *pool0 = v->pool,
      *sp0 = v->sp,
      *top0 = pool0 + len0;
-  i64 shift = pool1 + len1 - top0;
+  intptr_t shift = pool1 + len1 - top0;
 
   v->sp = sp0 + shift;
   v->fp = (fr) ((ob*) v->fp + shift);
@@ -95,7 +95,7 @@ static clock_t copy(em v, u64 len1) {
   t1 = t2 - t1;
   return t1 ? (t2 - t0) / t1 : 1; }
 
-// please : u1 em i64
+// please : u1 em intptr_t
 //
 // try to return with at least req words of available memory.
 // return true on success, false otherwise. this function also
@@ -120,10 +120,10 @@ static clock_t copy(em v, u64 len1) {
 // the cost of more memory use under pressure.
 #define growp (allocd > len || vit < 32) // lower bound
 #define shrinkp (allocd < (len>>1) && vit >= 128) // upper bound
-bool please(em v, u64 req) {
-  i64 len = v->len, vit;
+bool please(em v, uintptr_t req) {
+  intptr_t len = v->len, vit;
   bind(vit, copy(v, len));
-  i64 allocd = len - (Avail - req);
+  intptr_t allocd = len - (Avail - req);
   if (growp) do len <<= 1, vit <<= 1; while (growp);
   else if (shrinkp) do len >>= 1, vit >>= 1; while (shrinkp);
   else return true; // no size change needed
@@ -150,7 +150,7 @@ Gc(cpstr) {
   str dst, src = getstr(x);
   return src->len == 0 ? *(ob*)src->text :
     (dst = bump(v, Width(str) + b2w(src->len)),
-     cpy64(dst->text, src->text, b2w(src->len)),
+     cpyptr(dst->text, src->text, b2w(src->len)),
      dst->len = src->len, src->len = 0,
      *(ob*) src->text = putstr(dst)); }
 
@@ -158,11 +158,11 @@ Gc(cpsym) {
   sym src = getsym(x), dst;
   if (fresh(src->nom)) return src->nom;
   if (src->nom == nil) // anonymous symbol
-    cpy64(dst = bump(v, Width(sym)), src, Width(sym));
+    cpyptr(dst = bump(v, Width(sym)), src, Width(sym));
   else dst = getsym(sskc(v, &v->syms, cp(v, src->nom, len0, pool0)));
   return src->nom = putsym(dst); }
 
-static ent cpent(em v, ent src, i64 len0, ob *pool0) {
+static ent cpent(em v, ent src, intptr_t len0, ob *pool0) {
   bind(src, src);
   ent dst = (ent) bump(v, Width(ent));
   dst->next = cpent(v, src->next, len0, pool0);
@@ -173,14 +173,14 @@ static ent cpent(em v, ent src, i64 len0, ob *pool0) {
 Gc(cptbl) {
   tbl src = gettbl(x);
   if (fresh(src->tab)) return (ob) src->tab;
-  i64 src_cap = src->cap;
+  intptr_t src_cap = src->cap;
   tbl dst = bump(v, Width(tbl) + (1<<src_cap));
   dst->len = src->len;
   dst->cap = src_cap;
   dst->tab = (ent*) (dst + 1);
   ent *src_tab = src->tab;
   src->tab = (ent*) puttbl(dst);
-  for (u64 ii = 1<<src_cap; ii--;)
+  for (uintptr_t ii = 1<<src_cap; ii--;)
     dst->tab[ii] = cpent(v, src_tab[ii], len0, pool0);
   return puttbl(dst); }
 
@@ -202,10 +202,10 @@ ob pair(em v, ob a, ob b) {
   w->b = b;
   return puttwo(w); }
 
-static Inline i64 tbl_idx(u64 cap, u64 co) {
+static Inline intptr_t tbl_idx(uintptr_t cap, uintptr_t co) {
   return co & ((1 << cap) - 1); }
 
-static Inline u64 tbl_load(ob t) {
+static Inline uintptr_t tbl_load(ob t) {
   return gettbl(t)->len >> gettbl(t)->cap; }
 
 static ent tbl_ent(em v, ob u, ob k) {
@@ -214,7 +214,7 @@ static ent tbl_ent(em v, ob u, ob k) {
   for (; e; e = e->next) if (eql(e->key, k)) return e;
   return NULL; }
 
-#define Hash(n) u64 n(em v, ob x)
+#define Hash(n) uintptr_t n(em v, ob x)
 typedef Hash(hasher);
 static hasher
   hash_sym, hash_str, hash_two, hash_hom, hash_num, hash_nil,
@@ -223,10 +223,10 @@ static hasher
     [Str] = hash_str, [Num] = hash_num, [Sym] = hash_sym,
     [Nil] = hash_nil, [Xxx] = hash_nil, [Tbl] = hash_nil, };
 
-Inline u64 hash(em v, ob x) { return hashers[Q(x)](v, x); }
+Inline uintptr_t hash(em v, ob x) { return hashers[Q(x)](v, x); }
 
-static const u64 mix = 2708237354241864315;
-static Inline u64 ror64(u64 x, u64 n) { return (x<<(64-n))|(x>>n); }
+static const uintptr_t mix = 2708237354241864315;
+static Inline uintptr_t ror64(uintptr_t x, uintptr_t n) { return (x<<(64-n))|(x>>n); }
 static Hash(hash_sym) { return getsym(x)->code; }
 static Hash(hash_two) { return ror64(hash(v, A(x)) * hash(v, B(x)), 32); }
 static Hash(hash_hom) { return hash(v, homnom(v, x)) ^ mix; }
@@ -234,9 +234,9 @@ static Hash(hash_num) { return ror64(mix * x, 16); }
 static Hash(hash_nil) { return ror64(mix * Q(x), 48); }
 static Hash(hash_str) {
   str s = getstr(x);
-  u64 len = s->len;
+  uintptr_t len = s->len;
   char *us = s->text;
-  for (u64 h = 1;; h ^= *us++, h *= mix)
+  for (uintptr_t h = 1;; h ^= *us++, h *= mix)
     if (!len--) return h; }
 
 // shrinking a table never allocates memory, so it's safe
@@ -248,7 +248,7 @@ static void tbl_fit(em v, ob t) {
   tbl u = gettbl(t);
 
   // collect all entries
-  for (u64 i = 1 << u->cap; i--;)
+  for (uintptr_t i = 1 << u->cap; i--;)
     for (f = u->tab[i], u->tab[i] = NULL; f;
       g = f->next, f->next = e,
       e = f, f = g);
@@ -257,7 +257,7 @@ static void tbl_fit(em v, ob t) {
   while (u->cap && tbl_load(t) < 1) u->cap--;
 
   // reinsert
-  while (e) { u64 i = tbl_idx(u->cap, hash(v, e->key));
+  while (e) { uintptr_t i = tbl_idx(u->cap, hash(v, e->key));
               f = e->next,
               e->next = u->tab[i],
               u->tab[i] = e,
@@ -266,7 +266,7 @@ static void tbl_fit(em v, ob t) {
 static ob tbl_del(em v, ob t, ob key) {
   tbl y = gettbl(t);
   ob val = nil;
-  i64 b = tbl_idx(y->cap, hash(v, key));
+  intptr_t b = tbl_idx(y->cap, hash(v, key));
   ent e = y->tab[b];
   struct ent prev = {0,0,e};
   for (ent l = &prev; l && l->next; l = l->next)
@@ -285,13 +285,13 @@ static ob tbl_del(em v, ob t, ob key) {
 // the old table entries are reused to populate the modified table.
 static ob tbl_grow(em v, ob t) {
   ent *tab0, *tab1;
-  u64 cap0 = gettbl(t)->cap, cap1 = cap0 + 1;
+  uintptr_t cap0 = gettbl(t)->cap, cap1 = cap0 + 1;
   with(t, tab1 = cells(v, 1<<cap1));
   bind(tab1, tab1);
-  set64(tab1, 0, 1<<cap1);
+  setptr(tab1, 0, 1<<cap1);
   tab0 = gettbl(t)->tab;
 
-  for (u64 i, cap = 1 << cap0; cap--;)
+  for (uintptr_t i, cap = 1 << cap0; cap--;)
     for (ent e, es = tab0[cap]; es;
       e = es, es = es->next,
       i = tbl_idx(cap1, hash(v, e->key)),
@@ -301,7 +301,7 @@ static ob tbl_grow(em v, ob t) {
   return t; }
 
 ob tbl_set_s(em v, ob t, ob k, ob x) {
-  u64 i = tbl_idx(gettbl(t)->cap, hash(v, k));
+  uintptr_t i = tbl_idx(gettbl(t)->cap, hash(v, k));
   ent e = tbl_ent(v, t, k);
   if (e) return e->val = x;
 
@@ -344,7 +344,7 @@ static ob tblkeys_j(em v, ent e, ob l) {
   bind(l, l);
   return pair(v, x, l); }
 
-static ob tblkeys_i(em v, ob t, i64 i) {
+static ob tblkeys_i(em v, ob t, intptr_t i) {
   ob k;
   if (i == 1 << gettbl(t)->cap) return nil;
   with(t, k = tblkeys_i(v, t, i+1));
@@ -354,10 +354,10 @@ static ob tblkeys_i(em v, ob t, i64 i) {
 Inline ob tblkeys(em v, ob t) { return tblkeys_i(v, t, 0); }
 
 ob string(em v, const char* c) {
-  i64 bs = 1 + strlen(c);
+  intptr_t bs = 1 + slen(c);
   str o;
   bind(o, cells(v, Width(str) + b2w(bs)));
-  cpy8(o->text, c, o->len = bs);
+  memcpy(o->text, c, o->len = bs);
   return putstr(o); }
 
 Vm(tbld) {
@@ -384,12 +384,12 @@ Vm(strg) {
   return ApC(ret, xp); }
 
 Vm(strconc) {
-  i64 l = getnum(Argc), sum = 0, i = 0;
+  intptr_t l = getnum(Argc), sum = 0, i = 0;
   while (i < l) {
     ob x = Argv[i++];
     CheckType(x, Str);
     sum += getstr(x)->len - 1; }
-  i64 words = b2w(sum+1) + 1;
+  intptr_t words = b2w(sum+1) + 1;
   Have(words);
   str d = (str) hp;
   hp += words;
@@ -398,7 +398,7 @@ Vm(strconc) {
   while (i) {
     str x = getstr(Argv[--i]);
     sum -= x->len - 1;
-    cpy8(d->text+sum, x->text, x->len - 1); }
+    memcpy(d->text+sum, x->text, x->len - 1); }
   return ApC(ret, putstr(d)); }
 
 #define min(a,b)(a<b?a:b)
@@ -409,21 +409,21 @@ Vm(strs) {
   CheckType(Argv[1], Num);
   CheckType(Argv[2], Num);
   str src = getstr(Argv[0]);
-  i64 lb = getnum(Argv[1]), ub = getnum(Argv[2]);
+  intptr_t lb = getnum(Argv[1]), ub = getnum(Argv[2]);
   lb = max(lb, 0);
   ub = min(ub, src->len-1);
   ub = max(ub, lb);
-  i64 words = 1 + b2w(ub - lb + 1);
+  intptr_t words = 1 + b2w(ub - lb + 1);
   Have(words);
   str dst = (str) hp;
   hp += words;
   dst->len = ub - lb + 1;
   dst->text[ub - lb] = 0;
-  cpy8(dst->text, src->text + lb, ub - lb);
+  memcpy(dst->text, src->text + lb, ub - lb);
   return ApC(ret, putstr(dst)); }
 
 Vm(strmk) {
-  i64 i = 0, bytes = getnum(Argc)+1, words = 1 + b2w(bytes);
+  intptr_t i = 0, bytes = getnum(Argc)+1, words = 1 + b2w(bytes);
   Have(words);
   str s = (str) hp;
   hp += words;
@@ -456,7 +456,7 @@ ob sskc(em v, ob*y, ob x) {
   sym z;
   if (!nilp(*y)) {
     z = getsym(*y);
-    int i = strcmp(getstr(z->nom)->text, getstr(x)->text);
+    int i = scmp(getstr(z->nom)->text, getstr(x)->text);
     return i == 0 ? *y : sskc(v, i < 0 ? &z->r : &z->l, x); }
   // the caller must ensure Avail >= Width(sym) because to GC
   // here would cause the tree to be rebuilt

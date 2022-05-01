@@ -6,25 +6,26 @@
 // thanks !!
 
 // XXX FIXME XXX
-_Static_assert(sizeof(void*) == 8, "64bit");
+_Static_assert(sizeof(intptr_t) == 8, "64bit");
 _Static_assert(-1 == -1 >> 1, "signed >>");
 
-typedef int64_t ob; // thing
-typedef struct em *em; // time order
-typedef struct yo *yo; // embed
-// FIXME em yo ob ob* ob* fr
-#define Ll(n,...) ob n(em v, yo ip, ob*fp, ob*sp, ob*hp, ob xp, ##__VA_ARGS__)
-typedef Ll(ll);
-struct yo { ll *ll, *sh[]; }; // puLLback / puSHout
+typedef intptr_t ob; // point
+typedef struct em *em; // embedding
+typedef struct sh *sh; // puSHout
+// FIXME em sh ob ob* ob* fr
+typedef ob ll(em, sh, ob*, ob*, ob*, ob); // puLLback
+                                          //
+#define Ll(n,...) ob n(em v, sh ip, ob*fp, ob*sp, ob*hp, ob xp, ##__VA_ARGS__)
+typedef struct sh { ll *ll; } *yo;
 
 // FIXME 3bit -> 2bit
 enum class { Hom = 0, Num = 1, Two = 2, Xxx = 3,
              Str = 4, Tbl = 5, Sym = 6, Nil = 7, };
 
-typedef struct str { u64 len; char text[]; } *str;
+typedef struct str { uintptr_t len; char text[]; } *str;
 typedef struct sym { ob nom, code, l, r; } *sym;
 typedef struct ent { ob key, val; struct ent *next; } *ent; // tables
-typedef struct tbl { u64 len, cap; ent *tab; } *tbl;
+typedef struct tbl { uintptr_t len, cap; ent *tab; } *tbl;
 typedef struct two { ob a, b; } *two;
 typedef struct mm { ob *it; struct mm *et; } *mm;
 typedef struct fr { ob clos, retp, subd, argc, argv[]; } *fr;
@@ -34,7 +35,7 @@ enum { Def, Cond, Lamb, Quote, Seq, Splat,
        Topl, Macs, Eval, Apply, NGlobs };
 
 struct em {
-  yo ip;
+  sh ip;
   fr fp;
   ob *hp, *sp, xp, // interpreter state
      rand, // random state
@@ -42,15 +43,14 @@ struct em {
      t0, len, *pool; // memory state
   mm mm; }; // gc protection list
 
-
 #include <stdio.h>
 #include <stdbool.h>
 
-void *cells(em, u64),
+void *cells(em, uintptr_t),
      emit(em, ob, FILE*);
 bool eql(ob, ob),
-     please(em, u64);
-u64 hash(em, ob);
+     please(em, uintptr_t);
+uintptr_t hash(em, ob);
 ob eval(em, ob),
    // FIXME functions
    analyze(em, ob),
@@ -100,8 +100,8 @@ extern const uint32_t *tnoms;
 #define nilp(_) ((_)==nil)
 #define tnom(_) ((const char*)(tnoms+(_)))
 
-#define F(_) ((yo)(_)+1)
-#define G(_) (((yo)(_))->ll)
+#define F(_) ((sh)(_)+1)
+#define G(_) (((sh)(_))->ll)
 
 #define nump(_) (Q(_)==Num)
 #define strp(_) (Q(_)==Str)
@@ -114,7 +114,7 @@ extern const uint32_t *tnoms;
 #define putnum(_) (((_)<<3)+Num)
 #define getstr(_) ((str)((_)-Str))
 #define puthom(_) ((ob)(_))
-#define gethom(_) ((yo)(_))
+#define gethom(_) ((sh)(_))
 #define getsym(_) ((sym)((_)-Sym))
 #define putsym(_) ((ob)(_)+Sym)
 #define gettbl(_) ((tbl)((_)-Tbl))
@@ -125,19 +125,19 @@ extern const uint32_t *tnoms;
 #define Inline inline __attribute__((always_inline))
 #define NoInline __attribute__((noinline))
 
-static Inline yo button(yo h) {
+static Inline sh button(sh h) {
   while (G(h)) h = F(h);
   return h; }
 
-static Inline u64 llen(ob l) {
-  u64 i = 0;
+static Inline uintptr_t llen(ob l) {
+  uintptr_t i = 0;
   while (twop(l)) l = B(l), i++;
   return i; }
 
 
 #define emsep(v,x,o,s) ((void)(emit(v,x,o),fputc(s,o)))
 
-static Inline u64 b2w(u64 b) {
+static Inline uintptr_t b2w(uintptr_t b) {
   return b / sizeof(ob) + (b % sizeof(ob) && 1); }
 
 
@@ -230,7 +230,7 @@ ll gc, type_error, oob_error, ary_error, div_error;
 
 #define ApN(n, x) ApY(ip+(n), (x))
 #define ApC(f, x) (f)(v, ip, fp, sp, hp, (x))
-#define ApY(f, x) (ip = (yo)(f), ApC(ip->ll, (x)))
+#define ApY(f, x) (ip = (sh)(f), ApC(ip->ll, (x)))
 
 #define Arity(n) if (putnum(n) > Argc) {\
                    v->xp = n;\

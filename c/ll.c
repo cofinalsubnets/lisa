@@ -29,11 +29,11 @@ Ll(ap_u) {
   Arity(2);
   ob x = Argv[0], y = Argv[1];
   TypeCheck(x, Hom);
-  u64 adic = llen(y);
+  uintptr_t adic = llen(y);
   Have(adic);
   ob off = Subr, rp = Retp;
   sp = Argv + getnum(Argc) - adic;
-  for (u64 j = 0; j < adic; sp[j++] = gettwo(y)->a,
+  for (uintptr_t j = 0; j < adic; sp[j++] = gettwo(y)->a,
                             y = gettwo(y)->b);
   fp = (void*) ((fr) sp - 1);
   sp = (ob*) fp;
@@ -44,14 +44,14 @@ Ll(ap_u) {
   return ApY(x, nil); }
 
 Ll(vararg) {
-  i64 reqd = getnum((i64) ip[1].ll),
-      vdic = getnum(Argc) - reqd;
+  intptr_t reqd = getnum((ob) ip[1].ll),
+           vdic = getnum(Argc) - reqd;
   Arity(reqd);
   // in this case we need to add another argument
   // slot to hold the nil.
   if (!vdic) {
     Have1();
-    cpy64(fp-1, fp, Width(fr) + getnum(Argc));
+    cpyptr(fp-1, fp, Width(fr) + getnum(Argc));
     sp = --fp;
     Argc += sizeof(void*);
     Argv[reqd] = nil;
@@ -63,7 +63,7 @@ Ll(vararg) {
   Have(2 * vdic);
   two t = (two) hp;
   hp += 2 * vdic;
-  for (i64 i = vdic; i--;
+  for (uintptr_t i = vdic; i--;
     t[i].a = Argv[reqd + i],
     t[i].b = puttwo(t+i+1));
   t[vdic-1].b = nil;
@@ -116,15 +116,15 @@ Br(brgteq,  *sp++ >= xp, GF, xp, FF, nil)
 // return from a function
 Ll(ret) {
   ip = (yo) Retp;
-  sp = (ob*) ((i64) Argv + Argc - Num);
-  fp = (void*) ((i64)   sp + Subr - Num);
+  sp = (ob*) ((ob) Argv + Argc - Num);
+  fp = (void*) ((ob) sp + Subr - Num);
   return ApY(ip, xp); }
 
 // "inner" function call
 Ll(call) {
   Have(Width(fr));
   ob adic = (ob) ip[1].ll;
-  i64 off = fp - (ob*) ((i64) sp + adic - Num);
+  intptr_t off = (ob*) fp - (ob*) ((ob) sp + adic - Num);
   fp = (void*) ((fr) sp - 1);
   sp = (ob*) fp;
   Retp = (ob)(ip+2);
@@ -136,7 +136,7 @@ Ll(call) {
 // tail call
 Ll(rec) {
   if (Argc != (ob) (ip = (yo) ip[1].ll)) return ApC(recne, xp);
-  cpy64(Argv, sp, getnum((ob)ip));
+  cpyptr(Argv, sp, getnum((ob)ip));
   sp = (ob*) fp;
   return ApY(xp, nil); }
 
@@ -145,7 +145,7 @@ static Ll(recne) {
  v->xp = Subr;
  v->ip = (yo) Retp; // save return info
  fp = (void*) (Argv + getnum(Argc - (ob) ip));
- cpy64r(fp, sp, getnum((ob)ip)); // copy from high to low
+ rcpyptr(fp, sp, getnum((ob)ip)); // copy from high to low
                                  //
  sp = (ob*) (((fr) fp) - 1);
  fp = (void*) sp;
@@ -163,12 +163,12 @@ Ll(type_error) {
   return Pack(), err(v, type_err_msg, tnom(act), tnom(exp)); }
 
 Ll(oob_error) {
-  i64 a = v->xp, b = (i64) v->ip;
+  ob a = v->xp, b = (ob) v->ip;
   return Pack(), err(v, "oob : %d >= %d", a, b); }
 
 #define arity_err_msg "wrong arity : %d of %d"
 Ll(ary_error) {
-  i64 a = getnum(Argc), b = v->xp;
+  ob a = getnum(Argc), b = v->xp;
   return Pack(), err(v, arity_err_msg, a, b); }
 
 Ll(div_error) { return Pack(), err(v, "/ 0"); }
@@ -187,7 +187,7 @@ Ll(arity) {
 static Inline void show_call(em v, yo ip, fr fp) {
   fputc('(', stderr);
   emit(v, (ob) ip, stderr);
-  for (i64 i = 0, argc = getnum(fp->argc); i < argc;)
+  for (uintptr_t i = 0, argc = getnum(fp->argc); i < argc;)
     fputc(' ', stderr), emit(v, fp->argv[i++], stderr);
   fputc(')', stderr); }
 
@@ -317,7 +317,7 @@ static NoInline bool eql_two(two a, two b) {
 
 static NoInline bool eql_str(str a, str b) {
   return a->len == b->len &&
-    strcmp(a->text, b->text) == 0; }
+    scmp(a->text, b->text) == 0; }
 
 Inline bool eql(ob a, ob b) {
   return a == b || (Q(a) == Q(b) &&
@@ -352,7 +352,7 @@ OP1(zero, N0)
 OP2(imm, (ob) ip[1].ll)
 
 // indexed references
-#define Ref(b) (*(i64*)((i64)(b)+(i64)ip[1].ll-Num))
+#define Ref(b) (*(ob*)((ob)(b)+(ob)ip[1].ll-Num))
 // pointer arithmetic works because fixnums are premultiplied by W
 
 // function arguments
@@ -391,11 +391,11 @@ Vm(tbind) {
 
 // allocate local variable array
 Vm(locals) {
-  i64 n = getnum((i64) ip[1].ll);
+  uintptr_t n = getnum((ob) ip[1].ll);
   Have(n + 3);
   ob *t = hp;
   hp += n + 2;
-  set64(t, nil, n);
+  setptr(t, nil, n);
   t[n] = 0;
   *--sp = t[n+1] = (ob) t;
   return ApN(2, xp); }
@@ -442,7 +442,7 @@ Vm(tblc) {
   xp = tbl_get(v, Argv[0], Argv[1]);
   return ApC(ret, xp ? N1 : nil); }
 
-static ob tblss(em v, i64 i, i64 l) {
+static ob tblss(em v, intptr_t i, intptr_t l) {
   fr fp = (fr) v->fp;
   if (i > l-2) return fp->argv[i-1];
   ob _;
@@ -512,11 +512,11 @@ Ll(cons_u) {
 
 // this is used to create closures.
 Ll(take) {
-  u64 n = getnum((ob) ip[1].ll);
+  uintptr_t n = getnum((ob) ip[1].ll);
   Have(n + 2);
   ob * t = hp;
   hp += n + 2;
-  cpy64(t, sp, n);
+  cpyptr(t, sp, n);
   sp += n;
   t[n] = 0;
   t[n+1] = (ob) t;
@@ -544,12 +544,12 @@ static Vm(clos0) {
   ob *ec  = (ob*) ip[1].ll,
      arg = ec[0],
      loc = ec[1];
-  u64 adic = nilp(arg) ? 0 : getnum(*(ob*)arg);
+  uintptr_t adic = nilp(arg) ? 0 : getnum(*(ob*)arg);
   Have(Width(fr) + adic + 1);
-  i64 off = (ob*) fp - sp;
+  intptr_t off = (ob*) fp - sp;
   ip->ll = clos1;
   sp -= adic;
-  cpy64(sp, (ob*) arg + 1, adic);
+  cpyptr(sp, (ob*) arg + 1, adic);
   ec = (ob*) ip[1].ll;
   fp = (void*) ((fr) sp - 1);
   sp = (ob*) fp;
@@ -563,7 +563,7 @@ static Vm(clos0) {
 // the next few functions create and store
 // lexical environments.
 static Vm(encl) {
-  i64 n = getnum(Argc);
+  intptr_t n = getnum(Argc);
   n += n ? 14 : 11;
   Have(n);
   ob x = (ob) ip[1].ll, arg = nil;

@@ -3,13 +3,13 @@
 // these are the names of the subobjects;
 // packing them like this depends on the names
 // all being 3 bytes long
-const u32 *tnoms = (u32*)
+const uint32_t *tnoms = (uint32_t*)
   "hom\0num\0two\0vec\0str\0tbl\0sym\0nil";
 
 ////
 /// " the parser "
 //
-typedef ob read_loop(em, FILE*, str, u64, u64);
+typedef ob read_loop(em, FILE*, str, uintptr_t, uintptr_t);
 static ob two_in(em, FILE*), read_num(const char*),
           str_in(em, FILE*), read_atom(em, FILE*);
 static read_loop str_loop, atom_loop;
@@ -64,19 +64,19 @@ static ob two_in(em v, FILE *i) {
       return pair(v, x, y); } }
 
 static Inline ob grow_buffer(em v, ob s) {
-  u64 l = b2w(getstr(s)->len);
+  uintptr_t l = b2w(getstr(s)->len);
   str t;
   with(s, t = cells(v, 2 * l + 1));
   bind(t, t);
   t->len = 2 * l * sizeof(ob);
-  cpy64(t->text, getstr(s)->text, l);
+  cpyptr(t->text, getstr(s)->text, l);
   return putstr(t); }
 
-static NoInline ob reloop(em v, FILE *i, ob x, u64 n, read_loop *loop) {
+static NoInline ob reloop(em v, FILE *i, ob x, uintptr_t n, read_loop *loop) {
   bind(x, grow_buffer(v, x));
   return loop(v, i, getstr(x), n, 2 * n); }
 
-static ob atom_loop(em v, FILE *p, str o, u64 n, u64 lim) {
+static ob atom_loop(em v, FILE *p, str o, uintptr_t n, uintptr_t lim) {
   ob x;
   while (n < lim) switch (x = getc(p)) {
     case ' ': case '\n': case '\t': case ';': case '#':
@@ -88,7 +88,7 @@ static ob atom_loop(em v, FILE *p, str o, u64 n, u64 lim) {
     default: o->text[n++] = x; }
   return reloop(v, p, putstr(o), lim, atom_loop); }
 
-static ob str_loop(em v, FILE *p, str o, u64 n, u64 lim) {
+static ob str_loop(em v, FILE *p, str o, uintptr_t n, uintptr_t lim) {
   ob x;
   while (n < lim) switch (x = getc(p)) {
     case '\\': if ((x = getc(p)) == EOF) {
@@ -100,7 +100,7 @@ static NoInline ob read_num_base(const char *in, int base) {
   static const char *digits = "0123456789abcdef";
   int c = cmin(*in++);
   if (!c) return nil; // fail to parse empty string
-  i64 out = 0;
+  intptr_t out = 0;
   do {
     int digit = 0;
     for (const char *d = digits; *d && *d != c; d++, digit++);
@@ -180,7 +180,7 @@ void emit(em v, ob x, FILE *o) {
 
 // print to console
 Ll(show_u) {
-  u64 l = getnum(Argc), i;
+  uintptr_t l = getnum(Argc), i;
   if (l) { for (i = 0; i < l - 1; i++)
              emsep(v, Argv[i], stdout, ' ');
            emit(v, xp = Argv[i], stdout); }

@@ -6,7 +6,7 @@
 static NoInline bool inst(em v, const char *a, ll *b) {
   ob z;
   bind(z, interns(v, a));
-  return !!tbl_set(v, v->glob[Topl], z, putnum((i64) b)); }
+  return !!tbl_set(v, v->glob[Topl], z, putnum((ob) b)); }
 
 static NoInline bool prim(em v, const char *a, ll *i) {
   ob nom;
@@ -35,7 +35,7 @@ em ini(void) {
   v->mm = NULL;
   v->fp = (fr) (v->hp = v->sp = (void*) sizeof (void*));
   v->ip = (yo) (v->xp = v->syms = nil);
-  set64(v->glob, nil, NGlobs);
+  setptr(v->glob, nil, NGlobs);
 
 #define Bind(x) if(!(x))goto fail
   Bind(v->glob[Topl] = table(v));
