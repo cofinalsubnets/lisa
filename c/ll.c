@@ -214,16 +214,23 @@ NoInline ob err(em v, const char *msg, ...) {
   // backtrace
   if (fp < top) for (;;) {
     ip = (yo) fp->retp;
-    fp = (fr) ((ob*) fp + Width(fr) + getnum(fp->argc) + getnum(fp->subd));
-    if (fp == top) break;
+    fp = (fr)
+      ((ob*) fp +
+       Width(fr) +
+       getnum(fp->argc) +
+       getnum(fp->subd));
+
+    if (fp == top) goto out;
+
     fputs("# in ", stderr);
     show_call(v, ip, fp);
-    fputc('\n', stderr); }
-
+    fputc('\n', stderr); } out:
 
   // reset and yield
-  v->fp = (fr) (v->sp = v->pool + v->len);
-  v->ip = (yo) (v->xp = nil);
+  v->sp = v->pool + v->len;
+  v->fp = (fr) v->sp;
+  v->xp = nil;
+  v->ip = (yo) nil;
   return 0; }
 
 

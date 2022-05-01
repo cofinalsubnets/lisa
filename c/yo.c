@@ -10,6 +10,40 @@
 #define Pull(...) pushs(v, __VA_ARGS__, (ob) 0)
 #define Push(m) ((c1*)getnum(*v->sp++))(v,e,m)
 
+// FIXME please stop using v->{x,i}p as aux stacks for storing
+// code entry points when generating conditionals
+//
+// this phase does no optimization
+
+// " compilation environments "
+// the current lexical environment is passed to compiler
+// functions as a pointer to an object, either a tuple with a
+// structure specified below, or nil for toplevel. it's a
+// pointer to an object, instead of just an object, so it can
+// be gc-protected once instead of separately by every function.
+// in the other compiler it's just a regular object.
+#define arg(x)  ((ob*)(x))[0] // argument variables : a list
+#define loc(x)  ((ob*)(x))[1] // local variables : a list
+#define clo(x)  ((ob*)(x))[2] // closure variables : a list
+#define par(x)  ((ob*)(x))[3] // surrounding scope : tuple or nil
+#define name(x) ((ob*)(x))[4] // function name : a symbol or nil
+#define asig(x) ((ob*)(x))[5] // arity signature : an integer
+// for a function f let n be the number of required arguments.
+// then if f takes a fixed number of arguments the arity
+// signature is n; otherwise it's -n-1.
+
+static bool scan(em, ob*, ob);
+typedef yo c1(em, ob*, u64), c2(em, ob*, u64, ob);
+static c1 x_yo_, let_yo_bind, em_i, em_i_d, mk_yo;
+static c2 x_yo, var_yo, two_yo, im_yo;
+static ob yo_yo_clo(em, ob*, ob, ob),
+          yo_yo_lam(em, ob*, ob, ob);
+
+enum { Here, Loc, Arg, Clo, Wait };
+#define Co(nom,...) static yo nom(em v, ob* e, u64 m, ##__VA_ARGS__)
+#define CO Co
+#define Put(x) putnum((i64)(x))
+
 static bool pushss(em v, i64 i, va_list xs) {
   bool _;
   ob x = va_arg(xs, ob);
@@ -30,42 +64,6 @@ static Inline yo ee1(ll *i, yo k) {
   return (--k)->ll = i, k; }
 static Inline yo ee2(ll *i, ob x, yo k) {
   return ee1(i, ee1((ll*) x, k)); }
-
-
-// FIXME please stop using v->{x,i}p as aux stacks for storing
-// code entry points when generating conditionals
-//
-// this phase does no optimization
-
-// " compilation environments "
-typedef struct { ob arg, loc, clo, par, nom, sig; } *ce;
-// the current lexical environment is passed to compiler
-// functions as a pointer to an object, either a tuple with a
-// structure specified below, or nil for toplevel. it's a
-// pointer to an object, instead of just an object, so it can
-// be gc-protected once instead of separately by every function.
-// in the other compiler it's just a regular object.
-#define arg(x)  ((ce)(x))->arg // argument variables : a list
-#define loc(x)  ((ce)(x))->loc // local variables : a list
-#define clo(x)  ((ce)(x))->clo // closure variables : a list
-#define par(x)  ((ce)(x))->par // surrounding scope : tuple or nil
-#define name(x) ((ce)(x))->nom // function name : a symbol or nil
-#define asig(x) ((ce)(x))->sig // arity signature : an integer
-// for a function f let n be the number of required arguments.
-// then if f takes a fixed number of arguments the arity
-// signature is n; otherwise it's -n-1.
-
-static bool scan(em, ob*, ob);
-typedef yo c1(em, ob*, u64), c2(em, ob*, u64, ob);
-static c1 x_yo_, let_yo_bind, em_i, em_i_d, mk_yo;
-static c2 x_yo, var_yo, two_yo, im_yo;
-static ob yo_yo_clo(em, ob*, ob, ob),
-          yo_yo_lam(em, ob*, ob, ob);
-
-enum { Here, Loc, Arg, Clo, Wait };
-#define Co(nom,...) static yo nom(em v, ob* e, u64 m, ##__VA_ARGS__)
-#define CO Co
-#define Put(x) putnum((i64)(x))
 
 // helper functions for lists
 static i64 lidx(ob l, ob x) {
