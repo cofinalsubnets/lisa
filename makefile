@@ -1,12 +1,13 @@
 LC_ALL=C
 
-nom=lips
+nom=empath
+suff=em
 bins=bin/$(nom)
 docs=share/man/man1/$(nom).1
 
-boot=lib/$(nom)/prelude.$(nom)
+boot=lib/$(nom)/prelude.$(suff)
 libs=$(boot)
-tests=$(sort $(wildcard test/*.$(nom)))
+tests=$(sort $(wildcard test/*.$(suff)))
 
 headers=$(sort $(wildcard c/*.h))
 sources=$(sort $(wildcard c/*.c))
@@ -21,7 +22,7 @@ CFLAGS=-std=gnu17 -g -O2 -flto -Wall -Werror\
 	-fno-stack-protector -fno-unroll-loops\
 	-fno-inline -fno-align-functions
 
-run_repl=bin/$(nom).bin -_i $(libs) test/*.$(nom)
+run_repl=bin/$(nom).bin -_i $(libs) test/*.$(suff)
 run_tests=bin/$(nom).bin -_ $(libs) $(tests)
 
 where=$(DESTDIR)$(PREFIX)/
@@ -42,7 +43,7 @@ install: $(files)
 uninstall:
 	rm -f $(files)
 
-vimfiles=syntax/lips.vim ftdetect/lips.vim
+vimfiles=syntax/empath.vim ftdetect/empath.vim
 
 $V/%: vim/%
 	install -D $^ $@
@@ -63,7 +64,7 @@ valg: bin/$(nom).bin
 	valgrind --error-exitcode=1 $(run_tests)
 
 sloc:
-	cloc --force-lang=Lisp,$(nom) *
+	cloc --force-lang=Lisp,$(suff) *
 
 bits: bin/$(nom) bin/$(nom).bin
 	du -h $^

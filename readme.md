@@ -14,7 +14,7 @@ are you on linux? `make` will probably work. otherwise, see
 
 ## special forms
 
-|  lips       | scheme                     |
+|  empath     | scheme                     |
 |-------------|----------------------------|
 |`(, a b)`    |`(begin a b)`               |
 |`(\)`        |`(lambda _ #f)`             |

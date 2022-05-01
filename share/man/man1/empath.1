@@ -1,15 +1,15 @@
 .de FN
 \fI\|\\$1\|\fP
 ..
-.TH LIPS 1 lips
+.TH EMPATH 1 empath
 .SH NAME
-lips - lisp interpreter
+empath - lisp interpreter
 .SH SYNOPSIS
-.B lips
+.B empath
 .RB [ \-hi_ ]
 .RI [ scripts... ]
 .SH DESCRIPTION
-.B lips
+.B empath
 is a simple lisp interpreter.
 .P
 With no arguments, start a repl.
@@ -64,10 +64,10 @@ don't bootstrap
 .RE
 .SH FILES
 .TP
-.FN /usr/local/lib/lips/prelude.lips
+.FN /usr/local/lib/empath/prelude.em
 The system-wide bootstrap script.
 .TP
-.FN ~/.local/lib/lips/prelude.lips
+.FN ~/.local/lib/empath/prelude.em
 The individual bootstrap script. Overrides the system-wide script if present.
 .SH LICENSE
 Public domain.

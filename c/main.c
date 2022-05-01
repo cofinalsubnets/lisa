@@ -1,5 +1,4 @@
-#include "lips.h"
-#include "ll.h"
+#include "em.h"
 #include <stdlib.h>
 #include <unistd.h>
 #include <getopt.h>
@@ -11,7 +10,7 @@
 #ifndef PREFIX
 #define PREFIX "/usr/local"
 #endif
-#define BOOT PREFIX "/lib/lips/prelude.lips"
+#define BOOT PREFIX "/lib/empath/prelude.em"
 static const char *help =
   "usage: %s [options and scripts]\n"
   "with no arguments, start a repl\n"

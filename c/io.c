@@ -1,5 +1,4 @@
-#include "lips.h"
-#include "ll.h"
+#include "em.h"
 #include <ctype.h>
 // these are the names of the subobjects;
 // packing them like this depends on the names
@@ -201,7 +200,7 @@ void emit(st v, ob x, FILE *o) {
     default: fputs("()", o); } }
 
 // print to console
-Ll(em_u) {
+Ll(show_u) {
   u64 l = getnum(Argc), i;
   if (l) {
     for (i = 0; i < l - 1; i++)
