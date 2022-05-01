@@ -4,30 +4,30 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include "empath.h"
+#include "empathy.h"
 #include "medi.h"
 
 // thanks !!
 
+typedef struct em *em; // time order
+typedef ob ll(em, ob, ob*, ob*, ob*, ob); // FIXME st yo ob ob* ob* fr
+
+// FIXME use 2 bits to be 32-bit compatible
 // the 3 least bits of each pointer are a type tag
-enum class { Hom = 0, Num = 1, Two = 2, Vec = 3,
+enum class { Hom = 0, Num = 1, Two = 2, Xxx = 3,
              Str = 4, Tbl = 5, Sym = 6, Nil = 7 };
 
-// current function stack frame
-typedef struct fr { ob clos, retp, subd, argc, argv[]; } *fr;
-
-// list of addresses of live values preserved by garbage
-// collection
+typedef struct yo { ll *ll, *sh[]; } *yo; // puLLback / puSHout
+typedef struct str { u64 len; char text[]; } *str;
+typedef struct sym { ob nom, code, l, r; } *sym;
+typedef struct ent { ob key, val; struct ent *next; } *ent; // tables
+typedef struct tbl { u64 len, cap; ent *tab; } *tbl;
+typedef struct two { ob a, b; } *two;
 typedef struct mm { ob *it; struct mm *et; } *mm;
-
+typedef struct fr { ob clos, retp, subd, argc, argv[]; } *fr;
 // indices to a global (thread-local) table of constants
 enum { Def, Cond, Lamb, Quote, Seq, Splat,
        Topl, Macs, Eval, Apply, NGlobs };
-
-typedef struct yo *yo; // よ // embed
-typedef struct em *em, *st, *mo; // state // time order
-typedef ob ll(em, ob, ob*, ob*, ob*, ob); // FIXME st yo ob ob* ob* fr
-struct yo { ll *ll, *sh[]; }; // puLLback / puSHout
 struct em {
   yo ip;
   fr fp;
@@ -38,12 +38,7 @@ struct em {
      t0, len, *pool; // memory state
   mm mm; }; // gc protection list
 
-typedef struct str { u64 len; char text[]; } *str;
-typedef struct sym { ob nom, code, l, r; } *sym;
-typedef struct ent { ob key, val; struct ent *next; } *ent; // tables
-typedef struct tbl { u64 len, cap; ent *tab; } *tbl;
-typedef struct vec { u64 len; ob xs[]; } *vec;
-typedef struct two { ob a, b; } *two;
+
 
 // a packed array of 4-byte strings.
 extern const uint32_t *tnoms;
@@ -56,7 +51,9 @@ ob eval(em, ob), homnom(em, ob),
    tbl_set_s(em, ob, ob, ob), tbl_get(em, ob, ob),
    pair(em, ob, ob),
    parse(em, FILE*),
-   read_path(em, const char*), read_file(em, FILE*);
+   err(em, const char*, ...) NoInline,
+   read_path(em, const char*),
+   read_file(em, FILE*);
 void *cells(em, u64), emit(em, ob, FILE*);
 bool eql(ob, ob), please(em, u64);
 
@@ -78,7 +75,7 @@ bool eql(ob, ob), please(em, u64);
 #define with(y,...) (mm(&(y)),(__VA_ARGS__),um)
 #define Width(t) b2w(sizeof(struct t))
 
-#define Q(_) ((_)&(sizeof(ob)-1))
+#define Q(_) ((enum class)((_)&(sizeof(ob)-1)))
 
 #define nilp(_) ((_)==nil)
 #define tnom(_) ((const char*)(tnoms+(_)))
@@ -100,8 +97,6 @@ bool eql(ob, ob), please(em, u64);
 #define tblp(_) (Q(_)==Tbl)
 #define gettbl(_) ((tbl)((_)-Tbl))
 #define puttbl(_) ((ob)(_)+Tbl)
-#define getvec(_) ((vec)((_)-Vec))
-#define putvec(_) ((ob)(_)+Vec)
 #define twop(_) (Q(_)==Two)
 #define gettwo(_) ((two)((_)-Two))
 #define puttwo(_) ((ob)(_)+Two)
@@ -122,7 +117,6 @@ static Inline u64 b2w(u64 b) {
   return b / sizeof(ob) + (b % sizeof(ob) && 1); }
 
 ll gc, type_error, oob_error, ary_error, div_error, yield;
-ob err(mo, const char*, ...) NoInline;
 
 #define insts(_)\
  _(tget, 0) _(tset, 0) _(thas, 0) _(tlen, 0) _(arity, 0)\
@@ -168,7 +162,7 @@ insts(ninl)
 #undef ninl
 
 // " the interpreter "
-#define Ll(n,...) NoInline ob n(mo v, ob ip, ob*fp, ob*sp, ob*hp, ob xp, ##__VA_ARGS__)
+#define Ll(n,...) NoInline ob n(em v, ob ip, ob*fp, ob*sp, ob*hp, ob xp, ##__VA_ARGS__)
 #define Vm Ll
 // the arguments to a terp function collectively represent the
 // runtime state, and the  return value is the result of the

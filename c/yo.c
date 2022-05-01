@@ -93,7 +93,7 @@ static yo ini_yo(em v, u64 n) {
   set64((ob*) a, nil, n);
   return a + n; }
 
-static yo tuplr(st v, u64 i, va_list xs) {
+static yo tuplr(em v, u64 i, va_list xs) {
   ob x = va_arg(xs, ob);
   if (!x) return ini_yo(v, i);
   yo k;

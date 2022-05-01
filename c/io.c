@@ -14,7 +14,7 @@ const u32 *tnoms = (u32*)
 typedef FILE *io;
 typedef ob read_loop(em, io, str, u64, u64);
 static ob two_in(em, io), read_num(const char*),
-          str_in(em, io), read_atom(mo, io);
+          str_in(em, io), read_atom(em, io);
 static read_loop str_loop, atom_loop;
 
 static Inline ob read_buf(em v, io i, read_loop *loop) {
@@ -168,7 +168,7 @@ static void emhomn(em v, ob x, FILE *o) {
               emhomn(v, B(x), o);
     default: } }
 
-void emit(st v, ob x, FILE *o) {
+void emit(em v, ob x, FILE *o) {
   enum class q = Q(x);
   switch (q) {
     case Two: {

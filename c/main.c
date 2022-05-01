@@ -10,7 +10,7 @@
 #ifndef PREFIX
 #define PREFIX "/usr/local"
 #endif
-#define BOOT PREFIX "/lib/empath/prelude.em"
+#define BOOT PREFIX "/lib/empathy/prelude.em"
 static const char *help =
   "usage: %s [options and scripts]\n"
   "with no arguments, start a repl\n"
@@ -19,11 +19,11 @@ static const char *help =
   "  -i start repl unconditionally\n"
   "  -_ don't bootstrap\n";
 
-static ob scrp(mo, const char*), scrr(mo, bool, const char**);
-static mo init(bool, const char*, char **);
+static ob scrp(em, const char*), scrr(em, bool, const char**);
+static em init(bool, const char*, char **);
 
 // unpack state & jump into thread
-static NoInline ob go(mo v) {
+static NoInline ob go(em v) {
   ob xp, ip, *sp, *hp, *fp;
   Unpack();
   return ApY(ip, xp); }
@@ -37,12 +37,12 @@ int main(int argc, char **argv) {
       case 'h': fprintf(stdout, help, *argv); continue;
       case -1:
         if (argc == optind && !shell) return EXIT_SUCCESS;
-        mo v = init(shell, boot ? BOOT : NULL,  argv + optind);
+        em v = init(shell, boot ? BOOT : NULL,  argv + optind);
         return v && go(v) ? EXIT_SUCCESS : EXIT_FAILURE; } }
 
 // init : mo bool string? strings
-static mo init(bool shell, const char *boot, char **paths) {
-  mo v;
+static em init(bool shell, const char *boot, char **paths) {
+  em v;
   ob y, x;
   bind(v, ini());
   bind(x, scrr(v, shell, (const char **) paths));
@@ -66,8 +66,8 @@ static Vm(repl) {
 
 // functions to compile scripts into a program
 //
-// scr_ : two mo stream
-static ob scr_(mo v, FILE *in) {
+// scr_ : two em stream
+static ob scr_(em v, FILE *in) {
   ob y, x = parse(v, in);
   if (!x) return feof(in) ? nil : 0;
   bind(x, pair(v, x, nil));
@@ -78,8 +78,8 @@ static ob scr_(mo v, FILE *in) {
   bind(y, y);
   return pair(v, x, y); }
 
-// scrp : yo mo string
-static ob scrp(mo v, const char *path) {
+// scrp : yo em string
+static ob scrp(em v, const char *path) {
   FILE *in = fopen(path, "r");
   if (!in) return err(v, "%s : %s", path, strerror(errno));
   ob x = scr_(v, in);
@@ -88,8 +88,8 @@ static ob scrp(mo v, const char *path) {
   bind(x, pair(v, Se, x));
   return analyze(v, x); }
 
-// scrr : yo mo bool strings
-static ob scrr(mo v, bool shell, const char **paths) {
+// scrr : yo em bool strings
+static ob scrr(em v, bool shell, const char **paths) {
   yo k;
   ob x, y;
   const char *path = *paths;

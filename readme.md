@@ -1,12 +1,12 @@
-# empath
-limit language
+# empathy
+natural language
 
 ## build / install
 are you on linux? `make` will probably work. otherwise, see
 `Makefile` for the suggested compiler flags.
 
 ## syntax fax
-- `()` is false & fixed by `ev`
+- `()` is false & fixed under `ev`
 - no improper list literals or quasiquotation
 - numbers may take a C-style radix in `{b=2,o=8,d=10,z=12,x=16}`
 - strings delimited by `"` which can be escaped with a backslash;
@@ -14,7 +14,7 @@ are you on linux? `make` will probably work. otherwise, see
 
 ## special forms
 
-|  empath     | scheme                     |
+|  empathy    | scheme                     |
 |-------------|----------------------------|
 |`(, a b)`    |`(begin a b)`               |
 |`(\)`        |`(lambda _ #f)`             |

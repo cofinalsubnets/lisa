@@ -334,8 +334,8 @@ cmp(LT, lt) cmp(LE, lteq) cmp(GE, gteq) cmp(GT, gt) cmp(eql, eq)
 //
 // constants
 OP1(unit, nil)
-OP1(one, putnum(1))
-OP1(zero, putnum(0))
+OP1(one, N1)
+OP1(zero, N0)
 // immediate value from thread
 OP2(imm, (ob) IP[1].ll)
 
@@ -354,9 +354,9 @@ OP1(loc0, ((ob*)Locs)[0])
 OP1(loc1, ((ob*)Locs)[1])
 
 // closure variables
-OP2(clo, Ref(getvec(Clos)->xs))
-OP1(clo0, getvec(Clos)->xs[0])
-OP1(clo1, getvec(Clos)->xs[1])
+OP2(clo, Ref(((ob*)Clos)))
+OP1(clo0, ((ob*)Clos)[0])
+OP1(clo1, ((ob*)Clos)[1])
 
 ////
 /// Store Instructions
@@ -502,13 +502,14 @@ Vm(cons_u) {
 // this is used to create closures.
 Vm(take) {
   u64 n = getnum((ob) IP[1].ll);
-  Have(n + 1);
-  vec t = (vec) hp;
-  hp += n + 1;
-  t->len = n;
-  cpy64(t->xs, sp, n);
+  Have(n + 2);
+  ob * t = hp;
+  hp += n + 2;
+  cpy64(t, sp, n);
   sp += n;
-  return ApC(ret, putvec(t)); }
+  t[n] = 0;
+  t[n+1] = (ob) t;
+  return ApC(ret, (ob) t); }
 
 static Ll(clos) {
   Clos = (ob) IP[1].ll;

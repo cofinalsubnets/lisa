@@ -1,6 +1,6 @@
 LC_ALL=C
 
-nom=empath
+nom=empathy
 suff=em
 bins=bin/$(nom)
 docs=share/man/man1/$(nom).1
@@ -43,14 +43,14 @@ install: $(files)
 uninstall:
 	rm -f $(files)
 
-vimfiles=syntax/empath.vim ftdetect/empath.vim
+vimfiles=syntax/$(nom).vim ftdetect/$(nom).vim
 
-$V/%: vim/%
+$(VIMPREFIX)/%: vim/%
 	install -D $^ $@
 
-install-vim: $(addprefix $V/,$(vimfiles))
+install-vim: $(addprefix $(VIMPREFIX)/,$(vimfiles))
 uninstall-vim:
-	rm -f $(addprefix $V/,$(vimfiles))
+	rm -f $(addprefix $(VIMPREFIX)/,$(vimfiles))
 
 clean:
 	rm -rf `git check-ignore * */*`

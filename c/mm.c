@@ -117,8 +117,7 @@ bool please(em v, u64 req) {
   else return true; // no size change needed
   return copy(v, len) || allocd <= v->len; }
 
-
-static copier cphom, cpvec, cptwo, cpsym, cpstr, cptbl;
+static copier cphom, cptwo, cpsym, cpstr, cptbl;
 static Gc(cpid) { return x; }
 // the exact method for copying an object into
 // the new pool depends on its type. copied
@@ -126,7 +125,7 @@ static Gc(cpid) { return x; }
 // new locations, which effectively destroys the
 // old data.
 static copier *copiers[] = {
-  [Hom] = cphom, [Num] = cpid, [Two] = cptwo, [Vec] = cpvec,
+  [Hom] = cphom, [Num] = cpid, [Two] = cptwo, [Xxx] = cpid,
   [Str] = cpstr, [Tbl] = cptbl, [Sym] = cpsym, [Nil] = cpid, };
 
 static Inline Gc(cp) { return copiers[Q(x)](v, x, len0, pool0); }
@@ -194,23 +193,13 @@ Gc(cptwo) {
   A(dst) = cp(v, A(dst), len0, pool0);
   return dst; }
 
-Gc(cpvec) {
-  vec dst, src = getvec(x);
-  if (fresh(*src->xs)) return *src->xs;
-  dst = bump(v, Width(vec) + src->len);
-  i64 i, l = dst->len = src->len;
-  dst->xs[0] = src->xs[0];
-  src->xs[0] = putvec(dst);
-  for (CP(dst->xs[0]), i = 1; i < l; ++i)
-    COPY(dst->xs[i], src->xs[i]);
-  return putvec(dst); }
-
 // functions for pairs and lists
 ob pair(em v, ob a, ob b) {
   two w;
   with(a, with(b, w = cells(v, 2)));
   bind(w, w);
-  w->a = a, w->b = b;
+  w->a = a;
+  w->b = b;
   return puttwo(w); }
 
 static Inline i64 tbl_idx(u64 cap, u64 co) {
@@ -219,7 +208,6 @@ static Inline i64 tbl_idx(u64 cap, u64 co) {
 static Inline u64 tbl_load(ob t) {
   return gettbl(t)->len >> gettbl(t)->cap; }
 
-
 static ent tbl_ent(em v, ob u, ob k) {
   tbl t = gettbl(u);
   ent e = t->tab[tbl_idx(t->cap, hash(v, k))];
@@ -227,9 +215,9 @@ static ent tbl_ent(em v, ob u, ob k) {
   return NULL; }
 
 typedef u64 hasher(em, ob);
-static hasher hash_sym, hash_str, hash_two, hash_hom, hash_num, hash_vec, hash_nil;
+static hasher hash_sym, hash_str, hash_two, hash_hom, hash_num, hash_nil;
 static hasher *hashers[] = {
-  [Nil] = hash_nil, [Hom] = hash_hom, [Two] = hash_two, [Vec] = hash_vec,
+  [Nil] = hash_nil, [Hom] = hash_hom, [Two] = hash_two, [Xxx] = hash_nil,
   [Str] = hash_str, [Num] = hash_num, [Sym] = hash_sym, [Tbl] = hash_nil };
 
 Inline u64 hash(em v, ob x) { return hashers[Q(x)](v, x); }
@@ -239,7 +227,6 @@ static u64 hash_sym(em v, ob y) { return getsym(y)->code; }
 static u64 hash_two(em v, ob w) { return ror64(hash(v, A(w)) * hash(v, B(w)), 32); }
 static u64 hash_hom(em v, ob h) { return hash(v, homnom(v, h)) ^ mix; }
 static u64 hash_num(em v, ob n) { return ror64(mix * n, 16); }
-static u64 hash_vec(em v, ob x) { return ror64(mix * getvec(x)->len, 32); }
 static u64 hash_nil(em v, ob _) { return ror64(mix * Q(nil), 48); }
 static u64 hash_str(em v, ob x) {
   str s = getstr(x);

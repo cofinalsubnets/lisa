@@ -17,7 +17,7 @@ syn region empathAtomList contained matchgroup=Special start="(" matchgroup=Spec
 
 syn iskeyword @,!,37-38,42-47,:,60-63,\,`,|,~,^
 syn keyword empathFunc < <= = > >= + - ~ * / % ? ` : \\ , . A B X L Q && \|\| \| & ^ << >>
-syn keyword empathFunc vec vecp ::: >>= case
+syn keyword empathFunc ::: >>= case
 syn keyword empathFunc twop nump symp tblp strp nilp homp ev ap
 syn keyword empathFunc str slen sget scat ssub ystr sym fail
 syn keyword empathFunc tbl tget tset tlen thas tkeys tdel
