@@ -562,12 +562,12 @@ static Vm(clos0) {
   ob *ec  = (ob*) IP[1].ll,
      arg = ec[0],
      loc = ec[1];
-  u64 adic = nilp(arg) ? 0 : getvec(arg)->len;
+  u64 adic = nilp(arg) ? 0 : getnum(*(ob*)arg);
   Have(Width(fr) + adic + 1);
   i64 off = (ob*) fp - sp;
   IP->ll = clos1;
   sp -= adic;
-  cpy64(sp, getvec(arg)->xs, adic);
+  cpy64(sp, (ob*) arg + 1, adic);
   ec = (ob*) IP[1].ll;
   fp = (void*) (sp -= Width(fr));
   Retp = ip;
@@ -581,18 +581,21 @@ static Vm(clos0) {
 // lexical environments.
 static Vm(encl) {
   i64 n = getnum(Argc);
-  n += n ? 12 : 11;
+  n += n ? 14 : 11;
   Have(n);
   ob x = (ob) IP[1].ll, arg = nil;
   ob* block = hp;
   hp += n;
   if (n > 11) {
     n -= 11;
-    vec t = (vec) block;
+    ob *t = block;
     block += n;
-    t->len = --n;
-    while (n--) t->xs[n] = Argv[n];
-    arg = putvec(t); }
+    for (t[n-2] = 0,
+         t[n-1] = (ob) t,
+         t[0] = putnum(n-=3);
+         n--;
+         t[n+1] = Argv[n]);
+    arg = (ob) t; }
 
   yo t = (yo) block, // compiler thread closure array (1 length 5 elements)
      at = t + 6; // compiler thread (1 instruction 2 data 2 tag)
