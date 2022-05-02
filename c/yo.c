@@ -407,7 +407,7 @@ static NoInline ob apply(em v, ob f, ob x) {
        h[3].ll = NULL,
        h[4].ll = (ll*) h,
        x = tbl_get(v, v->glob[Topl], v->glob[Apply]),
-       call(v, h, (ob*) v->fp, v->sp, v->hp, x)); }
+       call(v, h, (void*) v->fp, v->sp, v->hp, x)); }
 
 // instructions used by the compiler
 Ll(hom_u) {

@@ -209,7 +209,7 @@ ll gc, type_error, oob_error, ary_error, div_error;
 // the current values in the vm struct before it makes any
 // "external" function calls.
 #define Pack() (v->ip=ip,v->sp=sp,v->hp=hp,v->fp=(fr)fp,v->xp=xp)
-#define Unpack() (fp=(ob*)v->fp,hp=v->hp,sp=v->sp,ip=v->ip,xp=v->xp)
+#define Unpack() (fp=(void*)v->fp,hp=v->hp,sp=v->sp,ip=v->ip,xp=v->xp)
 #define CallC(...) (Pack(), (__VA_ARGS__), Unpack())
 
 #define Clos ((fr)fp)->clos
