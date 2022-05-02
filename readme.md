@@ -1,5 +1,5 @@
-# empath
-natural language
+# yo
+lisp
 
 ## build / install
 are you on linux? `make` will probably work. otherwise, see
@@ -14,7 +14,7 @@ are you on linux? `make` will probably work. otherwise, see
 
 ## special forms
 
-|  empath     | scheme                     |
+| yo          | scheme                     |
 |-------------|----------------------------|
 |`(, a b)`    |`(begin a b)`               |
 |`(\)`        |`(lambda _ #f)`             |

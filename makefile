@@ -1,11 +1,11 @@
 LC_ALL=C
 
-nom=empath
-suff=em
+nom=yo
+suff=yo
 bins=bin/$(nom)
 docs=share/man/man1/$(nom).1
 
-boot=lib/$(nom)/prelude.$(suff)
+boot=lib/$(nom)/$(nom).$(suff)
 libs=$(boot)
 tests=$(sort $(wildcard test/*.$(suff)))
 
@@ -16,7 +16,8 @@ objects=$(patsubst %.c,%.o,$(sources))
 PREFIX ?= $(HOME)/.local
 VIMPREFIX ?= $(HOME)/.vim
 
-CPPFLAGS=-DPREFIX=\"$(PREFIX)\"
+CPPFLAGS=-DPREFIX=\"$(PREFIX)\" -DNOM=\"$(nom)\"\
+	-DSUFF=\"$(suff)\"
 CFLAGS=-std=gnu17 -g -O2 -flto -Wall -Werror\
 	-Wstrict-prototypes -Wno-shift-negative-value\
 	-fno-stack-protector -fno-unroll-loops\
