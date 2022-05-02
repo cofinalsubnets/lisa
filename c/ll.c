@@ -213,10 +213,7 @@ NoInline ob err(em v, const char *msg, ...) {
   // backtrace
   if (fp < top) for (;;) {
     ip = (yo) fp->retp,
-    fp = (fr) ((ob*) fp +
-               Width(fr) +
-               getnum(fp->argc) +
-               getnum(fp->subd));
+    fp = (void*) fp + Width(fr) + getnum(fp->argc) + getnum(fp->subd);
 
     if (fp == top) goto out; else
       fputs("# in ", stderr),
