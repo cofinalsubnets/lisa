@@ -6,10 +6,8 @@
 //
 // this phase does no optimization
 //
-// pull back the pushforward
-#define Pull(...) pushs(v, __VA_ARGS__, (ob) 0)
-// push forward the pullback
-#define Push(m) ((c1*)getnum(*v->sp++))(v, e, m)
+#define Push(...) pushs(v, __VA_ARGS__, (ob) 0)
+#define Pull(m) ((c1*)getnum(*v->sp++))(v, e, m)
 
 
 // " compilation environments "
@@ -19,11 +17,10 @@
 #define par(x)  ((ob*)(x))[3] // surrounding scope : tuple or nil
 #define name(x) ((ob*)(x))[4] // function name : a symbol or nil
 #define asig(x) ((ob*)(x))[5] // arity signature : an integer
-#define s1(x)   ((ob*)(x))[6]
+// if a function is not variadic its arity signature is
+// n = number of required arguments; otherwise it is -n-1
+#define s1(x)   ((ob*)(x))[6] // extra stacks for branch addresses
 #define s2(x)   ((ob*)(x))[7]
-// for a function f let n be the number of required arguments.
-// then if f takes a fixed number of arguments the arity
-// signature is n; otherwise it's -n-1.
 
 enum where { Here, Loc, Arg, Clo, Wait };
 #define Co(nom,...) yo nom(em v, ob* e, uintptr_t m, ##__VA_ARGS__)
@@ -43,11 +40,11 @@ static bool pushss(em v, uintptr_t i, va_list xs) {
      _ && (*--v->sp = x)); }
 
 static bool pushs(em v, ...) {
-  va_list xs;
-  va_start(xs, v);
-  bool _ = pushss(v, 0, xs);
-  va_end(xs);
-  return _; }
+  va_list xs; bool _; return
+    va_start(xs, v),
+    _ = pushss(v, 0, xs),
+    va_end(xs),
+    _; }
 
 static Inline yo ee1(ll *i, yo k) { return (--k)->ll = i, k; }
 static Inline yo ee2(ll *i, ob x, yo k) { return ee1(i, ee1((ll*) x, k)); }
@@ -90,18 +87,18 @@ static ob tupl(em v, ...) {
     (ob) t; }
 
 static yo imx(em v, ob *e, intptr_t m, ll *i, ob x) {
-  return !Pull(Put(i), x) ? 0 : em_i_d(v, e, m); }
+  return !Push(Put(i), x) ? 0 : em_i_d(v, e, m); }
 
 #define Bind(v, x) if(!((v)=(x)))goto fail
 static NoInline ob rw_let_fn(em v, ob x) {
-  ob _;
-  for (mm(&x); twop(A(x));) {
-    Bind(_, snoc(v, BA(x), AB(x)));
-    Bind(_, pair(v, v->glob[Lamb], _));
-    Bind(_, pair(v, _, BB(x)));
-    Bind(x, pair(v, AA(x), _)); }
-  return um, x; fail:
-  return um, 0; }
+  mm(&x);
+  for (ob _; twop(A(x));)
+    if (!(_ = snoc(v, BA(x), AB(x)))  ||
+        !(_ = pair(v, v->glob[Lamb], _)) ||
+        !(_ = pair(v, _, BB(x))) ||
+        !(x = pair(v, AA(x), _)))
+      return um, 0;
+  return um, x; }
 
 static int scan_def(em v, ob *e, ob x) {
   int r; return
@@ -142,13 +139,13 @@ static Inline ob new_scope(em v, ob*e, ob a, ob n) {
 
 static Inline ob comp_body(em v, ob*e, ob x) {
   intptr_t i; return
-    !Pull(putnum((ob)xx_yo_),
+    !Push(putnum((ob)xx_yo_),
           x,
           putnum((ob)em_i),
           putnum((ob)ret),
           putnum((ob)mk_yo)) ||
     !scan(v, e, v->sp[1]) ||
-    !(x = (ob) Push(4)) ? 0 :
+    !(x = (ob) Pull(4)) ? 0 :
       (x = !(i = llen(loc(*e))) ? x :
         (ob) ee2(locals, putnum(i), (yo) x),
        x = (i = getnum(asig(*e))) > 0 ?
@@ -167,36 +164,33 @@ static Inline ob comp_body(em v, ob*e, ob x) {
 static Inline ob yo_yo_lam(em v, ob* e, ob n, ob l) {
   ob y = nil;
   l = B(l);
-  mm(&n); mm(&y); mm(&l);
-  Bind(l, twop(l) ? l : pair(v, l, nil));
-  Bind(l, linitp(v, l, &y));
-  Bind(n, pair(v, n, e ? name(*e) : nil));
-  Bind(n, new_scope(v, e, l, n));
-  Bind(l, comp_body(v, &n, A(y)));
-  return um, um, um, l; fail:
-  return um, um, um, 0; }
+  mm(&n), mm(&y), mm(&l);
+  if (!(l = twop(l) ? l : pair(v, l, nil)) ||
+      !(l = linitp(v, l, &y)) ||
+      !(n = pair(v, n, e ? name(*e) : nil)) ||
+      !(n = new_scope(v, e, l, n)) ||
+      !(l = comp_body(v, &n, A(y))))
+    return um, um, um, 0;
+  return um, um, um, l; }
 
 static Inline ob yo_yo_clo(em v, ob*e, ob arg, ob seq) {
   intptr_t i = llen(arg);
   mm(&arg), mm(&seq);
-  bool _;
-  Bind(_, Pull(
-    Put(em_i_d), Put(take), putnum(i),
-    Put(mk_yo)));
-  while (twop(arg)) {
-    Bind(_, Pull(
-      Put(xx_yo_), A(arg),
-      Put(em_i), Put(push)));
-    arg = B(arg); }
+  if (!Push(Put(em_i_d), Put(take), putnum(i), Put(mk_yo)))
+    return um, um, 0;
 
-  Bind(arg, (ob) Push(0));
-  return um, um, pair(v, seq, arg); fail:
-  return um, um, 0; }
+  for (;twop(arg);arg = B(arg))
+    if (!Push(Put(xx_yo_), A(arg), Put(em_i), Put(push)))
+      return um, um, 0;
+
+  if (!(arg = (ob) Pull(0))) return um, um, 0;
+
+  return um, um, pair(v, seq, arg); }
 
 static Co(yo_yo, ob x) {
  ll* j = imm;
  ob k, nom = *v->sp == Put(let_yo_bind) ? v->sp[1] : nil;
- with(nom, with(x, k = (ob) Push(m+2)));
+ with(nom, with(x, k = (ob) Pull(m+2)));
  if (!k) return 0;
  mm(&k);
  if (twop(x = yo_yo_lam(v, e, nom, x)))
@@ -206,7 +200,7 @@ static Co(yo_yo, ob x) {
  return !x ? 0 : ee2(j, x, (yo) k); }
 
 static Co(im_yo, ob x) {
-  return !(x = Pull(Put(imm), x)) ? 0 : em_i_d(v, e, m); }
+  return !(x = Push(Put(imm), x)) ? 0 : em_i_d(v, e, m); }
 
 static Co(let_yo_bind) {
   ob _ = *v->sp++;
@@ -217,7 +211,7 @@ static bool let_yo_r(em v, ob*e, ob x) {
   bool _; return !twop(x) ||
     ((x = rw_let_fn(v, x)) &&
      (with(x, _ = let_yo_r(v, e, BB(x))), _) &&
-     Pull(Put(xx_yo_), AB(x), Put(let_yo_bind), A(x))); }
+     Push(Put(xx_yo_), AB(x), Put(let_yo_bind), A(x))); }
 
 // syntactic sugar for define
 static Inline ob def_sug(em v, ob x) {
@@ -234,7 +228,7 @@ static Co(let_yo, ob x) { return
   !twop(B(x)) ? im_yo(v, e, m, nil) :
   llen(B(x)) % 2 ?
     (x = def_sug(v, x)) ? xx_yo(v, e, m, x) : 0 :
-  (x = let_yo_r(v, e, B(x))) ? Push(m) : 0; }
+  (x = let_yo_r(v, e, B(x))) ? Pull(m) : 0; }
 
 // the following functions are "post" or "pre"
 // the antecedent/consequent in the sense of
@@ -244,57 +238,63 @@ static Co(let_yo, ob x) { return
 // before generating anything, store the
 // exit address in stack 2
 static Co(if_yo_pre) { ob x; return
-  (x = (ob) Push(m)) && (x = pair(v, x, s2(*e))) ?
+  (x = (ob) Pull(m)) && (x = pair(v, x, s2(*e))) ?
     (s2(*e) = x, (yo) A(x)) : 0; }
 
 // before generating a branch emit a jump to
 // the top of stack 2
-static Co(if_yo_pre_con) { yo k, x; return
-  x = Push(m + 2),
-  !x ? 0 : (k = (yo) A(s2(*e)),
-            k->ll == ret ?
-              ee1(ret, x) : ee2(jump, (ob) k, x)); }
+static Co(if_yo_pre_con) {
+  yo k, x = Pull(m + 2);
+  return !x ? 0 :
+    (k = (yo) A(s2(*e)),
+     k->ll == ret ?
+       ee1(ret, x) :
+       ee2(jump, (ob) k, x)); }
 
 // after generating a branch store its address
 // in stack 1
-static Co(if_yo_post_con) { ob x; return
-  (x = (ob) Push(m)) && (x = pair(v, x, s1(*e))) ?
-    (s1(*e) = x, (yo) A(x)) : 0; }
+static Co(if_yo_post_con) {
+  ob x; return
+    (x = (ob) Pull(m)) &&
+    (x = pair(v, x, s1(*e))) ?
+      (s1(*e) = x, (yo) A(x)) :
+      0; }
 
 // before generating an antecedent emit a branch to
 // the top of stack 1
-static Co(if_yo_pre_ant) { yo x; return
-  x = Push(m+2),
-  !x ? 0 : (x = ee2(branch, A(s1(*e)), x),
-            s1(*e) = B(s1(*e)),
-            x); }
+static Co(if_yo_pre_ant) {
+  yo x = Pull(m+2);
+  return !x ? 0 :
+    (x = ee2(branch, A(s1(*e)), x),
+     s1(*e) = B(s1(*e)),
+     x); }
 
 static bool if_yo_loop(em v, ob*e, ob x) {
   bool _; return 
     x = twop(x) ? x : pair(v, nil, nil),
     !x ? 0 : !twop(B(x)) ?
-      Pull(putnum((ob)xx_yo_),
+      Push(putnum((ob)xx_yo_),
                   A(x),
                   putnum((ob)if_yo_pre_con)) :
-    !(with(x, _ = Pull(putnum((ob)if_yo_post_con),
+    !(with(x, _ = Push(putnum((ob)if_yo_post_con),
                       putnum((ob)xx_yo_),
                       AB(x),
                       putnum((ob)if_yo_pre_con))), _) ||
     !(with(x, _ = if_yo_loop(v, e, BB(x))), _) ? 0 :
 
-    Pull(putnum((ob)xx_yo_),
+    Push(putnum((ob)xx_yo_),
          A(x),
          putnum((ob)if_yo_pre_ant)); }
 
 static Co(if_yo, ob x) { bool _; yo k; return
-  with(x, _ = Pull(putnum((ob)if_yo_pre))),
-  _ && if_yo_loop(v, e, B(x)) && (k = Push(m)) ?
+  with(x, _ = Push(putnum((ob)if_yo_pre))),
+  _ && if_yo_loop(v, e, B(x)) && (k = Pull(m)) ?
     (s2(*e) =  B(s2(*e)), k) :
     0; }
 
 static Co(em_call) {
   ob a = *v->sp++;
-  yo k = Push(m + 2);
+  yo k = Pull(m + 2);
   return !k ? 0 : ee2(k->ll == ret ? rec : call, a, k); }
 
 static ob lookup_mod(em v, ob x) {
@@ -317,7 +317,7 @@ static Co(var_yo, ob x) { ob y, q; return
      im_yo(v, e, m, B(q)) :
      y == putnum(Wait) ? (
       (x = pair(v, B(q), x)) &&
-      (with(x, y = (ob) Push(m+2)), y) &&
+      (with(x, y = (ob) Pull(m+2)), y) &&
       (with(y, x = pair(v, putnum(sizeof(ob)), x)), x) ?
         ee2(lbind, x, (yo) y) :
         0 ) :
@@ -338,21 +338,21 @@ static Co(xx_yo, ob x) { return
 
 static Co(ap_yo, ob fun, ob args) {
   mm(&args);
-  if (!Pull(Put(xx_yo_), fun,
+  if (!Push(Put(xx_yo_), fun,
             Put(em_i), Put(idH),
             Put(em_call), putnum(llen(args))))
     return um, NULL;
   for (;twop(args);args=B(args))
-    if (!Pull(Put(xx_yo_), A(args),
+    if (!Push(Put(xx_yo_), A(args),
               Put(em_i), Put(push)))
       return um, NULL;
 
-  return um, Push(m); }
+  return um, Pull(m); }
 
 static bool seq_yo_loop(em v, ob*e, ob x) {
   bool _; return !twop(x) ? 1 :
     (with(x, _ = seq_yo_loop(v, e, B(x))), _) &&
-    Pull(Put(xx_yo_), A(x)); }
+    Push(Put(xx_yo_), A(x)); }
 
 static Co(two_yo, ob x) { ob z = A(x); return 
   z == v->glob[Cond] ? if_yo(v, e, m, x) :
@@ -362,7 +362,7 @@ static Co(two_yo, ob x) { ob z = A(x); return
   z == v->glob[Seq]  ?
     (twop(x = B(x)) || (x = pair(v, x, nil))) &&
     (x = seq_yo_loop(v, e, x)) ?
-      Push(m) :
+      Pull(m) :
       0 :
 
   z == v->glob[Quote] ?
@@ -373,14 +373,14 @@ static Co(two_yo, ob x) { ob z = A(x); return
 
 static Co(em_i) {
   ll* i = (ll*) getnum(*v->sp++);
-  yo k = Push(m+1);
+  yo k = Pull(m+1);
   return !k ? 0 : ee1(i, k); }
 
 static Co(em_i_d) {
   ll* i = (ll*) getnum(*v->sp++);
   ob x = *v->sp++;
   yo k; return
-    with(x, k = Push(m+2)),
+    with(x, k = Pull(m+2)),
     !k ? 0 : ee2(i, x, k); }
 
 static Co(mk_yo) {
@@ -400,7 +400,7 @@ static Ll(yield) { Pack(); return xp; }
 
 static NoInline ob apply(em v, ob f, ob x) {
   yo h; return
-    !Pull(f, x) || !(h = cells(v, 5)) ? 0 :
+    !Push(f, x) || !(h = cells(v, 5)) ? 0 :
       (h[0].ll = call,
        h[1].ll = (ll*) putnum(2),
        h[2].ll = yield,
@@ -474,7 +474,7 @@ Ll(hseek_u) {
   return ApC(ret, puthom(gethom(Argv[0]) + getnum(Argv[1]))); }
 
 ob analyze(em v, ob x) {
-  with(x, Pull(Put(em_i), Put(ret), Put(mk_yo)));
+  with(x, Push(Put(em_i), Put(ret), Put(mk_yo)));
   return (ob) xx_yo(v, NULL, 0, x); }
 
 Ll(ev_u) {

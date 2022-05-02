@@ -13,7 +13,6 @@ typedef intptr_t ob; // point
 typedef struct yo *yo; // point embedding
 typedef struct em *em; // host
 typedef struct fr *fr; // frame
-// pullback // FIXME em pf ob ob* ob* fr
 #define Ll(n, ...)\
   ob n(em v, yo ip, ob*fp, ob*sp, ob*hp, ob xp, ##__VA_ARGS__)
 typedef Ll(ll);
