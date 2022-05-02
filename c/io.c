@@ -127,21 +127,21 @@ static NoInline ob read_num(const char *s) {
       case 'x': return read_num_base(s+2, 16); } }
   return read_num_base(s, 10); }
 
-Vm(par_u) {
-  CallC(xp = parse(v, stdin),
-        v->xp = !xp ? nil : pair(v, xp, nil));
-  return xp ? ApC(ret, xp) : 0; }
+Ll(par_u) { return
+  CallC(
+    xp = parse(v, stdin),
+    v->xp = !xp ? nil : pair(v, xp, nil)),
+  !xp ? 0 : ApC(ret, xp); }
 
 static void emhomn(em v, ob x, FILE *o) {
   fputc('\\', o);
-  switch (Q(x)) { case Sym: return emit(v, x, o);
-                  case Two: if (symp(A(x))) emit(v, A(x), o);
-                            emhomn(v, B(x), o);
-                  default: } }
+  switch (Q(x)) {
+    case Sym: emit(v, x, o); break;
+    case Two: if (symp(A(x))) emit(v, A(x), o);
+              emhomn(v, B(x), o); default: } }
 
 void emit(em v, ob x, FILE *o) {
-  enum class q = Q(x);
-  switch (q) {
+  switch (Q(x)) {
     default: return (void) fputs("()", o);
     case Hom: return emhomn(v, homnom(v, x), o);
     case Num: return (void) fprintf(o, "%ld", getnum(x));
@@ -184,14 +184,15 @@ void emit(em v, ob x, FILE *o) {
 
 // print to console
 Ll(show_u) {
-  uintptr_t l = getnum(Argc), i;
-  if (l) { for (i = 0; i < l - 1; i++)
-             emsep(v, Argv[i], stdout, ' ');
-           emit(v, xp = Argv[i], stdout); }
-  fputc('\n', stdout);
-  return ApC(ret, xp); }
+  uintptr_t i, l = getnum(Argc);
+  if (l) {
+    for (i = 0; i < l - 1; i++)
+      emsep(v, Argv[i], stdout, ' ');
+    emit(v, xp = Argv[i], stdout); }
+  return fputc('\n', stdout),
+         ApC(ret, xp); }
 
 Ll(putc_u) {
   Arity(1);
-  fputc(getnum(*Argv), stdout);
-  return ApC(ret, xp); }
+  return fputc(getnum(*Argv), stdout),
+         ApC(ret, xp); }

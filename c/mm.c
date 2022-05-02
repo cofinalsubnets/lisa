@@ -38,10 +38,9 @@ void* cells(em v, uintptr_t n) {
 // Run a GC cycle from inside the VM
 Vm(gc) {
   uintptr_t req = v->xp;
-  Pack();
-  if (!please(v, req)) return err(v, oom_err_msg, v->len, req); 
-  Unpack();
-  return ApY(ip, xp); }
+  return Pack(), please(v, req) ?
+    (Unpack(), ApY(ip, xp)) :
+    err(v, oom_err_msg, v->len, req); }
 
 // a simple copying garbage collector
 //
@@ -120,31 +119,42 @@ static clock_t copy(em v, uintptr_t len1) {
 // the cost of more memory use under pressure.
 #define growp (allocd > len || vit < 32) // lower bound
 #define shrinkp (allocd < (len>>1) && vit >= 128) // upper bound
+
+static ob gro(ob allocd, ob len, ob vit) {
+  return len <<= 1, vit <<= 1, !growp ? len :
+    gro(allocd, len, vit); }
+
+static ob shr(ob allocd, ob len, ob vit) {
+  return len >>= 1, vit >>= 1, !shrinkp ? len :
+    shr(allocd, len, vit); }
+
 bool please(em v, uintptr_t req) {
-  intptr_t len = v->len, vit;
-  bind(vit, copy(v, len));
-  intptr_t allocd = len - (Avail - req);
-  if (growp) do len <<= 1, vit <<= 1; while (growp);
-  else if (shrinkp) do len >>= 1, vit >>= 1; while (shrinkp);
-  else return true; // no size change needed
-  return copy(v, len) || allocd <= v->len; }
+  intptr_t len = v->len,
+           vit = copy(v, len),
+           allocd = len - (Avail - req);
+  return len = v->len, !vit ? 0 : !growp && !shrinkp ? 1 :
+    copy(v, (growp ? gro : shr)(allocd, len, vit)) ||
+    allocd <= v->len; }
+
 
 #define stale(o) inb((ob*)(o),pool0,pool0+len0)
 Gc(cphom) {
-  yo src = gethom(x);
-  if (fresh(src->ll)) return (ob) src->ll;
-  yo end = button(src), start = (yo) end[1].ll,
-     dst = bump(v, end - start + 2), j = dst;
-  for (yo k = start; k < end;
+  if (fresh(G(x))) return (ob) G(x);
+  yo src = (yo) x,
+     end = button(src),
+     start = (yo) end[1].ll,
+     dst = bump(v, end - start + 2),
+     j = dst;
+  for (yo k = start; k < end;)
     j->ll = k->ll,
-    k++->ll = (ll*) j++);
-  j[0].ll = NULL;
-  j[1].ll = (ll*) dst;
-  for (ob u; j-- > dst;
+    k++->ll = (ll*) j++;
+  j[0].ll = NULL, j[1].ll = (ll*) dst;
+  for (ob u; j-- > dst;)
     u = (ob) j->ll,
-    u = stale(u) ? cp(v, u, len0, pool0) : u,
-    j->ll = (ll*) u);
-  return (ob) (dst += src - start); }
+    u = !stale(u) ? u :
+    cp(v, u, len0, pool0),
+    j->ll = (ll*) u;
+  return (ob) (dst + (src - start)); }
 
 Gc(cpstr) {
   str dst, src = getstr(x);
@@ -156,19 +166,23 @@ Gc(cpstr) {
 
 Gc(cpsym) {
   sym src = getsym(x), dst;
-  if (fresh(src->nom)) return src->nom;
-  if (src->nom == nil) // anonymous symbol
-    cpyptr(dst = bump(v, Width(sym)), src, Width(sym));
-  else dst = getsym(sskc(v, &v->syms, cp(v, src->nom, len0, pool0)));
-  return src->nom = putsym(dst); }
+  return fresh(src->nom) ? src->nom :
+    src->nom == nil ? // anonymous symbol
+      (dst = bump(v, Width(sym)),
+       cpyptr(dst, src, Width(sym)),
+       src->nom = putsym(dst)) :
+      (x = cp(v, src->nom, len0, pool0),
+       dst = getsym(sskc(v, &v->syms, x)),
+       src->nom = putsym(dst) ); }
 
 static ent cpent(em v, ent src, intptr_t len0, ob *pool0) {
-  bind(src, src);
-  ent dst = (ent) bump(v, Width(ent));
-  dst->next = cpent(v, src->next, len0, pool0);
-  COPY(dst->key, src->key);
-  COPY(dst->val, src->val);
-  return dst; }
+  ent dst;
+  return !src ? 0 :
+    (dst = (ent) bump(v, Width(ent)),
+     dst->next = cpent(v, src->next, len0, pool0),
+     COPY(dst->key, src->key),
+     COPY(dst->val, src->val),
+     dst); }
 
 Gc(cptbl) {
   tbl src = gettbl(x);
@@ -186,21 +200,18 @@ Gc(cptbl) {
 
 Gc(cptwo) {
   ob dst, src = x;
-  if (fresh(A(x))) return A(x);
-  dst = puttwo(bump(v, Width(two)));
-  A(dst) = A(src), A(src) = dst;
-  B(dst) = cp(v, B(src), len0, pool0);
-  A(dst) = cp(v, A(dst), len0, pool0);
-  return dst; }
+  return fresh(A(x)) ? A(x) :
+    (dst = puttwo(bump(v, Width(two))),
+     A(dst) = A(src), A(src) = dst,
+     B(dst) = cp(v, B(src), len0, pool0),
+     A(dst) = cp(v, A(dst), len0, pool0),
+     dst); }
 
 // functions for pairs and lists
 ob pair(em v, ob a, ob b) {
   two w;
   with(a, with(b, w = cells(v, 2)));
-  bind(w, w);
-  w->a = a;
-  w->b = b;
-  return puttwo(w); }
+  return !w ? 0 : (w->a = a, w->b = b, puttwo(w)); }
 
 static Inline intptr_t tbl_idx(uintptr_t cap, uintptr_t co) {
   return co & ((1 << cap) - 1); }

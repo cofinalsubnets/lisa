@@ -35,13 +35,14 @@ Ll(ap_u) {
   sp = Argv + getnum(Argc) - adic;
   for (uintptr_t j = 0; j < adic; sp[j++] = gettwo(y)->a,
                             y = gettwo(y)->b);
-  fp = (void*) ((fr) sp - 1);
-  sp = (ob*) fp;
-  Retp = rp;
-  Argc = putnum(adic);
-  Subr = off;
-  Clos = nil;
-  return ApY(x, nil); }
+  return
+    fp = (void*) ((fr) sp - 1),
+    sp = (ob*) fp,
+    Retp = rp,
+    Argc = putnum(adic),
+    Subr = off,
+    Clos = nil,
+    ApY(x, nil); }
 
 Ll(vararg) {
   intptr_t reqd = getnum((ob) ip[1].ll),
@@ -51,12 +52,13 @@ Ll(vararg) {
   // slot to hold the nil.
   if (!vdic) {
     Have1();
-    cpyptr(fp-1, fp, Width(fr) + getnum(Argc));
-    fp = (void*) ((ob*) fp - 1);
-    sp = (ob*) fp;
-    Argc += sizeof(ob);
-    Argv[reqd] = nil;
-    return ApN(2, xp); }
+    return
+      cpyptr(fp-1, fp, Width(fr) + getnum(Argc)),
+      fp = (void*) ((ob*) fp - 1),
+      sp = (ob*) fp,
+      Argc += sizeof(ob),
+      Argv[reqd] = nil,
+      ApN(2, xp); }
   // in this case we just keep the existing slots.
   // the path is knowable at compile time in many cases
   // so maybe vararg should be two or more different
@@ -67,9 +69,10 @@ Ll(vararg) {
   for (uintptr_t i = vdic; i--;
     t[i].a = Argv[reqd + i],
     t[i].b = puttwo(t+i+1));
-  t[vdic-1].b = nil;
-  Argv[reqd] = puttwo(t);
-  return ApN(2, xp); }
+  return
+    t[vdic-1].b = nil,
+    Argv[reqd] = puttwo(t),
+    ApN(2, xp); }
 
 // type predicates
 #define Tp(t)\
@@ -114,45 +117,46 @@ Br(brgteq,  *sp++ >= xp, GF, xp, FF, nil)
 #undef Br
 
 // return from a function
-Ll(ret) {
-  ip = (yo) Retp;
-  sp = (ob*) ((ob) Argv + Argc - Num);
-  fp = (void*) ((ob) sp + Subr - Num);
-  return ApY(ip, xp); }
+Ll(ret) { return
+  ip = (yo) Retp,
+  sp = (ob*) ((ob) Argv + Argc - Num),
+  fp = (void*) ((ob) sp + Subr - Num),
+  ApY(ip, xp); }
 
 // "inner" function call
 Ll(call) {
   Have(Width(fr));
   intptr_t adic = getnum((ob) ip[1].ll),
            off = (ob*) fp - (sp + adic);
-  fp = (void*) ((fr) sp - 1);
-  sp = (ob*) fp;
-  Retp = (ob) (ip + 2);
-  Subr = putnum(off);
-  Clos = nil;
-  Argc = putnum(adic);
-  return ApY(xp, nil); }
+  return
+    fp = (void*) ((fr) sp - 1),
+    sp = (ob*) fp,
+    Retp = (ob) (ip + 2),
+    Subr = putnum(off),
+    Clos = nil,
+    Argc = putnum(adic),
+    ApY(xp, nil); }
 
 // tail call
 Ll(rec) {
   ip = (yo) ip[1].ll;
-  if (Argc != (ob) ip) return ApC(recne, xp);
-  cpyptr(Argv, sp, getnum((ob) ip));
-  sp = (ob*) fp;
-  return ApY(xp, nil); }
+  return Argc != (ob) ip ? ApC(recne, xp) :
+    (cpyptr(Argv, sp, getnum((ob) ip)),
+     sp = (ob*) fp,
+     ApY(xp, nil)); }
 
 // tail call with different arity
-static Ll(recne) {
- v->xp = Subr;
- v->ip = (yo) Retp; // save return info
- fp = (void*) (Argv + getnum(Argc - (ob) ip));
- rcpyptr(fp, sp, getnum((ob) ip)); // copy from high to low
- sp = (ob*) (((fr) fp) - 1);
- fp = (void*) sp;
- Retp = (ob) v->ip;
- Argc = (ob) ip;
- Subr = v->xp;
- return ApY(xp, Clos = nil); }
+static Ll(recne) { return
+  v->xp = Subr,
+  v->ip = (yo) Retp, // save return info
+  fp = (void*) (Argv + getnum(Argc - (ob) ip)),
+  rcpyptr(fp, sp, getnum((ob) ip)), // copy from high to low
+  sp = (ob*) (((fr) fp) - 1),
+  fp = (void*) sp,
+  Retp = (ob) v->ip,
+  Argc = (ob) ip,
+  Subr = v->xp,
+  ApY(xp, Clos = nil); }
 
 // errors
 Ll(fail) { return Pack(), err(v, "fail"); }
@@ -376,29 +380,29 @@ OP1(clo1, ((ob*)Clos)[1])
 // stack push
 Vm(push) {
   Have1();
-  *--sp = xp;
-  return ApN(1, xp); }
+  return *--sp = xp, ApN(1, xp); }
 
 // set a local variable
-Vm(loc_) {
-  Ref(((ob*)Locs)) = xp;
-  return ApN(2, xp); }
+Vm(loc_) { return
+  Ref(((ob*)Locs)) = xp,
+  ApN(2, xp); }
 
 // set a global variable
-Vm(tbind) {
-  CallC(tbl_set(v, v->glob[Topl], (ob) ip[1].ll, xp));
-  return ApN(2, xp); }
+Vm(tbind) { return
+  CallC(tbl_set(v, v->glob[Topl], (ob) ip[1].ll, xp)),
+  ApN(2, xp); }
 
 // allocate local variable array
 Vm(locals) {
   uintptr_t n = getnum((ob) ip[1].ll);
   Have(n + 3);
   ob *t = hp;
-  hp += n + 2;
-  setptr(t, nil, n);
-  t[n] = 0;
-  *--sp = t[n+1] = (ob) t;
-  return ApN(2, xp); }
+  return
+    hp += n + 2,
+    setptr(t, nil, n),
+    t[n] = 0,
+    *--sp = t[n+1] = (ob) t,
+    ApN(2, xp); }
 
 // late binding
 // long b/c it does the "static" type and arity checks
@@ -416,16 +420,17 @@ Vm(lbind) {
     yo x = gethom(xp);
     if (x[0].ll == arity && ip[3].ll >= x[1].ll)
       xp = (ob) (x + 2); }
-  ip[0].ll = imm;
-  ip[1].ll = (ll*) xp;
-  return ApN(2, xp); }
+  return
+    ip[0].ll = imm,
+    ip[1].ll = (ll*) xp,
+    ApN(2, xp); }
 
 // hash tables
 Vm(tblg) {
   Arity(2);
   TypeCheck(Argv[0], Tbl);
-  xp = tbl_get(v, Argv[0], Argv[1]);
-  return ApC(ret, xp ? xp : nil); }
+  return xp = tbl_get(v, Argv[0], Argv[1]),
+         ApC(ret, xp ? xp : nil); }
 
 OP1(tget, (xp = tbl_get(v, xp, *sp++)) ? xp : nil)
 OP1(thas, tbl_get(v, xp, *sp++) ? N1 : nil)
@@ -433,43 +438,42 @@ OP1(tlen, putnum(gettbl(xp)->len))
 
 Vm(tkeys) {
   CallC(v->xp = tblkeys(v, xp));
-  bind(xp, xp);
-  return ApN(1, xp); }
+  return !xp ? 0 : ApN(1, xp); }
 
 Vm(tblc) {
   Arity(2);
   TypeCheck(Argv[0], Tbl);
-  xp = tbl_get(v, Argv[0], Argv[1]);
-  return ApC(ret, xp ? N1 : nil); }
+  return xp = tbl_get(v, Argv[0], Argv[1]),
+         ApC(ret, xp ? N1 : nil); }
 
 static ob tblss(em v, intptr_t i, intptr_t l) {
   fr fp = (fr) v->fp;
-  if (i > l-2) return fp->argv[i-1];
-  ob _;
-  bind(_, tbl_set(v, v->xp, fp->argv[i], fp->argv[i+1]));
-  return tblss(v, i+2, l); }
+  return
+    i > l-2 ? fp->argv[i-1]:
+    !tbl_set(v, v->xp, fp->argv[i], fp->argv[i+1]) ? 0 :
+    tblss(v, i+2, l); }
 
 Vm(tbls) {
   Arity(1);
   xp = *Argv;
   TypeCheck(xp, Tbl);
-  CallC(v->xp = tblss(v, 1, getnum(Argc)));
-  bind(xp, xp);
-  return ApC(ret, xp); }
+  return
+    CallC(v->xp = tblss(v, 1, getnum(Argc))),
+    !xp ? 0 : ApC(ret, xp); }
 
 Vm(tblmk) {
-  Pack();
-  bind(v->xp, table(v)); // xp <- table
-  bind(xp, tblss(v, 0, getnum(Argc))); // _ <- updates
-  Unpack();
-  return ApC(ret, xp); }
+  return Pack(),
+    (v->xp = table(v)) &&
+    (xp = tblss(v, 0, getnum(Argc))) ?
+      (Unpack(), ApC(ret, xp)) :
+      0; }
 
 Vm(tblks) {
   Arity(1);
   TypeCheck(*Argv, Tbl);
-  CallC(v->xp = tblkeys(v, *Argv));
-  bind(xp, xp);
-  return ApC(ret, xp); }
+  return
+    CallC(v->xp = tblkeys(v, *Argv)),
+    !xp ? 0 : ApC(ret, xp); }
 
 Vm(tbll) {
   Arity(1);
@@ -478,19 +482,20 @@ Vm(tbll) {
 
 Vm(tset) {
   ob x = *sp++, y = *sp++;
-  CallC(v->xp = tbl_set(v, xp, x, y));
-  bind(xp, xp);
-  return ApN(1, xp); }
+  return
+    CallC(v->xp = tbl_set(v, xp, x, y)),
+    !xp ? 0 : ApN(1, xp); }
 
 // pairs
 OP1(car, A(xp)) OP1(cdr, B(xp))
 Vm(cons) {
   Have1();
-  hp[0] = xp;
-  hp[1] = *sp++;
-  xp = puttwo(hp);
-  hp += 2;
-  return ApN(1, xp); }
+  return
+    hp[0] = xp,
+    hp[1] = *sp++,
+    xp = puttwo(hp),
+    hp += 2,
+    ApN(1, xp); }
 
 Vm(car_u) {
   Arity(1);
@@ -505,32 +510,33 @@ Vm(cdr_u) {
 Ll(cons_u) {
   Arity(2);
   Have(2);
-  two w = (two) hp;
-  hp += 2;
-  w->a = Argv[0], w->b = Argv[1];
-  return ApC(ret, puttwo(w)); }
+  two w; return
+    w = (two) hp,
+    hp += 2,
+    w->a = Argv[0], w->b = Argv[1],
+    ApC(ret, puttwo(w)); }
 
 // this is used to create closures.
 Ll(take) {
   uintptr_t n = getnum((ob) ip[1].ll);
   Have(n + 2);
-  ob * t = hp;
-  hp += n + 2;
-  cpyptr(t, sp, n);
-  sp += n;
-  t[n] = 0;
-  t[n+1] = (ob) t;
-  return ApC(ret, (ob) t); }
+  ob * t = hp; return
+    hp += n + 2,
+    cpyptr(t, sp, n),
+    sp += n,
+    t[n] = 0,
+    t[n+1] = (ob) t,
+    ApC(ret, (ob) t); }
 
-static Ll(clos) {
-  Clos = (ob) ip[1].ll;
-  return ApY((ob) ip[2].ll, xp); }
+static Ll(clos) { return
+  Clos = (ob) ip[1].ll,
+  ApY((ob) ip[2].ll, xp); }
 
 // finalize function instance closure
-static Ll(clos1) {
-  ip->ll = clos;
-  ip[1].ll = (ll*) xp;
-  return ApY(ip, xp); }
+static Ll(clos1) { return
+  ip->ll = clos,
+  ip[1].ll = (ll*) xp,
+  ApY(ip, xp); }
 
 // this function is run the first time a user
 // function with a closure is called. its
@@ -583,20 +589,21 @@ static Vm(encl) {
   yo t = (yo) block, // compiler thread closure array (1 length 5 elements)
      at = t + 6; // compiler thread (1 instruction 2 data 2 tag)
 
-  t[0].ll = (ll*) arg;
-  t[1].ll = (ll*) xp; // Locs or nil
-  t[2].ll = (ll*) Clos;
-  t[3].ll = (ll*) B(x);
-  t[4].ll = NULL;
-  t[5].ll = (ll*) t;
+  return
+    t[0].ll = (ll*) arg,
+    t[1].ll = (ll*) xp, // Locs or nil
+    t[2].ll = (ll*) Clos,
+    t[3].ll = (ll*) B(x),
+    t[4].ll = NULL,
+    t[5].ll = (ll*) t,
 
-  at[0].ll = clos0;
-  at[1].ll = (ll*) t;
-  at[2].ll = (ll*) A(x);
-  at[3].ll = NULL;
-  at[4].ll = (ll*) at;
+    at[0].ll = clos0,
+    at[1].ll = (ll*) t,
+    at[2].ll = (ll*) A(x),
+    at[3].ll = NULL,
+    at[4].ll = (ll*) at,
 
-  return ApN(2, (ob) at); }
+    ApN(2, (ob) at); }
 
 Ll(encll) { return ApC(encl, Locs); }
 Ll(encln) { return ApC(encl, nil); }
