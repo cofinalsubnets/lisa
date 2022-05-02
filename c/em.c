@@ -10,9 +10,9 @@
 
 // initialization helpers
 static NoInline bool inst(em v, const char *a, ll *b) {
-  ob z;
-  if (!(z = interns(v, a))) return 0;
-  return !!tbl_set(v, v->glob[Topl], z, putnum((ob) b)); }
+  ob z; return 
+    !(z = interns(v, a)) ? 0 :
+      !!tbl_set(v, v->glob[Topl], z, putnum((ob) b)); }
 
 static NoInline bool prim(em v, const char *a, ll *i) {
   ob nom;
@@ -28,10 +28,7 @@ static NoInline bool prim(em v, const char *a, ll *i) {
   prim[3].ll = (ll*) prim;
   return !!tbl_set(v, v->glob[Topl], A(nom), (ob) prim); }
 
-void fin(em v) {
-  if (v) {
-    free(v->pool);
-    free(v); } }
+void fin(em v) { if (v) free(v->pool), free(v); }
 
 em ini(void) {
   ob _;

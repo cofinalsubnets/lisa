@@ -33,8 +33,9 @@ Ll(ap_u) {
   Have(adic);
   ob off = Subr, rp = Retp;
   sp = Argv + getnum(Argc) - adic;
-  for (uintptr_t j = 0; j < adic; sp[j++] = gettwo(y)->a,
-                            y = gettwo(y)->b);
+  for (uintptr_t j = 0; j < adic;)
+    sp[j++] = gettwo(y)->a,
+    y = gettwo(y)->b;
   return
     fp = (void*) ((fr) sp - 1),
     sp = (ob*) fp,
@@ -138,12 +139,12 @@ Ll(call) {
     ApY(xp, nil); }
 
 // tail call
-Ll(rec) {
-  ip = (yo) ip[1].ll;
-  return Argc != (ob) ip ? ApC(recne, xp) :
-    (cpyptr(Argv, sp, getnum((ob) ip)),
-     sp = (ob*) fp,
-     ApY(xp, nil)); }
+Ll(rec) { return
+  ip = (yo) ip[1].ll,
+  Argc != (ob) ip ? ApC(recne, xp) :
+  (cpyptr(Argv, sp, getnum((ob) ip)),
+   sp = (ob*) fp,
+   ApY(xp, nil)); }
 
 // tail call with different arity
 static Ll(recne) { return
@@ -185,8 +186,10 @@ DTc(idZ, Num) DTc(idH, Hom)
 DTc(idT, Tbl) DTc(id2, Two)
 Ll(arity) {
   ob reqd = (ob) ip[1].ll;
-  if (reqd <= Argc) return ApN(2, xp);
-  else return v->xp = getnum(reqd), ApC(ary_error, xp); }
+  return reqd <= Argc ?
+    ApN(2, xp) :
+    (v->xp = getnum(reqd),
+     ApC(ary_error, xp)); }
 
 static Inline void show_call(em v, yo ip, fr fp) {
   fputc('(', stderr);
@@ -202,39 +205,31 @@ NoInline ob err(em v, const char *msg, ...) {
 
   // error line
   fputs("# ", stderr);
-
-  if (fp < top) {
-    show_call(v, ip, fp);
-    fputs(" : ", stderr); }
-
+  if (fp < top) show_call(v, ip, fp), fputs(" : ", stderr);
   va_list xs;
-  va_start(xs, msg);
-  vfprintf(stderr, msg, xs);
-  va_end(xs);
-
+  va_start(xs, msg), vfprintf(stderr, msg, xs), va_end(xs);
   fputc('\n', stderr);
 
   // backtrace
   if (fp < top) for (;;) {
-    ip = (yo) fp->retp;
-    fp = (fr)
-      ((ob*) fp +
-       Width(fr) +
-       getnum(fp->argc) +
-       getnum(fp->subd));
+    ip = (yo) fp->retp,
+    fp = (fr) ((ob*) fp +
+               Width(fr) +
+               getnum(fp->argc) +
+               getnum(fp->subd));
 
-    if (fp == top) goto out;
-
-    fputs("# in ", stderr);
-    show_call(v, ip, fp);
-    fputc('\n', stderr); } out:
+    if (fp == top) goto out; else
+      fputs("# in ", stderr),
+      show_call(v, ip, fp),
+      fputc('\n', stderr); } out:
 
   // reset and yield
-  v->sp = v->pool + v->len;
-  v->fp = (fr) v->sp;
-  v->xp = nil;
-  v->ip = (yo) nil;
-  return 0; }
+  return
+    v->sp = v->pool + v->len,
+    v->fp = (fr) v->sp,
+    v->xp = nil,
+    v->ip = (yo) nil,
+    0; }
 
 
 #define mm_u(_c,_v,_z,op){\
@@ -288,9 +283,9 @@ Ll(mod_u) {
   TypeCheck(*Argv, Num);
   mm_void(xp-1, Argv+1, getnum(*Argv), %); }
 
-Ll(rnd_u) {
-  xp = putnum(v->rand = lcprng(v->rand));
-  return ApC(ret, xp); }
+Ll(rnd_u) { return
+  xp = putnum(v->rand = lcprng(v->rand)),
+  ApC(ret, xp); }
 
 #define OP(nom, x, n) Ll(nom) { xp = (x); return ApN(n, xp); }
 #define OP1(nom, x) OP(nom, x, 1)
@@ -378,9 +373,7 @@ OP1(clo1, ((ob*)Clos)[1])
 /// Store Instructions
 //
 // stack push
-Vm(push) {
-  Have1();
-  return *--sp = xp, ApN(1, xp); }
+Vm(push) { Have1(); return *--sp = xp, ApN(1, xp); }
 
 // set a local variable
 Vm(loc_) { return
@@ -394,10 +387,9 @@ Vm(tbind) { return
 
 // allocate local variable array
 Vm(locals) {
-  uintptr_t n = getnum((ob) ip[1].ll);
-  Have(n + 3);
   ob *t = hp;
-  return
+  uintptr_t n = getnum((ob) ip[1].ll);
+  Have(n + 3); return
     hp += n + 2,
     setptr(t, nil, n),
     t[n] = 0,
@@ -436,9 +428,9 @@ OP1(tget, (xp = tbl_get(v, xp, *sp++)) ? xp : nil)
 OP1(thas, tbl_get(v, xp, *sp++) ? N1 : nil)
 OP1(tlen, putnum(gettbl(xp)->len))
 
-Vm(tkeys) {
-  CallC(v->xp = tblkeys(v, xp));
-  return !xp ? 0 : ApN(1, xp); }
+Vm(tkeys) { return
+  CallC(v->xp = tblkeys(v, xp)),
+  !xp ? 0 : ApN(1, xp); }
 
 Vm(tblc) {
   Arity(2);
@@ -489,8 +481,7 @@ Vm(tset) {
 // pairs
 OP1(car, A(xp)) OP1(cdr, B(xp))
 Vm(cons) {
-  Have1();
-  return
+  Have1(); return
     hp[0] = xp,
     hp[1] = *sp++,
     xp = puttwo(hp),
@@ -508,9 +499,7 @@ Vm(cdr_u) {
   return ApC(ret, B(*Argv)); }
 
 Ll(cons_u) {
-  Arity(2);
-  Have(2);
-  two w; return
+  Arity(2); Have(2); two w; return
     w = (two) hp,
     hp += 2,
     w->a = Argv[0], w->b = Argv[1],

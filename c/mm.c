@@ -3,7 +3,7 @@
 #include <time.h>
 #include <string.h>
 
-#define Gc(n) ob n(em v, ob x, uintptr_t len0, ob*pool0)
+#define Gc(n) ob n(em v, ob x, intptr_t len0, ob*pool0)
 typedef Gc(copier);
 static copier
   cphom, cptwo, cpsym, cpstr, cptbl, cpid,
@@ -26,7 +26,7 @@ static Gc(cpid) { return x; }
 #define CP(x) COPY(x,x)
 
 // unchecked allocator -- make sure there's enough memory!
-static void* bump(em v, uintptr_t n) {
+static void* bump(em v, intptr_t n) {
   void* x = v->hp;
   return v->hp += n, x; }
 
@@ -65,16 +65,16 @@ Vm(gc) {
 // t values come from clock(). if t0 < t1 < t2 then
 // u will be >= 1. however, sometimes t1 == t2. in that case
 // u = 1.
-static clock_t copy(em v, uintptr_t len1) {
-  ob* pool1;
+static clock_t copy(em v, intptr_t len1) {
   clock_t t0, t1 = clock(), t2;
-  bind(pool1, malloc(len1 * sizeof(ob)));
-
-  uintptr_t len0 = v->len;
-  ob *pool0 = v->pool,
+  ob len0 = v->len,
      *sp0 = v->sp,
-     *top0 = pool0 + len0;
-  intptr_t shift = pool1 + len1 - top0;
+     *pool0 = v->pool,
+     *top0 = pool0 + len0,
+     *pool1 = malloc(len1 * sizeof(ob)),
+     shift = pool1 + len1 - top0;
+
+  if (!pool1) return 0;
 
   v->sp = sp0 + shift;
   v->fp = (fr) ((ob*) v->fp + shift);
@@ -82,13 +82,13 @@ static clock_t copy(em v, uintptr_t len1) {
   v->pool = v->hp = pool1;
   v->syms = nil;
 
-  v->ip = (yo) cp(v, (ob) v->ip, len0, pool0);
   CP(v->xp);
+  v->ip = (yo) cp(v, (ob) v->ip, len0, pool0);
   for (int i = 0; i < NGlobs; i++) CP(v->glob[i]);
   for (ob *sp1 = v->sp; sp0 < top0; COPY(*sp1++, *sp0++));
   for (mm r = v->mm; r; r = r->et) CP(*(r->it));
-
   free(pool0);
+
   t0 = v->t0;
   v->t0 = t2 = clock();
   t1 = t2 - t1;
