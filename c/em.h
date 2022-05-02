@@ -79,7 +79,6 @@ ob eval(em, ob),
 extern const uint32_t *tnoms;
 
 #define nil (~(ob)0)
-#define bind(v, x) if(!((v)=(x)))return 0
 #define FF(x) F(F(x))
 #define FG(x) F(G(x))
 #define GF(x) G(F(x))
@@ -250,15 +249,17 @@ ll gc, type_error, oob_error, ary_error, div_error;
                   return ApC(gc, xp); }
 
 static inline __attribute__((always_inline))
-  void setptr(void *_d, intptr_t i, uintptr_t l) {
+  void setw(void *_d, intptr_t i, uintptr_t l) {
     for (intptr_t *d = _d; l--; *d++ = i); }
+
 static inline __attribute__((always_inline))
-  void cpyptr(void *_d, const void *_s, uintptr_t l) {
+  void cpyw(void *_d, const void *_s, uintptr_t l) {
     intptr_t *d = _d;
     const intptr_t *s = _s;
     while (l--) *d++ = *s++; }
+
 static inline __attribute__((always_inline))
-  void rcpyptr(void *_d, const void *_s, uintptr_t l) {
+  void rcpyw(void *_d, const void *_s, uintptr_t l) {
     intptr_t *d = _d;
     const intptr_t *s = _s;
     while (l--) d[l] = s[l]; }

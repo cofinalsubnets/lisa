@@ -70,7 +70,7 @@ static Inline ob grow_buffer(em v, ob s) {
   with(s, t = cells(v, 2 * l + 1));
   return !t ? 0 :
     (t->len = 2 * l * sizeof(ob),
-     cpyptr(t->text, getstr(s)->text, l),
+     cpyw(t->text, getstr(s)->text, l),
      putstr(t)); }
 
 static NoInline ob reloop(em v, FILE *i, ob x, uintptr_t n, read_loop *loop) {

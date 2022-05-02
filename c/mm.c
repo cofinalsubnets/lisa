@@ -160,7 +160,7 @@ Gc(cpstr) {
   str dst, src = getstr(x);
   return src->len == 0 ? *(ob*)src->text :
     (dst = bump(v, Width(str) + b2w(src->len)),
-     cpyptr(dst->text, src->text, b2w(src->len)),
+     cpyw(dst->text, src->text, b2w(src->len)),
      dst->len = src->len, src->len = 0,
      *(ob*) src->text = putstr(dst)); }
 
@@ -169,7 +169,7 @@ Gc(cpsym) {
   return fresh(src->nom) ? src->nom :
     src->nom == nil ? // anonymous symbol
       (dst = bump(v, Width(sym)),
-       cpyptr(dst, src, Width(sym)),
+       cpyw(dst, src, Width(sym)),
        src->nom = putsym(dst)) :
       (x = cp(v, src->nom, len0, pool0),
        dst = getsym(sskc(v, &v->syms, x)),
@@ -298,8 +298,8 @@ static ob tbl_grow(em v, ob t) {
   ent *tab0, *tab1;
   uintptr_t cap0 = gettbl(t)->cap, cap1 = cap0 + 1;
   with(t, tab1 = cells(v, 1<<cap1));
-  bind(tab1, tab1);
-  setptr(tab1, 0, 1<<cap1);
+  if (!tab1) return 0;
+  setw(tab1, 0, 1<<cap1);
   tab0 = gettbl(t)->tab;
 
   for (uintptr_t i, cap = 1 << cap0; cap--;)

@@ -73,7 +73,7 @@ static yo ini_yo(em v, uintptr_t n) {
   return !a ? 0 :
     (a[n].ll = NULL,
      a[n+1].ll = (ll*) a,
-     setptr((ob*) a, nil, n),
+     setw((ob*) a, nil, n),
      a + n); }
 
 static yo tuplr(em v, uintptr_t i, va_list xs) {
@@ -197,7 +197,7 @@ static Co(yo_yo, ob x) {
  ll* j = imm;
  ob k, nom = *v->sp == Put(let_yo_bind) ? v->sp[1] : nil;
  with(nom, with(x, k = (ob) Push(m+2)));
- bind(k, k);
+ if (!k) return 0;
  mm(&k);
  if (twop(x = yo_yo_lam(v, e, nom, x)))
    j = e && twop(loc(*e)) ? encll : encln,
@@ -286,12 +286,11 @@ static bool if_yo_loop(em v, ob*e, ob x) {
          A(x),
          putnum((ob)if_yo_pre_ant)); }
 
-static Co(if_yo, ob x) {
-  bool _; yo k; return
-    with(x, _ = Pull(putnum((ob)if_yo_pre))),
-    _ && if_yo_loop(v, e, B(x)) && (k = Push(m)) ?
-      (s2(*e) =  B(s2(*e)), k) :
-      0; }
+static Co(if_yo, ob x) { bool _; yo k; return
+  with(x, _ = Pull(putnum((ob)if_yo_pre))),
+  _ && if_yo_loop(v, e, B(x)) && (k = Push(m)) ?
+    (s2(*e) =  B(s2(*e)), k) :
+    0; }
 
 static Co(em_call) {
   ob a = *v->sp++;
@@ -303,9 +302,10 @@ static ob lookup_mod(em v, ob x) {
 
 static ob lookup_lex(em v, ob e, ob y) {
   ob q; return
-  nilp(e) ? (
-    q = lookup_mod(v, y),
-    q ? pair(v, putnum(Here), q) : pair(v, putnum(Wait), v->glob[Topl])) :
+    nilp(e) ?
+      (q = lookup_mod(v, y)) ?
+        pair(v, putnum(Here), q) :
+        pair(v, putnum(Wait), v->glob[Topl]) :
     lidx(loc(e), y) > -1 ? pair(v, putnum(Loc), e) :
     lidx(arg(e), y) > -1 ? pair(v, putnum(Arg), e) :
     lidx(clo(e), y) > -1 ? pair(v, putnum(Clo), e) :
@@ -417,12 +417,11 @@ Ll(hom_u) {
   intptr_t len = getnum(x) + 2;
   Have(len);
   yo k = (yo) hp;
-  return
-    hp += len,
-    setptr((ob*) k, nil, len),
-    k[len-1].ll = (ll*) k,
-    k[len-2].ll = NULL,
-    ApC(ret, (ob) (k+len-2)); }
+  return hp += len,
+         setw((ob*) k, nil, len),
+         k[len-1].ll = (ll*) k,
+         k[len-2].ll = NULL,
+         ApC(ret, (ob) (k+len-2)); }
 
 Ll(hfin_u) {
   Arity(1);

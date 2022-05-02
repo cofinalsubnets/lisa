@@ -54,7 +54,7 @@ Ll(vararg) {
   if (!vdic) {
     Have1();
     return
-      cpyptr(fp-1, fp, Width(fr) + getnum(Argc)),
+      cpyw(fp-1, fp, Width(fr) + getnum(Argc)),
       fp = (void*) ((ob*) fp - 1),
       sp = (ob*) fp,
       Argc += sizeof(ob),
@@ -142,7 +142,7 @@ Ll(call) {
 Ll(rec) { return
   ip = (yo) ip[1].ll,
   Argc != (ob) ip ? ApC(recne, xp) :
-  (cpyptr(Argv, sp, getnum((ob) ip)),
+  (cpyw(Argv, sp, getnum((ob) ip)),
    sp = (ob*) fp,
    ApY(xp, nil)); }
 
@@ -151,7 +151,7 @@ static Ll(recne) { return
   v->xp = Subr,
   v->ip = (yo) Retp, // save return info
   fp = (void*) (Argv + getnum(Argc - (ob) ip)),
-  rcpyptr(fp, sp, getnum((ob) ip)), // copy from high to low
+  rcpyw(fp, sp, getnum((ob) ip)), // copy from high to low
   sp = (ob*) (((fr) fp) - 1),
   fp = (void*) sp,
   Retp = (ob) v->ip,
@@ -391,7 +391,7 @@ Vm(locals) {
   uintptr_t n = getnum((ob) ip[1].ll);
   Have(n + 3); return
     hp += n + 2,
-    setptr(t, nil, n),
+    setw(t, nil, n),
     t[n] = 0,
     *--sp = t[n+1] = (ob) t,
     ApN(2, xp); }
@@ -511,7 +511,7 @@ Ll(take) {
   Have(n + 2);
   ob * t = hp; return
     hp += n + 2,
-    cpyptr(t, sp, n),
+    cpyw(t, sp, n),
     sp += n,
     t[n] = 0,
     t[n+1] = (ob) t,
@@ -544,7 +544,7 @@ static Vm(clos0) {
   intptr_t off = (ob*) fp - sp;
   ip->ll = clos1;
   sp -= adic;
-  cpyptr(sp, (ob*) arg + 1, adic);
+  cpyw(sp, (ob*) arg + 1, adic);
   ec = (ob*) ip[1].ll;
   fp = (void*) ((fr) sp - 1);
   sp = (ob*) fp;

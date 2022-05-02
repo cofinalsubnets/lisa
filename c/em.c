@@ -141,7 +141,7 @@ em ini(void) {
      v->fp = (fr) sizeof(ob),
      v->xp = v->syms = nil,
      v->ip = (yo) nil,
-     setptr(v->glob, nil, NGlobs),
+     setw(v->glob, nil, NGlobs),
      (v->glob[Topl] = table(v)) &&
      (v->glob[Macs] = table(v)) &&
      insts(register_inst)
