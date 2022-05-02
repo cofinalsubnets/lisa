@@ -15,9 +15,8 @@ static ob two_in(em, FILE*), read_num(const char*),
 static read_loop str_loop, atom_loop;
 
 static Inline ob read_buf(em v, FILE* i, read_loop *loop) {
-  str c;
-  bind(c, cells(v, 2));
-  return loop(v, i, c, 0, c->len = 8); }
+  str c = cells(v, 2);
+  return c ? loop(v, i, c, 0, c->len = 8) : 0; }
 
 static Inline ob str_in(em v, FILE* i) {
   return read_buf(v, i, str_loop); }
@@ -33,10 +32,11 @@ static int read_char(FILE *i) {
     default: return c; } }
 
 ob read_quoted(em v, FILE *i) {
-  ob x;
-  bind(x, parse(v, i));
-  bind(x, pair(v, x, nil));
-  return pair(v, v->glob[Quote], x); }
+  ob x; return
+    (x = parse(v, i)) &&
+    (x = pair(v, x, nil)) ?
+      pair(v, v->glob[Quote], x) :
+      0; }
 
 ob parse(em v, FILE* i) {
   int c = read_char(i);
@@ -46,35 +46,37 @@ ob parse(em v, FILE* i) {
     case '(': return two_in(v, i);
     case '"': return str_in(v, i);
     case '\'': return read_quoted(v, i);
-    default: ungetc(c, i);
-             bind(x, read_atom(v, i));
-             y = read_num(getstr(x)->text);
-             return nump(y) ? y : intern(v, x); } }
+    default: return
+      ungetc(c, i),
+      (x = read_atom(v, i)) ? 
+        (y = read_num(getstr(x)->text),
+         nump(y) ? y : intern(v, x)) :
+        0; } }
 
 static ob two_in(em v, FILE *i) {
   ob x, y, c = read_char(i);
   switch (c) {
     case EOF: return 0;
     case ')': return nil;
-    default:
-      ungetc(c, i);
-      bind(x, parse(v, i));
-      with(x, y = two_in(v, i));
-      bind(y, y);
-      return pair(v, x, y); } }
+    default: return
+      ungetc(c, i),
+      (x = parse(v, i)) && (with(x, y = two_in(v, i)), y) ?
+        pair(v, x, y) :
+        0; } }
 
 static Inline ob grow_buffer(em v, ob s) {
   uintptr_t l = b2w(getstr(s)->len);
   str t;
   with(s, t = cells(v, 2 * l + 1));
-  bind(t, t);
-  t->len = 2 * l * sizeof(ob);
-  cpyptr(t->text, getstr(s)->text, l);
-  return putstr(t); }
+  return !t ? 0 :
+    (t->len = 2 * l * sizeof(ob),
+     cpyptr(t->text, getstr(s)->text, l),
+     putstr(t)); }
 
 static NoInline ob reloop(em v, FILE *i, ob x, uintptr_t n, read_loop *loop) {
-  bind(x, grow_buffer(v, x));
-  return loop(v, i, getstr(x), n, 2 * n); }
+  return (x = grow_buffer(v, x)) ?
+    loop(v, i, getstr(x), n, 2 * n) :
+    0; }
 
 static ob atom_loop(em v, FILE *p, str o, uintptr_t n, uintptr_t lim) {
   ob x;
@@ -128,8 +130,7 @@ static NoInline ob read_num(const char *s) {
 Vm(par_u) {
   CallC(xp = parse(v, stdin),
         v->xp = !xp ? nil : pair(v, xp, nil));
-  bind(xp, xp);
-  return ApC(ret, xp); }
+  return xp ? ApC(ret, xp) : 0; }
 
 static void emhomn(em v, ob x, FILE *o) {
   fputc('\\', o);

@@ -196,7 +196,7 @@ ll gc, type_error, oob_error, ary_error, div_error;
 // V ABI) says should be passed in registers; that's the only
 // reason why there aren't more. but it's not too bad; the six
 // arguments are:
-// - v  : vm instance pointer ; most lips functions take this as the first argument
+// - v  : vm instance pointer ; most functions take this as the first argument
 // - ip : instruction pointer ; the current vm instruction ; function pointer pointer
 // - fp : frame pointer       ; current function context
 // - sp : stack pointer       ; data/call stack

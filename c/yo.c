@@ -40,11 +40,9 @@ static ob yo_yo_clo(em, ob*, ob, ob),
 static bool pushss(em v, uintptr_t i, va_list xs) {
   bool _;
   ob x = va_arg(xs, ob);
-  if (!x) return Avail >= i || please(v, i);
-  with(x, _ = pushss(v, i+1, xs));
-  bind(_, _);
-  *--v->sp = x;
-  return _; }
+  return !x ?  Avail >= i || please(v, i) :
+    (with(x, _ = pushss(v, i+1, xs)),
+     _ && (*--v->sp = x)); }
 
 static bool pushs(em v, ...) {
   va_list xs;
@@ -53,11 +51,8 @@ static bool pushs(em v, ...) {
   va_end(xs);
   return _; }
 
-static Inline yo ee1(ll *i, yo k) {
-  return (--k)->ll = i, k; }
-
-static Inline yo ee2(ll *i, ob x, yo k) {
-  return ee1(i, ee1((ll*) x, k)); }
+static Inline yo ee1(ll *i, yo k) { return (--k)->ll = i, k; }
+static Inline yo ee2(ll *i, ob x, yo k) { return ee1(i, ee1((ll*) x, k)); }
 
 // helper functions for lists
 static intptr_t lidx(ob l, ob x) {
@@ -67,32 +62,29 @@ static intptr_t lidx(ob l, ob x) {
 
 static ob linitp(em v, ob x, ob* d) {
   ob y;
-  if (!twop(B(x))) return *d = x, nil;
-  with(x, y = linitp(v, B(x), d));
-  bind(y, y);
-  return pair(v, A(x), y); }
+  return !twop(B(x)) ? (*d = x, nil) :
+    (with(x, y = linitp(v, B(x), d)),
+     !y ? 0 : pair(v, A(x), y)); }
 
 static ob snoc(em v, ob l, ob x) {
-  if (!twop(l)) return pair(v, x, l);
-  with(l, x = snoc(v, B(l), x));
-  bind(x, x);
-  return pair(v, A(l), x); }
+  return !twop(l) ? pair(v, x, l) :
+    (with(l, x = snoc(v, B(l), x)),
+     !x ? 0 : pair(v, A(l), x)); }
 
 static yo ini_yo(em v, uintptr_t n) {
-  yo a;
-  bind(a, cells(v, n + 2));
-  a[n].ll = NULL;
-  a[n+1].ll = (ll*) a;
-  setptr((ob*) a, nil, n);
-  return a + n; }
+  yo a = cells(v, n + 2);
+  return !a ? 0 :
+    (a[n].ll = NULL,
+     a[n+1].ll = (ll*) a,
+     setptr((ob*) a, nil, n),
+     a + n); }
 
 static yo tuplr(em v, uintptr_t i, va_list xs) {
   ob x = va_arg(xs, ob);
-  if (!x) return ini_yo(v, i);
   yo k;
-  with(x, k = tuplr(v, i+1, xs));
-  bind(k, k);
-  return ee1((ll*) x, k); }
+  return !x ? ini_yo(v, i) :
+    (with(x, k = tuplr(v, i+1, xs)),
+     k ? ee1((ll*) x, k) : 0); }
 
 static ob tupl(em v, ...) {
   yo t;
@@ -103,8 +95,7 @@ static ob tupl(em v, ...) {
   return (ob) t; }
 
 static yo imx(em v, ob *e, intptr_t m, ll *i, ob x) {
-  bind(x, Pull(Put(i), x));
-  return em_i_d(v, e, m); }
+  return Pull(Put(i), x) ? em_i_d(v, e, m) : 0; }
 
 #define Bind(v, x) if(!((v)=(x)))goto fail
 static NoInline ob rw_let_fn(em v, ob x) {
@@ -149,14 +140,12 @@ static ob asign(em v, ob a, intptr_t i, ob*m) {
     *m = -i-1;
     return pair(v, A(a), nil); }
   with(a, x = asign(v, B(a), i+1, m));
-  bind(x, x);
-  return pair(v, A(a), x); }
+  return !x ? 0 : pair(v, A(a), x); }
 
 static Inline ob new_scope(em v, ob*e, ob a, ob n) {
   intptr_t s = 0;
   with(n, a = asign(v, a, 0, &s));
-  bind(a, a);
-  return tupl(v, a, nil, nil, e ? *e : nil, n, putnum(s), nil, nil, (ob)0); }
+  return !a ? 0 : tupl(v, a, nil, nil, e ? *e : nil, n, putnum(s), nil, nil, (ob) 0); }
 
 static Inline ob comp_body(em v, ob*e, ob x) {
   bind(x, Pull(Put(xx_yo_), x,
@@ -216,12 +205,10 @@ static Co(pf_pf, ob x) {
    j = e && twop(loc(*e)) ? encll : encln,
    x = yo_yo_clo(v, e, A(x), B(x));
  um;
- bind(x, x);
- return ee2(j, x, (yo) k); }
+ return !x ? 0 : ee2(j, x, (yo) k); }
 
 static Co(im_yo, ob x) {
-  bind(x, Pull(Put(imm), x));
-  return em_i_d(v, e, m); }
+  return !(x = Pull(Put(imm), x)) ? 0 : em_i_d(v, e, m); }
 
 static Co(let_yo_bind) {
   ob y = *v->sp++;
@@ -229,32 +216,30 @@ static Co(let_yo_bind) {
              imx(v, e, m, tbind, y); }
 
 static bool let_yo_r(em v, ob*e, ob x) {
-  bool _ = true;
-  if (twop(x)) {
-    bind(x, rw_let_fn(v, x));
-    with(x, _ = let_yo_r(v, e, BB(x)));
-    bind(_, _);
-    bind(_, Pull(Put(xx_yo_), AB(x), Put(let_yo_bind), A(x))); }
-  return _; }
+  bool _;
+  return !twop(x) ||
+    ((x = rw_let_fn(v, x)) &&
+     (with(x, _ = let_yo_r(v, e, BB(x))), _) &&
+     Pull(Put(xx_yo_), AB(x), Put(let_yo_bind), A(x))); }
 
 // syntactic sugar for define
 static Inline ob def_sug(em v, ob x) {
   ob y = nil;
   with(y, x = linitp(v, x, &y));
-  bind(x, x);
-  bind(x, pair(v, x, y));
-  bind(x, pair(v, v->glob[Seq], x));
-  bind(x, pair(v, x, nil));
-  bind(x, pair(v, v->glob[Lamb], x));
-  return pair(v, x, nil); }
+  return x &&
+    (x = pair(v, x, y)) &&
+    (x = pair(v, v->glob[Seq], x)) &&
+    (x = pair(v, x, nil)) &&
+    (x = pair(v, v->glob[Lamb], x)) ?
+      pair(v, x, nil) :
+      0; }
 
 static Co(let_yo, ob x) {
-  if (!twop(B(x))) return im_yo(v, e, m, nil);
-  if (llen(B(x)) % 2) {
-    bind(x, def_sug(v, x));
-    return xx_yo(v, e, m, x); }
-  bind(x, let_yo_r(v, e, B(x)));
-  return Push(m); }
+  return
+    !twop(B(x)) ? im_yo(v, e, m, nil) :
+    llen(B(x)) % 2 ?
+      (x = def_sug(v, x)) ? xx_yo(v, e, m, x) : 0 :
+    (x = let_yo_r(v, e, B(x))) ? Push(m) : 0; }
 
 // the following functions are "post" or "pre"
 // the antecedent/consequent in the sense of
@@ -264,37 +249,39 @@ static Co(let_yo, ob x) {
 // before generating anything, store the
 // exit address in stack 2
 static Co(if_pf_pre) {
-  ob x;
-  bind(x, (ob) Push(m));
-  bind(x, pair(v, x, s2(*e)));
-  s2(*e) = x;
-  return (yo) A(x); }
+  ob x; return
+    (x = (ob) Push(m)) &&
+    (x = pair(v, x, s2(*e))) ?
+      (s2(*e) = x, (yo) A(x)) :
+      0; }
 
 // before generating a branch emit a jump to
 // the top of stack 2
 static Co(if_pf_pre_con) {
-  yo x, k;
-  bind(x, Push(m + 2));
-  k = (yo) A(s2(*e));
-  return k->ll == ret ? ee1(ret, x) : ee2(jump, (ob) k, x); }
+  yo k, x = Push(m + 2);
+  return !x ? 0 :
+    (k = (yo) A(s2(*e)),
+     k->ll == ret ?
+       ee1(ret, x) :
+       ee2(jump, (ob) k, x)); }
 
 // after generating a branch store its address
 // in stack 1
 static Co(if_pf_post_con) {
-  ob x;
-  bind(x, (ob) Push(m));
-  bind(x, pair(v, x, s1(*e)));
-  s1(*e) = x;
-  return (yo) A(x); }
+  ob x; return
+    (x = (ob) Push(m)) &&
+    (x = pair(v, x, s1(*e))) ?
+      (s1(*e) = x, (yo) A(x)) :
+      0; }
 
 // before generating an antecedent emit a branch to
 // the top of stack 1
 static Co(if_pf_pre_ant) {
-  yo x;
-  bind(x, Push(m+2));
-  x = ee2(branch, A(s1(*e)), x);
-  s1(*e) = B(s1(*e));
-  return x; }
+  yo x = Push(m+2);
+  return !x ? 0 :
+    (x = ee2(branch, A(s1(*e)), x),
+     s1(*e) = B(s1(*e)),
+     x); }
 
 static bool if_pf_loop(em v, ob*e, ob x) {
   bool _;
@@ -315,19 +302,16 @@ static bool if_pf_loop(em v, ob*e, ob x) {
 
 static Co(if_pf, ob x) {
   bool _;
-  with(x, _ = Pull(Put(if_pf_pre)));
-  bind(_, _);
-  bind(_, if_pf_loop(v, e, B(x)));
   yo k;
-  bind(k, Push(m));
-  s2(*e) =  B(s2(*e));
-  return k; }
+  with(x, _ = Pull(Put(if_pf_pre)));
+  return _ && if_pf_loop(v, e, B(x)) && (k = Push(m)) ?
+    (s2(*e) =  B(s2(*e)), k) :
+    0; }
 
 static Co(em_call) {
   ob a = *v->sp++;
-  yo k;
-  bind(k, Push(m + 2));
-  return ee2(k->ll == ret ? rec : call, a, k); }
+  yo k = Push(m + 2);
+  return !k ? 0 : ee2(k->ll == ret ? rec : call, a, k); }
 
 static ob lookup_mod(em v, ob x) {
   return tbl_get(v, v->glob[Topl], x); }
@@ -349,13 +333,12 @@ static Co(var_yo, ob x) {
   y = A(q);
   switch ((enum where) getnum(y)) {
     case Here: return im_yo(v, e, m, B(q));
-    case Wait:
-      bind(x, pair(v, B(q), x));
-      with(x, y = (ob) Push(m+2));
-      bind(y, y);
-      with(y, x = pair(v, putnum(sizeof(ob)), x));
-      bind(x, x);
-      return ee2(lbind, x, (yo) y);
+    case Wait: return
+      (x = pair(v, B(q), x)) &&
+      (with(x, y = (ob) Push(m+2)), y) &&
+      (with(y, x = pair(v, putnum(sizeof(ob)), x)), x) ?
+        ee2(lbind, x, (yo) y) :
+        0;
     default:
       if (B(q) == *e) switch (getnum(y)) {
         case Loc: return imx(v, e, m, loc,
@@ -364,17 +347,16 @@ static Co(var_yo, ob x) {
                            putnum(lidx(arg(*e), x)));
         default:  return imx(v, e, m, clo,
                            putnum(lidx(clo(*e), x))); }
-      else {
-        y = llen(clo(*e));
-        with(x, q = snoc(v, clo(*e), x));
-        bind(q, q);
-        clo(*e) = q;
-        return imx(v, e, m, clo, putnum(y)); } } }
+      else return
+        y = llen(clo(*e)),
+        with(x, q = snoc(v, clo(*e), x)),
+        !q ? 0 : (clo(*e) = q,
+                  imx(v, e, m, clo, putnum(y))); } }
 
 static Co(xx_yo_) { return xx_yo(v, e, m, *v->sp++); }
-static Co(xx_yo, ob x) { return (symp(x) ? var_yo :
-                           twop(x) ? two_yo :
-                                     im_yo)(v, e, m, x); }
+static Co(xx_yo, ob x) { return
+  (symp(x) ? var_yo : twop(x) ? two_yo : im_yo)(v, e, m, x); }
+
 static Co(ap_pf, ob fun, ob args) {
   mm(&args);
   Bind(fun, Pull(
@@ -391,69 +373,66 @@ static Co(ap_pf, ob fun, ob args) {
   return um, NULL; }
 
 static bool seq_yo_loop(em v, ob*e, ob x) {
-  bool _ = true;
-  if (twop(x)) {
-    with(x, _ = seq_yo_loop(v, e, B(x)));
-    bind(_, _);
-    bind(_, Pull(Put(xx_yo_), A(x))); }
-  return _; }
+  bool _;
+  return !twop(x) ? 1 :
+    (with(x, _ = seq_yo_loop(v, e, B(x))), _) &&
+    Pull(Put(xx_yo_), A(x)); }
 
 static Co(two_yo, ob x) {
-  ob z = A(x);
-  if (z == v->glob[Cond]) return if_pf(v, e, m, x);
-  if (z == v->glob[Def]) return let_yo(v, e, m, x);
-  if (z == v->glob[Lamb]) return pf_pf(v, e, m, x);
-  if (z == v->glob[Seq]) {
-    if (!twop(x = B(x))) bind(x, pair(v, x, nil));
-    bind(x, seq_yo_loop(v, e, x));
-    return Push(m); }
-  if (z == v->glob[Quote]) {
-    x = twop(x = B(x)) ? A(x) : x;
-    return im_yo(v, e, m, x); }
-  return ap_pf(v, e, m, A(x), B(x)); }
+  ob z = A(x); return 
+    z == v->glob[Cond] ? if_pf(v, e, m, x) :
+    z == v->glob[Def]  ? let_yo(v, e, m, x) :
+    z == v->glob[Lamb] ? pf_pf(v, e, m, x) :
+
+    z == v->glob[Seq]  ?
+      (twop(x = B(x)) || (x = pair(v, x, nil))) &&
+      (x = seq_yo_loop(v, e, x)) ?
+        Push(m) :
+        0 :
+
+    z == v->glob[Quote] ?
+      (x = twop(x = B(x)) ? A(x) : x,
+       im_yo(v, e, m, x)) :
+
+    ap_pf(v, e, m, A(x), B(x)); }
 
 static Co(em_i) {
   ll* i = (ll*) getnum(*v->sp++);
-  yo k;
-  bind(k, Push(m+1));
-  return ee1(i, k); }
+  yo k = Push(m+1);
+  return !k ? 0 : ee1(i, k); }
 
 static Co(em_i_d) {
   ll* i = (ll*) getnum(*v->sp++);
-  ob x = *v->sp++;
   yo k;
+  ob x = *v->sp++;
   with(x, k = Push(m+2));
-  bind(k, k);
-  return ee2(i, x, k); }
+  return !k ? 0 : ee2(i, x, k); }
 
 static Co(mk_yo) {
-  yo k;
-  bind(k, ini_yo(v, m+1));
-  return ee1((ll*)(e ? name(*e) : nil), k); }
+  yo k = ini_yo(v, m+1);
+  return !k ? 0 : ee1((ll*)(e ? name(*e) : nil), k); }
 
 static ob apply(em, ob, ob) NoInline;
 ob eval(em v, ob x) {
-  ob args;
-  bind(args, pair(v, x, nil));
-  x =  homp(v->glob[Eval]) ?
-    v->glob[Eval] :
-    tbl_get(v, v->glob[Topl], v->glob[Eval]);
-  return apply(v, x, args); }
+  ob args = pair(v, x, nil);
+  return !args ? 0 :
+  (x = homp(v->glob[Eval]) ?
+     v->glob[Eval] : tbl_get(v, v->glob[Topl], v->glob[Eval]),
+   apply(v, x, args)); }
 
 // return to C
 static Ll(yield) { Pack(); return xp; }
 
 static NoInline ob apply(em v, ob f, ob x) {
-  Pull(f, x);
-  yo h;
-  bind(h, cells(v, 5));
-  h[0].ll = call;
-  h[1].ll = (ll*) putnum(2);
-  h[2].ll = yield;
-  h[3].ll = NULL;
-  h[4].ll = (ll*) h;
-  x = tbl_get(v, v->glob[Topl], v->glob[Apply]);
-  return call(v, h, (ob*) v->fp, v->sp, v->hp, x); }
+  yo h; return
+    !Pull(f, x) || !(h = cells(v, 5)) ? 0 :
+      (h[0].ll = call,
+       h[1].ll = (ll*) putnum(2),
+       h[2].ll = yield,
+       h[3].ll = NULL,
+       h[4].ll = (ll*) h,
+       x = tbl_get(v, v->glob[Topl], v->glob[Apply]),
+       call(v, h, (ob*) v->fp, v->sp, v->hp, x)); }
 
 // instructions used by the compiler
 Ll(hom_u) {
@@ -472,19 +451,22 @@ Ll(hom_u) {
 Ll(hfin_u) {
   Arity(1);
   TypeCheck(*Argv, Hom);
-  yo k = (yo) *Argv;
-  button(k)[1].ll = (ll*) k;
-  return ApC(ret, (ob) k); }
+  yo k; return
+    k = (yo) *Argv,
+    button(k)[1].ll = (ll*) k,
+    ApC(ret, (ob) k); }
 
 Ll(emx) {
-  yo k = (yo) *sp++ - 1;
-  k->ll = (ll*) xp;
-  return ApN(1, (ob) k); }
+  yo k; return
+    k = (yo) *sp++ - 1,
+    k->ll = (ll*) xp,
+    ApN(1, (ob) k); }
 
 Ll(emi) {
-  yo k = (yo) *sp++ - 1;
-  k->ll = (ll*) getnum(xp);
-  return ApN(1, (ob) k); }
+  yo k; return
+    k = (yo) *sp++ - 1,
+    k->ll = (ll*) getnum(xp),
+    ApN(1, (ob) k); }
 
 Ll(emx_u) {
  Arity(2);
@@ -524,20 +506,21 @@ ob analyze(em v, ob x) {
 
 Ll(ev_u) {
   Arity(1);
-  if (homp(v->glob[Eval])) return ApY((yo) v->glob[Eval], xp);
-  Pack();
-  bind(v->ip, (yo) analyze(v, *Argv));
-  Unpack();
-  return ApY(ip, xp); }
+  return
+    homp(v->glob[Eval]) ?
+      ApY((yo) v->glob[Eval], xp) :
+    (Pack(),
+     (v->ip = (yo) analyze(v, *Argv)) ?
+       (Unpack(), ApY(ip, xp)) :
+       0); }
 
 Ll(bootstrap) {
   Arity(1);
-  xp = *Argv;
-  TypeCheck(xp, Hom);
-  // neither intern nor tbl_set will allocate if ev is already interned / defined
-  v->glob[Eval] = xp;
-  tbl_set(v, v->glob[Topl], interns(v, "ev"), xp);
-  return ApC(ret, xp); }
+  TypeCheck(*Argv, Hom);
+  return
+    v->glob[Eval] = xp = *Argv, // FIXME neither intern nor tbl_set will allocate if ev is already interned / defined
+    tbl_set(v, v->glob[Topl], interns(v, "ev"), xp),
+    ApC(ret, xp); }
 
 Ll(hnom_u) {
   Arity(1);
@@ -547,13 +530,13 @@ Ll(hnom_u) {
 ob sequence(em v, ob a, ob b) {
   yo h;
   with(a, with(b, h = cells(v, 8)));
-  bind(h, h);
-  h[0].ll = imm;
-  h[1].ll = (ll*) a;
-  h[2].ll = call;
-  h[3].ll = (ll*) N0;
-  h[4].ll = jump;
-  h[5].ll = (ll*) b;
-  h[6].ll = NULL;
-  h[7].ll = (ll*) h;
-  return (ob) h; }
+  return !h ? 0 :
+    (h[0].ll = imm,
+     h[1].ll = (ll*) a,
+     h[2].ll = call,
+     h[3].ll = (ll*) N0,
+     h[4].ll = jump,
+     h[5].ll = (ll*) b,
+     h[6].ll = NULL,
+     h[7].ll = (ll*) h,
+     (ob) h); }
