@@ -314,85 +314,82 @@ static ob tbl_grow(em v, ob t) {
 ob tbl_set_s(em v, ob t, ob k, ob x) {
   uintptr_t i = tbl_idx(gettbl(t)->cap, hash(v, k));
   ent e = tbl_ent(v, t, k);
-  if (e) return e->val = x;
-
+  tbl y;
+  return e ? e->val = x :
+(
   // it's not here, so allocate an entry
-  with(t, with(k, with(x, e = cells(v, Width(ent)))));
-  bind(e, e);
-  tbl y = gettbl(t);
+  with(t, with(k, with(x, e = cells(v, Width(ent))))),
+  !e ? 0 :(
+  y = gettbl(t),
 
-  e->key = k;
-  e->val = x;
-  e->next = y->tab[i];
+  e->key = k,
+  e->val = x,
+  e->next = y->tab[i],
 
-  y->tab[i] = e;
-  y->len += 1;
+  y->tab[i] = e,
+  y->len += 1,
 
-  return x; }
+  x)); }
 
 ob tbl_set(em v, ob t, ob k, ob x) {
   with(t, x = tbl_set_s(v, t, k, x));
-  bind(x, x);
-  if (tbl_load(t) > 1) with(x, t = tbl_grow(v, t));
-  bind(t, t);
-  return x; }
+  return !x ? 0 : tbl_load(t) <= 1 ? x :
+    (with(x, t = tbl_grow(v, t)), t ? x : 0); }
 
 ob tbl_get(em v, ob t, ob k) {
   ent e = tbl_ent(v, t, k);
   return e ? e->val : 0; }
 
 ob table(em v) {
-  tbl t;
-  bind(t, cells(v, Width(tbl) + 1));
+  tbl t = cells(v, Width(tbl) + 1);
   ent *b = (ent*)(t+1);
-  t->len = t->cap = 0, t->tab = b, *b = NULL;
-  return puttbl(t); }
+  return !t ? 0 :
+    (t->len = t->cap = 0,
+     t->tab = b,
+     *b = NULL,
+     puttbl(t)); }
 
 static ob tblkeys_j(em v, ent e, ob l) {
-  if (!e) return l;
-  ob x = e->key;
-  with(x, l = tblkeys_j(v, e->next, l));
-  bind(l, l);
-  return pair(v, x, l); }
+  ob x; return !e ? l :
+    (x = e->key,
+     with(x, l = tblkeys_j(v, e->next, l)),
+     !l ? 0 : pair(v, x, l)); }
 
 static ob tblkeys_i(em v, ob t, intptr_t i) {
-  ob k;
-  if (i == 1 << gettbl(t)->cap) return nil;
-  with(t, k = tblkeys_i(v, t, i+1));
-  bind(k, k);
-  return tblkeys_j(v, gettbl(t)->tab[i], k); }
+  ob k; return i == 1 << gettbl(t)->cap ? nil :
+    (with(t, k = tblkeys_i(v, t, i+1)),
+     !k ? 0 : tblkeys_j(v, gettbl(t)->tab[i], k)); }
 
 Inline ob tblkeys(em v, ob t) { return tblkeys_i(v, t, 0); }
 
 ob string(em v, const char* c) {
   intptr_t bs = 1 + strlen(c);
-  str o;
-  bind(o, cells(v, Width(str) + b2w(bs)));
-  memcpy(o->text, c, o->len = bs);
-  return putstr(o); }
+  str o = cells(v, Width(str) + b2w(bs));
+  return !o ? 0 :
+    memcpy(o->text, c, o->len = bs),
+    putstr(o); }
 
 Vm(tbld) {
   Arity(2);
   TypeCheck(Argv[0], Tbl);
-  CallC(v->xp = tbl_del(v, Argv[0], Argv[1]));
-  return ApC(ret, xp); }
+  return CallC(v->xp = tbl_del(v, Argv[0], Argv[1])),
+         ApC(ret, xp); }
 
 
 // string instructions
 Vm(strl) {
   Arity(1);
   CheckType(*Argv, Str);
-  xp = putnum(getstr(*Argv)->len-1);
-  return ApC(ret, xp); }
+  return ApC(ret, putnum(getstr(*Argv)->len-1)); }
 
 Vm(strg) {
   Arity(2);
   CheckType(Argv[0], Str);
   CheckType(Argv[1], Num);
-  xp = getnum(Argv[1]) < getstr(Argv[0])->len-1 ?
-       putnum(getstr(Argv[0])->text[getnum(Argv[1])]) :
-       nil;
-  return ApC(ret, xp); }
+  return ApC(ret,
+    getnum(Argv[1]) < getstr(Argv[0])->len-1 ?
+      putnum(getstr(Argv[0])->text[getnum(Argv[1])]) :
+      nil); }
 
 Vm(strconc) {
   intptr_t l = getnum(Argc), sum = 0, i = 0;
@@ -406,10 +403,10 @@ Vm(strconc) {
   hp += words;
   d->len = sum + 1;
   d->text[sum] = 0;
-  while (i) {
-    str x = getstr(Argv[--i]);
-    sum -= x->len - 1;
-    memcpy(d->text+sum, x->text, x->len - 1); }
+  for (str x; i;)
+    x = getstr(Argv[--i]),
+    sum -= x->len - 1,
+    memcpy(d->text+sum, x->text, x->len - 1);
   return ApC(ret, putstr(d)); }
 
 #define min(a,b)(a<b?a:b)
@@ -457,42 +454,47 @@ Vm(strmk) {
 // the table and unpredictable memory allocation isn't safe
 // during garbage collection.
 ob interns(em v, const char *s) {
-  ob _;
-  bind(_, string(v, s));
-  return intern(v, _); }
+  ob _ = string(v, s);
+  return !_ ? 0 : intern(v, _); }
 
 
 // FIXME this is too bad
 ob sskc(em v, ob*y, ob x) {
+  int i;
   sym z;
-  if (!nilp(*y)) {
-    z = getsym(*y);
-    int i = strcmp(getstr(z->nom)->text, getstr(x)->text);
-    return i == 0 ? *y : sskc(v, i < 0 ? &z->r : &z->l, x); }
-  // the caller must ensure Avail >= Width(sym) because to GC
-  // here would cause the tree to be rebuilt
-  z = cells(v, Width(sym));
-  z->code = hash(v, z->nom = x) ^ mix;
-  z->l = z->r = nil;
-  return *y = putsym(z); }
+  return !nilp(*y) ?
+    (z = getsym(*y),
+     i = strcmp(getstr(z->nom)->text, getstr(x)->text),
+     i == 0 ? *y : sskc(v, i < 0 ? &z->r : &z->l, x)) :
+    // FIXME the caller must ensure Avail >= Width(sym)
+    // (because GC here would void the tree)
+    (z = cells(v, Width(sym)),
+     z->code = hash(v, z->nom = x) ^ mix,
+     z->l = z->r = nil,
+     *y = putsym(z)); }
 
 ob intern(em v, ob x) {
-  if (Avail < Width(sym)) {
-    bool o;
-    with(x, o = please(v, Width(sym)));
-    bind(o, o); }
-  return sskc(v, &v->syms, x); }
+  bool _; return
+    Avail >= Width(sym) ||
+    (with(x, _ = please(v, Width(sym))), _) ?
+      sskc(v, &v->syms, x) :
+      0; }
 
 Vm(gsym_u) {
-  if (Argc > putnum(0) && strp(*Argv)) {
-    CallC(v->xp = intern(v, *Argv));
-    return ApC(ret, xp); }
-  Have(Width(sym));
-  sym y = (sym) hp;
-  hp += Width(sym);
-  y->nom = y->l = y->r = nil;
-  y->code = v->rand = lcprng(v->rand);
-  return ApC(ret, putsym(y)); }
+  sym y; return 
+    Argc > putnum(0) && strp(*Argv) ?
+      (CallC(v->xp = intern(v, *Argv)),
+       !xp ? 0 : ApC(ret, xp)) :
+
+    sp - hp < Width(sym) ?
+      (v->xp = Width(sym),
+       ApC(gc, xp)) :
+
+    (y = (sym) hp,
+     hp += Width(sym),
+     y->nom = y->l = y->r = nil,
+     y->code = v->rand = lcprng(v->rand),
+     ApC(ret, putsym(y))); }
 
 Vm(ystr_u) {
   Arity(1);
