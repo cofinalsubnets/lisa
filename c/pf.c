@@ -4,21 +4,15 @@
 ////
 /// host embedding
 //
-// FIXME these names may be confusing
-// Pull "pulls back the pushforward"
-// Push "pushes forward the pullback"
+// this phase does no optimization
+//
+// pull back the pushforward
 #define Pull(...) pushs(v, __VA_ARGS__, (ob) 0)
+// push forward the pullback
 #define Push(m) ((c1*)getnum(*v->sp++))(v,e,m)
 
-// this phase does no optimization
 
 // " compilation environments "
-// the current lexical environment is passed to compiler
-// functions as a pointer to an object, either a tuple with a
-// structure specified below, or nil for toplevel. it's a
-// pointer to an object, instead of just an object, so it can
-// be gc-protected once instead of separately by every function.
-// in the other compiler it's just a regular object.
 #define arg(x)  ((ob*)(x))[0] // argument variables : a list
 #define loc(x)  ((ob*)(x))[1] // local variables : a list
 #define clo(x)  ((ob*)(x))[2] // closure variables : a list
@@ -32,14 +26,14 @@
 // signature is n; otherwise it's -n-1.
 
 enum where { Here, Loc, Arg, Clo, Wait };
-#define Co(nom,...) sh nom(em v, ob* e, uintptr_t m, ##__VA_ARGS__)
+#define Pf(nom,...) pf nom(em v, ob* e, uintptr_t m, ##__VA_ARGS__)
 static bool scan(em, ob*, ob);
-typedef Co(c1);
-typedef Co(c2, ob);
-static c1 x_sh_, let_sh_bind, em_i, em_i_d, mk_sh;
-static c2 x_sh, var_sh, two_sh, im_sh;
-static ob sh_sh_clo(em, ob*, ob, ob),
-          sh_sh_lam(em, ob*, ob, ob);
+typedef Pf(c1);
+typedef Pf(c2, ob);
+static c1 x_pf_, let_pf_bind, em_i, em_i_d, mk_pf;
+static c2 x_pf, var_pf, two_pf, im_pf;
+static ob pf_pf_clo(em, ob*, ob, ob),
+          pf_pf_lam(em, ob*, ob, ob);
 
 #define Put(x) putnum((ob)(x))
 
@@ -59,10 +53,10 @@ static bool pushs(em v, ...) {
   va_end(xs);
   return _; }
 
-static Inline sh ee1(ll *i, sh k) {
+static Inline pf ee1(ll *i, pf k) {
   return (--k)->ll = i, k; }
 
-static Inline sh ee2(ll *i, ob x, sh k) {
+static Inline pf ee2(ll *i, ob x, pf k) {
   return ee1(i, ee1((ll*) x, k)); }
 
 // helper functions for lists
@@ -84,31 +78,31 @@ static ob snoc(em v, ob l, ob x) {
   bind(x, x);
   return pair(v, A(l), x); }
 
-static sh ini_sh(em v, uintptr_t n) {
-  sh a;
+static pf ini_pf(em v, uintptr_t n) {
+  pf a;
   bind(a, cells(v, n + 2));
   a[n].ll = NULL;
   a[n+1].ll = (ll*) a;
   setptr((ob*) a, nil, n);
   return a + n; }
 
-static sh tuplr(em v, uintptr_t i, va_list xs) {
+static pf tuplr(em v, uintptr_t i, va_list xs) {
   ob x = va_arg(xs, ob);
-  if (!x) return ini_sh(v, i);
-  sh k;
+  if (!x) return ini_pf(v, i);
+  pf k;
   with(x, k = tuplr(v, i+1, xs));
   bind(k, k);
   return ee1((ll*) x, k); }
 
 static ob tupl(em v, ...) {
-  sh t;
+  pf t;
   va_list xs;
   va_start(xs, v);
   t = tuplr(v, 0, xs);
   va_end(xs);
   return (ob) t; }
 
-static sh imx(em v, ob *e, intptr_t m, ll *i, ob x) {
+static pf imx(em v, ob *e, intptr_t m, ll *i, ob x) {
   bind(x, Pull(Put(i), x));
   return em_i_d(v, e, m); }
 
@@ -165,16 +159,16 @@ static Inline ob new_scope(em v, ob*e, ob a, ob n) {
   return tupl(v, a, nil, nil, e ? *e : nil, n, putnum(s), nil, nil, (ob)0); }
 
 static Inline ob comp_body(em v, ob*e, ob x) {
-  bind(x, Pull(Put(x_sh_), x,
+  bind(x, Pull(Put(x_pf_), x,
                Put(em_i), Put(ret),
-               Put(mk_sh)));
+               Put(mk_pf)));
   scan(v, e, v->sp[1]);
   bind(x, (ob) Push(4)); // 4 = 2 + 2
   intptr_t i = llen(loc(*e));
-  if (i) x = (ob) ee2(locals, putnum(i), (sh) x);
+  if (i) x = (ob) ee2(locals, putnum(i), (pf) x);
   i = getnum(asig(*e));
-  if (i > 0) x = (ob) ee2(arity, putnum(i), (sh) x);
-  else if (i < 0) x = (ob) ee2(vararg, putnum(-i-1), (sh) x);
+  if (i > 0) x = (ob) ee2(arity, putnum(i), (pf) x);
+  else if (i < 0) x = (ob) ee2(vararg, putnum(-i-1), (pf) x);
   button(gethom(x))[1].ll = (ll*) x;
   return twop(clo(*e)) ? pair(v, clo(*e), x) : x; }
 
@@ -183,7 +177,7 @@ static Inline ob comp_body(em v, ob*e, ob x) {
 // (in the former case the car is the list of free variables
 // and the cdr is a hom that assumes the missing variables
 // are available in the closure).
-static Inline ob sh_sh_lam(em v, ob* e, ob n, ob l) {
+static Inline ob pf_pf_lam(em v, ob* e, ob n, ob l) {
   ob y = nil;
   l = B(l);
   mm(&n); mm(&y); mm(&l);
@@ -195,16 +189,16 @@ static Inline ob sh_sh_lam(em v, ob* e, ob n, ob l) {
   return um, um, um, l; fail:
   return um, um, um, 0; }
 
-static Inline ob sh_sh_clo(em v, ob*e, ob arg, ob seq) {
+static Inline ob pf_pf_clo(em v, ob*e, ob arg, ob seq) {
   intptr_t i = llen(arg);
   mm(&arg), mm(&seq);
   bool _;
   Bind(_, Pull(
     Put(em_i_d), Put(take), putnum(i),
-    Put(mk_sh)));
+    Put(mk_pf)));
   while (twop(arg)) {
     Bind(_, Pull(
-      Put(x_sh_), A(arg),
+      Put(x_pf_), A(arg),
       Put(em_i), Put(push)));
     arg = B(arg); }
 
@@ -212,35 +206,35 @@ static Inline ob sh_sh_clo(em v, ob*e, ob arg, ob seq) {
   return um, um, pair(v, seq, arg); fail:
   return um, um, 0; }
 
-static Co(sh_sh, ob x) {
+static Pf(pf_pf, ob x) {
  ll* j = imm;
- ob k, nom = *v->sp == Put(let_sh_bind) ? v->sp[1] : nil;
+ ob k, nom = *v->sp == Put(let_pf_bind) ? v->sp[1] : nil;
  with(nom, with(x, k = (ob) Push(m+2)));
  bind(k, k);
  mm(&k);
- if (twop(x = sh_sh_lam(v, e, nom, x)))
+ if (twop(x = pf_pf_lam(v, e, nom, x)))
    j = e && twop(loc(*e)) ? encll : encln,
-   x = sh_sh_clo(v, e, A(x), B(x));
+   x = pf_pf_clo(v, e, A(x), B(x));
  um;
  bind(x, x);
  return ee2(j, x, (yo) k); }
 
-static Co(im_sh, ob x) {
+static Pf(im_pf, ob x) {
   bind(x, Pull(Put(imm), x));
   return em_i_d(v, e, m); }
 
-static Co(let_sh_bind) {
+static Pf(let_pf_bind) {
   ob y = *v->sp++;
   return e ? imx(v, e, m, loc_, putnum(lidx(loc(*e), y))) :
              imx(v, e, m, tbind, y); }
 
-static bool let_sh_r(em v, ob*e, ob x) {
+static bool let_pf_r(em v, ob*e, ob x) {
   bool _ = true;
   if (twop(x)) {
     bind(x, rw_let_fn(v, x));
-    with(x, _ = let_sh_r(v, e, BB(x)));
+    with(x, _ = let_pf_r(v, e, BB(x)));
     bind(_, _);
-    bind(_, Pull(Put(x_sh_), AB(x), Put(let_sh_bind), A(x))); }
+    bind(_, Pull(Put(x_pf_), AB(x), Put(let_pf_bind), A(x))); }
   return _; }
 
 // syntactic sugar for define
@@ -254,12 +248,12 @@ static Inline ob def_sug(em v, ob x) {
   bind(x, pair(v, v->glob[Lamb], x));
   return pair(v, x, nil); }
 
-static Co(let_sh, ob x) {
-  if (!twop(B(x))) return im_sh(v, e, m, nil);
+static Pf(let_pf, ob x) {
+  if (!twop(B(x))) return im_pf(v, e, m, nil);
   if (llen(B(x)) % 2) {
     bind(x, def_sug(v, x));
-    return x_sh(v, e, m, x); }
-  bind(x, let_sh_r(v, e, B(x)));
+    return x_pf(v, e, m, x); }
+  bind(x, let_pf_r(v, e, B(x)));
   return Push(m); }
 
 // the following functions are "post" or "pre"
@@ -269,7 +263,7 @@ static Co(let_sh, ob x) {
 
 // before generating anything, store the
 // exit address in stack 2
-static Co(if_sh_pre) {
+static Pf(if_pf_pre) {
   ob x;
   bind(x, (ob) Push(m));
   bind(x, pair(v, x, s2(*e)));
@@ -278,7 +272,7 @@ static Co(if_sh_pre) {
 
 // before generating a branch emit a jump to
 // the top of stack 2
-static Co(if_sh_pre_con) {
+static Pf(if_pf_pre_con) {
   yo x, k;
   bind(x, Push(m + 2));
   k = (yo) A(s2(*e));
@@ -286,7 +280,7 @@ static Co(if_sh_pre_con) {
 
 // after generating a branch store its address
 // in stack 1
-static Co(if_sh_post_con) {
+static Pf(if_pf_post_con) {
   ob x;
   bind(x, (ob) Push(m));
   bind(x, pair(v, x, s1(*e)));
@@ -295,41 +289,41 @@ static Co(if_sh_post_con) {
 
 // before generating an antecedent emit a branch to
 // the top of stack 1
-static Co(if_sh_pre_ant) {
+static Pf(if_pf_pre_ant) {
   yo x;
   bind(x, Push(m+2));
   x = ee2(branch, A(s1(*e)), x);
   s1(*e) = B(s1(*e));
   return x; }
 
-static bool if_sh_loop(em v, ob*e, ob x) {
+static bool if_pf_loop(em v, ob*e, ob x) {
   bool _;
   if (!twop(x)) bind(x, pair(v, nil, nil));
   if (!twop(B(x)))
-    return Pull(Put(x_sh_), A(x), Put(if_sh_pre_con));
+    return Pull(Put(x_pf_), A(x), Put(if_pf_pre_con));
   with(x,
     _ = Pull(
-      Put(if_sh_post_con),
-      Put(x_sh_), AB(x),
-      Put(if_sh_pre_con)));
+      Put(if_pf_post_con),
+      Put(x_pf_), AB(x),
+      Put(if_pf_pre_con)));
   bind(_, _);
-  with(x, _ = if_sh_loop(v, e, BB(x)));
+  with(x, _ = if_pf_loop(v, e, BB(x)));
   bind(_, _);
   return Pull(
-    Put(x_sh_), A(x),
-    Put(if_sh_pre_ant)); }
+    Put(x_pf_), A(x),
+    Put(if_pf_pre_ant)); }
 
-static Co(if_sh, ob x) {
+static Pf(if_pf, ob x) {
   bool _;
-  with(x, _ = Pull(Put(if_sh_pre)));
+  with(x, _ = Pull(Put(if_pf_pre)));
   bind(_, _);
-  bind(_, if_sh_loop(v, e, B(x)));
+  bind(_, if_pf_loop(v, e, B(x)));
   yo k;
   bind(k, Push(m));
   s2(*e) =  B(s2(*e));
   return k; }
 
-static Co(em_call) {
+static Pf(em_call) {
   ob a = *v->sp++;
   yo k;
   bind(k, Push(m + 2));
@@ -348,13 +342,13 @@ static ob lookup_lex(em v, ob e, ob y) {
     lidx(clo(e), y) > -1 ? pair(v, putnum(Clo), e) :
     lookup_lex(v, par(e), y); }
 
-static Co(var_sh, ob x) {
+static Pf(var_pf, ob x) {
   ob y, q;
   with(x, q = lookup_lex(v, e ? *e:nil, x));
   bind(q, q);
   y = A(q);
   switch ((enum where) getnum(y)) {
-    case Here: return im_sh(v, e, m, B(q));
+    case Here: return im_pf(v, e, m, B(q));
     case Wait:
       bind(x, pair(v, B(q), x));
       with(x, y = (ob) Push(m+2));
@@ -377,55 +371,54 @@ static Co(var_sh, ob x) {
         clo(*e) = q;
         return imx(v, e, m, clo, putnum(y)); } } }
 
-static Co(x_sh_) { return x_sh(v, e, m, *v->sp++); }
-static Co(x_sh, ob x) { return (symp(x) ? var_sh :
-                           twop(x) ? two_sh :
-                                     im_sh)(v, e, m, x); }
-
-static Co(ap_sh, ob fun, ob args) {
+static Pf(x_pf_) { return x_pf(v, e, m, *v->sp++); }
+static Pf(x_pf, ob x) { return (symp(x) ? var_pf :
+                           twop(x) ? two_pf :
+                                     im_pf)(v, e, m, x); }
+static Pf(ap_pf, ob fun, ob args) {
   mm(&args);
   Bind(fun, Pull(
-    Put(x_sh_), fun,
+    Put(x_pf_), fun,
     Put(em_i), Put(idH),
     Put(em_call), putnum(llen(args))));
   while (twop(args)) {
     Bind(fun, Pull(
-      Put(x_sh_), A(args),
+      Put(x_pf_), A(args),
       Put(em_i), Put(push)));
     args = B(args); }
 
   return um, Push(m); fail:
   return um, NULL; }
 
-static bool seq_sh_loop(em v, ob*e, ob x) {
+static bool seq_pf_loop(em v, ob*e, ob x) {
   bool _ = true;
   if (twop(x)) {
-    with(x, _ = seq_sh_loop(v, e, B(x)));
+    with(x, _ = seq_pf_loop(v, e, B(x)));
     bind(_, _);
-    bind(_, Pull(Put(x_sh_), A(x))); }
+    bind(_, Pull(Put(x_pf_), A(x))); }
   return _; }
 
-static Co(two_sh, ob x) {
+static Pf(two_pf, ob x) {
   ob z = A(x);
-  if (z == v->glob[Cond]) return if_sh(v, e, m, x);
-  if (z == v->glob[Def]) return let_sh(v, e, m, x);
-  if (z == v->glob[Lamb]) return sh_sh(v, e, m, x);
+  if (z == v->glob[Cond]) return if_pf(v, e, m, x);
+  if (z == v->glob[Def]) return let_pf(v, e, m, x);
+  if (z == v->glob[Lamb]) return pf_pf(v, e, m, x);
   if (z == v->glob[Seq]) {
     if (!twop(x = B(x))) bind(x, pair(v, x, nil));
-    bind(x, seq_sh_loop(v, e, x));
+    bind(x, seq_pf_loop(v, e, x));
     return Push(m); }
   if (z == v->glob[Quote]) {
     x = twop(x = B(x)) ? A(x) : x;
-    return im_sh(v, e, m, x); }
-  return ap_sh(v, e, m, A(x), B(x)); }
+    return im_pf(v, e, m, x); }
+  return ap_pf(v, e, m, A(x), B(x)); }
 
-static Co(em_i) {
+static Pf(em_i) {
   ll* i = (ll*) getnum(*v->sp++);
   yo k;
   bind(k, Push(m+1));
   return ee1(i, k); }
 
-static Co(em_i_d) {
+static Pf(em_i_d) {
   ll* i = (ll*) getnum(*v->sp++);
   ob x = *v->sp++;
   yo k;
@@ -433,9 +426,9 @@ static Co(em_i_d) {
   bind(k, k);
   return ee2(i, x, k); }
 
-static Co(mk_sh) {
+static Pf(mk_pf) {
   yo k;
-  bind(k, ini_sh(v, m+1));
+  bind(k, ini_pf(v, m+1));
   return ee1((ll*)(e ? name(*e) : nil), k); }
 
 static ob apply(em, ob, ob) NoInline;
@@ -448,7 +441,7 @@ ob eval(em v, ob x) {
   return apply(v, x, args); }
 
 // return to C
-static Ll(yield) { Pack(); return xp; }
+static Pb(yield) { Pack(); return xp; }
 
 static NoInline ob apply(em v, ob f, ob x) {
   Pull(f, x);
@@ -463,7 +456,7 @@ static NoInline ob apply(em v, ob f, ob x) {
   return call(v, h, (ob*) v->fp, v->sp, v->hp, x); }
 
 // instructions used by the compiler
-Ll(hom_u) {
+Pb(hom_u) {
   Arity(1);
   ob x = *Argv;
   TypeCheck(x, Num);
@@ -476,31 +469,31 @@ Ll(hom_u) {
   k[len-2].ll = NULL;
   return ApC(ret, (ob) (k+len-2)); }
 
-Ll(hfin_u) {
+Pb(hfin_u) {
   Arity(1);
   TypeCheck(*Argv, Hom);
   yo k = (yo) *Argv;
   button(k)[1].ll = (ll*) k;
   return ApC(ret, (ob) k); }
 
-Ll(emx) {
+Pb(emx) {
   yo k = (yo) *sp++ - 1;
   k->ll = (ll*) xp;
   return ApN(1, (ob) k); }
 
-Ll(emi) {
+Pb(emi) {
   yo k = (yo) *sp++ - 1;
   k->ll = (ll*) getnum(xp);
   return ApN(1, (ob) k); }
 
-Ll(emx_u) {
+Pb(emx_u) {
  Arity(2);
  CheckType(Argv[1], Hom);
  yo k = (yo) Argv[1];
  (--k)->ll = (ll*) Argv[0];
  return ApC(ret, (ob) k); }
 
-Ll(emi_u) {
+Pb(emi_u) {
  Arity(2);
  TypeCheck(Argv[0], Num);
  ob h = Argv[1];
@@ -509,27 +502,27 @@ Ll(emi_u) {
  gethom(h)->ll = (ll*) getnum(Argv[0]);
  return ApC(ret, h); }
 
-Ll(hgeti_u) {
+Pb(hgeti_u) {
   Arity(1);
   TypeCheck(*Argv, Hom);
   return ApC(ret, Put(gethom(*Argv)->ll)); }
 
-Ll(hgetx_u) {
+Pb(hgetx_u) {
   Arity(1);
   TypeCheck(*Argv, Hom);
   return ApC(ret, (ob) gethom(*Argv)->ll); }
 
-Ll(hseek_u) {
+Pb(hseek_u) {
   Arity(2);
   TypeCheck(Argv[0], Hom);
   TypeCheck(Argv[1], Num);
   return ApC(ret, puthom(gethom(Argv[0]) + getnum(Argv[1]))); }
 
 ob analyze(em v, ob x) {
-  with(x, Pull(Put(em_i), Put(ret), Put(mk_sh)));
-  return (ob) x_sh(v, NULL, 0, x); }
+  with(x, Pull(Put(em_i), Put(ret), Put(mk_pf)));
+  return (ob) x_pf(v, NULL, 0, x); }
 
-Ll(ev_u) {
+Pb(ev_u) {
   Arity(1);
   if (homp(v->glob[Eval])) return ApY((yo) v->glob[Eval], xp);
   Pack();
@@ -537,7 +530,7 @@ Ll(ev_u) {
   Unpack();
   return ApY(ip, xp); }
 
-Ll(bootstrap) {
+Pb(bootstrap) {
   Arity(1);
   xp = *Argv;
   TypeCheck(xp, Hom);
@@ -546,7 +539,7 @@ Ll(bootstrap) {
   tbl_set(v, v->glob[Topl], interns(v, "ev"), xp);
   return ApC(ret, xp); }
 
-Ll(hnom_u) {
+Pb(hnom_u) {
   Arity(1);
   TypeCheck(*Argv, Hom);
   return ApC(ret, homnom(v, *Argv)); }

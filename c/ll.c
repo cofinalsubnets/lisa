@@ -115,7 +115,7 @@ Br(brgteq,  *sp++ >= xp, GF, xp, FF, nil)
 
 // return from a function
 Ll(ret) {
-  ip = (yo) Retp;
+  ip = (pf) Retp;
   sp = (ob*) ((ob) Argv + Argc - Num);
   fp = (void*) ((ob) sp + Subr - Num);
   return ApY(ip, xp); }
@@ -135,7 +135,7 @@ Ll(call) {
 
 // tail call
 Ll(rec) {
-  ip = (yo) ip[1].ll;
+  ip = (pf) ip[1].ll;
   if (Argc != (ob) ip) return ApC(recne, xp);
   cpyptr(Argv, sp, getnum((ob) ip));
   sp = (ob*) fp;
@@ -144,7 +144,7 @@ Ll(rec) {
 // tail call with different arity
 static Ll(recne) {
  v->xp = Subr;
- v->ip = (yo) Retp; // save return info
+ v->ip = (pf) Retp; // save return info
  fp = (void*) (Argv + getnum(Argc - (ob) ip));
  rcpyptr(fp, sp, getnum((ob) ip)); // copy from high to low
  sp = (ob*) (((fr) fp) - 1);
@@ -184,7 +184,7 @@ Ll(arity) {
   if (reqd <= Argc) return ApN(2, xp);
   else return v->xp = getnum(reqd), ApC(ary_error, xp); }
 
-static Inline void show_call(em v, yo ip, fr fp) {
+static Inline void show_call(em v, pf ip, fr fp) {
   fputc('(', stderr);
   emit(v, (ob) ip, stderr);
   for (uintptr_t i = 0, argc = getnum(fp->argc); i < argc;)
@@ -192,7 +192,7 @@ static Inline void show_call(em v, yo ip, fr fp) {
   fputc(')', stderr); }
 
 NoInline ob err(em v, const char *msg, ...) {
-  yo ip = (yo) v->ip;
+  pf ip = (pf) v->ip;
   fr fp = (fr) v->fp,
      top = (fr) (v->pool + v->len);
 
@@ -212,7 +212,7 @@ NoInline ob err(em v, const char *msg, ...) {
 
   // backtrace
   if (fp < top) for (;;) {
-    ip = (yo) fp->retp;
+    ip = (pf) fp->retp;
     fp = (fr)
       ((ob*) fp +
        Width(fr) +
@@ -229,7 +229,7 @@ NoInline ob err(em v, const char *msg, ...) {
   v->sp = v->pool + v->len;
   v->fp = (fr) v->sp;
   v->xp = nil;
-  v->ip = (yo) nil;
+  v->ip = (pf) nil;
   return 0; }
 
 
@@ -413,11 +413,11 @@ Vm(lbind) {
   if (y != putnum(sizeof(ob))) Tc(xp, getnum(y)); // do the type check
   // omit the arity check if possible
   if (ip[2].ll == call || ip[2].ll == rec) {
-    yo x = gethom(xp);
+    pf x = gethom(xp);
     if (x[0].ll == arity && ip[3].ll >= x[1].ll)
       xp = (ob) (x + 2); }
   ip[0].ll = imm;
-  ip[1].ll = (ll*) xp;
+  ip[1].ll = (pb*) xp;
   return ApN(2, xp); }
 
 // hash tables
@@ -529,7 +529,7 @@ static Ll(clos) {
 // finalize function instance closure
 static Ll(clos1) {
   ip->ll = clos;
-  ip[1].ll = (ll*) xp;
+  ip[1].ll = (pb*) xp;
   return ApY(ip, xp); }
 
 // this function is run the first time a user
@@ -580,29 +580,29 @@ static Vm(encl) {
          t[n+1] = Argv[n]);
     arg = (ob) t; }
 
-  yo t = (yo) block, // compiler thread closure array (1 length 5 elements)
+  pf t = (pf) block, // compiler thread closure array (1 length 5 elements)
      at = t + 6; // compiler thread (1 instruction 2 data 2 tag)
 
-  t[0].ll = (ll*) arg;
-  t[1].ll = (ll*) xp; // Locs or nil
-  t[2].ll = (ll*) Clos;
-  t[3].ll = (ll*) B(x);
+  t[0].ll = (pb*) arg;
+  t[1].ll = (pb*) xp; // Locs or nil
+  t[2].ll = (pb*) Clos;
+  t[3].ll = (pb*) B(x);
   t[4].ll = NULL;
-  t[5].ll = (ll*) t;
+  t[5].ll = (pb*) t;
 
   at[0].ll = clos0;
-  at[1].ll = (ll*) t;
-  at[2].ll = (ll*) A(x);
+  at[1].ll = (pb*) t;
+  at[2].ll = (pb*) A(x);
   at[3].ll = NULL;
-  at[4].ll = (ll*) at;
+  at[4].ll = (pb*) at;
 
   return ApN(2, (ob) at); }
 
-Ll(encll) { return ApC(encl, Locs); }
-Ll(encln) { return ApC(encl, nil); }
+Pb(encll) { return ApC(encl, Locs); }
+Pb(encln) { return ApC(encl, nil); }
 
 NoInline ob homnom(em v, ob x) {
-  ll *k = (ll*) gethom(x)->ll;
+  ll *k = (pb*) gethom(x)->ll;
   if (k == clos || k == clos0 || k == clos1)
     return homnom(v, (ob) gethom(x)[2].ll);
   ob* h = (ob*) gethom(x);

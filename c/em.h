@@ -13,8 +13,7 @@ typedef intptr_t ob; // point
 typedef struct em *em; // embedding
 typedef struct fr *fr; // frame
 typedef struct pf *pf; // pushforward
-// pullback
-// FIXME em sh ob ob* ob* fr
+// pullback // FIXME em pf ob ob* ob* fr
 #define Pb(n, ...)\
   ob n(em v, pf ip, ob*fp, ob*sp, ob*hp, ob xp, ##__VA_ARGS__)
 typedef Pb(pb);
@@ -37,7 +36,7 @@ enum { Def, Cond, Lamb, Quote, Seq, Splat,
        Topl, Macs, Eval, Apply, NGlobs };
 
 struct em {
-  sh ip;
+  pf ip;
   fr fp;
   ob *hp, *sp, xp, // interpreter state
      rand, // random state
@@ -102,8 +101,8 @@ extern const uint32_t *tnoms;
 #define nilp(_) ((_)==nil)
 #define tnom(_) ((const char*)(tnoms+(_)))
 
-#define F(_) ((sh)(_)+1)
-#define G(_) (((sh)(_))->ll)
+#define F(_) ((pf)(_)+1)
+#define G(_) (((pf)(_))->ll)
 
 #define nump(_) (Q(_)==Num)
 #define strp(_) (Q(_)==Str)
@@ -116,7 +115,7 @@ extern const uint32_t *tnoms;
 #define putnum(_) (((_)<<3)+Num)
 #define getstr(_) ((str)((_)-Str))
 #define puthom(_) ((ob)(_))
-#define gethom(_) ((sh)(_))
+#define gethom(_) ((pf)(_))
 #define getsym(_) ((sym)((_)-Sym))
 #define putsym(_) ((ob)(_)+Sym)
 #define gettbl(_) ((tbl)((_)-Tbl))
@@ -234,7 +233,7 @@ typedef pb ll;
 
 #define ApN(n, x) ApY(ip+(n), (x))
 #define ApC(f, x) (f)(v, ip, fp, sp, hp, (x))
-#define ApY(f, x) (ip = (sh)(f), ApC(ip->ll, (x)))
+#define ApY(f, x) (ip = (pf) (f), ApC(ip->ll, (x)))
 
 #define Arity(n) if (putnum(n) > Argc) {\
                    v->xp = n;\
