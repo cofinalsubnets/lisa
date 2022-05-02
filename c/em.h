@@ -11,11 +11,13 @@ _Static_assert(-1 == -1 >> 1, "signed >>");
 
 typedef intptr_t ob; // point
 typedef struct em *em; // embedding
-typedef struct sh *sh; // puSHout
+typedef struct fr *fr; // frame
+typedef struct pf *pf; // pushforward
+// pullback
 // FIXME em sh ob ob* ob* fr
-typedef ob ll(em, sh, ob*, ob*, ob*, ob); // puLLback
-#define Ll(n,...) ob n(em v, sh ip, ob*fp, ob*sp, ob*hp, ob xp, ##__VA_ARGS__)
-typedef struct sh { ll *ll; } *yo;
+#define Pb(n, ...)\
+  ob n(em v, pf ip, ob*fp, ob*sp, ob*hp, ob xp, ##__VA_ARGS__)
+typedef Pb(pb);
 
 // FIXME 3bit -> 2bit
 enum class { Hom = 0, Num = 1, Two = 2, Xxx = 3,
@@ -27,7 +29,8 @@ typedef struct ent { ob key, val; struct ent *next; } *ent; // tables
 typedef struct tbl { uintptr_t len, cap; ent *tab; } *tbl;
 typedef struct two { ob a, b; } *two;
 typedef struct mm { ob *it; struct mm *et; } *mm;
-typedef struct fr { ob clos, retp, subd, argc, argv[]; } *fr;
+struct fr { ob clos, retp, subd, argc, argv[]; };
+typedef struct pf { pb *ll; } *yo, *sh;
 
 // FIXME indices to a global (thread-local) table of constants
 enum { Def, Cond, Lamb, Quote, Seq, Splat,
@@ -179,13 +182,15 @@ static Inline uintptr_t b2w(uintptr_t b) {
  _(symp_u, "symp") _(strp_u, "strp")\
  _(nilp_u, "nilp") _(rnd_u, "rand")
 
-#define ninl(x, _) ll x;
+#define ninl(x, _) pb x;
 insts(ninl)
 #undef ninl
 
-ll gc, type_error, oob_error, ary_error, div_error;
+pb gc, type_error, oob_error, ary_error, div_error;
 
 // " the interpreter "
+typedef pb ll;
+#define Ll Pb
 #define Vm Ll
 // the arguments to a terp function collectively represent the
 // runtime state, and the  return value is the result of the
