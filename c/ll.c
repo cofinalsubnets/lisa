@@ -477,13 +477,12 @@ Vm(tset) {
 
 // pairs
 OP1(car, A(xp)) OP1(cdr, B(xp))
-Vm(cons) {
-  Have1(); return
-    hp[0] = xp,
-    hp[1] = *sp++,
-    xp = puttwo(hp),
-    hp += 2,
-    ApN(1, xp); }
+Vm(cons) { Have1(); return
+  hp[0] = xp,
+  hp[1] = *sp++,
+  xp = puttwo(hp),
+  hp += 2,
+  ApN(1, xp); }
 
 Vm(car_u) {
   Arity(1);
@@ -506,7 +505,7 @@ Ll(cons_u) {
 Ll(take) {
   uintptr_t n = getnum((ob) ip[1].ll);
   Have(n + 2);
-  ob * t = hp; return
+  ob *t = hp; return
     hp += n + 2,
     cpyw(t, sp, n),
     sp += n,

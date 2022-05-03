@@ -312,25 +312,24 @@ static ob lookup_lex(em v, ob e, ob y) {
     lookup_lex(v, par(e), y); }
 
 static Co(var_yo, ob x) { ob y, q; return
-  with(x, q = lookup_lex(v, e ? *e:nil, x)),
-  !q ? 0 : (y = A(q)) == putnum(Here) ?
-     im_yo(v, e, m, B(q)) :
-     y == putnum(Wait) ? (
-      (x = pair(v, B(q), x)) &&
-      (with(x, y = (ob) Pull(m+2)), y) &&
-      (with(y, x = pair(v, putnum(sizeof(ob)), x)), x) ?
-        ee2(lbind, x, (yo) y) :
-        0 ) :
-     B(q) == *e ?
-        y == putnum(Loc) ?
-          imx(v, e, m, loc, putnum(lidx(loc(*e), x))):
-        y == putnum(Arg) ?
-          imx(v, e, m, arg, putnum(lidx(arg(*e), x))) :
-        imx(v, e, m, clo, putnum(lidx(clo(*e), x))) :
-        (y = llen(clo(*e)),
-        with(x, q = snoc(v, clo(*e), x)),
-        !q ? 0 : (clo(*e) = q,
-                  imx(v, e, m, clo, putnum(y)))); }
+  (with(x, q = lookup_lex(v, e ? *e:nil, x)), !q) ? 0 :
+    (y = A(q)) == putnum(Here) ?
+      im_yo(v, e, m, B(q)) :
+    y == putnum(Wait) ?
+      ((x = pair(v, B(q), x)) &&
+       (with(x, y = (ob) Pull(m+2)), y) &&
+       (with(y, x = pair(v, putnum(sizeof(ob)), x)), x) ?
+         ee2(lbind, x, (yo) y) :
+         0) :
+    B(q) == *e ?
+      y == putnum(Loc) ?
+        imx(v, e, m, loc, putnum(lidx(loc(*e), x))) :
+      y == putnum(Arg) ?
+        imx(v, e, m, arg, putnum(lidx(arg(*e), x))) :
+      imx(v, e, m, clo, putnum(lidx(clo(*e), x))) :
+    (y = llen(clo(*e)),
+     with(x, q = snoc(v, clo(*e), x)),
+     !q ? 0 : (clo(*e) = q, imx(v, e, m, clo, putnum(y)))); }
 
 static Co(xx_yo_) { return xx_yo(v, e, m, *v->sp++); }
 static Co(xx_yo, ob x) { return
@@ -338,15 +337,19 @@ static Co(xx_yo, ob x) { return
 
 static Co(ap_yo, ob fun, ob args) {
   mm(&args);
-  if (!Push(Put(xx_yo_), fun,
-            Put(em_i), Put(idH),
-            Put(em_call), putnum(llen(args))))
+  if (!Push(putnum((ob)xx_yo_),
+            fun,
+            putnum((ob)em_i),
+            putnum((ob)idH),
+            putnum((ob)em_call),
+            putnum(llen(args))))
     return um, NULL;
-  for (;twop(args);args=B(args))
-    if (!Push(Put(xx_yo_), A(args),
-              Put(em_i), Put(push)))
+  for (; twop(args); args = B(args))
+    if (!Push(putnum((ob)xx_yo_),
+              A(args),
+              putnum((ob)em_i),
+              putnum((ob)push)))
       return um, NULL;
-
   return um, Pull(m); }
 
 static bool seq_yo_loop(em v, ob*e, ob x) {
@@ -358,17 +361,11 @@ static Co(two_yo, ob x) { ob z = A(x); return
   z == v->glob[Cond] ? if_yo(v, e, m, x) :
   z == v->glob[Def]  ? let_yo(v, e, m, x) :
   z == v->glob[Lamb] ? yo_yo(v, e, m, x) :
-
   z == v->glob[Seq]  ?
     (twop(x = B(x)) || (x = pair(v, x, nil))) &&
-    (x = seq_yo_loop(v, e, x)) ?
-      Pull(m) :
-      0 :
-
+    (x = seq_yo_loop(v, e, x)) ? Pull(m) : 0 :
   z == v->glob[Quote] ?
-    (x = twop(x = B(x)) ? A(x) : x,
-     im_yo(v, e, m, x)) :
-
+    im_yo(v, e, m, twop(B(x)) ? AB(x) : B(x)) :
   ap_yo(v, e, m, A(x), B(x)); }
 
 static Co(em_i) {
