@@ -60,7 +60,6 @@ ob eval(em, ob),
    string(em, const char*),
    // FIXME symbols
    intern(em, ob),
-   interns(em, const char*),
    sskc(em, ob*, ob),
 
    // FIXME tables
@@ -133,6 +132,9 @@ static Inline uintptr_t llen(ob l) {
   while (twop(l)) l = B(l), i++;
   return i; }
 
+static Inline ob interns(em v, const char *s) {
+  ob _ = string(v, s);
+  return !_ ? 0 : intern(v, _); }
 
 #define emsep(v,x,o,s) ((void)(emit(v,x,o),fputc(s,o)))
 
@@ -231,40 +233,40 @@ ll gc, type_error, oob_error, ary_error, div_error;
 #define ApC(f, x) (f)(v, ip, fp, sp, hp, (x))
 #define ApY(f, x) (ip = (yo) (f), ApC(ip->ll, (x)))
 
-#define Arity(n) if (putnum(n) > Argc) {\
-                   v->xp = n;\
-                   return ApC(ary_error, xp); }
-#define CheckType(x,t) if (Q((x)) - (t)) {\
-                         xp=x;\
-                         v->xp=t;\
-                         return ApC(type_error, xp);}
+#define Arity(n)\
+  if (putnum(n) > Argc) return\
+    v->xp = n,\
+    ApC(ary_error, xp)
+#define CheckType(x,t)\
+  if (Q((x)) - (t)) return\
+    xp = x,\
+    v->xp = t,\
+    ApC(type_error, xp)
+
 #define Tc CheckType
 #define TypeCheck Tc
 #define N0 putnum(0)
 
 #define Have1() if (hp == sp) return ApC((v->xp=1,gc), xp)
-#define Have(n) if (sp - hp < n) {\
-                  v->xp = n;\
-                  return ApC(gc, xp); }
+#define Have(n)\
+  if (sp - hp < n) return\
+    v->xp = n,\
+    ApC(gc, xp)
 
-static inline __attribute__((always_inline))
-  void setw(void *_d, intptr_t i, uintptr_t l) {
-    for (intptr_t *d = _d; l--; *d++ = i); }
+static Inline void setw(void *x, intptr_t i, uintptr_t l) {
+  for (intptr_t *d = x; l--; *d++ = i); }
 
-static inline __attribute__((always_inline))
-  void cpyw(void *_d, const void *_s, uintptr_t l) {
-    intptr_t *d = _d;
-    const intptr_t *s = _s;
-    while (l--) *d++ = *s++; }
+static Inline void cpyw(void *x, const void *y, uintptr_t l) {
+  intptr_t *d = x;
+  const intptr_t *s = y;
+  while (l--) *d++ = *s++; }
 
-static inline __attribute__((always_inline))
-  void rcpyw(void *_d, const void *_s, uintptr_t l) {
-    intptr_t *d = _d;
-    const intptr_t *s = _s;
-    while (l--) d[l] = s[l]; }
+static Inline void rcpyw(void *x, const void *y, uintptr_t l) {
+  intptr_t *d = (ob*) x + (l - 1);
+  const intptr_t *s = (const ob*) y + (l - 1);
+  while (l--) *d-- = *s--; }
 
-static inline __attribute__((always_inline))
-  intptr_t lcprng(intptr_t s) {
-    const intptr_t steele_vigna_2021 = 0xaf251af3b0f025b5;
-    return (s * steele_vigna_2021 + 1) >> 8; }
+static Inline intptr_t lcprng(intptr_t s) {
+  const intptr_t steele_vigna_2021 = 0xaf251af3b0f025b5;
+  return (s * steele_vigna_2021 + 1) >> 8; }
 #endif

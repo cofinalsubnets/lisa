@@ -453,9 +453,6 @@ Vm(strmk) {
 // existing code is unsuitable because it dynamically resizes
 // the table and unpredictable memory allocation isn't safe
 // during garbage collection.
-ob interns(em v, const char *s) {
-  ob _ = string(v, s);
-  return !_ ? 0 : intern(v, _); }
 
 
 // FIXME this is too bad
