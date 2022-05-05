@@ -8,6 +8,8 @@
 #include <string.h>
 #include <errno.h>
 
+static em ini(void);
+static void fin(struct em*);
 #ifndef PREFIX
 #define PREFIX
 #endif
@@ -97,7 +99,7 @@ static Inline ob scrp(em v, const char *path) {
     !(x = scrpr(v, in), fclose(in), x) ||
     !(x = pair(v, v->glob[Seq], x)) ? 0 : analyze(v, x); }
 
-void fin(em v) { if (v) free(v->pool), free(v); }
+static void fin(em v) { if (v) free(v->pool), free(v); }
 // initialization helpers
 #define register_inst(a, b) ((b)?prim(v,b,a):inst(v, "i-"#a,a)) &&
 #define def(s, x) (_=interns(v,s)) && tbl_set(v,v->glob[Topl],_,x)
@@ -115,7 +117,7 @@ static NoInline bool prim(em v, const char *a, ll *i) {
       (k[0].ll = i,    k[1].ll = (ll*) nom,
        k[2].ll = NULL, k[3].ll = (ll*) k)); }
 
-em ini(void) {
+static em ini(void) {
   ob _; em v = malloc(sizeof(struct em));
   return !v ? 0 :
     (v->t0 = clock(),

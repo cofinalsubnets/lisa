@@ -34,21 +34,15 @@ enum { Def, Cond, Lamb, Quote, Seq, Splat,
        Topl, Macs, Eval, Apply, NGlobs };
 
 struct em {
-  mm mm;
-  yo ip;
-  fr fp;
+  mm mm; yo ip; fr fp;
   ob *hp, *sp, xp, syms, glob[NGlobs];
   intptr_t rand, t0, len, *pool; };
 
 #include <stdio.h>
 #include <stdbool.h>
 
-em ini(void);
-void fin(struct em*),
-     *cells(em, uintptr_t),
-     emit(em, ob, FILE*);
-bool eql(ob, ob),
-     please(em, uintptr_t);
+void *cells(em, uintptr_t), emit(em, ob, FILE*);
+bool eql(ob, ob), please(em, uintptr_t);
 uintptr_t hash(em, ob);
 ob eval(em, ob),
    // FIXME functions
