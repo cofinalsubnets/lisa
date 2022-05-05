@@ -191,7 +191,7 @@ Ll(arity) {
     (v->xp = getnum(reqd),
      ApC(ary_error, xp)); }
 
-static Inline void show_call(em v, yo ip, fr fp) {
+static void show_call(em v, yo ip, fr fp) {
   fputc('(', stderr);
   emit(v, (ob) ip, stderr);
   for (uintptr_t i = 0, argc = getnum(fp->argc); i < argc;)
@@ -206,27 +206,28 @@ NoInline ob err(em v, const char *msg, ...) {
   // error line
   fputs("# ", stderr);
   if (fp < top) show_call(v, ip, fp), fputs(" : ", stderr);
-  va_list xs;
-  va_start(xs, msg), vfprintf(stderr, msg, xs), va_end(xs);
-  fputc('\n', stderr);
+  va_list xs; va_start(xs, msg),
+    vfprintf(stderr, msg, xs),
+    va_end(xs),
+    fputc('\n', stderr);
 
   // backtrace
   if (fp < top) for (;;) {
     ip = (yo) fp->retp,
-    fp = (fr) ((ob*) fp + Width(fr) + getnum(fp->argc) + getnum(fp->subd));
-
-    if (fp == top) goto out; else
+    fp = (fr) ((ob*) (fp + 1) + getnum(fp->argc)
+                              + getnum(fp->subd));
+    if (fp == top) break; else
       fputs("# in ", stderr),
       show_call(v, ip, fp),
-      fputc('\n', stderr); } out:
+      fputc('\n', stderr); }
 
   // reset and yield
-  return
-    v->sp = v->pool + v->len,
-    v->fp = (fr) v->sp,
-    v->xp = nil,
-    v->ip = (yo) nil,
-    0; }
+  return v->sp = v->pool + v->len,
+         v->fp = (fr) v->sp,
+         v->xp = nil,
+         v->ip = (yo) nil,
+         // FIXME continuation ob em 
+         0; }
 
 
 #define mm_u(_c,_v,_z,op){\

@@ -1,6 +1,5 @@
 #ifndef _em_h
 #define _em_h
-#include "yo.h"
 #include <stdint.h>
 
 // thanks !!
@@ -46,7 +45,9 @@ struct em {
 #include <stdio.h>
 #include <stdbool.h>
 
-void *cells(em, uintptr_t),
+em ini(void);
+void fin(struct em*),
+     *cells(em, uintptr_t),
      emit(em, ob, FILE*);
 bool eql(ob, ob),
      please(em, uintptr_t);
