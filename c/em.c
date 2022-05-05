@@ -18,79 +18,77 @@
 #define SUFF
 #endif
 
-#define BOOT PREFIX "/lib/" NOM "/" NOM "." SUFF
-static int gate(bool, const char*, const char **);
-
-// unpack state & jump into thread
+static em from(bool, const char*, const char**);
 static NoInline ob go(em v) {
   yo ip; ob *fp; ob xp, *sp, *hp;
   return Unpack(), ApY(ip, xp); }
 
 int main(int argc, char **argv) {
-  const char *help =
-    "usage: %s [options and scripts]\n"
-    "with no arguments, start a repl\n"
-    "options:\n"
-    "  -h print this message\n"
-    "  -i start repl unconditionally\n"
-    "  -_ don't bootstrap\n"
-    ;
-  for (bool shell = argc == 1, boot = true;;)
+  const char *boot = PREFIX "/lib/" NOM "/" NOM "." SUFF,
+    *help =
+      "usage: %s [options and scripts]\n"
+      "with no arguments, start a repl\n"
+      "options:\n"
+      "  -h print this message\n"
+      "  -i start repl unconditionally\n"
+      "  -_ don't bootstrap\n"
+      ;
+  for (bool shell = argc == 1;;)
     switch (getopt(argc, argv, "hi_")) {
       default: return EXIT_FAILURE;
       case 'h': fprintf(stdout, help, *argv); continue;
       case 'i': shell = true; continue;
-      case '_': boot = false; continue;
-      case -1: return argc == optind && !shell ? EXIT_SUCCESS :
-        gate(shell, boot ? BOOT : NULL,  (const char **) (argv + optind)); } }
+      case '_': boot = NULL; continue;
+      case -1:
+        if (argc == optind && !shell) return EXIT_SUCCESS;
+        em v = from(shell, boot, (const char **) argv + optind);
+        return v && go(v) ? EXIT_SUCCESS : EXIT_FAILURE; } }
 
-static ob scrp(em, const char*);
-static yo compose_process(em, bool, const char**);
+static ob seq(em v, ob a, ob b) {
+  yo k; with(a, with(b, k = cells(v, 8)));
+  return !k ? 0 : (ob)
+    (k[0].ll = imm,  k[1].ll = (ll*) a,
+     k[2].ll = call, k[3].ll = (ll*) N0,
+     k[4].ll = jump, k[5].ll = (ll*) b,
+     k[6].ll = NULL, k[7].ll = (ll*) k); }
 
 static Vm(fin_ok) { return fin(v), nil; }
 static Vm(repl) {
   for (Pack();;) {
     if ((xp = parse(v, stdin))) {
-      if ((xp = eval(v, xp))) emsep(v, xp, stdout, '\n'); }
+      if ((xp = eval(v, xp))) 
+        emit(v, xp, stdout), fputc('\n', stdout); }
     else if (feof(stdin)) return fin(v), nil; } }
 
-// compose_process : yo em u1 strs
-static yo compose_process
-  (em v, bool shell, const char **paths) {
-    const char *path = *paths;
-    yo k; ob x, y; return
-      !path ? !(k = cells(v, 3)) ? 0 :
-                 (k[0].ll = shell ? repl : fin_ok,
-                  k[1].ll = 0, k[2].ll = (ll*) k, k) :
-      !(y = (ob) compose_process(v, shell, paths+1)) ||
-      !(with(y, x = scrp(v, path)), x) ? 0 :
-        (yo) sequence(v, x, y); }
+static ob scrp(em, const char*);
+static yo comp(em v, bool shell, const char **paths) {
+  const char *path = *paths;
+  yo k; ob x, y; return
+    !path ? !(k = cells(v, 3)) ? 0 :
+               (k[0].ll = shell ? repl : fin_ok,
+                k[1].ll = 0, k[2].ll = (ll*) k, k) :
+    (y = (ob) comp(v, shell, paths+1)) &&
+    (with(y, x = scrp(v, path)), x) ?  (yo) seq(v, x, y) : 0; }
 
 
 static em from
   (bool shell, const char *boot, const char **paths) {
     em v = ini(); return 
-      !(v->ip = (yo) compose_process(v, shell, paths)) ? 0 :
+      !(v->ip = (yo) comp(v, shell, paths)) ? 0 :
       !boot ? v :
       !(v->xp = scrp(v, boot)) ||
-      !(v->ip = (yo) sequence(v, v->xp, (ob) v->ip)) ? 0 : v; }
-
-static int gate
-  (bool shell, const char *boot, const char **paths) {
-    em v = from(shell, boot, paths); return
-      v && go(v) ? EXIT_SUCCESS : EXIT_FAILURE; }
-
+      !(v->ip = (yo) seq(v, v->xp, (ob) v->ip)) ? 0 : v; }
 // functions to compile scripts into a program
 //
 // scrpr : two em stream
 static ob scrpr(em v, FILE *in) {
   ob y, x = parse(v, in);
   return !x ? feof(in) ? nil : 0 :
-    (x = pair(v, x, nil)) &&
-    (x = pair(v, v->glob[Quote], x)) &&
-    (x = pair(v, x, nil)) &&
-    (x = pair(v, v->glob[Eval], x)) &&
-    (with(x, y = scrpr(v, in)), y) ? pair(v, x, y) : 0; }
+    !(x = pair(v, x, nil)) ||
+    !(x = pair(v, v->glob[Quote], x)) ||
+    !(x = pair(v, x, nil)) ||
+    !(x = pair(v, v->glob[Eval], x)) ||
+    !(with(x, y = scrpr(v, in)), y) ? 0 : pair(v, x, y); }
 
 // scrp : yo em str
 static Inline ob scrp(em v, const char *path) {
@@ -109,15 +107,13 @@ static NoInline bool inst(em v, const char *a, ll *b) {
     !!tbl_set(v, v->glob[Topl], z, putnum((ob) b)); }
 
 static NoInline bool prim(em v, const char *a, ll *i) {
-  ob nom; yo prim; return
+  ob nom; yo k; return
     !(nom = interns(v, a)) ||
     !(nom = pair(v, nom, nil)) ||
-    !(with(nom, prim = cells(v, 4)), prim) ? 0 :
-      (prim[0].ll = i,
-       prim[1].ll = (ll*) nom,
-       prim[2].ll = NULL,
-       prim[3].ll = (ll*) prim,
-       !!tbl_set(v, v->glob[Topl], A(nom), (ob) prim)); }
+    !(with(nom, k = cells(v, 4)), k) ? 0 :
+    !!tbl_set(v, v->glob[Topl], A(nom), (ob)
+      (k[0].ll = i,    k[1].ll = (ll*) nom,
+       k[2].ll = NULL, k[3].ll = (ll*) k)); }
 
 em ini(void) {
   ob _; em v = malloc(sizeof(struct em));

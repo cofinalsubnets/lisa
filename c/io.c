@@ -163,7 +163,8 @@ Ll(show_u) {
   uintptr_t i, l = getnum(Argc);
   if (l) {
     for (i = 0; i < l - 1; i++)
-      emsep(v, Argv[i], stdout, ' ');
+      emit(v, Argv[i], stdout),
+      fputc(' ', stdout);
     emit(v, xp = Argv[i], stdout); }
   return fputc('\n', stdout),
          ApC(ret, xp); }

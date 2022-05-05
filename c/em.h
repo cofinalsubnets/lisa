@@ -8,10 +8,10 @@
 _Static_assert(sizeof(intptr_t) == 8, "64bit");
 _Static_assert(-1 == -1 >> 1, "signed >>");
 
-typedef intptr_t ob; // point
-typedef struct yo *yo; // point embedding
-typedef struct em *em; // host
-typedef struct fr *fr; // frame
+typedef intptr_t ob;
+typedef struct yo *yo;
+typedef struct em *em;
+typedef struct fr *fr;
 #define Ll(n, ...)\
   ob n(em v, yo ip, ob*fp, ob*sp, ob*hp, ob xp, ##__VA_ARGS__)
 typedef Ll(ll);
@@ -34,13 +34,11 @@ enum { Def, Cond, Lamb, Quote, Seq, Splat,
        Topl, Macs, Eval, Apply, NGlobs };
 
 struct em {
+  mm mm;
   yo ip;
   fr fp;
-  ob *hp, *sp, xp, // interpreter state
-     rand, // random state
-     syms, glob[NGlobs],
-     t0, len, *pool; // memory state
-  mm mm; }; // gc protection list
+  ob *hp, *sp, xp, syms, glob[NGlobs];
+  intptr_t rand, t0, len, *pool; };
 
 #include <stdio.h>
 #include <stdbool.h>
@@ -55,7 +53,6 @@ uintptr_t hash(em, ob);
 ob eval(em, ob),
    // FIXME functions
    analyze(em, ob),
-   sequence(em, ob, ob),
    homnom(em, ob),
    // FIXME strings
    string(em, const char*),
@@ -137,11 +134,8 @@ static Inline ob interns(em v, const char *s) {
   ob _ = string(v, s);
   return !_ ? 0 : intern(v, _); }
 
-#define emsep(v,x,o,s) ((void)(emit(v,x,o),fputc(s,o)))
-
 static Inline uintptr_t b2w(uintptr_t b) {
   return b / sizeof(ob) + (b % sizeof(ob) && 1); }
-
 
 #define insts(_)\
  _(tget, 0) _(tset, 0) _(thas, 0) _(tlen, 0) _(arity, 0)\
@@ -186,7 +180,7 @@ static Inline uintptr_t b2w(uintptr_t b) {
 insts(ninl)
 #undef ninl
 
-ll gc, type_error, oob_error, ary_error, div_error;
+ll gc, type_error, ary_error, div_error;
 
 // " the interpreter "
 #define Vm Ll
@@ -234,25 +228,17 @@ ll gc, type_error, oob_error, ary_error, div_error;
 #define ApC(f, x) (f)(v, ip, fp, sp, hp, (x))
 #define ApY(f, x) (ip = (yo) (f), ApC(ip->ll, (x)))
 
-#define Arity(n)\
-  if (putnum(n) > Argc) return\
-    v->xp = n,\
-    ApC(ary_error, xp)
-#define CheckType(x,t)\
-  if (Q((x)) - (t)) return\
-    xp = x,\
-    v->xp = t,\
-    ApC(type_error, xp)
+#define Arity(n) if (putnum(n) > Argc) return\
+  ApC(ary_error, putnum(n))
+#define TypeCheck(x,t) if (Q((x)) - (t)) return\
+  ApC(type_error, putnum((t << 3) | Q(x)))
+#define Have1() if (hp == sp) return ApC((v->xp=1, gc), xp)
+#define Have(n) if (sp - hp < n) return ApC((v->xp=n, gc), xp)
 
-#define Tc CheckType
-#define TypeCheck Tc
+#define Tc TypeCheck
+#define CheckType TypeCheck
 #define N0 putnum(0)
 
-#define Have1() if (hp == sp) return ApC((v->xp=1,gc), xp)
-#define Have(n)\
-  if (sp - hp < n) return\
-    v->xp = n,\
-    ApC(gc, xp)
 
 static Inline void setw(void *x, intptr_t i, uintptr_t l) {
   for (intptr_t *d = x; l--; *d++ = i); }

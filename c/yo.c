@@ -475,38 +475,21 @@ ob analyze(em v, ob x) {
   return (ob) xx_yo(v, NULL, 0, x); }
 
 Ll(ev_u) {
-  Arity(1);
-  return
-    homp(v->glob[Eval]) ?
-      ApY((yo) v->glob[Eval], xp) :
-    (Pack(),
-     (v->ip = (yo) analyze(v, *Argv)) ?
-       (Unpack(), ApY(ip, xp)) :
-       0); }
+  Arity(1); return
+    homp(v->glob[Eval]) ? ApY((yo) v->glob[Eval], xp) :
+    !(Pack(), v->ip = (yo) analyze(v, *Argv)) ? 0 :
+    (Unpack(), ApY(ip, xp)); }
 
 Ll(bootstrap) {
   Arity(1);
   TypeCheck(*Argv, Hom);
   return
-    v->glob[Eval] = xp = *Argv, // FIXME neither intern nor tbl_set will allocate if ev is already interned / defined
-    tbl_set(v, v->glob[Topl], interns(v, "ev"), xp),
-    ApC(ret, xp); }
+    v->glob[Eval] = xp = *Argv,
+    xp = interns(v, "ev"),
+    tbl_set(v, v->glob[Topl], xp, v->glob[Eval]),
+    ApC(ret, v->glob[Eval]); }
 
 Ll(hnom_u) {
   Arity(1);
   TypeCheck(*Argv, Hom);
   return ApC(ret, homnom(v, *Argv)); }
-
-ob sequence(em v, ob a, ob b) {
-  yo h;
-  with(a, with(b, h = cells(v, 8)));
-  return !h ? 0 :
-    (h[0].ll = imm,
-     h[1].ll = (ll*) a,
-     h[2].ll = call,
-     h[3].ll = (ll*) N0,
-     h[4].ll = jump,
-     h[5].ll = (ll*) b,
-     h[6].ll = NULL,
-     h[7].ll = (ll*) h,
-     (ob) h); }

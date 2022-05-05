@@ -1,4 +1,5 @@
 #include <stdarg.h>
+#include <string.h>
 #include "em.h"
 
 #define N1 putnum(1)
@@ -164,32 +165,25 @@ Ll(fail) { return Pack(), err(v, "fail"); }
 
 #define type_err_msg "wrong type : %s for %s"
 Ll(type_error) {
-  enum class exp = v->xp, act = Q(xp);
+  int q = getnum(xp);
+  enum class act = Q(q), exp = q >> 3;
   return Pack(), err(v, type_err_msg, tnom(act), tnom(exp)); }
-
-Ll(oob_error) {
-  ob a = v->xp, b = (ob) v->ip;
-  return Pack(), err(v, "oob : %d >= %d", a, b); }
 
 #define arity_err_msg "wrong arity : %d of %d"
 Ll(ary_error) {
-  ob a = getnum(Argc), b = v->xp;
-  return Pack(), err(v, arity_err_msg, a, b); }
+  return Pack(),
+         err(v, arity_err_msg, getnum(Argc), getnum(xp)); }
 
 Ll(div_error) { return Pack(), err(v, "/ 0"); }
 
 // type/arity checking
 #define DTc(n, t) Ll(n) {\
-  if (Q(xp-t)==0) return ApN(1, xp);\
-  return v->xp = t, ApC(type_error, xp); }
+  TypeCheck(xp, t); return ApN(1, xp); }
 DTc(idZ, Num) DTc(idH, Hom)
 DTc(idT, Tbl) DTc(id2, Two)
 Ll(arity) {
   ob reqd = (ob) ip[1].ll;
-  return reqd <= Argc ?
-    ApN(2, xp) :
-    (v->xp = getnum(reqd),
-     ApC(ary_error, xp)); }
+  return reqd <= Argc ?  ApN(2, xp) : ApC(ary_error, reqd); }
 
 static void show_call(em v, yo ip, fr fp) {
   fputc('(', stderr);
@@ -305,7 +299,6 @@ UBINOP(bor, 0, |)
 UBINOP(bxor, 0, ^)
 UBINOP(mul, 1, *)
 UBINOP(band, -1, &)
-#include <string.h>
 
 static NoInline bool eql_(ob a, ob b) { return eql(a, b); }
 
