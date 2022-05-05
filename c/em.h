@@ -27,7 +27,7 @@ typedef struct tbl { uintptr_t len, cap; ent *tab; } *tbl;
 typedef struct two { ob a, b; } *two;
 typedef struct mm { ob *it; struct mm *et; } *mm;
 struct fr { ob clos, retp, subd, argc, argv[]; };
-typedef struct yo { ll *ll; } *yo, *sh;
+typedef struct yo { ll *ll; } *sh;
 
 // FIXME indices to a global (thread-local) table of constants
 enum { Def, Cond, Lamb, Quote, Seq, Splat,
@@ -44,21 +44,18 @@ struct em {
 void *cells(em, uintptr_t), emit(em, ob, FILE*);
 bool eql(ob, ob), please(em, uintptr_t);
 uintptr_t hash(em, ob);
+yo ana(em, ob);
 ob eval(em, ob),
    // FIXME functions
-   analyze(em, ob),
    homnom(em, ob),
    // FIXME strings
    string(em, const char*),
    // FIXME symbols
    intern(em, ob),
-   sskc(em, ob*, ob),
 
    // FIXME tables
    table(em),
-   tblkeys(em, ob),
    tbl_set(em, ob, ob, ob),
-   tbl_set_s(em, ob, ob, ob),
    tbl_get(em, ob, ob),
 
    pair(em, ob, ob),
@@ -137,7 +134,7 @@ static Inline uintptr_t b2w(uintptr_t b) {
  _(arg, 0) _(clo, 0) _(loc, 0) _(take, 0) _(locals, 0)\
  _(loc_, 0) _(encll, 0) _(encln, 0) _(ret, 0)\
  _(jump, 0) _(branch, 0) _(barnch, 0) _(call, 0) _(rec, 0)\
- _(lbind, 0) _(sar, 0) _(sal, 0) _(band, 0) _(bor, 0)\
+ _(rslv, 0) _(sar, 0) _(sal, 0) _(band, 0) _(bor, 0)\
  _(bxor, 0) _(tbind, 0) _(push, 0) _(add, 0) _(sub, 0)\
  _(mul, 0) _(dqv, 0) _(mod, 0) _(neg, 0) _(lt, 0)\
  _(lteq, 0) _(eq, 0) _(gteq, 0) _(gt, 0) _(twopp, 0)\

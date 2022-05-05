@@ -10,11 +10,11 @@
 
 static em ini(void);
 static void fin(struct em*);
-#ifndef PREFIX
-#define PREFIX
+#ifndef PREF
+#define PREF
 #endif
-#ifndef NOM
-#define NOM
+#ifndef LANG
+#define LANG
 #endif
 #ifndef SUFF
 #define SUFF
@@ -26,7 +26,7 @@ static NoInline ob go(em v) {
   return Unpack(), ApY(ip, xp); }
 
 int main(int argc, char **argv) {
-  const char *boot = PREFIX "/lib/" NOM "/" NOM "." SUFF,
+  const char *boot = PREF "/lib/" LANG "/" LANG "." SUFF,
     *help =
       "usage: %s [options and scripts]\n"
       "with no arguments, start a repl\n"
@@ -97,7 +97,7 @@ static Inline ob scrp(em v, const char *path) {
   ob x; FILE *in = fopen(path, "r");
   return !in ? err(v, "%s : %s", path, strerror(errno)) :
     !(x = scrpr(v, in), fclose(in), x) ||
-    !(x = pair(v, v->glob[Seq], x)) ? 0 : analyze(v, x); }
+    !(x = pair(v, v->glob[Seq], x)) ? 0 : (ob) ana(v, x); }
 
 static void fin(em v) { if (v) free(v->pool), free(v); }
 // initialization helpers

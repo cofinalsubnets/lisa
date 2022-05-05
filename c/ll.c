@@ -387,26 +387,27 @@ Vm(locals) {
     *--sp = t[n+1] = (ob) t,
     ApN(2, xp); }
 
+#define R(x) ((ob*)(x))
 // late binding
 // long b/c it does the "static" type and arity checks
 // that would have been done by the compiler if the function
 // had been bound early.
-Vm(lbind) {
+Vm(rslv) {
   ob w = (ob) ip[1].ll, d = AB(w), y = A(w);
   if (!(w = tbl_get(v, d, xp = BB(w)))) {
     char *nom = nilp(getsym(xp)->nom) ? "()" : getstr(getsym(xp)->nom)->text;
-    return Pack(), err(v, "free variable : %s", nom); }
+    return Pack(),
+           err(v, "free variable : %s", nom); }
   xp = w;
-  if (y != putnum(sizeof(ob))) Tc(xp, getnum(y)); // do the type check
+  if (y != putnum(sizeof(ob))) TypeCheck(xp, getnum(y));
   // omit the arity check if possible
-  if (ip[2].ll == call || ip[2].ll == rec) {
-    yo x = gethom(xp);
-    if (x[0].ll == arity && ip[3].ll >= x[1].ll)
-      xp = (ob) (x + 2); }
-  return
-    ip[0].ll = imm,
-    ip[1].ll = (ll*) xp,
-    ApN(2, xp); }
+  if ((ip[2].ll == call || ip[2].ll == rec) && // xp will be a hom
+      R(xp)[0] == (ob) arity &&
+      R(ip)[3] >= R(xp)[1])
+    xp = (ob) (R(xp) + 2);
+  return ip[0].ll = imm,
+         ip[1].ll = (ll*) xp,
+         ApN(2, xp); }
 
 // hash tables
 Vm(tblg) {
@@ -419,8 +420,22 @@ OP1(tget, (xp = tbl_get(v, xp, *sp++)) ? xp : nil)
 OP1(thas, tbl_get(v, xp, *sp++) ? N1 : nil)
 OP1(tlen, putnum(gettbl(xp)->len))
 
+static ob tbl_keys_j(em v, ent e, ob l) {
+  ob x; return !e ? l :
+    (x = e->key,
+     with(x, l = tbl_keys_j(v, e->next, l)),
+     !l ? 0 : pair(v, x, l)); }
+
+static ob tbl_keys_i(em v, ob t, intptr_t i) {
+  ob k; return i == 1 << gettbl(t)->cap ? nil :
+    (with(t, k = tbl_keys_i(v, t, i+1)),
+     !k ? 0 : tbl_keys_j(v, gettbl(t)->tab[i], k)); }
+
+static Inline ob tbl_keys(em v, ob t) {
+  return tbl_keys_i(v, t, 0); }
+
 Vm(tkeys) { return
-  CallC(v->xp = tblkeys(v, xp)),
+  CallC(v->xp = tbl_keys(v, xp)),
   !xp ? 0 : ApN(1, xp); }
 
 Vm(tblc) {
@@ -454,9 +469,8 @@ Vm(tblmk) {
 Vm(tblks) {
   Arity(1);
   TypeCheck(*Argv, Tbl);
-  return
-    CallC(v->xp = tblkeys(v, *Argv)),
-    !xp ? 0 : ApC(ret, xp); }
+  return CallC(v->xp = tbl_keys(v, *Argv)),
+         !xp ? 0 : ApC(ret, xp); }
 
 Vm(tbll) {
   Arity(1);
@@ -587,7 +601,7 @@ static Vm(encl) {
 Ll(encll) { return ApC(encl, Locs); }
 Ll(encln) { return ApC(encl, nil); }
 
-NoInline ob homnom(em v, ob x) {
+ob homnom(em v, ob x) {
   ll *k = (ll*) gethom(x)->ll;
   if (k == clos || k == clos0 || k == clos1)
     return homnom(v, (ob) gethom(x)[2].ll);

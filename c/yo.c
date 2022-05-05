@@ -319,7 +319,7 @@ static Co(var_yo, ob x) { ob y, q; return
       ((x = pair(v, B(q), x)) &&
        (with(x, y = (ob) Pull(m+2)), y) &&
        (with(y, x = pair(v, putnum(sizeof(ob)), x)), x) ?
-         ee2(lbind, x, (yo) y) :
+         ee2(rslv, x, (yo) y) :
          0) :
     B(q) == *e ?
       y == putnum(Loc) ?
@@ -470,15 +470,15 @@ Ll(hseek_u) {
   TypeCheck(Argv[1], Num);
   return ApC(ret, puthom(gethom(Argv[0]) + getnum(Argv[1]))); }
 
-ob analyze(em v, ob x) {
-  with(x, Push(Put(em_i), Put(ret), Put(mk_yo)));
-  return (ob) xx_yo(v, NULL, 0, x); }
+yo ana(em v, ob x) { return
+  with(x, Push(Put(em_i), Put(ret), Put(mk_yo))),
+  xx_yo(v, NULL, 0, x); }
 
 Ll(ev_u) {
   Arity(1); return
     homp(v->glob[Eval]) ? ApY((yo) v->glob[Eval], xp) :
-    !(Pack(), v->ip = (yo) analyze(v, *Argv)) ? 0 :
-    (Unpack(), ApY(ip, xp)); }
+    (Pack(), v->ip = ana(v, *Argv)) ?
+      (Unpack(), ApY(ip, xp)) : 0; }
 
 Ll(bootstrap) {
   Arity(1);

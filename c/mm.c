@@ -13,6 +13,8 @@ static copier
 static Inline Gc(cp) { return copiers[Q(x)](v, x, len0, pool0); }
 static Gc(cpid) { return x; }
 
+static ob sskc(em, ob*, ob);
+
 // the exact method for copying an object into
 // the new pool depends on its type. copied
 // objects are used to store pointers to their
@@ -311,7 +313,7 @@ static ob tbl_grow(em v, ob t) {
   gettbl(t)->cap = cap1, gettbl(t)->tab = tab1;
   return t; }
 
-ob tbl_set_s(em v, ob t, ob k, ob x) {
+static ob tbl_set_s(em v, ob t, ob k, ob x) {
   uintptr_t i = tbl_idx(gettbl(t)->cap, hash(v, k));
   ent e = tbl_ent(v, t, k);
   tbl y;
@@ -348,19 +350,6 @@ ob table(em v) {
      t->tab = b,
      *b = NULL,
      puttbl(t)); }
-
-static ob tblkeys_j(em v, ent e, ob l) {
-  ob x; return !e ? l :
-    (x = e->key,
-     with(x, l = tblkeys_j(v, e->next, l)),
-     !l ? 0 : pair(v, x, l)); }
-
-static ob tblkeys_i(em v, ob t, intptr_t i) {
-  ob k; return i == 1 << gettbl(t)->cap ? nil :
-    (with(t, k = tblkeys_i(v, t, i+1)),
-     !k ? 0 : tblkeys_j(v, gettbl(t)->tab[i], k)); }
-
-Inline ob tblkeys(em v, ob t) { return tblkeys_i(v, t, 0); }
 
 ob string(em v, const char* c) {
   intptr_t bs = 1 + strlen(c);
@@ -445,6 +434,7 @@ Vm(strmk) {
 
 //symbols
 
+// FIXME this is bad
 // symbols are interned into a binary search tree. we make no
 // attempt to keep it balanced but it gets rebuilt in somewhat
 // unpredictable order every gc cycle so hopefully that should
@@ -453,10 +443,7 @@ Vm(strmk) {
 // existing code is unsuitable because it dynamically resizes
 // the table and unpredictable memory allocation isn't safe
 // during garbage collection.
-
-
-// FIXME this is too bad
-ob sskc(em v, ob*y, ob x) {
+static ob sskc(em v, ob*y, ob x) {
   int i;
   sym z;
   return !nilp(*y) ?
