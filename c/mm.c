@@ -152,10 +152,9 @@ Gc(cphom) {
   j[0].ll = NULL, j[1].ll = (ll*) dst;
   for (ob u; j-- > dst;)
     u = (ob) j->ll,
-    u = !stale(u) ? u :
-    cp(v, u, len0, pool0),
+    u = !stale(u) ? u : cp(v, u, len0, pool0),
     j->ll = (ll*) u;
-  return (ob) (dst + (src - start)); }
+  return (ob) (src - start + dst); }
 
 Gc(cpstr) {
   str dst, src = getstr(x);
@@ -294,9 +293,7 @@ static ob tbl_del(em v, ob t, ob key) {
       l->next = l->next->next;
       y->len--;
       break; }
-  y->tab[b] = prev.next;
-  tbl_fit(v, t);
-  return val; }
+  return y->tab[b] = prev.next, tbl_fit(v, t), val; }
 
 
 // tbl_grow(vm, tbl, new_size): destructively resize a hash table.
@@ -316,28 +313,21 @@ static ob tbl_grow(em v, ob t) {
       i = tbl_idx(cap1, hash(v, e->key)),
       e->next = tab1[i], tab1[i] = e);
 
-  gettbl(t)->cap = cap1, gettbl(t)->tab = tab1;
-  return t; }
+  return gettbl(t)->cap = cap1, gettbl(t)->tab = tab1, t; }
 
 static ob tbl_set_s(em v, ob t, ob k, ob x) {
-  uintptr_t i = tbl_idx(gettbl(t)->cap, hash(v, k));
-  ent e = tbl_ent(v, t, k);
   tbl y;
+  ent e = tbl_ent(v, t, k);
+  uintptr_t i = tbl_idx(gettbl(t)->cap, hash(v, k));
   return e ? e->val = x :
-(
-  // it's not here, so allocate an entry
-  with(t, with(k, with(x, e = cells(v, Width(ent))))),
-  !e ? 0 :(
-  y = gettbl(t),
-
-  e->key = k,
-  e->val = x,
-  e->next = y->tab[i],
-
-  y->tab[i] = e,
-  y->len += 1,
-
-  x)); }
+    (with(t, with(k, with(x, e = cells(v, Width(ent))))),
+     !e ? 0 : (y = gettbl(t),
+               e->key = k,
+               e->val = x,
+               e->next = y->tab[i],
+               y->tab[i] = e,
+               y->len += 1,
+               x)); }
 
 ob tbl_set(em v, ob t, ob k, ob x) {
   with(t, x = tbl_set_s(v, t, k, x));
@@ -361,8 +351,8 @@ ob string(em v, const char* c) {
   intptr_t bs = 1 + strlen(c);
   str o = cells(v, Width(str) + b2w(bs));
   return !o ? 0 :
-    memcpy(o->text, c, o->len = bs),
-    putstr(o); }
+    (memcpy(o->text, c, o->len = bs),
+     putstr(o)); }
 
 Vm(tbld) {
   Arity(2);
@@ -426,17 +416,19 @@ Vm(strs) {
   return ApC(ret, putstr(dst)); }
 
 Vm(strmk) {
-  intptr_t i = 0, bytes = getnum(fp->argc)+1, words = 1 + b2w(bytes);
+  intptr_t i = 0,
+    bytes = getnum(fp->argc)+1,
+    words = 1 + b2w(bytes);
   Have(words);
   str s = (str) hp;
   hp += words;
   for (ob x; i < bytes-1; s->text[i++] = getnum(x)) {
     x = fp->argv[i];
-    Tc(x, Num);
+    TypeCheck(x, Num);
     if (x == putnum(0)) break; }
-  s->text[i] = 0;
-  s->len = i+1;
-  return ApC(ret, putstr(s)); }
+  return s->text[i] = 0,
+         s->len = i+1,
+         ApC(ret, putstr(s)); }
 
 //symbols
 
