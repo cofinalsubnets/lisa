@@ -11,10 +11,9 @@ boot=lib/$(nom)/$(nom).$(suff)
 libs=$(boot)
 
 tests=$(sort $(wildcard test/*.$(suff)))
-
 headers=$(sort $(wildcard c/*.h))
 sources=$(sort $(wildcard c/*.c))
-objects=$(patsubst %.c,%.o,$(sources))
+objects=$(sources:.c=.o)
 
 PREFIX ?= $(HOME)/.local
 VIMPREFIX ?= $(HOME)/.vim
@@ -37,6 +36,7 @@ default: test
 
 bin/$(nom): bin/$(nom).bin
 	strip -o $@ $^
+
 bin/$(nom).bin: $(objects) $(headers)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $(objects)
 
