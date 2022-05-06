@@ -13,7 +13,7 @@ typedef struct mo *mo, *yo;
 typedef struct em *em;
 typedef struct fr *fr;
 #define Ll(n, ...)\
-  ob n(em v, mo ip, fr fp, ob*sp, ob*hp, ob xp, ##__VA_ARGS__)
+  ob n(em v, mo ip, ob xp, ob *hp, ob *sp, fr fp)
 typedef Ll(vm);
 typedef vm ll;
 
@@ -35,8 +35,8 @@ enum { Def, Cond, Lamb, Quote, Seq, Splat,
        Topl, Eval, Apply, NGlobs };
 
 struct em {
-  mm mm; yo ip; fr fp;
-  ob *hp, *sp, xp, syms, glob[NGlobs];
+  yo ip; ob xp, *hp, *sp; fr fp;
+  mm mm; ob syms, glob[NGlobs];
   intptr_t rand, t0, len, *pool; };
 
 #include <stdio.h>
@@ -212,7 +212,7 @@ ll gc, type_error, ary_error, div_error;
 // nil.
 
 #define ApN(n, x) ApY(ip+(n), (x))
-#define ApC(f, x) (f)(v, ip, fp, sp, hp, (x))
+#define ApC(f, x) (f)(v, ip, (x), hp, sp, fp)
 #define ApY(f, x) (ip = (yo) (f), ApC(ip->ll, (x)))
 
 #define Arity(n) if (putnum(n) > fp->argc) return\
