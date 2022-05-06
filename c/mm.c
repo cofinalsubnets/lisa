@@ -71,29 +71,30 @@ static clock_t copy(em v, intptr_t len1) {
   ob len0 = v->len,
      *sp0 = v->sp,
      *pool0 = v->pool,
-     *top0 = pool0 + len0,
      *pool1 = malloc(len1 * sizeof(ob)),
-     shift = pool1 + len1 - top0;
+     *top0 = pool0 + len0,
+     *top1 = pool1 + len1,
+     shift = top1 - top0;
 
   if (!pool1) return 0;
 
-  v->sp = sp0 + shift;
-  v->fp = (fr) ((ob*) v->fp + shift);
+  v->syms = nil;
   v->len = len1;
   v->pool = v->hp = pool1;
-  v->syms = nil;
-
+  v->sp = sp0 + shift;
+  v->fp = (fr) ((ob*) v->fp + shift);
   CP(v->xp);
   v->ip = (yo) cp(v, (ob) v->ip, len0, pool0);
-  for (int i = 0; i < NGlobs; i++) CP(v->glob[i]);
+  for (int i = 0; i < NGlobs; CP(v->glob[i]), i++);
   for (ob *sp1 = v->sp; sp0 < top0; COPY(*sp1++, *sp0++));
-  for (mm r = v->mm; r; r = r->et) CP(*(r->it));
-  free(pool0);
+  for (mm r = v->mm; r; CP(*r->it), r = r->et);
 
-  t0 = v->t0;
-  v->t0 = t2 = clock();
-  t1 = t2 - t1;
-  return t1 ? (t2 - t0) / t1 : 1; }
+  return
+    free(pool0),
+    t0 = v->t0,
+    v->t0 = t2 = clock(),
+    t1 = t2 - t1,
+    t1 ? (t2 - t0) / t1 : 1; }
 
 // please : u1 em intptr_t
 //
@@ -146,14 +147,17 @@ Gc(cphom) {
      start = (yo) end[1].ll,
      dst = bump(v, end - start + 2),
      j = dst;
+
   for (yo k = start; k < end;)
     j->ll = k->ll,
     k++->ll = (ll*) j++;
   j[0].ll = NULL, j[1].ll = (ll*) dst;
+
   for (ob u; j-- > dst;)
     u = (ob) j->ll,
     u = !stale(u) ? u : cp(v, u, len0, pool0),
     j->ll = (ll*) u;
+
   return (ob) (src - start + dst); }
 
 Gc(cpstr) {
@@ -176,8 +180,7 @@ Gc(cpsym) {
        src->nom = putsym(dst) ); }
 
 static ent cpent(em v, ent src, intptr_t len0, ob *pool0) {
-  ent dst;
-  return !src ? 0 :
+  ent dst; return !src ? 0 :
     (dst = (ent) bump(v, Width(ent)),
      dst->next = cpent(v, src->next, len0, pool0),
      COPY(dst->key, src->key),
@@ -208,17 +211,14 @@ Gc(cptwo) {
      dst); }
 
 static ob pair_(em v, ob a, ob b) {
-  bool _;
-  with(a, with(b, _ = please(v, 2)));
-  if (!_) return 0;
-  two w = bump(v, 2);
-  return w->a = a, w->b = b, puttwo(w); }
+  bool _; two w;
+  return with(a, with(b, _ = please(v, 2))), !_ ? 0 :
+    (w = bump(v, 2), w->a = a, w->b = b, puttwo(w)); }
 
 // functions for pairs and lists
 ob pair(em v, ob a, ob b) {
-  if (Avail < 2) return pair_(v, a, b);
-  two w = bump(v, 2);
-  return w->a = a, w->b = b, puttwo(w); }
+  two w; return Avail < 2 ? pair_(v, a, b) :
+    (w = bump(v, 2), w->a = a, w->b = b, puttwo(w)); }
 
 static Inline intptr_t tbl_idx(uintptr_t cap, uintptr_t co) {
   return co & ((1 << cap) - 1); }
@@ -226,11 +226,12 @@ static Inline intptr_t tbl_idx(uintptr_t cap, uintptr_t co) {
 static Inline uintptr_t tbl_load(ob t) {
   return gettbl(t)->len >> gettbl(t)->cap; }
 
+static ent tbl_ent_(em v, ent e, ob k) { return
+  !e ? e : eql(e->key, k) ? e : tbl_ent_(v, e->next, k); }
+
 static ent tbl_ent(em v, ob u, ob k) {
-  tbl t = gettbl(u);
-  ent e = t->tab[tbl_idx(t->cap, hash(v, k))];
-  for (; e; e = e->next) if (eql(e->key, k)) return e;
-  return NULL; }
+  tbl t = gettbl(u); return
+    tbl_ent_(v, t->tab[tbl_idx(t->cap, hash(v, k))], k); }
 
 #define Hash(n) uintptr_t n(em v, ob x)
 typedef Hash(hasher);

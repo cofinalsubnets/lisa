@@ -34,9 +34,8 @@ Ll(ap_u) {
   Have(adic);
   ob off = fp->subd, rp = fp->retp;
   sp = fp->argv + getnum(fp->argc) - adic;
-  for (uintptr_t j = 0; j < adic;)
-    sp[j++] = gettwo(y)->a,
-    y = gettwo(y)->b;
+  for (uintptr_t j = 0; j < adic; sp[j++] = gettwo(y)->a,
+                                  y = gettwo(y)->b);
   return
     fp = (fr) sp - 1,
     sp = (ob*) fp,
@@ -53,8 +52,7 @@ Ll(vararg) {
   // in this case we need to add another argument
   // slot to hold the nil.
   if (!vdic) {
-    Have1();
-    return
+    Have1(); return
       cpyw((ob*)fp - 1, fp, Width(fr) + getnum(fp->argc)),
       fp = (fr) ((ob*) fp - 1),
       sp = (ob*) fp,
@@ -105,8 +103,8 @@ Ll(jump) { return ApY((ob) ip[1].ll, xp); }
 Br(branch, xp != nil, GF, xp, FF, xp)
 Br(barnch, xp != nil, FF, xp, GF, xp)
 
-Br(breq,  eql(*sp++, xp), GF, N1, FF, nil)
-Br(brne,  eql(*sp++, xp), FF, N1, GF, nil)
+Br(breq, eql(*sp++, xp), GF, N1, FF, nil)
+Br(brne, eql(*sp++, xp), FF, N1, GF, nil)
 
 Br(brlt,    *sp++ < xp,  GF, xp, FF, nil)
 Br(brlt2,   *sp++ < xp,  FF, xp, GF, nil)
@@ -119,12 +117,11 @@ Br(brgteq,  *sp++ >= xp, GF, xp, FF, nil)
 #undef Br
 
 // return from a function
-Ll(ret) {
-  return
-    ip = (yo) fp->retp,
-    sp = (ob*) ((ob) fp->argv + fp->argc - Num),
-    fp = (void*) ((ob) sp + fp->subd - Num),
-    ApY(ip, xp); }
+Ll(ret) { return
+  ip = (yo) fp->retp,
+  sp = (ob*) ((ob) fp->argv + fp->argc - Num),
+  fp = (fr) ((ob) sp + fp->subd - Num),
+  ApY(ip, xp); }
 
 // "inner" function call
 Ll(call) {
@@ -152,10 +149,10 @@ Ll(rec) { return
 static Ll(recne) { return
   v->xp = fp->subd,
   v->ip = (yo) fp->retp, // save return info
-  fp = (void*) (fp->argv + getnum(fp->argc - (ob) ip)),
+  fp = (fr) (fp->argv + getnum(fp->argc - (ob) ip)),
   rcpyw(fp, sp, getnum((ob) ip)), // copy from high to low
-  sp = (void*) (((fr) fp) - 1),
-  fp = (void*) sp,
+  sp = (ob*) (((fr) fp) - 1),
+  fp = (fr) sp,
   fp->retp = (ob) v->ip,
   fp->argc = (ob) ip,
   fp->subd = v->xp,
@@ -170,9 +167,8 @@ Ll(type_error) {
   return Pack(), err(v, type_err_msg, tnom(act), tnom(exp)); }
 
 #define arity_err_msg "wrong arity : %d of %d"
-Ll(ary_error) {
-  return Pack(),
-         err(v, arity_err_msg, getnum(fp->argc), getnum(xp)); }
+Ll(ary_error) { return
+  Pack(), err(v, arity_err_msg, getnum(fp->argc), getnum(xp)); }
 
 Ll(div_error) { return Pack(), err(v, "/ 0"); }
 
@@ -185,8 +181,7 @@ Ll(arity) {
   return reqd <= fp->argc ?  ApN(2, xp) : ApC(ary_error, reqd); }
 
 static void show_call(em v, yo ip, fr fp) {
-  fputc('(', stderr);
-  emit(v, (ob) ip, stderr);
+  fputc('(', stderr), emit(v, (ob) ip, stderr);
   for (uintptr_t i = 0, argc = getnum(fp->argc); i < argc;)
     fputc(' ', stderr), emit(v, fp->argv[i++], stderr);
   fputc(')', stderr); }
@@ -205,9 +200,9 @@ NoInline ob err(em v, const char *msg, ...) {
 
   // backtrace
   if (fp < top) for (;;) {
-    ip = (yo) fp->retp,
-    fp = (fr) ((ob*) (fp + 1) + getnum(fp->argc)
-                              + getnum(fp->subd));
+    ip = (yo) fp->retp, fp = (fr)
+      ((ob*) (fp + 1) + getnum(fp->argc)
+                      + getnum(fp->subd));
     if (fp == top) break; else
       fputs("# in ", stderr),
       show_call(v, ip, fp),
@@ -252,9 +247,8 @@ Ll(sal_u) {
   mm_u(getnum(fp->argc)-1, fp->argv+1, getnum(*fp->argv), <<); }
 
 Ll(dqv) {
-  if (xp == N0) return ApC(div_error, xp);
-  xp = putnum(getnum(*sp++) / getnum(xp));
-  return ApN(1, xp); }
+  return xp == N0 ? ApC(div_error, xp) :
+    (xp = putnum(getnum(*sp++) / getnum(xp)), ApN(1, xp)); }
 
 Ll(div_u) {
   if (!(xp = getnum(fp->argc))) return ApC(ret, N1);
@@ -262,9 +256,8 @@ Ll(div_u) {
   mm_void(xp-1, fp->argv+1, getnum(*fp->argv), /); }
 
 Ll(mod) {
-  if (xp == N0) return ApC(div_error, xp);
-  xp = putnum(getnum(*sp++) % getnum(xp));
-  return ApN(1, xp); }
+  return xp == N0 ? ApC(div_error, xp) :
+    (xp = putnum(getnum(*sp++) % getnum(xp)), ApN(1, xp)); }
 
 Ll(mod_u) {
   if (!(xp = getnum(fp->argc))) return ApC(ret, N1);
@@ -272,8 +265,7 @@ Ll(mod_u) {
   mm_void(xp-1, fp->argv+1, getnum(*fp->argv), %); }
 
 Ll(rnd_u) { return
-  xp = putnum(v->rand = lcprng(v->rand)),
-  ApC(ret, xp); }
+  xp = putnum(v->rand = lcprng(v->rand)), ApC(ret, xp); }
 
 #define OP(nom, x, n) Ll(nom) { xp = (x); return ApN(n, xp); }
 #define OP1(nom, x) OP(nom, x, 1)
@@ -547,8 +539,7 @@ static Vm(clos0) {
   sp -= adic;
   cpyw(sp, (ob*) arg + 1, adic);
   ec = (ob*) ip[1].ll;
-  fp = (void*) ((fr) sp - 1);
-  sp = (ob*) fp;
+  sp = (ob*) (fp = (fr) sp - 1);
   fp->retp = (ob) ip;
   fp->subd = putnum(off);
   fp->argc = putnum(adic);
