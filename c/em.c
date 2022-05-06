@@ -26,15 +26,14 @@ static NoInline ob go(em v) {
   return Unpack(), ApY(ip, xp); }
 
 int main(int argc, char **argv) {
-  const char *boot = PREF "/lib/" LANG "/" LANG "." SUFF,
-    *help =
-      "usage: %s [options and scripts]\n"
-      "with no arguments, start a repl\n"
-      "options:\n"
-      "  -h print this message\n"
-      "  -i start repl unconditionally\n"
-      "  -_ don't bootstrap\n"
-      ;
+  const char *boot = PREF "/lib/" LANG "/" LANG "." SUFF, *help =
+    "usage: %s [options and scripts]\n"
+    "with no arguments, start a repl\n"
+    "options:\n"
+    "  -h print this message\n"
+    "  -i start repl unconditionally\n"
+    "  -_ don't bootstrap\n"
+    ;
   for (bool shell = argc == 1;;)
     switch (getopt(argc, argv, "hi_")) {
       default: return EXIT_FAILURE;
@@ -63,8 +62,7 @@ static Vm(repl) { for (Pack();;) {
 
 static ob scrp(em, const char*);
 static yo comp(em v, bool shell, const char **paths) {
-  const char *path = *paths;
-  yo k; ob x, y; return
+  const char *path = *paths; yo k; ob x, y; return
     !path ? !(k = cells(v, 3)) ? 0 :
                (k[0].ll = shell ? repl : fin_ok,
                 k[1].ll = 0, k[2].ll = (ll*) k, k) :
@@ -86,22 +84,22 @@ static em from
 static ob scrpr(em v, FILE *in) {
   ob y, x = parse(v, in);
   return !x ? feof(in) ? nil : 0 :
-    !(x = pair(v, x, nil)) ||
-    !(x = pair(v, v->glob[Quote], x)) ||
-    !(x = pair(v, x, nil)) ||
-    !(x = pair(v, v->glob[Eval], x)) ||
-    !(with(x, y = scrpr(v, in)), y) ? 0 : pair(v, x, y); }
+    (x = pair(v, x, nil)) &&
+    (x = pair(v, v->glob[Quote], x)) &&
+    (x = pair(v, x, nil)) &&
+    (x = pair(v, v->glob[Eval], x)) &&
+    (with(x, y = scrpr(v, in)), y) ? pair(v, x, y) : 0; }
 
 // scrp : yo em str
 static Inline ob scrp(em v, const char *path) {
   ob x; FILE *in = fopen(path, "r");
   return !in ? err(v, "%s : %s", path, strerror(errno)) :
-    !(x = scrpr(v, in), fclose(in), x) ||
-    !(x = pair(v, v->glob[Seq], x)) ? 0 : (ob) ana(v, x); }
+    (x = scrpr(v, in), fclose(in), x) &&
+    (x = pair(v, v->glob[Seq], x)) ? (ob) ana(v, x) : 0; }
 
 static void fin(em v) { if (v) free(v->pool), free(v); }
 // initialization helpers
-#define register_inst(a, b) ((b)?prim(v,b,a):inst(v, "i-"#a,a)) &&
+#define register_inst(a, b) ((b) ? prim(v,b,a) : inst(v, "i-"#a,a)) &&
 #define def(s, x) (_=interns(v,s)) && tbl_set(v,v->glob[Topl],_,x)
 #define bsym(i,s) (v->glob[i]=interns(v,s))
 static NoInline bool inst(em v, const char *a, ll *b) {
@@ -119,7 +117,7 @@ static NoInline bool prim(em v, const char *a, ll *i) {
 
 static em ini(void) {
   ob _; em v = malloc(sizeof(struct em));
-  return !v ? 0 :
+  return v &&
     (v->t0 = clock(),
      v->rand = lcprng(v->t0),
      // initial memory state
@@ -128,13 +126,11 @@ static em ini(void) {
      v->ip = (yo) (v->xp = v->syms = nil),
      setw(v->glob, nil, NGlobs),
 
-     (v->glob[Topl] = table(v)) &&
-     (v->glob[Macs] = table(v)) && insts(register_inst) // &&
+     (v->glob[Topl] = table(v)) && insts(register_inst) // &&
 
      bsym(Eval, "ev") && bsym(Apply, "ap") &&
      bsym(Def, ":") && bsym(Cond, "?") &&
      bsym(Lamb, "\\") && bsym(Quote, "`") &&
      bsym(Seq, ",") && bsym(Splat, ".") &&
 
-     def("_ns", v->glob[Topl]) &&
-     def("_macros", v->glob[Macs]) ? v : (fin(v), NULL)); }
+     def("_ns", v->glob[Topl])) ? v : (fin(v), NULL); }

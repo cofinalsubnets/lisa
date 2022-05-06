@@ -31,7 +31,7 @@ typedef struct yo { ll *ll; } *sh;
 
 // FIXME indices to a global (thread-local) table of constants
 enum { Def, Cond, Lamb, Quote, Seq, Splat,
-       Topl, Macs, Eval, Apply, NGlobs };
+       Topl, Eval, Apply, NGlobs };
 
 struct em {
   mm mm; yo ip; fr fp;

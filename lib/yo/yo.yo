@@ -1,3 +1,4 @@
+(: _macros (tbl))
 ; to bootstrap first we define an expression that when
 ; eval'd defines the standard environment and compiler, and
 ; redefines eval. then we eval it twice. the first time
@@ -111,7 +112,6 @@
      )
 
   (tset _macros
-   ; a macro for defining _macros
    '::: (: (defm n x .) (X ', (X (L Ts _macros (Q n) (A x))
                                  (? (B x) (ap defm (B x)))))
          defm)
@@ -723,3 +723,4 @@
    locs '(boot egg emi _macros emx hom hseek hgeti hgetx hfin _ns)
  (, (Td _macros 'i-)
     (each (L insns locs) dels)))
+;ev
