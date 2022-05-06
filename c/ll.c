@@ -55,7 +55,7 @@ Ll(vararg) {
   if (!vdic) {
     Have1();
     return
-      cpyw(fp-1, fp, Width(fr) + getnum(Argc)),
+      cpyw((ob*)fp - 1, fp, Width(fr) + getnum(Argc)),
       fp = (void*) ((ob*) fp - 1),
       sp = (ob*) fp,
       Argc += sizeof(ob),
@@ -121,9 +121,9 @@ Br(brgteq,  *sp++ >= xp, GF, xp, FF, nil)
 // return from a function
 Ll(ret) {
   return
-    ip = (yo) Retp,
-    sp = (ob*) ((ob) Argv + Argc - Num),
-    fp = (void*) ((ob) sp + Subr - Num),
+    ip = (yo) ((fr)fp)->retp,
+    sp = (ob*) ((ob) ((fr)fp)->argv + ((fr)fp)->argc - Num),
+    fp = (void*) ((ob) sp + ((fr)fp)->subd - Num),
     ApY(ip, xp); }
 
 // "inner" function call
@@ -131,35 +131,34 @@ Ll(call) {
   Have(Width(fr));
   intptr_t adic = getnum((ob) ip[1].ll),
            off = (ob*) fp - (sp + adic);
-  fr f = (fr) sp - 1;
   return
-    fp = (ob*) f,
-    sp = (ob*) f,
-    f->retp = (ob) (ip + 2),
-    f->subd = putnum(off),
-    f->clos = nil,
-    f->argc = putnum(adic),
+    fp = (void*) ((fr) sp - 1),
+    sp = (void*) fp,
+    ((fr)fp)->retp = (ob) (ip + 2),
+    ((fr)fp)->subd = putnum(off),
+    ((fr)fp)->clos = nil,
+    ((fr)fp)->argc = putnum(adic),
     ApY(xp, nil); }
 
 // tail call
 Ll(rec) { return
   ip = (yo) ip[1].ll,
-  Argc != (ob) ip ? ApC(recne, xp) :
-  (cpyw(Argv, sp, getnum((ob) ip)),
-   sp = (ob*) fp,
+  ((fr)fp)->argc != (ob) ip ? ApC(recne, xp) :
+  (cpyw(((fr)fp)->argv, sp, getnum((ob) ip)),
+   sp = (void*) fp,
    ApY(xp, nil)); }
 
 // tail call with different arity
 static Ll(recne) { return
-  v->xp = Subr,
-  v->ip = (yo) Retp, // save return info
-  fp = (void*) (Argv + getnum(Argc - (ob) ip)),
+  v->xp = ((fr)fp)->subd,
+  v->ip = (yo) ((fr)fp)->retp, // save return info
+  fp = (void*) (((fr)fp)->argv + getnum(((fr)fp)->argc - (ob) ip)),
   rcpyw(fp, sp, getnum((ob) ip)), // copy from high to low
-  sp = (ob*) (((fr) fp) - 1),
+  sp = (void*) (((fr) fp) - 1),
   fp = (void*) sp,
-  Retp = (ob) v->ip,
-  Argc = (ob) ip,
-  Subr = v->xp,
+  ((fr)fp)->retp = (ob) v->ip,
+  ((fr)fp)->argc = (ob) ip,
+  ((fr)fp)->subd = v->xp,
   ApY(xp, Clos = nil); }
 
 // errors
@@ -194,9 +193,8 @@ static void show_call(em v, yo ip, fr fp) {
   fputc(')', stderr); }
 
 NoInline ob err(em v, const char *msg, ...) {
-  yo ip = (yo) v->ip;
-  fr fp = (fr) v->fp,
-     top = (fr) (v->pool + v->len);
+  yo ip = v->ip;
+  fr fp = v->fp, top = (fr) (v->pool + v->len);
 
   // error line
   fputs("# ", stderr);
