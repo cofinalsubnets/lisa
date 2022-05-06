@@ -1,82 +1,66 @@
-# standardize locale for sorting
-LC_ALL=C
+include config.mk
 
 self=makefile
-nom=yo
-suff=yo
-bins=bin/$(nom)
-docs=share/man/man1/$(nom).1
-
-boot=lib/$(nom)/$(nom).$(suff)
-libs=$(boot)
-
-tests=$(sort $(wildcard test/*.$(suff)))
-headers=$(sort $(wildcard c/*.h))
-sources=$(sort $(wildcard c/*.c))
-objects=$(sources:.c=.o)
-
+bin=bin/$(lang)
+doc=share/man/man1/$(lang).1
+lib=lib/$(lang)/$(lang).$(suff)
+h=$(sort $(wildcard c/*.h))
+c=$(sort $(wildcard c/*.c))
 PREFIX ?= $(HOME)/.local
-VIMPREFIX ?= $(HOME)/.vim
-
-CPPFLAGS=-DPREF=\"$(PREFIX)\" -DLANG=\"$(nom)\" -DSUFF=\"$(suff)\"
+CPPFLAGS=-DPREF=\"$(PREFIX)\" -DLANG=\"$(lang)\" -DSUFF=\"$(suff)\"
 CFLAGS=-std=c99 -g -O2 -flto -Wall -Werror\
 	-Wstrict-prototypes -Wno-shift-negative-value\
 	-fno-stack-protector -fno-unroll-loops\
 	-fno-inline -fno-align-functions
 
-run_repl=bin/$(nom).bin -_i $(libs) test/*.$(suff)
-run_tests=bin/$(nom).bin -_ $(libs) $(tests)
+# run the tests
+test=bin/$(lang).bin -_ $(lib) test/*.$(suff)
+test: bin/$(lang).bin
+	/usr/bin/env TIMEFORMAT="in %Rs" bash -c "time $(test)"
+# interact
+repl: bin/$(lang)
+	which rlwrap && rlwrap $(test) -i || $(test) -i
 
 where=$(DESTDIR)$(PREFIX)/
-files=$(addprefix $(where),$(bins) $(libs) $(docs))
-
-default: test
-%.o: %.c $(headers) $(self)
-	$(CC) -c -o $@ $(CFLAGS) $(CPPFLAGS) $(@:.o=.c)
-
-bin/$(nom): bin/$(nom).bin
-	strip -o $@ $^
-
-bin/$(nom).bin: $(objects) $(headers)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $(objects)
-
-$(where)%: %
-	install -D $^ $@
-
+files=$(addprefix $(where),$(bin) $(lib) $(doc))
 install: $(files)
 uninstall:
 	rm -f $(files)
-
-vimfiles=syntax/$(nom).vim ftdetect/$(nom).vim
-
-$(VIMPREFIX)/%: vim/%
+$(where)%: %
 	install -D $^ $@
 
-install-vim: $(addprefix $(VIMPREFIX)/,$(vimfiles))
-uninstall-vim:
-	rm -f $(addprefix $(VIMPREFIX)/,$(vimfiles))
+bin/$(lang): bin/$(lang).bin
+	strip -o $@ $^
+bin/$(lang).bin: $(c:.c=.o)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
+%.o: %.c $h $(self)
+	$(CC) -c -o $@ $(CFLAGS) $(CPPFLAGS) $(@:.o=.c)
 
 clean:
-	rm -rf `git check-ignore * */*`
+	rm `git check-ignore * */*`
 
-test: bin/$(nom).bin
-	/usr/bin/env TIMEFORMAT="in %Rs" bash -c "time $(run_tests)"
-
+# profile on linux with perf
 perf: perf.data
 	perf report
-perf.data: bin/$(nom).bin $(libs)
-	perf record $(run_tests)
+perf.data: bin/$(lang).bin $(lib)
+	perf record $(test)
 
-valg: bin/$(nom).bin
-	valgrind --error-exitcode=1 $(run_tests)
+# valgrind can detect some memory errors
+valg: bin/$(lang).bin
+	valgrind --error-exitcode=1 $(test)
 
+# approximate lines of code
 sloc:
 	cloc --force-lang=Lisp,$(suff) *
-
-bits: bin/$(nom) bin/$(nom).bin
+# size of binaries
+bits: bin/$(lang) bin/$(lang).bin
 	du -h $^
 
-repl: bin/$(nom)
-	which rlwrap && rlwrap $(run_repl) || $(run_repl)
+# vim syntax files
+install-vim:
+	make -C vim $@
+uninstall-vim:
+	make -C vim $@
 
-.PHONY: default test clean perf valg sloc bits repl install uninstall install-vim uninstall-vim
+.PHONY: test clean perf valg sloc bits repl\
+ 	install uninstall install-vim uninstall-vim

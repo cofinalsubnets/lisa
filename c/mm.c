@@ -28,13 +28,12 @@ static ob sskc(em, ob*, ob);
 #define CP(x) COPY(x,x)
 
 // unchecked allocator -- make sure there's enough memory!
-static void* bump(em v, intptr_t n) {
-  void* x = v->hp;
-  return v->hp += n, x; }
-
-// general purpose memory allocator
+static Inline void* bump(em v, intptr_t n) {
+  void* x = v->hp; return v->hp += n, x; }
+static void *cells_(em v, uintptr_t n) {
+  return please(v, n) ? bump(v, n) : 0; }
 void* cells(em v, uintptr_t n) {
-  return Avail >= n || please(v, n) ? bump(v, n) : 0; }
+  return Avail >= n ? bump(v, n) : cells_(v, n); }
 
 #define oom_err_msg "out of memory : %d + %d"
 // Run a GC cycle from inside the VM
@@ -209,11 +208,18 @@ Gc(cptwo) {
      A(dst) = cp(v, A(dst), len0, pool0),
      dst); }
 
+static ob pair_(em v, ob a, ob b) {
+  bool _;
+  with(a, with(b, _ = please(v, 2)));
+  if (!_) return 0;
+  two w = bump(v, 2);
+  return w->a = a, w->b = b, puttwo(w); }
+
 // functions for pairs and lists
 ob pair(em v, ob a, ob b) {
-  two w;
-  with(a, with(b, w = cells(v, 2)));
-  return !w ? 0 : (w->a = a, w->b = b, puttwo(w)); }
+  if (Avail < 2) return pair_(v, a, b);
+  two w = bump(v, 2);
+  return w->a = a, w->b = b, puttwo(w); }
 
 static Inline intptr_t tbl_idx(uintptr_t cap, uintptr_t co) {
   return co & ((1 << cap) - 1); }

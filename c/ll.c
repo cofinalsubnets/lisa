@@ -165,8 +165,7 @@ Ll(fail) { return Pack(), err(v, "fail"); }
 
 #define type_err_msg "wrong type : %s for %s"
 Ll(type_error) {
-  int q = getnum(xp);
-  enum class act = Q(q), exp = q >> 3;
+  int q = getnum(xp), act = Q(q), exp = q >> 3;
   return Pack(), err(v, type_err_msg, tnom(act), tnom(exp)); }
 
 #define arity_err_msg "wrong arity : %d of %d"
@@ -214,13 +213,11 @@ NoInline ob err(em v, const char *msg, ...) {
       fputs("# in ", stderr),
       show_call(v, ip, fp),
       fputc('\n', stderr); }
-
   // reset and yield
   return v->sp = v->pool + v->len,
          v->fp = (fr) v->sp,
          v->xp = nil,
          v->ip = (yo) nil,
-         // FIXME continuation ob em 
          0; }
 
 
@@ -396,8 +393,7 @@ Vm(rslv) {
   ob w = (ob) ip[1].ll, d = AB(w), y = A(w);
   if (!(w = tbl_get(v, d, xp = BB(w)))) {
     char *nom = nilp(getsym(xp)->nom) ? "()" : getstr(getsym(xp)->nom)->text;
-    return Pack(),
-           err(v, "free variable : %s", nom); }
+    return Pack(), err(v, "free variable : %s", nom); }
   xp = w;
   if (y != putnum(sizeof(ob))) TypeCheck(xp, getnum(y));
   // omit the arity check if possible
@@ -424,19 +420,19 @@ static ob tbl_keys_j(em v, ent e, ob l) {
   ob x; return !e ? l :
     (x = e->key,
      with(x, l = tbl_keys_j(v, e->next, l)),
-     !l ? 0 : pair(v, x, l)); }
+     l ? pair(v, x, l) : 0); }
 
 static ob tbl_keys_i(em v, ob t, intptr_t i) {
   ob k; return i == 1 << gettbl(t)->cap ? nil :
     (with(t, k = tbl_keys_i(v, t, i+1)),
-     !k ? 0 : tbl_keys_j(v, gettbl(t)->tab[i], k)); }
+     k ? tbl_keys_j(v, gettbl(t)->tab[i], k) : 0); }
 
 static Inline ob tbl_keys(em v, ob t) {
   return tbl_keys_i(v, t, 0); }
 
 Vm(tkeys) { return
   CallC(v->xp = tbl_keys(v, xp)),
-  !xp ? 0 : ApN(1, xp); }
+  xp ? ApN(1, xp) : 0; }
 
 Vm(tblc) {
   Arity(2);
@@ -447,17 +443,17 @@ Vm(tblc) {
 static ob tblss(em v, intptr_t i, intptr_t l) {
   fr fp = (fr) v->fp;
   return
-    i > l-2 ? fp->argv[i-1]:
-    !tbl_set(v, v->xp, fp->argv[i], fp->argv[i+1]) ? 0 :
-    tblss(v, i+2, l); }
+    i > l - 2 ? fp->argv[i - 1]:
+    !tbl_set(v, v->xp, fp->argv[i], fp->argv[i + 1]) ? 0 :
+    tblss(v, i + 2, l); }
 
 Vm(tbls) {
   Arity(1);
-  xp = *Argv;
-  TypeCheck(xp, Tbl);
+  TypeCheck(*Argv, Tbl);
   return
+    xp = *Argv,
     CallC(v->xp = tblss(v, 1, getnum(Argc))),
-    !xp ? 0 : ApC(ret, xp); }
+    xp ? ApC(ret, xp) : 0; }
 
 Vm(tblmk) {
   return Pack(),
@@ -470,7 +466,7 @@ Vm(tblks) {
   Arity(1);
   TypeCheck(*Argv, Tbl);
   return CallC(v->xp = tbl_keys(v, *Argv)),
-         !xp ? 0 : ApC(ret, xp); }
+         xp ? ApC(ret, xp) : 0; }
 
 Vm(tbll) {
   Arity(1);

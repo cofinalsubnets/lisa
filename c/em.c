@@ -55,12 +55,11 @@ static ob seq(em v, ob a, ob b) {
      k[6].ll = NULL, k[7].ll = (ll*) k); }
 
 static Vm(fin_ok) { return fin(v), nil; }
-static Vm(repl) {
-  for (Pack();;) {
-    if ((xp = parse(v, stdin))) {
-      if ((xp = eval(v, xp))) 
-        emit(v, xp, stdout), fputc('\n', stdout); }
-    else if (feof(stdin)) return fin(v), nil; } }
+static Vm(repl) { for (Pack();;) {
+  if ((xp = parse(v, stdin))) {
+    if ((xp = eval(v, xp))) 
+      emit(v, xp, stdout), fputc('\n', stdout); }
+  else if (feof(stdin)) return fin(v), nil; } }
 
 static ob scrp(em, const char*);
 static yo comp(em v, bool shell, const char **paths) {
@@ -70,16 +69,18 @@ static yo comp(em v, bool shell, const char **paths) {
                (k[0].ll = shell ? repl : fin_ok,
                 k[1].ll = 0, k[2].ll = (ll*) k, k) :
     (y = (ob) comp(v, shell, paths+1)) &&
-    (with(y, x = scrp(v, path)), x) ?  (yo) seq(v, x, y) : 0; }
+    (with(y, x = scrp(v, path)), !x) ? 0 :
+    (yo) seq(v, x, y); }
 
 
 static em from
   (bool shell, const char *boot, const char **paths) {
     em v = ini(); return 
-      !(v->ip = (yo) comp(v, shell, paths)) ? 0 :
-      !boot ? v :
-      !(v->xp = scrp(v, boot)) ||
-      !(v->ip = (yo) seq(v, v->xp, (ob) v->ip)) ? 0 : v; }
+      (v->ip = (yo) comp(v, shell, paths)) &&
+      (!boot ||
+       ((v->xp = scrp(v, boot)) &&
+        (v->ip = (yo) seq(v, v->xp, (ob) v->ip)))) ? v : 0; }
+
 // functions to compile scripts into a program
 //
 // scrpr : two em stream
@@ -110,12 +111,12 @@ static NoInline bool inst(em v, const char *a, ll *b) {
 
 static NoInline bool prim(em v, const char *a, ll *i) {
   ob nom; yo k; return
-    !(nom = interns(v, a)) ||
-    !(nom = pair(v, nom, nil)) ||
-    !(with(nom, k = cells(v, 4)), k) ? 0 :
-    !!tbl_set(v, v->glob[Topl], A(nom), (ob)
-      (k[0].ll = i,    k[1].ll = (ll*) nom,
-       k[2].ll = NULL, k[3].ll = (ll*) k)); }
+    (nom = interns(v, a)) &&
+    (nom = pair(v, nom, nil)) &&
+    (with(nom, k = cells(v, 4)), k) ?
+      !!tbl_set(v, v->glob[Topl], A(nom), (ob)
+        (k[0].ll = i,    k[1].ll = (ll*) nom,
+         k[2].ll = NULL, k[3].ll = (ll*) k)) : 0; }
 
 static em ini(void) {
   ob _; em v = malloc(sizeof(struct em));
@@ -137,4 +138,4 @@ static em ini(void) {
      bsym(Seq, ",") && bsym(Splat, ".") &&
 
      def("_ns", v->glob[Topl]) &&
-     def("_macros", v->glob[Macs]) ?  v : (fin(v), NULL)); }
+     def("_macros", v->glob[Macs]) ? v : (fin(v), NULL)); }
