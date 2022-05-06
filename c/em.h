@@ -9,12 +9,13 @@ _Static_assert(sizeof(intptr_t) == 8, "64bit");
 _Static_assert(-1 == -1 >> 1, "signed >>");
 
 typedef intptr_t ob;
-typedef struct yo *yo;
+typedef struct mo *mo, *yo;
 typedef struct em *em;
 typedef struct fr *fr;
 #define Ll(n, ...)\
-  ob n(em v, yo ip, fr fp, ob*sp, ob*hp, ob xp, ##__VA_ARGS__)
-typedef Ll(ll);
+  ob n(em v, mo ip, fr fp, ob*sp, ob*hp, ob xp, ##__VA_ARGS__)
+typedef Ll(vm);
+typedef vm ll;
 
 // FIXME 3bit -> 2bit
 enum class { Hom = 0, Num = 1, Two = 2, Xxx = 3,
@@ -27,7 +28,7 @@ typedef struct tbl { uintptr_t len, cap; ent *tab; } *tbl;
 typedef struct two { ob a, b; } *two;
 typedef struct mm { ob *it; struct mm *et; } *mm;
 struct fr { ob clos, retp, subd, argc, argv[]; };
-typedef struct yo { ll *ll; } *sh;
+struct mo { ll *ll; };
 
 // FIXME indices to a global (thread-local) table of constants
 enum { Def, Cond, Lamb, Quote, Seq, Splat,
@@ -112,9 +113,9 @@ extern const uint32_t *tnoms;
 #define Inline inline __attribute__((always_inline))
 #define NoInline __attribute__((noinline))
 
-static Inline sh button(sh h) {
-  while (G(h)) h = F(h);
-  return h; }
+static Inline yo button(yo k) {
+  while (G(k)) k = F(k);
+  return k; }
 
 static Inline uintptr_t llen(ob l) {
   uintptr_t i = 0;
