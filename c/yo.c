@@ -409,7 +409,7 @@ static NoInline ob apply(em v, ob f, ob x) {
 // instructions used by the compiler
 Ll(hom_u) {
   Arity(1);
-  ob x = *Argv;
+  ob x = *fp->argv;
   TypeCheck(x, Num);
   intptr_t len = getnum(x) + 2;
   Have(len);
@@ -422,7 +422,7 @@ Ll(hom_u) {
 
 Ll(hfin_u) {
   Arity(1);
-  yo k = (yo) *Argv;
+  yo k = (yo) *fp->argv;
   TypeCheck((ob) k, Hom);
   return button(k)[1].ll = (ll*) k,
          ApC(ret, (ob) k); }
@@ -439,16 +439,16 @@ Ll(emi) {
 
 Ll(emx_u) {
   Arity(2);
-  ob x = Argv[0];
-  yo k = (yo) Argv[1];
+  ob x = fp->argv[0];
+  yo k = (yo) fp->argv[1];
   TypeCheck((ob) k, Hom);
   return (--k)->ll = (ll*) x,
          ApC(ret, (ob) k); }
 
 Ll(emi_u) {
   Arity(2);
-  ob n = Argv[0];
-  yo k = (yo) Argv[1];
+  ob n = fp->argv[0];
+  yo k = (yo) fp->argv[1];
   TypeCheck(n, Num);
   TypeCheck((ob) k, Hom);
   return (--k)->ll = (ll*) getnum(n),
@@ -456,19 +456,19 @@ Ll(emi_u) {
 
 Ll(hgeti_u) {
   Arity(1);
-  TypeCheck(*Argv, Hom);
-  return ApC(ret, Put(gethom(*Argv)->ll)); }
+  TypeCheck(*fp->argv, Hom);
+  return ApC(ret, putnum((ob) gethom(*fp->argv)->ll)); }
 
 Ll(hgetx_u) {
   Arity(1);
-  TypeCheck(*Argv, Hom);
-  return ApC(ret, (ob) gethom(*Argv)->ll); }
+  TypeCheck(*fp->argv, Hom);
+  return ApC(ret, (ob) gethom(*fp->argv)->ll); }
 
 Ll(hseek_u) {
   Arity(2);
-  TypeCheck(Argv[0], Hom);
-  TypeCheck(Argv[1], Num);
-  return ApC(ret, puthom(gethom(Argv[0]) + getnum(Argv[1]))); }
+  TypeCheck(fp->argv[0], Hom);
+  TypeCheck(fp->argv[1], Num);
+  return ApC(ret, fp->argv[0] + fp->argv[1] - Num); }
 
 yo ana(em v, ob x) { return
   with(x, Push(Put(em_i), Put(ret), Put(mk_yo))),
@@ -477,19 +477,19 @@ yo ana(em v, ob x) { return
 Ll(ev_u) {
   Arity(1); return
     homp(v->glob[Eval]) ? ApY((yo) v->glob[Eval], xp) :
-    (Pack(), v->ip = ana(v, *Argv)) ?
+    (Pack(), v->ip = ana(v, *fp->argv)) ?
       (Unpack(), ApY(ip, xp)) : 0; }
 
 Ll(bootstrap) {
   Arity(1);
-  TypeCheck(*Argv, Hom);
+  TypeCheck(*fp->argv, Hom);
   return
-    v->glob[Eval] = xp = *Argv,
+    v->glob[Eval] = xp = *fp->argv,
     xp = interns(v, "ev"),
     tbl_set(v, v->glob[Topl], xp, v->glob[Eval]),
     ApC(ret, v->glob[Eval]); }
 
 Ll(hnom_u) {
   Arity(1);
-  TypeCheck(*Argv, Hom);
-  return ApC(ret, homnom(v, *Argv)); }
+  TypeCheck(*fp->argv, Hom);
+  return ApC(ret, homnom(v, *fp->argv)); }

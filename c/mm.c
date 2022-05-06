@@ -366,30 +366,30 @@ ob string(em v, const char* c) {
 
 Vm(tbld) {
   Arity(2);
-  TypeCheck(Argv[0], Tbl);
-  return CallC(v->xp = tbl_del(v, Argv[0], Argv[1])),
+  TypeCheck(fp->argv[0], Tbl);
+  return CallC(v->xp = tbl_del(v, fp->argv[0], fp->argv[1])),
          ApC(ret, xp); }
 
 
 // string instructions
 Vm(strl) {
   Arity(1);
-  CheckType(*Argv, Str);
-  return ApC(ret, putnum(getstr(*Argv)->len-1)); }
+  CheckType(*fp->argv, Str);
+  return ApC(ret, putnum(getstr(*fp->argv)->len-1)); }
 
 Vm(strg) {
   Arity(2);
-  CheckType(Argv[0], Str);
-  CheckType(Argv[1], Num);
+  CheckType(fp->argv[0], Str);
+  CheckType(fp->argv[1], Num);
   return ApC(ret,
-    getnum(Argv[1]) < getstr(Argv[0])->len-1 ?
-      putnum(getstr(Argv[0])->text[getnum(Argv[1])]) :
+    getnum(fp->argv[1]) < getstr(fp->argv[0])->len-1 ?
+      putnum(getstr(fp->argv[0])->text[getnum(fp->argv[1])]) :
       nil); }
 
 Vm(strconc) {
-  intptr_t l = getnum(Argc), sum = 0, i = 0;
+  intptr_t l = getnum(fp->argc), sum = 0, i = 0;
   while (i < l) {
-    ob x = Argv[i++];
+    ob x = fp->argv[i++];
     CheckType(x, Str);
     sum += getstr(x)->len - 1; }
   intptr_t words = b2w(sum+1) + 1;
@@ -399,7 +399,7 @@ Vm(strconc) {
   d->len = sum + 1;
   d->text[sum] = 0;
   for (str x; i;)
-    x = getstr(Argv[--i]),
+    x = getstr(fp->argv[--i]),
     sum -= x->len - 1,
     memcpy(d->text+sum, x->text, x->len - 1);
   return ApC(ret, putstr(d)); }
@@ -408,11 +408,11 @@ Vm(strconc) {
 #define max(a,b)(a>b?a:b)
 Vm(strs) {
   Arity(3);
-  CheckType(Argv[0], Str);
-  CheckType(Argv[1], Num);
-  CheckType(Argv[2], Num);
-  str src = getstr(Argv[0]);
-  intptr_t lb = getnum(Argv[1]), ub = getnum(Argv[2]);
+  CheckType(fp->argv[0], Str);
+  CheckType(fp->argv[1], Num);
+  CheckType(fp->argv[2], Num);
+  str src = getstr(fp->argv[0]);
+  intptr_t lb = getnum(fp->argv[1]), ub = getnum(fp->argv[2]);
   lb = max(lb, 0);
   ub = min(ub, src->len-1);
   ub = max(ub, lb);
@@ -426,12 +426,12 @@ Vm(strs) {
   return ApC(ret, putstr(dst)); }
 
 Vm(strmk) {
-  intptr_t i = 0, bytes = getnum(Argc)+1, words = 1 + b2w(bytes);
+  intptr_t i = 0, bytes = getnum(fp->argc)+1, words = 1 + b2w(bytes);
   Have(words);
   str s = (str) hp;
   hp += words;
   for (ob x; i < bytes-1; s->text[i++] = getnum(x)) {
-    x = Argv[i];
+    x = fp->argv[i];
     Tc(x, Num);
     if (x == putnum(0)) break; }
   s->text[i] = 0;
@@ -472,8 +472,8 @@ ob intern(em v, ob x) {
 
 Vm(gsym_u) {
   sym y; return 
-    Argc > putnum(0) && strp(*Argv) ?
-      (CallC(v->xp = intern(v, *Argv)),
+    fp->argc > putnum(0) && strp(*fp->argv) ?
+      (CallC(v->xp = intern(v, *fp->argv)),
        !xp ? 0 : ApC(ret, xp)) :
 
     sp - hp < Width(sym) ?
@@ -488,6 +488,6 @@ Vm(gsym_u) {
 
 Vm(ystr_u) {
   Arity(1);
-  xp = *Argv;
+  xp = *fp->argv;
   CheckType(xp, Sym);
   return ApC(ret, getsym(xp)->nom); }

@@ -28,38 +28,38 @@
 
 Ll(ap_u) {
   Arity(2);
-  ob x = Argv[0], y = Argv[1];
+  ob x = fp->argv[0], y = fp->argv[1];
   TypeCheck(x, Hom);
   uintptr_t adic = llen(y);
   Have(adic);
-  ob off = Subr, rp = Retp;
-  sp = Argv + getnum(Argc) - adic;
+  ob off = fp->subd, rp = fp->retp;
+  sp = fp->argv + getnum(fp->argc) - adic;
   for (uintptr_t j = 0; j < adic;)
     sp[j++] = gettwo(y)->a,
     y = gettwo(y)->b;
   return
-    fp = (void*) ((fr) sp - 1),
+    fp = (fr) sp - 1,
     sp = (ob*) fp,
-    Retp = rp,
-    Argc = putnum(adic),
-    Subr = off,
-    Clos = nil,
+    fp->retp = rp,
+    fp->argc = putnum(adic),
+    fp->subd = off,
+    fp->clos = nil,
     ApY(x, nil); }
 
 Ll(vararg) {
   intptr_t reqd = getnum((ob) ip[1].ll),
-           vdic = getnum(Argc) - reqd;
+           vdic = getnum(fp->argc) - reqd;
   Arity(reqd);
   // in this case we need to add another argument
   // slot to hold the nil.
   if (!vdic) {
     Have1();
     return
-      cpyw((ob*)fp - 1, fp, Width(fr) + getnum(Argc)),
-      fp = (void*) ((ob*) fp - 1),
+      cpyw((ob*)fp - 1, fp, Width(fr) + getnum(fp->argc)),
+      fp = (fr) ((ob*) fp - 1),
       sp = (ob*) fp,
-      Argc += sizeof(ob),
-      Argv[reqd] = nil,
+      fp->argc += sizeof(ob),
+      fp->argv[reqd] = nil,
       ApN(2, xp); }
   // in this case we just keep the existing slots.
   // the path is knowable at compile time in many cases
@@ -68,19 +68,19 @@ Ll(vararg) {
   Have(2 * vdic);
   two t = (two) hp;
   hp += 2 * vdic;
-  for (uintptr_t i = vdic; i--;
-    t[i].a = Argv[reqd + i],
-    t[i].b = puttwo(t+i+1));
+  for (uintptr_t i = vdic; i--;)
+    t[i].a = fp->argv[reqd + i],
+    t[i].b = puttwo(t+i+1);
   return
     t[vdic-1].b = nil,
-    Argv[reqd] = puttwo(t),
+    fp->argv[reqd] = puttwo(t),
     ApN(2, xp); }
 
 // type predicates
 #define Tp(t)\
   Ll(t##pp) { return ApN(1, (t##p(xp)?N1:nil)); }\
   Ll(t##p_u) {\
-    for (ob *xs = Argv, *l = xs + getnum(Argc); xs < l;)\
+    for (ob *xs = fp->argv, *l = xs + getnum(fp->argc); xs < l;)\
       if (!t##p(*xs++)) return ApC(ret, nil);\
     return ApC(ret, N1); }
 Tp(num) Tp(hom) Tp(two) Tp(sym) Tp(str) Tp(tbl) Tp(nil)
@@ -121,9 +121,9 @@ Br(brgteq,  *sp++ >= xp, GF, xp, FF, nil)
 // return from a function
 Ll(ret) {
   return
-    ip = (yo) ((fr)fp)->retp,
-    sp = (ob*) ((ob) ((fr)fp)->argv + ((fr)fp)->argc - Num),
-    fp = (void*) ((ob) sp + ((fr)fp)->subd - Num),
+    ip = (yo) fp->retp,
+    sp = (ob*) ((ob) fp->argv + fp->argc - Num),
+    fp = (void*) ((ob) sp + fp->subd - Num),
     ApY(ip, xp); }
 
 // "inner" function call
@@ -132,34 +132,34 @@ Ll(call) {
   intptr_t adic = getnum((ob) ip[1].ll),
            off = (ob*) fp - (sp + adic);
   return
-    fp = (void*) ((fr) sp - 1),
-    sp = (void*) fp,
-    ((fr)fp)->retp = (ob) (ip + 2),
-    ((fr)fp)->subd = putnum(off),
-    ((fr)fp)->clos = nil,
-    ((fr)fp)->argc = putnum(adic),
+    fp = (fr) sp - 1,
+    sp = (ob*) fp,
+    fp->retp = (ob) (ip + 2),
+    fp->subd = putnum(off),
+    fp->clos = nil,
+    fp->argc = putnum(adic),
     ApY(xp, nil); }
 
 // tail call
 Ll(rec) { return
   ip = (yo) ip[1].ll,
-  ((fr)fp)->argc != (ob) ip ? ApC(recne, xp) :
-  (cpyw(((fr)fp)->argv, sp, getnum((ob) ip)),
-   sp = (void*) fp,
+  fp->argc != (ob) ip ? ApC(recne, xp) :
+  (cpyw(fp->argv, sp, getnum((ob) ip)),
+   sp = (ob*) fp,
    ApY(xp, nil)); }
 
 // tail call with different arity
 static Ll(recne) { return
-  v->xp = ((fr)fp)->subd,
-  v->ip = (yo) ((fr)fp)->retp, // save return info
-  fp = (void*) (((fr)fp)->argv + getnum(((fr)fp)->argc - (ob) ip)),
+  v->xp = fp->subd,
+  v->ip = (yo) fp->retp, // save return info
+  fp = (void*) (fp->argv + getnum(fp->argc - (ob) ip)),
   rcpyw(fp, sp, getnum((ob) ip)), // copy from high to low
   sp = (void*) (((fr) fp) - 1),
   fp = (void*) sp,
-  ((fr)fp)->retp = (ob) v->ip,
-  ((fr)fp)->argc = (ob) ip,
-  ((fr)fp)->subd = v->xp,
-  ApY(xp, Clos = nil); }
+  fp->retp = (ob) v->ip,
+  fp->argc = (ob) ip,
+  fp->subd = v->xp,
+  ApY(xp, fp->clos = nil); }
 
 // errors
 Ll(fail) { return Pack(), err(v, "fail"); }
@@ -172,18 +172,17 @@ Ll(type_error) {
 #define arity_err_msg "wrong arity : %d of %d"
 Ll(ary_error) {
   return Pack(),
-         err(v, arity_err_msg, getnum(Argc), getnum(xp)); }
+         err(v, arity_err_msg, getnum(fp->argc), getnum(xp)); }
 
 Ll(div_error) { return Pack(), err(v, "/ 0"); }
 
 // type/arity checking
-#define DTc(n, t) Ll(n) {\
-  TypeCheck(xp, t); return ApN(1, xp); }
+#define DTc(n, t) Ll(n) { TypeCheck(xp, t); return ApN(1, xp); }
 DTc(idZ, Num) DTc(idH, Hom)
 DTc(idT, Tbl) DTc(id2, Two)
 Ll(arity) {
   ob reqd = (ob) ip[1].ll;
-  return reqd <= Argc ?  ApN(2, xp) : ApC(ary_error, reqd); }
+  return reqd <= fp->argc ?  ApN(2, xp) : ApC(ary_error, reqd); }
 
 static void show_call(em v, yo ip, fr fp) {
   fputc('(', stderr);
@@ -237,20 +236,20 @@ NoInline ob err(em v, const char *msg, ...) {
   return ApC(ret, putnum(xp));}
 
 Ll(sub_u) {
-  if (!(xp = getnum(Argc))) return ApC(ret, N0);
-  TypeCheck(*Argv, Num);
-  if (xp == 1) return ApC(ret, putnum(-getnum(*Argv)));
-  mm_u(xp-1,Argv+1,getnum(*Argv),-); }
+  if (!(xp = getnum(fp->argc))) return ApC(ret, N0);
+  TypeCheck(*fp->argv, Num);
+  if (xp == 1) return ApC(ret, putnum(-getnum(*fp->argv)));
+  mm_u(xp-1,fp->argv+1,getnum(*fp->argv),-); }
 
 Ll(sar_u) {
-  if (Argc == N0) return ApC(ret, N0);
-  TypeCheck(*Argv, Num);
-  mm_u(getnum(Argc)-1, Argv+1, getnum(*Argv), >>); }
+  if (fp->argc == N0) return ApC(ret, N0);
+  TypeCheck(*fp->argv, Num);
+  mm_u(getnum(fp->argc)-1, fp->argv+1, getnum(*fp->argv), >>); }
 
 Ll(sal_u) {
-  if (Argc == N0) return ApC(ret, N0);
-  TypeCheck(*Argv, Num);
-  mm_u(getnum(Argc)-1, Argv+1, getnum(*Argv), <<); }
+  if (fp->argc == N0) return ApC(ret, N0);
+  TypeCheck(*fp->argv, Num);
+  mm_u(getnum(fp->argc)-1, fp->argv+1, getnum(*fp->argv), <<); }
 
 Ll(dqv) {
   if (xp == N0) return ApC(div_error, xp);
@@ -258,9 +257,9 @@ Ll(dqv) {
   return ApN(1, xp); }
 
 Ll(div_u) {
-  if (!(xp = getnum(Argc))) return ApC(ret, N1);
-  TypeCheck(*Argv, Num);
-  mm_void(xp-1, Argv+1, getnum(*Argv), /); }
+  if (!(xp = getnum(fp->argc))) return ApC(ret, N1);
+  TypeCheck(*fp->argv, Num);
+  mm_void(xp-1, fp->argv+1, getnum(*fp->argv), /); }
 
 Ll(mod) {
   if (xp == N0) return ApC(div_error, xp);
@@ -268,9 +267,9 @@ Ll(mod) {
   return ApN(1, xp); }
 
 Ll(mod_u) {
-  if (!(xp = getnum(Argc))) return ApC(ret, N1);
-  TypeCheck(*Argv, Num);
-  mm_void(xp-1, Argv+1, getnum(*Argv), %); }
+  if (!(xp = getnum(fp->argc))) return ApC(ret, N1);
+  TypeCheck(*fp->argv, Num);
+  mm_void(xp-1, fp->argv+1, getnum(*fp->argv), %); }
 
 Ll(rnd_u) { return
   xp = putnum(v->rand = lcprng(v->rand)),
@@ -289,7 +288,8 @@ BINOP(sub,  *sp++ - xp + Num)
 BINOP(sar,  putnum(getnum(*sp++) >> getnum(xp)))
 BINOP(sal,  putnum(getnum(*sp++) << getnum(xp)))
 
-#define UBINOP(nom, dflt, op) Ll(nom##_u) { mm_u(getnum(Argc), Argv, dflt, op); }
+#define UBINOP(nom, dflt, op) Ll(nom##_u) {\
+  mm_u(getnum(fp->argc), fp->argv, dflt, op); }
 
 UBINOP(add, 0, +)
 UBINOP(bor, 0, |)
@@ -320,7 +320,7 @@ BINOP(eq, eql(xp, *sp++) ? N1 : nil)
 cmp(lt, LT) cmp(lteq, LE) cmp(gteq, GE) cmp(gt, GT)
 #undef cmp
 #define cmp(op, n) Ll(n##_u) {\
-  ob n = getnum(Argc), *xs = Argv, m, *l;\
+  ob n = getnum(fp->argc), *xs = fp->argv, m, *l;\
   switch (n) {\
     case 0: return ApC(ret, nil);\
     default: for (l = xs + n - 1, m = *xs; xs < l; m= *++xs)\
@@ -343,9 +343,9 @@ OP2(imm, (ob) ip[1].ll)
 // pointer arithmetic works because fixnums are premultiplied by W
 
 // function arguments
-OP2(arg, Ref(Argv))
-OP1(arg0, Argv[0])
-OP1(arg1, Argv[1])
+OP2(arg, Ref(fp->argv))
+OP1(arg0, fp->argv[0])
+OP1(arg1, fp->argv[1])
 
 // local variables
 OP2(loc, Ref(((ob*)Locs)))
@@ -353,9 +353,9 @@ OP1(loc0, ((ob*)Locs)[0])
 OP1(loc1, ((ob*)Locs)[1])
 
 // closure variables
-OP2(clo, Ref(((ob*)Clos)))
-OP1(clo0, ((ob*)Clos)[0])
-OP1(clo1, ((ob*)Clos)[1])
+OP2(clo, Ref(((ob*)fp->clos)))
+OP1(clo0, ((ob*)fp->clos)[0])
+OP1(clo1, ((ob*)fp->clos)[1])
 
 ////
 /// Store Instructions
@@ -408,8 +408,8 @@ Vm(rslv) {
 // hash tables
 Vm(tblg) {
   Arity(2);
-  TypeCheck(Argv[0], Tbl);
-  return xp = tbl_get(v, Argv[0], Argv[1]),
+  TypeCheck(fp->argv[0], Tbl);
+  return xp = tbl_get(v, fp->argv[0], fp->argv[1]),
          ApC(ret, xp ? xp : nil); }
 
 OP1(tget, (xp = tbl_get(v, xp, *sp++)) ? xp : nil)
@@ -436,8 +436,8 @@ Vm(tkeys) { return
 
 Vm(tblc) {
   Arity(2);
-  TypeCheck(Argv[0], Tbl);
-  return xp = tbl_get(v, Argv[0], Argv[1]),
+  TypeCheck(fp->argv[0], Tbl);
+  return xp = tbl_get(v, fp->argv[0], fp->argv[1]),
          ApC(ret, xp ? N1 : nil); }
 
 static ob tblss(em v, intptr_t i, intptr_t l) {
@@ -449,29 +449,29 @@ static ob tblss(em v, intptr_t i, intptr_t l) {
 
 Vm(tbls) {
   Arity(1);
-  TypeCheck(*Argv, Tbl);
+  TypeCheck(*fp->argv, Tbl);
   return
-    xp = *Argv,
-    CallC(v->xp = tblss(v, 1, getnum(Argc))),
+    xp = *fp->argv,
+    CallC(v->xp = tblss(v, 1, getnum(fp->argc))),
     xp ? ApC(ret, xp) : 0; }
 
 Vm(tblmk) {
   return Pack(),
     (v->xp = table(v)) &&
-    (xp = tblss(v, 0, getnum(Argc))) ?
+    (xp = tblss(v, 0, getnum(fp->argc))) ?
       (Unpack(), ApC(ret, xp)) :
       0; }
 
 Vm(tblks) {
   Arity(1);
-  TypeCheck(*Argv, Tbl);
-  return CallC(v->xp = tbl_keys(v, *Argv)),
+  TypeCheck(*fp->argv, Tbl);
+  return CallC(v->xp = tbl_keys(v, *fp->argv)),
          xp ? ApC(ret, xp) : 0; }
 
 Vm(tbll) {
   Arity(1);
-  TypeCheck(*Argv, Tbl);
-  return ApC(ret, putnum(gettbl(*Argv)->len)); }
+  TypeCheck(*fp->argv, Tbl);
+  return ApC(ret, putnum(gettbl(*fp->argv)->len)); }
 
 Vm(tset) {
   ob x = *sp++, y = *sp++;
@@ -490,19 +490,20 @@ Vm(cons) { Have1(); return
 
 Vm(car_u) {
   Arity(1);
-  TypeCheck(*Argv, Two);
-  return ApC(ret, A(*Argv)); }
+  TypeCheck(*fp->argv, Two);
+  return ApC(ret, A(*fp->argv)); }
 
 Vm(cdr_u) {
   Arity(1);
-  TypeCheck(*Argv, Two);
-  return ApC(ret, B(*Argv)); }
+  TypeCheck(*fp->argv, Two);
+  return ApC(ret, B(*fp->argv)); }
 
 Ll(cons_u) {
   Arity(2); Have(2); two w; return
     w = (two) hp,
     hp += 2,
-    w->a = Argv[0], w->b = Argv[1],
+    w->a = fp->argv[0],
+    w->b = fp->argv[1],
     ApC(ret, puttwo(w)); }
 
 // this is used to create closures.
@@ -518,7 +519,7 @@ Ll(take) {
     ApC(ret, (ob) t); }
 
 static Ll(clos) { return
-  Clos = (ob) ip[1].ll,
+  fp->clos = (ob) ip[1].ll,
   ApY((ob) ip[2].ll, xp); }
 
 // finalize function instance closure
@@ -548,17 +549,17 @@ static Vm(clos0) {
   ec = (ob*) ip[1].ll;
   fp = (void*) ((fr) sp - 1);
   sp = (ob*) fp;
-  Retp = (ob) ip;
-  Subr = putnum(off);
-  Argc = putnum(adic);
-  Clos = ec[2];
+  fp->retp = (ob) ip;
+  fp->subd = putnum(off);
+  fp->argc = putnum(adic);
+  fp->clos = ec[2];
   if (!nilp(loc)) *--sp = loc;
   return ApY(ec[3], xp); }
 
 // the next few functions create and store
 // lexical environments.
 static Vm(encl) {
-  intptr_t n = getnum(Argc);
+  intptr_t n = getnum(fp->argc);
   n += n ? 14 : 11;
   Have(n);
   ob x = (ob) ip[1].ll, arg = nil;
@@ -572,7 +573,7 @@ static Vm(encl) {
          t[n-1] = (ob) t,
          t[0] = putnum(n-=3);
          n--;
-         t[n+1] = Argv[n]);
+         t[n+1] = fp->argv[n]);
     arg = (ob) t; }
 
   yo t = (yo) block, // compiler thread closure array (1 length 5 elements)
@@ -581,7 +582,7 @@ static Vm(encl) {
   return
     t[0].ll = (ll*) arg,
     t[1].ll = (ll*) xp, // Locs or nil
-    t[2].ll = (ll*) Clos,
+    t[2].ll = (ll*) fp->clos,
     t[3].ll = (ll*) B(x),
     t[4].ll = NULL,
     t[5].ll = (ll*) t,

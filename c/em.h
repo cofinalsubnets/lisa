@@ -196,15 +196,10 @@ ll gc, type_error, ary_error, div_error;
 // without using the stack. so the interpreter has to restore
 // the current values in the vm struct before it makes any
 // "external" function calls.
-#define Pack() (v->ip=ip,v->sp=sp,v->hp=hp,v->fp=(fr)fp,v->xp=xp)
-#define Unpack() (fp=(void*)v->fp,hp=v->hp,sp=v->sp,ip=v->ip,xp=v->xp)
+#define Pack() (v->ip=ip,v->sp=sp,v->hp=hp,v->fp=fp,v->xp=xp)
+#define Unpack() (fp=v->fp,hp=v->hp,sp=v->sp,ip=v->ip,xp=v->xp)
 #define CallC(...) (Pack(), (__VA_ARGS__), Unpack())
 
-#define Clos ((fr)fp)->clos
-#define Retp ((fr)fp)->retp
-#define Subr ((fr)fp)->subd
-#define Argc ((fr)fp)->argc
-#define Argv ((fr)fp)->argv
 #define Locs ((ob*)fp)[-1]
 // the pointer to the local variables array isn't in the frame struct. it
 // isn't present for all functions, but if it is it's in the word of memory
@@ -219,7 +214,7 @@ ll gc, type_error, ary_error, div_error;
 #define ApC(f, x) (f)(v, ip, fp, sp, hp, (x))
 #define ApY(f, x) (ip = (yo) (f), ApC(ip->ll, (x)))
 
-#define Arity(n) if (putnum(n) > Argc) return\
+#define Arity(n) if (putnum(n) > fp->argc) return\
   ApC(ary_error, putnum(n))
 #define TypeCheck(x,t) if (Q((x)) - (t)) return\
   ApC(type_error, putnum((t << 3) | Q(x)))

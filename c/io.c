@@ -160,16 +160,16 @@ void emit(em v, ob x, FILE *o) {
 
 // print to console
 Ll(show_u) {
-  uintptr_t i, l = getnum(Argc);
+  uintptr_t i, l = getnum(fp->argc);
   if (l) {
     for (i = 0; i < l - 1; i++)
-      emit(v, Argv[i], stdout),
+      emit(v, fp->argv[i], stdout),
       fputc(' ', stdout);
-    emit(v, xp = Argv[i], stdout); }
+    emit(v, xp = fp->argv[i], stdout); }
   return fputc('\n', stdout),
          ApC(ret, xp); }
 
 Ll(putc_u) {
   Arity(1);
-  return fputc(getnum(*Argv), stdout),
+  return fputc(getnum(*fp->argv), stdout),
          ApC(ret, xp); }
