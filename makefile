@@ -7,6 +7,7 @@ lib=lib/$(lang)/$(lang).$(suff)
 h=$(sort $(wildcard c/*.h))
 c=$(sort $(wildcard c/*.c))
 PREFIX ?= $(HOME)/.local
+#CC=clang
 CPPFLAGS=-DPREF=\"$(PREFIX)\" -DLANG=\"$(lang)\" -DSUFF=\"$(suff)\"
 CFLAGS=-std=c99 -g -O2 -flto -Wall -Werror\
 	-Wstrict-prototypes -Wno-shift-negative-value\

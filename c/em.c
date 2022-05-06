@@ -69,8 +69,7 @@ static yo comp(em v, bool shell, const char **paths) {
                (k[0].ll = shell ? repl : fin_ok,
                 k[1].ll = 0, k[2].ll = (ll*) k, k) :
     (y = (ob) comp(v, shell, paths+1)) &&
-    (with(y, x = scrp(v, path)), !x) ? 0 :
-    (yo) seq(v, x, y); }
+    (with(y, x = scrp(v, path)), x) ? (yo) seq(v, x, y) : 0; }
 
 
 static em from

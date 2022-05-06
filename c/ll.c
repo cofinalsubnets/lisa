@@ -119,24 +119,26 @@ Br(brgteq,  *sp++ >= xp, GF, xp, FF, nil)
 #undef Br
 
 // return from a function
-Ll(ret) { return
-  ip = (yo) Retp,
-  sp = (ob*) ((ob) Argv + Argc - Num),
-  fp = (void*) ((ob) sp + Subr - Num),
-  ApY(ip, xp); }
+Ll(ret) {
+  return
+    ip = (yo) Retp,
+    sp = (ob*) ((ob) Argv + Argc - Num),
+    fp = (void*) ((ob) sp + Subr - Num),
+    ApY(ip, xp); }
 
 // "inner" function call
 Ll(call) {
   Have(Width(fr));
   intptr_t adic = getnum((ob) ip[1].ll),
            off = (ob*) fp - (sp + adic);
+  fr f = (fr) sp - 1;
   return
-    fp = (void*) ((fr) sp - 1),
-    sp = (ob*) fp,
-    Retp = (ob) (ip + 2),
-    Subr = putnum(off),
-    Clos = nil,
-    Argc = putnum(adic),
+    fp = (ob*) f,
+    sp = (ob*) f,
+    f->retp = (ob) (ip + 2),
+    f->subd = putnum(off),
+    f->clos = nil,
+    f->argc = putnum(adic),
     ApY(xp, nil); }
 
 // tail call
