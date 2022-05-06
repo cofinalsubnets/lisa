@@ -13,7 +13,7 @@ typedef struct yo *yo;
 typedef struct em *em;
 typedef struct fr *fr;
 #define Ll(n, ...)\
-  ob n(em v, yo ip, ob*fp, ob*sp, ob*hp, ob xp, ##__VA_ARGS__)
+  ob n(em v, yo ip, fr fp, ob*sp, ob*hp, ob xp, ##__VA_ARGS__)
 typedef Ll(ll);
 
 // FIXME 3bit -> 2bit

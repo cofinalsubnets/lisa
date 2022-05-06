@@ -22,7 +22,7 @@ static void fin(struct em*);
 
 static em from(bool, const char*, const char**);
 static NoInline ob go(em v) {
-  yo ip; ob *fp; ob xp, *sp, *hp;
+  yo ip; fr fp; ob xp, *sp, *hp;
   return Unpack(), ApY(ip, xp); }
 
 int main(int argc, char **argv) {
