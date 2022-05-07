@@ -447,24 +447,10 @@ Ll(hseek_u) {
   TypeCheck(fp->argv[1], Num);
   return ApC(ret, fp->argv[0] + fp->argv[1] - Num); }
 
-mo ana(em v, ob x) { return
-  with(x, Push(Put(em_i), Put(ret), Put(mk_yo))),
-  xx_yo(v, NULL, 0, x); }
-
-Ll(ev_u) {
-  Arity(1); return
-    homp(v->glob[Eval]) ? ApY((yo) v->glob[Eval], xp) :
-    (Pack(), v->ip = ana(v, *fp->argv)) ?
-      (Unpack(), ApY(ip, xp)) : 0; }
-
-Ll(bootstrap) {
-  Arity(1);
-  TypeCheck(*fp->argv, Hom);
-  return
-    v->glob[Eval] = xp = *fp->argv,
-    xp = interns(v, "ev"),
-    tbl_set(v, v->glob[Topl], xp, v->glob[Eval]),
-    ApC(ret, v->glob[Eval]); }
+mo ana(em v, ob x) {
+  bool _;
+  with(x, _ = Push(putnum((ob)em_i), putnum((ob)ret), putnum((ob)mk_yo)));
+  return !_ ? 0 : xx_yo(v, NULL, 0, x); }
 
 Ll(hnom_u) {
   Arity(1);

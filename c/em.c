@@ -70,6 +70,22 @@ ob eval(em v, ob x) {
        x = tbl_get(v, v->glob[Topl], v->glob[Apply]),
        call(v, x, k, v->hp, v->sp, v->fp)); }
 
+Ll(ev_u) {
+  Arity(1); return
+    homp(v->glob[Eval]) ? ApY((yo) v->glob[Eval], xp) :
+    (Pack(), v->ip = ana(v, *fp->argv)) ?
+      (Unpack(), ApY(ip, xp)) : 0; }
+
+Ll(bootstrap) {
+  Arity(1);
+  TypeCheck(*fp->argv, Hom);
+  return
+    // FIXME oof
+    v->glob[Eval] = xp = *fp->argv,
+    xp = interns(v, "ev"),
+    tbl_set(v, v->glob[Topl], xp, v->glob[Eval]),
+    ApC(ret, v->glob[Eval]); }
+
 static Vm(fin_ok) { return fin(v), nil; }
 static Vm(repl) { for (Pack();;) {
   if ((xp = parse(v, stdin))) {
