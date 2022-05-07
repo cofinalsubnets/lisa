@@ -549,14 +549,14 @@ static Vm(clos0) {
 
 // the next few functions create and store
 // lexical environments.
+// FIXME magic numbers
 static Vm(encl) {
-  intptr_t n = getnum(fp->argc);
-  n += n ? 14 : 11;
+  Z m = getnum(fp->argc),
+    n = m + (m ? 14 : 11);
   Have(n);
-  ob x = (ob) ip[1].ll, arg = nil;
-  ob* block = hp;
+  ob x = (ob) ip[1].ll, arg = nil, *block = hp;
   hp += n;
-  if (n > 11) {
+  if (m) {
     n -= 11;
     ob *t = block;
     block += n;

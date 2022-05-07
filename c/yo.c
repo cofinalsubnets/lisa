@@ -388,12 +388,13 @@ static ob apply(em, ob, ob) NoInline;
 ob eval(em v, ob x) {
   ob args = pair(v, x, nil);
   return !args ? 0 :
-  (x = homp(v->glob[Eval]) ?
-     v->glob[Eval] : tbl_get(v, v->glob[Topl], v->glob[Eval]),
-   apply(v, x, args)); }
+    // FIXME what
+    (x = homp(v->glob[Eval]) ?
+       v->glob[Eval] :
+       tbl_get(v, v->glob[Topl], v->glob[Eval]),
+     apply(v, x, args)); }
 
-// return to C
-static Ll(yield) { Pack(); return xp; }
+static Ll(yield) { return Pack(), xp; }
 
 static NoInline ob apply(em v, ob f, ob x) {
   yo h; return

@@ -8,7 +8,7 @@
 _Static_assert(sizeof(intptr_t) == 8, "64bit");
 _Static_assert(-1 == -1 >> 1, "signed >>");
 
-typedef intptr_t ob;
+typedef intptr_t ob, Z;
 typedef struct mo *mo, *yo;
 typedef struct em *em;
 typedef struct fr *fr;
@@ -21,10 +21,10 @@ typedef vm ll;
 enum class { Hom = 0, Num = 1, Two = 2, Xxx = 3,
              Str = 4, Tbl = 5, Sym = 6, Nil = 7, };
 
-typedef struct str { uintptr_t len; char text[]; } *str;
+typedef struct str { Z len; char text[]; } *str;
 typedef struct sym { ob nom, code, l, r; } *sym;
 typedef struct ent { ob key, val; struct ent *next; } *ent; // tables
-typedef struct tbl { uintptr_t len, cap; ent *tab; } *tbl;
+typedef struct tbl { Z len, cap; ent *tab; } *tbl;
 typedef struct two { ob a, b; } *two;
 typedef struct mm { ob *it; struct mm *et; } *mm;
 struct fr { ob clos, retp, subd, argc, argv[]; };
@@ -35,7 +35,7 @@ enum { Def, Cond, Lamb, Quote, Seq, Splat,
        Topl, Eval, Apply, NGlobs };
 
 struct em {
-  yo ip; ob xp, *hp, *sp; fr fp;
+  mo ip; ob xp, *hp, *sp; fr fp;
   mm mm; ob syms, glob[NGlobs];
   intptr_t rand, t0, len, *pool; };
 
@@ -45,22 +45,13 @@ struct em {
 void *cells(em, uintptr_t), emit(em, ob, FILE*);
 bool eql(ob, ob), please(em, uintptr_t);
 uintptr_t hash(em, ob);
-yo ana(em, ob);
+mo ana(em, ob);
 ob eval(em, ob),
-   // FIXME functions
-   homnom(em, ob),
-   // FIXME strings
-   string(em, const char*),
-   // FIXME symbols
-   intern(em, ob),
-
-   // FIXME tables
-   table(em),
-   tbl_set(em, ob, ob, ob),
-   tbl_get(em, ob, ob),
-
+   string(em, const char*), intern(em, ob),
+   table(em), tbl_set(em, ob, ob, ob), tbl_get(em, ob, ob),
    pair(em, ob, ob),
    parse(em, FILE*),
+   homnom(em, ob),
    err(em, const char*, ...);
 
 // a packed array of 4-byte strings.
