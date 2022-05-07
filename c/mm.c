@@ -225,7 +225,7 @@ static Inline uintptr_t tbl_load(ob t) {
   return gettbl(t)->len >> gettbl(t)->cap; }
 
 static ent tbl_ent_(em v, ent e, ob k) { return
-  !e ? e : eql(e->key, k) ? e : tbl_ent_(v, e->next, k); }
+  e == EmptyBucket ? e : eql(e->key, k) ? e : tbl_ent_(v, e->next, k); }
 
 static ent tbl_ent(em v, ob u, ob k) {
   tbl t = gettbl(u); return

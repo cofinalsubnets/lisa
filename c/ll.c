@@ -405,7 +405,7 @@ OP1(thas, tbl_get(v, xp, *sp++) ? N1 : nil)
 OP1(tlen, putnum(gettbl(xp)->len))
 
 static ob tbl_keys_j(em v, ent e, ob l) {
-  ob x; return !e ? l :
+  ob x; return e == EmptyBucket ? l :
     (x = e->key,
      with(x, l = tbl_keys_j(v, e->next, l)),
      l ? pair(v, x, l) : 0); }
