@@ -177,6 +177,7 @@ Gc(cpsym) {
        dst = getsym(sskc(v, &v->syms, x)),
        src->nom = putsym(dst) ); }
 
+      /*
 static ent cpent(em v, ent src, intptr_t len0, ob *pool0) {
   ent dst; return src == EmptyBucket ? src :
     (dst = (ent) bump(v, Width(ent)),
@@ -184,6 +185,7 @@ static ent cpent(em v, ent src, intptr_t len0, ob *pool0) {
      COPY(dst->key, src->key),
      COPY(dst->val, src->val),
      dst); }
+     */
 
 Gc(cptbl) {
   tbl src = gettbl(x);
@@ -196,7 +198,7 @@ Gc(cptbl) {
   ent *src_tab = src->tab;
   src->tab = (ent*) puttbl(dst);
   for (uintptr_t ii = 1<<src_cap; ii--;)
-    dst->tab[ii] = cpent(v, src_tab[ii], len0, pool0);
+    dst->tab[ii] = (ent) cp(v, (ob) src_tab[ii], len0, pool0);
   return puttbl(dst); }
 
 Gc(cptwo) {
@@ -315,15 +317,17 @@ static ob tbl_grow(em v, ob t) {
 
 static ob tbl_set_s(em v, ob t, ob k, ob x) {
   tbl y;
-  ent e = tbl_ent(v, t, k);
+  ob *e = (ob*) tbl_ent(v, t, k);
   uintptr_t i = tbl_idx(gettbl(t)->cap, hash(v, k));
-  return e != EmptyBucket ? e->val = x :
-    (with(t, with(k, with(x, e = cells(v, Width(ent))))),
+  return e != EmptyBucket ? e[1] = x :
+    (with(t, with(k, with(x, e = cells(v, 5)))),
      !e ? 0 : (y = gettbl(t),
-               e->key = k,
-               e->val = x,
-               e->next = y->tab[i],
-               y->tab[i] = e,
+               e[0] = k,
+               e[1] = x,
+               e[2] = (ob) y->tab[i],
+               e[3] = 0,
+               e[4] = (ob) e,
+               y->tab[i] = (ent) e,
                y->len += 1,
                x)); }
 
