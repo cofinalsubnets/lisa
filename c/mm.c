@@ -7,7 +7,7 @@ static copier
   cphom, cptwo, cpsym, cpstr, cptbl, cpid,
   *copiers[] = {
     [Hom] = cphom, [Num] = cpid, [Two] = cptwo, [Xxx] = cpid,
-    [Str] = cpstr, [Tbl] = cptbl, [Sym] = cpsym, [Nil] = cpid, };
+    [Str] = cpstr, [Tbl] = cptbl, [Sym] = cpsym, };
 static Inline Gc(cp) { return copiers[Q(x)](v, x, len0, pool0); }
 static Gc(cpid) { return x; }
 
@@ -215,19 +215,19 @@ static Inline intptr_t tbl_idx(uintptr_t cap, uintptr_t co) {
 static Inline uintptr_t tbl_load(ob t) {
   return gettbl(t)->len >> gettbl(t)->cap; }
 
-static ob* tbl_ent_(em v, ob *e, ob k) { return
-  (ob) e == nil ? e : eql(e[0], k) ? e : tbl_ent_(v, (ob*)e[2], k); }
+static ob tbl_ent_(em v, ob e, ob k) { return
+  e == nil ? e : eql(R(e)[0], k) ? e : tbl_ent_(v, R(e)[2], k); }
 
-static ob* tbl_ent(em v, ob u, ob k) {
+static ob tbl_ent(em v, ob u, ob k) {
   tbl t = gettbl(u); return
-    tbl_ent_(v, (ob*) t->tab[tbl_idx(t->cap, hash(v, k))], k); }
+    tbl_ent_(v, t->tab[tbl_idx(t->cap, hash(v, k))], k); }
 
 static hasher
   hash_sym, hash_str, hash_two, hash_hom, hash_num, hash_nil,
   *hashers[] = {
     [Hom] = hash_hom, [Two] = hash_two,
     [Str] = hash_str, [Num] = hash_num, [Sym] = hash_sym,
-    [Nil] = hash_nil, [Xxx] = hash_nil, [Tbl] = hash_nil, };
+    [Xxx] = hash_nil, [Tbl] = hash_nil, };
 
 Inline uintptr_t hash(em v, ob x) { return hashers[Q(x)](v, x); }
 
@@ -330,8 +330,8 @@ ob tbl_set(em v, ob t, ob k, ob x) {
     (with(x, t = tbl_grow(v, t)), t ? x : 0); }
 
 ob tbl_get(em v, ob t, ob k) {
-  ob *e = tbl_ent(v, t, k);
-  return e != EmptyBucket ? e[1] : 0; }
+  ob e = tbl_ent(v, t, k);
+  return e == nil ? 0 : R(e)[1]; }
 
 ob table(em v) {
   tbl t = cells(v, Width(tbl) + 3);
