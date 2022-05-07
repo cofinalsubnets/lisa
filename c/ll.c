@@ -187,26 +187,28 @@ static void show_call(em v, yo ip, fr fp) {
   fputc(')', stderr); }
 
 NoInline ob err(em v, const char *msg, ...) {
-  yo ip = v->ip;
-  fr fp = v->fp, top = (fr) (v->pool + v->len);
+  if (msg) {
+    yo ip = v->ip;
+    fr fp = v->fp, top = (fr) (v->pool + v->len);
 
-  // error line
-  fputs("# ", stderr);
-  if (fp < top) show_call(v, ip, fp), fputs(" : ", stderr);
-  va_list xs; va_start(xs, msg),
-    vfprintf(stderr, msg, xs),
-    va_end(xs),
-    fputc('\n', stderr);
+    // error line
+    fputs("# ", stderr);
+    if (fp < top) show_call(v, ip, fp), fputs(" : ", stderr);
+    va_list xs; va_start(xs, msg),
+      vfprintf(stderr, msg, xs),
+      va_end(xs),
+      fputc('\n', stderr);
 
-  // backtrace
-  if (fp < top) for (;;) {
-    ip = (yo) fp->retp, fp = (fr)
-      ((ob*) (fp + 1) + getnum(fp->argc)
-                      + getnum(fp->subd));
-    if (fp == top) break; else
-      fputs("# in ", stderr),
-      show_call(v, ip, fp),
-      fputc('\n', stderr); }
+    // backtrace
+    if (fp < top) for (;;) {
+      ip = (yo) fp->retp, fp = (fr)
+        ((ob*) (fp + 1) + getnum(fp->argc)
+                        + getnum(fp->subd));
+      if (fp == top) break; else
+        fputs("# in ", stderr),
+        show_call(v, ip, fp),
+        fputc('\n', stderr); } }
+
   // reset and yield
   return v->sp = v->pool + v->len,
          v->fp = (fr) v->sp,

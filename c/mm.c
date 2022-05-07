@@ -3,8 +3,6 @@
 #include <time.h>
 #include <string.h>
 
-#define Gc(n) ob n(em v, ob x, intptr_t len0, ob*pool0)
-typedef Gc(copier);
 static copier
   cphom, cptwo, cpsym, cpstr, cptbl, cpid,
   *copiers[] = {
@@ -233,8 +231,6 @@ static ent tbl_ent(em v, ob u, ob k) {
   tbl t = gettbl(u); return
     tbl_ent_(v, t->tab[tbl_idx(t->cap, hash(v, k))], k); }
 
-#define Hash(n) uintptr_t n(em v, ob x)
-typedef Hash(hasher);
 static hasher
   hash_sym, hash_str, hash_two, hash_hom, hash_num, hash_nil,
   *hashers[] = {
@@ -426,7 +422,7 @@ Vm(strmk) {
   for (ob x; i < bytes-1; s->text[i++] = getnum(x)) {
     x = fp->argv[i];
     TypeCheck(x, Num);
-    if (x == putnum(0)) break; }
+    if (x == N0) break; }
   return s->text[i] = 0,
          s->len = i+1,
          ApC(ret, putstr(s)); }
@@ -465,7 +461,7 @@ ob intern(em v, ob x) {
 
 Vm(gsym_u) {
   sym y; return 
-    fp->argc > putnum(0) && strp(*fp->argv) ?
+    fp->argc > N0 && strp(*fp->argv) ?
       (CallC(v->xp = intern(v, *fp->argv)),
        !xp ? 0 : ApC(ret, xp)) :
 

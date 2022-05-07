@@ -75,7 +75,7 @@ static ob str_loop(em v, FILE *p, str o, uintptr_t n, uintptr_t lim) {
   for (ob x; n < lim;) switch (x = getc(p)) {
     case '\\': if ((x = getc(p)) == EOF)
     case EOF: case '"': return
-      o->text[n++] = 0, o->len = n , putstr(o);
+      o->text[n++] = 0, o->len = n, putstr(o);
     default: o->text[n++] = x; }
   return reloop(v, p, putstr(o), lim, str_loop); }
 

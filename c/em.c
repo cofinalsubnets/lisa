@@ -46,12 +46,29 @@ int main(int argc, char **argv) {
         return v && go(v) ? EXIT_SUCCESS : EXIT_FAILURE; } }
 
 static ob seq(em v, ob a, ob b) {
-  yo k; with(a, with(b, k = cells(v, 8)));
-  return !k ? 0 : (ob)
-    (k[0].ll = imm,  k[1].ll = (ll*) a,
-     k[2].ll = call, k[3].ll = (ll*) N0,
-     k[4].ll = jump, k[5].ll = (ll*) b,
-     k[6].ll = NULL, k[7].ll = (ll*) k); }
+  yo k; return
+    with(a, with(b, k = cells(v, 8))), !k ? 0 : (ob)
+      (k[0].ll = imm,  k[1].ll = (ll*) a,
+       k[2].ll = call, k[3].ll = (ll*) N0,
+       k[4].ll = jump, k[5].ll = (ll*) b,
+       k[6].ll = NULL, k[7].ll = (ll*) k); }
+
+
+static Ll(yield) { return Pack(), xp; }
+ob eval(em v, ob x) {
+  yo k; ob args; return
+    !(args = pair(v, x, nil)) ||
+    !(x = tbl_get(v, v->glob[Topl], v->glob[Eval])) ||
+    !Push(x, args) ||
+    !(k = cells(v, 6)) ? 0 :
+      (k[0].ll = idH,
+       k[1].ll = call,
+       k[2].ll = (ll*) putnum(2),
+       k[3].ll = yield,
+       k[4].ll = NULL,
+       k[5].ll = (ll*) k,
+       x = tbl_get(v, v->glob[Topl], v->glob[Apply]),
+       call(v, x, k, v->hp, v->sp, v->fp)); }
 
 static Vm(fin_ok) { return fin(v), nil; }
 static Vm(repl) { for (Pack();;) {
@@ -122,7 +139,7 @@ static em ini(void) {
      v->rand = lcprng(v->t0),
      // initial memory state
      v->len = 1, v->pool = NULL, v->mm = NULL,
-     v->fp = (void*) (v->hp = v->sp = (void*) sizeof(ob)),
+     v->fp = (fr) (v->hp = v->sp = (ob*) sizeof(ob)),
      v->ip = (yo) (v->xp = v->syms = nil),
      setw(v->glob, nil, NGlobs),
 

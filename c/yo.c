@@ -6,7 +6,6 @@
 //
 // this phase does no optimization
 //
-#define Push(...) pushs(v, __VA_ARGS__, (ob) 0)
 #define Pull(m) ((c1*)getnum(*v->sp++))(v, e, m)
 
 
@@ -39,7 +38,7 @@ static bool pushss(em v, uintptr_t i, va_list xs) {
     (with(x, _ = pushss(v, i+1, xs)),
      _ && (*--v->sp = x)); }
 
-static bool pushs(em v, ...) {
+bool pushs(em v, ...) {
   va_list xs; bool _; return
     va_start(xs, v),
     _ = pushss(v, 0, xs),
@@ -79,7 +78,7 @@ static yo tuplr(em v, uintptr_t i, va_list xs) {
     (with(x, k = tuplr(v, i+1, xs)),
      k ? ee1((ll*) x, k) : 0); }
 
-static ob tupl(em v, ...) {
+ob tupl(em v, ...) {
   yo t; va_list xs; return
     va_start(xs, v),
     t = tuplr(v, 0, xs),
@@ -384,29 +383,6 @@ static Co(mk_yo) {
   yo k = ini_yo(v, m+1);
   return !k ? 0 : ee1((ll*)(e ? name(*e) : nil), k); }
 
-static ob apply(em, ob, ob) NoInline;
-ob eval(em v, ob x) {
-  ob args = pair(v, x, nil);
-  return !args ? 0 :
-    // FIXME what
-    (x = homp(v->glob[Eval]) ?
-       v->glob[Eval] :
-       tbl_get(v, v->glob[Topl], v->glob[Eval]),
-     apply(v, x, args)); }
-
-static Ll(yield) { return Pack(), xp; }
-
-static NoInline ob apply(em v, ob f, ob x) {
-  yo h; return
-    !Push(f, x) || !(h = cells(v, 5)) ? 0 :
-      (h[0].ll = call,
-       h[1].ll = (ll*) putnum(2),
-       h[2].ll = yield,
-       h[3].ll = NULL,
-       h[4].ll = (ll*) h,
-       x = tbl_get(v, v->glob[Topl], v->glob[Apply]),
-       call(v, h, x, v->hp, v->sp, v->fp)); }
-
 // instructions used by the compiler
 Ll(hom_u) {
   Arity(1);
@@ -471,7 +447,7 @@ Ll(hseek_u) {
   TypeCheck(fp->argv[1], Num);
   return ApC(ret, fp->argv[0] + fp->argv[1] - Num); }
 
-yo ana(em v, ob x) { return
+mo ana(em v, ob x) { return
   with(x, Push(Put(em_i), Put(ret), Put(mk_yo))),
   xx_yo(v, NULL, 0, x); }
 

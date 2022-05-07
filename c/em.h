@@ -1,6 +1,9 @@
 #ifndef _em_h
 #define _em_h
 #include <stdint.h>
+#include <stdbool.h>
+// FIXME don't use stdio
+#include <stdio.h>
 
 // thanks !!
 
@@ -13,7 +16,7 @@ typedef struct mo *mo, *yo;
 typedef struct em *em;
 typedef struct fr *fr;
 #define Ll(n, ...)\
-  ob n(em v, mo ip, ob xp, ob *hp, ob *sp, fr fp)
+  ob n(em v, ob xp, mo ip, ob *hp, ob *sp, fr fp)
 typedef Ll(vm);
 typedef vm ll;
 
@@ -27,8 +30,24 @@ typedef struct ent { ob key, val; struct ent *next; } *ent; // tables
 typedef struct tbl { Z len, cap; ent *tab; } *tbl;
 typedef struct two { ob a, b; } *two;
 typedef struct mm { ob *it; struct mm *et; } *mm;
+
 struct fr { ob clos, retp, subd, argc, argv[]; };
-struct mo { ll *ll; };
+struct mo { vm *ll; };
+
+#define Gc(n) ob n(em v, ob x, intptr_t len0, ob*pool0)
+#define Hash(n) uintptr_t n(em v, ob x)
+#define Show(n) void n (em v, ob x, FILE *o)
+typedef Hash(hasher);
+typedef Gc(copier);
+typedef Show(writer);
+
+typedef struct to {
+  sym name;
+  copier *copy;
+  hasher *hash;
+  writer *show;
+} *to;
+
 
 // FIXME indices to a global (thread-local) table of constants
 enum { Def, Cond, Lamb, Quote, Seq, Splat,
@@ -39,11 +58,9 @@ struct em {
   mm mm; ob syms, glob[NGlobs];
   intptr_t rand, t0, len, *pool; };
 
-#include <stdio.h>
-#include <stdbool.h>
 
 void *cells(em, uintptr_t), emit(em, ob, FILE*);
-bool eql(ob, ob), please(em, uintptr_t);
+bool eql(ob, ob), please(em, uintptr_t), pushs(em, ...);
 uintptr_t hash(em, ob);
 mo ana(em, ob);
 ob eval(em, ob),
@@ -52,6 +69,7 @@ ob eval(em, ob),
    pair(em, ob, ob),
    parse(em, FILE*),
    homnom(em, ob),
+   tupl(em, ...),
    err(em, const char*, ...);
 
 // a packed array of 4-byte strings.
@@ -73,6 +91,7 @@ extern const uint32_t *tnoms;
 #define um (v->mm=v->mm->et)
 #define with(y,...) (mm(&(y)),(__VA_ARGS__),um)
 #define Width(t) b2w(sizeof(struct t))
+#define Push(...) pushs(v, __VA_ARGS__, (ob) 0)
 
 #define Q(_) ((enum class)((_)&(sizeof(ob)-1)))
 
@@ -159,11 +178,11 @@ static Inline uintptr_t b2w(uintptr_t b) {
  _(symp_u, "symp") _(strp_u, "strp")\
  _(nilp_u, "nilp") _(rnd_u, "rand")
 
-#define ninl(x, _) ll x;
+#define ninl(x, _) vm x;
 insts(ninl)
 #undef ninl
 
-ll gc, type_error, ary_error, div_error;
+vm gc, type_error, ary_error, div_error;
 
 // " the interpreter "
 #define Vm Ll
@@ -192,31 +211,31 @@ ll gc, type_error, ary_error, div_error;
 #define Unpack() (fp=v->fp,hp=v->hp,sp=v->sp,ip=v->ip,xp=v->xp)
 #define CallC(...) (Pack(), (__VA_ARGS__), Unpack())
 
+// FIXME confusing premature optimization
 #define Locs ((ob*)fp)[-1]
 // the pointer to the local variables array isn't in the frame struct. it
 // isn't present for all functions, but if it is it's in the word of memory
-// immediately preceding the frame pointer.
-// if a function has locals, this will have been initialized by the
-// by the time they are referred to. the wrinkle in the representation
-// gives a small but significant benefit to general function call
-// performance and should be extended to the closure pointer, which is often
-// nil.
+// immediately preceding the frame pointer. if a function has
+// locals, this will have been initialized before they are
+// referenced.
 
 #define ApN(n, x) ApY(ip+(n), (x))
-#define ApC(f, x) (f)(v, ip, (x), hp, sp, fp)
+#define ApC(f, x) (f)(v, (x), ip, hp, sp, fp)
 #define ApY(f, x) (ip = (yo) (f), ApC(ip->ll, (x)))
 
-#define Arity(n) if (putnum(n) > fp->argc) return\
-  ApC(ary_error, putnum(n))
-#define TypeCheck(x,t) if (Q((x)) - (t)) return\
-  ApC(type_error, putnum((t << 3) | Q(x)))
-#define Have1() if (hp == sp) return ApC((v->xp=1, gc), xp)
-#define Have(n) if (sp - hp < n) return ApC((v->xp=n, gc), xp)
+#define HasArgs(n) (putnum(n) <= fp->argc)
+#define ArityError(n) ApC(ary_error, putnum(n))
+#define Arity(n) if (!HasArgs(n)) return ArityError(n)
+#define IsA(x, t) (Q((x))==t)
+#define TypeError(x,t) ApC(type_error, putnum((t << 3) | Q(x)))
+#define TypeCheck(x,t) if (!IsA((x), (t))) return TypeError((x), (t))
+#define Get(n) ApC((v->xp=n, gc), xp)
+#define Have1() if (hp == sp) return Get(1)
+#define Have(n) if (sp - hp < n) return Get(n)
 
 #define Tc TypeCheck
 #define CheckType TypeCheck
 #define N0 putnum(0)
-
 
 static Inline void setw(void *x, intptr_t i, uintptr_t l) {
   for (intptr_t *d = x; l--; *d++ = i); }
