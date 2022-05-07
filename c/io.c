@@ -11,7 +11,7 @@ const uint32_t *tnoms = (uint32_t*)
 //
 typedef ob loop(em, FILE*, str, uintptr_t, uintptr_t);
 static loop str_loop, atom_loop;
-static ob two_in(em, FILE*), read_num(const char*),
+static ob two_in(em, FILE*), read_num(em, ob, const char*),
           str_in(em, FILE*), read_atom(em, FILE*);
 
 static Inline ob read_buf(em v, FILE* i, loop *loop) {
@@ -38,7 +38,7 @@ ob readq(em v, FILE *i) {
       pair(v, v->glob[Quote], x); }
 
 ob parse(em v, FILE* i) {
-  ob x, y, c = nextc(i);
+  ob x, c = nextc(i);
   switch (c) {
     case EOF: case ')': return 0;
     case '(': return two_in(v, i);
@@ -46,8 +46,7 @@ ob parse(em v, FILE* i) {
     case '\'': return readq(v, i);
     default: return ungetc(c, i),
       !(x = read_atom(v, i)) ? 0 :
-        (y = read_num(getstr(x)->text),
-         nump(y) ? y : intern(v, x)); } }
+        read_num(v, x, getstr(x)->text); } }
 
 static ob two_in(em v, FILE *i) {
   ob x, y, c = nextc(i);
@@ -82,30 +81,30 @@ static ob str_loop(em v, FILE *p, str o, uintptr_t n, uintptr_t lim) {
 static Inline int cmin(int c) {
   return c >= 'A' && c <= 'Z' ? c + ('a'-'A') : c; }
 
-static NoInline ob read_num_base(const char *in, int base) {
+static NoInline ob read_num_base(em v, ob b, const char *in, int base) {
   static const char *digits = "0123456789abcdef";
   ob out = 0, c = cmin(*in++);
-  if (!c) return nil; // fail to parse empty string
+  if (!c) return intern(v, b); // fail to parse empty string
   do {
     int digit = 0;
     for (const char *d = digits; *d && *d != c; d++, digit++);
-    if (digit >= base) return nil; // fail to parse oob digit
+    if (digit >= base) return intern(v, b); // fail to parse oob digit
     out = out * base + digit;
   } while ((c = cmin(*in++)));
   return putnum(out); }
 
-static NoInline ob read_num(const char *s) {
+static NoInline ob read_num(em v, ob b, const char *s) {
   ob n;
   switch (*s) {
-    case '-': return nump(n = read_num(s+1)) ? putnum(-getnum(n)) : n;
-    case '+': return read_num(s+1);
+    case '-': return nump(n = read_num(v, b, s+1)) ? putnum(-getnum(n)) : n;
+    case '+': return read_num(v, b, s+1);
     case '0': switch (cmin(s[1])) {
-      case 'b': return read_num_base(s+2, 2);
-      case 'o': return read_num_base(s+2, 8);
-      case 'd': return read_num_base(s+2, 10);
-      case 'z': return read_num_base(s+2, 12);
-      case 'x': return read_num_base(s+2, 16); } }
-  return read_num_base(s, 10); }
+      case 'b': return read_num_base(v, b, s+2, 2);
+      case 'o': return read_num_base(v, b, s+2, 8);
+      case 'd': return read_num_base(v, b, s+2, 10);
+      case 'z': return read_num_base(v, b, s+2, 12);
+      case 'x': return read_num_base(v, b, s+2, 16); } }
+  return read_num_base(v, b, s, 10); }
 
 Ll(par_u) { return
   CallC(xp = parse(v, stdin),

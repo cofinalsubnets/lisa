@@ -376,12 +376,14 @@ Vm(locals) {
 // that would have been done by the compiler if the function
 // had been bound early.
 Vm(rslv) {
-  ob w = (ob) ip[1].ll, d = AB(w), y = A(w);
+  ob w = (ob) ip[1].ll, d = AB(w), typ = getnum(A(w));
   if (!(w = tbl_get(v, d, xp = BB(w)))) {
     char *nom = nilp(getsym(xp)->nom) ? "()" : getstr(getsym(xp)->nom)->text;
     return Pack(), err(v, "free variable : %s", nom); }
   xp = w;
-  if (y != putnum(sizeof(ob))) TypeCheck(xp, getnum(y));
+  if (typ != sizeof(ob)) {
+    TypeCheck(xp, typ);
+  }
   // omit the arity check if possible
   if ((ip[2].ll == call || ip[2].ll == rec) && // xp will be a hom
       R(xp)[0] == (ob) arity &&
