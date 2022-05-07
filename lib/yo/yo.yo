@@ -286,7 +286,7 @@
    ) (: ; new let expn makes sure ^^^ exist & don't make a closure vvv
 
  (type-sym-num x)
-  (idx '(hom num two ___ str tbl sym nil ()) x)
+  (idx '(hom num two _ str tbl sym _ ()) x)
 
  (type-sym x) (?
   (homp x) 'hom (nump x) 'num
