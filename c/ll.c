@@ -370,7 +370,6 @@ Vm(locals) {
     *--sp = t[n+1] = (ob) t,
     ApN(2, xp); }
 
-#define R(x) ((ob*)(x))
 // late binding
 // long b/c it does the "static" type and arity checks
 // that would have been done by the compiler if the function
@@ -404,16 +403,16 @@ OP1(tget, (xp = tbl_get(v, xp, *sp++)) ? xp : nil)
 OP1(thas, tbl_get(v, xp, *sp++) ? N1 : nil)
 OP1(tlen, putnum(gettbl(xp)->len))
 
-static ob tbl_keys_j(em v, ent e, ob l) {
-  ob x; return e == EmptyBucket ? l :
-    (x = e->key,
-     with(x, l = tbl_keys_j(v, e->next, l)),
+static ob tbl_keys_j(em v, ob e, ob l) {
+  ob x; return e == nil ? l :
+    (x = R(e)[0],
+     with(x, l = tbl_keys_j(v, R(e)[2], l)),
      l ? pair(v, x, l) : 0); }
 
 static ob tbl_keys_i(em v, ob t, intptr_t i) {
   ob k; return i == 1 << gettbl(t)->cap ? nil :
     (with(t, k = tbl_keys_i(v, t, i+1)),
-     k ? tbl_keys_j(v, (ent) gettbl(t)->tab[i], k) : 0); }
+     k ? tbl_keys_j(v, gettbl(t)->tab[i], k) : 0); }
 
 static Inline ob tbl_keys(em v, ob t) {
   return tbl_keys_i(v, t, 0); }

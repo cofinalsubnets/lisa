@@ -29,8 +29,7 @@ typedef struct sym { ob nom, code, l, r; } *sym;
 typedef struct two { ob a, b; } *two;
 typedef struct mm { ob *it; struct mm *et; } *mm;
 #define EmptyBucket ((void*)nil)
-typedef struct ent { ob key, val; struct ent *next; } *ent;
-typedef struct tbl { Z len, cap; ob *tab; } *tbl;
+typedef struct tbl { ob len, cap, *tab; } *tbl;
 
 struct fr { ob clos, retp, subd, argc, argv[]; };
 struct mo { vm *ll; };
@@ -252,4 +251,5 @@ static Inline void rcpyw(void *x, const void *y, uintptr_t l) {
 static Inline intptr_t lcprng(intptr_t s) {
   const intptr_t steele_vigna_2021 = 0xaf251af3b0f025b5;
   return (s * steele_vigna_2021 + 1) >> 8; }
+#define R(x) ((ob*)(x))
 #endif

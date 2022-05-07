@@ -216,7 +216,7 @@ static Inline uintptr_t tbl_load(ob t) {
   return gettbl(t)->len >> gettbl(t)->cap; }
 
 static ob* tbl_ent_(em v, ob *e, ob k) { return
-  e == EmptyBucket ? e : eql(e[0], k) ? e : tbl_ent_(v, (ob*)e[2], k); }
+  (ob) e == nil ? e : eql(e[0], k) ? e : tbl_ent_(v, (ob*)e[2], k); }
 
 static ob* tbl_ent(em v, ob u, ob k) {
   tbl t = gettbl(u); return
@@ -250,39 +250,39 @@ static Hash(hash_str) {
 static void tbl_fit(em v, ob t) {
   if (tbl_load(t)) return;
 
-  ent e = EmptyBucket, f, g;
+  ob e = nil, f, g;
   tbl u = gettbl(t);
 
   // collect all entries
   for (uintptr_t i = 1 << u->cap; i--;)
-    for (f = (ent) u->tab[i], u->tab[i] = (ob) EmptyBucket; f != EmptyBucket;
-      g = f->next, f->next = e,
+    for (f = u->tab[i], u->tab[i] = nil; f != nil;
+      g = R(f)[2], R(f)[2] = e,
       e = f, f = g);
 
   // shrink bucket array
   while (u->cap && tbl_load(t) < 1) u->cap--;
 
   // reinsert
-  while (e != EmptyBucket) {
-    uintptr_t i = tbl_idx(u->cap, hash(v, e->key));
-    f = e->next,
-    e->next = (ent) u->tab[i],
-    u->tab[i] = (ob) e,
+  while (e != nil) {
+    uintptr_t i = tbl_idx(u->cap, hash(v, R(e)[0]));
+    f = R(e)[2],
+    R(e)[2] = u->tab[i],
+    u->tab[i] = e,
     e = f; } }
 
 static ob tbl_del(em v, ob t, ob key) {
   tbl y = gettbl(t);
   ob val = nil;
   intptr_t b = tbl_idx(y->cap, hash(v, key));
-  ent e = (ent) y->tab[b];
-  struct ent prev = {0,0,e};
-  for (ent l = &prev; l != EmptyBucket && l->next != EmptyBucket; l = l->next)
-    if (l->next->key == key) {
-      val = l->next->val;
-      l->next = l->next->next;
+  ob e = y->tab[b],
+     prev[] = {0,0,e};
+  for (ob l = (ob) &prev; l != nil && R(l)[2] != nil; l = R(l)[2])
+    if (R(R(l)[2])[0] == key) {
+      val = R(R(l)[2])[1];
+      R(l)[2] = R(R(l)[2])[2];
       y->len--;
       break; }
-  return y->tab[b] = (ob) prev.next, tbl_fit(v, t), val; }
+  return y->tab[b] = prev[2], tbl_fit(v, t), val; }
 
 
 // tbl_grow(vm, tbl, new_size): destructively resize a hash table.
@@ -299,10 +299,12 @@ static ob tbl_grow(em v, ob t) {
   tab0 = gettbl(t)->tab;
 
   for (uintptr_t i, cap = 1 << cap0; cap--;)
-    for (ent e, es = (ent) tab0[cap]; es != EmptyBucket;
-      e = es, es = es->next,
-      i = tbl_idx(cap1, hash(v, e->key)),
-      e->next = (ent) tab1[i], tab1[i] = (ob) e);
+    for (ob e, es = tab0[cap]; es != nil;)
+      e = es,
+      es = R(es)[2],
+      i = tbl_idx(cap1, hash(v, R(e)[0])),
+      R(e)[2] = tab1[i],
+      tab1[i] = e;
 
   return gettbl(t)->cap = cap1, gettbl(t)->tab = tab1, t; }
 
