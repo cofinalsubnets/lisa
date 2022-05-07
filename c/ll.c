@@ -291,19 +291,11 @@ UBINOP(bxor, 0, ^)
 UBINOP(mul, 1, *)
 UBINOP(band, -1, &)
 
-static NoInline bool eql_(ob a, ob b) { return eql(a, b); }
-
-static NoInline bool eql_two(two a, two b) {
-  return eql_(a->a, b->a) && eql_(a->b, b->b); }
-
-static NoInline bool eql_str(str a, str b) {
-  return a->len == b->len &&
-    strcmp(a->text, b->text) == 0; }
-
-Inline bool eql(ob a, ob b) {
+bool eql(ob a, ob b) {
   return a == b || (Q(a) == Q(b) &&
-    ((twop(a) && eql_two(gettwo(a), gettwo(b))) ||
-     (strp(a) && eql_str(getstr(a), getstr(b))))); }
+    ((twop(a) && eql(A(a), A(b)) && eql(B(a), B(b))) ||
+     (strp(a) && getstr(a)->len == getstr(b)->len &&
+      0 == strcmp(getstr(a)->text, getstr(b)->text)))); }
 
 #define LT(a,b) (a<b)
 #define LE(a,b) (a<=b)
