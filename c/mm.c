@@ -178,7 +178,7 @@ Gc(cpsym) {
        src->nom = putsym(dst) ); }
 
 static ent cpent(em v, ent src, intptr_t len0, ob *pool0) {
-  ent dst; return !src ? 0 :
+  ent dst; return src == EmptyBucket ? src :
     (dst = (ent) bump(v, Width(ent)),
      dst->next = cpent(v, src->next, len0, pool0),
      COPY(dst->key, src->key),
