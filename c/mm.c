@@ -184,11 +184,11 @@ Gc(cptbl) {
   tbl dst = bump(v, Width(tbl) + (1<<src_cap));
   dst->len = src->len;
   dst->cap = src_cap;
-  dst->tab = (ent*) (dst + 1);
-  ent *src_tab = src->tab;
-  src->tab = (ent*) puttbl(dst);
+  dst->tab = (ob*) (dst + 1);
+  ob *src_tab = src->tab;
+  src->tab = (ob*) puttbl(dst);
   for (uintptr_t ii = 1<<src_cap; ii--;)
-    dst->tab[ii] = (ent) cp(v, (ob) src_tab[ii], len0, pool0);
+    dst->tab[ii] = cp(v, src_tab[ii], len0, pool0);
   return puttbl(dst); }
 
 Gc(cptwo) {
@@ -216,12 +216,12 @@ static Inline intptr_t tbl_idx(uintptr_t cap, uintptr_t co) {
 static Inline uintptr_t tbl_load(ob t) {
   return gettbl(t)->len >> gettbl(t)->cap; }
 
-static ent tbl_ent_(em v, ent e, ob k) { return
-  e == EmptyBucket ? e : eql(e->key, k) ? e : tbl_ent_(v, e->next, k); }
+static ob* tbl_ent_(em v, ob *e, ob k) { return
+  e == EmptyBucket ? e : eql(e[0], k) ? e : tbl_ent_(v, (ob*)e[2], k); }
 
-static ent tbl_ent(em v, ob u, ob k) {
+static ob* tbl_ent(em v, ob u, ob k) {
   tbl t = gettbl(u); return
-    tbl_ent_(v, t->tab[tbl_idx(t->cap, hash(v, k))], k); }
+    tbl_ent_(v, (ob*) t->tab[tbl_idx(t->cap, hash(v, k))], k); }
 
 static hasher
   hash_sym, hash_str, hash_two, hash_hom, hash_num, hash_nil,
@@ -256,7 +256,7 @@ static void tbl_fit(em v, ob t) {
 
   // collect all entries
   for (uintptr_t i = 1 << u->cap; i--;)
-    for (f = u->tab[i], u->tab[i] = EmptyBucket; f != EmptyBucket;
+    for (f = (ent) u->tab[i], u->tab[i] = (ob) EmptyBucket; f != EmptyBucket;
       g = f->next, f->next = e,
       e = f, f = g);
 
@@ -267,15 +267,15 @@ static void tbl_fit(em v, ob t) {
   while (e != EmptyBucket) {
     uintptr_t i = tbl_idx(u->cap, hash(v, e->key));
     f = e->next,
-    e->next = u->tab[i],
-    u->tab[i] = e,
+    e->next = (ent) u->tab[i],
+    u->tab[i] = (ob) e,
     e = f; } }
 
 static ob tbl_del(em v, ob t, ob key) {
   tbl y = gettbl(t);
   ob val = nil;
   intptr_t b = tbl_idx(y->cap, hash(v, key));
-  ent e = y->tab[b];
+  ent e = (ent) y->tab[b];
   struct ent prev = {0,0,e};
   for (ent l = &prev; l != EmptyBucket && l->next != EmptyBucket; l = l->next)
     if (l->next->key == key) {
@@ -283,14 +283,14 @@ static ob tbl_del(em v, ob t, ob key) {
       l->next = l->next->next;
       y->len--;
       break; }
-  return y->tab[b] = prev.next, tbl_fit(v, t), val; }
+  return y->tab[b] = (ob) prev.next, tbl_fit(v, t), val; }
 
 
 // tbl_grow(vm, tbl, new_size): destructively resize a hash table.
 // new_size words of memory are allocated for the new bucket array.
 // the old table entries are reused to populate the modified table.
 static ob tbl_grow(em v, ob t) {
-  ent *tab0, *tab1;
+  ob *tab0, *tab1;
   uintptr_t cap0 = gettbl(t)->cap, cap1 = cap0 + 1;
   with(t, tab1 = cells(v, 1<<cap1));
   if (!tab1) return 0;
@@ -298,10 +298,10 @@ static ob tbl_grow(em v, ob t) {
   tab0 = gettbl(t)->tab;
 
   for (uintptr_t i, cap = 1 << cap0; cap--;)
-    for (ent e, es = tab0[cap]; es != EmptyBucket;
+    for (ent e, es = (ent) tab0[cap]; es != EmptyBucket;
       e = es, es = es->next,
       i = tbl_idx(cap1, hash(v, e->key)),
-      e->next = tab1[i], tab1[i] = e);
+      e->next = (ent) tab1[i], tab1[i] = (ob) e);
 
   return gettbl(t)->cap = cap1, gettbl(t)->tab = tab1, t; }
 
@@ -317,7 +317,7 @@ static ob tbl_set_s(em v, ob t, ob k, ob x) {
                e[2] = (ob) y->tab[i],
                e[3] = 0,
                e[4] = (ob) e,
-               y->tab[i] = (ent) e,
+               y->tab[i] = (ob) e,
                y->len += 1,
                x)); }
 
@@ -327,16 +327,16 @@ ob tbl_set(em v, ob t, ob k, ob x) {
     (with(x, t = tbl_grow(v, t)), t ? x : 0); }
 
 ob tbl_get(em v, ob t, ob k) {
-  ent e = tbl_ent(v, t, k);
-  return e != EmptyBucket ? e->val : 0; }
+  ob *e = tbl_ent(v, t, k);
+  return e != EmptyBucket ? e[1] : 0; }
 
 ob table(em v) {
   tbl t = cells(v, Width(tbl) + 1);
-  ent *b = (ent*)(t+1);
+  ob *b = (ob*)(t+1);
   return !t ? 0 :
     (t->len = t->cap = 0,
      t->tab = b,
-     *b = EmptyBucket,
+     *b = nil,
      puttbl(t)); }
 
 ob string(em v, const char* c) {

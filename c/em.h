@@ -30,7 +30,7 @@ typedef struct two { ob a, b; } *two;
 typedef struct mm { ob *it; struct mm *et; } *mm;
 #define EmptyBucket ((void*)nil)
 typedef struct ent { ob key, val; struct ent *next; } *ent;
-typedef struct tbl { Z len, cap; ent *tab; } *tbl;
+typedef struct tbl { Z len, cap; ob *tab; } *tbl;
 
 struct fr { ob clos, retp, subd, argc, argv[]; };
 struct mo { vm *ll; };
@@ -76,7 +76,6 @@ ob eval(em, ob),
 extern const uint32_t *tnoms;
 
 #define N0 putnum(0)
-// FIXME nil = 0
 #define nil N0
 #define FF(x) F(F(x))
 #define FG(x) F(G(x))

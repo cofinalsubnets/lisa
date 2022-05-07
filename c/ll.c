@@ -413,7 +413,7 @@ static ob tbl_keys_j(em v, ent e, ob l) {
 static ob tbl_keys_i(em v, ob t, intptr_t i) {
   ob k; return i == 1 << gettbl(t)->cap ? nil :
     (with(t, k = tbl_keys_i(v, t, i+1)),
-     k ? tbl_keys_j(v, gettbl(t)->tab[i], k) : 0); }
+     k ? tbl_keys_j(v, (ent) gettbl(t)->tab[i], k) : 0); }
 
 static Inline ob tbl_keys(em v, ob t) {
   return tbl_keys_i(v, t, 0); }
