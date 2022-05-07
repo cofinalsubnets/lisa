@@ -60,31 +60,31 @@ ob eval(em v, ob x) {
     !(args = pair(v, x, nil)) ||
     !(x = tbl_get(v, v->glob[Topl], v->glob[Eval])) ||
     !Push(x, args) ||
-    !(k = cells(v, 6)) ? 0 :
-      (k[0].ll = idH,
-       k[1].ll = call,
-       k[2].ll = (ll*) putnum(2),
-       k[3].ll = yield,
-       k[4].ll = NULL,
-       k[5].ll = (ll*) k,
+    !(k = cells(v, 5)) ? 0 :
+      (k[0].ll = call,
+       k[1].ll = (ll*) putnum(2),
+       k[2].ll = yield,
+       k[3].ll = NULL,
+       k[4].ll = (ll*) k,
        x = tbl_get(v, v->glob[Topl], v->glob[Apply]),
        call(v, x, k, v->hp, v->sp, v->fp)); }
 
 Ll(ev_u) {
-  Arity(1); return
-    homp(v->glob[Eval]) ? ApY((yo) v->glob[Eval], xp) :
-    (Pack(), v->ip = ana(v, *fp->argv)) ?
-      (Unpack(), ApY(ip, xp)) : 0; }
+  Arity(1);
+  return
+    xp = tbl_get(v, v->glob[Topl], v->glob[Eval]),
+    gethom(xp)->ll != ev_u ?
+      ApY((yo) xp, nil) :
+      !(Pack(), v->ip = ana(v, *fp->argv)) ? 0 :
+        (Unpack(), ApY(ip, xp)); }
 
 Ll(bootstrap) {
   Arity(1);
-  TypeCheck(*fp->argv, Hom);
+  xp = fp->argv[0];
+  TypeCheck(xp, Hom);
   return
-    // FIXME oof
-    v->glob[Eval] = xp = *fp->argv,
-    xp = interns(v, "ev"),
-    tbl_set(v, v->glob[Topl], xp, v->glob[Eval]),
-    ApC(ret, v->glob[Eval]); }
+    tbl_set(v, v->glob[Topl], v->glob[Eval], xp),
+    ApC(ret, fp->argv[0]); }
 
 static Vm(fin_ok) { return fin(v), nil; }
 static Vm(repl) { for (Pack();;) {
@@ -101,7 +101,6 @@ static yo comp(em v, bool shell, const char **paths) {
                 k[1].ll = 0, k[2].ll = (ll*) k, k) :
     (y = (ob) comp(v, shell, paths+1)) &&
     (with(y, x = scrp(v, path)), x) ? (yo) seq(v, x, y) : 0; }
-
 
 static em from
   (bool shell, const char *boot, const char **paths) {
