@@ -133,8 +133,6 @@ static Inline ob scrp(em v, const char *path) {
 static void fin(em v) { if (v) free(v->pool), free(v); }
 // initialization helpers
 #define register_inst(a, b) ((b) ? prim(v,b,a) : inst(v, "i-"#a,a)) &&
-#define def(s, x) (_=interns(v,s)) && tbl_set(v,v->glob[Topl],_,x)
-#define bsym(i,s) (v->glob[i]=interns(v,s))
 static NoInline bool inst(em v, const char *a, ll *b) {
   ob z; return !(z = interns(v, a)) ? 0 :
     !!tbl_set(v, v->glob[Topl], z, putnum((ob) b)); }
@@ -161,9 +159,14 @@ static em ini(void) {
 
      (v->glob[Topl] = table(v)) && insts(register_inst) // &&
 
-     bsym(Eval, "ev") && bsym(Apply, "ap") &&
-     bsym(Def, ":") && bsym(Cond, "?") &&
-     bsym(Lamb, "\\") && bsym(Quote, "`") &&
-     bsym(Seq, ",") && bsym(Splat, ".") &&
-
-     def("_ns", v->glob[Topl])) ? v : (fin(v), NULL); }
+     (v->glob[Eval] = interns(v, "ev")) &&
+     (v->glob[Apply] = interns(v, "ap")) &&
+     (v->glob[Def] = interns(v, ":")) &&
+     (v->glob[Cond] = interns(v, "?")) &&
+     (v->glob[Lamb] = interns(v, "\\")) &&
+     (v->glob[Quote] = interns(v, "`")) &&
+     (v->glob[Seq] = interns(v, ",")) &&
+     (v->glob[Splat] = interns(v, ".")) &&
+     (_ = interns(v, "_ns")) &&
+     tbl_set(v, v->glob[Topl], _, v->glob[Topl]))
+    ? v : (fin(v), NULL); }
