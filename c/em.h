@@ -58,7 +58,6 @@ struct em {
   mm mm; ob syms, glob[NGlobs];
   intptr_t rand, t0, len, *pool; };
 
-
 void *cells(em, uintptr_t), emit(em, ob, FILE*);
 bool eql(ob, ob), please(em, uintptr_t), pushs(em, ...);
 uintptr_t hash(em, ob);
@@ -75,6 +74,8 @@ ob eval(em, ob),
 // a packed array of 4-byte strings.
 extern const uint32_t *tnoms;
 
+#define N0 putnum(0)
+// FIXME nil = 0
 #define nil (~(ob)0)
 #define FF(x) F(F(x))
 #define FG(x) F(G(x))
@@ -235,7 +236,6 @@ vm gc, type_error, ary_error, div_error;
 
 #define Tc TypeCheck
 #define CheckType TypeCheck
-#define N0 putnum(0)
 
 static Inline void setw(void *x, intptr_t i, uintptr_t l) {
   for (intptr_t *d = x; l--; *d++ = i); }

@@ -18,7 +18,6 @@
      (K x) (\ x) const K
      (co xs .) (foldl1 xs (\ m f (\ x . (f (ap m x)))))
      ((flip f) x y) (f y x)
-     ((diag f) x) (f x x)
      ((cu f x .) y .) (ap f (append x y))
      (map f x) (?
       (2? x) (X (f (A x)) (map f (B x)))
@@ -41,28 +40,6 @@
      ; data constructors
      (L . .) .
      (Q x) (L ` x)
-     (iota n x .)
-      (: (loop m n) (? (< m n) (X m (loop (+ m 1) n)))
-       (? (~ x) (loop 0 n) (loop n (A x))))
-     (rho n xs .)
-      (: (loop n x) (? (= n 1) x (append x (loop (- n 1) x)))
-       (? (> n 0) (loop n xs)))
-
-     ; strings
-     (strip-prefix p s)
-      (? (= p (ssub s 0 (: a (slen p)))) (ssub s a (slen s)))
-     (chars s)
-      (: (loop s n)
-          (? (< n (slen s))
-           (X (sget s n) (loop s (+ n 1))))
-       (loop s 0))
-     (puts s)
-      (: (loop s n)
-       (? (< n (slen s))
-        (, (putc (sget s n))
-           (loop s (+ n 1))))
-       (loop s 0))
-      (endl) (putc 10)
 
      ; tables
      (set x .) (foldl x (tbl) (\ t x (, (Ts t x ()) t)))
@@ -142,22 +119,12 @@
 ; use any macros in here, because stage 1 doesn't know about
 ; macros.
 (: egg '(, (:
-   ; these data structures encode rules for partially evaluating
-   ; different functions. right now the functions eligible for
-   ; partial evaluation are hardcoded. but the compiler should
-   ; be able to infer if a function is pure in many cases, and
-   ; users should be able to provide their own monoid instances
-   ; (or whatever).
-
-
+   ; XXX be systematic about this
    pure (set
-    L X A B Q + - * / % & | ^ << >> I K flip iota rho inc dec co
+    L X A B Q + - * / % & | ^ << >> I K flip inc dec co
     = ~ <= >= < > cu const snoc init last rev del memq at idx len
     twop nilp symp nump tblp strp homp
     && || scat slen sget ssub str)
-
-   ; we should have an impure set instead and infer from that
-   ;~pure (imm (set))
 
    ; these enable extra partial evaluation for functions
    ; with certain algebraic properties. the nullary case for
@@ -224,7 +191,7 @@
     (xc i-push (pop2 (fold k (AB x) (BB x)))))))
 
   ((abel f i) x k) ((\ x
-   (eval (A x) (>- 'num (2f i k (B x)))))(mono f (f) x))
+   (eval (A x) (>- 'num (2f i k (B x))))) (mono f (f) x))
 
   (nary i tR xs .) (: arity (len xs) (\ x k (?
    (< (len x) arity) (fail "wrong arity")
@@ -294,7 +261,7 @@
    = (\ x k (?
 
     (|| (~ x)
-     (? (: q (map unq (select qtd x)))
+     (? (: q (map unq (filter x qtd)))
         (: r (A q) (any (\ v (~ (= v r))) (B q)))))
      (Im () k)
 
@@ -724,3 +691,28 @@
  (, (Td _macros 'i-)
     (each (L insns locs) dels)))
 ;ev
+(:
+     ((diag f) x) (f x x)
+
+     ; strings
+     (strip-prefix p s)
+      (? (= p (ssub s 0 (: a (slen p)))) (ssub s a (slen s)))
+     (chars s)
+      (: (loop s n)
+          (? (< n (slen s))
+           (X (sget s n) (loop s (+ n 1))))
+       (loop s 0))
+     (puts s)
+      (: (loop s n)
+       (? (< n (slen s))
+        (, (putc (sget s n))
+           (loop s (+ n 1))))
+       (loop s 0))
+      (endl) (putc 10)
+     (iota n x .)
+      (: (loop m n) (? (< m n) (X m (loop (+ m 1) n)))
+       (? (~ x) (loop 0 n) (loop n (A x))))
+     (rho n xs .)
+      (: (loop n x) (? (= n 1) x (append x (loop (- n 1) x)))
+       (? (> n 0) (loop n xs)))
+)

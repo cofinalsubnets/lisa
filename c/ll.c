@@ -28,14 +28,14 @@
 
 Ll(ap_u) {
   Arity(2);
-  ob x = fp->argv[0], y = fp->argv[1];
-  TypeCheck(x, Hom);
-  uintptr_t adic = llen(y);
+  ip = (mo) fp->argv[0];
+  TypeCheck((ob)ip, Hom);
+  ob x = fp->argv[1];
+  uintptr_t adic = llen(x);
   Have(adic);
   ob off = fp->subd, rp = fp->retp;
   sp = fp->argv + getnum(fp->argc) - adic;
-  for (uintptr_t j = 0; j < adic; sp[j++] = gettwo(y)->a,
-                                  y = gettwo(y)->b);
+  for (uintptr_t j = 0; j < adic; sp[j++] = A(x), x = B(x));
   return
     fp = (fr) sp - 1,
     sp = (ob*) fp,
@@ -43,7 +43,7 @@ Ll(ap_u) {
     fp->argc = putnum(adic),
     fp->subd = off,
     fp->clos = nil,
-    ApY(x, nil); }
+    ApY(ip, nil); }
 
 Ll(vararg) {
   intptr_t reqd = getnum((ob) ip[1].ll),
