@@ -28,7 +28,7 @@ typedef struct str { Z len; char text[]; } *str;
 typedef struct sym { ob nom, code, l, r; } *sym;
 typedef struct two { ob a, b; } *two;
 typedef struct mm { ob *it; struct mm *et; } *mm;
-#define EmptyBucket NULL
+#define EmptyBucket ((void*)nil)
 typedef struct ent { ob key, val; struct ent *next; } *ent;
 typedef struct tbl { Z len, cap; ent *tab; } *tbl;
 

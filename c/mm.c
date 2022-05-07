@@ -306,7 +306,7 @@ static ob tbl_grow(em v, ob t) {
   tab0 = gettbl(t)->tab;
 
   for (uintptr_t i, cap = 1 << cap0; cap--;)
-    for (ent e, es = tab0[cap]; es;
+    for (ent e, es = tab0[cap]; es != EmptyBucket;
       e = es, es = es->next,
       i = tbl_idx(cap1, hash(v, e->key)),
       e->next = tab1[i], tab1[i] = e);
@@ -317,7 +317,7 @@ static ob tbl_set_s(em v, ob t, ob k, ob x) {
   tbl y;
   ent e = tbl_ent(v, t, k);
   uintptr_t i = tbl_idx(gettbl(t)->cap, hash(v, k));
-  return e ? e->val = x :
+  return e != EmptyBucket ? e->val = x :
     (with(t, with(k, with(x, e = cells(v, Width(ent))))),
      !e ? 0 : (y = gettbl(t),
                e->key = k,
@@ -334,7 +334,7 @@ ob tbl_set(em v, ob t, ob k, ob x) {
 
 ob tbl_get(em v, ob t, ob k) {
   ent e = tbl_ent(v, t, k);
-  return e ? e->val : 0; }
+  return e != EmptyBucket ? e->val : 0; }
 
 ob table(em v) {
   tbl t = cells(v, Width(tbl) + 1);
