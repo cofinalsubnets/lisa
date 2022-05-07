@@ -181,14 +181,13 @@ Gc(cptbl) {
   tbl src = gettbl(x);
   if (fresh(src->tab)) return (ob) src->tab;
   intptr_t src_cap = src->cap;
-  tbl dst = bump(v, Width(tbl) + (1<<src_cap));
+  tbl dst = bump(v, Width(tbl));
   dst->len = src->len;
   dst->cap = src_cap;
   dst->tab = (ob*) (dst + 1);
   ob *src_tab = src->tab;
   src->tab = (ob*) puttbl(dst);
-  for (uintptr_t ii = 1<<src_cap; ii--;)
-    dst->tab[ii] = cp(v, src_tab[ii], len0, pool0);
+  dst->tab = (ob*) cp(v, (ob) src_tab, len0, pool0);
   return puttbl(dst); }
 
 Gc(cptwo) {
@@ -291,10 +290,12 @@ static ob tbl_del(em v, ob t, ob key) {
 // the old table entries are reused to populate the modified table.
 static ob tbl_grow(em v, ob t) {
   ob *tab0, *tab1;
-  uintptr_t cap0 = gettbl(t)->cap, cap1 = cap0 + 1;
-  with(t, tab1 = cells(v, 1<<cap1));
+  uintptr_t cap0 = gettbl(t)->cap, cap1 = cap0 + 1,
+            len = 1<<cap1;
+  with(t, tab1 = cells(v, len + 2));
   if (!tab1) return 0;
-  setw(tab1, (ob) EmptyBucket, 1<<cap1);
+  tab1[len] = 0, tab1[len+1] = (ob) tab1;
+  setw(tab1, nil, 1<<cap1);
   tab0 = gettbl(t)->tab;
 
   for (uintptr_t i, cap = 1 << cap0; cap--;)
@@ -331,12 +332,14 @@ ob tbl_get(em v, ob t, ob k) {
   return e != EmptyBucket ? e[1] : 0; }
 
 ob table(em v) {
-  tbl t = cells(v, Width(tbl) + 1);
+  tbl t = cells(v, Width(tbl) + 3);
   ob *b = (ob*)(t+1);
   return !t ? 0 :
     (t->len = t->cap = 0,
      t->tab = b,
-     *b = nil,
+     b[0] = nil,
+     b[1] = 0,
+     b[2] = (ob) b,
      puttbl(t)); }
 
 ob string(em v, const char* c) {
