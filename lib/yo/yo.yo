@@ -679,11 +679,13 @@
 ;  ev ; comment this line to define internals at toplevel
   )))
 ; bootstrap
+
 (ev prelude)
-(boot (ev egg))
+(tset _ns 'ev (ev egg))
 (ev prelude)
-(boot (ev egg))
+(tset _ns 'ev (ev egg))
 (tset _macros 'imm ev)
+
 ; " drop privileges "
 (: dels (cu (flip each) (cu Td _ns))
    insns (filter (tkeys _ns) (\ k (= "i-" (ssub (ystr k) 0 2))))

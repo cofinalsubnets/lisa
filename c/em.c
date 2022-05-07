@@ -79,14 +79,6 @@ Ll(ev_u) {
       !(Pack(), y = ana(v, *fp->argv)) ? 0 :
         (Unpack(), ApY(y, xp)); }
 
-Ll(bootstrap) {
-  Arity(1);
-  xp = fp->argv[0];
-  TypeCheck(xp, Hom);
-  return
-    tbl_set(v, v->glob[Topl], v->glob[Eval], xp),
-    ApC(ret, fp->argv[0]); }
-
 static Vm(fin_ok) { return fin(v), nil; }
 static Vm(repl) { for (Pack();;) {
   if ((xp = parse(v, stdin))) {

@@ -168,7 +168,6 @@ static Inline uintptr_t b2w(uintptr_t b) {
  _(strl, "slen") _(strs, "ssub")   _(strconc, "scat")\
  _(tbll, "tlen") _(tblmk, tnom(Tbl)) _(tblg, "tget")\
  _(tblc, "thas") _(tbls, "tset") _(tbld, "tdel")\
- _(bootstrap, "boot")\
  _(tblks, "tkeys") _(hseek_u, "hseek") _(fail, "fail")\
  _(putc_u, "putc") _(ystr_u, "ystr")\
  _(hnom_u, "hnom")\
