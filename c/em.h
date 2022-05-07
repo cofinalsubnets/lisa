@@ -76,7 +76,7 @@ extern const uint32_t *tnoms;
 
 #define N0 putnum(0)
 // FIXME nil = 0
-#define nil (~(ob)0)
+#define nil N0
 #define FF(x) F(F(x))
 #define FG(x) F(G(x))
 #define GF(x) G(F(x))
