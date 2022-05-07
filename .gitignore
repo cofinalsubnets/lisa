@@ -1,3 +1,4 @@
 perf.*
 vgcore.*
 *.o
+.gdb_history

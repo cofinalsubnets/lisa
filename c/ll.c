@@ -213,7 +213,7 @@ NoInline ob err(em v, const char *msg, ...) {
   return v->sp = v->pool + v->len,
          v->fp = (fr) v->sp,
          v->xp = nil,
-         v->ip = (yo) nil,
+         v->ip = (mo) v->glob[Yield],
          0; }
 
 

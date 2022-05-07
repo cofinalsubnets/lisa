@@ -51,7 +51,7 @@ typedef struct to {
 
 // FIXME indices to a global (thread-local) table of constants
 enum { Def, Cond, Lamb, Quote, Seq, Splat,
-       Topl, Eval, Apply, NGlobs };
+       Topl, Eval, Apply, Yield, NGlobs };
 
 struct em {
   mo ip; ob xp, *hp, *sp; fr fp;

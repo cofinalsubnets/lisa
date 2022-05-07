@@ -53,30 +53,31 @@ static ob seq(em v, ob a, ob b) {
        k[4].ll = jump, k[5].ll = (ll*) b,
        k[6].ll = NULL, k[7].ll = (ll*) k); }
 
-
 static Ll(yield) { return Pack(), xp; }
+static ob apply(em v, ob f, ob x) {
+  yo k; return !Push(f, x) || !(k = cells(v, 5)) ? 0 :
+    (k[0].ll = call,
+     k[1].ll = (ll*) putnum(2),
+     k[2].ll = yield,
+     k[3].ll = NULL,
+     k[4].ll = (ll*) k,
+     x = tbl_get(v, v->glob[Topl], v->glob[Apply]),
+     call(v, x, k, v->hp, v->sp, v->fp)); }
+
 ob eval(em v, ob x) {
-  yo k; ob args; return
+  ob args; return
     !(args = pair(v, x, nil)) ||
-    !(x = tbl_get(v, v->glob[Topl], v->glob[Eval])) ||
-    !Push(x, args) ||
-    !(k = cells(v, 5)) ? 0 :
-      (k[0].ll = call,
-       k[1].ll = (ll*) putnum(2),
-       k[2].ll = yield,
-       k[3].ll = NULL,
-       k[4].ll = (ll*) k,
-       x = tbl_get(v, v->glob[Topl], v->glob[Apply]),
-       call(v, x, k, v->hp, v->sp, v->fp)); }
+    !(x = tbl_get(v, v->glob[Topl], v->glob[Eval])) ? 0 :
+    apply(v, x, args); }
 
 Ll(ev_u) {
-  Arity(1);
+  Arity(1); mo y;
   return
     xp = tbl_get(v, v->glob[Topl], v->glob[Eval]),
     gethom(xp)->ll != ev_u ?
       ApY((yo) xp, nil) :
-      !(Pack(), v->ip = ana(v, *fp->argv)) ? 0 :
-        (Unpack(), ApY(ip, xp)); }
+      !(Pack(), y = ana(v, *fp->argv)) ? 0 :
+        (Unpack(), ApY(y, xp)); }
 
 Ll(bootstrap) {
   Arity(1);
@@ -104,11 +105,13 @@ static yo comp(em v, bool shell, const char **paths) {
 
 static em from
   (bool shell, const char *boot, const char **paths) {
-    em v = ini(); return 
-      (v->ip = (yo) comp(v, shell, paths)) &&
-      (!boot ||
-       ((v->xp = scrp(v, boot)) &&
-        (v->ip = (yo) seq(v, v->xp, (ob) v->ip)))) ? v : 0; }
+    em v = ini(); ob y; return 
+      !(y = (ob) comp(v, shell, paths)) ||
+      !(!boot ||
+        ((with(y, (v->xp = scrp(v, boot))), v->xp) &&
+         (y = seq(v, v->xp, (ob) y)))) ? 0 :
+      (v->ip = (mo) y,
+       v); }
 
 // functions to compile scripts into a program
 //
@@ -167,5 +170,10 @@ static em ini(void) {
      (v->glob[Seq] = interns(v, ",")) &&
      (v->glob[Splat] = interns(v, ".")) &&
      (_ = interns(v, "_ns")) &&
-     tbl_set(v, v->glob[Topl], _, v->glob[Topl]))
-    ? v : (fin(v), NULL); }
+     tbl_set(v, v->glob[Topl], _, v->glob[Topl]) &&
+     (v->ip = cells(v, 3)))
+    ? (v->ip[0].ll = yield,
+       v->ip[1].ll = 0,
+       v->ip[2].ll = (vm*) v->ip,
+       v->glob[Yield] = (ob) v->ip,
+       v) : (fin(v), NULL); }
