@@ -28,7 +28,6 @@ typedef struct str { Z len; char text[]; } *str;
 typedef struct sym { ob nom, code, l, r; } *sym;
 typedef struct two { ob a, b; } *two;
 typedef struct mm { ob *it; struct mm *et; } *mm;
-#define EmptyBucket ((void*)nil)
 typedef struct tbl { ob len, cap, *tab; } *tbl;
 
 struct fr { ob clos, retp, subd, argc, argv[]; };

@@ -312,7 +312,7 @@ static ob tbl_set_s(em v, ob t, ob k, ob x) {
   tbl y;
   ob *e = (ob*) tbl_ent(v, t, k);
   uintptr_t i = tbl_idx(gettbl(t)->cap, hash(v, k));
-  return e != EmptyBucket ? e[1] = x :
+  return (ob) e != nil ? e[1] = x :
     (with(t, with(k, with(x, e = cells(v, 5)))),
      !e ? 0 : (y = gettbl(t),
                e[0] = k,
