@@ -259,12 +259,12 @@ static Hash(hash_str) {
 static void tbl_fit(em v, ob t) {
   if (tbl_load(t)) return;
 
-  ent e = NULL, f, g;
+  ent e = EmptyBucket, f, g;
   tbl u = gettbl(t);
 
   // collect all entries
   for (uintptr_t i = 1 << u->cap; i--;)
-    for (f = u->tab[i], u->tab[i] = NULL; f;
+    for (f = u->tab[i], u->tab[i] = EmptyBucket; f != EmptyBucket;
       g = f->next, f->next = e,
       e = f, f = g);
 
@@ -272,11 +272,12 @@ static void tbl_fit(em v, ob t) {
   while (u->cap && tbl_load(t) < 1) u->cap--;
 
   // reinsert
-  while (e) { uintptr_t i = tbl_idx(u->cap, hash(v, e->key));
-              f = e->next,
-              e->next = u->tab[i],
-              u->tab[i] = e,
-              e = f; } }
+  while (e != EmptyBucket) {
+    uintptr_t i = tbl_idx(u->cap, hash(v, e->key));
+    f = e->next,
+    e->next = u->tab[i],
+    u->tab[i] = e,
+    e = f; } }
 
 static ob tbl_del(em v, ob t, ob key) {
   tbl y = gettbl(t);
@@ -284,7 +285,7 @@ static ob tbl_del(em v, ob t, ob key) {
   intptr_t b = tbl_idx(y->cap, hash(v, key));
   ent e = y->tab[b];
   struct ent prev = {0,0,e};
-  for (ent l = &prev; l && l->next; l = l->next)
+  for (ent l = &prev; l != EmptyBucket && l->next != EmptyBucket; l = l->next)
     if (l->next->key == key) {
       val = l->next->val;
       l->next = l->next->next;
@@ -301,7 +302,7 @@ static ob tbl_grow(em v, ob t) {
   uintptr_t cap0 = gettbl(t)->cap, cap1 = cap0 + 1;
   with(t, tab1 = cells(v, 1<<cap1));
   if (!tab1) return 0;
-  setw(tab1, 0, 1<<cap1);
+  setw(tab1, (ob) EmptyBucket, 1<<cap1);
   tab0 = gettbl(t)->tab;
 
   for (uintptr_t i, cap = 1 << cap0; cap--;)
@@ -341,7 +342,7 @@ ob table(em v) {
   return !t ? 0 :
     (t->len = t->cap = 0,
      t->tab = b,
-     *b = NULL,
+     *b = EmptyBucket,
      puttbl(t)); }
 
 ob string(em v, const char* c) {

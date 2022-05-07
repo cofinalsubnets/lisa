@@ -26,10 +26,11 @@ enum class { Hom = 0, Num = 1, Two = 2, Xxx = 3,
 
 typedef struct str { Z len; char text[]; } *str;
 typedef struct sym { ob nom, code, l, r; } *sym;
-typedef struct ent { ob key, val; struct ent *next; } *ent; // tables
-typedef struct tbl { Z len, cap; ent *tab; } *tbl;
 typedef struct two { ob a, b; } *two;
 typedef struct mm { ob *it; struct mm *et; } *mm;
+#define EmptyBucket NULL
+typedef struct ent { ob key, val; struct ent *next; } *ent;
+typedef struct tbl { Z len, cap; ent *tab; } *tbl;
 
 struct fr { ob clos, retp, subd, argc, argv[]; };
 struct mo { vm *ll; };
