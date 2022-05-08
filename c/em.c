@@ -168,7 +168,6 @@ static em ini(void) {
        gethom(_)[0].ll = yield,
        gethom(_)[1].ll = 0,
        gethom(_)[2].ll = (vm*) _,
-       v->glob[Yield] = _,
        v->fp = (fr) v->sp - 1,
        v->sp = (ob*) v->fp,
        v->fp->clos = v->fp->subd = N0,
