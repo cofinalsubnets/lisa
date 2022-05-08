@@ -289,9 +289,9 @@
   (= x 'hom) 0
   (= x 'num) 1
   (= x 'two) 2
-  (= x 'sym) 3
   (= x 'str) 4
   (= x 'tbl) 5
+  (= x 'sym) 6
   (= x 0) 8)
 
  (type-sym x) (?
