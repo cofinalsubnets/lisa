@@ -1,4 +1,7 @@
-include config.mk
+# set locale for reproducible sorting
+LC_ALL=C
+lang=yo
+suff=yo
 
 self=makefile
 bin=bin/$(lang)
@@ -7,6 +10,8 @@ lib=lib/$(lang)/$(lang).$(suff)
 h=$(sort $(wildcard c/*.h))
 c=$(sort $(wildcard c/*.c))
 PREFIX ?= $(HOME)/.local
+VIMPREFIX ?= $(HOME)/.vim
+vimfiles=$(addprefix $(VIMPREFIX)/,syntax/$(lang).vim ftdetect/$(lang).vim)
 #CC=clang
 CPPFLAGS=-DPREF=\"$(PREFIX)\" -DLANG=\"$(lang)\" -DSUFF=\"$(suff)\"
 CFLAGS=-std=c99 -g -O2 -flto -Wall -Werror\
@@ -58,10 +63,11 @@ bits: bin/$(lang) bin/$(lang).bin
 	du -h $^
 
 # vim syntax files
-install-vim:
-	make -C vim $@
+$(VIMPREFIX)/%: vim/%
+	install -D $^ $@
+install-vim: $(vimfiles)
 uninstall-vim:
-	make -C vim $@
+	rm -f $(vimfiles)
 
 .PHONY: test clean perf valg sloc bits repl\
  	install uninstall install-vim uninstall-vim
