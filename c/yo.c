@@ -29,8 +29,6 @@ typedef Co(c2, ob);
 static c1 xx_yo_, let_yo_bind, em_i, em_i_d, mk_yo;
 static c2 xx_yo, var_yo, two_yo, im_yo;
 
-#define Put(x) putnum((ob)(x))
-
 static bool pushss(em v, uintptr_t i, va_list xs) {
   bool _;
   ob x = va_arg(xs, ob);
@@ -86,7 +84,7 @@ ob tupl(em v, ...) {
     (ob) t; }
 
 static yo imx(em v, ob *e, intptr_t m, ll *i, ob x) {
-  return !Push(Put(i), x) ? 0 : em_i_d(v, e, m); }
+  return !Push(putnum(i), x) ? 0 : em_i_d(v, e, m); }
 
 #define Bind(v, x) if(!((v)=(x)))goto fail
 static NoInline ob rw_let_fn(em v, ob x) {
@@ -138,11 +136,11 @@ static Inline ob new_scope(em v, ob*e, ob a, ob n) {
 
 static Inline ob comp_body(em v, ob*e, ob x) {
   intptr_t i; return
-    !Push(putnum((ob)xx_yo_),
+    !Push(putnum(xx_yo_),
           x,
-          putnum((ob)em_i),
-          putnum((ob)ret),
-          putnum((ob)mk_yo)) ||
+          putnum(em_i),
+          putnum(ret),
+          putnum(mk_yo)) ||
     !scan(v, e, v->sp[1]) ||
     !(x = (ob) Pull(4)) ? 0 :
       (x = !(i = llen(loc(*e))) ? x :
@@ -175,11 +173,11 @@ static Inline ob yo_yo_lam(em v, ob* e, ob n, ob l) {
 static Inline ob yo_yo_clo(em v, ob*e, ob arg, ob seq) {
   intptr_t i = llen(arg);
   mm(&arg), mm(&seq);
-  if (!Push(Put(em_i_d), Put(take), putnum(i), Put(mk_yo)))
+  if (!Push(putnum(em_i_d), putnum(take), putnum(i), putnum(mk_yo)))
     return um, um, 0;
 
   for (;twop(arg);arg = B(arg))
-    if (!Push(Put(xx_yo_), A(arg), Put(em_i), Put(push)))
+    if (!Push(putnum(xx_yo_), A(arg), putnum(em_i), putnum(push)))
       return um, um, 0;
 
   if (!(arg = (ob) Pull(0))) return um, um, 0;
@@ -188,7 +186,7 @@ static Inline ob yo_yo_clo(em v, ob*e, ob arg, ob seq) {
 
 static Co(yo_yo, ob x) {
  ll* j = imm;
- ob k, nom = *v->sp == Put(let_yo_bind) ? v->sp[1] : nil;
+ ob k, nom = *v->sp == putnum(let_yo_bind) ? v->sp[1] : nil;
  with(nom, with(x, k = (ob) Pull(m+2)));
  if (!k) return 0;
  mm(&k);
@@ -199,7 +197,7 @@ static Co(yo_yo, ob x) {
  return !x ? 0 : ee2(j, x, (yo) k); }
 
 static Co(im_yo, ob x) {
-  return !(x = Push(Put(imm), x)) ? 0 : em_i_d(v, e, m); }
+  return !(x = Push(putnum(imm), x)) ? 0 : em_i_d(v, e, m); }
 
 static Co(let_yo_bind) {
   ob _ = *v->sp++;
@@ -210,7 +208,7 @@ static bool let_yo_r(em v, ob*e, ob x) {
   bool _; return !twop(x) ||
     ((x = rw_let_fn(v, x)) &&
      (with(x, _ = let_yo_r(v, e, BB(x))), _) &&
-     Push(Put(xx_yo_), AB(x), Put(let_yo_bind), A(x))); }
+     Push(putnum(xx_yo_), AB(x), putnum(let_yo_bind), A(x))); }
 
 // syntactic sugar for define
 static Inline ob def_sug(em v, ob x) {
@@ -354,7 +352,7 @@ static Co(ap_yo, ob fun, ob args) {
 static bool seq_yo_loop(em v, ob*e, ob x) {
   bool _; return !twop(x) ? 1 :
     (with(x, _ = seq_yo_loop(v, e, B(x))), _) &&
-    Push(Put(xx_yo_), A(x)); }
+    Push(putnum(xx_yo_), A(x)); }
 
 static Co(two_yo, ob x) { ob z = A(x); return 
   z == v->glob[Cond] ? if_yo(v, e, m, x) :
