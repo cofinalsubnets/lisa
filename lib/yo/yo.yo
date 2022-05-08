@@ -285,14 +285,20 @@
 
    ) (: ; new let expn makes sure ^^^ exist & don't make a closure vvv
 
- (type-sym-num x)
-  (idx '(hom num two _ str tbl sym _ ()) x)
+ (type-sym-num x) (?
+  (= x 'hom) 0
+  (= x 'num) 1
+  (= x 'two) 2
+  (= x 'sym) 3
+  (= x 'str) 4
+  (= x 'tbl) 5
+  (= x 0) 8)
 
  (type-sym x) (?
   (homp x) 'hom (nump x) 'num
   (twop x) 'two
   (symp x) 'sym (strp x) 'str
-  (tblp x) 'tbl          'nil)
+  (tblp x) 'tbl (fail))
 
 
  ; this function creates a new lexical environment.
@@ -593,7 +599,6 @@
 
  (eval x k) (:
   (list x k) (:
-
    (cond x k) (:
     (loop x k) (:
      (fin e m) (:

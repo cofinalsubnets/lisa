@@ -6,7 +6,7 @@
 static copier
   cphom, cptwo, cpsym, cpstr, cptbl, cpid,
   *copiers[] = {
-    [Hom] = cphom, [Num] = cpid, [Two] = cptwo, [Xxx] = cpid,
+    [Hom] = cphom, [Num] = cpid, [Two] = cptwo,
     [Str] = cpstr, [Tbl] = cptbl, [Sym] = cpsym, };
 static Inline Gc(cp) { return copiers[Q(x)](v, x, len0, pool0); }
 static Gc(cpid) { return x; }
@@ -227,7 +227,7 @@ static hasher
   *hashers[] = {
     [Hom] = hash_hom, [Two] = hash_two,
     [Str] = hash_str, [Num] = hash_num, [Sym] = hash_sym,
-    [Xxx] = hash_nil, [Tbl] = hash_nil, };
+    [Tbl] = hash_nil, };
 
 Inline uintptr_t hash(em v, ob x) { return hashers[Q(x)](v, x); }
 
