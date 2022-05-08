@@ -17,8 +17,8 @@ typedef struct em *em;
 typedef struct fr *fr;
 #define Ll(n, ...)\
   ob n(em v, ob xp, mo ip, ob *hp, ob *sp, fr fp)
-typedef Ll(vm);
-typedef vm ll;
+typedef Ll(ll);
+typedef ll vm;
 
 // FIXME 3bit -> 2bit
 enum class { Hom, Num, Two, Str, Sym, Tbl, };
@@ -30,11 +30,11 @@ typedef struct mm { ob *it; struct mm *et; } *mm;
 typedef struct tbl { ob len, cap, *tab; } *tbl;
 
 struct fr { ob clos, retp, subd, argc, argv[]; };
-struct mo { vm *ll; };
+struct mo { ll *ll; };
 
 #define Gc(n) ob n(em v, ob x, intptr_t len0, ob*pool0)
 #define Hash(n) uintptr_t n(em v, ob x)
-#define Show(n) void n (em v, ob x, FILE *o)
+#define Show(n) void n(em v, ob x, FILE *o)
 typedef Hash(hasher);
 typedef Gc(copier);
 typedef Show(writer);
@@ -96,8 +96,8 @@ extern const uint32_t *tnoms;
 #define nilp(_) ((_)==nil)
 #define tnom(_) ((const char*)(tnoms+(_)))
 
-#define F(_) ((yo)(_)+1)
-#define G(_) (((yo)(_))->ll)
+#define F(_) ((mo)(_)+1)
+#define G(_) (((mo)(_))->ll)
 
 #define nump(_) (Q(_)==Num)
 #define strp(_) (Q(_)==Str)
@@ -110,7 +110,7 @@ extern const uint32_t *tnoms;
 #define putnum(_) (((ob)(_)<<3)+Num)
 #define getstr(_) ((str)((_)-Str))
 #define puthom(_) ((ob)(_))
-#define gethom(_) ((yo)(_))
+#define gethom(_) ((mo)(_))
 #define getsym(_) ((sym)((_)-Sym))
 #define putsym(_) ((ob)(_)+Sym)
 #define gettbl(_) ((tbl)((_)-Tbl))
@@ -121,7 +121,7 @@ extern const uint32_t *tnoms;
 #define Inline inline __attribute__((always_inline))
 #define NoInline __attribute__((noinline))
 
-static Inline yo button(yo k) {
+static Inline mo button(mo k) {
   while (G(k)) k = F(k);
   return k; }
 
@@ -218,7 +218,7 @@ vm gc, type_error, ary_error, div_error;
 
 #define ApN(n, x) ApY(ip+(n), (x))
 #define ApC(f, x) (f)(v, (x), ip, hp, sp, fp)
-#define ApY(f, x) (ip = (yo) (f), ApC(ip->ll, (x)))
+#define ApY(f, x) (ip = (mo) (f), ApC(ip->ll, (x)))
 
 #define HasArgs(n) (putnum(n) <= fp->argc)
 #define ArityError(n) ApC(ary_error, putnum(n))

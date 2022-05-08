@@ -270,21 +270,19 @@ static bool if_yo_loop(em v, ob*e, ob x) {
   bool _; return 
     x = twop(x) ? x : pair(v, nil, nil),
     !x ? 0 : !twop(B(x)) ?
-      Push(putnum((ob)xx_yo_),
-                  A(x),
-                  putnum((ob)if_yo_pre_con)) :
-    !(with(x, _ = Push(putnum((ob)if_yo_post_con),
-                      putnum((ob)xx_yo_),
+      Push(putnum(xx_yo_), A(x), putnum(if_yo_pre_con)) :
+    !(with(x, _ = Push(putnum(if_yo_post_con),
+                      putnum(xx_yo_),
                       AB(x),
-                      putnum((ob)if_yo_pre_con))), _) ||
+                      putnum(if_yo_pre_con))), _) ||
     !(with(x, _ = if_yo_loop(v, e, BB(x))), _) ? 0 :
 
-    Push(putnum((ob)xx_yo_),
+    Push(putnum(xx_yo_),
          A(x),
-         putnum((ob)if_yo_pre_ant)); }
+         putnum(if_yo_pre_ant)); }
 
 static Co(if_yo, ob x) { bool _; yo k; return
-  with(x, _ = Push(putnum((ob)if_yo_pre))),
+  with(x, _ = Push(putnum(if_yo_pre))),
   _ && if_yo_loop(v, e, B(x)) && (k = Pull(m)) ?
     (s2(*e) =  B(s2(*e)), k) :
     0; }
@@ -334,18 +332,18 @@ static Co(xx_yo, ob x) { return
 
 static Co(ap_yo, ob fun, ob args) {
   mm(&args);
-  if (!Push(putnum((ob)xx_yo_),
+  if (!Push(putnum(xx_yo_),
             fun,
-            putnum((ob)em_i),
-            putnum((ob)idH),
-            putnum((ob)em_call),
+            putnum(em_i),
+            putnum(idH),
+            putnum(em_call),
             putnum(llen(args))))
     return um, NULL;
   for (; twop(args); args = B(args))
-    if (!Push(putnum((ob)xx_yo_),
+    if (!Push(putnum(xx_yo_),
               A(args),
-              putnum((ob)em_i),
-              putnum((ob)push)))
+              putnum(em_i),
+              putnum(push)))
       return um, NULL;
   return um, Pull(m); }
 
@@ -432,7 +430,7 @@ Ll(emi_u) {
 Ll(hgeti_u) {
   Arity(1);
   TypeCheck(*fp->argv, Hom);
-  return ApC(ret, putnum((ob) gethom(*fp->argv)->ll)); }
+  return ApC(ret, putnum(gethom(*fp->argv)->ll)); }
 
 Ll(hgetx_u) {
   Arity(1);
@@ -447,7 +445,7 @@ Ll(hseek_u) {
 
 mo ana(em v, ob x) {
   bool _;
-  with(x, _ = Push(putnum((ob)em_i), putnum((ob)ret), putnum((ob)mk_yo)));
+  with(x, _ = Push(putnum(em_i), putnum(ret), putnum(mk_yo)));
   return !_ ? 0 : xx_yo(v, NULL, 0, x); }
 
 Ll(hnom_u) {
