@@ -164,8 +164,7 @@ static em ini(void) {
      (_ = interns(v, "_ns")) &&
      tbl_set(v, v->glob[Topl], _, v->glob[Topl]) &&
      (_ = (ob) cells(v, 3 + Width(fr))))
-    ? (
-       gethom(_)[0].ll = yield,
+    ? (gethom(_)[0].ll = yield,
        gethom(_)[1].ll = 0,
        gethom(_)[2].ll = (vm*) _,
        v->fp = (fr) v->sp - 1,

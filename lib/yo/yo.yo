@@ -289,8 +289,8 @@
   (= x 'hom) 0
   (= x 'num) 1
   (= x 'two) 2
-  (= x 'sym) 3
-  (= x 'str) 4
+  (= x 'str) 3
+  (= x 'sym) 4
   (= x 'tbl) 5
   (= x 0) 8)
 
