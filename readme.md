@@ -1,31 +1,29 @@
-# yo
+# ll
 lisp
 
 ## build / install
 are you on linux? `make` will probably work. otherwise, see
 `Makefile` for the suggested compiler flags.
 
-## syntax fax
-- `()` is false & fixed under `ev`
-- no improper list literals or quasiquotation
+## syntax
+- `()` = `0` and is uniquely `#f`
 - numbers may take a C-style radix in `{b=2,o=8,d=10,z=12,x=16}`
-- strings delimited by `"` which can be escaped with a backslash;
-  no other escape sequences are interpreted
+- strings delimited by `"` which can be escaped with a backslash
 
 ## special forms
 
-| yo          | scheme                     |
-|-------------|----------------------------|
-|`(, a b)`    |`(begin a b)`               |
-|`(\)`        |`(lambda _ #f)`             |
-|`(\ x)`      |`(lambda _ x)`              |
-|`(\ a b c)`  |`(lambda (a b) c)`          |
-|`(: a b)`    |`(begin (define a b) a)`    |
-|`(: a b c)`  |`(letrec ((a b)) c)`        |
-|`(? a b)`    |`(cond (a b) (#t #f))`      |
-|`(? a b c)`  |`(cond (a b) (#t c))`       |
-|`(? a b c d)`|`(cond (a b) (c d) (#t #f))`|
-|`'x`         |`'x`                        |
+| scheme                     |             |
+|----------------------------|-------------|
+|`(begin a b)`               |`(, a b)`    |
+|`(lambda _ #f)`             |`(\)`        |
+|`(lambda _ x)`              |`(\ x)`      |
+|`(lambda (a b) c)`          |`(\ a b c)`  |
+|`(begin (define a b) a)`    |`(: a b)`    |
+|`(letrec ((a b)) c)`        |`(: a b c)`  |
+|`(cond (a b) (#t #f))`      |`(? a b)`    |
+|`(cond (a b) (#t c))`       |`(? a b c)`  |
+|`(cond (a b) (c d) (#t #f))`|`(? a b c d)`|
+|`'x`                        |`'x`         |
 
 etc.
 
