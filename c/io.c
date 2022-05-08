@@ -4,7 +4,7 @@
 // packing them like this depends on the names
 // all being 3 bytes long
 const uint32_t *tnoms = (uint32_t*)
-  "hom\0num\0two\0vec\0str\0tbl\0sym\0nil";
+  "hom\0num\0two\0sym\0str\0tbl\0xxx\0xxx";
 
 ////
 /// " the parser "

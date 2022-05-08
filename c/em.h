@@ -21,8 +21,7 @@ typedef Ll(vm);
 typedef vm ll;
 
 // FIXME 3bit -> 2bit
-enum class { Hom, Num, Two, Xxx,
-             Str, Tbl, Sym, };
+enum class { Hom, Num, Two, Sym, Str, Tbl, };
 
 typedef struct str { Z len; char text[]; } *str;
 typedef struct sym { ob nom, code, l, r; } *sym;
