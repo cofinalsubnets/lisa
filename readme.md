@@ -60,19 +60,3 @@ etc.
      m)))
  (((C 100) fizzbuzz) 1))
 ```
-
-## some predefined functions / macros
-- `L = list` `X = cons` `A = car` `B = cdr`.  `AA`-`BB` are macros.
-- `+ - * / % << >> & | ^` like C. ints are currently only 61 bits though
-- `< <= >= >` variadic, test each successive pair of arguments, works on numbers.
-- `=` variadic, works on anything, recursive on pairs so `(= (L 1 2 3) (L 1 2 3))`.
-- `ev ap` = `eval apply`
-- `cu` partial apply : `((cu f a b) c d) = (f a b c d)` `co` compose : `((co f g h) x) = (h (g (f x)))`
-- `.` print arguments separated by spaces, print newline, return last argument
-- `iota` and `rho` are kind of like in APL but not as good
-- `homp nump twop symp nilp tblp strp` type predicates
-- hash functions: `tbl tset tget thas tkeys tlen tdel` ; tbl / tset take any number of key/value pairs
-- string functions: n-ary constructor `(str 97 97 97) = "aaa"` ; `slen sget ssub scat`
-- symbol functions: `sym`: with no argument, `gensym`; with an argument, `string->symbol`
-- `(::: nom0 def0 nom1 def1 ...)` define macro
-- `(>>= x y z f) = (f x y z)` is sometimes preferable for readability
