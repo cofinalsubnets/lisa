@@ -189,32 +189,34 @@ static void show_call(em v, yo ip, fr fp) {
 NoInline ob err(em v, const char *msg, ...) {
   if (msg) {
     yo ip = v->ip;
-    fr fp = v->fp, top = (fr) (v->pool + v->len);
-
+    fr fp = v->fp;
+#define atop (fp->argc==putnum(-Width(fr)))
     // error line
     fputs("# ", stderr);
-    if (fp < top) show_call(v, ip, fp), fputs(" : ", stderr);
+    if (!atop) show_call(v, ip, fp), fputs(" : ", stderr);
     va_list xs; va_start(xs, msg),
       vfprintf(stderr, msg, xs),
       va_end(xs),
       fputc('\n', stderr);
 
     // backtrace
-    if (fp < top) for (;;) {
+    if (!atop) for (;;) {
       ip = (yo) fp->retp, fp = (fr)
         ((ob*) (fp + 1) + getnum(fp->argc)
                         + getnum(fp->subd));
-      if (fp == top) break; else
+      if (atop) break; else
         fputs("# in ", stderr),
         show_call(v, ip, fp),
         fputc('\n', stderr); } }
+#undef atop
 
   // reset and yield
-  return v->sp = v->pool + v->len,
-         v->fp = (fr) v->sp,
+  return v->fp = (fr) (v->pool + v->len) - 1,
+         v->sp = (ob*) v->fp,
          v->xp = nil,
-         v->ip = (mo) v->glob[Yield],
+         v->ip = (mo) v->fp->retp,
          0; }
+
 
 
 #define mm_u(_c,_v,_z,op){\

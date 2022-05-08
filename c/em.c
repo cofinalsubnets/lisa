@@ -163,9 +163,15 @@ static em ini(void) {
      (v->glob[Splat] = interns(v, ".")) &&
      (_ = interns(v, "_ns")) &&
      tbl_set(v, v->glob[Topl], _, v->glob[Topl]) &&
-     (v->ip = cells(v, 3)))
-    ? (v->ip[0].ll = yield,
-       v->ip[1].ll = 0,
-       v->ip[2].ll = (vm*) v->ip,
-       v->glob[Yield] = (ob) v->ip,
+     (_ = (ob) cells(v, 3 + Width(fr))))
+    ? (
+       gethom(_)[0].ll = yield,
+       gethom(_)[1].ll = 0,
+       gethom(_)[2].ll = (vm*) _,
+       v->glob[Yield] = _,
+       v->fp = (fr) v->sp - 1,
+       v->sp = (ob*) v->fp,
+       v->fp->clos = v->fp->subd = N0,
+       v->fp->argc = putnum(-Width(fr)),
+       v->fp->retp = _,
        v) : (fin(v), NULL); }
