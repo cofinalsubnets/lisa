@@ -186,11 +186,11 @@ static void show_call(em v, yo ip, fr fp) {
     fputc(' ', stderr), emit(v, fp->argv[i++], stderr);
   fputc(')', stderr); }
 
+#define atop (fp->argc==putnum(-Width(fr)))
 NoInline ob err(em v, const char *msg, ...) {
   if (msg) {
     yo ip = v->ip;
     fr fp = v->fp;
-#define atop (fp->argc==putnum(-Width(fr)))
     // error line
     fputs("# ", stderr);
     if (!atop) show_call(v, ip, fp), fputs(" : ", stderr);

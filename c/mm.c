@@ -379,7 +379,7 @@ Vm(strconc) {
     ob x = fp->argv[i++];
     CheckType(x, Str);
     sum += getstr(x)->len - 1; }
-  intptr_t words = b2w(sum+1) + 1;
+  intptr_t words = Width(str) + b2w(sum+1);
   Have(words);
   str d = (str) hp;
   hp += words;
@@ -403,7 +403,7 @@ Vm(strs) {
   lb = max(lb, 0);
   ub = min(ub, src->len-1);
   ub = max(ub, lb);
-  intptr_t words = 1 + b2w(ub - lb + 1);
+  intptr_t words = Width(str) + b2w(ub - lb + 1);
   Have(words);
   str dst = (str) hp;
   hp += words;
@@ -415,7 +415,7 @@ Vm(strs) {
 Vm(strmk) {
   intptr_t i = 0,
     bytes = getnum(fp->argc)+1,
-    words = 1 + b2w(bytes);
+    words = Width(str) + b2w(bytes);
   Have(words);
   str s = (str) hp;
   hp += words;

@@ -23,6 +23,13 @@ typedef ll vm;
 // FIXME 3bit -> 2bit
 enum class { Hom, Num, Two, Str, Sym, Tbl, };
 
+#define Gc(n) ob n(em v, ob x, intptr_t len0, ob*pool0)
+#define Hash(n) uintptr_t n(em v, ob x)
+#define Show(n) void n(em v, ob x, FILE *o)
+typedef Hash(hasher);
+typedef Gc(copier);
+typedef Show(writer);
+
 typedef struct str { Z len; char text[]; } *str;
 typedef struct sym { ob nom, code, l, r; } *sym;
 typedef struct two { ob a, b; } *two;
@@ -31,13 +38,6 @@ typedef struct tbl { ob len, cap, *tab; } *tbl;
 
 struct fr { ob clos, retp, subd, argc, argv[]; };
 struct mo { ll *ll; };
-
-#define Gc(n) ob n(em v, ob x, intptr_t len0, ob*pool0)
-#define Hash(n) uintptr_t n(em v, ob x)
-#define Show(n) void n(em v, ob x, FILE *o)
-typedef Hash(hasher);
-typedef Gc(copier);
-typedef Show(writer);
 
 typedef struct to {
   sym name;

@@ -15,7 +15,7 @@ static ob two_in(em, FILE*), read_num(em, ob, const char*),
           str_in(em, FILE*), read_atom(em, FILE*);
 
 static Inline ob read_buf(em v, FILE* i, loop *loop) {
-  str c = cells(v, 2);
+  str c = cells(v, Width(str) + 1);
   return c ? loop(v, i, c, 0, c->len = 8) : 0; }
 
 static Inline ob str_in(em v, FILE* i) {
@@ -57,7 +57,7 @@ static ob two_in(em v, FILE *i) {
 
 static NoInline ob reloop(em v, FILE *i, ob x, uintptr_t n, loop *o) {
   str t; uintptr_t l = b2w(getstr(x)->len); return
-    !(with(x, t = cells(v, 2 * l + 1)), t) ? 0 :
+    !(with(x, t = cells(v, Width(str) + 2 * l)), t) ? 0 :
       (t->len = 2 * l * sizeof(ob),
        cpyw(t->text, getstr(x)->text, l),
        o(v, i, t, n, 2 * n)); }

@@ -65,10 +65,9 @@ static ob apply(em v, ob f, ob x) {
      call(v, x, k, v->hp, v->sp, v->fp)); }
 
 ob eval(em v, ob x) {
-  ob args; return
-    !(args = pair(v, x, nil)) ||
-    !(x = tbl_get(v, v->glob[Topl], v->glob[Eval])) ? 0 :
-    apply(v, x, args); }
+  ob args = pair(v, x, nil);
+  return !args? 0 :
+    apply(v, tbl_get(v, v->glob[Topl], v->glob[Eval]), args); }
 
 Ll(ev_u) {
   Arity(1); mo y;
