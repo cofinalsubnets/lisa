@@ -1,4 +1,4 @@
-(: _macros (tbl))
+(: macros (tbl))
 ; to bootstrap first we define an expression that when
 ; eval'd defines the standard environment and compiler, and
 ; redefines eval. then we eval it twice. the first time
@@ -19,11 +19,7 @@
      (co xs .) (foldl1 xs (\ m f (\ x . (f (ap m x)))))
      ((flip f) x y) (f y x)
      ((cu f x .) y .) (ap f (append x y))
-     (map f x) (?
-      (2? x) (X (f (A x)) (map f (B x)))
-      (\? x) (\ _ . (x (ap f _)))
-      x)
-
+     (map f x) (? (2? x) (X (f (A x)) (map f (B x))) x)
      (append a b) (? (2? a) (X (A a) (append (B a) b)) b)
 
      (flat-map x f) (? (2? x) (append (f (A x)) (flat-map (B x) f)))
@@ -45,20 +41,12 @@
      (set x .) (foldl x (tbl) (\ t x (, (Ts t x ()) t)))
 
      ; numbers
-     (abs x) (? (< x 0) (- x) x)
-     (even x) (? (= 0 (& x 1)))
-     (odd x) (? (= 1 (& x 1)))
      (inc x) (+ x 1)
      (dec x) (- x 1)
 
      ; lists
      (at l n) (? (< n 1) (A l) (at (B l) (- n 1)))
-     (select p x) (?
-         (2? x) (foldr x ()  (\ x m (? (p x) (X x m) m)))
-         (\? x) (? x (f x))
-         x)
      (filter x p) (foldr x () (\ x m (? (p x) (X x m) m)))
-     (find l p) (? l (? (p (A l)) (A l) (find (B l) p)))
      (foldr x z f) (? (2? x) (f (A x) (foldr (B x) z f)) z)
      (foldl x z f) (? (2? x) (foldl (B x) (f z (A x)) f) z)
      (foldl1  x f) (foldl (B x) (A x) f)
@@ -68,17 +56,11 @@
       (A x))
      (zip f a .) (? (? a (all id a))
       (X (ap f (map A a)) (ap zip (X f (map B a)))))
-     (transp x) (ap zip (X L x))
      (snoc l x) (? l (X (A l) (snoc (B l) x)) (L x))
      (randn n) (% (abs (rand)) n)
-     (sample l) (at l (randn (len l)))
-     (intercal i l) (:
-      (loop i l m) (? (~ m) l (append l (append i (intercal i m))))
-      (? l (loop i (A l) (B l))))
      (init l) (? (B l) (X (A l) (init (B l))))
      (last l) (? (B l) (last (B l)) (A l))
      (memq x k) (? x (? (= k (A x)) x (memq (B x) k)))
-     (rev l) (foldl l () (\ a b (X b a)))
      (del l k) (filter l (\ x (~ (= x k))))
      (idx l x)
       (: (loop l x n)
@@ -88,8 +70,8 @@
 
      )
 
-  (tset _macros
-   '::: (: (defm n x .) (X ', (X (L Ts _macros (Q n) (A x))
+  (tset macros
+   '::: (: (defm n x .) (X ', (X (L tset macros (Q n) (A x))
                                  (? (B x) (ap defm (B x)))))
          defm)
    'imm ev
@@ -122,7 +104,7 @@
    ; XXX be systematic about this
    pure (set
     L X A B Q + - * / % & | ^ << >> I K flip inc dec co
-    = ~ <= >= < > cu const snoc init last rev del memq at idx len
+    = ~ <= >= < > cu const snoc init last memq at idx len
     twop nilp symp nump tblp strp homp
     && || scat slen sget ssub str)
 
@@ -169,7 +151,7 @@
    i-gteq (br2 i-brgteq i-brlt)
    i-eq (br2 i-breq i-brne)
    i-nilpp (f1 hgeti i-branch i-barnch i-barnch i-branch)
-   i-imm (f1 hgetx () i-unit 0 i-zero 1 i-one)))
+   i-imm (f1 hgetx 0 i-zero 1 i-one)))
 
  ; special function compiler table
  inliners (:
@@ -535,7 +517,7 @@
     (= a :) (defn e x)
     (= a ?) (cond e (B x))
     (= a ,) (seq e x)
-    (? (Th _macros a) (wv e (ap (Tg _macros a) (B x)))
+    (? (Th macros a) (wv e (ap (Tg macros a) (B x)))
      (: z (map (\ x (wv e x)) x) q (A z) r (B z) (?
       (~ (Th pure q)) (check-arity z)
       (all qtd r) (quote (ap q (map unq r)))
@@ -689,13 +671,13 @@
 (tset _ns 'ev (ev egg))
 (ev prelude)
 (tset _ns 'ev (ev egg))
-(tset _macros 'imm ev)
+(tset macros 'imm ev)
 
 ; " drop privileges "
 (: dels (cu (flip each) (cu Td _ns))
    insns (filter (tkeys _ns) (\ k (= "i-" (ssub (ystr k) 0 2))))
-   locs '(boot egg emi _macros emx hom hseek hgeti hgetx hfin _ns)
- (, (Td _macros 'i-)
+   locs '(boot egg emi macros emx hom hseek hgeti hgetx hfin _ns)
+ (, (Td macros 'i-)
     (each (L insns locs) dels)))
 ;ev
 (:

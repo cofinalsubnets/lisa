@@ -119,7 +119,7 @@ static ob scrpr(em v, FILE *in) {
 // scrp : yo em str
 static Inline ob scrp(em v, const char *path) {
   ob x; FILE *in = fopen(path, "r");
-  return !in ? err(v, "%s : %s", path, strerror(errno)) :
+  return !in ? err(v, 0, "%s : %s", path, strerror(errno)) :
     (x = scrpr(v, in), fclose(in), x) &&
     (x = pair(v, v->glob[Seq], x)) ? (ob) ana(v, x) : 0; }
 

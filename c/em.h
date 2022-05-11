@@ -20,8 +20,16 @@ typedef struct fr *fr;
 typedef Ll(ll);
 typedef ll vm;
 
-// FIXME 3bit -> 2bit
+// FIXME 2bit
+#define TagBits 3
+#define TagMask ((1<<TagBits)-1)
 enum class { Hom, Num, Two, Str, Sym, Tbl, };
+#define NomHom "hom"
+#define NomNum "num"
+#define NomTwo "two"
+#define NomStr "str"
+#define NomSym "sym"
+#define NomTbl "tbl"
 
 #define Gc(n) ob n(em v, ob x, intptr_t len0, ob*pool0)
 #define Hash(n) uintptr_t n(em v, ob x)
@@ -30,7 +38,13 @@ typedef Hash(hasher);
 typedef Gc(copier);
 typedef Show(writer);
 
-typedef struct str { Z len; char text[]; } *str;
+typedef struct ext {
+  ob name;
+  copier *copy;
+  hasher *hash;
+  writer *show; } *ext;
+
+typedef struct str { ext ext; Z len; char text[]; } *str;
 typedef struct sym { ob nom, code, l, r; } *sym;
 typedef struct two { ob a, b; } *two;
 typedef struct mm { ob *it; struct mm *et; } *mm;
@@ -39,15 +53,7 @@ typedef struct tbl { ob len, cap, *tab; } *tbl;
 struct fr { ob clos, retp, subd, argc, argv[]; };
 struct mo { ll *ll; };
 
-typedef struct to {
-  sym name;
-  copier *copy;
-  hasher *hash;
-  writer *show;
-} *to;
-
-
-// FIXME indices to a global (thread-local) table of constants
+// FIXME indices into a thread-global table of constants
 enum { Def, Cond, Lamb, Quote, Seq, Splat,
        Topl, Eval, Apply, NGlobs };
 
@@ -56,21 +62,23 @@ struct em {
   mm mm; ob syms, glob[NGlobs];
   intptr_t rand, t0, len, *pool; };
 
+hasher hash;
 void *cells(em, uintptr_t), emit(em, ob, FILE*);
 bool eql(ob, ob), please(em, uintptr_t), pushs(em, ...);
-uintptr_t hash(em, ob);
 mo ana(em, ob);
 ob eval(em, ob),
-   string(em, const char*), intern(em, ob),
-   table(em), tbl_set(em, ob, ob, ob), tbl_get(em, ob, ob),
+   string(em, const char*),
+   intern(em, ob),
+   table(em),
+   tbl_set(em, ob, ob, ob),
+   tbl_get(em, ob, ob),
    pair(em, ob, ob),
    parse(em, FILE*),
    homnom(em, ob),
    tupl(em, ...),
-   err(em, const char*, ...);
+   err(em, ob, const char*, ...);
 
-// a packed array of 4-byte strings.
-extern const uint32_t *tnoms;
+const char *tnom(enum class);
 
 #define N0 putnum(0)
 #define nil N0
@@ -91,10 +99,9 @@ extern const uint32_t *tnoms;
 #define Width(t) b2w(sizeof(struct t))
 #define Push(...) pushs(v, __VA_ARGS__, (ob) 0)
 
-#define Q(_) ((enum class)((_)&(sizeof(ob)-1)))
+#define Q(_) ((enum class)((_)&TagMask))
 
 #define nilp(_) ((_)==nil)
-#define tnom(_) ((const char*)(tnoms+(_)))
 
 #define F(_) ((mo)(_)+1)
 #define G(_) (((mo)(_))->ll)
@@ -137,6 +144,9 @@ static Inline ob interns(em v, const char *s) {
 static Inline uintptr_t b2w(uintptr_t b) {
   return b / sizeof(ob) + (b % sizeof(ob) && 1); }
 
+static Inline ext extt(ob _) {
+  return (ext) (_ & ~ TagMask); }
+
 #define insts(_)\
  _(tget, 0) _(tset, 0) _(thas, 0) _(tlen, 0) _(arity, 0)\
  _(idZ, 0) _(idH, 0) _(id2, 0) _(idT, 0) _(imm, 0)\
@@ -149,21 +159,21 @@ static Inline uintptr_t b2w(uintptr_t b) {
  _(lteq, 0) _(eq, 0) _(gteq, 0) _(gt, 0) _(twopp, 0)\
  _(numpp, 0) _(nilpp, 0) _(strpp, 0) _(tblpp, 0) _(sympp, 0)\
  _(hompp, 0) _(car, 0) _(cdr, 0) _(cons, 0)\
- _(unit, 0) _(one, 0) _(zero, 0) _(arg0, 0) _(arg1, 0)\
+ _(one, 0) _(zero, 0) _(arg0, 0) _(arg1, 0)\
  _(loc0, 0) _(loc1, 0) _(clo0, 0) _(clo1, 0)\
  _(brlt, 0) _(brlteq, 0) _(breq, 0) _(brgteq, 0) _(brlt2, 0)\
  _(brlteq2, 0) _(brgt2, 0) _(brgt, 0) _(brne, 0)\
  _(dupl, 0) _(emi, 0) _(emx, 0) _(vararg, 0)\
- _(gsym_u, tnom(Sym))\
+ _(gsym_u, "sym")\
  _(par_u, "read") _(sar_u, ">>") _(sal_u, "<<") _(band_u, "&")\
  _(bor_u, "|") _(bxor_u, "^")\
- _(add_u, "+") _(hom_u, tnom(Hom))\
+ _(add_u, "+") _(hom_u, "hom")\
  _(sub_u, "-") _(mul_u, "*") _(div_u, "/") _(mod_u, "%")\
  _(lt_u, "<") _(lteq_u, "<=") _(eq_u, "=") _(gteq_u, ">=")\
  _(gt_u, ">") _(car_u, "A") _(cdr_u, "B") _(cons_u, "X")\
- _(strg, "sget") _(gsym_u, "ssym") _(strmk, tnom(Str))\
+ _(strg, "sget") _(gsym_u, "ssym") _(strmk, "str")\
  _(strl, "slen") _(strs, "ssub")   _(strconc, "scat")\
- _(tbll, "tlen") _(tblmk, tnom(Tbl)) _(tblg, "tget")\
+ _(tbll, "tlen") _(tblmk, "tbl") _(tblg, "tget")\
  _(tblc, "thas") _(tbls, "tset") _(tbld, "tdel")\
  _(tblks, "tkeys") _(hseek_u, "hseek") _(fail, "fail")\
  _(putc_u, "putc") _(ystr_u, "ystr")\
@@ -224,7 +234,7 @@ vm gc, type_error, ary_error, div_error;
 #define ArityError(n) ApC(ary_error, putnum(n))
 #define Arity(n) if (!HasArgs(n)) return ArityError(n)
 #define IsA(x, t) (Q((x))==t)
-#define TypeError(x,t) ApC(type_error, putnum((t << 3) | Q(x)))
+#define TypeError(x,t) ApC(type_error, x)
 #define TypeCheck(x,t) if (!IsA((x), (t))) return TypeError((x), (t))
 #define Get(n) ApC((v->xp=n, gc), xp)
 #define Have1() if (hp == sp) return Get(1)

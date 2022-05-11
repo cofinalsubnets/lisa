@@ -27,4 +27,17 @@
   (= (len a) (len b))
   (all (cu memq a) b)))
 
-(: (time f) (: t0 (clock) x (f) (, (. (- (clock) t0) 'ms) x)))
+(: (time f) (: t0 (clock) x (f) (, (. (- (clock) t0) 'ms) x))
+
+     (rev l) (foldl l () (\ a b (X b a)))
+     (find l p) (? l (? (p (A l)) (A l) (find (B l) p)))
+     (transp x) (ap zip (X L x))
+     (sample l) (at l (randn (len l)))
+     (intercal i l) (:
+      (loop i l m) (? (~ m) l (append l (append i (intercal i m))))
+      (? l (loop i (A l) (B l))))
+     (abs x) (? (< x 0) (- x) x)
+     (even x) (? (= 0 (& x 1)))
+     (odd x) (? (= 1 (& x 1)))
+
+)

@@ -39,7 +39,7 @@ Vm(gc) {
   uintptr_t req = v->xp;
   return Pack(), please(v, req) ?
     (Unpack(), ApY(ip, xp)) :
-    err(v, oom_err_msg, v->len, req); }
+    err(v, 0, oom_err_msg, v->len, req); }
 
 // a simple copying garbage collector
 //

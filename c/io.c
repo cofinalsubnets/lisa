@@ -1,11 +1,17 @@
 #include "em.h"
 #include <ctype.h>
-// these are the names of the subobjects;
-// packing them like this depends on the names
-// all being 3 bytes long
-const uint32_t *tnoms = (uint32_t*)
-  "hom\0num\0two\0str\0sym\0tbl\0xxx\0xxx";
 
+Inline const char *tnom(enum class q) {
+  switch (q) {
+    case Hom: return "hom";
+    case Num: return "num";
+    case Two: return "two";
+    case Str: return "str";
+    case Sym: return "sym";
+    case Tbl: return "tbl";
+    default: return "xxx";
+  }
+}
 ////
 /// " the parser "
 //

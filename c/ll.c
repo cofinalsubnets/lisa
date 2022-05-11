@@ -159,18 +159,17 @@ static Ll(recne) { return
   ApY(xp, fp->clos = nil); }
 
 // errors
-Ll(fail) { return Pack(), err(v, "fail"); }
+Ll(fail) { return Pack(), err(v, xp, 0); }
 
-#define type_err_msg "wrong type : %s for %s"
+#define dom_err_msg "wrong domain"
 Ll(type_error) {
-  int q = getnum(xp), act = Q(q), exp = q >> 3;
-  return Pack(), err(v, type_err_msg, tnom(act), tnom(exp)); }
+  return Pack(), err(v, xp, dom_err_msg); }
 
 #define arity_err_msg "wrong arity : %d of %d"
 Ll(ary_error) { return
-  Pack(), err(v, arity_err_msg, getnum(fp->argc), getnum(xp)); }
+  Pack(), err(v, 0, arity_err_msg, getnum(fp->argc), getnum(xp)); }
 
-Ll(div_error) { return Pack(), err(v, "/ 0"); }
+Ll(div_error) { return Pack(), err(v, N0, dom_err_msg); }
 
 // type/arity checking
 #define DTc(n, t) Ll(n) { TypeCheck(xp, t); return ApN(1, xp); }
@@ -187,17 +186,19 @@ static void show_call(em v, yo ip, fr fp) {
   fputc(')', stderr); }
 
 #define atop (fp->argc==putnum(-Width(fr)))
-NoInline ob err(em v, const char *msg, ...) {
-  if (msg) {
+NoInline ob err(em v, ob x, const char *msg, ...) {
+  if (x || msg) {
     yo ip = v->ip;
     fr fp = v->fp;
     // error line
     fputs("# ", stderr);
     if (!atop) show_call(v, ip, fp), fputs(" : ", stderr);
-    va_list xs; va_start(xs, msg),
-      vfprintf(stderr, msg, xs),
-      va_end(xs),
-      fputc('\n', stderr);
+    if (msg) {
+      va_list xs;
+      va_start(xs, msg), vfprintf(stderr, msg, xs), va_end(xs);
+      if (x) fputs(" : ", stderr); }
+    if (x) emit(v, x, stderr);
+    fputc('\n', stderr);
 
     // backtrace
     if (!atop) for (;;) {
@@ -320,7 +321,6 @@ cmp(LT, lt) cmp(LE, lteq) cmp(GE, gteq) cmp(GT, gt) cmp(eql, eq)
 /// Load Instructions
 //
 // constants
-OP1(unit, nil)
 OP1(one, N1)
 OP1(zero, N0)
 // immediate value from thread
@@ -378,9 +378,8 @@ Vm(locals) {
 // had been bound early.
 Vm(rslv) {
   ob w = (ob) ip[1].ll, d = AB(w), typ = getnum(A(w));
-  if (!(w = tbl_get(v, d, xp = BB(w)))) {
-    char *nom = nilp(getsym(xp)->nom) ? "()" : getstr(getsym(xp)->nom)->text;
-    return Pack(), err(v, "free variable : %s", nom); }
+  if (!(w = tbl_get(v, d, xp = BB(w))))
+    return Pack(), err(v, xp, "free variable");
   xp = w;
   if (typ != sizeof(ob)) {
     TypeCheck(xp, typ);
