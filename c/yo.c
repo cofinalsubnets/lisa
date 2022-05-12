@@ -76,7 +76,7 @@ static yo tuplr(em v, uintptr_t i, va_list xs) {
     (with(x, k = tuplr(v, i+1, xs)),
      k ? ee1((ll*) x, k) : 0); }
 
-ob tupl(em v, ...) {
+static ob tupl(em v, ...) {
   yo t; va_list xs; return
     va_start(xs, v),
     t = tuplr(v, 0, xs),
@@ -292,13 +292,10 @@ static Co(em_call) {
   yo k = Pull(m + 2);
   return !k ? 0 : ee2(k->ll == ret ? rec : call, a, k); }
 
-static ob lookup_mod(em v, ob x) {
-  return tbl_get(v, v->glob[Topl], x); }
-
 static ob lookup_lex(em v, ob e, ob y) {
   ob q; return
     nilp(e) ?
-      (q = lookup_mod(v, y)) ?
+      (q = lookup(v, y)) ?
         pair(v, putnum(Here), q) :
         pair(v, putnum(Wait), v->glob[Topl]) :
     lidx(loc(e), y) > -1 ? pair(v, putnum(Loc), e) :

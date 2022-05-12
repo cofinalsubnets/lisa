@@ -161,11 +161,11 @@ static Ll(recne) { return
 // errors
 Ll(fail) { return Pack(), err(v, xp, 0); }
 
-#define dom_err_msg "wrong domain"
+#define dom_err_msg "domain error"
 Ll(type_error) {
   return Pack(), err(v, xp, dom_err_msg); }
 
-#define arity_err_msg "wrong arity : %d of %d"
+#define arity_err_msg "arity error : %d of %d"
 Ll(ary_error) { return
   Pack(), err(v, 0, arity_err_msg, getnum(fp->argc), getnum(xp)); }
 
@@ -358,7 +358,7 @@ Vm(loc_) { return
 
 // set a global variable
 Vm(tbind) { return
-  CallC(tbl_set(v, v->glob[Topl], (ob) ip[1].ll, xp)),
+  CallC(define(v, (ob) ip[1].ll, xp)),
   ApN(2, xp); }
 
 // allocate local variable array
@@ -431,7 +431,7 @@ Vm(tblc) {
 static ob tblss(em v, intptr_t i, intptr_t l) {
   fr fp = (fr) v->fp;
   return
-    i > l - 2 ? fp->argv[i - 1]:
+    i > l - 2 ? fp->argv[i - 1] :
     !tbl_set(v, v->xp, fp->argv[i], fp->argv[i + 1]) ? 0 :
     tblss(v, i + 2, l); }
 

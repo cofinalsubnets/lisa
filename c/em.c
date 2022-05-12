@@ -53,26 +53,31 @@ static ob seq(em v, ob a, ob b) {
        k[4].ll = jump, k[5].ll = (ll*) b,
        k[6].ll = NULL, k[7].ll = (ll*) k); }
 
-static Ll(yield) { return Pack(), xp; }
-static ob apply(em v, ob f, ob x) {
-  yo k; return !Push(f, x) || !(k = cells(v, 5)) ? 0 :
+Inline ob cwm(em v) {
+  return v->glob[Topl]; }
+Inline ob define(em v, ob k, ob x) {
+  return tbl_set(v, cwm(v), k, x); }
+Inline ob lookup(em v, ob _) {
+  return tbl_get(v, v->glob[Topl], _); }
+
+static ob eval(em v, ob x) {
+  yo k; ob f; return
+    !((x = pair(v, x, nil)) &&
+      (f = lookup(v, v->glob[Eval])) &&
+      Push(f, x) &&
+      (k = cells(v, 5))) ? 0 :
     (k[0].ll = call,
      k[1].ll = (ll*) putnum(2),
-     k[2].ll = yield,
+     k[2].ll = ret,
      k[3].ll = NULL,
      k[4].ll = (ll*) k,
-     x = tbl_get(v, v->glob[Topl], v->glob[Apply]),
+     x = lookup(v, v->glob[Apply]),
      call(v, x, k, v->hp, v->sp, v->fp)); }
-
-ob eval(em v, ob x) {
-  ob args = pair(v, x, nil);
-  return !args? 0 :
-    apply(v, tbl_get(v, v->glob[Topl], v->glob[Eval]), args); }
 
 Ll(ev_u) {
   Arity(1); mo y;
   return
-    xp = tbl_get(v, v->glob[Topl], v->glob[Eval]),
+    xp = lookup(v, v->glob[Eval]),
     gethom(xp)->ll != ev_u ?
       ApY((yo) xp, nil) :
       !(Pack(), y = ana(v, *fp->argv)) ? 0 :
@@ -128,29 +133,29 @@ static void fin(em v) { if (v) free(v->pool), free(v); }
 #define register_inst(a, b) ((b) ? prim(v,b,a) : inst(v, "i-"#a,a)) &&
 static NoInline bool inst(em v, const char *a, ll *b) {
   ob z; return !(z = interns(v, a)) ? 0 :
-    !!tbl_set(v, v->glob[Topl], z, putnum((ob) b)); }
+    !!define(v, z, putnum(b)); }
 
 static NoInline bool prim(em v, const char *a, ll *i) {
   ob nom; yo k; return
     (nom = interns(v, a)) &&
     (nom = pair(v, nom, nil)) &&
     (with(nom, k = cells(v, 4)), k) ?
-      !!tbl_set(v, v->glob[Topl], A(nom), (ob)
+      !!define(v, A(nom), (ob)
         (k[0].ll = i,    k[1].ll = (ll*) nom,
          k[2].ll = NULL, k[3].ll = (ll*) k)) : 0; }
 
+static Ll(yield) { return Pack(), xp; }
 static em ini(void) {
   ob _; em v = malloc(sizeof(struct em));
   return v &&
     (v->t0 = clock(),
      v->rand = lcprng(v->t0),
-     // initial memory state
      v->len = 1, v->pool = NULL, v->mm = NULL,
+
      v->fp = (fr) (v->hp = v->sp = (ob*) sizeof(ob)),
      v->ip = (yo) (v->xp = v->syms = nil),
-     setw(v->glob, nil, NGlobs),
 
-     (v->glob[Topl] = table(v)) && insts(register_inst) // &&
+     setw(v->glob, nil, NGlobs),
 
      (v->glob[Eval] = interns(v, "ev")) &&
      (v->glob[Apply] = interns(v, "ap")) &&
@@ -160,9 +165,14 @@ static em ini(void) {
      (v->glob[Quote] = interns(v, "`")) &&
      (v->glob[Seq] = interns(v, ",")) &&
      (v->glob[Splat] = interns(v, ".")) &&
+
+     (v->glob[Topl] = table(v)) &&
      (_ = interns(v, "_ns")) &&
-     tbl_set(v, v->glob[Topl], _, v->glob[Topl]) &&
+     define(v, _, cwm(v)) &&
+
+     insts(register_inst) // &&
      (_ = (ob) cells(v, 3 + Width(fr))))
+     // allocated everything, set up the stack
     ? (gethom(_)[0].ll = yield,
        gethom(_)[1].ll = 0,
        gethom(_)[2].ll = (vm*) _,

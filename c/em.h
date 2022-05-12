@@ -66,8 +66,10 @@ hasher hash;
 void *cells(em, uintptr_t), emit(em, ob, FILE*);
 bool eql(ob, ob), please(em, uintptr_t), pushs(em, ...);
 mo ana(em, ob);
-ob eval(em, ob),
-   string(em, const char*),
+ob lookup(em, ob),
+   cwm(em),
+   define(em, ob, ob);
+ob string(em, const char*),
    intern(em, ob),
    table(em),
    tbl_set(em, ob, ob, ob),
@@ -75,7 +77,6 @@ ob eval(em, ob),
    pair(em, ob, ob),
    parse(em, FILE*),
    homnom(em, ob),
-   tupl(em, ...),
    err(em, ob, const char*, ...);
 
 const char *tnom(enum class);
