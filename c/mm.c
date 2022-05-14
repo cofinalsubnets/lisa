@@ -160,7 +160,7 @@ Gc(cphom) {
 
   for (ob u; j-- > dst;)
     u = (ob) j->ll,
-    u = nump(u) || !stale(u) ? u : cp(v, u, len0, pool0),
+    u = !stale(u) ? u : cp(v, u, len0, pool0),
     j->ll = (ll*) u;
 
   return (ob) (src - start + dst); }
