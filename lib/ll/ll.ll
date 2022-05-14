@@ -1,4 +1,5 @@
-(: macros (tbl))
+(: macros (tbl)
+   _ns (cwm))
 ; to bootstrap first we define an expression that when
 ; eval'd defines the standard environment and compiler, and
 ; redefines eval. then we eval it twice. the first time
@@ -309,8 +310,8 @@
   ; we usually want to bind early, but we also want to allow
   ; redefinition, so in that case bind late.
   (toplp e)
-   (? (? (Th _ns y) (~ (Th (Tg e'def) y)))
-    (X 'here (Tg _ns y))
+   (? (? (thas _ns y) (~ (thas (tget e 'def) y)))
+    (X 'here (tget _ns y))
     (X 'wait _ns))
   (memq (Tg e 'clo) y) (X 'clo e)
   (memq (Tg e 'dfr) y) (X 'wait (Tg e'val))

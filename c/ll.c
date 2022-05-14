@@ -358,7 +358,7 @@ Vm(loc_) { return
 
 // set a global variable
 Vm(tbind) { return
-  CallC(define(v, (ob) ip[1].ll, xp)),
+  CallC(tbl_set(v, cwm(v), (ob) ip[1].ll, xp)),
   ApN(2, xp); }
 
 // allocate local variable array
@@ -584,6 +584,7 @@ static Vm(encl) {
 
 Ll(encll) { return ApC(encl, Locs); }
 Ll(encln) { return ApC(encl, nil); }
+Ll(cwm_u) { return ApC(ret, cwm(v)); }
 
 ob homnom(em v, ob x) {
   ll *k = (ll*) gethom(x)->ll;

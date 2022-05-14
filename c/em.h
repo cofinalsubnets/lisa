@@ -66,9 +66,7 @@ hasher hash;
 void *cells(em, uintptr_t), emit(em, ob, FILE*);
 bool eql(ob, ob), please(em, uintptr_t), pushs(em, ...);
 mo ana(em, ob);
-ob lookup(em, ob),
-   cwm(em),
-   define(em, ob, ob);
+ob lookup(em, ob), cwm(em);
 ob string(em, const char*),
    intern(em, ob),
    table(em),
@@ -165,7 +163,7 @@ static Inline ext extt(ob _) {
  _(brlt, 0) _(brlteq, 0) _(breq, 0) _(brgteq, 0) _(brlt2, 0)\
  _(brlteq2, 0) _(brgt2, 0) _(brgt, 0) _(brne, 0)\
  _(dupl, 0) _(emi, 0) _(emx, 0) _(vararg, 0)\
- _(gsym_u, "sym")\
+ _(gsym_u, "sym") _(cwm_u, "cwm")\
  _(par_u, "read") _(sar_u, ">>") _(sal_u, "<<") _(band_u, "&")\
  _(bor_u, "|") _(bxor_u, "^")\
  _(add_u, "+") _(hom_u, "hom")\

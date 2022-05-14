@@ -54,11 +54,14 @@ static ob seq(em v, ob a, ob b) {
        k[6].ll = NULL, k[7].ll = (ll*) k); }
 
 Inline ob cwm(em v) {
-  return v->glob[Topl]; }
-Inline ob define(em v, ob k, ob x) {
-  return tbl_set(v, cwm(v), k, x); }
-Inline ob lookup(em v, ob _) {
-  return tbl_get(v, v->glob[Topl], _); }
+  return A(v->glob[Topl]); }
+
+ob lookup(em v, ob _) {
+  ob x, mod = v->glob[Topl];
+  for (; twop(mod); mod = B(mod))
+    if ((x = tbl_get(v, A(mod), _)))
+      return x;
+  return 0; }
 
 static ob eval(em v, ob x) {
   yo k; ob f; return
@@ -102,12 +105,12 @@ static yo comp(em v, bool shell, const char **paths) {
 static em from
   (bool shell, const char *boot, const char **paths) {
     em v = ini(); ob y; return 
-      !(y = (ob) comp(v, shell, paths)) ||
       !(!boot ||
-        ((with(y, (v->xp = scrp(v, boot))), v->xp) &&
-         (y = seq(v, v->xp, (ob) y)))) ? 0 :
-      (v->ip = (mo) y,
-       v); }
+        !(y = scrp(v, boot)) ||
+        !(y = pair(v, y, nil)) ||
+        !eval(v, y)) ||
+      !(y = (ob) comp(v, shell, paths))
+      ? 0 : (v->ip = (mo) y, v); }
 
 // functions to compile scripts into a program
 //
@@ -121,6 +124,11 @@ static ob scrpr(em v, FILE *in) {
     (x = pair(v, v->glob[Eval], x)) &&
     (with(x, y = scrpr(v, in)), y) ? pair(v, x, y) : 0; }
 
+bool consume_stream(em v, FILE *s) {
+  ob _ = parse(v, s);
+  return !_ ? feof(s) :
+    eval(v, _) && consume_stream(v, s); }
+
 // scrp : yo em str
 static Inline ob scrp(em v, const char *path) {
   ob x; FILE *in = fopen(path, "r");
@@ -133,14 +141,14 @@ static void fin(em v) { if (v) free(v->pool), free(v); }
 #define register_inst(a, b) ((b) ? prim(v,b,a) : inst(v, "i-"#a,a)) &&
 static NoInline bool inst(em v, const char *a, ll *b) {
   ob z; return !(z = interns(v, a)) ? 0 :
-    !!define(v, z, putnum(b)); }
+    !!tbl_set(v, cwm(v), z, putnum(b)); }
 
 static NoInline bool prim(em v, const char *a, ll *i) {
   ob nom; yo k; return
     (nom = interns(v, a)) &&
     (nom = pair(v, nom, nil)) &&
     (with(nom, k = cells(v, 4)), k) ?
-      !!define(v, A(nom), (ob)
+      !!tbl_set(v, cwm(v), A(nom), (ob)
         (k[0].ll = i,    k[1].ll = (ll*) nom,
          k[2].ll = NULL, k[3].ll = (ll*) k)) : 0; }
 
@@ -165,10 +173,8 @@ static em ini(void) {
      (v->glob[Quote] = interns(v, "`")) &&
      (v->glob[Seq] = interns(v, ",")) &&
      (v->glob[Splat] = interns(v, ".")) &&
-
-     (v->glob[Topl] = table(v)) &&
-     (_ = interns(v, "_ns")) &&
-     define(v, _, cwm(v)) &&
+     (_ = table(v)) &&
+     (v->glob[Topl] = pair(v, _, nil)) &&
 
      insts(register_inst) // &&
      (_ = (ob) cells(v, 3 + Width(fr))))

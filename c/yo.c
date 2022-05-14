@@ -297,7 +297,7 @@ static ob lookup_lex(em v, ob e, ob y) {
     nilp(e) ?
       (q = lookup(v, y)) ?
         pair(v, putnum(Here), q) :
-        pair(v, putnum(Wait), v->glob[Topl]) :
+        pair(v, putnum(Wait), cwm(v)) :
     lidx(loc(e), y) > -1 ? pair(v, putnum(Loc), e) :
     lidx(arg(e), y) > -1 ? pair(v, putnum(Arg), e) :
     lidx(clo(e), y) > -1 ? pair(v, putnum(Clo), e) :

@@ -37,7 +37,7 @@ static int nextc(FILE *i) {
     case ' ': case '\t': case '\n': continue;
     default: return c; } }
 
-ob readq(em v, FILE *i) {
+static ob readq(em v, FILE *i) {
   ob x; return
     !(x = parse(v, i)) ||
     !(x = pair(v, x, nil)) ? 0 :
