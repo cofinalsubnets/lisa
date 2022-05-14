@@ -21,9 +21,15 @@ static ob sskc(em, ob*, ob);
 
 
 #define inb(o,l,u) (o>=l&&o<u)
-#define fresh(o) inb((ob*)(o),v->pool,v->pool+v->len)
+
+// we use this to test if an object has been moved already
 #define COPY(dst,src) (dst=cp(v,src,len0,pool0))
 #define CP(x) COPY(x,x)
+
+static Inline ob evacd(em v, ob _, enum class q) {
+  ob x = *R(_ - q);
+  return Q(x) == q &&
+    inb(R(x), v->pool, v->pool + v->len) ?  x : 0; }
 
 // unchecked allocator -- make sure there's enough memory!
 static Inline void* bump(em v, intptr_t n) {
@@ -139,7 +145,8 @@ bool please(em v, uintptr_t req) {
 
 #define stale(o) inb((ob*)(o),pool0,pool0+len0)
 Gc(cphom) {
-  if (fresh(G(x))) return (ob) G(x);
+  ob e = evacd(v, x, Hom);
+  if (e) return e;
   yo src = (yo) x,
      end = button(src),
      start = (yo) end[1].ll,
@@ -153,22 +160,28 @@ Gc(cphom) {
 
   for (ob u; j-- > dst;)
     u = (ob) j->ll,
-    u = !stale(u) ? u : cp(v, u, len0, pool0),
+    u = nump(u) || !stale(u) ? u : cp(v, u, len0, pool0),
     j->ll = (ll*) u;
 
   return (ob) (src - start + dst); }
 
 Gc(cpstr) {
-  str dst, src = getstr(x);
-  return src->len == 0 ? *(ob*)src->text :
-    (dst = bump(v, Width(str) + b2w(src->len)),
-     cpyw(dst->text, src->text, b2w(src->len)),
-     dst->len = src->len, src->len = 0,
-     *(ob*) src->text = putstr(dst)); }
+  ob e = evacd(v, x, Str);
+  if (e) return e;
+  str dst, src = (str) (x - Str);
+  dst = bump(v, Width(str) + b2w(src->len));
+  cpyw(dst->text, src->text, b2w(src->len));
+  dst->len = src->len;
+  dst->ext = src->ext;
+  x = (ob) dst + Str;
+  src->ext = (void*) x;
+  return x; }
 
 Gc(cpsym) {
+  ob e = evacd(v, x, Sym);
+  if (e) return e;
   sym src = getsym(x), dst;
-  return fresh(src->nom) ? src->nom :
+  return
     src->nom == nil ? // anonymous symbol
       (dst = bump(v, Width(sym)),
        cpyw(dst, src, Width(sym)),
@@ -178,8 +191,9 @@ Gc(cpsym) {
        src->nom = putsym(dst) ); }
 
 Gc(cptbl) {
+  ob e = evacd(v, x, Tbl);
+  if (e) return e;
   tbl src = gettbl(x);
-  if (fresh(src->tab)) return (ob) src->tab;
   intptr_t src_cap = src->cap;
   tbl dst = bump(v, Width(tbl));
   dst->len = src->len;
@@ -191,13 +205,13 @@ Gc(cptbl) {
   return puttbl(dst); }
 
 Gc(cptwo) {
-  ob dst, src = x;
-  return fresh(A(x)) ? A(x) :
-    (dst = puttwo(bump(v, Width(two))),
-     A(dst) = A(src), A(src) = dst,
-     B(dst) = cp(v, B(src), len0, pool0),
-     A(dst) = cp(v, A(dst), len0, pool0),
-     dst); }
+  ob dst = evacd(v, x, Two);
+  if (!dst)
+    dst = puttwo(bump(v, Width(two))),
+    A(dst) = A(x), A(x) = dst,
+    B(dst) = cp(v, B(x), len0, pool0),
+    A(dst) = cp(v, A(dst), len0, pool0);
+  return dst; }
 
 static ob pair_(em v, ob a, ob b) {
   bool _; two w;
@@ -348,7 +362,9 @@ ob string(em v, const char* c) {
   intptr_t bs = 1 + strlen(c);
   str o = cells(v, Width(str) + b2w(bs));
   return !o ? 0 :
-    (memcpy(o->text, c, o->len = bs),
+    (o->len = bs,
+     o->ext = 0,
+     memcpy(o->text, c, bs),
      putstr(o)); }
 
 Vm(tbld) {
@@ -384,6 +400,7 @@ Vm(strconc) {
   str d = (str) hp;
   hp += words;
   d->len = sum + 1;
+  d->ext = 0;
   d->text[sum] = 0;
   for (str x; i;)
     x = getstr(fp->argv[--i]),
@@ -408,6 +425,7 @@ Vm(strs) {
   str dst = (str) hp;
   hp += words;
   dst->len = ub - lb + 1;
+  dst->ext = 0;
   dst->text[ub - lb] = 0;
   memcpy(dst->text, src->text + lb, ub - lb);
   return ApC(ret, putstr(dst)); }
@@ -424,6 +442,7 @@ Vm(strmk) {
     TypeCheck(x, Num);
     if (x == N0) break; }
   return s->text[i] = 0,
+         s->ext = 0,
          s->len = i+1,
          ApC(ret, putstr(s)); }
 

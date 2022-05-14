@@ -309,10 +309,10 @@
   ; toplevel bindings are special. if it's already defined
   ; we usually want to bind early, but we also want to allow
   ; redefinition, so in that case bind late.
-  (toplp e)
-   (? (? (thas _ns y) (~ (thas (tget e 'def) y)))
-    (X 'here (tget _ns y))
-    (X 'wait _ns))
+  (toplp e) (: ns (cwm) (?
+   (? (thas ns y) (~ (thas (tget e 'def) y)))
+    (X 'here (tget ns y))
+   (X 'wait ns)))
   (memq (Tg e 'clo) y) (X 'clo e)
   (memq (Tg e 'dfr) y) (X 'wait (Tg e'val))
   (memq (Tg e 'loc) y) (X 'loc e)
@@ -677,7 +677,7 @@
 ; " drop privileges "
 (: dels (cu (flip each) (cu Td _ns))
    insns (filter (tkeys _ns) (\ k (= "i-" (ssub (ystr k) 0 2))))
-   locs '(boot egg emi macros emx hom hseek hgeti hgetx hfin _ns)
+   locs '(cwm boot egg emi macros emx hom hseek hgeti hgetx hfin _ns)
  (, (Td macros 'i-)
     (each (L insns locs) dels)))
 ;ev
