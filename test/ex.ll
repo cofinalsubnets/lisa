@@ -1,4 +1,18 @@
+(: one id zero (\ one)
+   (((succ n) f) x) ((n f) (f x))
+   ((add g) f) ((f succ) g)
+   ((mul g) f) ((f (add g)) zero)
+   ((pow g) f) ((f (mul g)) one)
+   ((tet g) f) ((f (pow g)) one)
+   ((pen g) f) ((f (tet g)) one) ; etc
 
+   (C n) (? (= n 0) zero (succ (C (- n 1)))) ; ℕ->⛪
+   (N c) ((c (\ x (+ x 1))) 0)               ; ⛪->ℕ
+
+   two (succ one) four (two two) five (succ four)
+   three (succ two)
+   ten ((mul two) five)
+   one-hundred (two ten))
 ; some miscellaneous functions
 (test execution
 
@@ -23,26 +37,15 @@
 
 
  ; church numerals
- (: (((mul f) g) x) (f (g x))
-    (((add f) g) x) ((mul (f x)) (g x))
-    ((tet f) g) ((g (\ g (g f))) I)
-    pow I one I zero (\ I) succ (add I)
-    (C n) (? (= n 0) zero ((add one) (C (- n 1)))) ; ℕ->⛪
-    (N c) ((c (\ x (+ x 1))) 0)                    ; ⛪->ℕ
-
-    two (succ one) four (two two) five (succ four)
-    ten ((mul two) five)
-    one-hundred ((pow two) ten)
   (&&
     (= 100
      (N (C 100))
      (N one-hundred))
-    (= 65536 (N ((tet two) four)))))
+    (= 16 (N ((tet two) three))))
 
  ; hyperoperations
- (: (hy n) (? (= n 0) + (\ x y
-     ((: (hz hx x y i) (? (< i y) (hx x (hz hx x y (+ i 1))) x))
-      (hy (- n 1)) x y 1)))
-    pow (hy 2)
-    tet (hy 3)
+ (: (hy x n y) ( ? (~ n) (+ x y) (~ y) 1
+     (hy x (- n 1) (hy x n (- y 1))))
+    (pow a b) (hy a 2 b)
+    (tet a b) (hy a 3 b)
   (= 65536 (<< 1 16) (pow 2 16) (tet 2 4))))

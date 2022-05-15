@@ -161,15 +161,12 @@ static Ll(recne) { return
 // errors
 Ll(fail) { return Pack(), err(v, xp, 0); }
 
-#define dom_err_msg "domain error"
-Ll(type_error) {
-  return Pack(), err(v, xp, dom_err_msg); }
+Ll(domain_error) {
+  return Pack(), err(v, xp, "is undefined at point"); }
 
-#define arity_err_msg "arity error : %d of %d"
-Ll(ary_error) { return
-  Pack(), err(v, 0, arity_err_msg, getnum(fp->argc), getnum(xp)); }
-
-Ll(div_error) { return Pack(), err(v, N0, dom_err_msg); }
+#define arity_err_msg "has %d of %d required arguments"
+Ll(ary_error) { return Pack(),
+  err(v, 0, arity_err_msg, getnum(fp->argc), getnum(xp)); }
 
 // type/arity checking
 #define DTc(n, t) Ll(n) { TypeCheck(xp, t); return ApN(1, xp); }
@@ -191,12 +188,12 @@ NoInline ob err(em v, ob x, const char *msg, ...) {
     yo ip = v->ip;
     fr fp = v->fp;
     // error line
-    fputs("# ", stderr);
-    if (!atop) show_call(v, ip, fp), fputs(" : ", stderr);
+    fputs("; ", stderr);
+    if (!atop) show_call(v, ip, fp), fputs(" ", stderr);
     if (msg) {
       va_list xs;
       va_start(xs, msg), vfprintf(stderr, msg, xs), va_end(xs);
-      if (x) fputs(" : ", stderr); }
+      if (x) fputs(" ", stderr); }
     if (x) emit(v, x, stderr);
     fputc('\n', stderr);
 
@@ -206,7 +203,7 @@ NoInline ob err(em v, ob x, const char *msg, ...) {
         ((ob*) (fp + 1) + getnum(fp->argc)
                         + getnum(fp->subd));
       if (atop) break; else
-        fputs("# in ", stderr),
+        fputs("; in ", stderr),
         show_call(v, ip, fp),
         fputc('\n', stderr); } }
 #undef atop
@@ -232,7 +229,7 @@ NoInline ob err(em v, ob x, const char *msg, ...) {
   for(xp=_z;xs<l;xp=xp op getnum(x)){\
     x = *xs++;\
     TypeCheck(x, Num);\
-    if (x == N0) return ApC(div_error, xp);}\
+    if (x == N0) return ApC(domain_error, x);}\
   return ApC(ret, putnum(xp));}
 
 Ll(sub_u) {
@@ -252,7 +249,7 @@ Ll(sal_u) {
   mm_u(getnum(fp->argc)-1, fp->argv+1, getnum(*fp->argv), <<); }
 
 Ll(dqv) {
-  return xp == N0 ? ApC(div_error, xp) :
+  return xp == N0 ? ApC(domain_error, xp) :
     (xp = putnum(getnum(*sp++) / getnum(xp)), ApN(1, xp)); }
 
 Ll(div_u) {
@@ -261,7 +258,7 @@ Ll(div_u) {
   mm_void(xp-1, fp->argv+1, getnum(*fp->argv), /); }
 
 Ll(mod) {
-  return xp == N0 ? ApC(div_error, xp) :
+  return xp == N0 ? ApC(domain_error, xp) :
     (xp = putnum(getnum(*sp++) % getnum(xp)), ApN(1, xp)); }
 
 Ll(mod_u) {
@@ -377,13 +374,11 @@ Vm(locals) {
 // that would have been done by the compiler if the function
 // had been bound early.
 Vm(rslv) {
-  ob w = (ob) ip[1].ll, d = AB(w), typ = getnum(A(w));
+  ob w = (ob) ip[1].ll, d = AB(w), typ = A(w) >> TagBits;
   if (!(w = tbl_get(v, d, xp = BB(w))))
-    return Pack(), err(v, xp, "free variable");
+    return Pack(), err(v, xp, "referenced undefined variable");
   xp = w;
-  if (typ != sizeof(ob)) {
-    TypeCheck(xp, typ);
-  }
+  if (typ != sizeof(ob)) TypeCheck(xp, typ);
   // omit the arity check if possible
   if ((ip[2].ll == call || ip[2].ll == rec) && // xp will be a hom
       R(xp)[0] == (ob) arity &&
@@ -440,13 +435,13 @@ Vm(tbls) {
   TypeCheck(*fp->argv, Tbl);
   return
     xp = *fp->argv,
-    CallC(v->xp = tblss(v, 1, getnum(fp->argc))),
+    CallC(v->xp = tblss(v, 1, fp->argc >> TagBits)),
     xp ? ApC(ret, xp) : 0; }
 
 Vm(tblmk) {
   return Pack(),
     (v->xp = table(v)) &&
-    (xp = tblss(v, 0, getnum(fp->argc))) ?
+    (xp = tblss(v, 0, fp->argc >> TagBits)) ?
       (Unpack(), ApC(ret, xp)) :
       0; }
 

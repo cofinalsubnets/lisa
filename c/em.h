@@ -40,9 +40,11 @@ typedef Show(writer);
 
 typedef struct ext {
   ob name;
-  copier *copy;
-  hasher *hash;
-  writer *show; } *ext;
+  ob (*copy)(em, ob, intptr_t, ob*);
+  uintptr_t (*hash)(em, ob);
+  void (*show)(em, ob, FILE*);
+  bool (*equal)(ob, ob);
+} *ext;
 
 typedef struct str { ext ext; Z len; char text[]; } *str;
 typedef struct sym { ob nom, code, l, r; } *sym;
@@ -188,7 +190,7 @@ static Inline ext extt(ob _) {
 insts(ninl)
 #undef ninl
 
-vm gc, type_error, ary_error, div_error;
+vm gc, domain_error, ary_error;
 
 // " the interpreter "
 #define Vm Ll
@@ -233,7 +235,7 @@ vm gc, type_error, ary_error, div_error;
 #define ArityError(n) ApC(ary_error, putnum(n))
 #define Arity(n) if (!HasArgs(n)) return ArityError(n)
 #define IsA(x, t) (Q((x))==t)
-#define TypeError(x,t) ApC(type_error, x)
+#define TypeError(x,t) ApC(domain_error, x)
 #define TypeCheck(x,t) if (!IsA((x), (t))) return TypeError((x), (t))
 #define Get(n) ApC((v->xp=n, gc), xp)
 #define Have1() if (hp == sp) return Get(1)

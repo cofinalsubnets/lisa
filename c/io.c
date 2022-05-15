@@ -121,11 +121,10 @@ Ll(par_u) { return
   !xp ? 0 : ApC(ret, xp); }
 
 static void emhomn(em v, ob x, FILE *o) {
-  fputc('\\', o);
-  if (symp(x)) emit(v, x, o);
-  else if (twop(x)) {
-    if (symp(A(x))) emit(v, A(x), o);
-    emhomn(v, B(x), o); } }
+  if (symp(x)) fputc('\\', o), emit(v, x, o);
+  else if (!twop(x)) fputc('\\', o);
+  else { if (symp(A(x)) || twop(A(x))) emhomn(v, A(x), o);
+         if (symp(B(x)) || twop(B(x))) emhomn(v, B(x), o); } }
 
 void emit(em v, ob x, FILE *o) {
   switch (Q(x)) {
