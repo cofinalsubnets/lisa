@@ -62,17 +62,14 @@ ob lookup(em v, ob _) {
 
 static Ll(yield) { return Pack(), xp; }
 static ob eval(em v, ob x) {
-  yo k; ob f; return
-    !((x = pair(v, x, nil)) &&
-      (f = lookup(v, v->glob[Eval])) &&
-      Push(f, x) &&
-      (k = cells(v, 5))) ? 0 :
+  yo k; return
+    !(Push(x) && (k = cells(v, 5))) ? 0 :
     (k[0].ll = call,
-     k[1].ll = (ll*) putnum(2),
+     k[1].ll = (ll*) putnum(1),
      k[2].ll = yield,
      k[3].ll = NULL,
      k[4].ll = (ll*) k,
-     x = lookup(v, v->glob[Apply]),
+     x = lookup(v, v->glob[Eval]),
      call(v, x, k, v->hp, v->sp, v->fp)); }
 
 Ll(ev_u) {
