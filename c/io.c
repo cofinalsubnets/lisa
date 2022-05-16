@@ -126,44 +126,49 @@ static void emhomn(em v, ob x, FILE *o) {
   else { if (symp(A(x)) || twop(A(x))) emhomn(v, A(x), o);
          if (symp(B(x)) || twop(B(x))) emhomn(v, B(x), o); } }
 
-void emit(em v, ob x, FILE *o) {
-  switch (Q(x)) {
-    default: fputs("()", o); break;
-    case Hom: emhomn(v, homnom(v, x), o); break;
-    case Num: fprintf(o, "%ld", getnum(x)); break;
-    case Str: {
-      str s = getstr(x);
-      fputc('"', o);
-      for (char *t = s->text; *t; fputc(*t++, o))
-        if (*t == '"') fputc('\\', o);
-      fputc('"', o);
-      break; }
+static void emhom(em v, ob x, FILE *o) {
+  emhomn(v, homnom(v, x), o); }
 
-    case Tbl: {
-      tbl t = gettbl(x);
-      fprintf(o, "#tbl:%ld/%ld", t->len, t->cap);
-      break; }
+static void emnum(em v, ob x, FILE *o) {
+  fprintf(o, "%ld", getnum(x)); }
 
-    case Sym: {
-      sym y = getsym(x);
-      (nilp(y->nom) ?
-        fprintf(o, "#sym@%lx", (long) y) :
-        fputs(getstr(y->nom)->text, o));
-      break; }
+static void emstr(em v, ob x, FILE *o) {
+  str s = getstr(x);
+  fputc('"', o);
+  for (char *t = s->text; *t; fputc(*t++, o))
+    if (*t == '"') fputc('\\', o);
+  fputc('"', o); }
 
-    case Two: {
-      // quotation?
-      if (A(x) == v->glob[Quote] &&
-          twop(B(x)) &&
-          nilp(BB(x)))
-        return fputc('\'', o), emit(v, A(B(x)), o);
+static void emtbl(em v, ob x, FILE *o) {
+  tbl t = gettbl(x);
+  fprintf(o, "#tbl:%ld/%ld", t->len, t->cap); }
 
-      for (fputc('(', o);; x = B(x)) {
-        emit(v, A(x), o);
-        if (!twop(B(x))) break;
-        fputc(' ', o); }
+static void emsym(em v, ob x, FILE *o) {
+  sym y = getsym(x);
+  (nilp(y->nom) ?
+    fprintf(o, "#sym@%lx", (long) y) :
+    fputs(getstr(y->nom)->text, o)); }
 
-      fputc(')', o); } } }
+static void emtwo(em v, ob x, FILE *o) {
+  // quotation?
+  if (A(x) == v->glob[Quote] &&
+      twop(B(x)) &&
+      nilp(BB(x)))
+    return fputc('\'', o), emit(v, A(B(x)), o);
+
+  for (fputc('(', o);; x = B(x)) {
+    emit(v, A(x), o);
+    if (!twop(B(x))) break;
+    fputc(' ', o); }
+
+  fputc(')', o); }
+
+
+Inline void emit(em v, ob x, FILE *o) {
+  static void (*ems[])(em, ob, FILE*) = {
+    [Hom] = emhom, [Num] = emnum, [Sym] = emsym,
+    [Two] = emtwo, [Str] = emstr, [Tbl] = emtbl, };
+  return ems[Q(x)](v, x, o); }
 
 // print to console
 Ll(show_u) {

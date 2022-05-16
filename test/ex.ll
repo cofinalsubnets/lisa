@@ -1,4 +1,8 @@
-(: one id zero (\ one)
+ ; church numerals
+(: ; cf. SKI combinators
+   one id ; I
+   zero (\ one) ; KI
+   ((((add g) f) x) y) ((f x) ((g x) y)) ; ~S ; liftA2 (.) -- in haskell
    (((succ n) f) x) ((n f) (f x))
    ((add g) f) ((f succ) g)
    ((mul g) f) ((f (add g)) zero)
@@ -13,13 +17,19 @@
    three (succ two)
    ten ((mul two) five)
    one-hundred (two ten))
+
+(: (hy x n y) ( ? (~ n) (+ x y) (~ y) 1
+   (hy x (- n 1) (hy x n (- y 1)))))
 ; some miscellaneous functions
 (test execution
 
  (: (ack m n)
    (? (< m 1) (+ n 1)
     (ack (- m 1) (? (> n 0) (ack m (- n 1)) 1)))
-  (= 1021 (ack 3 7)))
+  (= 1021 (ack 3 7)
+   ; ack(m > 0, n) = 2[m](n + 3) - 3
+   (- (hy 2 2 10) 3)
+   (- (N ((pow two) ten)) 3)))
  
  (: (fib n)
    (? (< n 3) 1
@@ -35,17 +45,7 @@
             (tarai (- z 1) x y)))
   (= 13 (tarai 12 13 14)))
 
-
- ; church numerals
-  (&&
-    (= 100
-     (N (C 100))
-     (N one-hundred))
-    (= 16 (N ((tet two) three))))
-
  ; hyperoperations
- (: (hy x n y) ( ? (~ n) (+ x y) (~ y) 1
-     (hy x (- n 1) (hy x n (- y 1))))
-    (pow a b) (hy a 2 b)
+ (: (pow a b) (hy a 2 b)
     (tet a b) (hy a 3 b)
   (= 65536 (<< 1 16) (pow 2 16) (tet 2 4))))

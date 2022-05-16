@@ -158,13 +158,10 @@ static Ll(recne) { return
   fp->subd = v->xp,
   ApY(xp, fp->clos = nil); }
 
-// errors
-Ll(fail) { return Pack(), err(v, xp, 0); }
-
 Ll(domain_error) {
-  return Pack(), err(v, xp, "is undefined at point"); }
+  return Pack(), err(v, xp, "is undefined at"); }
 
-#define arity_err_msg "has %d of %d required arguments"
+#define arity_err_msg "has %d of %d arguments"
 Ll(ary_error) { return Pack(),
   err(v, 0, arity_err_msg, getnum(fp->argc), getnum(xp)); }
 
@@ -188,7 +185,7 @@ NoInline ob err(em v, ob x, const char *msg, ...) {
     yo ip = v->ip;
     fr fp = v->fp;
     // error line
-    fputs("; ", stderr);
+    fputs("# ", stderr);
     if (!atop) show_call(v, ip, fp), fputs(" ", stderr);
     if (msg) {
       va_list xs;
@@ -203,7 +200,7 @@ NoInline ob err(em v, ob x, const char *msg, ...) {
         ((ob*) (fp + 1) + getnum(fp->argc)
                         + getnum(fp->subd));
       if (atop) break; else
-        fputs("; in ", stderr),
+        fputs("# in ", stderr),
         show_call(v, ip, fp),
         fputc('\n', stderr); } }
 #undef atop
@@ -376,7 +373,7 @@ Vm(locals) {
 Vm(rslv) {
   ob w = (ob) ip[1].ll, d = AB(w), typ = A(w) >> TagBits;
   if (!(w = tbl_get(v, d, xp = BB(w))))
-    return Pack(), err(v, xp, "referenced undefined variable");
+    return Pack(), err(v, xp, "referenced free variable");
   xp = w;
   if (typ != sizeof(ob)) TypeCheck(xp, typ);
   // omit the arity check if possible

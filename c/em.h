@@ -176,7 +176,7 @@ static Inline ext extt(ob _) {
  _(strl, "slen") _(strs, "ssub")   _(strconc, "scat")\
  _(tbll, "tlen") _(tblmk, "tbl") _(tblg, "tget")\
  _(tblc, "thas") _(tbls, "tset") _(tbld, "tdel")\
- _(tblks, "tkeys") _(hseek_u, "hseek") _(fail, "fail")\
+ _(tblks, "tkeys") _(hseek_u, "hseek") _(domain_error, "fail")\
  _(putc_u, "putc") _(ystr_u, "ystr")\
  _(hnom_u, "hnom")\
  _(emx_u, "emx") _(emi_u, "emi") _(show_u, ".") _(ev_u, "ev")\
