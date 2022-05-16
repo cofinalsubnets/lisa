@@ -179,7 +179,7 @@ static void show_call(em v, yo ip, fr fp) {
     fputc(' ', stderr), emit(v, fp->argv[i++], stderr);
   fputc(')', stderr); }
 
-#define atop (fp->argc==putnum(-Width(fr)))
+#define atop ((ob*)fp==v->pool+v->len)
 NoInline ob err(em v, ob x, const char *msg, ...) {
   if (x || msg) {
     yo ip = v->ip;
@@ -206,10 +206,10 @@ NoInline ob err(em v, ob x, const char *msg, ...) {
 #undef atop
 
   // reset and yield
-  return v->fp = (fr) (v->pool + v->len) - 1,
+  return v->fp = (fr) (v->pool + v->len),
          v->sp = (ob*) v->fp,
          v->xp = nil,
-         v->ip = (mo) v->fp->retp,
+         v->ip = (mo) nil,
          0; }
 
 
@@ -350,10 +350,12 @@ Vm(loc_) { return
   Ref(((ob*)Locs)) = xp,
   ApN(2, xp); }
 
-// set a global variable
+// set a module variable
 Vm(tbind) {
   ob a = (ob) ip[1].ll;
-  return CallC(tbl_set(v, A(a), B(a), xp)), ApN(2, xp); }
+  Pack();
+  xp = tbl_set(v, A(a), B(a), xp);
+  return !xp ? 0 : (Unpack(), ApN(2, xp)); }
 
 // allocate local variable array
 Vm(locals) {

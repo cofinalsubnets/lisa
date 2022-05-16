@@ -20,10 +20,7 @@ static void fin(struct em*);
 #define SUFF
 #endif
 
-static em from(bool, const char*, const char**);
-static NoInline ob go(em v) {
-  yo ip; fr fp; ob xp, *sp, *hp;
-  return Unpack(), ApY(ip, xp); }
+static ob go(bool, const char*, const char**);
 
 int main(int argc, char **argv) {
   const char *boot = PREF "/lib/" LANG "/" LANG "." SUFF, *help =
@@ -42,8 +39,8 @@ int main(int argc, char **argv) {
       case '_': boot = NULL; continue;
       case -1:
         if (argc == optind && !shell) return EXIT_SUCCESS;
-        em v = from(shell, boot, (const char **) argv + optind);
-        return v && go(v) ? EXIT_SUCCESS : EXIT_FAILURE; } }
+        return go(shell, boot, (const char **) argv + optind) ?
+         EXIT_SUCCESS : EXIT_FAILURE; } }
 
 static ob seq(em v, ob a, ob b) {
   yo k; return
@@ -63,6 +60,7 @@ ob lookup(em v, ob _) {
       return x;
   return 0; }
 
+static Ll(yield) { return Pack(), xp; }
 static ob eval(em v, ob x) {
   yo k; ob f; return
     !((x = pair(v, x, nil)) &&
@@ -71,7 +69,7 @@ static ob eval(em v, ob x) {
       (k = cells(v, 5))) ? 0 :
     (k[0].ll = call,
      k[1].ll = (ll*) putnum(2),
-     k[2].ll = ret,
+     k[2].ll = yield,
      k[3].ll = NULL,
      k[4].ll = (ll*) k,
      x = lookup(v, v->glob[Apply]),
@@ -102,15 +100,15 @@ static yo comp(em v, bool shell, const char **paths) {
     (y = (ob) comp(v, shell, paths+1)) &&
     (with(y, x = scrp(v, path)), x) ? (yo) seq(v, x, y) : 0; }
 
-static em from
-  (bool shell, const char *boot, const char **paths) {
-    em v = ini(); ob y; return 
-      !(!boot ||
-        !(y = scrp(v, boot)) ||
-        !(y = pair(v, y, nil)) ||
-        !eval(v, y)) ||
-      !(y = (ob) comp(v, shell, paths))
-      ? 0 : (v->ip = (mo) y, v); }
+static ob go(bool shell, const char *boot, const char **paths) {
+  em v; ob y; return 
+    (v = ini()) &&
+    (!boot ||
+     ((y = scrp(v, boot)) &&
+      (y = pair(v, y, nil)) &&
+      eval(v, y))) &&
+    (y = (ob) comp(v, shell, paths)) &&
+    (y = pair(v, y, nil)) ? eval(v, y) : 0; }
 
 // functions to compile scripts into a program
 //
@@ -138,7 +136,6 @@ static Inline ob scrp(em v, const char *path) {
 
 static void fin(em v) { if (v) free(v->pool), free(v); }
 // initialization helpers
-#define register_inst(a, b) ((b) ? prim(v,b,a) : inst(v, "i-"#a,a)) &&
 static NoInline bool inst(em v, const char *a, ll *b) {
   ob z; return !(z = interns(v, a)) ? 0 :
     !!tbl_set(v, cwm(v), z, putnum(b)); }
@@ -152,7 +149,7 @@ static NoInline bool prim(em v, const char *a, ll *i) {
         (k[0].ll = i,    k[1].ll = (ll*) nom,
          k[2].ll = NULL, k[3].ll = (ll*) k)) : 0; }
 
-static Ll(yield) { return Pack(), xp; }
+#define register_inst(a, b) && ((b) ? prim(v,b,a) : inst(v, "i-"#a,a))
 static em ini(void) {
   ob _; em v = malloc(sizeof(struct em));
   return v &&
@@ -174,17 +171,7 @@ static em ini(void) {
      (v->glob[Seq] = interns(v, ",")) &&
      (v->glob[Splat] = interns(v, ".")) &&
      (_ = table(v)) &&
-     (v->glob[Topl] = pair(v, _, nil)) &&
-
-     insts(register_inst) // &&
-     (_ = (ob) cells(v, 3 + Width(fr))))
-     // allocated everything, set up the stack
-    ? (gethom(_)[0].ll = yield,
-       gethom(_)[1].ll = 0,
-       gethom(_)[2].ll = (vm*) _,
-       v->fp = (fr) v->sp - 1,
-       v->sp = (ob*) v->fp,
-       v->fp->clos = v->fp->subd = N0,
-       v->fp->argc = putnum(-Width(fr)),
-       v->fp->retp = _,
-       v) : (fin(v), NULL); }
+     (v->glob[Topl] = pair(v, _, nil)) // &&
+     insts(register_inst)
+     )
+    ?  v : (fin(v), NULL); }
