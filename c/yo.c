@@ -202,7 +202,8 @@ static Co(im_yo, ob x) {
 static Co(let_yo_bind) {
   ob _ = *v->sp++;
   return e ? imx(v, e, m, loc_, putnum(lidx(loc(*e), _))) :
-             imx(v, e, m, tbind, _); }
+    (_ = pair(v, cwm(v), _)) ? imx(v, e, m, tbind, _) :
+    0; }
 
 static bool let_yo_r(em v, ob*e, ob x) {
   bool _; return !twop(x) ||

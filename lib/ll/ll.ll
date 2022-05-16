@@ -599,7 +599,7 @@
    ((lamb x k) e m) (:
     (nom e k) ; try to pick a name for this function
      (: i (hgeti k) (?
-      (= i i-tbind) (hgetx (hseek k 1)) ; maybe we're about to set a global?
+      (= i i-tbind) (A (hgetx (hseek k 1))) ; maybe we're about to set a global?
       (= i i-loc_) (at (Tg e 'loc) (hgetx (hseek k 1))))) ; or a local
 
     (clo-thd e x k) (:
@@ -627,7 +627,7 @@
     (loop e x k) (? (~ x) k (:
      l (loop e (BB x) k)
      m (? (~ (|| (toplp e) (memq (Tg e'loc) (A x)))) l
-          (toplp e) (xc i-tbind (xd (A x) l))
+          (toplp e) (xc i-tbind (xd (X (cwm) (A x)) l))
           (xc i-loc_ (xd (idx (Tg e'loc) (A x)) l)))
      (? (= 'here (A (: v (look e (A x)))))
       (Im (B v) m) (eval (AB x) m))))

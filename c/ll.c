@@ -351,9 +351,9 @@ Vm(loc_) { return
   ApN(2, xp); }
 
 // set a global variable
-Vm(tbind) { return
-  CallC(tbl_set(v, cwm(v), (ob) ip[1].ll, xp)),
-  ApN(2, xp); }
+Vm(tbind) {
+  ob a = (ob) ip[1].ll;
+  return CallC(tbl_set(v, A(a), B(a), xp)), ApN(2, xp); }
 
 // allocate local variable array
 Vm(locals) {
