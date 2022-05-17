@@ -1,14 +1,17 @@
  ; church numerals
 (: ; cf. SKI combinators
-   one id
-   zero (\ one)
-   (((up op i) g) f) ((f (op g)) (i g))
-   ((((succ g)) x) y) ((g x) (x y))
-   add (up succ one)
-   mul (up add (\ zero))
-   pow (up mul (\ one))
-   tet (up pow (\ one))
-   pen (up tet (\ one))
+   one I
+   zero (K one)
+   (((up op i) g) f) ((f (op g)) i)
+   (((succ g) x) y) ((g x) (x y))
+   (((ps f) g) h) (h (g f))
+   (((pred f) g) h)
+     (((f (ps g)) (K h)) one)
+   ((add g) f) ((f succ) g)
+   mul (up add zero)
+   pow (up mul one)
+   tet (up pow one)
+   pen (up tet one)
 
    (C n) (? (= n 0) zero (succ (C (- n 1)))) ; ℕ->⛪
    (N c) ((c (\ x (+ x 1))) 0)               ; ⛪->ℕ
@@ -44,6 +47,16 @@
             (tarai (- y 1) x z)
             (tarai (- z 1) x y)))
   (= 13 (tarai 12 13 14)))
+
+ (= 100
+  (N one-hundred)
+  (+ 1 (N (pred one-hundred))))
+ (= 252
+  (N ((add (five three)) (two three)))
+  (N ((mul (two three))
+      ((mul (two two))
+       (pred (pred (two three)))))))
+    
 
  ; hyperoperations
  (: (pow a b) (hy a 2 b)

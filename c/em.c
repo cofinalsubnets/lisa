@@ -128,8 +128,7 @@ static ob eval(em v, ob x) {
      k[3].ll = ev_u,
      k[4].ll = NULL,
      k[5].ll = (ll*) k,
-     x = (ob) (k+3),
-     call(v, x, k, v->hp, v->sp, v->fp)); }
+     call(v, (ob) (k + 3), k, v->hp, v->sp, v->fp)); }
 
 // initialization helpers
 static NoInline bool inst(em, const char*, ll *),
@@ -159,9 +158,8 @@ static em ini(void) {
      (v->glob[Splat] = interns(v, ".")) &&
      (_ = table(v)) &&
      (v->glob[Topl] = pair(v, _, nil)) // &&
-     insts(register_inst)
-     )
-    ?  v : (fin(v), NULL); }
+     insts(register_inst))
+    ? v : (fin(v), NULL); }
 
 
 static NoInline bool inst(em v, const char *a, ll *b) {
