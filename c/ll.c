@@ -579,7 +579,6 @@ static Vm(encl) {
 Ll(encll) { return ApC(encl, Locs); }
 Ll(encln) { return ApC(encl, nil); }
 Ll(cwm_u) { return ApC(ret, cwm(v)); }
-
 ob homnom(em v, ob x) {
   ll *k = (ll*) gethom(x)->ll;
   if (k == clos || k == clos0 || k == clos1)

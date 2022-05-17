@@ -61,8 +61,8 @@ enum { Def, Cond, Lamb, Quote, Seq, Splat,
 
 struct em {
   mo ip; ob xp, *hp, *sp; fr fp;
-  mm mm; ob syms, glob[NGlobs];
-  intptr_t rand, t0, len, *pool; };
+  mm mm; intptr_t t0, len, *pool;
+  ob rand, syms, glob[NGlobs]; };
 
 hasher hash;
 void *cells(em, uintptr_t), emit(em, ob, FILE*);
@@ -72,6 +72,7 @@ ob lookup(em, ob), cwm(em);
 ob string(em, const char*),
    intern(em, ob),
    table(em),
+   scrp(em, const char*),
    tbl_set(em, ob, ob, ob),
    tbl_get(em, ob, ob),
    pair(em, ob, ob),

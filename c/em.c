@@ -65,7 +65,7 @@ Ll(ev_u) {
   Arity(1); mo y;
   return
     xp = lookup(v, v->glob[Eval]),
-    gethom(xp)->ll != ev_u ?
+    xp && homp(xp) && gethom(xp)->ll != ev_u ?
       ApY((yo) xp, nil) :
       !(Pack(), y = ana(v, *fp->argv)) ? 0 :
         (Unpack(), ApY(y, xp)); }
@@ -77,7 +77,6 @@ static Vm(repl) { for (Pack();;) {
       emit(v, xp, stdout), fputc('\n', stdout); }
   else if (feof(stdin)) return fin(v), nil; } }
 
-static ob scrp(em, const char*);
 static yo comp(em v, bool shell, const char **paths) {
   const char *path = *paths; yo k; ob x, y; return
     !path ? !(k = cells(v, 3)) ? 0 :
@@ -87,24 +86,29 @@ static yo comp(em v, bool shell, const char **paths) {
     (with(y, x = scrp(v, path)), x) ? (yo) seq(v, x, y) : 0; }
 
 static ob go(bool shell, const char *boot, const char **paths) {
-  em v; ob y; return 
+  em v; return 
     (v = ini()) &&
-    (!boot ||
-     ((y = scrp(v, boot)) &&
-      (y = pair(v, y, nil)) &&
-      eval(v, y))) &&
-    (y = (ob) comp(v, shell, paths)) &&
-    (y = pair(v, y, nil)) ? eval(v, y) : 0; }
+    (v->ip = comp(v, shell, paths)) &&
+    (!boot || ((v->xp = scrp(v, boot)) &&
+               (v->ip = (mo) seq(v, v->xp, (ob) v->ip)))) &&
+    (v->xp = pair(v, (ob) v->ip, nil)) ? eval(v, v->xp) : 0; }
 
-// functions to compile scripts into a program
-//
+static ob scrpr(em, FILE*);
+
+// scrp : yo em str
+// produce a hom from a file by interpreting the contents
+// as a list action on the phase space.
+ob scrp(em v, const char *path) {
+  ob x; FILE *in = fopen(path, "r");
+  return !in ? err(v, 0, "%s : %s", path, strerror(errno)) :
+    (x = scrpr(v, in), fclose(in), x) &&
+    (x = pair(v, v->glob[Seq], x)) ? (ob) ana(v, x) : 0; }
+
 // scrpr : two em stream
 // read all expressions from a stream and collect
-// them into a list for sequencing. we want to avoid
-// evaluating / compilin at this point because  we may
-// not be bootstrapped yet. to do that we quote each
-// expression and pass it to eval, which defers
-// analysis and code generation until run time.
+// them into a list for sequencing. because right
+// now we don't have good (any) shadowing rules,
+// we quote  each expression and eval them in sequence.
 static ob scrpr(em v, FILE *in) {
   ob y, x = parse(v, in);
   return !x ? feof(in) ? nil : 0 :
@@ -114,29 +118,23 @@ static ob scrpr(em v, FILE *in) {
     (x = pair(v, v->glob[Eval], x)) &&
     (with(x, y = scrpr(v, in)), y) ? pair(v, x, y) : 0; }
 
-// scrp : yo em str
-// produce a hom from a file by interpreting the contents
-// as a list action on the phase space.
-static Inline ob scrp(em v, const char *path) {
-  ob x; FILE *in = fopen(path, "r");
-  return !in ? err(v, 0, "%s : %s", path, strerror(errno)) :
-    (x = scrpr(v, in), fclose(in), x) &&
-    (x = pair(v, v->glob[Seq], x)) ? (ob) ana(v, x) : 0; }
+static Ll(yield) { return Pack(), xp; }
+static ob eval(em v, ob x) {
+  yo k; return
+    !(Push(x) && (k = cells(v, 6))) ? 0 :
+    (k[0].ll = call,
+     k[1].ll = (ll*) putnum(1),
+     k[2].ll = yield,
+     k[3].ll = ev_u,
+     k[4].ll = NULL,
+     k[5].ll = (ll*) k,
+     x = (ob) (k+3),
+     call(v, x, k, v->hp, v->sp, v->fp)); }
 
-static void fin(em v) { if (v) free(v->pool), free(v); }
 // initialization helpers
-static NoInline bool inst(em v, const char *a, ll *b) {
-  ob z; return !(z = interns(v, a)) ? 0 :
-    !!tbl_set(v, cwm(v), z, putnum(b)); }
-
-static NoInline bool prim(em v, const char *a, ll *i) {
-  ob nom; yo k; return
-    (nom = interns(v, a)) &&
-    (nom = pair(v, nom, nil)) &&
-    (with(nom, k = cells(v, 4)), k) ?
-      !!tbl_set(v, cwm(v), A(nom), (ob)
-        (k[0].ll = i,    k[1].ll = (ll*) nom,
-         k[2].ll = NULL, k[3].ll = (ll*) k)) : 0; }
+static NoInline bool inst(em, const char*, ll *),
+                prim(em, const char*, ll*);
+static void fin(em v) { if (v) free(v->pool), free(v); }
 
 #define register_inst(a, b) && ((b) ? prim(v,b,a) : inst(v, "i-"#a,a))
 static em ini(void) {
@@ -165,14 +163,15 @@ static em ini(void) {
      )
     ?  v : (fin(v), NULL); }
 
-static Ll(yield) { return Pack(), xp; }
-static ob eval(em v, ob x) {
-  yo k; return
-    !(Push(x) && (k = cells(v, 5))) ? 0 :
-    (k[0].ll = call,
-     k[1].ll = (ll*) putnum(1),
-     k[2].ll = yield,
-     k[3].ll = NULL,
-     k[4].ll = (ll*) k,
-     x = lookup(v, v->glob[Eval]),
-     call(v, x, k, v->hp, v->sp, v->fp)); }
+
+static NoInline bool inst(em v, const char *a, ll *b) {
+  ob z; return !(z = interns(v, a)) ? 0 :
+    !!tbl_set(v, cwm(v), z, putnum(b)); }
+static NoInline bool prim(em v, const char *a, ll *i) {
+  ob nom; yo k; return
+    (nom = interns(v, a)) &&
+    (nom = pair(v, nom, nil)) &&
+    (with(nom, k = cells(v, 4)), k) ?
+      !!tbl_set(v, cwm(v), A(nom), (ob)
+        (k[0].ll = i,    k[1].ll = (ll*) nom,
+         k[2].ll = NULL, k[3].ll = (ll*) k)) : 0; }

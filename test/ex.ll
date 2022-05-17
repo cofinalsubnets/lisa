@@ -2,13 +2,13 @@
 (: ; cf. SKI combinators
    one id
    zero (\ one)
-   (((hy op i) g) f) ((f (op g)) (i g))
+   (((up op i) g) f) ((f (op g)) (i g))
    ((((succ g)) x) y) ((g x) (x y))
-   add (hy succ one)
-   mul (hy add (\ zero))
-   pow (hy mul (\ one))
-   tet (hy pow (\ one))
-   pen (hy tet (\ one))
+   add (up succ one)
+   mul (up add (\ zero))
+   pow (up mul (\ one))
+   tet (up pow (\ one))
+   pen (up tet (\ one))
 
    (C n) (? (= n 0) zero (succ (C (- n 1)))) ; ℕ->⛪
    (N c) ((c (\ x (+ x 1))) 0)               ; ⛪->ℕ
