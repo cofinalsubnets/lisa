@@ -60,18 +60,7 @@ ob lookup(em v, ob _) {
       return x;
   return 0; }
 
-static Ll(yield) { return Pack(), xp; }
-static ob eval(em v, ob x) {
-  yo k; return
-    !(Push(x) && (k = cells(v, 5))) ? 0 :
-    (k[0].ll = call,
-     k[1].ll = (ll*) putnum(1),
-     k[2].ll = yield,
-     k[3].ll = NULL,
-     k[4].ll = (ll*) k,
-     x = lookup(v, v->glob[Eval]),
-     call(v, x, k, v->hp, v->sp, v->fp)); }
-
+static ob eval(em, ob);
 Ll(ev_u) {
   Arity(1); mo y;
   return
@@ -110,6 +99,12 @@ static ob go(bool shell, const char *boot, const char **paths) {
 // functions to compile scripts into a program
 //
 // scrpr : two em stream
+// read all expressions from a stream and collect
+// them into a list for sequencing. we want to avoid
+// evaluating / compilin at this point because  we may
+// not be bootstrapped yet. to do that we quote each
+// expression and pass it to eval, which defers
+// analysis and code generation until run time.
 static ob scrpr(em v, FILE *in) {
   ob y, x = parse(v, in);
   return !x ? feof(in) ? nil : 0 :
@@ -119,12 +114,9 @@ static ob scrpr(em v, FILE *in) {
     (x = pair(v, v->glob[Eval], x)) &&
     (with(x, y = scrpr(v, in)), y) ? pair(v, x, y) : 0; }
 
-bool consume_stream(em v, FILE *s) {
-  ob _ = parse(v, s);
-  return !_ ? feof(s) :
-    eval(v, _) && consume_stream(v, s); }
-
 // scrp : yo em str
+// produce a hom from a file by interpreting the contents
+// as a list action on the phase space.
 static Inline ob scrp(em v, const char *path) {
   ob x; FILE *in = fopen(path, "r");
   return !in ? err(v, 0, "%s : %s", path, strerror(errno)) :
@@ -172,3 +164,15 @@ static em ini(void) {
      insts(register_inst)
      )
     ?  v : (fin(v), NULL); }
+
+static Ll(yield) { return Pack(), xp; }
+static ob eval(em v, ob x) {
+  yo k; return
+    !(Push(x) && (k = cells(v, 5))) ? 0 :
+    (k[0].ll = call,
+     k[1].ll = (ll*) putnum(1),
+     k[2].ll = yield,
+     k[3].ll = NULL,
+     k[4].ll = (ll*) k,
+     x = lookup(v, v->glob[Eval]),
+     call(v, x, k, v->hp, v->sp, v->fp)); }

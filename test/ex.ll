@@ -1,14 +1,14 @@
  ; church numerals
 (: ; cf. SKI combinators
-   one id ; I
-   zero (\ one) ; KI
-   ((((add g) f) x) y) ((f x) ((g x) y)) ; ~S ; liftA2 (.) -- in haskell
-   (((succ n) f) x) ((n f) (f x))
-   ((add g) f) ((f succ) g)
-   ((mul g) f) ((f (add g)) zero)
-   ((pow g) f) ((f (mul g)) one)
-   ((tet g) f) ((f (pow g)) one)
-   ((pen g) f) ((f (tet g)) one) ; etc
+   one id
+   zero (\ one)
+   (((hy op i) g) f) ((f (op g)) (i g))
+   ((((succ g)) x) y) ((g x) (x y))
+   add (hy succ one)
+   mul (hy add (\ zero))
+   pow (hy mul (\ one))
+   tet (hy pow (\ one))
+   pen (hy tet (\ one))
 
    (C n) (? (= n 0) zero (succ (C (- n 1)))) ; ℕ->⛪
    (N c) ((c (\ x (+ x 1))) 0)               ; ⛪->ℕ
