@@ -1,7 +1,7 @@
 # set locale for reproducible sorting
 LC_ALL=C
-lang=ll
-suff=ll
+lang=lisa
+suff=la
 
 self=makefile
 bin=bin/$(lang)
