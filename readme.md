@@ -71,16 +71,18 @@ the smeared image we now possess.
  two (succ one) ; \ f -> f . f = square
  three (succ two) ; \ f -> f . f . f = cube 
 
- ; other operations follow from succ
-
+ ; binary operations follow from succ:
  ((add g) f)         ; the monoid on N
   ((f succ) g)       ; \ g f x -> f x . g x
  ((mul g) f)         ; the monoid on End(N)
   ((f (add g)) zero) ; \ g f x -> f (g x)
 
- ; the rest are iterations of the "up arrow" map
+ ; the rest are iterations of the "up arrow" map:
  (((up op) g) f) ((f (op g)) one)
- pow (up mul) ; exponentiation ; \ f -> f = one
+ ; these operations fail to be abelian or even associative,
+ ; which makes the compatibility of the first two seem
+ ; miraculous and special.
+ pow (up mul) ; exponentiation ; \ f -> f = one ; this also feels significant
  tet (up pow) ; tetration, etc.
 
  (C n) (? n (succ (C (- n 1))) zero) ; ℕ->⛪
