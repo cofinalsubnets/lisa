@@ -7,8 +7,8 @@ are you on linux? `make` will probably work. otherwise, see
 
 ## usage
 
-lisa is alive, so unstable. the usage is schemelike, but
-more chill. `#f` = `()` = `0`. special forms have short
+lisa is alive, so unstable. usage is schemelike, but
+relaxed. `#f` = `()` = `0`. special forms have short
 names and use less parentheses. pairs are immutable and
 eagerly cons'd, so acyclic. improper list literals are
 absent.
@@ -24,7 +24,7 @@ special form examples compared to scheme:
 |`(lambda (a b) c)`          |`(\ a b c)`  |
 |`(lambda (a . b) c)`        |`(\ a b . c)`|
 |`(begin (define a b) a)`    |`(: a b)`    |
-|`(begin (define a b) c)     |`(: a b c)`  |
+|`(begin (define a b) c)`    |`(: a b c)`  |
 |`(cond (a b) (#t #f))`      |`(? a b)`    |
 |`(cond (a b) (#t c))`       |`(? a b c)`  |
 |`(cond (a b) (c d) (#t #f))`|`(? a b c d)`|
