@@ -59,7 +59,7 @@ receding waters reveal `M`, in privation of its former identity, yet
 holding a second within its nature, as if by chance. a rainbow appears:
 a bridge back to the origin made out of `M`'s infinite generators. the
 bridge is endless, and the toll to pass is unlimited attention paid to
-the smeared image we now possess.
+the smeared image we wish to correct.
 
 more concretely, the task (not attempted here) is to construct a point
 at infinity in adelic space, representing a quantity `z` congruent to 0
