@@ -66,8 +66,8 @@ at infinity in adelic space, representing a quantity `z` congruent to 0
 modulo everything. each `p` is now the neutral element of a new monoid
 `Np = p + Np ^ z`. since by construction `a ^ b = b a`, this means `p` and
 `z` assume the place of 0 and `succ` in the original equation for `N`.
-the impression this gives is that primes are significant among integers
-because of their latent resemblance to 0.
+the impression received is that primes are significant among integers
+because of a property they share with 0.
 
 TODO:
 - construct subtraction and division in `N`
