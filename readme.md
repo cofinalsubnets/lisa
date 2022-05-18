@@ -61,6 +61,22 @@ a bridge back to the origin made out of `M`'s infinite generators. the
 bridge is endless, and the toll to pass is unlimited attention paid to
 the smeared image we now possess.
 
+more concretely, the task (not attempted here) is to construct a point
+at infinity in adelic space, representing a quantity `z` congruent to 0
+modulo every prime `p`. each `p` is now the neutral element of a new monoid
+`Np = p + Np ^ z`. since by construction `a ^ b = b a`, this means `p` and
+`z` assume the places of 0 and `succ` in the original equation for `N`.
+the impression this gives is that primes are significant among integers
+because of their latent resemblance to 0.
+
+TODO:
+- construct subtraction and division in `N`
+- clarify the ontological status of inverse elements
+- describe the structure of each `Np`. how does it differ from `N`?
+- what, if anything, is the meaning of `succ z`? `z z`?
+- describe `z` and `N` in relation to other infinite objects
+- anything going on up there in the rest of the the hyperoperations?
+
 ```lisp
 (:
  ; zero is the constant function at the identity function
