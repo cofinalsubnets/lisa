@@ -55,7 +55,7 @@ fundamental theorem of arithmetic maps `N` onto `M` through the
 factorizing homomorphism `f` whose kernel is `{0, 1}`.
 
 this paints a dramatic picture. the polymorphism `f` floods `N`; the
-receding waters reveal `M`, having lost its former identity, yet
+receding waters reveal `M`, in privation of its former identity, yet
 holding a second within its nature, as if by chance. a rainbow appears:
 a bridge back to the origin made out of `M`'s infinite generators. the
 bridge is endless, and the toll to pass is unlimited attention paid to
@@ -65,7 +65,7 @@ more concretely, the task (not attempted here) is to construct a point
 at infinity in adelic space, representing a quantity `z` congruent to 0
 modulo every prime `p`. each `p` is now the neutral element of a new monoid
 `Np = p + Np ^ z`. since by construction `a ^ b = b a`, this means `p` and
-`z` assume the places of 0 and `succ` in the original equation for `N`.
+`z` assume the place of 0 and `succ` in the original equation for `N`.
 the impression this gives is that primes are significant among integers
 because of their latent resemblance to 0.
 
