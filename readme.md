@@ -65,13 +65,13 @@ homomorphism `f` whose kernel is `{0, 1}`.
 this paints a dramatic picture. the polymorphism `f` floods `N`; the
 receding waters reveal `M`, in privation of its former identity, yet
 holding a second within its nature, as if by chance. a rainbow appears:
-a bridge back to the origin made out of `M`'s infinite generators. the
+a bridge back to the origin made of `M`'s infinite generators. the
 bridge is endless, and the toll to pass is unlimited attention paid to
-the image we wish to restore.
+the image we wish to repair.
 
 as an attempt to formalize this intuition, imagine a "point at infinity"
 in `N ^ N` representing a quantity congruent to 0 mod all `N`. by
-conjecture, each `p` is now the neutral element of a new monoid
+conjecture, each prime `p` is now the neutral element of a new monoid
 `Np = p + Np ^ z`.  since by construction `a ^ b = b a`, this means `p`
 and `z` assume the place of 0 and `succ` in the original equation for `N`.
 the impression received is that primes are significant among integers
