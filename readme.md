@@ -1,5 +1,5 @@
 # lisa
-LISt Action
+machine generated
 
 ## build / install
 are you on linux? `make` will probably work. otherwise, see
@@ -52,8 +52,8 @@ degrees of repetition. a geometrical interpretation comes from euler's
 identity, where they form the solutions `n` of `1 = e ^ n * i * pi`,
 the value of pi taken to be twice that normally given. this formula
 implicitly describes a function that sends `n` to its exponential with
-respect to `i * pi` and is one whenever `n` is natural; this is the
-property used to construct zero below.
+respect to `i * pi` and is one whenever `n` is natural; this property
+holds in the definition of zero to follow.
 
 the idea is to use lambda expressions to construct elements of an
 abelian monoid `N = 0 + succ N`. hyperoperations appear as complexity
