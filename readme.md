@@ -81,7 +81,7 @@ conjecture, each `p` is now the neutral element of a new monoid
 and `z` assume the place of 0 and `succ` in the original equation for `N`.
 the impression received is that primes are significant among integers
 because of a property they share with 0, distinctly from one and all
-composites: images of void naturally arisen in the field of forms.
+composites: points of void crystallized under the aspect of form.
 
 ```lisp
 (:
