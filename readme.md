@@ -53,11 +53,11 @@ identity, where integers are the solutions `n` of `1 = e ^ n * i * pi`,
 the value pi taken to be twice that normally given. this formula
 defines a function whose image over integers is `{1}`, which is the
 property used in the definition of zero to follow. taking `{1}` as the
-terminal object of the category Set gives an interpretation of
+terminal object of the category Set gives a definitive interpretation of
 multiplying by zero as "forgetting all formal structure"; division
-by zero is then impossible because it would require the data explicitly
-forgotten. this observation leads to another way to think of whole
-numbers, as the kernel of a map alluded to in euler's formula.
+by zero is then impossible as it requires data we can no longer recall.
+this observation leads to another way to think of integers, as the kernel
+of a map alluded to in euler's formula.
 
 to form church numerals, we use lambda expressions as elements of
 an abelian monoid `N = 0 + succ N`. hyperoperations appear as complexity
