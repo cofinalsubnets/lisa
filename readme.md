@@ -70,13 +70,13 @@ and `z` assume the place of 0 and `succ` in the original equation for `N`.
 the impression received is that primes are significant among integers
 because of a property they share with 0.
 
-synoptically, church numerals reflect the identity of natural numbers as
-completed degrees of repetition. this appears in euler's identity, where
-they form the solutions `n` of `1 = e ^ n * i * pi`, where the value of
-pi is taken to be twice that usually given. this formula implicitly
+church numerals reflect the identity of natural numbers as completed
+degrees of repetition. this appears geometrically in euler's identity,
+where they form the solutions `n` of `1 = e ^ n * i * pi`, where the value of
+pi is taken to be twice that normally given. this formula implicitly
 describes a function that sends `n` to its exponential with respect to
 `i * pi` and is one whenever `n` is natural; this is the property used
-to construct zero in what follows.
+to construct zero below.
 
 ```lisp
 (:
