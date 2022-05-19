@@ -33,8 +33,9 @@ etc.
 
 ## code examples
 
-### a quine
+### an autograph
 ```lisp
+; also called a quine
 ((\ - (L - (L ` -))) '(\ - (L - (L ` -))))
 ```
 
@@ -59,23 +60,23 @@ receding waters reveal `M`, in privation of its former identity, yet
 holding a second within its nature, as if by chance. a rainbow appears:
 a bridge back to the origin made out of `M`'s infinite generators. the
 bridge is endless, and the toll to pass is unlimited attention paid to
-the smeared image we wish to correct.
+the image we wish to correct.
 
-more concretely, the task (not attempted here) is to construct a point
-at infinity in adelic space, representing a quantity `z` congruent to 0
-modulo everything. each `p` is now the neutral element of a new monoid
-`Np = p + Np ^ z`. since by construction `a ^ b = b a`, this means `p` and
-`z` assume the place of 0 and `succ` in the original equation for `N`.
+as an attempt to formalize this intuition, imagine a "point at infinity"
+in `N ^ N` representing a quantity congruent to 0 mod all `N`. by
+conjecture, each `p` is now the neutral element of a new monoid
+`Np = p + Np ^ z`.  since by construction `a ^ b = b a`, this means `p`
+and `z` assume the place of 0 and `succ` in the original equation for `N`.
 the impression received is that primes are significant among integers
 because of a property they share with 0.
 
-TODO:
-- construct subtraction and division in `N`
-- clarify the ontological status of inverse elements
-- describe the structure of each `Np`. how does it differ from `N`?
-- what, if anything, is the meaning of `succ z`? `z z`?
-- describe `z` and `N` in relation to other infinite objects
-- anything going on up there in the rest of the the hyperoperations?
+synoptically, church numerals reflect the identity of natural numbers as
+completed degrees of repetition. this appears in euler's identity, where
+they form the solutions `n` of `1 = e ^ n * i * pi`, where the value of
+pi is taken to be twice that usually given. this formula implicitly
+describes a function that sends `n` to its exponential with respect to
+`i * pi` and is one whenever `n` is natural; this is the property used
+to construct zero in what follows.
 
 ```lisp
 (:
@@ -98,17 +99,20 @@ TODO:
  (((up op) g) f) ((f (op g)) one)
  ; these operations fail to be abelian or even associative,
  ; which makes the compatibility of the first two seem
- ; miraculous and special.
+ ; special and miraculous.
  pow (up mul) ; exponentiation ; \ f -> f = one ; this also feels significant
  tet (up pow) ; tetration, etc.
 
- (C n) (? n (succ (C (- n 1))) zero) ; ℕ->⛪
- (N c) ((c (\ x (+ x 1))) 0))        ; ⛪->ℕ
+ (C n) (? n (succ (C (- n 1))) zero) ; fixnum -> N
+ (N c) ((c (\ x (+ x 1))) 0))        ; N -> fixnum
+```
 
+### fizzbuzz
+
+```lisp
 (: (/p m n) (~ (% m n))
    (fizzbuzz m)
     ((\ (+ m 1)) (. (?
-     ; TODO division in ⛪
      (/p m 15) 'fizzbuzz
      (/p m 5)  'buzz
      (/p m 3)  'fizz

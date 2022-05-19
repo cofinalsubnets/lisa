@@ -43,7 +43,7 @@ bin/$(lang).bin: $(c:.c=.o)
 	$(CC) -c -o $@ $(CFLAGS) $(CPPFLAGS) $(@:.o=.c)
 
 clean:
-	rm `git check-ignore * */*`
+	rm -f `git check-ignore * */*`
 
 # profile on linux with perf
 perf: perf.data
