@@ -70,14 +70,14 @@ bridge is endless, and the toll to pass is unlimited attention paid to
 the image we wish to repair.
 
 as an attempt to formalize this intuition, imagine a point at infinity
-in `N ^ N` representing a quantity `z` congruent to 0 mod all `N`: the product
-of infinite copies of every prime `p`. by conjecture, each `p` is now the
-neutral element of a new monoid `Np = p + Np ^ z`. since by construction
-`a ^ b = b a`, this means `p` and `z` assume the place of 0 and `succ` in
-the original equation for `N`. the impression received is that primes are
-significant among integers because of a property they share with 0,
-distinctly from one and all composites: points of void crystallized under
-the aspect of form.
+in `N ^ N` representing a quantity `z` congruent to 0 mod all `N`: the
+product of infinite copies of every prime `p`. by conjecture, each `p`
+is now the neutral element of a new monoid `Np = p + Np ^ z`. since by
+construction `a ^ b = b a`, this means `p` and `z` assume the place of
+0 and `succ` in the original equation for `N`. the impression received
+is that primes are unique among integers due to a property they share
+with 0, distinct from one and all composites: points of void
+crystallized under the aspect of form.
 
 ```lisp
 (:
