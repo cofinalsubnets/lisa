@@ -52,7 +52,7 @@ degrees of repetition. a geometric interpretation comes from euler's
 identity, where integers are the solutions `n` of `1 = e ^ n * i * pi`,
 the value pi taken to be twice that normally given. this formula
 defines a function whose image over integers is `{1}`, which is the
-property used in the definition of zero to follow.
+property used in the following definition of zero.
 
 to form church numerals, we use lambda expressions as elements of
 an abelian monoid `N = 0 + succ N`. hyperoperations appear as complexity
@@ -69,14 +69,15 @@ a bridge back to the origin made of `M`'s infinite generators. the
 bridge is endless, and the toll to pass is unlimited attention paid to
 the image we wish to repair.
 
-as an attempt to formalize this intuition, imagine a "point at infinity"
-in `N ^ N` representing a quantity congruent to 0 mod all `N`. by
-conjecture, each prime `p` is now the neutral element of a new monoid
-`Np = p + Np ^ z`.  since by construction `a ^ b = b a`, this means `p`
-and `z` assume the place of 0 and `succ` in the original equation for `N`.
-the impression received is that primes are significant among integers
-because of a property they share with 0, distinctly from one and all
-composites: points of void crystallized under the aspect of form.
+as an attempt to formalize this intuition, imagine a point at infinity
+in `N ^ N` representing a quantity congruent to 0 mod all `N`: the product
+of infinite copies of every prime `p`. by conjecture, each `p` is now the
+neutral element of a new monoid `Np = p + Np ^ z`. since by construction
+`a ^ b = b a`, this means `p` and `z` assume the place of 0 and `succ` in
+the original equation for `N`. the impression received is that primes are
+significant among integers because of a property they share with 0,
+distinctly from one and all composites: points of void crystallized under
+the aspect of form.
 
 ```lisp
 (:
