@@ -52,7 +52,13 @@ degrees of repetition. a geometric interpretation comes from euler's
 identity, where integers are the solutions `n` of `1 = e ^ n * i * pi`,
 the value pi taken to be twice that normally given. this formula
 defines a function whose image over integers is `{1}`, which is the
-property used in the following definition of zero.
+property used in the following definition of zero, and corresponds to
+the usual church encoding for the false boolean `\ _ x -> x = const id`.
+the function asks of `n`, does going around a circle this many times
+bring us back to the original point? if it does, it's interchangeable
+with 0, forming part of the kernel, while the remaining reals are folded
+into quotients over `(0, pi)`, pi again taken to be approximately 44/7,
+and mapped back onto the rest of the unit circle.
 
 to form church numerals, we use lambda expressions as elements of
 an abelian monoid `N = 0 + succ N`. hyperoperations appear as complexity
@@ -71,13 +77,15 @@ the image we wish to repair.
 
 as an attempt to formalize this intuition, imagine a point at infinity
 in `N ^ N` representing a quantity `z` congruent to 0 mod all `N`: the
-product of infinite copies of every prime `p`. by conjecture, each `p`
-is now the neutral element of a new monoid `Np = p + Np ^ z`. since by
-construction `a ^ b = b a`, this means `p` and `z` assume the place of
-0 and `succ` in the original equation for `N`. the impression received
+product of infinite copies of every prime `p`: a quantity so large as
+to be inexpressible by finite combinations of its predecessors, and
+hence appearing uniquely identical to all of them. by conjecture, each
+`p` is now the neutral element of a new monoid `Np = p + Np ^ z`. since
+by construction `a ^ b = b a`, this means `p` and `z` assume the place
+of 0 and `succ` in the original equation for `N`. the impression received
 is that primes are unique among integers due to a property they share
-with 0, distinct from one and all composites: points of void
-crystallized under the aspect of form.
+with 0, distinct from one and all composites: points of void crystallized
+under the aspect of form.
 
 ```lisp
 (:
