@@ -1,12 +1,24 @@
- ; church numerals
-(: ; cf. SKI combinators
+; church numerals
+; named for alonzo church, inventor of lambda notation,
+; who found it could be used to encode arbitrary data
+; (numbers, booleans, lists, etc). dedekind (1888 ¶126)
+; gives a similar construction to show that the closure
+; of a set S under an endomorphism t: S -> S (ie. the
+; chain t[0](S), approximating his notation) is given
+; by the union of the set's images under all powers of
+; the endomorphism: t[0](S) = U t^n(A) for all n >= 0.
+; he doesn't explicitly define arithmetic on it, but he
+; does indirectly derive additive commutativity from
+; associativity when describing the actions of natural
+; numbers on groups (¶131)
+(:
    one I
-   zero (K one)
+   zero (\ one)
    (((up op i) g) f) ((f (op g)) i)
    (((succ g) x) y) ((g x) (x y))
    (((ps f) g) h) (h (g f))
    (((pred f) g) h)
-     (((f (ps g)) (K h)) one)
+     (((f (ps g)) (\ h)) one)
    ((add g) f) ((f succ) g)
    mul (up add zero)
    pow (up mul one)
