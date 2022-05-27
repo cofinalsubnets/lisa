@@ -2,9 +2,12 @@
 (:
  (name n) (?
   (symp n) (name (ystr n))
-  (strp n) (, (red-text n) (.)))
+  (strp n) (, (red-text (scat "  " n)) (.)))
+ (show x) (, (puts "    ") (. x))
 
  failures (tkeys *test-failures*)
- (each failures (\ k
-  (, (name k)
-     (each (tget *test-failures* k) .)))))
+ (? failures (,
+  (. 'failures 'of)
+  (each failures (\ k
+   (, (name k)
+      (each (tget *test-failures* k) show)))))))
