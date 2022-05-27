@@ -156,12 +156,12 @@ static Ll(recne) { return
   fp->subd = v->xp,
   ApY(xp, fp->clos = nil); }
 
-Ll(domain_error) {
-  return Pack(), err(v, xp, "is undefined at"); }
+Ll(domain_error) { return Pack(),
+  err(v, xp, "is undefined at"); }
 
-#define arity_err_msg "has %d of %d arguments"
 Ll(ary_error) { return Pack(),
-  err(v, 0, arity_err_msg, getnum(fp->argc), getnum(xp)); }
+  err(v, 0, "has %d of %d arguments",
+      getnum(fp->argc), getnum(xp)); }
 
 // type/arity checking
 #define DTc(n, t) Ll(n) { TypeCheck(xp, t); return ApN(1, xp); }
@@ -285,6 +285,12 @@ UBINOP(bor, 0, |)
 UBINOP(bxor, 0, ^)
 UBINOP(mul, 1, *)
 UBINOP(band, -1, &)
+
+Ll(bnot_u) {
+  Arity(1);
+  return
+    xp = fp->argv[0],
+    ApC(ret, putnum(~getnum(xp))); }
 
 bool eql(ob a, ob b) {
   return a == b || (Q(a) == Q(b) &&
@@ -505,7 +511,7 @@ static Ll(clos) { return
 // finalize function instance closure
 static Ll(clos1) { return
   ip->ll = clos,
-  ip[1].ll = (ll*) xp,
+  ip[1].ll = (host*) xp,
   ApY(ip, xp); }
 
 // this function is run the first time a user
@@ -555,30 +561,35 @@ static Vm(encl) {
          t[n+1] = fp->argv[n]);
     arg = (ob) t; }
 
-  yo t = (yo) block, // compiler thread closure array (1 length 5 elements)
-     at = t + 6; // compiler thread (1 instruction 2 data 2 tag)
+  ob *t = (ob*) block, // compiler thread closure array (1 length 5 elements)
+     *at = t + 6; // compiler thread (1 instruction 2 data 2 tag)
 
   return
-    t[0].ll = (ll*) arg,
-    t[1].ll = (ll*) xp, // Locs or nil
-    t[2].ll = (ll*) fp->clos,
-    t[3].ll = (ll*) B(x),
-    t[4].ll = NULL,
-    t[5].ll = (ll*) t,
+    t[0] =  arg,
+    t[1] =  xp, // Locs or nil
+    t[2] =  fp->clos,
+    t[3] =  B(x),
+    t[4] = 0,
+    t[5] = (ob) t,
 
-    at[0].ll = clos0,
-    at[1].ll = (ll*) t,
-    at[2].ll = (ll*) A(x),
-    at[3].ll = NULL,
-    at[4].ll = (ll*) at,
+    at[0] = (ob) clos0,
+    at[1] = (ob) t,
+    at[2] =  A(x),
+    at[3] = 0,
+    at[4] = (ob) at,
 
     ApN(2, (ob) at); }
 
 Ll(encll) { return ApC(encl, Locs); }
 Ll(encln) { return ApC(encl, nil); }
-Ll(cwm_u) { return ApC(ret, cwm(v)); }
+Ll(cwm_u) { return ApC(ret, v->wns); }
+Ll(popd_u) {
+  xp = B(v->wns);
+  if (isW(xp)) v->wns = xp;
+  return ApC(ret, nil); }
+
 ob homnom(em v, ob x) {
-  ll *k = (ll*) gethom(x)->ll;
+  host *k = gethom(x)->ll;
   if (k == clos || k == clos0 || k == clos1)
     return homnom(v, (ob) gethom(x)[2].ll);
   ob* h = (ob*) gethom(x);

@@ -87,11 +87,11 @@ static clock_t copy(la v, intptr_t len1) {
   v->pool = v->hp = pool1;
   v->sp = sp0 + shift;
   v->fp = (fr) ((ob*) v->fp + shift);
-  CP(v->xp);
+  CP(v->xp), CP(v->sns), CP(v->wns);
   v->ip = (yo) cp(v, (ob) v->ip, len0, pool0);
-  for (int i = 0; i < NGlobs; CP(v->glob[i]), i++);
+  for (int i = 0; i < LexN; CP(v->lex[i]), i++);
   for (ob *sp1 = v->sp; sp0 < top0; COPY(*sp1++, *sp0++));
-  for (mm r = v->mm; r; CP(*r->it), r = r->et);
+  for (mm r = v->keep; r; CP(*r->it), r = r->et);
 
   return
     free(pool0),
@@ -475,8 +475,7 @@ ob intern(la v, ob x) {
   bool _; return
     Avail >= Width(sym) ||
     (with(x, _ = please(v, Width(sym))), _) ?
-      sskc(v, &v->syms, x) :
-      0; }
+      sskc(v, &v->syms, x) : 0; }
 
 Vm(sym_u) {
   sym y; return 

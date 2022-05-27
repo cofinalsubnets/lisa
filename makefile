@@ -1,59 +1,53 @@
-# set locale for reproducible sorting
-LC_ALL=C
+LC_COLLATE=C
 lang=la
 suff=la
-
-self=makefile
 bin=bin/$(lang)
 doc=share/man/man1/$(lang).1
 lib=lib/$(lang)/$(lang).$(suff)
+run=bin/$(lang).bin -_ $(lib) test/*.$(suff)
 h=$(sort $(wildcard c/*.h))
 c=$(sort $(wildcard c/*.c))
-PREFIX ?= $(HOME)/.local
+DESTDIR ?= $(HOME)
+PREFIX ?= .local
+CPPFLAGS=\
+	-DPREF=\"$(DESTDIR)/$(PREFIX)\" -DLANG=\"$(lang)\" -DSUFF=\"$(suff)\"
+CFLAGS=\
+	-std=c99 -g -Os -flto\
+	-Wall -Wstrict-prototypes -Wno-shift-negative-value\
+	-fno-stack-protector -fno-unroll-loops
 VIMPREFIX ?= $(HOME)/.vim
-vimfiles=$(addprefix $(VIMPREFIX)/,syntax/$(lang).vim ftdetect/$(lang).vim)
-#CC=clang
-CPPFLAGS=-DPREF=\"$(PREFIX)\" -DLANG=\"$(lang)\" -DSUFF=\"$(suff)\"
-CFLAGS=-std=c99 -g -O2 -flto -Wall\
-	-Wstrict-prototypes -Wno-shift-negative-value\
-	-fno-stack-protector -fno-unroll-loops\
-	-fno-inline -fno-align-functions
+vim_files=$(addprefix $(VIMPREFIX)/,syntax/$(lang).vim ftdetect/$(lang).vim)
+whither=$(DESTDIR)/$(PREFIX)/
+installed_files=$(addprefix $(whither),$(bin) $(lib) $(doc))
 
-# run the tests
-test=bin/$(lang).bin -_ $(lib) test/*.$(suff)
 test: bin/$(lang).bin
-	/usr/bin/env TIMEFORMAT="in %Rs" bash -c "time $(test)"
-# interact
-repl: bin/$(lang)
-	which rlwrap && rlwrap $(test) -i || $(test) -i
+	/usr/bin/env TIMEFORMAT="in %Rs" bash -c "time $(run)"
 
-where=$(DESTDIR)$(PREFIX)/
-files=$(addprefix $(where),$(bin) $(lib) $(doc))
-install: $(files)
-uninstall:
-	rm -f $(files)
-$(where)%: %
-	install -D $^ $@
+repl: bin/$(lang)
+	which rlwrap && rlwrap $(run) -i || $(run) -i
+
+clean:
+	rm -f `git check-ignore * */*`
 
 bin/$(lang): bin/$(lang).bin
 	strip -o $@ $^
 bin/$(lang).bin: $(c:.c=.o)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
-%.o: %.c $h $(self)
-	$(CC) -c -o $@ $(CFLAGS) $(CPPFLAGS) $(@:.o=.c)
 
-clean:
-	rm -f `git check-ignore * */*`
+# installation
+install: $(installed_files)
+uninstall:
+	rm -f $(installed_files)
 
 # profile on linux with perf
 perf: perf.data
 	perf report
 perf.data: bin/$(lang).bin $(lib)
-	perf record $(test)
+	perf record $(run)
 
-# valgrind can detect some memory errors
+# valgrind detects some memory errors
 valg: bin/$(lang).bin
-	valgrind --error-exitcode=1 $(test)
+	valgrind --error-exitcode=1 $(run)
 
 # approximate lines of code
 sloc:
@@ -62,12 +56,16 @@ sloc:
 bits: bin/$(lang) bin/$(lang).bin
 	du -h $^
 
-# vim syntax files
+# vim
+install-vim: $(vim_files)
+uninstall-vim:
+	rm -f $(vim_files)
+
+$(whither)%: %
+	install -D $^ $@
+%.o: %.c $h makefile
+	$(CC) -c -o $@ $(CFLAGS) $(CPPFLAGS) $(@:.o=.c)
 $(VIMPREFIX)/%: vim/%
 	install -D $^ $@
-install-vim: $(vimfiles)
-uninstall-vim:
-	rm -f $(vimfiles)
-
 .PHONY: test clean perf valg sloc bits repl\
  	install uninstall install-vim uninstall-vim

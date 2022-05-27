@@ -1,5 +1,5 @@
 (: macros (tbl)
-   _ns (cwm))
+   _ns (A (cwm)))
 ; to bootstrap first we define an expression that when
 ; eval'd defines the standard environment and compiler, and
 ; redefines eval. then we eval it twice. the first time
@@ -128,20 +128,20 @@
     ((: (loop x) (?
      (~ x)       (emi i p)
      (= a (A x)) (emi (AB x) q)
-     (loop (BB x)))) xs))(g p) (hseek p 1))
+     (loop (BB x)))) xs))(g p) (seek p 1))
 
   ; for specialized indexed instructions
-  (argn a b) (f1 hgetx 0 a 1 b)
+  (argn a b) (f1 peekx 0 a 1 b)
 
   ; for specialized branch instructions ;
   ; takes an argument for each branch case
-  (br2 b c) (f1 hgeti i-branch b i-barnch c)
+  (br2 b c) (f1 peeki i-branch b i-barnch c)
 
   (tbl
    ; this along with "return forwarding" in branches is how
    ; tail calls get optimized.
-   i-call (\ i h (? (= i-ret (hgeti (hseek h 1)))
-    (emi i-rec (emx (hgetx h) (hseek h 1)))
+   i-call (\ i h (? (= i-ret (peeki (seek h 1)))
+    (emi i-rec (emx (peekx h) (seek h 1)))
     (emi i h)))
    i-arg (argn i-arg0 i-arg1)
    i-loc (argn i-loc0 i-loc1)
@@ -151,8 +151,8 @@
    i-gt (br2 i-brgt i-brgt2)
    i-gteq (br2 i-brgteq i-brlt)
    i-eq (br2 i-breq i-brne)
-   i-nilpp (f1 hgeti i-branch i-barnch i-barnch i-branch)
-   i-imm (f1 hgetx 0 i-zero 1 i-one)))
+   i-nilpp (f1 peeki i-branch i-barnch i-barnch i-branch)
+   i-imm (f1 peekx 0 i-zero 1 i-one)))
 
  ; special function compiler table
  inliners (:
@@ -264,7 +264,7 @@
    symp (nary i-sympp () ())
    strp (nary i-strpp () ())
    tblp (nary i-tblpp () ())
-   fail (nary (hgeti fail) ())))
+   fail (nary (peeki fail) ())))
 
    ) (: ; new let expn makes sure ^^^ exist & don't make a closure vvv
 
@@ -309,7 +309,7 @@
   ; toplevel bindings are special. if it's already defined
   ; we usually want to bind early, but we also want to allow
   ; redefinition, so in that case bind late.
-  (toplp e) (: ns (cwm) (?
+  (toplp e) (: ns (A (cwm)) (?
    (? (thas ns y) (~ (thas (tget e 'def) y)))
     (X 'here (tget ns y))
    (X 'wait ns)))
@@ -460,9 +460,9 @@
 
    ; static arity check : omit the check in the called function
    (check-arity x) (: z (A x) (?
-    (~ (? (Hp z) (= i-arity (hgeti z)))) x
-    (? (>= (len (B x)) (hgetx (hseek z 1)))
-     (X (hseek z 2) (B x)) ; we're good, skip the check
+    (~ (? (Hp z) (= i-arity (peeki z)))) x
+    (? (>= (len (B x)) (peekx (seek z 1)))
+     (X (seek z 2) (B x)) ; we're good, skip the check
      (fail)))) ; oops wrong arity, good thing we caught it at compile time !
 
    (defn e x) (:
@@ -572,11 +572,11 @@
  (-> t k) (:
   (produces t h)
    (? (~ (: q (consumes h))) h
-      (= t q) (produces t (hseek h 1))
+      (= t q) (produces t (seek h 1))
       (fail))
   (co k (? t (cu produces t) id)))
 
- (consumes h) (: i (hgeti h) (?
+ (consumes h) (: i (peeki h) (?
   (= i i-idH) 'hom (= i i-idZ) 'num
   (= i i-id2) 'two (= i i-idT) 'tbl))
 
@@ -587,10 +587,10 @@
      (fin e m) (:
       thd (k e (+ m 2))
       ex (A (Tg e's2))
-      i (hgeti ex)
+      i (peeki ex)
       (? (= i i-ret) (emi i thd) ; forward return instructions
        (emf i-jump ; otherwise jump somewhere ...
-        (emx (? (= i i-jump) (hgetx (hseek ex 1)) ex) thd))))
+        (emx (? (= i i-jump) (peekx (seek ex 1)) ex) thd))))
      (? (~ (B x)) (eval (A x) fin)
       (eval (A x) (pop1 (xc i-branch (peek1
        (loop (BB x) (push1 (eval (AB x) fin)))))))))
@@ -598,9 +598,9 @@
 
    ((lamb x k) e m) (:
     (nom e k) ; try to pick a name for this function
-     (: i (hgeti k) (?
-      (= i i-tbind) (A (hgetx (hseek k 1))) ; maybe we're about to set a global?
-      (= i i-loc_) (at (Tg e 'loc) (hgetx (hseek k 1))))) ; or a local
+     (: i (peeki k) (?
+      (= i i-tbind) (A (peekx (seek k 1))) ; maybe we're about to set a global?
+      (= i i-loc_) (at (Tg e 'loc) (peekx (seek k 1))))) ; or a local
 
     (clo-thd e x k) (:
      (loop x k) (? (~ x) k
@@ -627,7 +627,7 @@
     (loop e x k) (? (~ x) k (:
      l (loop e (BB x) k)
      m (? (~ (|| (toplp e) (memq (Tg e'loc) (A x)))) l
-          (toplp e) (xc i-tbind (xd (X (cwm) (A x)) l))
+          (toplp e) (xc i-tbind (xd (X (A (cwm)) (A x)) l))
           (xc i-loc_ (xd (idx (Tg e'loc) (A x)) l)))
      (? (= 'here (A (: v (look e (A x)))))
       (Im (B v) m) (eval (AB x) m))))
@@ -647,7 +647,7 @@
     h (k e (+ m 2))
     t (consumes h)
     c (type-sym-num t) ; get the runtime type tag
-    (emf i-rslv (emx (X c (X d x)) (? t (hseek h 1) h))))
+    (emf i-rslv (emx (X c (X d x)) (? t (seek h 1) h))))
 
    s (A (: r (look e x))) (?
     (= s 'here) ((Im (B r) k) e m)
@@ -677,7 +677,7 @@
 ; " drop privileges "
 (: dels (cu (flip each) (cu Td _ns))
    insns (filter (tkeys _ns) (\ k (= "i-" (ssub (ystr k) 0 2))))
-   locs '(cwm boot egg emi macros emx hom hseek hgeti hgetx hfin _ns)
+   locs '(cwm boot egg emi macros emx hom seek peeki peekx hfin _ns)
  (, (Td macros 'i-)
     (each (L insns locs) dels)))
 ;ev

@@ -7,20 +7,16 @@
 
 // thanks !!
 
-// XXX FIXME XXX
-_Static_assert(sizeof(intptr_t) == 8, "64bit");
-_Static_assert(-1 == -1 >> 1, "signed >>");
-
 typedef uintptr_t N;
 typedef intptr_t ob, Z;
 typedef struct mo *mo, *yo;
-typedef struct la *em, *la;
-typedef struct fr *fr;
+typedef struct ph *em, *la, *ph;
+typedef struct fr *fr, *co;
 #define Ll(n, ...)\
-  ob n(la v, ob xp, mo ip, ob *hp, ob *sp, fr fp)
-typedef Ll(go);
+  ob n(ph v, ob xp, mo ip, ob *hp, ob *sp, co fp)
+typedef Ll(host);
 #define Vm Ll
-typedef go vm, ll;
+typedef host vm, ll, go;
 
 // FIXME 2bit
 #define TagBits 3
@@ -31,22 +27,26 @@ enum class { Hom, Num, Two, Str, Sym, Tbl, };
 #define NomTwo "two"
 // FIXME ext
 #define NomTbl "tbl"
-// FIXME principled reason to separate sym/str?
+// FIXME principled reason to separate sym & str?
 #define NomStr "str"
 #define NomSym "sym"
 
-#define Gc(n) ob n(la v, ob x, intptr_t len0, ob*pool0)
+#define K const
+
+typedef FILE *fd;
+typedef char ch;
+#define Gc(n) ob n(ph v, ob x, Z len0, ob *pool0)
 #define Hash(n) N n(la v, ob x)
-#define Show(n) void n(la v, ob x, FILE *o)
+#define Show(n) void n(la v, ob x, fd o)
 typedef Hash(hasher);
 typedef Gc(copier);
 typedef Show(writer);
 
 typedef struct ext {
   ob name;
-  ob (*copy)(la, ob, intptr_t, ob*);
-  uintptr_t (*hash)(la, ob);
-  void (*show)(la, ob, FILE*);
+  ob (*copy)(la, ob, Z, ob*);
+  N (*hash)(la, ob);
+  void (*show)(la, ob, fd);
   bool (*equal)(ob, ob);
 } *ext;
 
@@ -57,34 +57,50 @@ typedef struct mm { ob *it; struct mm *et; } *mm;
 typedef struct tbl { ob *tab, len, cap; } *tbl;
 
 struct fr { ob clos, retp, subd, argc, argv[]; };
-struct mo { ll *ll; };
+struct mo { host *ll; };
 
-// FIXME indices into a thread-global table of constants
-enum { Def, Cond, Lamb, Quote, Seq, Splat,
-       Topl, Eval, Apply, NGlobs };
+// language symbols
+enum lex {
+  Def, Cond, Lamb, Quote, Seq, Splat,
+  Eval, Apply, LexN };
 
-struct la {
-  mo ip; ob xp, *hp, *sp; fr fp;
-  mm mm; intptr_t t0, len, *pool;
-  ob rand, syms, glob[NGlobs]; };
+struct ph {
+  // vm state -- kept in CPU registers most of the time
+  mo ip; // current thread
+  fr fp; // top of control stack
+  ob xp, // free register
+     *hp, // top of heap
+     *sp; // top of data stack
+
+  // memory state
+  mm keep; // list of C stack addresses to copy on gc
+  Z t0, // gc timestamp, governs len
+    len, // memory pool size
+    *pool; // memory pool
+
+  // other runtime state
+  ob wns, // working namespace -- a stack of dicts
+     sns, // system namespace -- a dict of dicts
+     syms, // internal symbols
+     rand, // random seed
+     lex[LexN]; }; // grammar symbols
 
 hasher hash;
-void *cells(la, uintptr_t), emit(la, ob, FILE*);
-bool eql(ob, ob), please(la, uintptr_t), pushs(la, ...);
-mo ana(la, ob);
-ob lookup(la, ob), cwm(la);
-ob string(la, const char*),
+void *cells(la, N), emit(la, ob, fd);
+bool eql(ob, ob), please(la, N), pushs(la, ...);
+la la0(void);
+void la1(la);
+mo ana(la, ob, ob), ana_p(la, K char*, ob);
+ob ls(la, ob),
+   string(la, K char*),
    intern(la, ob),
    table(la),
-   scrp(la, const char*),
    tbl_set(la, ob, ob, ob),
    tbl_get(la, ob, ob),
    pair(la, ob, ob),
-   parse(la, FILE*),
+   parse(la, fd),
    homnom(la, ob),
-   err(la, ob, const char*, ...);
-
-const char *tnom(enum class);
+   err(la, ob, K char*, ...);
 
 #define N0 putnum(0)
 #define nil N0
@@ -99,8 +115,8 @@ const char *tnom(enum class);
 #define BA(o) B(A(o))
 #define BB(o) B(B(o))
 #define Avail (v->sp-v->hp)
-#define mm(r) ((v->mm=&((struct mm){(r),v->mm})))
-#define um (v->mm=v->mm->et)
+#define mm(r) ((v->keep=&((struct mm){(r),v->keep})))
+#define um (v->keep=v->keep->et)
 #define with(y,...) (mm(&(y)),(__VA_ARGS__),um)
 #define Width(t) b2w(sizeof(struct t))
 #define Push(...) pushs(v, __VA_ARGS__, (ob) 0)
@@ -112,24 +128,36 @@ const char *tnom(enum class);
 #define F(_) ((mo)(_)+1)
 #define G(_) (((mo)(_))->ll)
 
-#define nump(_) (Q(_)==Num)
+#define isZ(_) (Q(_)==Num)
 #define strp(_) (Q(_)==Str)
-#define homp(_) (Q(_)==Hom)
-#define symp(_) (Q(_)==Sym)
+#define isM(_) (Q(_)==Hom)
+#define isY(_) (Q(_)==Sym)
 #define tblp(_) (Q(_)==Tbl)
-#define twop(_) (Q(_)==Two)
+#define isW(_) (Q(_)==Two)
+#define twop isW
+#define nump isZ
+#define homp isM
+#define symp isY
 #define putstr(_) ((ob)(_)+Str)
-#define getnum(_) ((ob)(_)>>3)
-#define putnum(_) (((ob)(_)<<3)+Num)
+#define getnum getZ
+#define putnum putZ
+#define puthom putM
+#define gethom getM
+#define getZ(_) ((ob)(_)>>3)
+#define putZ(_) (((ob)(_)<<3)+Num)
 #define getstr(_) ((str)((_)-Str))
-#define puthom(_) ((ob)(_))
-#define gethom(_) ((mo)(_))
-#define getsym(_) ((sym)((_)-Sym))
-#define putsym(_) ((ob)(_)+Sym)
+#define putM(_) ((ob)(_))
+#define getM(_) ((mo)(_))
+#define getsym getY
+#define putsym putY
+#define getY(_) ((sym)((_)-Sym))
+#define putY(_) ((ob)(_)+Sym)
 #define gettbl(_) ((tbl)((_)-Tbl))
 #define puttbl(_) ((ob)(_)+Tbl)
-#define gettwo(_) ((two)((_)-Two))
-#define puttwo(_) ((ob)(_)+Two)
+#define gettwo getW
+#define puttwo putW
+#define getW(_) ((two)((_)-Two))
+#define putW(_) ((ob)(_)+Two)
 
 #define Inline inline __attribute__((always_inline))
 #define NoInline __attribute__((noinline))
@@ -138,16 +166,16 @@ static Inline mo button(mo k) {
   while (G(k)) k = F(k);
   return k; }
 
-static Inline uintptr_t llen(ob l) {
-  uintptr_t i = 0;
+static Inline N llen(ob l) {
+  N i = 0;
   while (twop(l)) l = B(l), i++;
   return i; }
 
-static Inline ob interns(la v, const char *s) {
+static Inline ob interns(la v, K char *s) {
   ob _ = string(v, s);
   return !_ ? 0 : intern(v, _); }
 
-static Inline uintptr_t b2w(uintptr_t b) {
+static Inline N b2w(N b) {
   return b / sizeof(ob) + (b % sizeof(ob) && 1); }
 
 static Inline ext extt(ob _) {
@@ -171,9 +199,8 @@ static Inline ext extt(ob _) {
  _(brlteq2, 0) _(brgt2, 0) _(brgt, 0) _(brne, 0)\
  _(dupl, 0) _(emi, 0) _(emx, 0) _(vararg, 0)\
  _(sym_u, NomSym) _(cwm_u, "cwm")\
- _(par_u, "read") _(sar_u, ">>") _(sal_u, "<<") _(band_u, "&")\
- _(bor_u, "|") _(bxor_u, "^")\
- _(add_u, "+") _(hom_u, NomHom)\
+ _(sar_u, ">>") _(sal_u, "<<") _(band_u, "&") _(bnot_u, "!")\
+ _(bor_u, "|") _(bxor_u, "^") _(add_u, "+") _(hom_u, NomHom)\
  _(sub_u, "-") _(mul_u, "*") _(div_u, "/") _(mod_u, "%")\
  _(lt_u, "<") _(lteq_u, "<=") _(eq_u, "=") _(gteq_u, ">=")\
  _(gt_u, ">") _(car_u, "A") _(cdr_u, "B") _(cons_u, "X")\
@@ -181,12 +208,11 @@ static Inline ext extt(ob _) {
  _(strl, "slen") _(strs, "ssub")   _(strconc, "scat")\
  _(tbll, "tlen") _(tblmk, "tbl") _(tblg, "tget")\
  _(tblc, "thas") _(tbls, "tset") _(tbld, "tdel")\
- _(tblks, "tkeys") _(hseek_u, "hseek") _(domain_error, "fail")\
- _(putc_u, "putc") _(ystr_u, "ystr")\
- _(hnom_u, "hnom")\
+ _(tblks, "tkeys") _(seek_u, "seek") _(domain_error, "fail")\
+ _(putc_u, "putc") _(ystr_u, "ystr") _(hnom_u, "hnom")\
  _(emx_u, "emx") _(emi_u, "emi") _(show_u, ".") _(ev_u, "ev")\
- _(ap_u, "ap") _(hgeti_u, "hgeti")\
- _(hfin_u, "hfin") _(hgetx_u, "hgetx") _(twop_u, "twop")\
+ _(ap_u, "ap") _(peeki_u, "peeki")\
+ _(hfin_u, "hfin") _(peekx_u, "peekx") _(twop_u, "twop")\
  _(nump_u, "nump") _(homp_u, "homp") _(tblp_u, "tblp")\
  _(symp_u, "symp") _(strp_u, "strp")\
  _(nilp_u, "nilp") _(rnd_u, "rand")
@@ -248,22 +274,47 @@ ll gc, domain_error, ary_error;
 #define Tc TypeCheck
 #define CheckType TypeCheck
 
-static Inline void setw(void *x, intptr_t i, uintptr_t l) {
-  for (intptr_t *d = x; l--; *d++ = i); }
+static Inline void setw(void *x, Z i, N l) {
+  for (Z *d = x; l--; *d++ = i); }
 
-static Inline void cpyw(void *x, const void *y, uintptr_t l) {
-  intptr_t *d = x;
-  const intptr_t *s = y;
+static Inline void cpyw(void *x, K void *y, N l) {
+  Z *d = x;
+  K Z *s = y;
   while (l--) *d++ = *s++; }
 
-static Inline void rcpyw(void *x, const void *y, uintptr_t l) {
-  intptr_t *d = (ob*) x + (l - 1);
-  const intptr_t *s = (const ob*) y + (l - 1);
+static Inline void rcpyw(void *x, K void *y, N l) {
+  Z *d = (ob*) x + (l - 1);
+  K Z *s = (K ob*) y + (l - 1);
   while (l--) *d-- = *s--; }
 
-static Inline intptr_t lcprng(intptr_t s) {
-  const intptr_t steele_vigna_2021 = 0xaf251af3b0f025b5;
+static Inline Z lcprng(Z s) {
+  K Z steele_vigna_2021 = 0xaf251af3b0f025b5;
   return (s * steele_vigna_2021 + 1) >> 8; }
 #define R(x) ((ob*)(x))
 #define T putnum(-1)
+
+#define LeftParen '('
+#define RightParen ')'
+#define EndOfFile  EOF
+#define SingleQuote '\''
+#define DoubleQuote '"'
+#define NumeralSign '#'
+#define Semicolon ';'
+#define Space ' '
+#define Tab '\t'
+#define Newline '\n'
+#define Backslash '\\'
+#define Plus '+'
+#define Minus '-'
+#define Zero '0'
+#define Radix2 'b'
+#define Radix8 'o'
+#define Radix10 'd'
+#define Radix12 'z'
+#define Radix16 'x'
+
+// XXX FIXME XXX
+_Static_assert(sizeof(intptr_t) == 8, "64bit");
+_Static_assert(-1 == -1 >> 1, "signed >>");
+
 #endif
