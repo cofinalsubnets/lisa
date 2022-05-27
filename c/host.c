@@ -1,5 +1,3 @@
-#include <stdarg.h>
-#include <string.h>
 #include "la.h"
 
 // " the virtual machine "
@@ -24,16 +22,17 @@
 // twice if garbage collection happens! there should be no side
 // effects before Have() or similar.
 
+// calling and returning
 Ll(ap_u) {
   Arity(2);
   ip = (mo) fp->argv[0];
   TypeCheck((ob)ip, Hom);
   ob x = fp->argv[1];
-  uintptr_t adic = llen(x);
+  N adic = llen(x);
   Have(adic);
   ob off = fp->subd, rp = fp->retp;
   sp = fp->argv + getnum(fp->argc) - adic;
-  for (uintptr_t j = 0; j < adic; sp[j++] = A(x), x = B(x));
+  for (N j = 0; j < adic; sp[j++] = A(x), x = B(x));
   return
     fp = (fr) sp - 1,
     sp = (ob*) fp,
@@ -44,8 +43,8 @@ Ll(ap_u) {
     ApY(ip, nil); }
 
 Ll(vararg) {
-  intptr_t reqd = getnum((ob) ip[1].ll),
-           vdic = getnum(fp->argc) - reqd;
+  Z reqd = getnum((ob) ip[1].ll),
+    vdic = getnum(fp->argc) - reqd;
   Arity(reqd);
   // in this case we need to add another argument
   // slot to hold the nil.
@@ -64,7 +63,7 @@ Ll(vararg) {
   Have(2 * vdic);
   two t = (two) hp;
   hp += 2 * vdic;
-  for (uintptr_t i = vdic; i--;)
+  for (N i = vdic; i--;)
     t[i].a = fp->argv[reqd + i],
     t[i].b = puttwo(t+i+1);
   return
@@ -72,47 +71,7 @@ Ll(vararg) {
     fp->argv[reqd] = puttwo(t),
     ApN(2, xp); }
 
-// type predicates
-#define Tp(t)\
-  Ll(t##pp) { return ApN(1, (t##p(xp)?T:nil)); }\
-  Ll(t##p_u) {\
-    for (ob *xs = fp->argv, *l = xs + getnum(fp->argc); xs < l;)\
-      if (!t##p(*xs++)) return ApC(ret, nil);\
-    return ApC(ret, T); }
-Tp(num) Tp(hom) Tp(two) Tp(sym) Tp(str) Tp(tbl) Tp(nil)
-
-// stack manipulation
-Ll(dupl) { Have1(); --sp; sp[0] = sp[1]; return ApN(1, xp); }
-
 static ll recne;
-
-////
-/// Branch Instructions
-//
-// unconditional jump
-Ll(jump) { return ApY((ob) ip[1].ll, xp); }
-
-// conditional jumps
-//
-// args: test, yes addr, yes val, no addr, no val
-#define Br(nom, test, a, x, b, y) Ll(nom) {\
-  return ApY(test ? (ob) a(ip) : (ob) b(ip), x); }
-// combined test/branch instructions
-Br(branch, xp != nil, GF, xp, FF, xp)
-Br(barnch, xp != nil, FF, xp, GF, xp)
-
-Br(breq, eql(*sp++, xp), GF, T, FF, nil)
-Br(brne, eql(*sp++, xp), FF, T, GF, nil)
-
-Br(brlt,    *sp++ < xp,  GF, xp, FF, nil)
-Br(brlt2,   *sp++ < xp,  FF, xp, GF, nil)
-Br(brlteq,  *sp++ <= xp, GF, xp, FF, nil)
-Br(brlteq2, *sp++ <= xp, FF, xp, GF, nil)
-Br(brgt,    *sp++ > xp,  GF, xp, FF, nil)
-Br(brgt2,   *sp++ > xp,  FF, xp, GF, nil)
-Br(brgteq,  *sp++ >= xp, GF, xp, FF, nil)
-// brgteq2 is brlt
-#undef Br
 
 // return from a function
 Ll(ret) { return
@@ -124,8 +83,8 @@ Ll(ret) { return
 // "inner" function call
 Ll(call) {
   Have(Width(fr));
-  intptr_t adic = getnum((ob) ip[1].ll),
-           off = (ob*) fp - (sp + adic);
+  Z adic = getnum((ob) ip[1].ll),
+    off = (ob*) fp - (sp + adic);
   return
     fp = (fr) sp - 1,
     sp = (ob*) fp,
@@ -156,168 +115,39 @@ static Ll(recne) { return
   fp->subd = v->xp,
   ApY(xp, fp->clos = nil); }
 
-Ll(domain_error) { return Pack(),
-  err(v, xp, "is undefined at"); }
+////
+/// Branch Instructions
+//
+// unconditional jump
+Ll(jump) { return ApY((ob) ip[1].ll, xp); }
 
-Ll(ary_error) { return Pack(),
-  err(v, 0, "has %d of %d arguments",
-      getnum(fp->argc), getnum(xp)); }
+// conditional jumps
+//
+// args: test, yes addr, yes val, no addr, no val
+#define Br(nom, test, a, x, b, y) Ll(nom) {\
+  return ApY(test ? (ob) a(ip) : (ob) b(ip), x); }
+// combined test/branch instructions
+Br(branch, xp != nil, GF, xp, FF, xp)
+Br(barnch, xp != nil, FF, xp, GF, xp)
 
-// type/arity checking
-#define DTc(n, t) Ll(n) { TypeCheck(xp, t); return ApN(1, xp); }
-DTc(idZ, Num) DTc(idH, Hom)
-DTc(idT, Tbl) DTc(id2, Two)
-Ll(arity) {
-  ob reqd = (ob) ip[1].ll;
-  return reqd <= fp->argc ?  ApN(2, xp) : ApC(ary_error, reqd); }
+Br(breq, eql(*sp++, xp), GF, T, FF, nil)
+Br(brne, eql(*sp++, xp), FF, T, GF, nil)
 
-static void show_call(em v, yo ip, fr fp) {
-  fputc('(', stderr), emit(v, (ob) ip, stderr);
-  for (uintptr_t i = 0, argc = getnum(fp->argc); i < argc;)
-    fputc(' ', stderr), emit(v, fp->argv[i++], stderr);
-  fputc(')', stderr); }
-
-#define atop ((ob*)fp==v->pool+v->len)
-NoInline ob err(em v, ob x, const char *msg, ...) {
-  if (x || msg) {
-    yo ip = v->ip;
-    fr fp = v->fp;
-    // error line
-    fputs("# ", stderr);
-    if (!atop) show_call(v, ip, fp), fputs(" ", stderr);
-    if (msg) {
-      va_list xs;
-      va_start(xs, msg), vfprintf(stderr, msg, xs), va_end(xs);
-      if (x) fputs(" ", stderr); }
-    if (x) emit(v, x, stderr);
-    fputc('\n', stderr);
-
-    // backtrace
-    if (!atop) for (;;) {
-      ip = (yo) fp->retp, fp = (fr)
-        ((ob*) (fp + 1) + getnum(fp->argc)
-                        + getnum(fp->subd));
-      if (atop) break; else
-        fputs("# in ", stderr),
-        show_call(v, ip, fp),
-        fputc('\n', stderr); } }
-#undef atop
-
-  // reset and yield
-  return v->fp = (fr) (v->pool + v->len),
-         v->sp = (ob*) v->fp,
-         v->xp = nil,
-         v->ip = (mo) nil,
-         0; }
-
-
-
-#define mm_u(_c,_v,_z,op){\
-  ob x,*xs=_v,*l=xs+_c;\
-  for(xp=_z;xs<l;xp=xp op getnum(x)){\
-    x = *xs++;\
-    TypeCheck(x, Num);}\
-  return ApC(ret, putnum(xp));}
-
-#define mm_void(_c,_v,_z,op){\
-  ob x,*xs=_v,*l=xs+_c;\
-  for(xp=_z;xs<l;xp=xp op getnum(x)){\
-    x = *xs++;\
-    TypeCheck(x, Num);\
-    if (x == N0) return ApC(domain_error, x);}\
-  return ApC(ret, putnum(xp));}
-
-Ll(sub_u) {
-  if (!(xp = getnum(fp->argc))) return ApC(ret, N0);
-  TypeCheck(*fp->argv, Num);
-  if (xp == 1) return ApC(ret, putnum(-getnum(*fp->argv)));
-  mm_u(xp-1,fp->argv+1,getnum(*fp->argv),-); }
-
-Ll(sar_u) {
-  if (fp->argc == N0) return ApC(ret, N0);
-  TypeCheck(*fp->argv, Num);
-  mm_u(getnum(fp->argc)-1, fp->argv+1, getnum(*fp->argv), >>); }
-
-Ll(sal_u) {
-  if (fp->argc == N0) return ApC(ret, N0);
-  TypeCheck(*fp->argv, Num);
-  mm_u(getnum(fp->argc)-1, fp->argv+1, getnum(*fp->argv), <<); }
-
-Ll(dqv) {
-  return xp == N0 ? ApC(domain_error, xp) :
-    (xp = putnum(getnum(*sp++) / getnum(xp)), ApN(1, xp)); }
-
-Ll(div_u) {
-  if (!(xp = getnum(fp->argc))) return ApC(ret, T);
-  TypeCheck(*fp->argv, Num);
-  mm_void(xp-1, fp->argv+1, getnum(*fp->argv), /); }
-
-Ll(mod) {
-  return xp == N0 ? ApC(domain_error, xp) :
-    (xp = putnum(getnum(*sp++) % getnum(xp)), ApN(1, xp)); }
-
-Ll(mod_u) {
-  if (!(xp = getnum(fp->argc))) return ApC(ret, T);
-  TypeCheck(*fp->argv, Num);
-  mm_void(xp-1, fp->argv+1, getnum(*fp->argv), %); }
-
-Ll(rnd_u) { return
-  xp = putnum(v->rand = lcprng(v->rand)), ApC(ret, xp); }
-
-#define OP(nom, x, n) Ll(nom) { xp = (x); return ApN(n, xp); }
-#define OP1(nom, x) OP(nom, x, 1)
-#define BINOP(nom, xpn) Vm(nom) { xp = (xpn); return ApN(1, xp); }
-OP1(neg, putnum(-getnum(xp)))
-BINOP(add,  xp + *sp++ - Num)
-BINOP(bor,  xp | *sp++)
-BINOP(bxor, (xp ^ *sp++) | Num)
-BINOP(mul,  putnum(getnum(*sp++) * getnum(xp)))
-BINOP(band, xp & *sp++)
-BINOP(sub,  *sp++ - xp + Num)
-BINOP(sar,  putnum(getnum(*sp++) >> getnum(xp)))
-BINOP(sal,  putnum(getnum(*sp++) << getnum(xp)))
-
-#define UBINOP(nom, dflt, op) Ll(nom##_u) {\
-  mm_u(getnum(fp->argc), fp->argv, dflt, op); }
-
-UBINOP(add, 0, +)
-UBINOP(bor, 0, |)
-UBINOP(bxor, 0, ^)
-UBINOP(mul, 1, *)
-UBINOP(band, -1, &)
-
-Ll(bnot_u) {
-  Arity(1);
-  return
-    xp = fp->argv[0],
-    ApC(ret, putnum(~getnum(xp))); }
-
-bool eql(ob a, ob b) {
-  return a == b || (Q(a) == Q(b) &&
-    ((twop(a) && eql(A(a), A(b)) && eql(B(a), B(b))) ||
-     (strp(a) && getstr(a)->len == getstr(b)->len &&
-      0 == strcmp(getstr(a)->text, getstr(b)->text)))); }
-
-#define LT(a,b) (a<b)
-#define LE(a,b) (a<=b)
-#define GE(a,b) (a>=b)
-#define GT(a,b) (a>b)
-BINOP(eq, eql(xp, *sp++) ? T : nil)
-#define cmp(n, op) BINOP(n, op(*sp++, xp) ? xp : nil)
-cmp(lt, LT) cmp(lteq, LE) cmp(gteq, GE) cmp(gt, GT)
-#undef cmp
-#define cmp(op, n) Ll(n##_u) {\
-  ob n = getnum(fp->argc), *xs = fp->argv, m, *l;\
-  switch (n) {\
-    case 0: return ApC(ret, nil);\
-    default: for (l = xs + n - 1, m = *xs; xs < l; m= *++xs)\
-               if (!op(m, xs[1])) return ApC(ret, nil);\
-    case 1: return ApC(ret, T); } }
-cmp(LT, lt) cmp(LE, lteq) cmp(GE, gteq) cmp(GT, gt) cmp(eql, eq)
+Br(brlt,    *sp++ < xp,  GF, xp, FF, nil)
+Br(brlt2,   *sp++ < xp,  FF, xp, GF, nil)
+Br(brlteq,  *sp++ <= xp, GF, xp, FF, nil)
+Br(brlteq2, *sp++ <= xp, FF, xp, GF, nil)
+Br(brgt,    *sp++ > xp,  GF, xp, FF, nil)
+Br(brgt2,   *sp++ > xp,  FF, xp, GF, nil)
+Br(brgteq,  *sp++ >= xp, GF, xp, FF, nil)
+// brgteq2 is brlt
+#undef Br
 #define OP2(nom, x) OP(nom, x, 2)
+
 ////
 /// Load Instructions
 //
+
 // constants
 OP1(one, putnum(1))
 OP1(zero, putnum(0))
@@ -348,6 +178,9 @@ OP1(clo1, ((ob*)fp->clos)[1])
 //
 // stack push
 Vm(push) { Have1(); return *--sp = xp, ApN(1, xp); }
+// dup top of stack
+Ll(dupl) { Have1(); --sp; sp[0] = sp[1]; return ApN(1, xp); }
+
 
 // set a local variable
 Vm(loc_) { return
@@ -364,7 +197,7 @@ Vm(tbind) {
 // allocate local variable array
 Vm(locals) {
   ob *t = hp;
-  uintptr_t n = getnum((ob) ip[1].ll);
+  N n = getnum((ob) ip[1].ll);
   Have(n + 3); return
     hp += n + 2,
     setw(t, nil, n),
@@ -390,111 +223,9 @@ Vm(rslv) {
   return ip[0].ll = imm,
          ip[1].ll = (ll*) xp,
          ApN(2, xp); }
-
-// hash tables
-Vm(tblg) {
-  Arity(2);
-  TypeCheck(fp->argv[0], Tbl);
-  return xp = tbl_get(v, fp->argv[0], fp->argv[1]),
-         ApC(ret, xp ? xp : nil); }
-
-OP1(tget, (xp = tbl_get(v, xp, *sp++)) ? xp : nil)
-OP1(thas, tbl_get(v, xp, *sp++) ? T : nil)
-OP1(tlen, putnum(gettbl(xp)->len))
-
-static ob tbl_keys_j(em v, ob e, ob l) {
-  ob x; return e == nil ? l :
-    (x = R(e)[0],
-     with(x, l = tbl_keys_j(v, R(e)[2], l)),
-     l ? pair(v, x, l) : 0); }
-
-static ob tbl_keys_i(em v, ob t, intptr_t i) {
-  ob k; return i == 1 << gettbl(t)->cap ? nil :
-    (with(t, k = tbl_keys_i(v, t, i+1)),
-     k ? tbl_keys_j(v, gettbl(t)->tab[i], k) : 0); }
-
-static Inline ob tbl_keys(em v, ob t) {
-  return tbl_keys_i(v, t, 0); }
-
-Vm(tkeys) { return
-  CallC(v->xp = tbl_keys(v, xp)),
-  xp ? ApN(1, xp) : 0; }
-
-Vm(tblc) {
-  Arity(2);
-  TypeCheck(fp->argv[0], Tbl);
-  return xp = tbl_get(v, fp->argv[0], fp->argv[1]),
-         ApC(ret, xp ? T : nil); }
-
-static ob tblss(em v, intptr_t i, intptr_t l) {
-  fr fp = (fr) v->fp;
-  return
-    i > l - 2 ? fp->argv[i - 1] :
-    !tbl_set(v, v->xp, fp->argv[i], fp->argv[i + 1]) ? 0 :
-    tblss(v, i + 2, l); }
-
-Vm(tbls) {
-  Arity(1);
-  TypeCheck(*fp->argv, Tbl);
-  return
-    xp = *fp->argv,
-    CallC(v->xp = tblss(v, 1, fp->argc >> TagBits)),
-    xp ? ApC(ret, xp) : 0; }
-
-Vm(tblmk) {
-  return Pack(),
-    (v->xp = table(v)) &&
-    (xp = tblss(v, 0, fp->argc >> TagBits)) ?
-      (Unpack(), ApC(ret, xp)) :
-      0; }
-
-Vm(tblks) {
-  Arity(1);
-  TypeCheck(*fp->argv, Tbl);
-  return CallC(v->xp = tbl_keys(v, *fp->argv)),
-         xp ? ApC(ret, xp) : 0; }
-
-Vm(tbll) {
-  Arity(1);
-  TypeCheck(*fp->argv, Tbl);
-  return ApC(ret, putnum(gettbl(*fp->argv)->len)); }
-
-Vm(tset) {
-  ob x = *sp++, y = *sp++;
-  return
-    CallC(v->xp = tbl_set(v, xp, x, y)),
-    !xp ? 0 : ApN(1, xp); }
-
-// pairs
-OP1(car, A(xp)) OP1(cdr, B(xp))
-Vm(cons) { Have1(); return
-  hp[0] = xp,
-  hp[1] = *sp++,
-  xp = puttwo(hp),
-  hp += 2,
-  ApN(1, xp); }
-
-Vm(car_u) {
-  Arity(1);
-  TypeCheck(*fp->argv, Two);
-  return ApC(ret, A(*fp->argv)); }
-
-Vm(cdr_u) {
-  Arity(1);
-  TypeCheck(*fp->argv, Two);
-  return ApC(ret, B(*fp->argv)); }
-
-Ll(cons_u) {
-  Arity(2); Have(2); two w; return
-    w = (two) hp,
-    hp += 2,
-    w->a = fp->argv[0],
-    w->b = fp->argv[1],
-    ApC(ret, puttwo(w)); }
-
 // this is used to create closures.
 Ll(take) {
-  uintptr_t n = getnum((ob) ip[1].ll);
+  N n = getnum((ob) ip[1].ll);
   Have(n + 2);
   ob *t = hp; return
     hp += n + 2,
@@ -526,9 +257,9 @@ static Vm(clos0) {
   ob *ec  = (ob*) ip[1].ll,
      arg = ec[0],
      loc = ec[1];
-  uintptr_t adic = nilp(arg) ? 0 : getnum(*(ob*)arg);
+  N adic = nilp(arg) ? 0 : getnum(*(ob*)arg);
   Have(Width(fr) + adic + 1);
-  intptr_t off = (ob*) fp - sp;
+  Z off = (ob*) fp - sp;
   ip->ll = clos1;
   sp -= adic;
   cpyw(sp, (ob*) arg + 1, adic);

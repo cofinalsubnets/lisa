@@ -38,7 +38,7 @@ static Z nextc(fd i) {
     case NumeralSign: case Semicolon:
       do c = fgetc(i); while (c != '\n' && c != EOF); } }
 
-static ob parq(ph v, fd i) {
+ob parq(ph v, fd i) {
   ob x; return
     !(x = parse(v, i)) ||
     !(x = pair(v, x, nil)) ? 0 :
@@ -115,3 +115,30 @@ static NoInline ob par1b(em v, ob b, const char *s) {
       case Radix16: return read_num_base(v, b, s+2, 16); } }
   return read_num_base(v, b, s, 10); }
 
+static void fin_fclose(la v, ob f) {
+  fclose(((FILE**)f)[1]); }
+
+Ll(fpar) {
+  FILE *in = (FILE*) ip[1].ll;
+  CallC(v->xp = parse(v, in));
+  return ApC(ret, xp ? xp : nil); }
+
+Ll(fopen_u) {
+  Arity(1);
+  xp = fp->argv[0];
+  TypeCheck(xp, Str);
+  Have(8);
+  FILE *in = fopen(getstr(xp)->text, "r");
+  if (!in) return ApC(ret, nil);
+  ob *k = hp;
+  hp += 4;
+  k[0] = (ob) fpar;
+  k[1] = (ob) in;
+  k[2] = 0;
+  k[3] = (ob) k;
+  two w = (two) hp;
+  hp += 4;
+  w[0].a = (ob) k, w[0].b = putZ(fin_fclose);
+  w[1].a = putW(w), w[2].b = v->fins;
+  v->fins = puttwo(w+1);
+  return ApC(ret, (ob) k); }

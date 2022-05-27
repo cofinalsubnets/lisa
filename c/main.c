@@ -15,7 +15,8 @@
 #define SUFF
 #endif
 
-static ob eval(la, ob), ana_fd(la, fd, ob);
+static ob eval(la, ob);
+ob ana_fd(la, fd, ob);
 
 // called after finishing successfully
 static Ll(yield) { return Pack(), xp; }
@@ -47,13 +48,11 @@ mo ana_p(la v, const char *path, ob k) {
      fclose(in),
      (mo) k);}
 
-static ob ana_fd(ph v, fd in, ob k) {
-  ob x; with(k, x = parse(v, in));
+ob ana_fd(ph v, fd in, ob k) {
+  ob x; with(k, x = parq(v, in));
   return !x ? feof(in) ? k : 0 :
     (with(x, k = ana_fd(v, in, k)), k) &&
     (with(k, x =
-      (x = pair(v, x, nil)) &&
-      (x = pair(v, v->lex[Quote], x)) &&
       (x = pair(v, x, nil)) ?
       pair(v, v->lex[Eval], x) : 0), x) ?
     (ob) ana(v, x, k) : 0; }

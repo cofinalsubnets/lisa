@@ -31,14 +31,6 @@ static Inline ob evacd(la v, ob _, enum class q) {
   return Q(x) == q &&
     inb(R(x), v->pool, v->pool + v->len) ?  x : 0; }
 
-// unchecked allocator -- make sure there's enough memory!
-static Inline void* bump(la v, intptr_t n) {
-  void* x = v->hp; return v->hp += n, x; }
-static void *cells_(la v, uintptr_t n) {
-  return please(v, n) ? bump(v, n) : 0; }
-void* cells(la v, uintptr_t n) {
-  return Avail >= n ? bump(v, n) : cells_(v, n); }
-
 #define oom_err_msg "out of memory : %d + %d"
 // Run a GC cycle from inside the VM
 Vm(gc) {
@@ -46,6 +38,14 @@ Vm(gc) {
   return Pack(), please(v, req) ?
     (Unpack(), ApY(ip, xp)) :
     err(v, 0, oom_err_msg, v->len, req); }
+
+bool finalize_with(la v, ob x, finalizer *f) {
+  two w; with(x, w = cells(v, 4));
+  if (!w) return 0;
+  w[0].a = x, w[0].b = putZ(f);
+  w[1].a = putW(w), w[1].b = v->fins;
+  v->fins = putW(w+1);
+  return 1; }
 
 // a simple copying garbage collector
 //
@@ -80,8 +80,10 @@ static clock_t copy(la v, intptr_t len1) {
      *top1 = pool1 + len1,
      shift = top1 - top0;
 
+  // fail if we can't get a new pool
   if (!pool1) return 0;
 
+  // copy memory
   v->syms = nil;
   v->len = len1;
   v->pool = v->hp = pool1;
@@ -92,6 +94,19 @@ static clock_t copy(la v, intptr_t len1) {
   for (int i = 0; i < LexN; CP(v->lex[i]), i++);
   for (ob *sp1 = v->sp; sp0 < top0; COPY(*sp1++, *sp0++));
   for (mm r = v->keep; r; CP(*r->it), r = r->et);
+
+  // call any finalizers
+  ob f = v->fins;
+  for (v->fins = nil; isW(f); f = B(f)) {
+    ob x = AA(f);
+    if (!(x = evacd(v, x, Q(x))))
+      ((finalizer*) getZ(BA(f)))(v, AA(f));
+    else {
+      two w = (two) v->hp;
+      v->hp += 4;
+      w[0].a = x, w[0].b = BA(f);
+      w[1].a = putW(w), w[1].b = v->fins;
+      v->fins = putW(w+1); } }
 
   return
     free(pool0),
@@ -212,16 +227,6 @@ Gc(cptwo) {
     B(dst) = cp(v, B(x), len0, pool0),
     A(dst) = cp(v, A(dst), len0, pool0);
   return dst; }
-
-static ob pair_(la v, ob a, ob b) {
-  bool _; two w;
-  return with(a, with(b, _ = please(v, 2))), !_ ? 0 :
-    (w = bump(v, 2), w->a = a, w->b = b, puttwo(w)); }
-
-// functions for pairs and lists
-ob pair(la v, ob a, ob b) {
-  two w; return Avail < 2 ? pair_(v, a, b) :
-    (w = bump(v, 2), w->a = a, w->b = b, puttwo(w)); }
 
 static Inline intptr_t tbl_idx(uintptr_t cap, uintptr_t co) {
   return co & ((1 << cap) - 1); }

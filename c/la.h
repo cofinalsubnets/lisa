@@ -41,6 +41,7 @@ typedef char ch;
 typedef Hash(hasher);
 typedef Gc(copier);
 typedef Show(writer);
+typedef void finalizer(la, ob);
 
 typedef struct ext {
   ob name;
@@ -74,6 +75,7 @@ struct ph {
 
   // memory state
   mm keep; // list of C stack addresses to copy on gc
+  ob fins; // finalizers
   Z t0, // gc timestamp, governs len
     len, // memory pool size
     *pool; // memory pool
@@ -86,21 +88,30 @@ struct ph {
      lex[LexN]; }; // grammar symbols
 
 hasher hash;
-void *cells(la, N), emit(la, ob, fd);
-bool eql(ob, ob), please(la, N), pushs(la, ...);
+void emit(la, ob, fd);
+bool
+  eql(ob, ob),
+  finalize_with(la, ob, finalizer*),
+  please(la, N),
+  pushs(la, ...);
 la la0(void);
 void la1(la);
 mo ana(la, ob, ob), ana_p(la, K char*, ob);
-ob ls(la, ob),
+ob ana_fd(la, fd, ob);
+ob refer(la, ob),
    string(la, K char*),
    intern(la, ob),
    table(la),
    tbl_set(la, ob, ob, ob),
    tbl_get(la, ob, ob),
    pair(la, ob, ob),
+   parq(la, fd),
    parse(la, fd),
    homnom(la, ob),
+   linitp(la, ob, ob*),
+   snoc(la, ob, ob),
    err(la, ob, K char*, ...);
+Z lidx(ob, ob);
 
 #define N0 putnum(0)
 #define nil N0
@@ -181,6 +192,14 @@ static Inline N b2w(N b) {
 static Inline ext extt(ob _) {
   return (ext) (_ & ~ TagMask); }
 
+// unchecked allocator -- make sure there's enough memory!
+static Inline void* bump(la v, intptr_t n) {
+  void* x = v->hp;
+  return v->hp += n, x; }
+
+static Inline void *cells(la v, uintptr_t n) {
+  return Avail >= n || please(v, n) ? bump(v, n) : 0; }
+
 #define insts(_)\
  _(tget, 0) _(tset, 0) _(thas, 0) _(tlen, 0) _(arity, 0)\
  _(idZ, 0) _(idH, 0) _(id2, 0) _(idT, 0) _(imm, 0)\
@@ -215,7 +234,8 @@ static Inline ext extt(ob _) {
  _(hfin_u, "hfin") _(peekx_u, "peekx") _(twop_u, "twop")\
  _(nump_u, "nump") _(homp_u, "homp") _(tblp_u, "tblp")\
  _(symp_u, "symp") _(strp_u, "strp")\
- _(nilp_u, "nilp") _(rnd_u, "rand")
+ _(nilp_u, "nilp") _(rnd_u, "rand")\
+ _(fopen_u, "fopen")
 
 #define ninl(x, _) ll x;
 insts(ninl)
@@ -316,5 +336,11 @@ static Inline Z lcprng(Z s) {
 // XXX FIXME XXX
 _Static_assert(sizeof(intptr_t) == 8, "64bit");
 _Static_assert(-1 == -1 >> 1, "signed >>");
+
+#define OP(nom, x, n) Ll(nom) { xp = (x); return ApN(n, xp); }
+#define OP1(nom, x) OP(nom, x, 1)
+#define BINOP(nom, xpn) Vm(nom) { xp = (xpn); return ApN(1, xp); }
+#define UBINOP(nom, dflt, op) Ll(nom##_u) {\
+  mm_u(getnum(fp->argc), fp->argv, dflt, op); }
 
 #endif

@@ -34,22 +34,6 @@ bool pushs(em v, ...) {
     va_end(xs),
     _; }
 
-// helper functions for lists
-static Z lidx(ob l, ob x) {
-  for (Z i = 0; twop(l); l = B(l), i++)
-    if (x == A(l)) return i;
-  return -1; }
-
-static ob linitp(em v, ob x, ob* d) {
-  ob y; return !twop(B(x)) ? (*d = x, nil) :
-    (with(x, y = linitp(v, B(x), d)),
-     !y ? 0 : pair(v, A(x), y)); }
-
-static ob snoc(em v, ob l, ob x) {
-  return !twop(l) ? pair(v, x, l) :
-    (with(l, x = snoc(v, B(l), x)),
-     !x ? 0 : pair(v, A(l), x)); }
-
 static mo ini_mo(em v, uintptr_t n) {
   mo a = cells(v, n + 2);
   return !a ? 0 :
@@ -301,7 +285,7 @@ enum where { Here, Loc, Arg, Clo, Wait };
 static ob ls_lex(em v, ob e, ob y) {
   ob q; return
     nilp(e) ?
-      (q = ls(v, y)) ?
+      (q = refer(v, y)) ?
         pair(v, putnum(Here), q) :
         pair(v, putnum(Wait), A(v->wns)) :
     lidx(loc(e), y) > -1 ? pair(v, putnum(Loc), e) :

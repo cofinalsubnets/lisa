@@ -1,5 +1,21 @@
 #include "la.h"
 
+// bootstrap eval interpreter function
+Ll(ev_u) {
+  Arity(1); mo y;
+  return
+    // check to see if ev has been overridden in the
+    // toplevel namespace and if so call that. this way
+    // ev calls compiled pre-bootstrap will use the
+    // bootstrapped compiler, which is what we want?
+    // seems kind of strange to need this ...
+    xp = refer(v, v->lex[Eval]),
+    xp && homp(xp) && gethom(xp)->ll != ev_u ?
+      ApY((mo) xp, nil) :
+      // otherwise use the bootstrap compiler.
+      !(Pack(), y = ana(v, *fp->argv, putnum(ret))) ? 0 :
+        (Unpack(), ApY(y, xp)); }
+
 // instructions used by the compiler
 Ll(hom_u) {
   Arity(1);

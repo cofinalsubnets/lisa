@@ -1,33 +1,26 @@
 #include "la.h"
+
+ob refer(em v, ob _) {
+  ob x, mod = v->wns;
+  for (; twop(mod); mod = B(mod))
+    if ((x = tbl_get(v, A(mod), _))) return x;
+  return 0; }
+
 #include <stdlib.h>
-#include <time.h>
+// vm finalizer
+void la1(la v) {
+  if (!v) return;
+  for (ob f = v->fins; isW(f); f = B(f))
+    ((finalizer*) getZ(BA(f)))(v, AA(f));
+  free(v->pool);
+  free(v); }
 
 // initialization helpers
 static NoInline bool
   inst(la, const char *, go *),
   prim(la, const char *, go *);
 
-ob ls(em v, ob _) {
-  ob x, mod = v->wns;
-  for (; twop(mod); mod = B(mod))
-    if ((x = tbl_get(v, A(mod), _))) return x;
-  return 0; }
-
-// bootstrap eval interpreter function
-Ll(ev_u) {
-  Arity(1); mo y;
-  return
-    // check to see if ev has been overridden in the
-    // toplevel namespace and if so call that. this way
-    // ev calls compiled pre-bootstrap will use the
-    // bootstrapped compiler, which is what we want?
-    // seems kind of strange to need this ...
-    xp = ls(v, v->lex[Eval]),
-    xp && homp(xp) && gethom(xp)->ll != ev_u ?
-      ApY((mo) xp, nil) :
-      // otherwise use the bootstrap compiler.
-      !(Pack(), y = ana(v, *fp->argv, putnum(ret))) ? 0 :
-        (Unpack(), ApY(y, xp)); }
+#include <time.h>
 la la0(void) {
   ob _; em v = malloc(sizeof(struct ph));
   return v && (
@@ -52,7 +45,7 @@ la la0(void) {
      v->hp = v->sp,
      // everything else starts empty
      v->ip = (mo) nil,
-     v->wns = v->sns = v->syms = v->xp = nil,
+     v->fins = v->wns = v->sns = v->syms = v->xp = nil,
      setw(v->lex, nil, LexN),
 
      // now we can start allocating.
@@ -78,9 +71,6 @@ la la0(void) {
 #define register_inst(a, b) && ((b) ? prim(v,b,a) : inst(v, "i-"#a,a))
      insts(register_inst))
     ? v : (la1(v), NULL); }
-
-// finalize a vm. 
-void la1(la v) { if (v) free(v->pool), free(v); }
 
 static NoInline bool inst(em v, const char *a, ll *b) {
   ob z; return !(z = interns(v, a)) ? 0 :
