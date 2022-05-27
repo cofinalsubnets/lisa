@@ -29,21 +29,28 @@ static Vm(repl) { for (Pack();;) {
   else if (feof(stdin)) return ApC(yield, nil); } }
 
 static ob eval(em v, ob x) {
-  ob *k; return
-    !(Push(x) && (k = cells(v, 6))) ? 0 :
-    (k[0] = (ob) call,
-     k[1] = putnum(1),
-     k[2] = (ob) yield,
-     k[3] = (ob) ev_u,
-     k[4] = 0,
-     k[5] = (ob) k,
-     call(v, (ob) (k + 3), (mo) k, v->hp, v->sp, v->fp)); }
+  ob *k;
+  with(x, k = cells(v, 11));
+  if (!k) return 0;
+  k[0] = (ob) imm;
+  k[1] = x;
+  k[2] = (ob) push;
+  k[3] = (ob) imm;
+  k[4] = (ob) (k + 8);
+  k[5] = (ob) call;
+  k[6] = putnum(1);
+  k[7] = (ob) yield;
+  k[8] = (ob) ev_u;
+  k[9] = 0;
+  k[10] = (ob) k;
+  return imm(v, nil, (mo) k, v->hp, v->sp, v->fp); }
 
 // pull back k over a path
 mo ana_p(la v, const char *path, ob k) {
   FILE *in = fopen(path, "r");
   return !in ?
-    (mo) err(v, 0, "%s : %s", path, strerror(errno)) :
+    (fprintf(stderr, "%s : %s", path, strerror(errno)),
+     NULL) :
     (k = ana_fd(v, in, k),
      fclose(in),
      (mo) k);}

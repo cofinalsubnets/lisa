@@ -2,8 +2,8 @@
 
 // bootstrap eval interpreter function
 Ll(ev_u) {
-  Arity(1); mo y;
-  return
+  Ary(1);
+  mo y; return
     // check to see if ev has been overridden in the
     // toplevel namespace and if so call that. this way
     // ev calls compiled pre-bootstrap will use the
@@ -18,17 +18,18 @@ Ll(ev_u) {
 
 // instructions used by the compiler
 Ll(hom_u) {
-  Arity(1);
-  ob x = *fp->argv;
-  TypeCheck(x, Num);
-  intptr_t len = getnum(x) + 2;
+  Ary(1);
+  xp = fp->argv[0];
+  Typ(xp, Num);
+  Z len = getZ(xp) + 2;
   Have(len);
-  mo k = (mo) hp;
-  return hp += len,
-         setw((ob*) k, nil, len),
-         k[len-1].ll = (ll*) k,
-         k[len-2].ll = NULL,
-         ApC(ret, (ob) (k+len-2)); }
+  return
+    xp = (ob) hp,
+    hp += len,
+    setw((ob*) xp, nil, len),
+    R(xp)[len-2] = 0,
+    R(xp)[len-1] = xp,
+    ApC(ret, (ob) (R(xp)+len-2)); }
 
 Ll(hfin_u) {
   Arity(1);
@@ -83,4 +84,4 @@ Ll(seek_u) {
 Ll(hnom_u) {
   Arity(1);
   TypeCheck(*fp->argv, Hom);
-  return ApC(ret, homnom(v, *fp->argv)); }
+  return ApC(ret, hnom(v, *fp->argv)); }

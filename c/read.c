@@ -139,6 +139,6 @@ Ll(fopen_u) {
   two w = (two) hp;
   hp += 4;
   w[0].a = (ob) k, w[0].b = putZ(fin_fclose);
-  w[1].a = putW(w), w[2].b = v->fins;
+  w[1].a = putW(w), w[1].b = v->fins;
   v->fins = puttwo(w+1);
   return ApC(ret, (ob) k); }

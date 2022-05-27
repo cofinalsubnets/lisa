@@ -75,7 +75,7 @@ static ll recne;
 
 // return from a function
 Ll(ret) { return
-  ip = (yo) fp->retp,
+  ip = (mo) fp->retp,
   sp = (ob*) ((ob) fp->argv + fp->argc - Num),
   fp = (fr) ((ob) sp + fp->subd - Num),
   ApY(ip, xp); }
@@ -96,7 +96,7 @@ Ll(call) {
 
 // tail call
 Ll(rec) { return
-  ip = (yo) ip[1].ll,
+  ip = (mo) ip[1].ll,
   fp->argc != (ob) ip ? ApC(recne, xp) :
   (cpyw(fp->argv, sp, getnum((ob) ip)),
    sp = (ob*) fp,
@@ -105,7 +105,7 @@ Ll(rec) { return
 // tail call with different arity
 static Ll(recne) { return
   v->xp = fp->subd,
-  v->ip = (yo) fp->retp, // save return info
+  v->ip = (mo) fp->retp, // save return info
   fp = (fr) (fp->argv + getnum(fp->argc - (ob) ip)),
   rcpyw(fp, sp, getnum((ob) ip)), // copy from high to low
   sp = (ob*) (((fr) fp) - 1),
@@ -142,44 +142,48 @@ Br(brgt2,   *sp++ > xp,  FF, xp, GF, nil)
 Br(brgteq,  *sp++ >= xp, GF, xp, FF, nil)
 // brgteq2 is brlt
 #undef Br
-#define OP2(nom, x) OP(nom, x, 2)
 
 ////
 /// Load Instructions
 //
 
 // constants
-OP1(one, putnum(1))
-OP1(zero, putnum(0))
+Op(1, one, putnum(1))
+Op(1, zero, putnum(0))
 // immediate value from thread
-OP2(imm, (ob) ip[1].ll)
+Op(2, imm, (ob) ip[1].ll)
 
 // indexed references
 #define Ref(b) (*(ob*)((ob)(b)+(ob)ip[1].ll-Num))
 // pointer arithmetic works because fixnums are premultiplied by W
 
 // function arguments
-OP2(arg, Ref(fp->argv))
-OP1(arg0, fp->argv[0])
-OP1(arg1, fp->argv[1])
+Op(2, arg, Ref(fp->argv))
+Op(1, arg0, fp->argv[0])
+Op(1, arg1, fp->argv[1])
 
 // local variables
-OP2(loc, Ref(((ob*)Locs)))
-OP1(loc0, ((ob*)Locs)[0])
-OP1(loc1, ((ob*)Locs)[1])
+Op(2, loc, Ref(((ob*)Locs)))
+Op(1, loc0, ((ob*)Locs)[0])
+Op(1, loc1, ((ob*)Locs)[1])
 
 // closure variables
-OP2(clo, Ref(((ob*)fp->clos)))
-OP1(clo0, ((ob*)fp->clos)[0])
-OP1(clo1, ((ob*)fp->clos)[1])
+Op(2, clo, Ref(((ob*)fp->clos)))
+Op(1, clo0, ((ob*)fp->clos)[0])
+Op(1, clo1, ((ob*)fp->clos)[1])
 
 ////
 /// Store Instructions
 //
 // stack push
-Vm(push) { Have1(); return *--sp = xp, ApN(1, xp); }
+Vm(push) { Have1(); return
+  *--sp = xp,
+  ApN(1, xp); }
 // dup top of stack
-Ll(dupl) { Have1(); --sp; sp[0] = sp[1]; return ApN(1, xp); }
+Vm(dupl) { Have1(); return
+  --sp,
+  sp[0] = sp[1],
+  ApN(1, xp); }
 
 
 // set a local variable
@@ -313,16 +317,11 @@ static Vm(encl) {
 
 Ll(encll) { return ApC(encl, Locs); }
 Ll(encln) { return ApC(encl, nil); }
-Ll(cwm_u) { return ApC(ret, v->wns); }
-Ll(popd_u) {
-  xp = B(v->wns);
-  if (isW(xp)) v->wns = xp;
-  return ApC(ret, nil); }
 
-ob homnom(em v, ob x) {
+ob hnom(em v, ob x) {
   host *k = gethom(x)->ll;
   if (k == clos || k == clos0 || k == clos1)
-    return homnom(v, (ob) gethom(x)[2].ll);
+    return hnom(v, (ob) gethom(x)[2].ll);
   ob* h = (ob*) gethom(x);
   while (*h) h++;
   x = h[-1];

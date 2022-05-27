@@ -1,14 +1,9 @@
 #include "la.h"
-
-ob refer(em v, ob _) {
-  ob x, mod = v->wns;
-  for (; twop(mod); mod = B(mod))
-    if ((x = tbl_get(v, A(mod), _))) return x;
-  return 0; }
-
+#include <time.h>
 #include <stdlib.h>
-// vm finalizer
-void la1(la v) {
+
+// finalize a process
+void la1(ps v) {
   if (!v) return;
   for (ob f = v->fins; isW(f); f = B(f))
     ((finalizer*) getZ(BA(f)))(v, AA(f));
@@ -16,17 +11,31 @@ void la1(la v) {
   free(v); }
 
 // initialization helpers
-static NoInline bool
-  inst(la, const char *, go *),
-  prim(la, const char *, go *);
+//
+// store an instruction address under a variable in the
+// toplevel namespace // FIXME use a different namespace
+static NoInline bool inst(em v, const char *a, ll *b) {
+  ob z; return !(z = interns(v, a)) ? 0 :
+    !!tbl_set(v, A(v->wns), z, putnum(b)); }
 
-#include <time.h>
+// make a primitive function
+static NoInline bool prim(em v, const char *a, ll *i) {
+  ob nom; mo k; return
+    (nom = interns(v, a)) &&
+    (nom = pair(v, nom, nil)) &&
+    (with(nom, k = cells(v, 4)), k) ?
+      !!tbl_set(v, A(v->wns), A(nom), (ob)
+        (k[0].ll = i,    k[1].ll = (ll*) nom,
+         k[2].ll = NULL, k[3].ll = (ll*) k)) : 0; }
+
+
+// initialize a process
 la la0(void) {
-  ob _; em v = malloc(sizeof(struct ph));
+  ob _; em v = malloc(sizeof(struct ps));
   return v && (
      // set time & random seed
      v->t0 = clock(),
-     v->rand = lcprng(v->t0),
+     v->rand = v->t0,
 
      // configure memory
      // how big a memory pool do we start with?
@@ -71,16 +80,3 @@ la la0(void) {
 #define register_inst(a, b) && ((b) ? prim(v,b,a) : inst(v, "i-"#a,a))
      insts(register_inst))
     ? v : (la1(v), NULL); }
-
-static NoInline bool inst(em v, const char *a, ll *b) {
-  ob z; return !(z = interns(v, a)) ? 0 :
-    !!tbl_set(v, A(v->wns), z, putnum(b)); }
-
-static NoInline bool prim(em v, const char *a, ll *i) {
-  ob nom; mo k; return
-    (nom = interns(v, a)) &&
-    (nom = pair(v, nom, nil)) &&
-    (with(nom, k = cells(v, 4)), k) ?
-      !!tbl_set(v, A(v->wns), A(nom), (ob)
-        (k[0].ll = i,    k[1].ll = (ll*) nom,
-         k[2].ll = NULL, k[3].ll = (ll*) k)) : 0; }

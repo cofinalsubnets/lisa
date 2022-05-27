@@ -7,7 +7,7 @@ static void emhomn(em v, ob x, FILE *o) {
          if (symp(B(x)) || twop(B(x))) emhomn(v, B(x), o); } }
 
 static void emhom(em v, ob x, FILE *o) {
-  emhomn(v, homnom(v, x), o); }
+  emhomn(v, hnom(v, x), o); }
 
 static void emnum(em v, ob x, FILE *o) {
   fprintf(o, "%ld", getnum(x)); }

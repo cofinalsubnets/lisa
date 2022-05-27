@@ -1,7 +1,6 @@
 #include "la.h"
 #include <stdlib.h>
 #include <time.h>
-#include <string.h>
 
 static copier
   cphom, cptwo, cpsym, cpstr, cptbl, cpid,
@@ -11,7 +10,6 @@ static copier
 static Inline Gc(cp) { return copiers[Q(x)](v, x, len0, pool0); }
 static Gc(cpid) { return x; }
 
-static ob sskc(la, ob*, ob);
 
 // the exact method for copying an object into
 // the new pool depends on its type. copied
@@ -90,7 +88,7 @@ static clock_t copy(la v, intptr_t len1) {
   v->sp = sp0 + shift;
   v->fp = (fr) ((ob*) v->fp + shift);
   CP(v->xp), CP(v->sns), CP(v->wns);
-  v->ip = (yo) cp(v, (ob) v->ip, len0, pool0);
+  v->ip = (mo) cp(v, (ob) v->ip, len0, pool0);
   for (int i = 0; i < LexN; CP(v->lex[i]), i++);
   for (ob *sp1 = v->sp; sp0 < top0; COPY(*sp1++, *sp0++));
   for (mm r = v->keep; r; CP(*r->it), r = r->et);
@@ -162,13 +160,13 @@ bool please(la v, uintptr_t req) {
 Gc(cphom) {
   ob e = evacd(v, x, Hom);
   if (e) return e;
-  yo src = (yo) x,
+  mo src = (mo) x,
      end = button(src),
-     start = (yo) end[1].ll,
+     start = (mo) end[1].ll,
      dst = bump(v, end - start + 2),
      j = dst;
 
-  for (yo k = start; k < end;)
+  for (mo k = start; k < end;)
     j->ll = k->ll,
     k++->ll = (ll*) j++;
   j[0].ll = NULL, j[1].ll = (ll*) dst;
@@ -227,279 +225,3 @@ Gc(cptwo) {
     B(dst) = cp(v, B(x), len0, pool0),
     A(dst) = cp(v, A(dst), len0, pool0);
   return dst; }
-
-static Inline intptr_t tbl_idx(uintptr_t cap, uintptr_t co) {
-  return co & ((1 << cap) - 1); }
-
-static Inline uintptr_t tbl_load(ob t) {
-  return gettbl(t)->len >> gettbl(t)->cap; }
-
-static ob tbl_ent_(la v, ob e, ob k) { return
-  e == nil ? e : eql(R(e)[0], k) ? e : tbl_ent_(v, R(e)[2], k); }
-
-static ob tbl_ent(la v, ob u, ob k) {
-  tbl t = gettbl(u); return
-    tbl_ent_(v, t->tab[tbl_idx(t->cap, hash(v, k))], k); }
-
-static hasher
-  hash_sym, hash_str, hash_two, hash_hom, hash_num, hash_nil,
-  *hashers[] = {
-    [Hom] = hash_hom, [Two] = hash_two,
-    [Str] = hash_str, [Num] = hash_num, [Sym] = hash_sym,
-    [Tbl] = hash_nil, };
-
-Inline uintptr_t hash(la v, ob x) { return hashers[Q(x)](v, x); }
-
-static const uintptr_t mix = 2708237354241864315;
-static Inline uintptr_t ror64(uintptr_t x, uintptr_t n) { return (x<<(64-n))|(x>>n); }
-static Hash(hash_sym) { return getsym(x)->code; }
-static Hash(hash_two) { return ror64(hash(v, A(x)) * hash(v, B(x)), 32); }
-static Hash(hash_hom) { return hash(v, homnom(v, x)) ^ mix; }
-static Hash(hash_num) { return ror64(mix * x, 16); }
-static Hash(hash_nil) { return ror64(mix * Q(x), 48); }
-static Hash(hash_str) {
-  str s = getstr(x);
-  uintptr_t len = s->len;
-  char *us = s->text;
-  for (uintptr_t h = 1;; h ^= *us++, h *= mix)
-    if (!len--) return h; }
-
-// shrinking a table never allocates memory, so it's safe
-// to do at any time.
-static void tbl_fit(la v, ob t) {
-  if (tbl_load(t)) return;
-
-  ob e = nil, f, g;
-  tbl u = gettbl(t);
-
-  // collect all entries
-  for (uintptr_t i = 1 << u->cap; i--;)
-    for (f = u->tab[i], u->tab[i] = nil; f != nil;
-      g = R(f)[2], R(f)[2] = e,
-      e = f, f = g);
-
-  // shrink bucket array
-  while (u->cap && tbl_load(t) < 1) u->cap--;
-
-  // reinsert
-  while (e != nil) {
-    uintptr_t i = tbl_idx(u->cap, hash(v, R(e)[0]));
-    f = R(e)[2],
-    R(e)[2] = u->tab[i],
-    u->tab[i] = e,
-    e = f; } }
-
-static ob tbl_del(la v, ob t, ob key) {
-  tbl y = gettbl(t);
-  ob val = nil;
-  intptr_t b = tbl_idx(y->cap, hash(v, key));
-  ob e = y->tab[b],
-     prev[] = {0,0,e};
-  for (ob l = (ob) &prev; l != nil && R(l)[2] != nil; l = R(l)[2])
-    if (R(R(l)[2])[0] == key) {
-      val = R(R(l)[2])[1];
-      R(l)[2] = R(R(l)[2])[2];
-      y->len--;
-      break; }
-  return y->tab[b] = prev[2], tbl_fit(v, t), val; }
-
-
-// tbl_grow(vm, tbl, new_size): destructively resize a hash table.
-// new_size words of memory are allocated for the new bucket array.
-// the old table entries are reused to populate the modified table.
-static ob tbl_grow(la v, ob t) {
-  ob *tab0, *tab1;
-  uintptr_t cap0 = gettbl(t)->cap, cap1 = cap0 + 1,
-            len = 1<<cap1;
-  with(t, tab1 = cells(v, len + 2));
-  if (!tab1) return 0;
-  tab1[len] = 0, tab1[len+1] = (ob) tab1;
-  setw(tab1, nil, 1<<cap1);
-  tab0 = gettbl(t)->tab;
-
-  for (uintptr_t i, cap = 1 << cap0; cap--;)
-    for (ob e, es = tab0[cap]; es != nil;)
-      e = es,
-      es = R(es)[2],
-      i = tbl_idx(cap1, hash(v, R(e)[0])),
-      R(e)[2] = tab1[i],
-      tab1[i] = e;
-
-  return gettbl(t)->cap = cap1, gettbl(t)->tab = tab1, t; }
-
-static ob tbl_set_s(la v, ob t, ob k, ob x) {
-  tbl y;
-  ob *e = (ob*) tbl_ent(v, t, k);
-  uintptr_t i = tbl_idx(gettbl(t)->cap, hash(v, k));
-  return (ob) e != nil ? e[1] = x :
-    (with(t, with(k, with(x, e = cells(v, 5)))),
-     !e ? 0 : (y = gettbl(t),
-               e[0] = k,
-               e[1] = x,
-               e[2] = (ob) y->tab[i],
-               e[3] = 0,
-               e[4] = (ob) e,
-               y->tab[i] = (ob) e,
-               y->len += 1,
-               x)); }
-
-ob tbl_set(la v, ob t, ob k, ob x) {
-  with(t, x = tbl_set_s(v, t, k, x));
-  return !x ? 0 : tbl_load(t) <= 1 ? x :
-    (with(x, t = tbl_grow(v, t)), t ? x : 0); }
-
-ob tbl_get(la v, ob t, ob k) {
-  ob e = tbl_ent(v, t, k);
-  return e == nil ? 0 : R(e)[1]; }
-
-ob table(la v) {
-  tbl t = cells(v, Width(tbl) + 3);
-  ob *b = (ob*)(t+1);
-  return !t ? 0 :
-    (t->len = t->cap = 0,
-     t->tab = b,
-     b[0] = nil,
-     b[1] = 0,
-     b[2] = (ob) b,
-     puttbl(t)); }
-
-ob string(la v, const char* c) {
-  intptr_t bs = 1 + strlen(c);
-  str o = cells(v, Width(str) + b2w(bs));
-  return !o ? 0 :
-    (o->len = bs,
-     o->ext = 0,
-     memcpy(o->text, c, bs),
-     putstr(o)); }
-
-Vm(tbld) {
-  Arity(2);
-  TypeCheck(fp->argv[0], Tbl);
-  return CallC(v->xp = tbl_del(v, fp->argv[0], fp->argv[1])),
-         ApC(ret, xp); }
-
-
-// string instructions
-Vm(strl) {
-  Arity(1);
-  CheckType(*fp->argv, Str);
-  return ApC(ret, putnum(getstr(*fp->argv)->len-1)); }
-
-Vm(strg) {
-  Arity(2);
-  CheckType(fp->argv[0], Str);
-  CheckType(fp->argv[1], Num);
-  return ApC(ret,
-    getnum(fp->argv[1]) < getstr(fp->argv[0])->len-1 ?
-      putnum(getstr(fp->argv[0])->text[getnum(fp->argv[1])]) :
-      nil); }
-
-Vm(strconc) {
-  intptr_t l = getnum(fp->argc), sum = 0, i = 0;
-  while (i < l) {
-    ob x = fp->argv[i++];
-    CheckType(x, Str);
-    sum += getstr(x)->len - 1; }
-  intptr_t words = Width(str) + b2w(sum+1);
-  Have(words);
-  str d = (str) hp;
-  hp += words;
-  d->len = sum + 1;
-  d->ext = 0;
-  d->text[sum] = 0;
-  for (str x; i;)
-    x = getstr(fp->argv[--i]),
-    sum -= x->len - 1,
-    memcpy(d->text+sum, x->text, x->len - 1);
-  return ApC(ret, putstr(d)); }
-
-#define min(a,b)(a<b?a:b)
-#define max(a,b)(a>b?a:b)
-Vm(strs) {
-  Arity(3);
-  CheckType(fp->argv[0], Str);
-  CheckType(fp->argv[1], Num);
-  CheckType(fp->argv[2], Num);
-  str src = getstr(fp->argv[0]);
-  intptr_t lb = getnum(fp->argv[1]), ub = getnum(fp->argv[2]);
-  lb = max(lb, 0);
-  ub = min(ub, src->len-1);
-  ub = max(ub, lb);
-  intptr_t words = Width(str) + b2w(ub - lb + 1);
-  Have(words);
-  str dst = (str) hp;
-  hp += words;
-  dst->len = ub - lb + 1;
-  dst->ext = 0;
-  dst->text[ub - lb] = 0;
-  memcpy(dst->text, src->text + lb, ub - lb);
-  return ApC(ret, putstr(dst)); }
-
-Vm(strmk) {
-  intptr_t i = 0,
-    bytes = getnum(fp->argc)+1,
-    words = Width(str) + b2w(bytes);
-  Have(words);
-  str s = (str) hp;
-  hp += words;
-  for (ob x; i < bytes-1; s->text[i++] = getnum(x)) {
-    x = fp->argv[i];
-    TypeCheck(x, Num);
-    if (x == N0) break; }
-  return s->text[i] = 0,
-         s->ext = 0,
-         s->len = i+1,
-         ApC(ret, putstr(s)); }
-
-//symbols
-
-// FIXME this is bad
-// symbols are interned into a binary search tree. we make no
-// attempt to keep it balanced but it gets rebuilt in somewhat
-// unpredictable order every gc cycle so hopefully that should
-// help keep it from getting too bad. a hash table is probably
-// the way to go but rebuilding that is more difficult. the
-// existing code is unsuitable because it dynamically resizes
-// the table and unpredictable memory allocation isn't safe
-// during garbage collection.
-static ob sskc(la v, ob*y, ob x) {
-  int i;
-  sym z;
-  return !nilp(*y) ?
-    (z = getsym(*y),
-     i = strcmp(getstr(z->nom)->text, getstr(x)->text),
-     i == 0 ? *y : sskc(v, i < 0 ? &z->r : &z->l, x)) :
-    // FIXME the caller must ensure Avail >= Width(sym)
-    // (because GC here would void the tree)
-    (z = cells(v, Width(sym)),
-     z->code = hash(v, z->nom = x) ^ mix,
-     z->l = z->r = nil,
-     *y = putsym(z)); }
-
-ob intern(la v, ob x) {
-  bool _; return
-    Avail >= Width(sym) ||
-    (with(x, _ = please(v, Width(sym))), _) ?
-      sskc(v, &v->syms, x) : 0; }
-
-Vm(sym_u) {
-  sym y; return 
-    fp->argc > N0 && strp(*fp->argv) ?
-      (CallC(v->xp = intern(v, *fp->argv)),
-       !xp ? 0 : ApC(ret, xp)) :
-
-    sp - hp < Width(sym) ?
-      (v->xp = Width(sym),
-       ApC(gc, xp)) :
-
-    (y = (sym) hp,
-     hp += Width(sym),
-     y->nom = y->l = y->r = nil,
-     y->code = v->rand = lcprng(v->rand),
-     ApC(ret, putsym(y))); }
-
-Vm(ystr_u) {
-  Arity(1);
-  xp = *fp->argv;
-  CheckType(xp, Sym);
-  return ApC(ret, getsym(xp)->nom); }

@@ -9,11 +9,11 @@
 
 typedef uintptr_t N;
 typedef intptr_t ob, Z;
-typedef struct mo *mo, *yo;
-typedef struct ph *em, *la, *ph;
-typedef struct fr *fr, *co;
+typedef struct mo *mo;
+typedef struct ps *em, *la, *ph, *ps;
+typedef struct fr *fr, *co, *ar;
 #define Ll(n, ...)\
-  ob n(ph v, ob xp, mo ip, ob *hp, ob *sp, co fp)
+  ob n(ps v, ob xp, mo ip, ob *hp, ob *sp, ar fp)
 typedef Ll(host);
 #define Vm Ll
 typedef host vm, ll, go;
@@ -65,10 +65,10 @@ enum lex {
   Def, Cond, Lamb, Quote, Seq, Splat,
   Eval, Apply, LexN };
 
-struct ph {
+struct ps {
   // vm state -- kept in CPU registers most of the time
   mo ip; // current thread
-  fr fp; // top of control stack
+  ar fp; // top of control stack
   ob xp, // free register
      *hp, // top of heap
      *sp; // top of data stack
@@ -92,8 +92,7 @@ void emit(la, ob, fd);
 bool
   eql(ob, ob),
   finalize_with(la, ob, finalizer*),
-  please(la, N),
-  pushs(la, ...);
+  please(la, N);
 la la0(void);
 void la1(la);
 mo ana(la, ob, ob), ana_p(la, K char*, ob);
@@ -107,9 +106,10 @@ ob refer(la, ob),
    pair(la, ob, ob),
    parq(la, fd),
    parse(la, fd),
-   homnom(la, ob),
+   hnom(la, ob),
    linitp(la, ob, ob*),
    snoc(la, ob, ob),
+   sskc(la, ob*, ob),
    err(la, ob, K char*, ...);
 Z lidx(ob, ob);
 
@@ -130,7 +130,6 @@ Z lidx(ob, ob);
 #define um (v->keep=v->keep->et)
 #define with(y,...) (mm(&(y)),(__VA_ARGS__),um)
 #define Width(t) b2w(sizeof(struct t))
-#define Push(...) pushs(v, __VA_ARGS__, (ob) 0)
 
 #define Q(_) ((enum class)((_)&TagMask))
 
@@ -241,7 +240,7 @@ static Inline void *cells(la v, uintptr_t n) {
 insts(ninl)
 #undef ninl
 
-ll gc, domain_error, ary_error;
+ll gc, domain_error, ary_err;
 
 // " the interpreter "
 // the arguments to a terp function collectively represent the
@@ -282,14 +281,16 @@ ll gc, domain_error, ary_error;
 #define ApY(f, x) (ip = (mo) (f), ApC(ip->ll, (x)))
 
 #define HasArgs(n) (putnum(n) <= fp->argc)
-#define ArityError(n) ApC(ary_error, putnum(n))
-#define Arity(n) if (!HasArgs(n)) return ArityError(n)
+#define AryErr(n) ApC(ary_err, putnum(n))
+#define Ary(n) if (!HasArgs(n)) return AryErr(n)
 #define IsA(x, t) (Q((x))==t)
-#define TypeError(x,t) ApC(domain_error, x)
-#define TypeCheck(x,t) if (!IsA((x), (t))) return TypeError((x), (t))
+#define TypErr(x,t) ApC(domain_error, x)
+#define Typ(x,t) if (!IsA((x), (t))) return TypErr((x), (t))
 #define Get(n) ApC((v->xp=n, gc), xp)
 #define Have1() if (hp == sp) return Get(1)
 #define Have(n) if (sp - hp < n) return Get(n)
+#define TypeCheck Typ
+#define Arity Ary
 
 #define Tc TypeCheck
 #define CheckType TypeCheck
@@ -337,10 +338,7 @@ static Inline Z lcprng(Z s) {
 _Static_assert(sizeof(intptr_t) == 8, "64bit");
 _Static_assert(-1 == -1 >> 1, "signed >>");
 
-#define OP(nom, x, n) Ll(nom) { xp = (x); return ApN(n, xp); }
-#define OP1(nom, x) OP(nom, x, 1)
+#define Op(n, nom, x) Ll(nom) { xp = (x); return ApN(n, xp); }
+#define OP1(nom, x) Op(1, nom, x)
 #define BINOP(nom, xpn) Vm(nom) { xp = (xpn); return ApN(1, xp); }
-#define UBINOP(nom, dflt, op) Ll(nom##_u) {\
-  mm_u(getnum(fp->argc), fp->argv, dflt, op); }
-
 #endif

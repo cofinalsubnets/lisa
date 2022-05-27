@@ -10,7 +10,6 @@ ob pair(la v, ob a, ob b) {
   two w; return Avail < 2 ? pair_(v, a, b) :
     (w = bump(v, 2), w->a = a, w->b = b, puttwo(w)); }
 
-
 // helper functions for lists
 Z lidx(ob l, ob x) {
   for (Z i = 0; twop(l); l = B(l), i++)
@@ -27,26 +26,32 @@ ob snoc(em v, ob l, ob x) {
     (with(l, x = snoc(v, B(l), x)),
      !x ? 0 : pair(v, A(l), x)); }
 // pairs
-OP1(car, A(xp)) OP1(cdr, B(xp))
-Vm(cons) { Have1(); return
-  hp[0] = xp,
-  hp[1] = *sp++,
-  xp = puttwo(hp),
-  hp += 2,
-  ApN(1, xp); }
+Op(1, car, A(xp))
+Op(1, cdr, B(xp))
+
+Vm(cons) {
+  Have1();
+  return
+    hp[0] = xp,
+    hp[1] = *sp++,
+    xp = puttwo(hp),
+    hp += 2,
+    ApN(1, xp); }
 
 Vm(car_u) {
-  Arity(1);
-  TypeCheck(*fp->argv, Two);
+  Ary(1);
+  Typ(fp->argv[0], Two);
   return ApC(ret, A(*fp->argv)); }
 
 Vm(cdr_u) {
-  Arity(1);
-  TypeCheck(*fp->argv, Two);
+  Ary(1);
+  Typ(fp->argv[0], Two);
   return ApC(ret, B(*fp->argv)); }
 
 Ll(cons_u) {
-  Arity(2); Have(2); two w; return
+  Ary(2);
+  Have(2);
+  two w; return
     w = (two) hp,
     hp += 2,
     w->a = fp->argv[0],

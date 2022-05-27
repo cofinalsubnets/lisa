@@ -15,6 +15,9 @@
     if (x == N0) return ApC(domain_error, x);}\
   return ApC(ret, putnum(xp));}
 
+#define UBINOP(nom, dflt, op) Ll(nom##_u) {\
+  mm_u(getnum(fp->argc), fp->argv, dflt, op); }
+
 Ll(sub_u) {
   if (!(xp = getnum(fp->argc))) return ApC(ret, N0);
   TypeCheck(*fp->argv, Num);
@@ -52,7 +55,7 @@ Ll(mod_u) {
 Ll(rnd_u) { return
   xp = putnum(v->rand = lcprng(v->rand)), ApC(ret, xp); }
 
-OP1(neg, putnum(-getnum(xp)))
+Op(1, neg, putnum(-getnum(xp)))
 BINOP(add,  xp + *sp++ - Num)
 BINOP(bor,  xp | *sp++)
 BINOP(bxor, (xp ^ *sp++) | Num)
@@ -72,4 +75,3 @@ Ll(bnot_u) {
   return
     xp = fp->argv[0],
     ApC(ret, putnum(~getnum(xp))); }
-
