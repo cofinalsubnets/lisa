@@ -158,8 +158,9 @@ static ob eval(em v, ob x) {
      call(v, (ob) (k + 3), k, v->hp, v->sp, v->fp)); }
 
 // initialization helpers
-static NoInline bool inst(em, const char*, ll *),
-                prim(em, const char*, ll*);
+static NoInline bool
+  inst(em, const char *, ll *),
+  prim(em, const char *, ll *);
 
 // finalize a vm. 
 static void fin(em v) {

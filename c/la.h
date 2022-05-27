@@ -11,12 +11,13 @@
 _Static_assert(sizeof(intptr_t) == 8, "64bit");
 _Static_assert(-1 == -1 >> 1, "signed >>");
 
+typedef uintptr_t N;
 typedef intptr_t ob, Z;
 typedef struct mo *mo, *yo;
-typedef struct la *em, la;
+typedef struct la *em, *la;
 typedef struct fr *fr;
 #define Ll(n, ...)\
-  ob n(em v, ob xp, mo ip, ob *hp, ob *sp, fr fp)
+  ob n(la v, ob xp, mo ip, ob *hp, ob *sp, fr fp)
 typedef Ll(go);
 #define Vm Ll
 typedef go vm, ll;
@@ -28,22 +29,24 @@ enum class { Hom, Num, Two, Str, Sym, Tbl, };
 #define NomHom "hom"
 #define NomNum "num"
 #define NomTwo "two"
+// FIXME ext
+#define NomTbl "tbl"
+// FIXME principled reason to separate sym/str?
 #define NomStr "str"
 #define NomSym "sym"
-#define NomTbl "tbl"
 
-#define Gc(n) ob n(em v, ob x, intptr_t len0, ob*pool0)
-#define Hash(n) uintptr_t n(em v, ob x)
-#define Show(n) void n(em v, ob x, FILE *o)
+#define Gc(n) ob n(la v, ob x, intptr_t len0, ob*pool0)
+#define Hash(n) N n(la v, ob x)
+#define Show(n) void n(la v, ob x, FILE *o)
 typedef Hash(hasher);
 typedef Gc(copier);
 typedef Show(writer);
 
 typedef struct ext {
   ob name;
-  ob (*copy)(em, ob, intptr_t, ob*);
-  uintptr_t (*hash)(em, ob);
-  void (*show)(em, ob, FILE*);
+  ob (*copy)(la, ob, intptr_t, ob*);
+  uintptr_t (*hash)(la, ob);
+  void (*show)(la, ob, FILE*);
   bool (*equal)(ob, ob);
 } *ext;
 
@@ -66,20 +69,20 @@ struct la {
   ob rand, syms, glob[NGlobs]; };
 
 hasher hash;
-void *cells(em, uintptr_t), emit(em, ob, FILE*);
-bool eql(ob, ob), please(em, uintptr_t), pushs(em, ...);
-mo ana(em, ob);
-ob lookup(em, ob), cwm(em);
-ob string(em, const char*),
-   intern(em, ob),
-   table(em),
-   scrp(em, const char*),
-   tbl_set(em, ob, ob, ob),
-   tbl_get(em, ob, ob),
-   pair(em, ob, ob),
-   parse(em, FILE*),
-   homnom(em, ob),
-   err(em, ob, const char*, ...);
+void *cells(la, uintptr_t), emit(la, ob, FILE*);
+bool eql(ob, ob), please(la, uintptr_t), pushs(la, ...);
+mo ana(la, ob);
+ob lookup(la, ob), cwm(la);
+ob string(la, const char*),
+   intern(la, ob),
+   table(la),
+   scrp(la, const char*),
+   tbl_set(la, ob, ob, ob),
+   tbl_get(la, ob, ob),
+   pair(la, ob, ob),
+   parse(la, FILE*),
+   homnom(la, ob),
+   err(la, ob, const char*, ...);
 
 const char *tnom(enum class);
 
@@ -140,7 +143,7 @@ static Inline uintptr_t llen(ob l) {
   while (twop(l)) l = B(l), i++;
   return i; }
 
-static Inline ob interns(em v, const char *s) {
+static Inline ob interns(la v, const char *s) {
   ob _ = string(v, s);
   return !_ ? 0 : intern(v, _); }
 
@@ -167,14 +170,14 @@ static Inline ext extt(ob _) {
  _(brlt, 0) _(brlteq, 0) _(breq, 0) _(brgteq, 0) _(brlt2, 0)\
  _(brlteq2, 0) _(brgt2, 0) _(brgt, 0) _(brne, 0)\
  _(dupl, 0) _(emi, 0) _(emx, 0) _(vararg, 0)\
- _(gsym_u, "sym") _(cwm_u, "cwm")\
+ _(sym_u, NomSym) _(cwm_u, "cwm")\
  _(par_u, "read") _(sar_u, ">>") _(sal_u, "<<") _(band_u, "&")\
  _(bor_u, "|") _(bxor_u, "^")\
- _(add_u, "+") _(hom_u, "hom")\
+ _(add_u, "+") _(hom_u, NomHom)\
  _(sub_u, "-") _(mul_u, "*") _(div_u, "/") _(mod_u, "%")\
  _(lt_u, "<") _(lteq_u, "<=") _(eq_u, "=") _(gteq_u, ">=")\
  _(gt_u, ">") _(car_u, "A") _(cdr_u, "B") _(cons_u, "X")\
- _(strg, "sget") _(gsym_u, "ssym") _(strmk, "str")\
+ _(strg, "sget") _(strmk, NomStr)\
  _(strl, "slen") _(strs, "ssub")   _(strconc, "scat")\
  _(tbll, "tlen") _(tblmk, "tbl") _(tblg, "tget")\
  _(tblc, "thas") _(tbls, "tset") _(tbld, "tdel")\

@@ -11,7 +11,7 @@ static copier
 static Inline Gc(cp) { return copiers[Q(x)](v, x, len0, pool0); }
 static Gc(cpid) { return x; }
 
-static ob sskc(em, ob*, ob);
+static ob sskc(la, ob*, ob);
 
 // the exact method for copying an object into
 // the new pool depends on its type. copied
@@ -26,17 +26,17 @@ static ob sskc(em, ob*, ob);
 #define COPY(dst,src) (dst=cp(v,src,len0,pool0))
 #define CP(x) COPY(x,x)
 
-static Inline ob evacd(em v, ob _, enum class q) {
+static Inline ob evacd(la v, ob _, enum class q) {
   ob x = *R(_ - q);
   return Q(x) == q &&
     inb(R(x), v->pool, v->pool + v->len) ?  x : 0; }
 
 // unchecked allocator -- make sure there's enough memory!
-static Inline void* bump(em v, intptr_t n) {
+static Inline void* bump(la v, intptr_t n) {
   void* x = v->hp; return v->hp += n, x; }
-static void *cells_(em v, uintptr_t n) {
+static void *cells_(la v, uintptr_t n) {
   return please(v, n) ? bump(v, n) : 0; }
-void* cells(em v, uintptr_t n) {
+void* cells(la v, uintptr_t n) {
   return Avail >= n ? bump(v, n) : cells_(v, n); }
 
 #define oom_err_msg "out of memory : %d + %d"
@@ -70,7 +70,7 @@ Vm(gc) {
 // t values come from clock(). if t0 < t1 < t2 then
 // u will be >= 1. however, sometimes t1 == t2. in that case
 // u = 1.
-static clock_t copy(em v, intptr_t len1) {
+static clock_t copy(la v, intptr_t len1) {
   clock_t t0, t1 = clock(), t2;
   ob len0 = v->len,
      *sp0 = v->sp,
@@ -134,7 +134,7 @@ static ob shr(ob allocd, ob len, ob vit) {
   return len >>= 1, vit >>= 1, !shrinkp ? len :
     shr(allocd, len, vit); }
 
-bool please(em v, uintptr_t req) {
+bool please(la v, uintptr_t req) {
   intptr_t len = v->len,
            vit = copy(v, len),
            allocd = len - (Avail - req);
@@ -213,13 +213,13 @@ Gc(cptwo) {
     A(dst) = cp(v, A(dst), len0, pool0);
   return dst; }
 
-static ob pair_(em v, ob a, ob b) {
+static ob pair_(la v, ob a, ob b) {
   bool _; two w;
   return with(a, with(b, _ = please(v, 2))), !_ ? 0 :
     (w = bump(v, 2), w->a = a, w->b = b, puttwo(w)); }
 
 // functions for pairs and lists
-ob pair(em v, ob a, ob b) {
+ob pair(la v, ob a, ob b) {
   two w; return Avail < 2 ? pair_(v, a, b) :
     (w = bump(v, 2), w->a = a, w->b = b, puttwo(w)); }
 
@@ -229,10 +229,10 @@ static Inline intptr_t tbl_idx(uintptr_t cap, uintptr_t co) {
 static Inline uintptr_t tbl_load(ob t) {
   return gettbl(t)->len >> gettbl(t)->cap; }
 
-static ob tbl_ent_(em v, ob e, ob k) { return
+static ob tbl_ent_(la v, ob e, ob k) { return
   e == nil ? e : eql(R(e)[0], k) ? e : tbl_ent_(v, R(e)[2], k); }
 
-static ob tbl_ent(em v, ob u, ob k) {
+static ob tbl_ent(la v, ob u, ob k) {
   tbl t = gettbl(u); return
     tbl_ent_(v, t->tab[tbl_idx(t->cap, hash(v, k))], k); }
 
@@ -243,7 +243,7 @@ static hasher
     [Str] = hash_str, [Num] = hash_num, [Sym] = hash_sym,
     [Tbl] = hash_nil, };
 
-Inline uintptr_t hash(em v, ob x) { return hashers[Q(x)](v, x); }
+Inline uintptr_t hash(la v, ob x) { return hashers[Q(x)](v, x); }
 
 static const uintptr_t mix = 2708237354241864315;
 static Inline uintptr_t ror64(uintptr_t x, uintptr_t n) { return (x<<(64-n))|(x>>n); }
@@ -261,7 +261,7 @@ static Hash(hash_str) {
 
 // shrinking a table never allocates memory, so it's safe
 // to do at any time.
-static void tbl_fit(em v, ob t) {
+static void tbl_fit(la v, ob t) {
   if (tbl_load(t)) return;
 
   ob e = nil, f, g;
@@ -284,7 +284,7 @@ static void tbl_fit(em v, ob t) {
     u->tab[i] = e,
     e = f; } }
 
-static ob tbl_del(em v, ob t, ob key) {
+static ob tbl_del(la v, ob t, ob key) {
   tbl y = gettbl(t);
   ob val = nil;
   intptr_t b = tbl_idx(y->cap, hash(v, key));
@@ -302,7 +302,7 @@ static ob tbl_del(em v, ob t, ob key) {
 // tbl_grow(vm, tbl, new_size): destructively resize a hash table.
 // new_size words of memory are allocated for the new bucket array.
 // the old table entries are reused to populate the modified table.
-static ob tbl_grow(em v, ob t) {
+static ob tbl_grow(la v, ob t) {
   ob *tab0, *tab1;
   uintptr_t cap0 = gettbl(t)->cap, cap1 = cap0 + 1,
             len = 1<<cap1;
@@ -322,7 +322,7 @@ static ob tbl_grow(em v, ob t) {
 
   return gettbl(t)->cap = cap1, gettbl(t)->tab = tab1, t; }
 
-static ob tbl_set_s(em v, ob t, ob k, ob x) {
+static ob tbl_set_s(la v, ob t, ob k, ob x) {
   tbl y;
   ob *e = (ob*) tbl_ent(v, t, k);
   uintptr_t i = tbl_idx(gettbl(t)->cap, hash(v, k));
@@ -338,16 +338,16 @@ static ob tbl_set_s(em v, ob t, ob k, ob x) {
                y->len += 1,
                x)); }
 
-ob tbl_set(em v, ob t, ob k, ob x) {
+ob tbl_set(la v, ob t, ob k, ob x) {
   with(t, x = tbl_set_s(v, t, k, x));
   return !x ? 0 : tbl_load(t) <= 1 ? x :
     (with(x, t = tbl_grow(v, t)), t ? x : 0); }
 
-ob tbl_get(em v, ob t, ob k) {
+ob tbl_get(la v, ob t, ob k) {
   ob e = tbl_ent(v, t, k);
   return e == nil ? 0 : R(e)[1]; }
 
-ob table(em v) {
+ob table(la v) {
   tbl t = cells(v, Width(tbl) + 3);
   ob *b = (ob*)(t+1);
   return !t ? 0 :
@@ -358,7 +358,7 @@ ob table(em v) {
      b[2] = (ob) b,
      puttbl(t)); }
 
-ob string(em v, const char* c) {
+ob string(la v, const char* c) {
   intptr_t bs = 1 + strlen(c);
   str o = cells(v, Width(str) + b2w(bs));
   return !o ? 0 :
@@ -457,7 +457,7 @@ Vm(strmk) {
 // existing code is unsuitable because it dynamically resizes
 // the table and unpredictable memory allocation isn't safe
 // during garbage collection.
-static ob sskc(em v, ob*y, ob x) {
+static ob sskc(la v, ob*y, ob x) {
   int i;
   sym z;
   return !nilp(*y) ?
@@ -471,14 +471,14 @@ static ob sskc(em v, ob*y, ob x) {
      z->l = z->r = nil,
      *y = putsym(z)); }
 
-ob intern(em v, ob x) {
+ob intern(la v, ob x) {
   bool _; return
     Avail >= Width(sym) ||
     (with(x, _ = please(v, Width(sym))), _) ?
       sskc(v, &v->syms, x) :
       0; }
 
-Vm(gsym_u) {
+Vm(sym_u) {
   sym y; return 
     fp->argc > N0 && strp(*fp->argv) ?
       (CallC(v->xp = intern(v, *fp->argv)),
