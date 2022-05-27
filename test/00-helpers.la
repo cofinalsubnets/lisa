@@ -1,4 +1,5 @@
-(::: test (:
+;(. 0 'helpers)
+(:
  (puts s) (>>= s 0 (slen s) (:
   (loop s i n)
    (? (< i n) (, (putc (sget s i)) (loop s (+ i 1) n)))))
@@ -10,25 +11,27 @@
 
  (color-text col s) (, (col) (puts s) (reset))
  (green-text s) (color-text green s)
- (red-text s) (color-text red s)
- box (tbl)
- (get) (tget box ())
- (set x) (tset box () x)
- (mut f) (set (f (get)))
- (T x) (L '? x (L green-text ".") (L ', (L mut (cu X x)) (L red-text "X")))
- (\ n ts . (L ',
-  (set ())
-  (X ', (X (L . (L '` (? (symp n) n (sym n)))) (map T ts)))
-  (L .)
-  (L each (L get) .)))))
+ (red-text s) (color-text red s))
+
+(: *tests* (tbl)
+   *test-failures* (tbl))
+(:
+ (mut n f) (tset *test-failures* n
+  (f (tget *test-failures* n)))
+ (:::
+  test (:
+   (\ n ts . (:
+    (Te x) (L '? x (L ', (L green-text "."))
+     (L ', (L mut (Q n) (cu X x)) (L red-text "X")))
+    (X ', (map Te ts))
+    )))))
 
 (:
  (unord-eq a b) (&&
   (= (len a) (len b))
   (all (cu memq a) b)))
 
-(: (time f) (: t0 (clock) x (f) (, (. (- (clock) t0) 'ms) x))
-
+(:
      (rev l) (foldl l () (\ a b (X b a)))
      (find l p) (? l (? (p (A l)) (A l) (find (B l) p)))
      (transp x) (ap zip (X L x))

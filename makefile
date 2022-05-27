@@ -1,6 +1,6 @@
 # set locale for reproducible sorting
 LC_ALL=C
-lang=lisa
+lang=la
 suff=la
 
 self=makefile

@@ -1,0 +1,10 @@
+(.)
+(:
+ (name n) (?
+  (symp n) (name (ystr n))
+  (strp n) (, (red-text n) (.)))
+
+ failures (tkeys *test-failures*)
+ (each failures (\ k
+  (, (name k)
+     (each (tget *test-failures* k) .)))))

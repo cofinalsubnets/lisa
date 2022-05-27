@@ -1,3 +1,4 @@
+;(. 1 'k)
 ; shared kanren support code
 (:
  ; dict - immutable map type made of pairs

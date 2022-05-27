@@ -1,4 +1,4 @@
-#include "em.h"
+#include "la.h"
 #include <time.h>
 #include <stdlib.h>
 #include <stdlib.h>
@@ -9,7 +9,7 @@
 #include <errno.h>
 
 static em ini(void);
-static void fin(struct em*);
+static void fin(struct la*);
 #ifndef PREF
 #define PREF
 #endif
@@ -20,17 +20,23 @@ static void fin(struct em*);
 #define SUFF
 #endif
 
-static ob go(bool, const char*, const char**);
+static ob seq(em, ob, ob);
+static mo comp(em, bool, const char**);
+static ob eval(em, ob);
 
 int main(int argc, char **argv) {
-  const char *boot = PREF "/lib/" LANG "/" LANG "." SUFF, *help =
-    "usage: %s [options and scripts]\n"
-    "with no arguments, start a repl\n"
-    "options:\n"
-    "  -h print this message\n"
-    "  -i start repl unconditionally\n"
-    "  -_ don't bootstrap\n"
+
+  const char
+    *boot = PREF "/lib/" LANG "/" LANG "." SUFF,
+    *help =
+      "usage: %s [options and scripts]\n"
+      "with no arguments, start a repl\n"
+      "options:\n"
+      "  -h print this message\n"
+      "  -i start repl unconditionally\n"
+      "  -_ don't bootstrap\n"
     ;
+
   for (bool shell = argc == 1;;)
     switch (getopt(argc, argv, "hi_")) {
       default: return EXIT_FAILURE;
@@ -39,11 +45,31 @@ int main(int argc, char **argv) {
       case '_': boot = NULL; continue;
       case -1:
         if (argc == optind && !shell) return EXIT_SUCCESS;
-        return go(shell, boot, (const char **) argv + optind) ?
+        em v; ob r =
+
+          (v = ini()) &&
+
+          (v->ip =
+           comp(v, shell, (const char **) argv + optind)) &&
+
+          (!boot ||
+           ((v->xp = scrp(v, boot)) &&
+            (v->ip = (mo)
+             seq(v, v->xp, (ob) v->ip)))) &&
+
+          (v->xp = pair(v, (ob) v->ip, nil)) ?
+
+          eval(v, v->xp) : 0;
+
+        return fin(v), r ?
          EXIT_SUCCESS : EXIT_FAILURE; } }
 
+
+
+// takes two threads, gives a thread that runs the first
+// thread then the second thread
 static ob seq(em v, ob a, ob b) {
-  yo k; return
+  mo k; return
     with(a, with(b, k = cells(v, 8))), !k ? 0 : (ob)
       (k[0].ll = imm,  k[1].ll = (ll*) a,
        k[2].ll = call, k[3].ll = (ll*) N0,
@@ -61,41 +87,43 @@ ob lookup(em v, ob _) {
   return 0; }
 
 static ob eval(em, ob);
+
+// bootstrap eval interpreter function
 Ll(ev_u) {
   Arity(1); mo y;
   return
+    // check to see if ev has been overridden in the
+    // toplevel namespace and if so call that. this way
+    // ev calls compiled pre-bootstrap will use the
+    // bootstrapped compiler, which is what we want?
+    // seems kind of strange to need this ...
     xp = lookup(v, v->glob[Eval]),
     xp && homp(xp) && gethom(xp)->ll != ev_u ?
-      ApY((yo) xp, nil) :
+      ApY((mo) xp, nil) :
+      // otherwise use the bootstrap compiler.
       !(Pack(), y = ana(v, *fp->argv)) ? 0 :
         (Unpack(), ApY(y, xp)); }
 
-static Vm(fin_ok) { return fin(v), nil; }
+// called after running all scripts successfully
+static Ll(yield) { return Pack(), xp; }
 static Vm(repl) { for (Pack();;) {
   if ((xp = parse(v, stdin))) {
     if ((xp = eval(v, xp))) 
       emit(v, xp, stdout), fputc('\n', stdout); }
-  else if (feof(stdin)) return fin(v), nil; } }
+  else if (feof(stdin)) return nil; } }
 
-static yo comp(em v, bool shell, const char **paths) {
-  const char *path = *paths; yo k; ob x, y; return
+// takes scripts and if we want a repl, gives a thread
+static mo comp(em v, bool shell, const char **paths) {
+  const char *path = *paths; mo k; ob x, y; return
     !path ? !(k = cells(v, 3)) ? 0 :
-               (k[0].ll = shell ? repl : fin_ok,
+               (k[0].ll = shell ? repl : yield,
                 k[1].ll = 0, k[2].ll = (ll*) k, k) :
     (y = (ob) comp(v, shell, paths+1)) &&
-    (with(y, x = scrp(v, path)), x) ? (yo) seq(v, x, y) : 0; }
-
-static ob go(bool shell, const char *boot, const char **paths) {
-  em v; return 
-    (v = ini()) &&
-    (v->ip = comp(v, shell, paths)) &&
-    (!boot || ((v->xp = scrp(v, boot)) &&
-               (v->ip = (mo) seq(v, v->xp, (ob) v->ip)))) &&
-    (v->xp = pair(v, (ob) v->ip, nil)) ? eval(v, v->xp) : 0; }
+    (with(y, x = scrp(v, path)), x) ? (mo) seq(v, x, y) : 0; }
 
 static ob scrpr(em, FILE*);
 
-// scrp : yo em str
+// scrp : mo em str
 // produce a hom from a file by interpreting the contents
 // as a list action on the phase space.
 ob scrp(em v, const char *path) {
@@ -118,9 +146,8 @@ static ob scrpr(em v, FILE *in) {
     (x = pair(v, v->glob[Eval], x)) &&
     (with(x, y = scrpr(v, in)), y) ? pair(v, x, y) : 0; }
 
-static Ll(yield) { return Pack(), xp; }
 static ob eval(em v, ob x) {
-  yo k; return
+  mo k; return
     !(Push(x) && (k = cells(v, 6))) ? 0 :
     (k[0].ll = call,
      k[1].ll = (ll*) putnum(1),
@@ -133,21 +160,41 @@ static ob eval(em v, ob x) {
 // initialization helpers
 static NoInline bool inst(em, const char*, ll *),
                 prim(em, const char*, ll*);
-static void fin(em v) { if (v) free(v->pool), free(v); }
 
-#define register_inst(a, b) && ((b) ? prim(v,b,a) : inst(v, "i-"#a,a))
+// finalize a vm. 
+static void fin(em v) {
+  if (v) free(v->pool), free(v); }
+
 static em ini(void) {
-  ob _; em v = malloc(sizeof(struct em));
-  return v &&
-    (v->t0 = clock(),
+  ob _; em v = malloc(sizeof(struct la));
+  return v && (
+     // set time & random seed
+     v->t0 = clock(),
      v->rand = lcprng(v->t0),
-     v->len = 1, v->pool = NULL, v->mm = NULL,
 
-     v->fp = (fr) (v->hp = v->sp = (ob*) sizeof(ob)),
-     v->ip = (yo) (v->xp = v->syms = nil),
-
+     // configure memory
+     // how big a memory pool do we start with?
+#define InitialPoolSize (1<<10)
+     v->len = InitialPoolSize,
+     // obviously there's no pool yet
+     v->pool = NULL,
+     // nor any protected values
+     v->mm = NULL,
+     // the data stack starts at the top of memory
+     v->sp = v->pool + v->len,
+     // the call stack lives on the data stack
+     v->fp = (fr) v->sp,
+     // the heap is all used up to start, so the first
+     // allocation initializes the pool
+     v->hp = v->sp,
+     // ip, xp, symbols, and globals all start empty
+     v->ip = (mo) nil,
+     v->xp = nil,
+     v->syms = nil,
      setw(v->glob, nil, NGlobs),
 
+     // now we can start allocating.
+     // global symbols // FIXME stop using these if possible
      (v->glob[Eval] = interns(v, "ev")) &&
      (v->glob[Apply] = interns(v, "ap")) &&
      (v->glob[Def] = interns(v, ":")) &&
@@ -156,17 +203,22 @@ static em ini(void) {
      (v->glob[Quote] = interns(v, "`")) &&
      (v->glob[Seq] = interns(v, ",")) &&
      (v->glob[Splat] = interns(v, ".")) &&
+
+     // make a hash for the toplevel namespace
      (_ = table(v)) &&
      (v->glob[Topl] = pair(v, _, nil)) // &&
+     // register instruction addresses at toplevel so the
+     // compiler can use them.
+#define register_inst(a, b) && ((b) ? prim(v,b,a) : inst(v, "i-"#a,a))
      insts(register_inst))
     ? v : (fin(v), NULL); }
-
 
 static NoInline bool inst(em v, const char *a, ll *b) {
   ob z; return !(z = interns(v, a)) ? 0 :
     !!tbl_set(v, cwm(v), z, putnum(b)); }
+
 static NoInline bool prim(em v, const char *a, ll *i) {
-  ob nom; yo k; return
+  ob nom; mo k; return
     (nom = interns(v, a)) &&
     (nom = pair(v, nom, nil)) &&
     (with(nom, k = cells(v, 4)), k) ?

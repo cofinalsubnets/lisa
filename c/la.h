@@ -13,12 +13,13 @@ _Static_assert(-1 == -1 >> 1, "signed >>");
 
 typedef intptr_t ob, Z;
 typedef struct mo *mo, *yo;
-typedef struct em *em;
+typedef struct la *em, la;
 typedef struct fr *fr;
 #define Ll(n, ...)\
   ob n(em v, ob xp, mo ip, ob *hp, ob *sp, fr fp)
-typedef Ll(ll);
-typedef ll vm;
+typedef Ll(go);
+#define Vm Ll
+typedef go vm, ll;
 
 // FIXME 2bit
 #define TagBits 3
@@ -59,7 +60,7 @@ struct mo { ll *ll; };
 enum { Def, Cond, Lamb, Quote, Seq, Splat,
        Topl, Eval, Apply, NGlobs };
 
-struct em {
+struct la {
   mo ip; ob xp, *hp, *sp; fr fp;
   mm mm; intptr_t t0, len, *pool;
   ob rand, syms, glob[NGlobs]; };
@@ -187,14 +188,13 @@ static Inline ext extt(ob _) {
  _(symp_u, "symp") _(strp_u, "strp")\
  _(nilp_u, "nilp") _(rnd_u, "rand")
 
-#define ninl(x, _) vm x;
+#define ninl(x, _) ll x;
 insts(ninl)
 #undef ninl
 
-vm gc, domain_error, ary_error;
+ll gc, domain_error, ary_error;
 
 // " the interpreter "
-#define Vm Ll
 // the arguments to a terp function collectively represent the
 // runtime state, and the  return value is the result of the
 // program. there are six arguments because that's the number
@@ -262,4 +262,5 @@ static Inline intptr_t lcprng(intptr_t s) {
   const intptr_t steele_vigna_2021 = 0xaf251af3b0f025b5;
   return (s * steele_vigna_2021 + 1) >> 8; }
 #define R(x) ((ob*)(x))
+#define T putnum(-1)
 #endif

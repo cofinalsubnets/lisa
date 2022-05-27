@@ -28,8 +28,8 @@
      (&& l .) (all id l)
      (|| l .) (any id l)
      (each x f) (? x (, (f (A x)) (each (B x) f)))
-     (all p l) (? l (? (p (A l)) (all p (B l))) 1)
-     (any p l) (? l (? (p (A l)) 1 (any p (B l))))
+     (all p l) (? l (? (p (A l)) (all p (B l))) -1)
+     (any p l) (? l (? (p (A l)) -1 (any p (B l))))
      (part p l) (foldr l ~~ (\ a m
       (? (p a) (X (X a (A m)) (B m))
                (X (A m) (X a (B m))))))

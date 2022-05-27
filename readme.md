@@ -1,5 +1,5 @@
-# lisa
-machine generated
+# la
+List Action
 
 ## build / install
 are you on linux? `make` will probably work. otherwise, see
@@ -7,17 +7,11 @@ are you on linux? `make` will probably work. otherwise, see
 
 ## usage
 
-lisa is alive, so unstable. usage is schemelike, but
-relaxed. `#f` = `()` = `0`. special forms have short
-names and use less parentheses. pairs are immutable and
-eagerly cons'd, so acyclic. improper list literals are
-absent.
+`#f` = `()` = `0`
 
-special form examples compared to scheme:
-
-| scheme                     | lisa        |
+| scheme                     | la          |
 |----------------------------|-------------|
-|`(begin a b)`               |`(, a b)`    |
+|`(begin a b c)`             |`(, a b c)`  |
 |`(lambda - #f)`             |`(\)`        |
 |`(lambda - a)`              |`(\ a)`      |
 |`(lambda (a) b)`            |`(\ a b)`    |
@@ -31,7 +25,17 @@ special form examples compared to scheme:
 
 etc.
 
-## code examples
+`.` is a normal symbol with special meaning in `\`. atoms in
+tail position are not shown.
+
+some useful functions:
+- `+ - * / % & | ^ ~ << >> < <= = >= >`
+- `X A B` ~ `cons car cdr`
+- `sym` ~ `gensym`
+- `.` show args then newline, return last arg or 0
+- other functions defined in `lib/la`
+
+## examples
 
 ### an autograph
 ```lisp
@@ -40,14 +44,12 @@ etc.
 ```
 
 ### hyperoperation sequence
-
 ```lisp
 (: (hy x n y) ( ? (~ n) (+ x y) (~ y) 1
  (hy x (- n 1) (hy x n (- y 1)))))
 ```
 
 ### church numerals
-
 ```lisp
 (:
  ; zero is the constant function at the identity function
@@ -75,7 +77,6 @@ etc.
 ```
 
 ### fizzbuzz
-
 ```lisp
 (: (/p m n) (~ (% m n))
    (fizzbuzz m)

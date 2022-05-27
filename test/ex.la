@@ -1,42 +1,57 @@
-; church numerals
-; named for alonzo church, inventor of lambda notation,
-; who found it could be used to encode arbitrary data
-; (numbers, booleans, lists, etc). dedekind (1888 ¶126)
-; gives a similar construction to show that the closure
-; of a set S under an endomorphism t: S -> S (ie. the
-; chain t[0](S), approximating his notation) is given
-; by the union of the set's images under all powers of
-; the endomorphism: t[0](S) = U t^n(A) for all n >= 0.
-; he doesn't explicitly define arithmetic on it, but he
-; does indirectly derive additive commutativity from
-; associativity when describing the actions of natural
-; numbers on groups (¶131)
 (:
-   one I
-   zero (\ one)
-   (((up op i) g) f) ((f (op g)) i)
-   (((succ g) x) y) ((g x) (x y))
-   (((ps f) g) h) (h (g f))
-   (((pred f) g) h)
-     (((f (ps g)) (\ h)) one)
-   ((add g) f) ((f succ) g)
-   mul (up add zero)
-   pow (up mul one)
-   tet (up pow one)
-   pen (up tet one)
+ ; church numerals
+ ; named for alonzo church, inventor of lambda notation.
+ ; dedekind (1888 ¶126) uses a similar idea when describing
+ ; how natural numbers give rise to monoids of endomorphisms.
+ ((zero) -) -
+ one (zero zero)
+ (((up op i) g) f) ((f (op g)) i)
+ (((succ g) x) y) ((g x) (x y))
+ (((ps f) g) h) (h (g f))
+ (((pred f) g) h) (((f (ps g)) (\ h)) one)
+ ((add g) f) ((f succ) g)
+ mul (up add zero)
+ pow (up mul one)
+ tet (up pow one)
+ pen (up tet one)
 
-   (C n) (? (= n 0) zero (succ (C (- n 1)))) ; ℕ->⛪
-   (N c) ((c (\ x (+ x 1))) 0)               ; ⛪->ℕ
+ (C n) (? (= n 0) zero (succ (C (- n 1)))) ; ℕ->⛪
+ (N c) ((c (\ x (+ x 1))) 0)               ; ⛪->ℕ
 
-   two (succ one) four (two two) five (succ four)
-   three (succ two)
-   ten ((mul two) five)
-   one-hundred (two ten))
+ two (succ one) four (two two) five (succ four)
+ three (succ two)
+ ten ((mul two) five)
+ one-hundred (two ten)
 
-(: (hy x n y) ( ? (~ n) (+ x y) (~ y) 1
-   (hy x (- n 1) (hy x n (- y 1)))))
+ ; fixnum hyperoperation sequence, rooted at +
+ (hy x n y) ( ? (~ n) (+ x y) (~ y) 1
+   (hy x (- n 1) (hy x n (- y 1))))
+
+ ; cantor's pairing function reversibly encodes a
+ ; pair of natural numbers as a natural number.
+ (c1895 m n)
+  (+ m (/ (* (+ m n) (+ m n 1)) 2))
+ ; according to stillwell (2018) this is the only known
+ ; quadratic pairing function & was proved in 1923 by
+ ; polya & fueter to be (with its image under flip) the only
+ ; quadratic pairing function sending (0, 0) to 0.
+ ; this reverses it:
+ (c1895~ p) (:
+  (f t n) (? (> (+ t n) p)
+           (X t (- n 1))
+           (f (+ t n) (+ n 1)))
+  x (f 0 1)
+  m (- p (A x))
+  n (- (B x) m)
+  (L m n)))
+
 ; some miscellaneous functions
-(test execution
+(test functions
+
+ (: 0to23 (iota 24)
+    (check p) (= p (c1895~ (ap c1895 p)))
+    pairs (flat-map 0to23 (\ n (map (\ m (L m n)) 0to23)))
+  (all check pairs))
 
  (: (ack m n)
    (? (< m 1) (+ n 1)

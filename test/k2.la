@@ -1,9 +1,14 @@
-; this is just a microkanren clone with explicit control
-; flow via closures, ie. less case analysis on streams.
-; do not use synthetic cannabinoids :)
-(::: zz (\ x (: a (sym) b (sym) c (sym) (L \ a (L \ b c (L c (L x a))))))
- et (\ x xs . (foldl xs x (\ a b (L (\ a b (\ s (s* (a s) b))) a b))))
- vel (\ x xs . (foldl xs x (\ a b (L (\ a b (\ s (s+ (a s) (b s)))) a b)))))
+; this is a microkanren clone with no case analysis of streams.
+; don't use synthetic cannabinoids :)
+(:::
+ zz (\ x (: a (sym) b (sym) c (sym)
+  (L \ a (L \ b c (L c (L x a))))))
+ et (\ x xs .
+  (foldl xs x (\ a b
+   (L (\ a b (\ s (s* (a s) b))) a b))))
+ vel (\ x xs .
+  (foldl xs x (\ a b
+   (L (\ a b (\ s (s+ (a s) (b s)))) a b)))))
 (:
  ((sX x s) _ _ y) (y x s)
  (sno n) (n)
@@ -18,7 +23,7 @@
              (\ x s (s+ (g x) (s* s g))))
 
  (stake i s)
-  (? (= i 0) sno
+  (? (nilp i) sno
    (s (\ s)
       (\ s (stake i s))
       (\ x s (\ _ _ y (y x (stake (- i 1) s))))))
@@ -33,7 +38,7 @@
      (\ s (sfold f z s))
      (\ x s (f x (sfold f z s))))
 
- (slist s) (sfold X () s)
+ (slist s) (sfold X 0 s)
 
  ((est u v) s) (:
   (walk u s) (?  (&& (var? u) (: t (has-s s u))) (walk (A t) s) u)
@@ -53,8 +58,8 @@
    (? (: it (has-s (X (map A (A st)) (B st)) k)) (L k (walk* (A it) st)))))
   (slist (smap re (? n (stake n (g ~~)) (g ~~))))))
 
-(test k1
- (unord-eq '((a (1 2 (3 (4))) b (3 (4)) c 4)) (Run () '(a b c)
+(test k2
+ (unord-eq '((a (1 2 (3 (4))) b (3 (4)) c 4)) (Run 0 '(a b c)
   (\\ a b c (et (est a (L 1 2 b))
                 (est b (L 3 (L c)))
                 (est c 4)))))
@@ -64,28 +69,28 @@
   (\\ a (:
    (at-least n) (vel (est a n) (zz (at-least (+ n 1))))
    (vel (\ sno) (est a 0) (at-least 1))))))
- (unord-eq '((a 7 b 6) (a 7 b 5)) (Run () '(a b)
+ (unord-eq '((a 7 b 6) (a 7 b 5)) (Run 0 '(a b)
   (\\ a b (et (est a 7) (vel (est b 5) (est b 6))))))
- (unord-eq '((a 9 b 8)) (Run () '(a b)
+ (unord-eq '((a 9 b 8)) (Run 0 '(a b)
   (\\ a b (et (est a 9) (est b 8)))))
- (unord-eq '((a 1 b 1)) (Run () '(a b)
+ (unord-eq '((a 1 b 1)) (Run 0 '(a b)
   (\\ a b (et (est a 1) (est a b)))))
- (unord-eq '((a 7 b 3)) (Run () '(a b)
+ (unord-eq '((a 7 b 3)) (Run 0 '(a b)
   (\\ a b (et (est a 7)
               (est b 3)
               (vel (est b 3) (est b 4))))))
- (unord-eq '((a (1 2) b 2)) (Run () '(a b)
+ (unord-eq '((a (1 2) b 2)) (Run 0 '(a b)
   (\\ a b (et (est a (L 1 b)) (est b 2)))))
- (~ (Run () '(a) (\\ a (et (est a 0) (est a 1)))))
- (~ (Run () '(a b) (\\ a b
+ (~ (Run 0 '(a) (\\ a (et (est a 0) (est a 1)))))
+ (~ (Run 0 '(a b) (\\ a b
   (et (est a 7) (est b 3) (vel (est b 2) (est b 4))))))
  (unord-eq '((a 1 b 2 c 2) (b 9 c 7) (c 88))
-  (Run () '(a b c) (\\ a b c (vel
+  (Run 0 '(a b c) (\\ a b c (vel
    (et (est a 1) (est b 2) (est c b))
    (et (est c 7) (est b 9))
    (est c 88)))))
  (unord-eq '((a 7 b 8 c 9) (a 4 b 5 c 6) (a 1 b 2 c 3))
-  (Run () '(a b c) (\\ a b c (vel
+  (Run 0 '(a b c) (\\ a b c (vel
    (et (est a 1) (est b 2) (est c 3))
    (et (est a 4) (est b 5) (est c 6))
    (et (est a 7) (est b 8) (est c 9))))))
@@ -96,8 +101,8 @@
     (vel never (est a 0) (at-least 1))))))
  (: inc L
     (iter n f x) (? (= 0 n) x (iter (- n 1) f (f x)))
-    zero () one '(()) two '((()))
-    (add a b c) (vel (et (est a ()) (est b c))
+    zero 0 one '(0) two '((0))
+    (add a b c) (vel (et (est a 0) (est b c))
                      (\\ x (et (est (inc x) a)
                                (zz (add x (inc b) c)))))
     (fibo a b) (vel (et (est a one) (est b one))
@@ -108,5 +113,5 @@
                          (zz (et (fibo x p)
                                  (fibo y q)
                                  (add p q b))))))
-    (= (L (L 'a (iter 144 L ())))
-     (Run () '(a) (\\ a (fibo (iter 12 L ()) a))))))
+    (= (L (L 'a (iter 144 L 0)))
+     (Run 0 '(a) (\\ a (fibo (iter 12 L 0) a))))))

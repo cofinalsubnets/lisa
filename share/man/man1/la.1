@@ -1,18 +1,16 @@
 .de FN
 \fI\|\\$1\|\fP
 ..
-.TH LISA 1 lisa
+.TH LA 1 la
 .SH NAME
-lisa - lisp interpreter
+la - list action
 .SH SYNOPSIS
-.B lisa
+.B la
 .RB [ \-hi_ ]
 .RI [ scripts... ]
 .SH DESCRIPTION
-.B lisa
-(LISt Action) is a lisp interpreter.
 .P
-With no arguments, start a repl.
+with no arguments, start a repl
 .SH OPTIONS
 .TP
 .B \-h
@@ -64,10 +62,10 @@ don't bootstrap
 .RE
 .SH FILES
 .TP
-.FN /usr/local/lib/lisa/lisa.la
+.FN /usr/local/lib/la/la.la
 The system-wide bootstrap script.
 .TP
-.FN ~/.local/lib/lisa/lisa.la
+.FN ~/.local/lib/la/la.la
 The individual bootstrap script. Overrides the system-wide script if present.
 .SH LICENSE
 Public domain.

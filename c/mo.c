@@ -1,5 +1,5 @@
 #include <stdarg.h>
-#include "em.h"
+#include "la.h"
 
 ////
 /// host embedding
@@ -22,7 +22,7 @@
 #define s2(x)   ((ob*)(x))[7]
 
 enum where { Here, Loc, Arg, Clo, Wait };
-#define Co(nom,...) yo nom(em v, ob* e, uintptr_t m, ##__VA_ARGS__)
+#define Co(nom,...) mo nom(em v, ob* e, uintptr_t m, ##__VA_ARGS__)
 static bool scan(em, ob*, ob);
 typedef Co(c1);
 typedef Co(c2, ob);
@@ -43,8 +43,8 @@ bool pushs(em v, ...) {
     va_end(xs),
     _; }
 
-static Inline yo ee1(ll *i, yo k) { return (--k)->ll = i, k; }
-static Inline yo ee2(ll *i, ob x, yo k) { return ee1(i, ee1((ll*) x, k)); }
+static Inline mo ee1(ll *i, mo k) { return (--k)->ll = i, k; }
+static Inline mo ee2(ll *i, ob x, mo k) { return ee1(i, ee1((ll*) x, k)); }
 
 // helper functions for lists
 static intptr_t lidx(ob l, ob x) {
@@ -62,28 +62,28 @@ static ob snoc(em v, ob l, ob x) {
     (with(l, x = snoc(v, B(l), x)),
      !x ? 0 : pair(v, A(l), x)); }
 
-static yo ini_yo(em v, uintptr_t n) {
-  yo a = cells(v, n + 2);
+static mo ini_yo(em v, uintptr_t n) {
+  mo a = cells(v, n + 2);
   return !a ? 0 :
     (a[n].ll = NULL,
      a[n+1].ll = (ll*) a,
      setw((ob*) a, nil, n),
      a + n); }
 
-static yo tuplr(em v, uintptr_t i, va_list xs) {
-  yo k; ob x = va_arg(xs, ob);
+static mo tuplr(em v, uintptr_t i, va_list xs) {
+  mo k; ob x = va_arg(xs, ob);
   return !x ? ini_yo(v, i) :
     (with(x, k = tuplr(v, i+1, xs)),
      k ? ee1((ll*) x, k) : 0); }
 
 static ob tupl(em v, ...) {
-  yo t; va_list xs; return
+  mo t; va_list xs; return
     va_start(xs, v),
     t = tuplr(v, 0, xs),
     va_end(xs),
     (ob) t; }
 
-static yo imx(em v, ob *e, intptr_t m, ll *i, ob x) {
+static mo imx(em v, ob *e, intptr_t m, ll *i, ob x) {
   return !Push(putnum(i), x) ? 0 : em_i_d(v, e, m); }
 
 #define Bind(v, x) if(!((v)=(x)))goto fail
@@ -144,11 +144,11 @@ static Inline ob comp_body(em v, ob*e, ob x) {
     !scan(v, e, v->sp[1]) ||
     !(x = (ob) Pull(4)) ? 0 :
       (x = !(i = llen(loc(*e))) ? x :
-        (ob) ee2(locals, putnum(i), (yo) x),
+        (ob) ee2(locals, putnum(i), (mo) x),
        x = (i = getnum(asig(*e))) > 0 ?
-             (ob) ee2(arity, putnum(i), (yo) x) :
+             (ob) ee2(arity, putnum(i), (mo) x) :
            i < 0 ?
-             (ob) ee2(vararg, putnum(-i-1), (yo) x) :
+             (ob) ee2(vararg, putnum(-i-1), (mo) x) :
            x,
        button(gethom(x))[1].ll = (ll*) x,
        !twop(clo(*e)) ? x : pair(v, clo(*e), x)); }
@@ -194,7 +194,7 @@ static Co(yo_yo, ob x) {
    j = e && twop(loc(*e)) ? encll : encln,
    x = yo_yo_clo(v, e, A(x), B(x));
  um;
- return !x ? 0 : ee2(j, x, (yo) k); }
+ return !x ? 0 : ee2(j, x, (mo) k); }
 
 static Co(im_yo, ob x) {
   return !(x = Push(putnum(imm), x)) ? 0 : em_i_d(v, e, m); }
@@ -237,14 +237,14 @@ static Co(let_yo, ob x) { return
 // exit address in stack 2
 static Co(if_yo_pre) { ob x; return
   (x = (ob) Pull(m)) && (x = pair(v, x, s2(*e))) ?
-    (s2(*e) = x, (yo) A(x)) : 0; }
+    (s2(*e) = x, (mo) A(x)) : 0; }
 
 // before generating a branch emit a jump to
 // the top of stack 2
 static Co(if_yo_pre_con) {
-  yo k, x = Pull(m + 2);
+  mo k, x = Pull(m + 2);
   return !x ? 0 :
-    (k = (yo) A(s2(*e)),
+    (k = (mo) A(s2(*e)),
      k->ll == ret ?
        ee1(ret, x) :
        ee2(jump, (ob) k, x)); }
@@ -255,13 +255,13 @@ static Co(if_yo_post_con) {
   ob x; return
     (x = (ob) Pull(m)) &&
     (x = pair(v, x, s1(*e))) ?
-      (s1(*e) = x, (yo) A(x)) :
+      (s1(*e) = x, (mo) A(x)) :
       0; }
 
 // before generating an antecedent emit a branch to
 // the top of stack 1
 static Co(if_yo_pre_ant) {
-  yo x = Pull(m+2);
+  mo x = Pull(m+2);
   return !x ? 0 :
     (x = ee2(branch, A(s1(*e)), x),
      s1(*e) = B(s1(*e)),
@@ -282,7 +282,7 @@ static bool if_yo_loop(em v, ob*e, ob x) {
          A(x),
          putnum(if_yo_pre_ant)); }
 
-static Co(if_yo, ob x) { bool _; yo k; return
+static Co(if_yo, ob x) { bool _; mo k; return
   with(x, _ = Push(putnum(if_yo_pre))),
   _ && if_yo_loop(v, e, B(x)) && (k = Pull(m)) ?
     (s2(*e) =  B(s2(*e)), k) :
@@ -290,7 +290,7 @@ static Co(if_yo, ob x) { bool _; yo k; return
 
 static Co(em_call) {
   ob a = *v->sp++;
-  yo k = Pull(m + 2);
+  mo k = Pull(m + 2);
   return !k ? 0 : ee2(k->ll == ret ? rec : call, a, k); }
 
 static ob lookup_lex(em v, ob e, ob y) {
@@ -312,7 +312,7 @@ static Co(var_yo, ob x) { ob y, q; return
       ((x = pair(v, B(q), x)) &&
        (with(x, y = (ob) Pull(m+2)), y) &&
        (with(y, x = pair(v, putnum(sizeof(ob)), x)), x) ?
-         ee2(rslv, x, (yo) y) :
+         ee2(rslv, x, (mo) y) :
          0) :
     B(q) == *e ?
       y == putnum(Loc) ?
@@ -363,18 +363,18 @@ static Co(two_yo, ob x) { ob z = A(x); return
 
 static Co(em_i) {
   ll* i = (ll*) getnum(*v->sp++);
-  yo k = Pull(m+1);
+  mo k = Pull(m+1);
   return !k ? 0 : ee1(i, k); }
 
 static Co(em_i_d) {
   ll* i = (ll*) getnum(*v->sp++);
   ob x = *v->sp++;
-  yo k; return
+  mo k; return
     with(x, k = Pull(m+2)),
     !k ? 0 : ee2(i, x, k); }
 
 static Co(mk_yo) {
-  yo k = ini_yo(v, m+1);
+  mo k = ini_yo(v, m+1);
   return !k ? 0 : ee1((ll*)(e ? name(*e) : nil), k); }
 
 // instructions used by the compiler
@@ -384,7 +384,7 @@ Ll(hom_u) {
   TypeCheck(x, Num);
   intptr_t len = getnum(x) + 2;
   Have(len);
-  yo k = (yo) hp;
+  mo k = (mo) hp;
   return hp += len,
          setw((ob*) k, nil, len),
          k[len-1].ll = (ll*) k,
@@ -393,25 +393,25 @@ Ll(hom_u) {
 
 Ll(hfin_u) {
   Arity(1);
-  yo k = (yo) *fp->argv;
+  mo k = (mo) *fp->argv;
   TypeCheck((ob) k, Hom);
   return button(k)[1].ll = (ll*) k,
          ApC(ret, (ob) k); }
 
 Ll(emx) {
-  yo k = (yo) *sp++ - 1;
+  mo k = (mo) *sp++ - 1;
   return k->ll = (ll*) xp,
          ApN(1, (ob) k); }
 
 Ll(emi) {
-  yo k = (yo) *sp++ - 1;
+  mo k = (mo) *sp++ - 1;
   return k->ll = (ll*) getnum(xp),
          ApN(1, (ob) k); }
 
 Ll(emx_u) {
   Arity(2);
   ob x = fp->argv[0];
-  yo k = (yo) fp->argv[1];
+  mo k = (mo) fp->argv[1];
   TypeCheck((ob) k, Hom);
   return (--k)->ll = (ll*) x,
          ApC(ret, (ob) k); }
@@ -419,7 +419,7 @@ Ll(emx_u) {
 Ll(emi_u) {
   Arity(2);
   ob n = fp->argv[0];
-  yo k = (yo) fp->argv[1];
+  mo k = (mo) fp->argv[1];
   TypeCheck(n, Num);
   TypeCheck((ob) k, Hom);
   return (--k)->ll = (ll*) getnum(n),

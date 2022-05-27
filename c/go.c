@@ -1,8 +1,6 @@
 #include <stdarg.h>
 #include <string.h>
-#include "em.h"
-
-#define N1 putnum(1)
+#include "la.h"
 
 // " the virtual machine "
 // It's a stack machine with one free register that runs on
@@ -76,11 +74,11 @@ Ll(vararg) {
 
 // type predicates
 #define Tp(t)\
-  Ll(t##pp) { return ApN(1, (t##p(xp)?N1:nil)); }\
+  Ll(t##pp) { return ApN(1, (t##p(xp)?T:nil)); }\
   Ll(t##p_u) {\
     for (ob *xs = fp->argv, *l = xs + getnum(fp->argc); xs < l;)\
       if (!t##p(*xs++)) return ApC(ret, nil);\
-    return ApC(ret, N1); }
+    return ApC(ret, T); }
 Tp(num) Tp(hom) Tp(two) Tp(sym) Tp(str) Tp(tbl) Tp(nil)
 
 // stack manipulation
@@ -103,8 +101,8 @@ Ll(jump) { return ApY((ob) ip[1].ll, xp); }
 Br(branch, xp != nil, GF, xp, FF, xp)
 Br(barnch, xp != nil, FF, xp, GF, xp)
 
-Br(breq, eql(*sp++, xp), GF, N1, FF, nil)
-Br(brne, eql(*sp++, xp), FF, N1, GF, nil)
+Br(breq, eql(*sp++, xp), GF, T, FF, nil)
+Br(brne, eql(*sp++, xp), FF, T, GF, nil)
 
 Br(brlt,    *sp++ < xp,  GF, xp, FF, nil)
 Br(brlt2,   *sp++ < xp,  FF, xp, GF, nil)
@@ -250,7 +248,7 @@ Ll(dqv) {
     (xp = putnum(getnum(*sp++) / getnum(xp)), ApN(1, xp)); }
 
 Ll(div_u) {
-  if (!(xp = getnum(fp->argc))) return ApC(ret, N1);
+  if (!(xp = getnum(fp->argc))) return ApC(ret, T);
   TypeCheck(*fp->argv, Num);
   mm_void(xp-1, fp->argv+1, getnum(*fp->argv), /); }
 
@@ -259,7 +257,7 @@ Ll(mod) {
     (xp = putnum(getnum(*sp++) % getnum(xp)), ApN(1, xp)); }
 
 Ll(mod_u) {
-  if (!(xp = getnum(fp->argc))) return ApC(ret, N1);
+  if (!(xp = getnum(fp->argc))) return ApC(ret, T);
   TypeCheck(*fp->argv, Num);
   mm_void(xp-1, fp->argv+1, getnum(*fp->argv), %); }
 
@@ -298,7 +296,7 @@ bool eql(ob a, ob b) {
 #define LE(a,b) (a<=b)
 #define GE(a,b) (a>=b)
 #define GT(a,b) (a>b)
-BINOP(eq, eql(xp, *sp++) ? N1 : nil)
+BINOP(eq, eql(xp, *sp++) ? T : nil)
 #define cmp(n, op) BINOP(n, op(*sp++, xp) ? xp : nil)
 cmp(lt, LT) cmp(lteq, LE) cmp(gteq, GE) cmp(gt, GT)
 #undef cmp
@@ -308,15 +306,15 @@ cmp(lt, LT) cmp(lteq, LE) cmp(gteq, GE) cmp(gt, GT)
     case 0: return ApC(ret, nil);\
     default: for (l = xs + n - 1, m = *xs; xs < l; m= *++xs)\
                if (!op(m, xs[1])) return ApC(ret, nil);\
-    case 1: return ApC(ret, N1); } }
+    case 1: return ApC(ret, T); } }
 cmp(LT, lt) cmp(LE, lteq) cmp(GE, gteq) cmp(GT, gt) cmp(eql, eq)
 #define OP2(nom, x) OP(nom, x, 2)
 ////
 /// Load Instructions
 //
 // constants
-OP1(one, N1)
-OP1(zero, N0)
+OP1(one, putnum(1))
+OP1(zero, putnum(0))
 // immediate value from thread
 OP2(imm, (ob) ip[1].ll)
 
@@ -395,7 +393,7 @@ Vm(tblg) {
          ApC(ret, xp ? xp : nil); }
 
 OP1(tget, (xp = tbl_get(v, xp, *sp++)) ? xp : nil)
-OP1(thas, tbl_get(v, xp, *sp++) ? N1 : nil)
+OP1(thas, tbl_get(v, xp, *sp++) ? T : nil)
 OP1(tlen, putnum(gettbl(xp)->len))
 
 static ob tbl_keys_j(em v, ob e, ob l) {
@@ -420,7 +418,7 @@ Vm(tblc) {
   Arity(2);
   TypeCheck(fp->argv[0], Tbl);
   return xp = tbl_get(v, fp->argv[0], fp->argv[1]),
-         ApC(ret, xp ? N1 : nil); }
+         ApC(ret, xp ? T : nil); }
 
 static ob tblss(em v, intptr_t i, intptr_t l) {
   fr fp = (fr) v->fp;
