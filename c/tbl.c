@@ -23,8 +23,10 @@ static ob tks_i(em v, ob t, Z i) {
      k ? tks_j(v, gettbl(t)->tab[i], k) : 0); }
 
 Vm(tkeys) { return
-  CallC(v->xp = tks_i(v, xp, 0)),
-  xp ? ApN(1, xp) : 0; }
+  Pack(),
+  v->xp = tks_i(v, xp, 0),
+  Unpack(),
+  xp ? ApN(1, xp) : ApC(oom_err, xp); }
 
 Vm(tblc) {
   Ary(2);
@@ -44,22 +46,27 @@ Vm(tbls) {
   Typ(*fp->argv, Tbl);
   return
     xp = *fp->argv,
-    CallC(v->xp = tblss(v, 1, fp->argc >> TagBits)),
-    xp ? ApC(ret, xp) : 0; }
+    Pack(),
+    v->xp = tblss(v, 1, getZ(fp->argc)),
+    Unpack(),
+    ApC(xp ? ret : oom_err, xp); }
 
 Vm(tblmk) {
-  return Pack(),
-    (v->xp = table(v)) &&
-    (xp = tblss(v, 0, fp->argc >> TagBits)) ?
-      (Unpack(), ApC(ret, xp)) :
-      0; }
+  bool _;
+  return
+    Pack(),
+    _ = (v->xp = table(v)) && tblss(v, 0, getZ(fp->argc)),
+    Unpack(),
+    ApC(_ ? ret : oom_err, xp); }
 
 Vm(tblks) {
   Ary(1);
   Typ(*fp->argv, Tbl);
   return
-    CallC(v->xp = tks_i(v, *fp->argv, 0)),
-    xp ? ApC(ret, xp) : 0; }
+    Pack(),
+    v->xp = tks_i(v, *fp->argv, 0),
+    Unpack(),
+    ApC(xp ? ret : oom_err, xp); }
 
 Vm(tbll) {
   Ary(1);
@@ -69,8 +76,10 @@ Vm(tbll) {
 Vm(tset) {
   ob x = *sp++, y = *sp++;
   return
-    CallC(v->xp = tbl_set(v, xp, x, y)),
-    !xp ? 0 : ApN(1, xp); }
+    Pack(),
+    v->xp = tbl_set(v, xp, x, y),
+    Unpack(),
+    xp ? ApN(1, xp) : ApC(oom_err, xp); }
 
 
 static Inline N tbl_idx(N cap, N co) {
@@ -217,5 +226,8 @@ ob table(la v) {
 Vm(tbld) {
   Ary(2);
   Typ(fp->argv[0], Tbl);
-  return CallC(v->xp = tbl_del(v, fp->argv[0], fp->argv[1])),
-         ApC(ret, xp); }
+  return
+    Pack(),
+    v->xp = tbl_del(v, fp->argv[0], fp->argv[1]),
+    Unpack(),
+    ApC(ret, xp); }

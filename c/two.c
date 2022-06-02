@@ -25,6 +25,12 @@ ob snoc(em v, ob l, ob x) {
   return !twop(l) ? pair(v, x, l) :
     (with(l, x = snoc(v, B(l), x)),
      !x ? 0 : pair(v, A(l), x)); }
+
+N llen(ob l) {
+  N i = 0;
+  while (twop(l)) l = B(l), i++;
+  return i; }
+
 // pairs
 Op(1, car, A(xp))
 Op(1, cdr, B(xp))

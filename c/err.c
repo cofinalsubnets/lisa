@@ -1,12 +1,14 @@
 #include "la.h"
 #include <stdarg.h>
 
-Ll(domain_error) { return Pack(),
-  err(v, xp, "is undefined at"); }
+Vm(oom_err) { return Pack(),
+  err(v, 0, "oom with %d words", v->len); }
+
+Ll(dom_err) { return Pack(),
+  err(v, 0, "is undefined"); }
 
 Ll(ary_err) { return Pack(),
-  err(v, 0, "has %d of %d arguments",
-      getnum(fp->argc), getnum(xp)); }
+  err(v, 0, "takes %d arguments", getZ(xp)); }
 
 // type/arity checking
 #define DTc(n, t) Vm(n) { Typ(xp, t); return ApN(1, xp); }

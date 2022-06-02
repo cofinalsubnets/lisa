@@ -31,19 +31,12 @@ static Inline ob evacd(la v, ob _, enum class q) {
 
 #define oom_err_msg "out of memory : %d + %d"
 // Run a GC cycle from inside the VM
-Vm(gc) {
-  uintptr_t req = v->xp;
-  return Pack(), please(v, req) ?
-    (Unpack(), ApY(ip, xp)) :
-    err(v, 0, oom_err_msg, v->len, req); }
-
-bool finalize_with(la v, ob x, finalizer *f) {
-  two w; with(x, w = cells(v, 4));
-  if (!w) return 0;
-  w[0].a = x, w[0].b = putZ(f);
-  w[1].a = putW(w), w[1].b = v->fins;
-  v->fins = putW(w+1);
-  return 1; }
+NoInline Vm(gc) {
+  N req = v->xp;
+  Pack();
+  req = please(v, req);
+  Unpack();
+  return req ? ApY(ip, xp) : ApC(oom_err, xp); }
 
 // a simple copying garbage collector
 //
@@ -95,7 +88,7 @@ static clock_t copy(la v, intptr_t len1) {
 
   // call any finalizers
   ob f = v->fins;
-  for (v->fins = nil; isW(f); f = B(f)) {
+  for (v->fins = nil; twop(f); f = B(f)) {
     ob x = AA(f);
     if (!(x = evacd(v, x, Q(x))))
       ((finalizer*) getZ(BA(f)))(v, AA(f));

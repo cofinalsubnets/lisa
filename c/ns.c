@@ -3,7 +3,7 @@
 Ll(cwm_u) { return ApC(ret, v->wns); }
 Ll(popd_u) {
   xp = B(v->wns);
-  if (isW(xp)) v->wns = xp;
+  if (twop(xp)) v->wns = xp;
   return ApC(ret, nil); }
 
 ob refer(em v, ob _) {

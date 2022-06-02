@@ -5,7 +5,7 @@
 // finalize a process
 void la1(ps v) {
   if (!v) return;
-  for (ob f = v->fins; isW(f); f = B(f))
+  for (ob f = v->fins; twop(f); f = B(f))
     ((finalizer*) getZ(BA(f)))(v, AA(f));
   free(v->pool);
   free(v); }

@@ -31,11 +31,17 @@ ob intern(la v, ob x) {
     (with(x, _ = please(v, Width(sym))), _) ?
       sskc(v, &v->syms, x) : 0; }
 
+ob interns(la v, K char *s) {
+  ob _ = string(v, s);
+  return _ ? intern(v, _) : 0; }
+
 Vm(sym_u) {
   sym y; return 
     fp->argc > N0 && strp(*fp->argv) ?
-      (CallC(v->xp = intern(v, *fp->argv)),
-       !xp ? 0 : ApC(ret, xp)) :
+      (Pack(),
+       v->xp = intern(v, *fp->argv),
+       Unpack(),
+       ApC(xp ? ret : oom_err, xp)) :
 
     sp - hp < Width(sym) ?
       (v->xp = Width(sym),

@@ -120,8 +120,11 @@ static void fin_fclose(la v, ob f) {
 
 Ll(fpar) {
   FILE *in = (FILE*) ip[1].ll;
-  CallC(v->xp = parse(v, in));
-  return ApC(ret, xp ? xp : nil); }
+  return
+    Pack(),
+    v->xp = parse(v, in),
+    Unpack(),
+    ApC(ret, xp ? xp : nil); }
 
 Ll(fopen_u) {
   Arity(1);

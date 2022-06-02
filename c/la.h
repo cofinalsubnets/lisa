@@ -7,6 +7,8 @@
 
 // thanks !!
 
+typedef void u0;
+typedef bool u1;
 typedef uintptr_t N;
 typedef intptr_t ob, Z;
 typedef struct mo *mo;
@@ -31,7 +33,9 @@ enum class { Hom, Num, Two, Str, Sym, Tbl, };
 #define NomStr "str"
 #define NomSym "sym"
 
+#define S static
 #define K const
+#define I Inline
 
 typedef FILE *fd;
 typedef char ch;
@@ -87,19 +91,28 @@ struct ps {
      rand, // random seed
      lex[LexN]; }; // grammar symbols
 
-hasher hash;
-void emit(la, ob, fd);
-bool
-  eql(ob, ob),
-  finalize_with(la, ob, finalizer*),
-  please(la, N);
+u0 emit(la, ob, fd),
+   la1(la);
+
+u1 eql(ob, ob),
+   please(la, N);
+
+N llen(ob),
+  hash(la, ob);
+
+Z lcprng(Z),
+  lidx(ob, ob);
+
 la la0(void);
-void la1(la);
-mo ana(la, ob, ob), ana_p(la, K char*, ob);
-ob ana_fd(la, fd, ob);
-ob refer(la, ob),
+
+mo ana(la, ob, ob),
+   ana_p(la, K char*, ob);
+
+ob ana_fd(la, fd, ob),
+   refer(la, ob),
    string(la, K char*),
    intern(la, ob),
+   interns(la, K char*),
    table(la),
    tbl_set(la, ob, ob, ob),
    tbl_get(la, ob, ob),
@@ -111,7 +124,6 @@ ob refer(la, ob),
    snoc(la, ob, ob),
    sskc(la, ob*, ob),
    err(la, ob, K char*, ...);
-Z lidx(ob, ob);
 
 #define N0 putnum(0)
 #define nil N0
@@ -131,30 +143,18 @@ Z lidx(ob, ob);
 #define with(y,...) (mm(&(y)),(__VA_ARGS__),um)
 #define Width(t) b2w(sizeof(struct t))
 
-#define Q(_) ((enum class)((_)&TagMask))
-
 #define nilp(_) ((_)==nil)
 
 #define F(_) ((mo)(_)+1)
 #define G(_) (((mo)(_))->ll)
 
-#define isZ(_) (Q(_)==Num)
-#define strp(_) (Q(_)==Str)
-#define isM(_) (Q(_)==Hom)
-#define isY(_) (Q(_)==Sym)
-#define tblp(_) (Q(_)==Tbl)
-#define isW(_) (Q(_)==Two)
-#define twop isW
-#define nump isZ
-#define homp isM
-#define symp isY
 #define putstr(_) ((ob)(_)+Str)
 #define getnum getZ
 #define putnum putZ
 #define puthom putM
 #define gethom getM
-#define getZ(_) ((ob)(_)>>3)
-#define putZ(_) (((ob)(_)<<3)+Num)
+#define getZ(_) ((ob)(_)>>TagBits)
+#define putZ(_) (((ob)(_)<<TagBits)+Num)
 #define getstr(_) ((str)((_)-Str))
 #define putM(_) ((ob)(_))
 #define getM(_) ((mo)(_))
@@ -172,32 +172,51 @@ Z lidx(ob, ob);
 #define Inline inline __attribute__((always_inline))
 #define NoInline __attribute__((noinline))
 
-static Inline mo button(mo k) {
+host gc NoInline,
+     dom_err NoInline,
+     oom_err NoInline,
+     ary_err NoInline;
+
+
+S I enum class Q(ob _) { return _ & TagMask; }
+
+S I u1 nump(ob _) { return Q(_) == Num; }
+S I u1 strp(ob _) { return Q(_) == Str; }
+S I u1 symp(ob _) { return Q(_) == Sym; }
+S I u1 twop(ob _) { return Q(_) == Two; }
+S I u1 tblp(ob _) { return Q(_) == Tbl; }
+S I u1 homp(ob _) { return Q(_) == Hom; }
+
+S I mo button(mo k) {
   while (G(k)) k = F(k);
   return k; }
 
-static Inline N llen(ob l) {
-  N i = 0;
-  while (twop(l)) l = B(l), i++;
-  return i; }
-
-static Inline ob interns(la v, K char *s) {
-  ob _ = string(v, s);
-  return !_ ? 0 : intern(v, _); }
-
-static Inline N b2w(N b) {
+S I N b2w(N b) {
   return b / sizeof(ob) + (b % sizeof(ob) && 1); }
 
-static Inline ext extt(ob _) {
-  return (ext) (_ & ~ TagMask); }
+S I ext extt(ob _) { return (ext) (_ & ~ TagMask); }
+
+S I u0 setw(u0 *x, Z i, N l) {
+  for (Z *d = x; l--; *d++ = i); }
+
+S I u0 cpyw(u0 *x, K u0 *y, N l) {
+  Z *d = x;
+  K Z *s = y;
+  while (l--) *d++ = *s++; }
+
+S I u0 rcpyw(u0 *x, K u0 *y, N l) {
+  Z *d = (ob*) x + (l - 1);
+  K Z *s = (K ob*) y + (l - 1);
+  while (l--) *d-- = *s--; }
 
 // unchecked allocator -- make sure there's enough memory!
-static Inline void* bump(la v, intptr_t n) {
-  void* x = v->hp;
+S I u0 *bump(la v, Z n) {
+  u0 *x = v->hp;
   return v->hp += n, x; }
 
-static Inline void *cells(la v, uintptr_t n) {
+S I u0 *cells(la v, N n) {
   return Avail >= n || please(v, n) ? bump(v, n) : 0; }
+
 
 #define insts(_)\
  _(tget, 0) _(tset, 0) _(thas, 0) _(tlen, 0) _(arity, 0)\
@@ -226,7 +245,7 @@ static Inline void *cells(la v, uintptr_t n) {
  _(strl, "slen") _(strs, "ssub")   _(strconc, "scat")\
  _(tbll, "tlen") _(tblmk, "tbl") _(tblg, "tget")\
  _(tblc, "thas") _(tbls, "tset") _(tbld, "tdel")\
- _(tblks, "tkeys") _(seek_u, "seek") _(domain_error, "fail")\
+ _(tblks, "tkeys") _(seek_u, "seek") _(dom_err, "fail")\
  _(putc_u, "putc") _(ystr_u, "ystr") _(hnom_u, "hnom")\
  _(emx_u, "emx") _(emi_u, "emi") _(show_u, ".") _(ev_u, "ev")\
  _(ap_u, "ap") _(peeki_u, "peeki")\
@@ -236,11 +255,10 @@ static Inline void *cells(la v, uintptr_t n) {
  _(nilp_u, "nilp") _(rnd_u, "rand")\
  _(fopen_u, "fopen")
 
-#define ninl(x, _) ll x;
+#define ninl(x, _) ll x NoInline;
 insts(ninl)
 #undef ninl
 
-ll gc, domain_error, ary_err;
 
 // " the interpreter "
 // the arguments to a terp function collectively represent the
@@ -266,7 +284,6 @@ ll gc, domain_error, ary_err;
 // "external" function calls.
 #define Pack() (v->ip=ip,v->sp=sp,v->hp=hp,v->fp=fp,v->xp=xp)
 #define Unpack() (fp=v->fp,hp=v->hp,sp=v->sp,ip=v->ip,xp=v->xp)
-#define CallC(...) (Pack(), (__VA_ARGS__), Unpack())
 
 // FIXME confusing premature optimization
 #define Locs ((ob*)fp)[-1]
@@ -281,11 +298,9 @@ ll gc, domain_error, ary_err;
 #define ApY(f, x) (ip = (mo) (f), ApC(ip->ll, (x)))
 
 #define HasArgs(n) (putnum(n) <= fp->argc)
-#define AryErr(n) ApC(ary_err, putnum(n))
-#define Ary(n) if (!HasArgs(n)) return AryErr(n)
+#define Ary(n) if (!HasArgs(n)) return ApC(ary_err, putZ(n))
 #define IsA(x, t) (Q((x))==t)
-#define TypErr(x,t) ApC(domain_error, x)
-#define Typ(x,t) if (!IsA((x), (t))) return TypErr((x), (t))
+#define Typ(x,t) if (!IsA((x), (t))) return ApC(dom_err, xp)
 #define Get(n) ApC((v->xp=n, gc), xp)
 #define Have1() if (hp == sp) return Get(1)
 #define Have(n) if (sp - hp < n) return Get(n)
@@ -295,22 +310,7 @@ ll gc, domain_error, ary_err;
 #define Tc TypeCheck
 #define CheckType TypeCheck
 
-static Inline void setw(void *x, Z i, N l) {
-  for (Z *d = x; l--; *d++ = i); }
 
-static Inline void cpyw(void *x, K void *y, N l) {
-  Z *d = x;
-  K Z *s = y;
-  while (l--) *d++ = *s++; }
-
-static Inline void rcpyw(void *x, K void *y, N l) {
-  Z *d = (ob*) x + (l - 1);
-  K Z *s = (K ob*) y + (l - 1);
-  while (l--) *d-- = *s--; }
-
-static Inline Z lcprng(Z s) {
-  K Z steele_vigna_2021 = 0xaf251af3b0f025b5;
-  return (s * steele_vigna_2021 + 1) >> 8; }
 #define R(x) ((ob*)(x))
 #define T putnum(-1)
 

@@ -12,7 +12,7 @@
   for(xp=_z;xs<l;xp=xp op getnum(x)){\
     x = *xs++;\
     TypeCheck(x, Num);\
-    if (x == N0) return ApC(domain_error, x);}\
+    if (x == N0) return ApC(dom_err, x);}\
   return ApC(ret, putnum(xp));}
 
 #define UBINOP(nom, dflt, op) Ll(nom##_u) {\
@@ -35,7 +35,7 @@ Ll(sal_u) {
   mm_u(getnum(fp->argc)-1, fp->argv+1, getnum(*fp->argv), <<); }
 
 Ll(dqv) {
-  return xp == N0 ? ApC(domain_error, xp) :
+  return xp == N0 ? ApC(dom_err, xp) :
     (xp = putnum(getnum(*sp++) / getnum(xp)), ApN(1, xp)); }
 
 Ll(div_u) {
@@ -44,7 +44,7 @@ Ll(div_u) {
   mm_void(xp-1, fp->argv+1, getnum(*fp->argv), /); }
 
 Ll(mod) {
-  return xp == N0 ? ApC(domain_error, xp) :
+  return xp == N0 ? ApC(dom_err, xp) :
     (xp = putnum(getnum(*sp++) % getnum(xp)), ApN(1, xp)); }
 
 Ll(mod_u) {
@@ -75,3 +75,7 @@ Ll(bnot_u) {
   return
     xp = fp->argv[0],
     ApC(ret, putnum(~getnum(xp))); }
+
+Z lcprng(Z s) {
+  K Z steele_vigna_2021 = 0xaf251af3b0f025b5;
+  return (s * steele_vigna_2021 + 1) >> 8; }
