@@ -157,7 +157,7 @@ static Inline ob mo_mo_clo(em v, ob*e, ob arg, ob seq) {
   if (!Push(putnum(em_i_d), putnum(take), putnum(i), putnum(mk_mo)))
     return um, um, 0;
 
-  for (;twop(arg);arg = B(arg))
+  for (; twop(arg); arg = B(arg))
     if (!Push(putnum(xx_mo), A(arg), putnum(em_i), putnum(push)))
       return um, um, 0;
 

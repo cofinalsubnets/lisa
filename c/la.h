@@ -105,10 +105,9 @@ Z lcprng(Z),
 
 la la0(void);
 
-mo ana(la, ob, ob),
-   ana_p(la, K char*, ob);
+mo ana(la, ob, ob);
 
-ob ana_fd(la, fd, ob),
+ob
    refer(la, ob),
    string(la, K char*),
    intern(la, ob),

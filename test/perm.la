@@ -16,11 +16,11 @@
   (? (! n) '(0)
    (flat-map (seps n) (\ l
     (map (\ z (X (A l) z)) (permutations (B l)))))))
- (cy2pm c) (: a (A c)
+ (cy2pm n c) (: a (A c)
   (cy2pm_ c) (? (B c) (X (L (A c) (AB c)) (cy2pm_ (B c)))
                 (L (L (A c) a)))
-  (cy2pm_ c))
- )
+  q (cy2pm_ c)
+  (map (\ i (: x (assq i q) (? x (AB x) i))) (iota n))))
 
 (test permutations
  (: perms (permutations (id-perm 4))
@@ -30,4 +30,8 @@
                   (ap-perm (ap-perm p0 p1) p2)))
      perms))
     perms))
-   perms)))
+   perms))
+ (= '(4 2 1 3 0)
+  (ap-perm
+   (cy2pm 5 '(0 4))
+   (cy2pm 5 '(1 2)))))

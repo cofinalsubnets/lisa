@@ -62,7 +62,7 @@ static ob par2(em v, FILE *i) {
      !(x = parse(v, i)) ||
      !(with(x, y = par2(v, i)), y)) ? 0 : pair(v, x, y) ; }
 
-static ob atom_loop(em v, FILE *p, str o, uintptr_t n, uintptr_t lim) {
+static ob atom_loop(em v, FILE *p, str o, N n, N lim) {
   for (ob x; n < lim;) switch (x = fgetc(p)) {
     // these characters terminate an atom
     case Space: case Newline: case Tab:
@@ -76,7 +76,7 @@ static ob atom_loop(em v, FILE *p, str o, uintptr_t n, uintptr_t lim) {
       o->text[n++] = x; }
   return co_loop(v, p, putstr(o), lim, atom_loop); }
 
-static ob str_loop(em v, FILE *p, str o, uintptr_t n, uintptr_t lim) {
+static ob str_loop(em v, FILE *p, str o, N n, N lim) {
   for (ob x; n < lim;) switch (x = fgetc(p)) {
     // backslash causes the next character to be read literally
     case Backslash:

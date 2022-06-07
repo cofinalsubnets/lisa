@@ -62,6 +62,7 @@
      (init l) (? (B l) (X (A l) (init (B l))))
      (last l) (? (B l) (last (B l)) (A l))
      (memq x k) (? x (? (= k (A x)) x (memq (B x) k)))
+     (assq k x) (? x (? (= (AA x) k) (A x) (assq k (B x))))
      (del l k) (filter l (\ x (~ (= x k))))
      (idx l x)
       (: (loop l x n)
