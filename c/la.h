@@ -79,7 +79,6 @@ struct ps {
 
   // memory state
   mm keep; // list of C stack addresses to copy on gc
-  ob fins; // finalizers
   Z t0, // gc timestamp, governs len
     len, // memory pool size
     *pool; // memory pool

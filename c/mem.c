@@ -86,19 +86,6 @@ static clock_t copy(la v, intptr_t len1) {
   for (ob *sp1 = v->sp; sp0 < top0; COPY(*sp1++, *sp0++));
   for (mm r = v->keep; r; CP(*r->it), r = r->et);
 
-  // call any finalizers
-  ob f = v->fins;
-  for (v->fins = nil; twop(f); f = B(f)) {
-    ob x = AA(f);
-    if (!(x = evacd(v, x, Q(x))))
-      ((finalizer*) getZ(BA(f)))(v, AA(f));
-    else {
-      two w = (two) v->hp;
-      v->hp += 4;
-      w[0].a = x, w[0].b = BA(f);
-      w[1].a = putW(w), w[1].b = v->fins;
-      v->fins = putW(w+1); } }
-
   return
     free(pool0),
     t0 = v->t0,

@@ -5,8 +5,6 @@
 // finalize a process
 void la1(ps v) {
   if (!v) return;
-  for (ob f = v->fins; twop(f); f = B(f))
-    ((finalizer*) getZ(BA(f)))(v, AA(f));
   free(v->pool);
   free(v); }
 
@@ -54,7 +52,7 @@ la la0(void) {
      v->hp = v->sp,
      // everything else starts empty
      v->ip = (mo) nil,
-     v->fins = v->wns = v->sns = v->syms = v->xp = nil,
+     v->wns = v->sns = v->syms = v->xp = nil,
      setw(v->lex, nil, LexN),
 
      // now we can start allocating.
