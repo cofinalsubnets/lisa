@@ -1,5 +1,5 @@
 # lisa
-[loosely reasoned] LISt Action
+LISt Action
 
 ## build / install
 are you on linux? `make` will probably work. otherwise, see
@@ -40,12 +40,13 @@ some useful functions:
 
 ### an autograph
 ```lisp
-; also called a quine
+; aka a quine
 ((\ - (L - (L ` -))) '(\ - (L - (L ` -))))
 ```
 
 ### hyperoperation sequence
 ```lisp
+; rooted at +
 (: (hy x n y) ( ? (~ n) (+ x y) (~ y) 1
  (hy x (- n 1) (hy x n (- y 1)))))
 ```
@@ -64,13 +65,13 @@ some useful functions:
 
  ; binary operations follow from succ:
  ((add g) f)         ; the monoid on N
-  ((f succ) g)       ; \ g f x -> f x . g x
+  ((f succ) g)       ; \ g f x -> f x . g x = liftA2 (.)
  ((mul g) f)         ; the monoid on End(N)
-  ((f (add g)) zero) ; \ g f x -> f (g x)
+  ((f (add g)) zero) ; \ g f x -> f (g x) = (.)
 
- ; the rest are iterations of the "up arrow" map:
+ ; the rest are iterations of the "up arrow" map
  (((up op) g) f) ((f (op g)) one)
- pow (up mul) ; exponentiation ; \ f -> f = one
+ pow (up mul) ; exponentiation ; \ f -> f = id = one
  tet (up pow) ; tetration, etc.
 
  (C n) (? n (succ (C (- n 1))) zero) ; fixnum -> N

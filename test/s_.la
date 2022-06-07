@@ -8,6 +8,7 @@
  ; apply a permutation to a representative
  (ap-perm p q)
   (? p (X (at q (A p)) (ap-perm (B p) q)))
+ co-perm (flip ap-perm)
  (permutations n) (:
   (seps n) (:
    (se l n r)
@@ -35,3 +36,23 @@
   (ap-perm
    (cy2pm 5 '(0 4))
    (cy2pm 5 '(1 2)))))
+
+(: cy3 (cu cy2pm 3))
+(test s3
+ ; identity
+ (= '(0 1 2) (cy3 '(0)) (cy3 '(1)) (cy3 '(2)))
+ ; 3 2-cycles
+ (= '(0 2 1) (cy3 '(1 2)) (cy3 '(2 1)))
+ (= '(1 0 2) (cy3 '(0 1)) (cy3 '(1 0)))
+ (= '(2 1 0) (cy3 '(0 2)) (cy3 '(2 0)))
+ ; 2 3-cycles
+ (= '(1 2 0) (co-perm (cy3 '(0 2))
+                      (cy3 '(0 1))))
+ (= '(2 0 1) (co-perm (cy3 '(1 2))
+                      (cy3 '(0 1))))
+
+ ; (2 1 0)(0 1) = (0 2)(2 1 0) = (1 2)
+ (= (co-perm (cy3 '(2 1 0))
+             (cy3 '(0 1)))
+    (co-perm (cy3 '(0 2))
+             (cy3 '(2 1 0)))))
