@@ -1,5 +1,5 @@
-# la
-List Action
+# lisa
+[loosely reasoned] LISt Action
 
 ## build / install
 are you on linux? `make` will probably work. otherwise, see
@@ -9,7 +9,7 @@ are you on linux? `make` will probably work. otherwise, see
 
 `#f` = `()` = `0`
 
-| scheme                     | la          |
+| scheme                     | lisa        |
 |----------------------------|-------------|
 |`(begin a b c)`             |`(, a b c)`  |
 |`(lambda - #f)`             |`(\)`        |
@@ -33,7 +33,8 @@ some useful functions:
 - `X A B` ~ `cons car cdr`
 - `sym` ~ `gensym`
 - `.` show args then newline, return last arg or 0
-- other functions defined in `lib/la`
+- functions for strings & hash tables are not stable
+- other functions defined in `lib`
 
 ## examples
 

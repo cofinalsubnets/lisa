@@ -8,7 +8,7 @@ static loop str_loop, atom_loop;
 static ob par2(em, fd), par1b(em, ob, const char*),
           par8(em, fd), buf1(em, fd, ch);
 
-static NoInline ob co_loop(ph v, fd i, ob x, N n, loop *o) {
+static NoInline ob co_loop(ph v, FILE *i, ob x, N n, loop *o) {
   str t; N l = b2w(getstr(x)->len); return
     !(with(x, t = cells(v, Width(str) + 2 * l)), t) ? 0 :
       (t->len = 2 * l * sizeof(ob),
@@ -16,14 +16,14 @@ static NoInline ob co_loop(ph v, fd i, ob x, N n, loop *o) {
        cpyw(t->text, getstr(x)->text, l),
        o(v, i, t, n, 2 * n)); }
 
-static Inline ob par8(ph v, fd i) {
+static Inline ob par8(ph v, FILE *i) {
   str c = cells(v, Width(str) + 1);
   return !c ? 0 : (
     c->len = 8,
     c->ext = 0,
     str_loop(v, i, c, 0, 8)); }
 
-static Inline ob buf1(em v, fd i, ch ch) {
+static Inline ob buf1(em v, FILE *i, char ch) {
   str c = cells(v, Width(str) + 1);
   return !c ? 0 : (
     c->ext = 0,
@@ -31,7 +31,7 @@ static Inline ob buf1(em v, fd i, ch ch) {
     c->text[0] = ch,
     atom_loop(v, i, c, 1, 8)); }
 
-static Z nextc(fd i) {
+static Z nextc(FILE *i) {
   for (Z c;;) switch ((c = fgetc(i))) {
     default: return c;
     case Space: case Tab: case Newline: continue;
@@ -114,34 +114,3 @@ static NoInline ob par1b(em v, ob b, const char *s) {
       case Radix12: return read_num_base(v, b, s+2, 12);
       case Radix16: return read_num_base(v, b, s+2, 16); } }
   return read_num_base(v, b, s, 10); }
-
-static void fin_fclose(la v, ob f) {
-  fclose(((FILE**)f)[1]); }
-
-Ll(fpar) {
-  FILE *in = (FILE*) ip[1].ll;
-  return
-    Pack(),
-    v->xp = parse(v, in),
-    Unpack(),
-    ApC(ret, xp ? xp : nil); }
-
-Ll(fopen_u) {
-  Arity(1);
-  xp = fp->argv[0];
-  TypeCheck(xp, Str);
-  Have(8);
-  FILE *in = fopen(getstr(xp)->text, "r");
-  if (!in) return ApC(ret, nil);
-  ob *k = hp;
-  hp += 4;
-  k[0] = (ob) fpar;
-  k[1] = (ob) in;
-  k[2] = 0;
-  k[3] = (ob) k;
-  two w = (two) hp;
-  hp += 4;
-  w[0].a = (ob) k, w[0].b = putZ(fin_fclose);
-  w[1].a = putW(w), w[1].b = v->fins;
-  v->fins = puttwo(w+1);
-  return ApC(ret, (ob) k); }

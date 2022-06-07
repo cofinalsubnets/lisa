@@ -15,17 +15,8 @@
 #define SUFF
 #endif
 
-static ob eval(la, ob);
-
 // called after finishing successfully
 static Ll(yield) { return Pack(), xp; }
-
-// read eval print loop. starts after all scripts as indicated
-static Vm(repl) { for (Pack();;) {
-  if ((xp = parse(v, stdin))) {
-    if ((xp = eval(v, xp))) 
-      emit(v, xp, stdout), fputc('\n', stdout); }
-  else if (feof(stdin)) return ApC(yield, nil); } }
 
 static ob preval(em v, ob x) {
   ob *k;
@@ -47,7 +38,7 @@ static ob eval(em v, ob x) {
   return !(x = preval(v, x)) ? 0 :
     imm(v, nil, (mo) x, v->hp, v->sp, v->fp); }
 
-static ob ana_fd(ph v, fd in, ob k) {
+static ob ana_fd(ph v, FILE *in, ob k) {
   ob x; with(k, x = parq(v, in));
   return !x ? feof(in) ? k : 0 :
     (with(x, k = ana_fd(v, in, k)), k) &&
@@ -64,6 +55,13 @@ static mo ana_p(la v, const char *path, ob k) {
     (k = ana_fd(v, in, k),
      fclose(in),
      (mo) k);}
+
+// read eval print loop. starts after all scripts as indicated
+static Vm(repl) { for (Pack();;) {
+  if ((xp = parse(v, stdin))) {
+    if ((xp = eval(v, xp))) 
+      emit(v, xp, stdout), fputc('\n', stdout); }
+  else if (feof(stdin)) return ApC(yield, nil); } }
 
 // takes scripts and if we want a repl, gives a thread
 static mo act(em v, bool shell, const char **paths) {
@@ -84,8 +82,7 @@ int main(int argc, char **argv) {
       "options:\n"
       "  -h print this message\n"
       "  -i start repl unconditionally\n"
-      "  -_ don't bootstrap\n"
-    ;
+      "  -_ don't bootstrap\n";
 
   for (bool shell = argc == 1;;)
     switch (getopt(argc, argv, "hi_")) {

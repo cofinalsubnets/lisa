@@ -176,7 +176,6 @@ host gc NoInline,
      oom_err NoInline,
      ary_err NoInline;
 
-
 S I enum class Q(ob _) { return _ & TagMask; }
 
 S I u1 nump(ob _) { return Q(_) == Num; }
@@ -216,7 +215,6 @@ S I u0 *bump(la v, Z n) {
 S I u0 *cells(la v, N n) {
   return Avail >= n || please(v, n) ? bump(v, n) : 0; }
 
-
 #define insts(_)\
  _(tget, 0) _(tset, 0) _(thas, 0) _(tlen, 0) _(arity, 0)\
  _(idZ, 0) _(idH, 0) _(id2, 0) _(idT, 0) _(imm, 0)\
@@ -251,8 +249,7 @@ S I u0 *cells(la v, N n) {
  _(hfin_u, "hfin") _(peekx_u, "peekx") _(twop_u, "twop")\
  _(nump_u, "nump") _(homp_u, "homp") _(tblp_u, "tblp")\
  _(symp_u, "symp") _(strp_u, "strp")\
- _(nilp_u, "nilp") _(rnd_u, "rand")\
- _(fopen_u, "fopen")
+ _(nilp_u, "nilp") _(rnd_u, "rand")
 
 #define ninl(x, _) ll x NoInline;
 insts(ninl)
