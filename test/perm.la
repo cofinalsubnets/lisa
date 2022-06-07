@@ -1,0 +1,33 @@
+; modeling symmetry groups
+; a permutation p on n elements is represented as
+; a permutation of (iota n) sending the element
+; at index i to index p[i]. composition then
+; coincides with application.
+(:
+ id-perm iota
+ ; apply a permutation to a representative
+ (ap-perm p q)
+  (? p (X (at q (A p)) (ap-perm (B p) q)))
+ (permutations n) (:
+  (seps n) (:
+   (se l n r)
+    (X (X n (append l r)) (? r (se (X n l) (A r) (B r))))
+   (se 0 (A n) (B n)))
+  (? (! n) '(0)
+   (flat-map (seps n) (\ l
+    (map (\ z (X (A l) z)) (permutations (B l)))))))
+ (cy2pm c) (: a (A c)
+  (cy2pm_ c) (? (B c) (X (L (A c) (AB c)) (cy2pm_ (B c)))
+                (L (L (A c) a)))
+  (cy2pm_ c))
+ )
+
+(test permutations
+ (: perms (permutations (id-perm 4))
+  (all (\ p0
+   (all (\ p1
+    (all (\ p2 (= (ap-perm p0 (ap-perm p1 p2))
+                  (ap-perm (ap-perm p0 p1) p2)))
+     perms))
+    perms))
+   perms)))

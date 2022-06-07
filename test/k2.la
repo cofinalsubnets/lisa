@@ -81,8 +81,8 @@
               (vel (est b 3) (est b 4))))))
  (unord-eq '((a (1 2) b 2)) (Run 0 '(a b)
   (\\ a b (et (est a (L 1 b)) (est b 2)))))
- (~ (Run 0 '(a) (\\ a (et (est a 0) (est a 1)))))
- (~ (Run 0 '(a b) (\\ a b
+ (! (Run 0 '(a) (\\ a (et (est a 0) (est a 1)))))
+ (! (Run 0 '(a b) (\\ a b
   (et (est a 7) (est b 3) (vel (est b 2) (est b 4))))))
  (unord-eq '((a 1 b 2 c 2) (b 9 c 7) (c 88))
   (Run 0 '(a b c) (\\ a b c (vel

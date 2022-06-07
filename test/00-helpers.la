@@ -37,7 +37,7 @@
      (transp x) (ap zip (X L x))
      (sample l) (at l (randn (len l)))
      (intercal i l) (:
-      (loop i l m) (? (~ m) l (append l (append i (intercal i m))))
+      (loop i l m) (? (! m) l (append l (append i (intercal i m))))
       (? l (loop i (A l) (B l))))
      (abs x) (? (< x 0) (- x) x)
      (even x) (? (= 0 (& x 1)))

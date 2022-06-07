@@ -3,7 +3,7 @@
  (= 4 (slen "slen"))
  (= "ystr" (ystr 'ystr))
  (= 'sym (sym "sym"))
- (~ (ystr (sym)))
+ (nilp (ystr (sym)))
  (= "hollow world" (scat "hol" "low " "wor" "ld"))
  (= "bidden" (ssub "forbidden planet" 3 9))
  (= "" (str))

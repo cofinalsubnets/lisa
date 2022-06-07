@@ -33,7 +33,7 @@
  one-hundred (two ten)
 
  ; fixnum hyperoperation sequence, rooted at +
- (hy x n y) ( ? (~ n) (+ x y) (~ y) 1
+ (hy x n y) ( ? (! n) (+ x y) (! y) 1
    (hy x (- n 1) (hy x n (- y 1)))))
 
 ; tarai function of ikuo takeuchi (1978)
