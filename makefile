@@ -1,5 +1,5 @@
 LC_COLLATE=C
-lang=la
+lang=lisa
 suff=la
 bin=bin/$(lang)
 doc=share/man/man1/$(lang).1
