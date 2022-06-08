@@ -11,7 +11,7 @@
  ; inventor of lambda notation.
  ; richard dedekind (1831-1916; 1888 ¶126) uses a similar
  ; idea to describe how natural numbers give rise to monoids
- ; of endomorphisms
+ ; of endomorphisms ("chains" of images)
  ((zero) -) -
  one (zero zero)
  (((up op i) g) f) ((f (op g)) i)
@@ -73,7 +73,7 @@
  (c1895 m n) (+ m (/ (* (+ m n) (+ m n 1)) 2))
  ; according to stillwell (2018) this is the only known
  ; quadratic pairing function & was proved in 1923 by
- ; polya & fueter to be (with its image under flip) the only
+ ; polya & fueter to be (with its mirror) the only
  ; quadratic pairing function sending (0, 0) to 0.
  ; here's an inverse:
  (c1895~ p) (:
@@ -85,8 +85,6 @@
   n (- (B x) m)
   (L m n))
 
- ; incidentally, imagine t = time low enough that "cantor"
- ; "stillwell" "polya" & "fueter" are all unambiguous
  (: 0to23 (iota 24)
     (check p) (= p (c1895~ (ap c1895 p)))
     pairs (flat-map 0to23 (\ n (map (\ m (L m n)) 0to23)))
@@ -98,8 +96,8 @@
      (tet a b) (hy a 3 b)
     (= 65536 (<< 1 16) (pow 2 16) (tet 2 4))))
 
-; fixed points of eval named for willard van orman quine
-; (1908-2000)
+; nontrivial fixed points of eval named for willard van
+; orman quine (1908-2000)
 (test quine
  (: quine ((\ q (L q (Q q))) '(\ q (L q (Q q))))
   (= quine (ev quine))))

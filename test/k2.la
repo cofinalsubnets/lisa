@@ -1,5 +1,4 @@
-; this is a microkanren clone with no case analysis of streams.
-; don't use synthetic cannabinoids :)
+; microKanren clone without reflection on streams
 (:::
  zz (\ x (: a (sym) b (sym) c (sym)
   (L \ a (L \ b c (L c (L x a))))))
@@ -10,43 +9,45 @@
   (foldl xs x (\ a b
    (L (\ a b (\ s (s+ (a s) (b s)))) a b)))))
 (:
- ((sX x s) _ _ y) (y x s)
- (sno n) (n)
- (sun x) (sX x sno)
+ ((sX x s) _ _ y) (y x s) ; cons onto a stream
+ (sno n) (n) ; empty stream
+ (sun x) (sX x sno) ; singleton stream
 
- (s+ s t) (s (\ t)
+ (s+ s t) (s (\ t) ; append streams
              (\ s (\ _ m (m (s+ t s))))
              (\ x s (sX x (s+ s t))))
 
- (s* s g) (s (\ s)
+ (s* s g) (s (\ s) ; flatmap goal over stream
              (\ s (\ _ m (m (s* s g))))
              (\ x s (s+ (g x) (s* s g))))
 
- (stake i s)
+ (stake i s) ; stream take
   (? (nilp i) sno
    (s (\ s)
       (\ s (stake i s))
       (\ x s (\ _ _ y (y x (stake (- i 1) s))))))
 
- (smap f s)
+ (smap f s) ; stream map
   (s (\ s)
      (\ s (\ _ m (m (smap f s))))
      (\ x s (sX (f x) (smap f s))))
 
- (sfold f z s)
+ (sfold f z s) ; stream fold
   (s (\ z)
      (\ s (sfold f z s))
      (\ x s (f x (sfold f z s))))
 
- (slist s) (sfold X 0 s)
+ (slist s) (sfold X 0 s) ; stream -> list
 
+ ; unify
  ((est u v) s) (:
   (walk u s) (?  (&& (var? u) (: t (has-s s u))) (walk (A t) s) u)
   x (walk u s) y (walk v s) (?
    (= x y)  (sun s)
    (var? x) (sun (ext-s s x y))
    (var? y) (sun (ext-s s y x))
-   (&& (2? x) (2? y)) ((et (est (A x) (A y)) (est (B x) (B y))) s)
+   (&& (twop x) (twop y))
+    ((et (est (A x) (A y)) (est (B x) (B y))) s)
    sno))
 
  (Run n ks g) (:

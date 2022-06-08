@@ -1,3 +1,4 @@
+; explicit control parser combinators
 (:
  ((px-lit l) s n y) (? (: suff (strip-prefix l s)) (y suff l) (n s))
  ((px-drop a) s n y) (a s n (\ s  (y s )))
