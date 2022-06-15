@@ -1,4 +1,4 @@
-; microKanren clone without reflection on streams
+; microKanren without reflection on streams
 (:::
  zz (\ x (: a (sym) b (sym) c (sym)
   (L \ a (L \ b c (L c (L x a))))))
