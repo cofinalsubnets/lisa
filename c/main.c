@@ -18,7 +18,7 @@
 // called after finishing successfully
 static Ll(yield) { return Pack(), xp; }
 
-static ob preval(em v, ob x) {
+static ob preval(pt v, ob x) {
   ob *k;
   with(x, k = cells(v, 11));
   if (!k) return 0;
@@ -32,51 +32,70 @@ static ob preval(em v, ob x) {
   k[7] = (ob) yield;
   k[8] = (ob) ev_u;
   k[9] = 0;
-  return k[10] = (ob) k; }
+  k[10] = (ob) k;
+  return (ob) k; }
 
-static ob eval(em v, ob x) {
-  return !(x = preval(v, x)) ? 0 :
-    imm(v, nil, (mo) x, v->hp, v->sp, v->fp); }
+static ob eval(pt v, ob x) {
+  if (!(x = preval(v, x))) return 0;
+  return imm(v, nil, (mo) x, v->hp, v->sp, v->fp); }
 
-static ob ana_fd(ph v, FILE *in, ob k) {
-  ob x; with(k, x = parq(v, in));
-  return !x ? feof(in) ? k : 0 :
+static ob ana_fd(ph v, FILE *in, ob k) { ob x; return
+  with(k, x = parq(v, in)),
+  !x ? feof(in) ? k : 0 :
     (with(x, k = ana_fd(v, in, k)), k) &&
-    (with(k, x =
-      (x = pair(v, x, nil)) ?
-      pair(v, v->lex[Eval], x) : 0), x) ?
+    (with(k, x = (x = pair(v, x, nil)) ?
+                 pair(v, v->lex[Eval], x) : 0), x) ?
     (ob) ana(v, x, k) : 0; }
 
-static mo ana_p(la v, const char *path, ob k) {
-  FILE *in = fopen(path, "r");
-  return !in ?
-    (fprintf(stderr, "%s : %s", path, strerror(errno)),
-     NULL) :
-    (k = ana_fd(v, in, k),
-     fclose(in),
-     (mo) k);}
+static dt ana_p(la v, const char *path, ob k) {
+  FILE *in; return
+    !(in = fopen(path, "r")) ?
+      (fprintf(stderr, "%s : %s", path, strerror(errno)),
+       NULL) :
+      (k = ana_fd(v, in, k),
+       fclose(in),
+       (mo) k);}
 
 // read eval print loop. starts after all scripts as indicated
-static Vm(repl) { for (Pack();;) {
-  if ((xp = parse(v, stdin))) {
-    if ((xp = eval(v, xp))) 
-      emit(v, xp, stdout), fputc('\n', stdout); }
-  else if (feof(stdin)) return ApC(yield, nil); } }
+static Vm(repl) {
+  for (Pack();;) {
+    xp = parse(v, stdin);
+    if (xp) {
+      xp = eval(v, xp);
+      if (xp) emit(v, xp, stdout),
+              fputc('\n', stdout); }
+    if (feof(stdin))
+      return ApC(yield, nil); } }
 
 // takes scripts and if we want a repl, gives a thread
-static mo act(em v, bool shell, const char **paths) {
-  const char *path = *paths; mo k; return
-    !path ? !(k = cells(v, 3)) ? 0 :
-               (k[0].ll = shell ? repl : yield,
-                k[1].ll = 0, k[2].ll = (ll*) k, k) :
-    (k = act(v, shell, paths + 1)) ?
-    ana_p(v, path, (ob) k) : 0; }
+static dt act(pt v, bool shell, const char **nfs) {
+  dt k;
+  const char *nf = *nfs;
+  return !nf ?
+    (k = cells(v, 3)) ?
+     (k[0].ll = shell ? repl : yield,
+      k[1].ll = 0,
+      k[2].ll = (ll*) k,
+      k) : 0 :
+    (k = act(v, shell, nfs + 1)) ?
+      ana_p(v, nf, (ob) k) : 0; }
+
+int tr(char **argv, bool shell, const char *prelu) {
+  pt v = t0();
+
+  ob r = v &&
+    (r = (ob) act(v, shell, (const char**) argv)) &&
+    (!prelu || (r = (ob) ana_p(v, prelu, r))) &&
+    (r = pair(v, r, nil)) ? eval(v, r) : 0;
+
+  t1(v);
+
+  return r ? EXIT_SUCCESS : EXIT_FAILURE; }
 
 int main(int argc, char **argv) {
-
   static const char
-    *boot = PREF "/lib/" LANG "/" LANG "." SUFF,
-    *help =
+    *prelu = PREF "/lib/" LANG "/" LANG "." SUFF,
+    *usage =
       "usage: %s [options and scripts]\n"
       "with no arguments, start a repl\n"
       "options:\n"
@@ -84,21 +103,13 @@ int main(int argc, char **argv) {
       "  -i start repl unconditionally\n"
       "  -_ don't bootstrap\n";
 
-  for (bool shell = argc == 1;;)
-    switch (getopt(argc, argv, "hi_")) {
-      default: return EXIT_FAILURE;
-      case 'h': fprintf(stdout, help, *argv); continue;
-      case 'i': shell = true; continue;
-      case '_': boot = NULL; continue;
-      case -1:
-        if (argc == optind && !shell) return EXIT_SUCCESS;
-        argv += optind;
-        em v; ob r =
-          (v = la0()) &&
-          (r = (ob) act(v, shell, (const char**) argv)) &&
-          (!boot || (r = (ob) ana_p(v, boot, r))) &&
-          (r = pair(v, r, nil)) ?
-          eval(v, r) : 0;
+  bool shell = argc == 1;
 
-        return la1(v), r ?
-         EXIT_SUCCESS : EXIT_FAILURE; } }
+  for (;;) switch (getopt(argc, argv, "hi_")) {
+    default: return EXIT_FAILURE;
+    case 'h': fprintf(stdout, usage, *argv); continue;
+    case 'i': shell = true; continue;
+    case '_': prelu = NULL; continue;
+    case -1:
+      if (argc == optind && !shell) return EXIT_SUCCESS;
+      else return tr(argv + optind, shell, prelu); } }

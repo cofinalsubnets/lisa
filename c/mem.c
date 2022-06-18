@@ -17,8 +17,8 @@ static Gc(cpid) { return x; }
 // new locations, which effectively destroys the
 // old data.
 
-
 #define inb(o,l,u) (o>=l&&o<u)
+#define fresh(x) inb(R(x),v->pool,v->pool+v->len)
 
 // we use this to test if an object has been moved already
 #define COPY(dst,src) (dst=cp(v,src,len0,pool0))
@@ -26,8 +26,7 @@ static Gc(cpid) { return x; }
 
 static Inline ob evacd(la v, ob _, enum class q) {
   ob x = *R(_ - q);
-  return Q(x) == q &&
-    inb(R(x), v->pool, v->pool + v->len) ?  x : 0; }
+  return Q(x) == q && fresh(x) ? x : 0; }
 
 #define oom_err_msg "out of memory : %d + %d"
 // Run a GC cycle from inside the VM
@@ -61,7 +60,7 @@ NoInline Vm(gc) {
 // t values come from clock(). if t0 < t1 < t2 then
 // u will be >= 1. however, sometimes t1 == t2. in that case
 // u = 1.
-static clock_t copy(la v, intptr_t len1) {
+static clock_t copy(la v, Z len1) {
   clock_t t0, t1 = clock(), t2;
   ob len0 = v->len,
      *sp0 = v->sp,

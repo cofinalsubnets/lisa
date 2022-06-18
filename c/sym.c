@@ -11,7 +11,7 @@
 // existing code is unsuitable because it dynamically resizes
 // the table and unpredictable memory allocation isn't safe
 // during garbage collection.
-ob sskc(la v, ob*y, ob x) {
+ob sskc(pt v, ob *y, ob x) {
   int i;
   sym z;
   return !nilp(*y) ?
@@ -25,13 +25,13 @@ ob sskc(la v, ob*y, ob x) {
      z->l = z->r = nil,
      *y = putsym(z)); }
 
-ob intern(la v, ob x) {
+ob intern(pt v, ob x) {
   bool _; return
     Avail >= Width(sym) ||
     (with(x, _ = please(v, Width(sym))), _) ?
       sskc(v, &v->syms, x) : 0; }
 
-ob interns(la v, K char *s) {
+ob interns(pt v, const char *s) {
   ob _ = string(v, s);
   return _ ? intern(v, _) : 0; }
 
@@ -56,5 +56,5 @@ Vm(sym_u) {
 Vm(ystr_u) {
   Arity(1);
   xp = *fp->argv;
-  CheckType(xp, Sym);
+  TypeCheck(xp, Sym);
   return ApC(ret, getsym(xp)->nom); }

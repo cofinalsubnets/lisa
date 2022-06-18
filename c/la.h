@@ -2,8 +2,8 @@
 #define _em_h
 #include <stdint.h>
 #include <stdbool.h>
-// FIXME don't use stdio
-#include <stdio.h>
+#include <stdio.h> // FIXME
+#include <stdlib.h>
 
 // thanks !!
 
@@ -11,11 +11,11 @@ typedef void u0;
 typedef bool u1;
 typedef uintptr_t N;
 typedef intptr_t ob, Z;
-typedef struct mo *mo;
-typedef struct ps *em, *la, *ph, *ps;
+typedef struct dt *mo, *dt;
+typedef struct pt *la, *ph, *ps, *pt;
 typedef struct fr *fr, *co, *ar;
 #define Ll(n, ...)\
-  ob n(ps v, ob xp, mo ip, ob *hp, ob *sp, ar fp)
+  ob n(pt v, ob xp, dt ip, ob *hp, ob *sp, ar fp)
 typedef Ll(host);
 #define Vm Ll
 typedef host vm, ll, go;
@@ -38,21 +38,13 @@ enum class { Hom, Num, Two, Str, Sym, Tbl, };
 #define I Inline
 
 typedef FILE *fd;
-typedef char ch;
 #define Gc(n) ob n(ph v, ob x, Z len0, ob *pool0)
 #define Hash(n) N n(la v, ob x)
-#define Show(n) void n(la v, ob x, fd o)
 typedef Hash(hasher);
 typedef Gc(copier);
-typedef Show(writer);
-typedef void finalizer(la, ob);
 
 typedef struct ext {
   ob name;
-  ob (*copy)(la, ob, Z, ob*);
-  N (*hash)(la, ob);
-  void (*show)(la, ob, fd);
-  bool (*equal)(ob, ob);
 } *ext;
 
 typedef struct str { ext ext; Z len; char text[]; } *str;
@@ -62,14 +54,14 @@ typedef struct mm { ob *it; struct mm *et; } *mm;
 typedef struct tbl { ob *tab, len, cap; } *tbl;
 
 struct fr { ob clos, retp, subd, argc, argv[]; };
-struct mo { host *ll; };
+struct dt { host *ll; };
 
 // language symbols
 enum lex {
   Def, Cond, Lamb, Quote, Seq, Splat,
   Eval, Apply, LexN };
 
-struct ps {
+struct pt {
   // vm state -- kept in CPU registers most of the time
   mo ip; // current thread
   ar fp; // top of control stack
@@ -90,38 +82,31 @@ struct ps {
      rand, // random seed
      lex[LexN]; }; // grammar symbols
 
-u0 emit(la, ob, fd),
-   la1(la);
+void t1(pt), emit(pt, ob, fd);
 
-u1 eql(ob, ob),
-   please(la, N);
+bool please(pt, uintptr_t), eql(ob, ob);
 
-N llen(ob),
-  hash(la, ob);
+uintptr_t llen(ob), hash(pt, ob);
 
-Z lcprng(Z),
-  lidx(ob, ob);
+intptr_t lcprng(intptr_t), lidx(ob, ob);
 
-la la0(void);
-
-mo ana(la, ob, ob);
-
-ob
-   refer(la, ob),
-   string(la, K char*),
-   intern(la, ob),
-   interns(la, K char*),
-   table(la),
-   tbl_set(la, ob, ob, ob),
-   tbl_get(la, ob, ob),
-   pair(la, ob, ob),
-   parq(la, fd),
-   parse(la, fd),
-   hnom(la, ob),
-   linitp(la, ob, ob*),
-   snoc(la, ob, ob),
-   sskc(la, ob*, ob),
-   err(la, ob, K char*, ...);
+pt t0(void);
+dt ana(pt, ob, ob);
+ob refer(pt, ob),
+   string(pt, const char*),
+   intern(pt, ob),
+   interns(pt, const char*),
+   table(pt),
+   tbl_set(pt, ob, ob, ob),
+   tbl_get(pt, ob, ob),
+   pair(pt, ob, ob),
+   parq(pt, fd),
+   parse(pt, fd),
+   hnom(pt, ob),
+   linitp(pt, ob, ob*),
+   snoc(pt, ob, ob),
+   sskc(pt, ob*, ob),
+   err(pt, ob, const char*, ...);
 
 #define N0 putnum(0)
 #define nil N0
@@ -170,48 +155,57 @@ ob
 #define Inline inline __attribute__((always_inline))
 #define NoInline __attribute__((noinline))
 
-host gc NoInline,
-     dom_err NoInline,
-     oom_err NoInline,
-     ary_err NoInline;
+host
+  gc NoInline,
+  dom_err NoInline,
+  oom_err NoInline,
+  ary_err NoInline;
 
-S I enum class Q(ob _) { return _ & TagMask; }
+static Inline enum class Q(ob _) {
+  return _ & TagMask; }
 
-S I u1 nump(ob _) { return Q(_) == Num; }
-S I u1 strp(ob _) { return Q(_) == Str; }
-S I u1 symp(ob _) { return Q(_) == Sym; }
-S I u1 twop(ob _) { return Q(_) == Two; }
-S I u1 tblp(ob _) { return Q(_) == Tbl; }
-S I u1 homp(ob _) { return Q(_) == Hom; }
+static Inline bool nump(ob _) {
+  return Q(_) == Num; }
+static Inline bool strp(ob _) {
+  return Q(_) == Str; }
+static Inline bool symp(ob _) {
+  return Q(_) == Sym; }
+static Inline bool twop(ob _) {
+  return Q(_) == Two; }
+static Inline bool tblp(ob _) {
+  return Q(_) == Tbl; }
+static Inline bool homp(ob _) {
+  return Q(_) == Hom; }
 
-S I mo button(mo k) {
+static Inline dt button(dt k) {
   while (G(k)) k = F(k);
   return k; }
 
-S I N b2w(N b) {
-  return b / sizeof(ob) + (b % sizeof(ob) && 1); }
+static Inline uintptr_t b2w(uintptr_t b) {
+  ldiv_t d = ldiv(b, sizeof(ob));
+  b = d.quot;
+  return d.rem ? b + 1 : b; }
 
-S I ext extt(ob _) { return (ext) (_ & ~ TagMask); }
+static Inline void setw(void *x, intptr_t i, uintptr_t l) {
+  for (intptr_t *d = x; l--; *d++ = i); }
 
-S I u0 setw(u0 *x, Z i, N l) {
-  for (Z *d = x; l--; *d++ = i); }
-
-S I u0 cpyw(u0 *x, K u0 *y, N l) {
-  Z *d = x;
-  K Z *s = y;
+static Inline void cpyw(void *x, const void *y, uintptr_t l) {
+  intptr_t *d = x;
+  const intptr_t *s = y;
   while (l--) *d++ = *s++; }
 
-S I u0 rcpyw(u0 *x, K u0 *y, N l) {
-  Z *d = (ob*) x + (l - 1);
-  K Z *s = (K ob*) y + (l - 1);
+static Inline void rcpyw(void *x, const void *y, uintptr_t l) {
+  intptr_t *d = (ob*) x + (l - 1);
+  const intptr_t *s = (const intptr_t*) y + (l - 1);
   while (l--) *d-- = *s--; }
 
 // unchecked allocator -- make sure there's enough memory!
-S I u0 *bump(la v, Z n) {
-  u0 *x = v->hp;
-  return v->hp += n, x; }
+static Inline void *bump(pt v, intptr_t n) {
+  void *x = v->hp;
+  v->hp += n;
+  return x; }
 
-S I u0 *cells(la v, N n) {
+static Inline void *cells(pt v, uintptr_t n) {
   return Avail >= n || please(v, n) ? bump(v, n) : 0; }
 
 #define insts(_)\
@@ -250,7 +244,7 @@ S I u0 *cells(la v, N n) {
  _(symp_u, "symp") _(strp_u, "strp")\
  _(nilp_u, "nilp") _(rnd_u, "rand")
 
-#define ninl(x, _) ll x NoInline;
+#define ninl(x, _) host x NoInline;
 insts(ninl)
 #undef ninl
 
@@ -296,38 +290,26 @@ insts(ninl)
 #define Ary(n) if (!HasArgs(n)) return ApC(ary_err, putZ(n))
 #define IsA(x, t) (Q((x))==t)
 #define Typ(x,t) if (!IsA((x), (t))) return ApC(dom_err, xp)
-#define Get(n) ApC((v->xp=n, gc), xp)
-#define Have1() if (hp == sp) return Get(1)
-#define Have(n) if (sp - hp < n) return Get(n)
+#define Drag(n) ApC((v->xp=n, gc), xp)
+#define Slack (sp - hp)
+#define Have1() if (Slack == 0) return Drag(1)
+#define Have(n) if (Slack < n) return Drag(n)
 #define TypeCheck Typ
 #define Arity Ary
 
-#define Tc TypeCheck
-#define CheckType TypeCheck
 
 
-#define R(x) ((ob*)(x))
-#define T putnum(-1)
+#define ptr(x) ((ob*)(x))
+#define R ptr
+#define T putZ(-1)
 
 #define LeftParen '('
 #define RightParen ')'
-#define EndOfFile  EOF
 #define SingleQuote '\''
-#define DoubleQuote '"'
-#define NumeralSign '#'
-#define Semicolon ';'
-#define Space ' '
-#define Tab '\t'
-#define Newline '\n'
 #define Backslash '\\'
-#define Plus '+'
-#define Minus '-'
-#define Zero '0'
-#define Radix2 'b'
-#define Radix8 'o'
-#define Radix10 'd'
-#define Radix12 'z'
-#define Radix16 'x'
+#define DoubleQuote '"'
+#define Newline '\n'
+#define Space ' '
 
 // XXX FIXME XXX
 _Static_assert(sizeof(intptr_t) == 8, "64bit");

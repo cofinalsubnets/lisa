@@ -318,7 +318,7 @@ static Vm(encl) {
 Ll(encll) { return ApC(encl, Locs); }
 Ll(encln) { return ApC(encl, nil); }
 
-ob hnom(em v, ob x) {
+ob hnom(pt v, ob x) {
   host *k = gethom(x)->ll;
   if (k == clos || k == clos0 || k == clos1)
     return hnom(v, (ob) gethom(x)[2].ll);

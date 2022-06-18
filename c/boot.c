@@ -19,7 +19,7 @@
 #define Push(...) pushs(v, __VA_ARGS__, (ob) 0)
 static Inline mo pull(ps v, ob *e, N m) {
   return ((mo (*)(ps, ob*, N)) getnum(*v->sp++))(v, e, m); }
-static bool pushs(ps, ...), scan(em, ob*, ob);
+static bool pushs(ps, ...), scan(pt, ob*, ob);
 static mo
   em_i(ps, ob*, N),
   em_i_d(ps, ob*, N),
@@ -51,11 +51,11 @@ mo ana(ph v, ob x, ob k) {
 
 
 
-static mo imx(em v, ob *e, intptr_t m, ll *i, ob x) {
+static mo imx(pt v, ob *e, intptr_t m, ll *i, ob x) {
   return !Push(putnum(i), x) ? 0 : em_i_d(v, e, m); }
 
 #define Bind(v, x) if(!((v)=(x)))goto fail
-static NoInline ob rw_let_fn(em v, ob x) {
+static NoInline ob rw_let_fn(pt v, ob x) {
   mm(&x);
   for (ob _; twop(A(x));)
     if (!(_ = snoc(v, BA(x), AB(x)))  ||
@@ -66,7 +66,7 @@ static NoInline ob rw_let_fn(em v, ob x) {
   return um, x; }
 
 
-static ob asign(em v, ob a, Z i, ob*m) {
+static ob asign(pt v, ob a, Z i, ob*m) {
   ob x; return
     !twop(a) ?
       (*m = i, a) :
@@ -100,7 +100,7 @@ static int scan_def(ps v, ob *e, ob x) {
          !scan(v, e, AB(x)) ? -1 : 1),
      r); }
 
-static bool scan(em v, ob* e, ob x) {
+static bool scan(pt v, ob* e, ob x) {
   bool _; return
     !twop(x) ||
     A(x) == v->lex[Lamb] ||
@@ -115,7 +115,7 @@ static Inline mo pb1(host *i, mo k) {
 static Inline mo pb2(host *i, ob x, mo k) {
   return pb1(i, pb1((host *) x, k)); }
 
-static Inline ob comp_body(em v, ob*e, ob x) {
+static Inline ob comp_body(pt v, ob*e, ob x) {
   intptr_t i; return
     !Push(putnum(xx_mo),
           x,
@@ -151,7 +151,7 @@ static Inline ob mo_mo_lam(la v, ob* e, ob n, ob l) {
     return um, um, um, 0;
   return um, um, um, l; }
 
-static Inline ob mo_mo_clo(em v, ob*e, ob arg, ob seq) {
+static Inline ob mo_mo_clo(pt v, ob*e, ob arg, ob seq) {
   Z i = llen(arg);
   mm(&arg), mm(&seq);
   if (!Push(putnum(em_i_d), putnum(take), putnum(i), putnum(mk_mo)))
@@ -186,14 +186,14 @@ Co(let_mo_bind) {
     (_ = pair(v, A(v->wns), _)) ? imx(v, e, m, tbind, _) :
     0; }
 
-static bool let_mo_r(em v, ob*e, ob x) {
+static bool let_mo_r(pt v, ob*e, ob x) {
   bool _; return !twop(x) ||
     ((x = rw_let_fn(v, x)) &&
      (with(x, _ = let_mo_r(v, e, BB(x))), _) &&
      Push(putnum(xx_mo), AB(x), putnum(let_mo_bind), A(x))); }
 
 // syntactic sugar for define
-static bool def_sug(em v, ob x) {
+static bool def_sug(pt v, ob x) {
   ob _ = nil; return
     (with(_, x = linitp(v, x, &_)), x) &&
     (x = pair(v, x, _)) &&
@@ -249,7 +249,7 @@ Co(if_mo_pre_ant) {
      s1(*e) = B(s1(*e)),
      x); }
 
-static bool if_mo_loop(em v, ob*e, ob x) {
+static bool if_mo_loop(pt v, ob*e, ob x) {
   bool _; return
     x = twop(x) ? x : pair(v, nil, nil),
     !x ? 0 : !twop(B(x)) ?
@@ -276,7 +276,7 @@ Co(em_call) {
   return !k ? 0 : pb2(k->ll == ret ? rec : call, a, k); }
 
 enum where { Here, Loc, Arg, Clo, Wait };
-static ob ls_lex(em v, ob e, ob y) {
+static ob ls_lex(pt v, ob e, ob y) {
   ob q; return
     nilp(e) ?
       (q = refer(v, y)) ?
@@ -330,7 +330,7 @@ Co(ap_mo, ob fun, ob args) {
       return um, NULL;
   return um, pull(v, e, m); }
 
-static bool seq_mo_loop(em v, ob*e, ob x) {
+static bool seq_mo_loop(pt v, ob *e, ob x) {
   bool _; return !twop(x) ? 1 :
     (with(x, _ = seq_mo_loop(v, e, B(x))), _) &&
     Push(putnum(xx_mo), A(x)); }
@@ -366,7 +366,7 @@ static bool pushss(ps v, N i, va_list xs) {
     (with(x, _ = pushss(v, i+1, xs)),
      _ && (*--v->sp = x)); }
 
-static bool pushs(em v, ...) {
+static bool pushs(pt v, ...) {
   va_list xs; bool _; return
     va_start(xs, v),
     _ = pushss(v, 0, xs),

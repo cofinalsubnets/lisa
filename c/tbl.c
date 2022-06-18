@@ -11,13 +11,13 @@ Op(1, tget, (xp = tbl_get(v, xp, *sp++)) ? xp : nil)
 Op(1, thas, tbl_get(v, xp, *sp++) ? T : nil)
 Op(1, tlen, putnum(gettbl(xp)->len))
 
-static ob tks_j(em v, ob e, ob l) {
+static ob tks_j(pt v, ob e, ob l) {
   ob x; return e == nil ? l :
     (x = R(e)[0],
      with(x, l = tks_j(v, R(e)[2], l)),
      l ? pair(v, x, l) : 0); }
 
-static ob tks_i(em v, ob t, Z i) {
+static ob tks_i(pt v, ob t, Z i) {
   ob k; return i == 1 << gettbl(t)->cap ? nil :
     (with(t, k = tks_i(v, t, i+1)),
      k ? tks_j(v, gettbl(t)->tab[i], k) : 0); }
@@ -34,7 +34,7 @@ Vm(tblc) {
   return xp = tbl_get(v, fp->argv[0], fp->argv[1]),
          ApC(ret, xp ? T : nil); }
 
-static ob tblss(em v, Z i, Z l) {
+static ob tblss(pt v, Z i, Z l) {
   fr fp = (fr) v->fp;
   return
     i > l - 2 ? fp->argv[i - 1] :

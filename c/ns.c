@@ -6,7 +6,7 @@ Ll(popd_u) {
   if (twop(xp)) v->wns = xp;
   return ApC(ret, nil); }
 
-ob refer(em v, ob _) {
+ob refer(pt v, ob _) {
   ob x, mod = v->wns;
   for (; twop(mod); mod = B(mod))
     if ((x = tbl_get(v, A(mod), _))) return x;

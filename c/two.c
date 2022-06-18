@@ -16,12 +16,12 @@ Z lidx(ob l, ob x) {
     if (x == A(l)) return i;
   return -1; }
 
-ob linitp(em v, ob x, ob* d) {
+ob linitp(pt v, ob x, ob* d) {
   ob y; return !twop(B(x)) ? (*d = x, nil) :
     (with(x, y = linitp(v, B(x), d)),
      !y ? 0 : pair(v, A(x), y)); }
 
-ob snoc(em v, ob l, ob x) {
+ob snoc(pt v, ob l, ob x) {
   return !twop(l) ? pair(v, x, l) :
     (with(l, x = snoc(v, B(l), x)),
      !x ? 0 : pair(v, A(l), x)); }

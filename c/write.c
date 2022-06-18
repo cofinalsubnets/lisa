@@ -1,35 +1,35 @@
 #include "la.h"
 
-static void emhomn(em v, ob x, FILE *o) {
+static void emhomn(pt v, ob x, FILE *o) {
   if (symp(x)) fputc(Backslash, o), emit(v, x, o);
   else if (!twop(x)) fputc(Backslash, o);
   else { if (symp(A(x)) || twop(A(x))) emhomn(v, A(x), o);
          if (symp(B(x)) || twop(B(x))) emhomn(v, B(x), o); } }
 
-static void emhom(em v, ob x, FILE *o) {
+static void emhom(pt v, ob x, FILE *o) {
   emhomn(v, hnom(v, x), o); }
 
-static void emnum(em v, ob x, FILE *o) {
+static void emnum(pt v, ob x, FILE *o) {
   fprintf(o, "%ld", getnum(x)); }
 
-static void emstr(em v, ob x, FILE *o) {
+static void emstr(pt v, ob x, FILE *o) {
   str s = getstr(x);
   fputc(DoubleQuote, o);
   for (char *t = s->text; *t; fputc(*t++, o))
     if (*t == DoubleQuote) fputc(Backslash, o);
   fputc(DoubleQuote, o); }
 
-static void emtbl(em v, ob x, FILE *o) {
+static void emtbl(pt v, ob x, FILE *o) {
   tbl t = gettbl(x);
   fprintf(o, "#tbl:%ld/%ld", t->len, t->cap); }
 
-static void emsym(em v, ob x, FILE *o) {
+static void emsym(pt v, ob x, FILE *o) {
   sym y = getsym(x);
   (nilp(y->nom) ?
     fprintf(o, "#sym@%lx", (long) y) :
     fputs(getstr(y->nom)->text, o)); }
 
-static void emtwo(em v, ob x, FILE *o) {
+static void emtwo(pt v, ob x, FILE *o) {
   // quotation?
   if (A(x) == v->lex[Quote] &&
       twop(B(x)) &&
@@ -44,8 +44,8 @@ static void emtwo(em v, ob x, FILE *o) {
   fputc(RightParen, o); }
 
 
-Inline void emit(em v, ob x, FILE *o) {
-  static void (*ems[])(em, ob, FILE*) = {
+Inline void emit(pt v, ob x, FILE *o) {
+  static void (*ems[])(pt, ob, FILE*) = {
     [Hom] = emhom, [Num] = emnum, [Sym] = emsym,
     [Two] = emtwo, [Str] = emstr, [Tbl] = emtbl, };
   return ems[Q(x)](v, x, o); }

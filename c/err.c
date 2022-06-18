@@ -22,16 +22,16 @@ Ll(arity) {
     ApC(ary_err, reqd) :
     ApN(2, xp); }
 
-static void show_call(ps v, mo ip, co fp) {
+static u0 show_call(ps v, mo ip, co fp) {
   fputc('(', stderr), emit(v, (ob) ip, stderr);
   for (uintptr_t i = 0, argc = getnum(fp->argc); i < argc;)
     fputc(' ', stderr), emit(v, fp->argv[i++], stderr);
   fputc(')', stderr); }
 
-static Inline bool atop(ps v, co fp) {
-  return R(fp) == v->pool + v->len; }
+static Inline u1 atop(pt v, co fp) {
+  return ptr(fp) == v->pool + v->len; }
 
-NoInline ob err(em v, ob x, const char *msg, ...) {
+NoInline ob err(pt v, ob x, const char *msg, ...) {
   if (x || msg) {
     mo ip = v->ip;
     fr fp = v->fp;
