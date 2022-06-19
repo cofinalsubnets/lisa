@@ -11,7 +11,8 @@ Ll(ary_err) { return Pack(),
   err(v, 0, "takes %d arguments", getZ(xp)); }
 
 // type/arity checking
-#define DTc(n, t) Vm(n) { Typ(xp, t); return ApN(1, xp); }
+#define DTc(n, t) Vm(n) {\
+  return IsA(t, xp) ? ApN(1, xp) : ApC(ary_err, xp); }
 DTc(idZ, Num)
 DTc(idH, Hom)
 DTc(idT, Tbl)
@@ -23,17 +24,26 @@ Ll(arity) {
     ApN(2, xp); }
 
 static u0 show_call(ps v, mo ip, co fp) {
-  fputc('(', stderr), emit(v, (ob) ip, stderr);
+  fputc('(', stderr);
+  tx(v, stderr, (ob) ip);
   for (uintptr_t i = 0, argc = getnum(fp->argc); i < argc;)
-    fputc(' ', stderr), emit(v, fp->argv[i++], stderr);
+    fputc(' ', stderr),
+    tx(v, stderr, fp->argv[i++]);
   fputc(')', stderr); }
 
 static Inline u1 atop(pt v, co fp) {
   return ptr(fp) == v->pool + v->len; }
 
+static ob restart(pt v) {
+  v->fp = (fr) (v->pool + v->len);
+  v->sp = (ob*) v->fp;
+  v->xp = nil;
+  v->ip = (dt) nil;
+  return 0; }
+
 NoInline ob err(pt v, ob x, const char *msg, ...) {
   if (x || msg) {
-    mo ip = v->ip;
+    dt ip = v->ip;
     fr fp = v->fp;
     // error line
     fputs("# ", stderr);
@@ -42,12 +52,12 @@ NoInline ob err(pt v, ob x, const char *msg, ...) {
       va_list xs;
       va_start(xs, msg), vfprintf(stderr, msg, xs), va_end(xs);
       if (x) fputs(" ", stderr); }
-    if (x) emit(v, x, stderr);
+    if (x) tx(v, stderr, x);
     fputc('\n', stderr);
 
     // backtrace
     if (!atop(v, fp)) for (;;) {
-      ip = (mo) fp->retp, fp = (fr)
+      ip = (dt) fp->retp, fp = (fr)
         ((ob*) (fp + 1) + getnum(fp->argc)
                         + getnum(fp->subd));
       if (atop(v, fp)) break; else
@@ -56,8 +66,4 @@ NoInline ob err(pt v, ob x, const char *msg, ...) {
         fputc('\n', stderr); } }
 
   // reset and yield
-  return v->fp = (fr) (v->pool + v->len),
-         v->sp = (ob*) v->fp,
-         v->xp = nil,
-         v->ip = (mo) nil,
-         0; }
+  return restart(v); }

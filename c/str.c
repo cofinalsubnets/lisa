@@ -13,13 +13,13 @@ ob string(la v, const char* c) {
 // string instructions
 Vm(strl) {
   Ary(1);
-  Typ(fp->argv[0], Str);
+  TypeCheck(fp->argv[0], Str);
   return ApC(ret, putZ(getstr(*fp->argv)->len-1)); }
 
 Vm(strg) {
   Ary(2);
-  Typ(fp->argv[0], Str);
-  Typ(fp->argv[1], Num);
+  TypeCheck(fp->argv[0], Str);
+  TypeCheck(fp->argv[1], Num);
   return ApC(ret,
     getZ(fp->argv[1]) < getstr(fp->argv[0])->len-1 ?
       putZ(getstr(fp->argv[0])->text[getZ(fp->argv[1])]) :
@@ -29,7 +29,7 @@ Vm(strconc) {
   Z l = getZ(fp->argc), sum = 0, i = 0;
   while (i < l) {
     ob x = fp->argv[i++];
-    Typ(x, Str);
+    TypeCheck(x, Str);
     sum += getstr(x)->len - 1; }
   Z words = Width(str) + b2w(sum+1);
   Have(words);
@@ -48,9 +48,9 @@ Vm(strconc) {
 #define max(a,b)(a>b?a:b)
 Vm(strs) {
   Ary(3);
-  Typ(fp->argv[0], Str);
-  Typ(fp->argv[1], Num);
-  Typ(fp->argv[2], Num);
+  TypeCheck(fp->argv[0], Str);
+  TypeCheck(fp->argv[1], Num);
+  TypeCheck(fp->argv[2], Num);
   str src = getstr(fp->argv[0]);
   Z lb = getnum(fp->argv[1]), ub = getnum(fp->argv[2]);
   lb = max(lb, 0);
@@ -75,7 +75,7 @@ Vm(strmk) {
   hp += words;
   for (ob x; i < bytes-1; s->text[i++] = getnum(x)) {
     x = fp->argv[i];
-    Typ(x, Num);
+    TypeCheck(x, Num);
     if (x == N0) break; }
   return s->text[i] = 0,
          s->ext = 0,

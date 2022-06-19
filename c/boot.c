@@ -1,6 +1,13 @@
 #include "la.h"
 #include <stdarg.h>
 
+
+// helper functions for lists
+static intptr_t lidx(ob l, ob x) {
+  for (intptr_t i = 0; twop(l); l = B(l), i++)
+    if (x == A(l)) return i;
+  return -1; }
+
 // bootstrap thread compiler
 //
 
@@ -51,8 +58,13 @@ mo ana(ph v, ob x, ob k) {
 
 
 
-static mo imx(pt v, ob *e, intptr_t m, ll *i, ob x) {
+static dt imx(pt v, ob *e, intptr_t m, ll *i, ob x) {
   return !Push(putnum(i), x) ? 0 : em_i_d(v, e, m); }
+
+static ob snoc(pt v, ob l, ob x) {
+  return !twop(l) ? pair(v, x, l) :
+    (with(l, x = snoc(v, B(l), x)),
+     !x ? 0 : pair(v, A(l), x)); }
 
 #define Bind(v, x) if(!((v)=(x)))goto fail
 static NoInline ob rw_let_fn(pt v, ob x) {
@@ -133,6 +145,11 @@ static Inline ob comp_body(pt v, ob*e, ob x) {
            x,
        button(gethom(x))[1].ll = (ll*) x,
        !twop(clo(*e)) ? x : pair(v, clo(*e), x)); }
+
+static ob linitp(pt v, ob x, ob* d) { ob y; return
+  !twop(B(x)) ? (*d = x, nil) :
+  !(with(x, y = linitp(v, B(x), d)), y) ? 0 :
+  pair(v, A(x), y); }
 
 // takes a lambda expr, returns either a pair or or a
 // hom depending on if the function has free variables or not
@@ -282,9 +299,9 @@ static ob ls_lex(pt v, ob e, ob y) {
       (q = refer(v, y)) ?
         pair(v, putnum(Here), q) :
         pair(v, putnum(Wait), A(v->wns)) :
-    lidx(loc(e), y) > -1 ? pair(v, putnum(Loc), e) :
-    lidx(arg(e), y) > -1 ? pair(v, putnum(Arg), e) :
-    lidx(clo(e), y) > -1 ? pair(v, putnum(Clo), e) :
+    lidx(loc(e), y) > -1 ? pair(v, putZ(Loc), e) :
+    lidx(arg(e), y) > -1 ? pair(v, putZ(Arg), e) :
+    lidx(clo(e), y) > -1 ? pair(v, putZ(Clo), e) :
     ls_lex(v, par(e), y); }
 
 Co(var_mo, ob x) { ob y, q; return
@@ -300,7 +317,7 @@ Co(var_mo, ob x) { ob y, q; return
     B(q) == *e ?
       y == putnum(Loc) ?
         imx(v, e, m, loc, putnum(lidx(loc(*e), x))) :
-      y == putnum(Arg) ?
+      y == putZ(Arg) ?
         imx(v, e, m, arg, putnum(lidx(arg(*e), x))) :
       imx(v, e, m, clo, putnum(lidx(clo(*e), x))) :
     (y = llen(clo(*e)),
@@ -372,3 +389,88 @@ static bool pushs(pt v, ...) {
     _ = pushss(v, 0, xs),
     va_end(xs),
     _; }
+
+// bootstrap eval interpreter function
+Ll(ev_u) {
+  Ary(1);
+  mo y; return
+    // check to see if ev has been overridden in the
+    // toplevel namespace and if so call that. this way
+    // ev calls compiled pre-bootstrap will use the
+    // bootstrapped compiler, which is what we want?
+    // seems kind of strange to need this ...
+    xp = refer(v, v->lex[Eval]),
+    xp && homp(xp) && gethom(xp)->ll != ev_u ?
+      ApY((mo) xp, nil) :
+      // otherwise use the bootstrap compiler.
+      !(Pack(), y = ana(v, *fp->argv, putnum(ret))) ? 0 :
+        (Unpack(), ApY(y, xp)); }
+
+// instructions used by the compiler
+Ll(hom_u) {
+  Ary(1);
+  xp = fp->argv[0];
+  TypeCheck(xp, Num);
+  uintptr_t len = getZ(xp) + 2;
+  if (Slack < len) return Pray(len);
+  xp = (ob) hp;
+  hp += len;
+  setw((ob*) xp, nil, len);
+  ptr(xp)[len-2] = 0;
+  ptr(xp)[len-1] = xp;
+  return ApC(ret, (ob) (ptr(xp) + len - 2)); }
+
+Ll(hfin_u) {
+  ArityCheck(1);
+  mo k = (mo) *fp->argv;
+  TypeCheck((ob) k, Hom);
+  return button(k)[1].ll = (ll*) k,
+         ApC(ret, (ob) k); }
+
+Ll(emx) {
+  mo k = (mo) *sp++ - 1;
+  return k->ll = (ll*) xp,
+         ApN(1, (ob) k); }
+
+Ll(emi) {
+  mo k = (mo) *sp++ - 1;
+  return k->ll = (ll*) getnum(xp),
+         ApN(1, (ob) k); }
+
+Ll(emx_u) {
+  ArityCheck(2);
+  ob x = fp->argv[0];
+  mo k = (mo) fp->argv[1];
+  TypeCheck((ob) k, Hom);
+  return (--k)->ll = (ll*) x,
+         ApC(ret, (ob) k); }
+
+Ll(emi_u) {
+  ArityCheck(2);
+  ob n = fp->argv[0];
+  mo k = (mo) fp->argv[1];
+  TypeCheck(n, Num);
+  TypeCheck((ob) k, Hom);
+  return (--k)->ll = (ll*) getnum(n),
+         ApC(ret, (ob) k); }
+
+Ll(peeki_u) {
+  ArityCheck(1);
+  TypeCheck(*fp->argv, Hom);
+  return ApC(ret, putnum(gethom(*fp->argv)->ll)); }
+
+Ll(peekx_u) {
+  ArityCheck(1);
+  TypeCheck(*fp->argv, Hom);
+  return ApC(ret, (ob) gethom(*fp->argv)->ll); }
+
+Ll(seek_u) {
+  ArityCheck(2);
+  TypeCheck(fp->argv[0], Hom);
+  TypeCheck(fp->argv[1], Num);
+  return ApC(ret, fp->argv[0] + fp->argv[1] - Num); }
+
+Ll(hnom_u) {
+  ArityCheck(1);
+  TypeCheck(*fp->argv, Hom);
+  return ApC(ret, hnom(v, *fp->argv)); }

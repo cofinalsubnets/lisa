@@ -14,10 +14,11 @@ typedef intptr_t ob, Z;
 typedef struct dt *mo, *dt;
 typedef struct pt *la, *ph, *ps, *pt;
 typedef struct fr *fr, *co, *ar;
-#define Ll(n, ...)\
-  ob n(pt v, ob xp, dt ip, ob *hp, ob *sp, ar fp)
-typedef Ll(host);
+#define Dt(n, ...)\
+  ob n(pt v, ob xp, dt ip, ob *hp, ob *sp, fr fp)
+typedef Dt(host);
 #define Vm Ll
+#define Ll Dt
 typedef host vm, ll, go;
 
 // FIXME 2bit
@@ -33,19 +34,13 @@ enum class { Hom, Num, Two, Str, Sym, Tbl, };
 #define NomStr "str"
 #define NomSym "sym"
 
-#define S static
-#define K const
-#define I Inline
-
 typedef FILE *fd;
 #define Gc(n) ob n(ph v, ob x, Z len0, ob *pool0)
 #define Hash(n) N n(la v, ob x)
 typedef Hash(hasher);
 typedef Gc(copier);
 
-typedef struct ext {
-  ob name;
-} *ext;
+typedef struct ext { ob name; } *ext;
 
 typedef struct str { ext ext; Z len; char text[]; } *str;
 typedef struct sym { ob nom, code, l, r; } *sym;
@@ -63,7 +58,7 @@ enum lex {
 
 struct pt {
   // vm state -- kept in CPU registers most of the time
-  mo ip; // current thread
+  dt ip; // current thread
   ar fp; // top of control stack
   ob xp, // free register
      *hp, // top of heap
@@ -82,29 +77,23 @@ struct pt {
      rand, // random seed
      lex[LexN]; }; // grammar symbols
 
-void t1(pt), emit(pt, ob, fd);
-
+void t1(pt), tx(pt, FILE*, ob);
 bool please(pt, uintptr_t), eql(ob, ob);
-
 uintptr_t llen(ob), hash(pt, ob);
-
-intptr_t lcprng(intptr_t), lidx(ob, ob);
+intptr_t lcprng(intptr_t);
 
 pt t0(void);
 dt ana(pt, ob, ob);
 ob refer(pt, ob),
    string(pt, const char*),
    intern(pt, ob),
-   interns(pt, const char*),
    table(pt),
    tbl_set(pt, ob, ob, ob),
    tbl_get(pt, ob, ob),
    pair(pt, ob, ob),
-   parq(pt, fd),
-   parse(pt, fd),
+   rxq(pt, FILE*),
+   rx(pt, FILE*),
    hnom(pt, ob),
-   linitp(pt, ob, ob*),
-   snoc(pt, ob, ob),
    sskc(pt, ob*, ob),
    err(pt, ob, const char*, ...);
 
@@ -114,8 +103,8 @@ ob refer(pt, ob),
 #define FG(x) F(G(x))
 #define GF(x) G(F(x))
 #define GG(x) G(G(x))
-#define A(o) gettwo(o)->a
-#define B(o) gettwo(o)->b
+#define A(o) get2(o)->a
+#define B(o) get2(o)->b
 #define AA(o) A(A(o))
 #define AB(o) A(B(o))
 #define BA(o) B(A(o))
@@ -128,29 +117,25 @@ ob refer(pt, ob),
 
 #define nilp(_) ((_)==nil)
 
-#define F(_) ((mo)(_)+1)
-#define G(_) (((mo)(_))->ll)
+#define F(_) ((dt)(_)+1)
+#define G(_) (((dt)(_))->ll)
 
 #define putstr(_) ((ob)(_)+Str)
 #define getnum getZ
 #define putnum putZ
-#define puthom putM
-#define gethom getM
 #define getZ(_) ((ob)(_)>>TagBits)
 #define putZ(_) (((ob)(_)<<TagBits)+Num)
 #define getstr(_) ((str)((_)-Str))
-#define putM(_) ((ob)(_))
-#define getM(_) ((mo)(_))
+#define puthom(_) ((ob)(_))
+#define gethom(_) ((dt)(_))
 #define getsym getY
 #define putsym putY
 #define getY(_) ((sym)((_)-Sym))
 #define putY(_) ((ob)(_)+Sym)
 #define gettbl(_) ((tbl)((_)-Tbl))
 #define puttbl(_) ((ob)(_)+Tbl)
-#define gettwo getW
-#define puttwo putW
-#define getW(_) ((two)((_)-Two))
-#define putW(_) ((ob)(_)+Two)
+#define get2(_) ((two)((_)-Two))
+#define put2(_) ((ob)(_)+Two)
 
 #define Inline inline __attribute__((always_inline))
 #define NoInline __attribute__((noinline))
@@ -273,9 +258,11 @@ insts(ninl)
 // "external" function calls.
 #define Pack() (v->ip=ip,v->sp=sp,v->hp=hp,v->fp=fp,v->xp=xp)
 #define Unpack() (fp=v->fp,hp=v->hp,sp=v->sp,ip=v->ip,xp=v->xp)
+#define Out(...) (Pack(),(__VA_ARGS__),Unpack())
 
 // FIXME confusing premature optimization
-#define Locs ((ob*)fp)[-1]
+#define Locs ((ob**)fp)[-1]
+#define Clos ((ob*)fp->clos)
 // the pointer to the local variables array isn't in the frame struct. it
 // isn't present for all functions, but if it is it's in the word of memory
 // immediately preceding the frame pointer. if a function has
@@ -284,20 +271,17 @@ insts(ninl)
 
 #define ApN(n, x) ApY(ip+(n), (x))
 #define ApC(f, x) (f)(v, (x), ip, hp, sp, fp)
-#define ApY(f, x) (ip = (mo) (f), ApC(ip->ll, (x)))
+#define ApY(f, x) (ip = (dt) (f), ApC(ip->ll, (x)))
 
 #define HasArgs(n) (putnum(n) <= fp->argc)
-#define Ary(n) if (!HasArgs(n)) return ApC(ary_err, putZ(n))
-#define IsA(x, t) (Q((x))==t)
-#define Typ(x,t) if (!IsA((x), (t))) return ApC(dom_err, xp)
-#define Drag(n) ApC((v->xp=n, gc), xp)
+#define ArityCheck(n) if (!HasArgs(n)) return ApC(ary_err, putZ(n))
+#define Ary ArityCheck
+#define IsA(t, x) (t==Q((x)))
+#define TypeCheck(x,t) if (!IsA((t),(x))) return ApC(dom_err, xp)
+#define Pray(n) ApC((v->xp=n, gc), xp)
 #define Slack (sp - hp)
-#define Have1() if (Slack == 0) return Drag(1)
-#define Have(n) if (Slack < n) return Drag(n)
-#define TypeCheck Typ
-#define Arity Ary
-
-
+#define Have1() if (Slack == 0) return Pray(1)
+#define Have(n) if (Slack < n) return Pray(n)
 
 #define ptr(x) ((ob*)(x))
 #define R ptr

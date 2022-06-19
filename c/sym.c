@@ -21,7 +21,7 @@ ob sskc(pt v, ob *y, ob x) {
     // FIXME the caller must ensure Avail >= Width(sym)
     // (because GC here would void the tree)
     (z = cells(v, Width(sym)),
-     z->code = hash(v, putnum(hash(v, z->nom = x))),
+     z->code = hash(v, putZ(hash(v, z->nom = x))),
      z->l = z->r = nil,
      *y = putsym(z)); }
 
@@ -31,30 +31,24 @@ ob intern(pt v, ob x) {
     (with(x, _ = please(v, Width(sym))), _) ?
       sskc(v, &v->syms, x) : 0; }
 
-ob interns(pt v, const char *s) {
-  ob _ = string(v, s);
-  return _ ? intern(v, _) : 0; }
+Vm(sym_u) { sym y; return 
+  fp->argc > N0 && strp(*fp->argv) ?
+    (Pack(),
+     v->xp = intern(v, *fp->argv),
+     Unpack(),
+     ApC(xp ? ret : oom_err, xp)) :
 
-Vm(sym_u) {
-  sym y; return 
-    fp->argc > N0 && strp(*fp->argv) ?
-      (Pack(),
-       v->xp = intern(v, *fp->argv),
-       Unpack(),
-       ApC(xp ? ret : oom_err, xp)) :
+  sp - hp < Width(sym) ?
+    (v->xp = Width(sym),
+     ApC(gc, xp)) :
 
-    sp - hp < Width(sym) ?
-      (v->xp = Width(sym),
-       ApC(gc, xp)) :
+  (y = (sym) hp,
+   hp += Width(sym),
+   y->nom = y->l = y->r = nil,
+   y->code = v->rand = lcprng(v->rand),
+   ApC(ret, putsym(y))); }
 
-    (y = (sym) hp,
-     hp += Width(sym),
-     y->nom = y->l = y->r = nil,
-     y->code = v->rand = lcprng(v->rand),
-     ApC(ret, putsym(y))); }
-
-Vm(ystr_u) {
-  Arity(1);
-  xp = *fp->argv;
-  TypeCheck(xp, Sym);
-  return ApC(ret, getsym(xp)->nom); }
+Dt(ystr_u) { return
+  fp->argc == N0 ? ApC(ary_err, putZ(1)) :
+  !IsA(Sym, xp = *fp->argv) ? ApC(dom_err, xp) :
+  ApC(ret, getsym(xp)->nom); }

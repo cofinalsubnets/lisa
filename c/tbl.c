@@ -3,7 +3,7 @@
 // hash tables
 Vm(tblg) {
   Ary(2);
-  Typ(fp->argv[0], Tbl);
+  TypeCheck(fp->argv[0], Tbl);
   return xp = tbl_get(v, fp->argv[0], fp->argv[1]),
          ApC(ret, xp ? xp : nil); }
 
@@ -30,7 +30,7 @@ Vm(tkeys) { return
 
 Vm(tblc) {
   Ary(2);
-  Typ(fp->argv[0], Tbl);
+  TypeCheck(fp->argv[0], Tbl);
   return xp = tbl_get(v, fp->argv[0], fp->argv[1]),
          ApC(ret, xp ? T : nil); }
 
@@ -43,7 +43,7 @@ static ob tblss(pt v, Z i, Z l) {
 
 Vm(tbls) {
   Ary(1);
-  Typ(*fp->argv, Tbl);
+  TypeCheck(*fp->argv, Tbl);
   return
     xp = *fp->argv,
     Pack(),
@@ -61,7 +61,7 @@ Vm(tblmk) {
 
 Vm(tblks) {
   Ary(1);
-  Typ(*fp->argv, Tbl);
+  TypeCheck(*fp->argv, Tbl);
   return
     Pack(),
     v->xp = tks_i(v, *fp->argv, 0),
@@ -70,7 +70,7 @@ Vm(tblks) {
 
 Vm(tbll) {
   Ary(1);
-  Typ(*fp->argv, Tbl);
+  TypeCheck(*fp->argv, Tbl);
   return ApC(ret, putnum(gettbl(*fp->argv)->len)); }
 
 Vm(tset) {
@@ -225,7 +225,7 @@ ob table(la v) {
 
 Vm(tbld) {
   Ary(2);
-  Typ(fp->argv[0], Tbl);
+  TypeCheck(fp->argv[0], Tbl);
   return
     Pack(),
     v->xp = tbl_del(v, fp->argv[0], fp->argv[1]),

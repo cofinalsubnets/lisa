@@ -18,14 +18,14 @@ static Gc(cpid) { return x; }
 // old data.
 
 #define inb(o,l,u) (o>=l&&o<u)
-#define fresh(x) inb(R(x),v->pool,v->pool+v->len)
+#define fresh(x) inb(ptr(x),v->pool,v->pool+v->len)
 
 // we use this to test if an object has been moved already
 #define COPY(dst,src) (dst=cp(v,src,len0,pool0))
 #define CP(x) COPY(x,x)
 
 static Inline ob evacd(la v, ob _, enum class q) {
-  ob x = *R(_ - q);
+  ob x = *ptr(_ - q);
   return Q(x) == q && fresh(x) ? x : 0; }
 
 #define oom_err_msg "out of memory : %d + %d"
@@ -199,7 +199,7 @@ Gc(cptbl) {
 Gc(cptwo) {
   ob dst = evacd(v, x, Two);
   if (!dst)
-    dst = puttwo(bump(v, Width(two))),
+    dst = put2(bump(v, Width(two))),
     A(dst) = A(x), A(x) = dst,
     B(dst) = cp(v, B(x), len0, pool0),
     A(dst) = cp(v, A(dst), len0, pool0);

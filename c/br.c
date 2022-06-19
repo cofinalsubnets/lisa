@@ -33,3 +33,25 @@ cmp(LT, lt) cmp(LE, lteq) cmp(GE, gteq) cmp(GT, gt) cmp(eql, eq)
       if (!t##p(*xs++)) return ApC(ret, nil);\
     return ApC(ret, T); }
 Tp(num) Tp(hom) Tp(two) Tp(sym) Tp(str) Tp(tbl) Tp(nil)
+
+// conditional jumps
+//
+// args: test, yes addr, yes val, no addr, no val
+#define Br(nom, test, a, x, b, y) Ll(nom) {\
+  return ApY(test ? (ob) a(ip) : (ob) b(ip), x); }
+// combined test/branch instructions
+Br(branch, xp != nil, GF, xp, FF, xp)
+Br(barnch, xp != nil, FF, xp, GF, xp)
+
+Br(breq, eql(*sp++, xp), GF, T, FF, nil)
+Br(brne, eql(*sp++, xp), FF, T, GF, nil)
+
+Br(brlt,    *sp++ < xp,  GF, xp, FF, nil)
+Br(brlt2,   *sp++ < xp,  FF, xp, GF, nil)
+Br(brlteq,  *sp++ <= xp, GF, xp, FF, nil)
+Br(brlteq2, *sp++ <= xp, FF, xp, GF, nil)
+Br(brgt,    *sp++ > xp,  GF, xp, FF, nil)
+Br(brgt2,   *sp++ > xp,  FF, xp, GF, nil)
+Br(brgteq,  *sp++ >= xp, GF, xp, FF, nil)
+// brgteq2 is brlt
+

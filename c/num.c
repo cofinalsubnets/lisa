@@ -73,7 +73,7 @@ UBINOP(mul, 1, *)
 UBINOP(band, -1, &)
 
 Ll(bnot_u) {
-  Arity(1);
+  ArityCheck(1);
   return ApC(ret, putZ(~getZ(*fp->argv))); }
 
 Z lcprng(Z s) {
