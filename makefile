@@ -12,7 +12,7 @@ PREFIX ?= .local
 CPPFLAGS=\
 	-DPREF=\"$(DESTDIR)/$(PREFIX)\" -DLANG=\"$(lang)\" -DSUFF=\"$(suff)\"
 CFLAGS=\
-	-std=c99 -g -Os -flto\
+	-std=c17 -g -Os -flto\
 	-Wall -Wstrict-prototypes -Wno-shift-negative-value\
 	-fno-stack-protector -fno-unroll-loops
 VIMPREFIX ?= $(HOME)/.vim
@@ -31,17 +31,20 @@ clean:
 
 bin/$(lang): bin/$(lang).bin
 	strip -o $@ $^
+
 bin/$(lang).bin: $(c:.c=.o)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
 # installation
 install: $(installed_files)
+
 uninstall:
 	rm -f $(installed_files)
 
 # profile on linux with perf
 perf: perf.data
 	perf report
+
 perf.data: bin/$(lang).bin $(lib)
 	perf record $(run)
 
@@ -67,5 +70,3 @@ $(whither)%: %
 	$(CC) -c -o $@ $(CFLAGS) $(CPPFLAGS) $(@:.o=.c)
 $(VIMPREFIX)/%: vim/%
 	install -D $^ $@
-.PHONY: test clean perf valg sloc bits repl\
- 	install uninstall install-vim uninstall-vim

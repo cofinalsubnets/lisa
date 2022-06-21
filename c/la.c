@@ -147,7 +147,7 @@ static dt act(pt v, bool shell, const char **nfs) {
      k); }
 
 
-int tr(char **argv, bool shell, const char *prelu) {
+static int tr(char **argv, bool shell, const char *prelu) {
   pt v = t0();
   ob r = v &&
     (r = (ob) act(v, shell, (const char**) argv)) &&

@@ -10,56 +10,57 @@ static intptr_t lidx(ob l, ob x) {
 
 // bootstrap thread compiler
 //
+typedef struct env {
+  ob arg, loc, clo, par, name, asig, s1, s2; } *env;
 
 // " compilation environments "
-#define arg(x)  ((ob*)(x))[0] // argument variables : a list
-#define loc(x)  ((ob*)(x))[1] // local variables : a list
-#define clo(x)  ((ob*)(x))[2] // closure variables : a list
-#define par(x)  ((ob*)(x))[3] // surrounding scope : tuple or nil
-#define name(x) ((ob*)(x))[4] // function name : a symbol or nil
-#define asig(x) ((ob*)(x))[5] // arity signature : an integer
-#define s1(x)   ((ob*)(x))[6] // stacks for branch addresses
-#define s2(x)   ((ob*)(x))[7]
+#define arg(x)  ((env)(x))->arg // argument variables : a list
+#define loc(x)  ((env)(x))->loc // local variables : a list
+#define clo(x)  ((env)(x))->clo // closure variables : a list
+#define par(x)  ((env)(x))->par // surrounding scope : tuple or nil
+#define name(x) ((env)(x))->name // function name : a symbol or nil
+#define asig(x) ((env)(x))->asig // arity signature : an integer
+#define s1(x)   ((env)(x))->s1 // stacks for branch addresses
+#define s2(x)   ((env)(x))->s2
 // if a function is not variadic its arity signature is
 // n = number of required arguments; otherwise it is -n-1
 
 #define Push(...) pushs(v, __VA_ARGS__, (ob) 0)
-static Inline mo pull(ps v, ob *e, N m) {
-  return ((mo (*)(ps, ob*, N)) getnum(*v->sp++))(v, e, m); }
+static Inline dt pull(ps v, ob *e, N m) {
+  return ((dt (*)(ps, ob*, N)) getnum(*v->sp++))(v, e, m); }
 static bool pushs(ps, ...), scan(pt, ob*, ob);
-static mo
-  em_i(ps, ob*, N),
-  em_i_d(ps, ob*, N),
-  mk_mo(ps, ob*, N),
-  xx_mo(ps, ob*, N),
+static dt
+  I0(pt, ob*, uintptr_t),
+  I1(pt, ob*, uintptr_t),
+  dtN(pt, ob*, uintptr_t),
+  dt_(pt, ob*, uintptr_t),
+  dtys(pt, ob*, uintptr_t),
+  var_mo(pt, ob*, uintptr_t, ob),
+  dt2(pt, ob*, uintptr_t, ob),
+  dtx(pt, ob*, uintptr_t, ob);
 
-  let_mo_bind(ps, ob*, N),
-  var_mo(ps, ob*, N, ob),
-  two_mo(ps, ob*, N, ob),
-  im_mo(ps, ob*, N, ob);
-
-#define Co(nom,...) static mo nom(la v, ob *e, N m, ##__VA_ARGS__)
-Co(mk_mo) {
+#define Co(nom,...) static dt nom(la v, ob *e, N m, ##__VA_ARGS__)
+Co(dtN) {
   ob *k = cells(v, m + 3);
-  return !k ? 0 :
-    (k[m+1] = 0,
-     k[m+2] = (ob) k,
-     k[m] = e ? name(*e) : nil,
-     setw(k, nil, m),
-     (mo) (k + m)); }
+  if (!k) return 0;
+  k[m+1] = 0,
+  k[m+2] = (ob) k,
+  k[m] = e ? name(*e) : nil,
+  setw(k, nil, m);
+  return (dt) k + m; }
 
 // pull back by an expression
 mo ana(ph v, ob x, ob k) {
   // k can be an instruction address
   bool ok = nump(k) ?
-    Push(putZ(xx_mo), x, putZ(em_i), k, putZ(mk_mo)) :
-    Push(putZ(xx_mo), x, putZ(em_i_d), putZ(jump), k, putZ(mk_mo));
+    Push(putZ(dt_), x, putZ(I0), k, putZ(dtN)) :
+    Push(putZ(dt_), x, putZ(I1), putZ(jump), k, putZ(dtN));
   return ok ? pull(v, 0, 0) : 0; }
 
 
 
-static dt imx(pt v, ob *e, intptr_t m, ll *i, ob x) {
-  return !Push(putnum(i), x) ? 0 : em_i_d(v, e, m); }
+static dt imx(pt v, ob *e, intptr_t m, host *i, ob x) {
+  return !Push(putnum(i), x) ? 0 : I1(v, e, m); }
 
 static ob snoc(pt v, ob l, ob x) {
   return !twop(l) ? pair(v, x, l) :
@@ -67,9 +68,8 @@ static ob snoc(pt v, ob l, ob x) {
      !x ? 0 : pair(v, A(l), x)); }
 
 #define Bind(v, x) if(!((v)=(x)))goto fail
-static NoInline ob rw_let_fn(pt v, ob x) {
-  mm(&x);
-  for (ob _; twop(A(x));)
+static NoInline ob rw_let_fn(pt v, ob x) { ob _;
+  for (mm(&x); twop(A(x));)
     if (!(_ = snoc(v, BA(x), AB(x)))  ||
         !(_ = pair(v, v->lex[Lamb], _)) ||
         !(_ = pair(v, _, BB(x))) ||
@@ -78,18 +78,16 @@ static NoInline ob rw_let_fn(pt v, ob x) {
   return um, x; }
 
 
-static ob asign(pt v, ob a, Z i, ob*m) {
-  ob x; return
-    !twop(a) ?
-      (*m = i, a) :
-    twop(B(a)) && AB(a) == v->lex[Splat] ?
-      (*m = -i-1, pair(v, A(a), nil)) :
-    (with(a, x = asign(v, B(a), i+1, m)), x) ?
-      pair(v, A(a), x) :
-    0; }
+static ob asign(pt v, ob a, Z i, ob*m) { ob x; return
+  !twop(a) ? (*m = i, a) :
+  twop(B(a)) && AB(a) == v->lex[Splat] ?
+    (*m = -i-1, pair(v, A(a), nil)) :
+  (with(a, x = asign(v, B(a), i+1, m)), x) ?
+    pair(v, A(a), x) :
+  0; }
 
 static Inline ob new_scope(ps v, ob *e, ob a, ob n) {
-  Z *x, s = 0; return
+  intptr_t *x, s = 0; return
     !(with(n, a = asign(v, a, 0, &s)), a) ||
     !(with(n, with(a, x = cells(v, 10))), x) ? 0 :
     (arg(x) = a,
@@ -100,40 +98,39 @@ static Inline ob new_scope(ps v, ob *e, ob a, ob n) {
      x[8] = 0,
      x[9] = (ob) x); }
 
-static int scan_def(ps v, ob *e, ob x) {
-  int r; return
-    !twop(x) ? 1 : // this is an even case so export all the definitions to the local scope
-    !twop(B(x)) ? 0: // this is an odd case so ignore these, they'll be imported after the rewrite
-    (with(x,
-       r = scan_def(v, e, BB(x)),
-       r = r != 1 ? r :
-         !(x = rw_let_fn(v, x)) ||
-         !(loc(*e) = pair(v, A(x), loc(*e))) ||
-         !scan(v, e, AB(x)) ? -1 : 1),
-     r); }
+static int scan_def(ps v, ob *e, ob x) { int r; return
+  !twop(x) ? 1 : // this is an even case so export all the definitions to the local scope
+  !twop(B(x)) ? 0: // this is an odd case so ignore these, they'll be imported after the rewrite
+  (with(x,
+     r = scan_def(v, e, BB(x)),
+     r = r != 1 ? r :
+       !(x = rw_let_fn(v, x)) ||
+       !(loc(*e) = pair(v, A(x), loc(*e))) ||
+       !scan(v, e, AB(x)) ? -1 : 1),
+   r); }
 
-static bool scan(pt v, ob* e, ob x) {
-  bool _; return
-    !twop(x) ||
-    A(x) == v->lex[Lamb] ||
-    A(x) == v->lex[Quote] ? 1 :
-      A(x) == v->lex[Def] ?
-        scan_def(v, e, B(x)) != -1 :
-        (with(x, _ = scan(v, e, A(x))),
-         _ && scan(v, e, B(x))); }
+static bool scan(pt v, ob* e, ob x) { bool _; return
+  !twop(x) ||
+  A(x) == v->lex[Lamb] ||
+  A(x) == v->lex[Quote] ? 1 :
+    A(x) == v->lex[Def] ?
+      scan_def(v, e, B(x)) != -1 :
+      (with(x, _ = scan(v, e, A(x))),
+       _ && scan(v, e, B(x))); }
 
-static Inline mo pb1(host *i, mo k) {
-  return (--k)->ll = i, k; }
-static Inline mo pb2(host *i, ob x, mo k) {
-  return pb1(i, pb1((host *) x, k)); }
+static Inline dt pb1(host *i, dt k) { return
+  (--k)->ll = i, k; }
+
+static Inline dt pb2(host *i, ob x, dt k) { return
+  pb1(i, pb1((host *) x, k)); }
 
 static Inline ob comp_body(pt v, ob*e, ob x) {
   intptr_t i; return
-    !Push(putnum(xx_mo),
+    !Push(putnum(dt_),
           x,
-          putnum(em_i),
+          putnum(I0),
           putnum(ret),
-          putnum(mk_mo)) ||
+          putnum(dtN)) ||
     !scan(v, e, v->sp[1]) ||
     !(x = (ob) pull(v, e, 4)) ? 0 :
       (x = !(i = llen(loc(*e))) ? x :
@@ -156,76 +153,71 @@ static ob linitp(pt v, ob x, ob* d) { ob y; return
 // (in the former case the car is the list of free variables
 // and the cdr is a hom that assumes the missing variables
 // are available in the closure).
-static Inline ob mo_mo_lam(la v, ob* e, ob n, ob l) {
+static Inline ob dttl(la v, ob* e, ob n, ob l) {
   ob y = nil;
   l = B(l);
   mm(&n), mm(&y), mm(&l);
-  if (!(l = twop(l) ? l : pair(v, l, nil)) ||
-      !(l = linitp(v, l, &y)) ||
-      !(n = pair(v, n, e ? name(*e) : nil)) ||
-      !(n = new_scope(v, e, l, n)) ||
-      !(l = comp_body(v, &n, A(y))))
-    return um, um, um, 0;
+  if (
+    !(l = twop(l) ? l : pair(v, l, nil)) ||
+    !(l = linitp(v, l, &y)) ||
+    !(n = pair(v, n, e ? name(*e) : nil)) ||
+    !(n = new_scope(v, e, l, n)) ||
+    !(l = comp_body(v, &n, A(y))))
+      return um, um, um, 0;
   return um, um, um, l; }
 
-static Inline ob mo_mo_clo(pt v, ob*e, ob arg, ob seq) {
-  Z i = llen(arg);
+static Inline ob dtt_clo(pt v, ob*e, ob arg, ob seq) {
+  intptr_t i = llen(arg);
   mm(&arg), mm(&seq);
-  if (!Push(putnum(em_i_d), putnum(take), putnum(i), putnum(mk_mo)))
+  if (!Push(putnum(I1), putnum(take), putnum(i), putnum(dtN)))
     return um, um, 0;
 
   for (; twop(arg); arg = B(arg))
-    if (!Push(putnum(xx_mo), A(arg), putnum(em_i), putnum(push)))
+    if (!Push(putnum(dt_), A(arg), putnum(I0), putnum(push)))
       return um, um, 0;
 
   if (!(arg = (ob) pull(v, e, 0))) return um, um, 0;
 
   return um, um, pair(v, seq, arg); }
 
-Co(mo_mo, ob x) {
- ll* j = imm;
- ob k, nom = *v->sp == putnum(let_mo_bind) ? v->sp[1] : nil;
+Co(dtt, ob x) {
+ host* j = imm;
+ ob k, nom = *v->sp == putnum(dtys) ? v->sp[1] : nil;
  with(nom, with(x, k = (ob) pull(v, e, m+2)));
  if (!k) return 0;
  mm(&k);
- if (twop(x = mo_mo_lam(v, e, nom, x)))
+ if (twop(x = dttl(v, e, nom, x)))
    j = e && twop(loc(*e)) ? encll : encln,
-   x = mo_mo_clo(v, e, A(x), B(x));
+   x = dtt_clo(v, e, A(x), B(x));
  um;
  return !x ? 0 : pb2(j, x, (mo) k); }
 
-Co(im_mo, ob x) {
-  return !(x = Push(putnum(imm), x)) ? 0 : em_i_d(v, e, m); }
+Co(dtys) { ob _ = *v->sp++; return
+  e ? imx(v, e, m, loc_, putnum(lidx(loc(*e), _))) :
+  !(_ = pair(v, A(v->wns), _)) ? 0 :
+  imx(v, e, m, tbind, _); }
 
-Co(let_mo_bind) {
-  ob _ = *v->sp++;
-  return e ? imx(v, e, m, loc_, putnum(lidx(loc(*e), _))) :
-    (_ = pair(v, A(v->wns), _)) ? imx(v, e, m, tbind, _) :
-    0; }
-
-static bool let_mo_r(pt v, ob*e, ob x) {
-  bool _; return !twop(x) ||
-    ((x = rw_let_fn(v, x)) &&
-     (with(x, _ = let_mo_r(v, e, BB(x))), _) &&
-     Push(putnum(xx_mo), AB(x), putnum(let_mo_bind), A(x))); }
+static bool dty_r(pt v, ob*e, ob x) { bool _; return
+  !twop(x) ||
+  ((x = rw_let_fn(v, x)) &&
+   (with(x, _ = dty_r(v, e, BB(x))), _) &&
+   Push(putnum(dt_), AB(x), putnum(dtys), A(x))); }
 
 // syntactic sugar for define
-static bool def_sug(pt v, ob x) {
-  ob _ = nil; return
-    (with(_, x = linitp(v, x, &_)), x) &&
-    (x = pair(v, x, _)) &&
-    (x = pair(v, v->lex[Seq], x)) &&
-    (x = pair(v, x, nil)) &&
-    (x = pair(v, v->lex[Lamb], x)) ?
-    Push(putnum(xx_mo), pair(v, x, nil)) :
-    0; }
+static bool def_sug(pt v, ob x) { ob _ = nil; return
+  (with(_, x = linitp(v, x, &_)), x) &&
+  (x = pair(v, x, _)) &&
+  (x = pair(v, v->lex[Seq], x)) &&
+  (x = pair(v, x, nil)) &&
+  (x = pair(v, v->lex[Lamb], x)) ?
+    Push(putnum(dt_), pair(v, x, nil)) : 0; }
 
-Co(let_mo, ob x) { return
-  !twop(B(x)) ? im_mo(v, e, m, nil) :
+Co(dty, ob x) { return
+  !twop(B(x)) ? dtx(v, e, m, nil) :
   llen(B(x)) % 2 ?
     (x = def_sug(v, x)) ?
       pull(v, e, m) : 0 :
-  (x = let_mo_r(v, e, B(x))) ?
+  (x = dty_r(v, e, B(x))) ?
     pull(v, e, m) : 0; }
 
 // the following functions are "post" or "pre"
@@ -235,13 +227,13 @@ Co(let_mo, ob x) { return
 
 // before generating anything, store the
 // exit address in stack 2
-Co(if_mo_pre) { ob x; return
+Co(dtp_pre) { ob x; return
   (x = (ob) pull(v, e, m)) && (x = pair(v, x, s2(*e))) ?
     (s2(*e) = x, (mo) A(x)) : 0; }
 
 // before generating a branch emit a jump to
 // the top of stack 2
-Co(if_mo_pre_con) {
+Co(dtp_pre_con) {
   mo k, x = pull(v, e, m + 2);
   return !x ? 0 :
     (k = (mo) A(s2(*e)),
@@ -251,7 +243,7 @@ Co(if_mo_pre_con) {
 
 // after generating a branch store its address
 // in stack 1
-Co(if_mo_post_con) {
+Co(dtp_post_con) {
   ob x; return
     (x = (ob) pull(v, e, m)) &&
     (x = pair(v, x, s1(*e))) ?
@@ -259,55 +251,55 @@ Co(if_mo_post_con) {
 
 // before generating an antecedent emit a branch to
 // the top of stack 1
-Co(if_mo_pre_ant) {
+Co(dtp_pre_ant) {
   mo x = pull(v, e, m+2);
   return !x ? 0 :
     (x = pb2(branch, A(s1(*e)), x),
      s1(*e) = B(s1(*e)),
      x); }
 
-static bool if_mo_loop(pt v, ob*e, ob x) {
+static bool dtp_loop(pt v, ob*e, ob x) {
   bool _; return
     x = twop(x) ? x : pair(v, nil, nil),
     !x ? 0 : !twop(B(x)) ?
-      Push(putnum(xx_mo), A(x), putnum(if_mo_pre_con)) :
-    !(with(x, _ = Push(putnum(if_mo_post_con),
-                       putnum(xx_mo),
+      Push(putnum(dt_), A(x), putnum(dtp_pre_con)) :
+    !(with(x, _ = Push(putnum(dtp_post_con),
+                       putnum(dt_),
                        AB(x),
-                       putnum(if_mo_pre_con))), _) ||
-    !(with(x, _ = if_mo_loop(v, e, BB(x))), _) ? 0 :
+                       putnum(dtp_pre_con))), _) ||
+    !(with(x, _ = dtp_loop(v, e, BB(x))), _) ? 0 :
 
-    Push(putnum(xx_mo),
+    Push(putnum(dt_),
          A(x),
-         putnum(if_mo_pre_ant)); }
+         putnum(dtp_pre_ant)); }
 
-Co(if_mo, ob x) { bool _; mo k; return
-  with(x, _ = Push(putnum(if_mo_pre))),
-  _ && if_mo_loop(v, e, B(x)) && (k = pull(v, e, m)) ?
+Co(dtp, ob x) { bool _; dt k; return
+  with(x, _ = Push(putnum(dtp_pre))),
+  _ && dtp_loop(v, e, B(x)) && (k = pull(v, e, m)) ?
     (s2(*e) =  B(s2(*e)), k) :
     0; }
 
 Co(em_call) {
   ob a = *v->sp++;
-  mo k = pull(v, e, m + 2);
-  return !k ? 0 : pb2(k->ll == ret ? rec : call, a, k); }
+  dt k = pull(v, e, m + 2);
+  return !k ? 0 :
+    pb2(k->ll == ret ? rec : call, a, k); }
 
 enum where { Here, Loc, Arg, Clo, Wait };
-static ob ls_lex(pt v, ob e, ob y) {
-  ob q; return
-    nilp(e) ?
-      (q = refer(v, y)) ?
-        pair(v, putnum(Here), q) :
-        pair(v, putnum(Wait), A(v->wns)) :
-    lidx(loc(e), y) > -1 ? pair(v, putZ(Loc), e) :
-    lidx(arg(e), y) > -1 ? pair(v, putZ(Arg), e) :
-    lidx(clo(e), y) > -1 ? pair(v, putZ(Clo), e) :
-    ls_lex(v, par(e), y); }
+
+static ob ls_lex(pt v, ob e, ob y) { ob q; return
+  nilp(e) ? (q = refer(v, y)) ?
+              pair(v, putZ(Here), q) :
+              pair(v, putZ(Wait), A(v->wns)) :
+  lidx(loc(e), y) > -1 ? pair(v, putZ(Loc), e) :
+  lidx(arg(e), y) > -1 ? pair(v, putZ(Arg), e) :
+  lidx(clo(e), y) > -1 ? pair(v, putZ(Clo), e) :
+  ls_lex(v, par(e), y); }
 
 Co(var_mo, ob x) { ob y, q; return
   (with(x, q = ls_lex(v, e ? *e:nil, x)), !q) ? 0 :
     (y = A(q)) == putnum(Here) ?
-      im_mo(v, e, m, B(q)) :
+      dtx(v, e, m, B(q)) :
     y == putnum(Wait) ?
       ((x = pair(v, B(q), x)) &&
        (with(x, y = (ob) pull(v, e, m+2)), y) &&
@@ -324,87 +316,83 @@ Co(var_mo, ob x) { ob y, q; return
      with(x, q = snoc(v, clo(*e), x)),
      !q ? 0 : (clo(*e) = q, imx(v, e, m, clo, putnum(y)))); }
 
-Co(xx_mo) {
-  ob x = *v->sp++; return
-    symp(x) ? var_mo(v, e, m, x) :
-    twop(x) ? two_mo(v, e, m, x) :
-    im_mo(v, e, m, x); }
+Co(dt_) { ob x = *v->sp++; return
+  symp(x) ? var_mo(v, e, m, x) :
+  twop(x) ? dt2(v, e, m, x) :
+  dtx(v, e, m, x); }
 
-Co(ap_mo, ob fun, ob args) {
+Co(dtf, ob f, ob args) {
   mm(&args);
-  if (!Push(putnum(xx_mo),
-            fun,
-            putnum(em_i),
-            putnum(idH),
-            putnum(em_call),
-            putnum(llen(args))))
-    return um, NULL;
+  if (!Push(
+    putZ(dt_), f,
+    putZ(I0), putZ(idH),
+    putZ(em_call), putZ(llen(args))))
+      return um, NULL;
   for (; twop(args); args = B(args))
-    if (!Push(putnum(xx_mo),
-              A(args),
-              putnum(em_i),
-              putnum(push)))
+    if (!Push(putZ(dt_), A(args), putZ(I0), putZ(push)))
       return um, NULL;
   return um, pull(v, e, m); }
 
-static bool seq_mo_loop(pt v, ob *e, ob x) {
-  bool _; return !twop(x) ? 1 :
-    (with(x, _ = seq_mo_loop(v, e, B(x))), _) &&
-    Push(putnum(xx_mo), A(x)); }
+static bool seq_mo_loop(pt v, ob *e, ob x) { bool _; return
+  !twop(x) ? 1 :
+  (with(x, _ = seq_mo_loop(v, e, B(x))), _) &&
+   Push(putnum(dt_), A(x)); }
 
-Co(two_mo, ob x) { ob z = A(x); return
-  z == v->lex[Cond] ? if_mo(v, e, m, x) :
-  z == v->lex[Def]  ? let_mo(v, e, m, x) :
-  z == v->lex[Lamb] ? mo_mo(v, e, m, x) :
-  z == v->lex[Seq]  ?
+Co(dtx, ob x) {
+  return !(x = Push(putnum(imm), x)) ? 0 : I1(v, e, m); }
+
+Co(dtq, ob x) {
+  x = twop(B(x)) ? AB(x) : B(x);
+  return dtx(v, e, m, x); }
+
+
+Co(dt2, ob x) { ob z = A(x); return
+  z == v->lex[Quote] ? dtq(v, e, m, x) :
+  z == v->lex[Cond] ? dtp(v, e, m, x) :
+  z == v->lex[Lamb] ? dtt(v, e, m, x) :
+  z == v->lex[Def] ? dty(v, e, m, x) :
+  z == v->lex[Seq] ?
     (twop(x = B(x)) || (x = pair(v, x, nil))) &&
     (x = seq_mo_loop(v, e, x)) ? pull(v, e, m) : 0 :
-  z == v->lex[Quote] ?
-    im_mo(v, e, m, twop(B(x)) ? AB(x) : B(x)) :
-  ap_mo(v, e, m, A(x), B(x)); }
+  dtf(v, e, m, A(x), B(x)); }
 
-Co(em_i) {
-  ll* i = (ll*) getnum(*v->sp++);
-  mo k = pull(v, e, m+1);
-  return !k ? 0 : pb1(i, k); }
+Co(I0) { dt k;
+  host *i = (void*) getZ(*v->sp++);
+  return (k  = pull(v, e, m+1)) ? pb1(i, k): 0; }
 
-Co(em_i_d) {
-  ll* i = (ll*) getnum(*v->sp++);
-  ob x = *v->sp++;
-  mo k; return
-    with(x, k = pull(v, e, m+2)),
-    !k ? 0 : pb2(i, x, k); }
+Co(I1) {
+  host* i = (ll*) getnum(*v->sp++);
+  ob x = *v->sp++; dt k; return
+    !(with(x, k = pull(v, e, m+2)), k) ? 0 : pb2(i, x, k); }
 
 // stack manips
 static bool pushss(ps v, N i, va_list xs) {
-  bool _;
-  ob x = va_arg(xs, ob);
-  return !x ? Avail >= i || please(v, i) :
-    (with(x, _ = pushss(v, i+1, xs)),
-     _ && (*--v->sp = x)); }
+  bool _; ob x = va_arg(xs, ob); return
+    !x ? Avail >= i || please(v, i) :
+      (with(x, _ = pushss(v, i+1, xs)),
+       _ && (*--v->sp = x)); }
 
-static bool pushs(pt v, ...) {
-  va_list xs; bool _; return
-    va_start(xs, v),
-    _ = pushss(v, 0, xs),
-    va_end(xs),
-    _; }
+static bool pushs(pt v, ...) { va_list xs; bool _; return
+  va_start(xs, v),
+  _ = pushss(v, 0, xs),
+  va_end(xs),
+  _; }
 
 // bootstrap eval interpreter function
-Ll(ev_u) {
-  Ary(1);
-  mo y; return
-    // check to see if ev has been overridden in the
-    // toplevel namespace and if so call that. this way
-    // ev calls compiled pre-bootstrap will use the
-    // bootstrapped compiler, which is what we want?
-    // seems kind of strange to need this ...
-    xp = refer(v, v->lex[Eval]),
+Dt(ev_u) { ArityCheck(1); dt y;
+  // check to see if ev has been overridden in the
+  // toplevel namespace and if so call that. this way
+  // ev calls compiled pre-bootstrap will use the
+  // bootstrapped compiler, which is what we want?
+  // seems kind of strange to need this ...
+  xp = refer(v, v->lex[Eval]); return
     xp && homp(xp) && gethom(xp)->ll != ev_u ?
-      ApY((mo) xp, nil) :
-      // otherwise use the bootstrap compiler.
-      !(Pack(), y = ana(v, *fp->argv, putnum(ret))) ? 0 :
-        (Unpack(), ApY(y, xp)); }
+      ApY((dt) xp, nil) :
+      (Pack(),
+       (y = ana(v, *fp->argv, putZ(ret))) ?
+        (Unpack(),
+         ApY(y, xp)) :
+        0); }
 
 // instructions used by the compiler
 Ll(hom_u) {

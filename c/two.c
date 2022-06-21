@@ -2,16 +2,19 @@
 
 // functions for pairs and lists
 static ob pair_(la v, ob a, ob b) {
-  bool _; two w;
-  return with(a, with(b, _ = please(v, 2))), !_ ? 0 :
-    (w = bump(v, 2), w->a = a, w->b = b, put2(w)); }
+  bool _;
+  with(a, with(b, _ = please(v, 2)));
+  return _ ? pair(v, a, b) : 0; }
 
 ob pair(la v, ob a, ob b) {
-  two w; return Avail < 2 ? pair_(v, a, b) :
-    (w = bump(v, 2), w->a = a, w->b = b, put2(w)); }
+  if (Avail < 2) return pair_(v, a, b);
+  two w = bump(v, 2);
+  w->a = a;
+  w->b = b;
+  return put2(w); }
 
-N llen(ob l) {
-  N i = 0;
+uintptr_t llen(ob l) {
+  uintptr_t i = 0;
   while (twop(l)) l = B(l), i++;
   return i; }
 
@@ -20,30 +23,28 @@ Op(1, car, A(xp))
 Op(1, cdr, B(xp))
 
 Vm(cons) {
-  Have1();
-  return
-    hp[0] = xp,
-    hp[1] = *sp++,
-    xp = put2(hp),
-    hp += 2,
-    ApN(1, xp); }
+  if (Slack == 0) return Pray(1);
+  hp[0] = xp;
+  hp[1] = *sp++;
+  xp = put2(hp);
+  hp += 2;
+  return ApN(1, xp); }
 
 Vm(car_u) {
-  Ary(1);
+  ArityCheck(1);
   TypeCheck(fp->argv[0], Two);
   return ApC(ret, A(*fp->argv)); }
 
 Vm(cdr_u) {
-  Ary(1);
+  ArityCheck(1);
   TypeCheck(fp->argv[0], Two);
   return ApC(ret, B(*fp->argv)); }
 
 Ll(cons_u) {
-  Ary(2);
-  Have(2);
-  two w; return
-    w = (two) hp,
-    hp += 2,
-    w->a = fp->argv[0],
-    w->b = fp->argv[1],
-    ApC(ret, put2(w)); }
+  ArityCheck(2);
+  if (Slack < 2) return Pray(2);
+  two w = (two) hp;
+  hp += 2;
+  w->a = fp->argv[0];
+  w->b = fp->argv[1];
+  return ApC(ret, put2(w)); }

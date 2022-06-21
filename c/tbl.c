@@ -208,11 +208,11 @@ ob tbl_set(la v, ob t, ob k, ob x) { return
   tbl_load(t) <= 1 ? x :
   (with(x, t = tbl_grow(v, t)), t ? x : 0); }
 
-ob tbl_get(la v, ob t, ob k) {
+ob tbl_get(pt v, ob t, ob k) {
   ob e = tbl_ent(v, t, k);
   return e == nil ? 0 : R(e)[1]; }
 
-ob table(la v) {
+ob table(pt v) {
   tbl t = cells(v, Width(tbl) + 3);
   ob *b = (ob*)(t+1);
   return !t ? 0 :
