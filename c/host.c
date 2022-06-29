@@ -308,3 +308,15 @@ ob hnom(pt v, ob x) {
   x = h[-1];
   int inb = (ob*) x >= v->pool && (ob*) x < v->pool+v->len;
   return inb ? x : nil; }
+
+Ll(cwm_u) { return ApC(ret, v->wns); }
+Ll(popd_u) {
+  xp = B(v->wns);
+  if (twop(xp)) v->wns = xp;
+  return ApC(ret, nil); }
+
+ob refer(pt v, ob _) {
+  ob x, mod = v->wns;
+  for (; twop(mod); mod = B(mod))
+    if ((x = tbl_get(v, A(mod), _))) return x;
+  return 0; }
