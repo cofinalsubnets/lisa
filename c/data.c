@@ -1,5 +1,55 @@
 #include "la.h"
 
+// functions for pairs and lists
+static ob pair_(la v, ob a, ob b) {
+  bool _;
+  with(a, with(b, _ = please(v, 2)));
+  return _ ? pair(v, a, b) : 0; }
+
+ob pair(la v, ob a, ob b) {
+  if (Avail < 2) return pair_(v, a, b);
+  two w = bump(v, 2);
+  w->a = a;
+  w->b = b;
+  return put2(w); }
+
+uintptr_t llen(ob l) {
+  uintptr_t i = 0;
+  while (twop(l)) l = B(l), i++;
+  return i; }
+
+// pairs
+Op(1, car, A(xp))
+Op(1, cdr, B(xp))
+
+Vm(cons) {
+  if (Slack == 0) return Pray(1);
+  hp[0] = xp;
+  hp[1] = *sp++;
+  xp = put2(hp);
+  hp += 2;
+  return ApN(1, xp); }
+
+Vm(car_u) {
+  ArityCheck(1);
+  TypeCheck(fp->argv[0], Two);
+  return ApC(ret, A(*fp->argv)); }
+
+Vm(cdr_u) {
+  ArityCheck(1);
+  TypeCheck(fp->argv[0], Two);
+  return ApC(ret, B(*fp->argv)); }
+
+Ll(cons_u) {
+  ArityCheck(2);
+  if (Slack < 2) return Pray(2);
+  two w = (two) hp;
+  hp += 2;
+  w->a = fp->argv[0];
+  w->b = fp->argv[1];
+  return ApC(ret, put2(w)); }
+
+
 // hash tables
 Vm(tblg) {
   Ary(2);
@@ -231,3 +281,139 @@ Vm(tbld) {
     v->xp = tbl_del(v, fp->argv[0], fp->argv[1]),
     Unpack(),
     ApC(ret, xp); }
+
+#include <string.h>
+
+ob string(la v, const char* c) {
+  Z bs = 1 + strlen(c);
+  str o = cells(v, Width(str) + b2w(bs));
+  return !o ? 0 :
+    (o->len = bs,
+     o->ext = 0,
+     memcpy(o->text, c, bs),
+     putstr(o)); }
+
+// string instructions
+Vm(strl) {
+  Ary(1);
+  TypeCheck(fp->argv[0], Str);
+  return ApC(ret, putZ(getstr(*fp->argv)->len-1)); }
+
+Vm(strg) {
+  Ary(2);
+  TypeCheck(fp->argv[0], Str);
+  TypeCheck(fp->argv[1], Num);
+  return ApC(ret,
+    getZ(fp->argv[1]) < getstr(fp->argv[0])->len-1 ?
+      putZ(getstr(fp->argv[0])->text[getZ(fp->argv[1])]) :
+      nil); }
+
+Vm(strconc) {
+  Z l = getZ(fp->argc), sum = 0, i = 0;
+  while (i < l) {
+    ob x = fp->argv[i++];
+    TypeCheck(x, Str);
+    sum += getstr(x)->len - 1; }
+  Z words = Width(str) + b2w(sum+1);
+  Have(words);
+  str d = (str) hp;
+  hp += words;
+  d->len = sum + 1;
+  d->ext = 0;
+  d->text[sum] = 0;
+  for (str x; i;)
+    x = getstr(fp->argv[--i]),
+    sum -= x->len - 1,
+    memcpy(d->text+sum, x->text, x->len - 1);
+  return ApC(ret, putstr(d)); }
+
+#define min(a,b)(a<b?a:b)
+#define max(a,b)(a>b?a:b)
+Vm(strs) {
+  Ary(3);
+  TypeCheck(fp->argv[0], Str);
+  TypeCheck(fp->argv[1], Num);
+  TypeCheck(fp->argv[2], Num);
+  str src = getstr(fp->argv[0]);
+  Z lb = getnum(fp->argv[1]), ub = getnum(fp->argv[2]);
+  lb = max(lb, 0);
+  ub = min(ub, src->len-1);
+  ub = max(ub, lb);
+  Z words = Width(str) + b2w(ub - lb + 1);
+  Have(words);
+  str dst = (str) hp;
+  hp += words;
+  dst->len = ub - lb + 1;
+  dst->ext = 0;
+  dst->text[ub - lb] = 0;
+  memcpy(dst->text, src->text + lb, ub - lb);
+  return ApC(ret, putstr(dst)); }
+
+Vm(strmk) {
+  Z i = 0,
+    bytes = getnum(fp->argc)+1,
+    words = Width(str) + b2w(bytes);
+  Have(words);
+  str s = (str) hp;
+  hp += words;
+  for (ob x; i < bytes-1; s->text[i++] = getnum(x)) {
+    x = fp->argv[i];
+    TypeCheck(x, Num);
+    if (x == N0) break; }
+  return s->text[i] = 0,
+         s->ext = 0,
+         s->len = i+1,
+         ApC(ret, putstr(s)); }
+
+//symbols
+
+// FIXME this is bad
+// symbols are interned into a binary search tree. we make no
+// attempt to keep it balanced but it gets rebuilt in somewhat
+// unpredictable order every gc cycle so hopefully that should
+// help keep it from getting too bad. a hash table is probably
+// the way to go but rebuilding that is more difficult. the
+// existing code is unsuitable because it dynamically resizes
+// the table and unpredictable memory allocation isn't safe
+// during garbage collection.
+ob sskc(pt v, ob *y, ob x) {
+  int i;
+  sym z;
+  return !nilp(*y) ?
+    (z = getsym(*y),
+     i = strcmp(getstr(z->nom)->text, getstr(x)->text),
+     i == 0 ? *y : sskc(v, i < 0 ? &z->r : &z->l, x)) :
+    // FIXME the caller must ensure Avail >= Width(sym)
+    // (because GC here would void the tree)
+    (z = cells(v, Width(sym)),
+     z->code = hash(v, putZ(hash(v, z->nom = x))),
+     z->l = z->r = nil,
+     *y = putsym(z)); }
+
+ob intern(pt v, ob x) {
+  bool _; return
+    Avail >= Width(sym) ||
+    (with(x, _ = please(v, Width(sym))), _) ?
+      sskc(v, &v->syms, x) : 0; }
+
+Vm(sym_u) { sym y; return 
+  fp->argc > N0 && strp(*fp->argv) ?
+    (Pack(),
+     v->xp = intern(v, *fp->argv),
+     Unpack(),
+     ApC(xp ? ret : oom_err, xp)) :
+
+  sp - hp < Width(sym) ?
+    (v->xp = Width(sym),
+     ApC(gc, xp)) :
+
+  (y = (sym) hp,
+   hp += Width(sym),
+   y->nom = y->l = y->r = nil,
+   y->code = v->rand = lcprng(v->rand),
+   ApC(ret, putsym(y))); }
+
+Dt(ystr_u) { return
+  fp->argc == N0 ? ApC(ary_err, putZ(1)) :
+  !IsA(Sym, xp = *fp->argv) ? ApC(dom_err, xp) :
+  ApC(ret, getsym(xp)->nom); }

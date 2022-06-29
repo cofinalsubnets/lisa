@@ -10,7 +10,6 @@ static copier
 static Inline Gc(cp) { return copiers[Q(x)](v, x, len0, pool0); }
 static Gc(cpid) { return x; }
 
-
 // the exact method for copying an object into
 // the new pool depends on its type. copied
 // objects are used to store pointers to their

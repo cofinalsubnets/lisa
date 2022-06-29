@@ -70,3 +70,5 @@ $(whither)%: %
 	$(CC) -c -o $@ $(CFLAGS) $(CPPFLAGS) $(@:.o=.c)
 $(VIMPREFIX)/%: vim/%
 	install -D $^ $@
+
+.PHONY: test

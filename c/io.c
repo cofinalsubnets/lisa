@@ -179,7 +179,6 @@ static void emhomn(pt v, FILE *o, ob x) {
     if (symp(B(x)) || twop(B(x)))
       emhomn(v, o, B(x)); } }
 
-
 static void em2s(pt v, FILE *o, ob x) {
   tx(v, o, A(x));
   if (!twop(B(x))) return (void) fputc(RightParen, o);
