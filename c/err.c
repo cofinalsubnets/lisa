@@ -2,13 +2,13 @@
 #include <stdarg.h>
 
 Vm(oom_err) { return Pack(),
-  err(v, 0, "oom with %d words", v->len); }
+  err(v, 0, "mémoire insuffisante (à %d mots)", v->len); }
 
 Ll(dom_err) { return Pack(),
-  err(v, 0, "is undefined"); }
+  err(v, 0, "est indéfini"); }
 
 Ll(ary_err) { return Pack(),
-  err(v, 0, "takes %d arguments", getZ(xp)); }
+  err(v, 0, "nécessite %d paramètres", getZ(xp)); }
 
 // type/arity checking
 #define DTc(n, t) Vm(n) {\
@@ -63,7 +63,7 @@ NoInline ob err(pt v, ob x, const char *msg, ...) {
         ((ob*) (fp + 1) + getnum(fp->argc)
                         + getnum(fp->subd));
       if (atop(v, fp)) break; else
-        fputs("# in ", stderr),
+        fputs("# à ", stderr),
         show_call(v, ip, fp),
         fputc('\n', stderr); } }
 

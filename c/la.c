@@ -167,12 +167,12 @@ int main(int argc, char **argv) {
   const char
     *prelu = PREF "/lib/" LANG "/" LANG "." SUFF,
     *usage =
-      "usage: %s [options and scripts]\n"
-      "with no arguments, start a repl\n"
-      "options:\n"
-      "  -h print this message\n"
-      "  -i start repl unconditionally\n"
-      "  -_ don't bootstrap\n";
+      "usage: %s [choix et scripts]\n"
+      "sans paramètres, commencer l'interaction\n"
+      "les choix:\n"
+      "  -h afficher ce message\n"
+      "  -i interagir\n"
+      "  -_ mode nu\n";
 
   bool shell = argc == 1;
 
