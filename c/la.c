@@ -3,7 +3,7 @@
 #include <stdlib.h>
 
 // finalize a process
-void t1(pt v) { if (v) free(v->pool), free(v); }
+void la_fin(pt v) { if (v) free(v->pool), free(v); }
 
 static ob interns(pt v, const char *s) {
   ob _ = string(v, s);
@@ -31,7 +31,7 @@ static NoInline ob prim(pt v, const char *a, host *i) {
   return tbl_set(v, A(v->wns), A(nom), (ob) k); }
 
 // initialize a process
-pt t0(void) {
+pt la_ini(void) {
   ob _;
   pt v = malloc(sizeof(struct pt));
   if (!v) return 0;
@@ -83,7 +83,7 @@ pt t0(void) {
     insts(register_inst);
 
   if (ok) return v;
-  else return t1(v), NULL; }
+  else return la_fin(v), NULL; }
 
 #ifndef PREF
 #define PREF
@@ -154,14 +154,12 @@ static dt act(pt v, bool shell, const char **nfs) {
   return k; }
 
 static int trace(char **argv, bool shell, const char *prelu) {
-  pt v = t0();
+  pt v = la_ini();
   ob r = v &&
     (r = (ob) act(v, shell, (const char**) argv)) &&
     (!prelu || (r = (ob) ana_p(v, prelu, r))) &&
     (r = pair(v, r, nil)) ? ev(v, r) : 0;
-
-  t1(v);
-
+  la_fin(v);
   return r ? EXIT_SUCCESS : EXIT_FAILURE; }
 
 #include <getopt.h>

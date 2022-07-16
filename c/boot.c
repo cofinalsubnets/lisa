@@ -69,13 +69,16 @@ static NoInline ob rw_let_fn(pt v, ob x) { ob _;
   return um, x; }
 
 
-static ob asign(pt v, ob a, Z i, ob*m) { ob x; return
-  !twop(a) ? (*m = i, a) :
-  twop(B(a)) && AB(a) == v->lex[Splat] ?
-    (*m = -i-1, pair(v, A(a), nil)) :
-  (with(a, x = asign(v, B(a), i+1, m)), x) ?
-    pair(v, A(a), x) :
-  0; }
+static ob asign(pt v, ob a, intptr_t i, ob *m) {
+  ob x;
+  if (!twop(a)) {
+    *m = i;
+    return a; }
+  if (twop(B(a)) && AB(a) == v->lex[Splat]) {
+    *m = -i-1;
+    return pair(v, A(a), nil); }
+  with(a, x = asign(v, B(a), i+1, m));
+  return x ? pair(v, A(a), x) : 0; }
 
 static Inline ob new_scope(ps v, ob *e, ob a, ob n) {
   intptr_t *x, s = 0;
@@ -86,7 +89,7 @@ static Inline ob new_scope(ps v, ob *e, ob a, ob n) {
   loc(x) = clo(x) = s1(x) = s2(x) = nil;
   par(x) = e ? *e : nil;
   name(x) = n;
-  asig(x) = putnum(s);
+  asig(x) = putZ(s);
   x[8] = 0;
   x[9] = (ob) x;
   return (ob) x; }
@@ -111,11 +114,12 @@ static bool scan(pt v, ob* e, ob x) {
   with(x, _ = scan(v, e, A(x)));
   return _ && scan(v, e, B(x)); }
 
-static Inline dt pb1(host *i, dt k) { return
-  (--k)->ll = i, k; }
+static Inline dt pb1(host *i, dt k) {
+  (--k)->ll = i;
+  return k; }
 
-static Inline dt pb2(host *i, ob x, dt k) { return
-  pb1(i, pb1((host *) x, k)); }
+static Inline dt pb2(host *i, ob x, dt k) {
+  return pb1(i, pb1((host *) x, k)); }
 
 static Inline ob comp_body(pt v, ob*e, ob x) {
   intptr_t i;
@@ -161,11 +165,11 @@ static Inline ob dttl(la v, ob* e, ob n, ob l) {
 static Inline ob dtt_clo(pt v, ob*e, ob arg, ob seq) {
   intptr_t i = llen(arg);
   mm(&arg), mm(&seq);
-  if (!Push(putnum(I1), putnum(take), putnum(i), putnum(dtN)))
+  if (!Push(putZ(I1), putZ(take), putZ(i), putZ(dtN)))
     return um, um, 0;
 
   for (; twop(arg); arg = B(arg))
-    if (!Push(putnum(dt_), A(arg), putnum(I0), putnum(push)))
+    if (!Push(putZ(dt_), A(arg), putZ(I0), putZ(push)))
       return um, um, 0;
 
   if (!(arg = (ob) pull(v, e, 0))) return um, um, 0;

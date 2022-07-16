@@ -71,12 +71,12 @@ struct pt {
      rand, // random seed
      lex[LexN]; }; // grammar symbols
 
-void t1(pt), tx(pt, FILE*, ob);
+void la_fin(pt), tx(pt, FILE*, ob);
 bool please(pt, uintptr_t), eql(ob, ob);
 uintptr_t llen(ob), hash(pt, ob);
 intptr_t lidx(ob, ob), lcprng(intptr_t);
 
-pt t0(void);
+pt la_ini(void);
 mo ana(pt, ob, ob);
 ob string(pt, const char*),
    intern(pt, ob),
