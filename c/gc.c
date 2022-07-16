@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <time.h>
 
+#define Gc(n) ob n(ph v, ob x, Z len0, ob *pool0)
+typedef Gc(copier);
 static copier
   cphom, cptwo, cpsym, cpstr, cptbl, cpid,
   *copiers[] = {
@@ -165,7 +167,7 @@ Gc(cpstr) {
   dst->len = src->len;
   dst->ext = src->ext;
   x = (ob) dst + Str;
-  src->ext = (void*) x;
+  src->ext = x;
   return x; }
 
 Gc(cpsym) {

@@ -6,54 +6,60 @@
 void t1(pt v) { if (v) free(v->pool), free(v); }
 
 static ob interns(pt v, const char *s) {
-  ob _; return (_ = string(v, s)) ? intern(v, _) : 0; }
+  ob _ = string(v, s);
+  return _ ? intern(v, _) : 0; }
 
 // initialization helpers
 //
 // store an instruction address under a variable in the
 // toplevel namespace // FIXME use a different namespace
-static NoInline bool inst(pt v, const char *a, host *b) {
-  ob z; return !(z = interns(v, a)) ? 0 :
-    !!tbl_set(v, A(v->wns), z, putnum(b)); }
+static NoInline ob inst(pt v, const char *a, host *b) {
+  ob z = interns(v, a);
+  return z ? tbl_set(v, A(v->wns), z, putnum(b)) : 0; }
 
 // make a primitive function
-static NoInline bool prim(pt v, const char *a, host *i) {
-  ob nom; mo k; return
-    (nom = interns(v, a)) &&
-    (nom = pair(v, nom, nil)) &&
-    (with(nom, k = cells(v, 4)), k) ?
-      !!tbl_set(v, A(v->wns), A(nom), (ob)
-        (k[0].ll = i,    k[1].ll = (ll*) nom,
-         k[2].ll = NULL, k[3].ll = (ll*) k)) : 0; }
+static NoInline ob prim(pt v, const char *a, host *i) {
+  mo k = 0;
+  ob nom = interns(v, a);
+  if (nom) nom = pair(v, nom, nil);
+  if (nom) with(nom, k = cells(v, 4));
+  if (!k) return 0;
+  k[0].ll = i;
+  k[1].ll = (host*) nom;
+  k[2].ll = 0;
+  k[3].ll = (host*) k;
+  return tbl_set(v, A(v->wns), A(nom), (ob) k); }
 
 // initialize a process
-pt t0(void) { ob _; pt v;
+pt t0(void) {
+  ob _;
+  pt v = malloc(sizeof(struct pt));
+  if (!v) return 0;
 // how big a memory pool do we start with?
 #define InitialPoolSize (1<<10)
-  if ((v = malloc(sizeof(struct pt))))
-    // set time & random seed
-    v->t0 = clock(),
-    v->rand = v->t0,
+  // set time & random seed
+  v->t0 = clock(),
+  v->rand = v->t0,
 
-    // configure memory
-    v->len = InitialPoolSize,
-    // obviously there's no pool yet
-    v->pool = NULL,
-    // nor any protected values
-    v->keep = NULL,
-    // the data stack starts at the top of memory
-    v->sp = v->pool + v->len,
-    // the call stack lives on the data stack
-    v->fp = (fr) v->sp,
-    // the heap is all used up to start, so the first
-    // allocation initializes the pool
-    v->hp = v->sp,
-    // everything else starts empty
-    v->ip = (dt) nil,
-    v->wns = v->sns = v->syms = v->xp = nil,
-    setw(v->lex, nil, LexN);
+  // configure memory
+  v->len = InitialPoolSize,
+  // obviously there's no pool yet
+  v->pool = NULL,
+  // nor any protected values
+  v->keep = NULL,
+  // the data stack starts at the top of memory
+  v->sp = v->pool + v->len,
+  // the call stack lives on the data stack
+  v->fp = (fr) v->sp,
+  // the heap is all used up to start, so the first
+  // allocation initializes the pool
+  v->hp = v->sp,
+  // everything else starts empty
+  v->ip = (dt) nil,
+  v->wns = v->sns = v->syms = v->xp = nil,
+  setw(v->lex, nil, LexN);
 
-  if (v && !(
+  bool ok = 
     // global symbols // FIXME stop using these if possible
     (v->lex[Eval] = interns(v, "ev")) &&
     (v->lex[Apply] = interns(v, "ap")) &&
@@ -74,9 +80,10 @@ pt t0(void) { ob _; pt v;
     // register instruction addresses at toplevel so the
     // compiler can use them.
 #define register_inst(a, b) && ((b) ? prim(v,b,a) : inst(v, "i-"#a,a))
-    insts(register_inst)))
-      t1(v), v = NULL;
-  return v; }
+    insts(register_inst);
+
+  if (ok) return v;
+  else return t1(v), NULL; }
 
 #ifndef PREF
 #define PREF
@@ -118,14 +125,14 @@ static ob ana_fd(ph v, FILE *in, ob k) { ob x; return
 
 #include <string.h>
 #include <errno.h>
-static dt ana_p(la v, const char *path, ob k) {
+static mo ana_p(la v, const char *path, ob k) {
   FILE *in = fopen(path, "r");
-  return !in ?
-    (fprintf(stderr, "%s : %s", path, strerror(errno)),
-     NULL) :
-    (k = ana_fd(v, in, k),
-     fclose(in),
-     (dt) k); }
+  if (!in) {
+    fprintf(stderr, "%s : %s", path, strerror(errno));
+    return NULL; }
+  k = ana_fd(v, in, k);
+  fclose(in);
+  return (mo) k; }
 
 // read eval print loop. starts after all scripts if indicated
 static Vm(repl) {
@@ -139,15 +146,14 @@ static Vm(repl) {
 static dt act(pt v, bool shell, const char **nfs) {
   const char *nf = *nfs;
   dt k = nf ? act(v, shell, nfs + 1) : cells(v, 3);
-  return !k ? 0 : nf ?
-    ana_p(v, nf, (ob) k) :
-    (k[0].ll = shell ? repl : yield,
-     k[1].ll = 0,
-     k[2].ll = (ll*) k,
-     k); }
+  if (!k) return 0;
+  if (nf) return ana_p(v, nf, (ob) k);
+  k[0].ll = shell ? repl : yield;
+  k[1].ll = 0;
+  k[2].ll = (host*) k;
+  return k; }
 
-
-static int tr(char **argv, bool shell, const char *prelu) {
+static int trace(char **argv, bool shell, const char *prelu) {
   pt v = t0();
   ob r = v &&
     (r = (ob) act(v, shell, (const char**) argv)) &&
@@ -180,4 +186,4 @@ int main(int argc, char **argv) {
     case -1:
       argv += optind;
       prelu = shell || optind != argc ? prelu : NULL;
-      return tr(argv, shell, prelu); } }
+      return trace(argv, shell, prelu); } }

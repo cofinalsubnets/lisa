@@ -35,14 +35,8 @@ enum class { Hom, Num, Two, Str, Sym, Tbl, };
 #define NomSym "sym"
 
 typedef FILE *fd;
-#define Gc(n) ob n(ph v, ob x, Z len0, ob *pool0)
-#define Hash(n) N n(la v, ob x)
-typedef Hash(hasher);
-typedef Gc(copier);
 
-typedef struct ext { ob name; } *ext;
-
-typedef struct str { ext ext; Z len; char text[]; } *str;
+typedef struct str { ob ext; intptr_t len; char text[]; } *str;
 typedef struct sym { ob nom, code, l, r; } *sym;
 typedef struct two { ob a, b; } *two;
 typedef struct mm { ob *it; struct mm *et; } *mm;
@@ -58,7 +52,7 @@ enum lex {
 
 struct pt {
   // vm state -- kept in CPU registers most of the time
-  dt ip; // current thread
+  mo ip; // current thread
   ar fp; // top of control stack
   ob xp, // free register
      *hp, // top of heap
@@ -80,14 +74,14 @@ struct pt {
 void t1(pt), tx(pt, FILE*, ob);
 bool please(pt, uintptr_t), eql(ob, ob);
 uintptr_t llen(ob), hash(pt, ob);
-intptr_t lcprng(intptr_t);
+intptr_t lidx(ob, ob), lcprng(intptr_t);
 
 pt t0(void);
-dt ana(pt, ob, ob);
-ob refer(pt, ob),
-   string(pt, const char*),
+mo ana(pt, ob, ob);
+ob string(pt, const char*),
    intern(pt, ob),
    table(pt),
+   refer(pt, ob),
    tbl_set(pt, ob, ob, ob),
    tbl_get(pt, ob, ob),
    pair(pt, ob, ob),
@@ -127,7 +121,7 @@ ob refer(pt, ob),
 #define putZ(_) (((ob)(_)<<TagBits)+Num)
 #define getstr(_) ((str)((_)-Str))
 #define puthom(_) ((ob)(_))
-#define gethom(_) ((dt)(_))
+#define gethom(_) ((mo)(_))
 #define getsym getY
 #define putsym putY
 #define getY(_) ((sym)((_)-Sym))
@@ -144,32 +138,28 @@ host
   gc NoInline,
   dom_err NoInline,
   oom_err NoInline,
-  ary_err NoInline;
+  ary_err NoInline,
+  clos NoInline,
+  clos0 NoInline,
+  clos1 NoInline;
 
-static Inline enum class Q(ob _) {
-  return _ & TagMask; }
+static Inline enum class Q(ob _) { return _ & TagMask; }
 
-static Inline bool nump(ob _) {
-  return Q(_) == Num; }
-static Inline bool strp(ob _) {
-  return Q(_) == Str; }
-static Inline bool symp(ob _) {
-  return Q(_) == Sym; }
-static Inline bool twop(ob _) {
-  return Q(_) == Two; }
-static Inline bool tblp(ob _) {
-  return Q(_) == Tbl; }
-static Inline bool homp(ob _) {
-  return Q(_) == Hom; }
+static Inline bool nump(ob _) { return Q(_) == Num; }
+static Inline bool strp(ob _) { return Q(_) == Str; }
+static Inline bool symp(ob _) { return Q(_) == Sym; }
+static Inline bool twop(ob _) { return Q(_) == Two; }
+static Inline bool tblp(ob _) { return Q(_) == Tbl; }
+static Inline bool homp(ob _) { return Q(_) == Hom; }
 
-static Inline dt button(dt k) {
+static Inline mo button(mo k) {
   while (G(k)) k = F(k);
   return k; }
 
 static Inline uintptr_t b2w(uintptr_t b) {
-  ldiv_t d = ldiv(b, sizeof(ob));
-  b = d.quot;
-  return d.rem ? b + 1 : b; }
+  uintptr_t quot = b / sizeof(ob),
+            rem = b % sizeof(ob);
+  return rem ? quot + 1 : quot; }
 
 static Inline void setw(void *x, intptr_t i, uintptr_t l) {
   for (intptr_t *d = x; l--; *d++ = i); }
@@ -279,9 +269,10 @@ insts(ninl)
 #define IsA(t, x) (t==Q((x)))
 #define TypeCheck(x,t) if (!IsA((t),(x))) return ApC(dom_err, xp)
 #define Pray(n) ApC((v->xp=n, gc), xp)
-#define Slack (sp - hp)
-#define Have1() if (Slack == 0) return Pray(1)
-#define Have(n) if (Slack < n) return Pray(n)
+#define Hope (sp - hp)
+#define Slack Hope
+#define Have1() if (!Hope) return Pray(1)
+#define Have(n) if (Hope < n) return Pray(n)
 
 #define ptr(x) ((ob*)(x))
 #define R ptr
