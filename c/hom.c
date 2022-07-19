@@ -1,74 +1,8 @@
 #include "la.h"
 
-// instructions used by the compiler
-Ll(hom_u) {
-  Ary(1);
-  xp = fp->argv[0];
-  TypeCheck(xp, Num);
-  uintptr_t len = getZ(xp) + 2;
-  if (Slack < len) return Pray(len);
-  xp = (ob) hp;
-  hp += len;
-  setw((ob*) xp, nil, len);
-  ptr(xp)[len-2] = 0;
-  ptr(xp)[len-1] = xp;
-  return ApC(ret, (ob) (ptr(xp) + len - 2)); }
+mo button(mo k) { return G(k) ? button(F(k)) : k; }
 
-Ll(hfin_u) {
-  ArityCheck(1);
-  mo k = (mo) *fp->argv;
-  TypeCheck((ob) k, Hom);
-  return button(k)[1].ll = (ll*) k,
-         ApC(ret, (ob) k); }
-
-Ll(emx) {
-  mo k = (mo) *sp++ - 1;
-  return k->ll = (ll*) xp,
-         ApN(1, (ob) k); }
-
-Ll(emi) {
-  mo k = (mo) *sp++ - 1;
-  return k->ll = (ll*) getnum(xp),
-         ApN(1, (ob) k); }
-
-Ll(emx_u) {
-  ArityCheck(2);
-  ob x = fp->argv[0];
-  mo k = (mo) fp->argv[1];
-  TypeCheck((ob) k, Hom);
-  return (--k)->ll = (ll*) x,
-         ApC(ret, (ob) k); }
-
-Ll(emi_u) {
-  ArityCheck(2);
-  ob n = fp->argv[0];
-  mo k = (mo) fp->argv[1];
-  TypeCheck(n, Num);
-  TypeCheck((ob) k, Hom);
-  return (--k)->ll = (ll*) getnum(n),
-         ApC(ret, (ob) k); }
-
-Ll(peeki_u) {
-  ArityCheck(1);
-  TypeCheck(*fp->argv, Hom);
-  return ApC(ret, putnum(gethom(*fp->argv)->ll)); }
-
-Ll(peekx_u) {
-  ArityCheck(1);
-  TypeCheck(*fp->argv, Hom);
-  return ApC(ret, (ob) gethom(*fp->argv)->ll); }
-
-Ll(seek_u) {
-  ArityCheck(2);
-  TypeCheck(fp->argv[0], Hom);
-  TypeCheck(fp->argv[1], Num);
-  return ApC(ret, fp->argv[0] + fp->argv[1] - Num); }
-
-Ll(hnom_u) {
-  ArityCheck(1);
-  TypeCheck(*fp->argv, Hom);
-  return ApC(ret, hnom(v, *fp->argv)); }
-
+#include "vm.h"
 ob hnom(pt v, ob x) {
   host *k = gethom(x)->ll;
   if (k == clos || k == clos0 || k == clos1)
@@ -78,3 +12,68 @@ ob hnom(pt v, ob x) {
   x = h[-1];
   int inb = (ob*) x >= v->pool && (ob*) x < v->pool+v->len;
   return inb ? x : nil; }
+
+Vm(hnom_u) { return
+  Arity == 0 ? ArityError(1) :
+  TypeOf(xp = fp->argv[0]) != Hom ? Undefined() :
+  ApC(ret, hnom(v, xp)); }
+
+// instructions for the internal compiler
+Vm(hom_u) {
+  size_t len; return
+    Arity == 0 ? ArityError(1) :
+    TypeOf(xp = fp->argv[0]) != Num ? Undefined() :
+    Free < (len = getZ(xp) + 2) ? Collect(len) :
+    (xp = (ob) hp,
+     hp += len,
+     setw((ob*) xp, nil, len),
+     ptr(xp)[len-2] = 0,
+     ptr(xp)[len-1] = xp,
+     ApC(ret, (ob) (ptr(xp) + len - 2))); }
+
+Vm(hfin_u) { return
+  Arity == 0 ? ArityError(1) :
+  TypeOf(xp = fp->argv[0]) != Hom ? Undefined() :
+  (button((mo)xp)[1].ll = (host*) xp,
+   ApC(ret, xp)); }
+
+Vm(emx) {
+  mo k = (mo) *sp++ - 1;
+  return k->ll = (ll*) xp,
+         ApN(1, (ob) k); }
+
+Vm(emi) {
+  mo k = (mo) *sp++ - 1;
+  return k->ll = (ll*) getZ(xp),
+         ApN(1, (ob) k); }
+
+Vm(emx_u) { return
+  Arity < 2 ? ArityError(2) :
+  TypeOf(xp = fp->argv[1]) != Hom ? Undefined() :
+  (xp = (ob) (ptr(xp) - 1),
+   ptr(xp)[0] = fp->argv[0],
+   ApC(ret, xp)); }
+
+Vm(emi_u) { ob n; return
+  Arity < 2 ? ArityError(2) :
+  TypeOf(n = fp->argv[0]) != Num ||
+  TypeOf(xp = fp->argv[1]) != Hom ? Undefined() :
+  (xp = (ob) (ptr(xp) - 1),
+   ptr(xp)[0] = getZ(n),
+   ApC(ret, xp)); }
+
+Vm(peeki_u) { return
+  Arity == 0 ? ArityError(1) :
+  TypeOf(xp = fp->argv[0]) != Hom ? Undefined() :
+  ApC(ret, putZ(gethom(xp)->ll)); }
+
+Vm(peekx_u) { return
+  Arity == 0 ? ArityError(1) :
+  TypeOf(xp = fp->argv[0]) != Hom ? Undefined() :
+  ApC(ret, (ob) gethom(xp)->ll); }
+
+Vm(seek_u) { return
+  Arity < 2 ? ArityError(2) :
+  TypeOf(xp = fp->argv[0]) != Hom ||
+  TypeOf(fp->argv[1]) != Num ? Undefined() :
+  ApC(ret, xp + fp->argv[1] - Num); }

@@ -1,8 +1,9 @@
 #include "la.h"
+#include "vm.h"
 #include <string.h>
 
 ob string(la v, const char* c) {
-  Z bs = 1 + strlen(c);
+  intptr_t bs = 1 + strlen(c);
   str o = cells(v, Width(str) + b2w(bs));
   if (!o) return 0;
   o->len = bs;
@@ -11,12 +12,12 @@ ob string(la v, const char* c) {
   return putstr(o); }
 
 // string instructions
-Vm(strl) {
+Vm(slen_u) {
   Ary(1);
   TypeCheck(fp->argv[0], Str);
   return ApC(ret, putZ(getstr(*fp->argv)->len-1)); }
 
-Vm(strg) {
+Vm(sget_u) {
   Ary(2);
   TypeCheck(fp->argv[0], Str);
   TypeCheck(fp->argv[1], Num);
@@ -25,13 +26,13 @@ Vm(strg) {
       putZ(getstr(fp->argv[0])->text[getZ(fp->argv[1])]) :
       nil); }
 
-Vm(strconc) {
-  Z l = getZ(fp->argc), sum = 0, i = 0;
+Vm(scat_u) {
+  intptr_t l = getZ(fp->argc), sum = 0, i = 0;
   while (i < l) {
     ob x = fp->argv[i++];
     TypeCheck(x, Str);
     sum += getstr(x)->len - 1; }
-  Z words = Width(str) + b2w(sum+1);
+  intptr_t words = Width(str) + b2w(sum+1);
   Have(words);
   str d = (str) hp;
   hp += words;
@@ -46,7 +47,7 @@ Vm(strconc) {
 
 #define min(a,b)(a<b?a:b)
 #define max(a,b)(a>b?a:b)
-Vm(strs) {
+Vm(ssub_u) {
   Ary(3);
   TypeCheck(fp->argv[0], Str);
   TypeCheck(fp->argv[1], Num);
@@ -67,7 +68,7 @@ Vm(strs) {
   memcpy(dst->text, src->text + lb, ub - lb);
   return ApC(ret, putstr(dst)); }
 
-Vm(strmk) {
+Vm(str_u) {
   intptr_t i = 0,
     bytes = getnum(fp->argc)+1,
     words = Width(str) + b2w(bytes);
@@ -82,4 +83,3 @@ Vm(strmk) {
   s->ext = 0;
   s->len = i+1;
   return ApC(ret, putstr(s)); }
-

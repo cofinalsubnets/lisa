@@ -1,4 +1,6 @@
 #include "la.h"
+#include "io.h"
+#include "vm.h"
 #include <time.h>
 #include <stdlib.h>
 
@@ -82,8 +84,7 @@ pt la_ini(void) {
 #define register_inst(a, b) && ((b) ? prim(v,b,a) : inst(v, "i-"#a,a))
     insts(register_inst);
 
-  if (ok) return v;
-  else return la_fin(v), NULL; }
+  return ok ? v : (la_fin(v), NULL); }
 
 #ifndef PREF
 #define PREF
@@ -96,43 +97,44 @@ pt la_ini(void) {
 #endif
 
 // called after finishing successfully
-static Ll(yield) { return Pack(), xp; }
+static Vm(yield) { return Pack(), xp; }
 
 static ob ev(pt v, ob x) {
-  ob *k;
-  with(x, k = cells(v, 11));
-  if (!k) return 0;
-  k[0] = (ob) imm;
-  k[1] = x;
-  k[2] = (ob) push;
-  k[3] = (ob) imm;
-  k[4] = (ob) (k + 8);
-  k[5] = (ob) call;
-  k[6] = putZ(1);
-  k[7] = (ob) yield;
-  k[8] = (ob) ev_u;
-  k[9] = 0;
-  k[10] = x = (ob) k;
-  return imm(v, nil, (dt) x, v->hp, v->sp, v->fp); }
+  ob *k; return
+    with(x, k = cells(v, 11)),
+    !k ? 0 :
+      (k[0] = (ob) imm,
+       k[1] = x,
+       k[2] = (ob) push,
+       k[3] = (ob) imm,
+       k[4] = (ob) (k + 8),
+       k[5] = (ob) call,
+       k[6] = putZ(1),
+       k[7] = (ob) yield,
+       k[8] = (ob) ev_u,
+       k[9] = 0,
+       k[10] = x = (ob) k,
+       imm(v, nil, (dt) x, v->hp, v->sp, v->fp)); }
 
-static ob ana_fd(ph v, FILE *in, ob k) { ob x; return
-  with(k, x = rxq(v, in)),
-  !x ? feof(in) ? k : 0 :
-    (with(x, k = ana_fd(v, in, k)), k) &&
-    (with(k, x = (x = pair(v, x, nil)) ?
-                 pair(v, v->lex[Eval], x) : 0), x) ?
-    (ob) ana(v, x, k) : 0; }
+static ob ana_fd(ph v, FILE *in, ob k) {
+  ob x; return
+    with(k, x = rxq(v, in)),
+    !x ? feof(in) ? k : 0 :
+      (with(x, k = ana_fd(v, in, k)), k) &&
+      (with(k, x = (x = pair(v, x, nil)) ?
+                   pair(v, v->lex[Eval], x) : 0), x) ?
+      (ob) ana(v, x, k) : 0; }
 
 #include <string.h>
 #include <errno.h>
 static mo ana_p(la v, const char *path, ob k) {
   FILE *in = fopen(path, "r");
-  if (!in) {
-    fprintf(stderr, "%s : %s", path, strerror(errno));
-    return NULL; }
-  k = ana_fd(v, in, k);
-  fclose(in);
-  return (mo) k; }
+  return
+    !in ? (fprintf(stderr, "%s : %s", path, strerror(errno)),
+           NULL) :
+    (k = ana_fd(v, in, k),
+     fclose(in),
+     (mo) k); }
 
 // read eval print loop. starts after all scripts if indicated
 static Vm(repl) {
@@ -143,17 +145,17 @@ static Vm(repl) {
   return nil; }
 
 // takes scripts and if we want a repl, gives a thread
-static dt act(pt v, bool shell, const char **nfs) {
+static mo act(pt v, bool shell, const char **nfs) {
   const char *nf = *nfs;
-  dt k = nf ? act(v, shell, nfs + 1) : cells(v, 3);
-  if (!k) return 0;
-  if (nf) return ana_p(v, nf, (ob) k);
-  k[0].ll = shell ? repl : yield;
-  k[1].ll = 0;
-  k[2].ll = (host*) k;
-  return k; }
+  mo k = nf ? act(v, shell, nfs + 1) : cells(v, 3);
+  return !k ? 0 :
+    nf ? ana_p(v, nf, (ob) k) :
+    (k[0].ll = shell ? repl : yield,
+     k[1].ll = 0,
+     k[2].ll = (host*) k,
+     k); }
 
-static int trace(char **argv, bool shell, const char *prelu) {
+static NoInline int trace(char **argv, bool shell, const char *prelu) {
   pt v = la_ini();
   ob r = v &&
     (r = (ob) act(v, shell, (const char**) argv)) &&

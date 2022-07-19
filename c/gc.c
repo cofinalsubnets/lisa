@@ -2,7 +2,12 @@
 #include <stdlib.h>
 #include <time.h>
 
-#define Gc(n) ob n(ph v, ob x, Z len0, ob *pool0)
+// FIXME
+// the garbage collector uses stack recursion so a process
+// that constructs infinite data will stack overflow, rather
+// than fail gracefully with oom.
+
+#define Gc(n) ob n(ph v, ob x, intptr_t len0, ob *pool0)
 typedef Gc(copier);
 static copier
   cphom, cptwo, cpsym, cpstr, cptbl, cpid,
@@ -29,15 +34,6 @@ static Inline ob evacd(la v, ob _, enum class q) {
   ob x = *ptr(_ - q);
   return Q(x) == q && fresh(x) ? x : 0; }
 
-#define oom_err_msg "out of memory : %d + %d"
-// Run a GC cycle from inside the VM
-NoInline Vm(gc) {
-  N req = v->xp;
-  Pack();
-  req = please(v, req);
-  Unpack();
-  return req ? ApY(ip, xp) : ApC(oom_err, xp); }
-
 // a simple copying garbage collector
 //
 // the first step in copying is to allocate
@@ -61,7 +57,7 @@ NoInline Vm(gc) {
 // t values come from clock(). if t0 < t1 < t2 then
 // u will be >= 1. however, sometimes t1 == t2. in that case
 // u = 1.
-static clock_t copy(la v, Z len1) {
+static clock_t copy(la v, intptr_t len1) {
   clock_t t0, t1 = clock(), t2;
   ob len0 = v->len,
      *sp0 = v->sp,
@@ -84,7 +80,7 @@ static clock_t copy(la v, Z len1) {
   v->ip = (mo) cp(v, (ob) v->ip, len0, pool0);
   for (int i = 0; i < LexN; CP(v->lex[i]), i++);
   for (ob *sp1 = v->sp; sp0 < top0; COPY(*sp1++, *sp0++));
-  for (mm r = v->keep; r; CP(*r->it), r = r->et);
+  for (keep r = v->keep; r; CP(*r->it), r = r->et);
 
   return
     free(pool0),
@@ -205,3 +201,13 @@ Gc(cptwo) {
     B(dst) = cp(v, B(x), len0, pool0),
     A(dst) = cp(v, A(dst), len0, pool0);
   return dst; }
+
+#include "vm.h"
+// Run a GC cycle from inside the VM
+NoInline Vm(gc) {
+  N req = v->xp;
+  Pack();
+  req = please(v, req);
+  Unpack();
+  return req ? ApY(ip, xp) : ApC(oom_err, xp); }
+

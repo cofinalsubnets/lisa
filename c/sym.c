@@ -1,4 +1,5 @@
 #include "la.h"
+#include "vm.h"
 #include <string.h>
 //symbols
 
@@ -12,47 +13,36 @@
 // the table and unpredictable memory allocation isn't safe
 // during garbage collection.
 ob sskc(pt v, ob *y, ob x) {
-  int i;
-  sym z;
-  if (!nilp(*y)) {
-    z = getsym(*y),
-    i = strcmp(getstr(z->nom)->text, getstr(x)->text);
-    return i == 0 ? *y : sskc(v, i < 0 ? &z->r : &z->l, x); }
-  // FIXME the caller must ensure Avail >= Width(sym)
-  // (because GC here would void the tree)
-  z = cells(v, Width(sym)),
-  z->code = hash(v, putZ(hash(v, z->nom = x))),
-  z->l = z->r = nil;
-  return *y = putsym(z); }
+  int i; sym z; return
+    !nilp(*y) ?
+      (z = getsym(*y),
+       i = strcmp(getstr(z->nom)->text, getstr(x)->text),
+       i == 0 ? *y : sskc(v, i < 0 ? &z->r : &z->l, x)) :
+    // FIXME the caller must ensure Avail >= Width(sym)
+    // (because GC here would void the tree)
+    (z = cells(v, Width(sym)),
+     z->code = hash(v, putZ(hash(v, z->nom = x))),
+     z->l = z->r = nil,
+     *y = putsym(z)); }
 
 ob intern(pt v, ob x) {
   bool _; return
     Avail >= Width(sym) ||
     (with(x, _ = please(v, Width(sym))), _) ?
-      sskc(v, &v->syms, x) : 0; }
+      sskc(v, &v->syms, x) :
+      0; }
 
-Vm(sym_u) {
-  sym y;
+Vm(sym_u) { sym y; return
+  Free < Width(sym) ? Collect(Width(sym)) :
+  Arity > 0 && strp(fp->argv[0]) ?
+    ApC(ret, sskc(v, &v->syms, fp->argv[0])) :
+  (y = (sym) hp,
+   hp += Width(sym),
+   y->nom = y->l = y->r = nil,
+   y->code = v->rand = lcprng(v->rand),
+   ApC(ret, putsym(y))); }
 
-  if (fp->argc > N0 && strp(*fp->argv)) {
-    Pack(),
-    v->xp = intern(v, *fp->argv);
-    Unpack();
-    return ApC(xp ? ret : oom_err, xp); }
-
-  if (sp - hp < Width(sym)) {
-    v->xp = Width(sym);
-    return ApC(gc, xp); }
-
-  y = (sym) hp,
-  hp += Width(sym),
-  y->nom = y->l = y->r = nil,
-  y->code = v->rand = lcprng(v->rand);
-  return ApC(ret, putsym(y)); }
-
-Dt(ystr_u) {
-  ArityCheck(1);
-  xp = *fp->argv;
-  TypeCheck(xp, Sym);
-  return ApC(ret, getsym(xp)->nom); }
-
+Vm(ystr_u) { return
+  Arity < 1 ? ArityError(1) :
+  TypeOf(fp->argv[0]) != Sym ? DomainError() :
+  ApC(ret, getsym(fp->argv[0])->nom); }

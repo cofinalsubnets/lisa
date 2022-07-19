@@ -648,7 +648,7 @@
     h (k e (+ m 2))
     t (consumes h)
     c (type-sym-num t) ; get the runtime type tag
-    (emf i-rslv (emx (X c (X d x)) (? t (seek h 1) h))))
+    (emf i-latebind (emx (X c (X d x)) (? t (seek h 1) h))))
 
    s (A (: r (look e x))) (?
     (= s 'here) ((Im (B r) k) e m)
