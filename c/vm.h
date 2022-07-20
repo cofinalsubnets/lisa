@@ -96,7 +96,9 @@ insts(ninl)
 #define ApC(f, x) (f)(v, (x), ip, hp, sp, fp)
 #define ApY(f, x) (ip = (dt) (f), ApC(ip->ll, (x)))
 
-#define HasArgs(n) (putnum(n) <= fp->argc)
+#define Argv fp->argv
+#define Argc fp->argc
+#define HasArgs(n) (putnum(n) <= Argc)
 #define ArityCheck(n) if (!HasArgs(n)) return ApC(ary_err, putZ(n))
 #define Ary ArityCheck
 #define IsA(t, x) (t==Q((x)))
@@ -110,7 +112,8 @@ insts(ninl)
 #define Have1() if (!Hope) return Pray(1)
 #define Have(n) if (Hope < n) return Pray(n)
 #define Arity getZ(fp->argv)
-#define ArityError(n) ApC(ary_err, putZ(n))
+#define NeedArgs(n) ApC(ary_err, putZ(n))
+#define ArityError NeedArgs
 #define Undefined() ApC(dom_err, xp)
 #define DomainError Undefined
 

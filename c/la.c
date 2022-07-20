@@ -37,17 +37,16 @@ pt la_ini(void) {
   ob _;
   pt v = malloc(sizeof(struct pt));
   if (!v) return 0;
-// how big a memory pool do we start with?
-#define InitialPoolSize (1<<10)
   // set time & random seed
   v->t0 = clock(),
   v->rand = v->t0,
 
   // configure memory
-  v->len = InitialPoolSize,
-  // obviously there's no pool yet
+  // how big a memory pool do we start with?
+  v->len = 1 << 10,
+  // there is no pool yet
   v->pool = NULL,
-  // nor any protected values
+  // no protected values
   v->keep = NULL,
   // the data stack starts at the top of memory
   v->sp = v->pool + v->len,
@@ -101,20 +100,22 @@ static Vm(yield) { return Pack(), xp; }
 
 static ob ev(pt v, ob x) {
   ob *k; return
-    with(x, k = cells(v, 11)),
-    !k ? 0 :
+    !Push(x) || !(k = cells(v, 8)) ? 0 :
       (k[0] = (ob) imm,
-       k[1] = x,
-       k[2] = (ob) push,
-       k[3] = (ob) imm,
-       k[4] = (ob) (k + 8),
-       k[5] = (ob) call,
-       k[6] = putZ(1),
-       k[7] = (ob) yield,
-       k[8] = (ob) ev_u,
-       k[9] = 0,
-       k[10] = x = (ob) k,
+       k[1] = (ob) (k + 5),
+       k[2] = (ob) call,
+       k[3] = putZ(1),
+       k[4] = (ob) yield,
+       k[5] = (ob) ev_u,
+       k[6] = 0,
+       k[7] = x = (ob) k,
        imm(v, nil, (dt) x, v->hp, v->sp, v->fp)); }
+
+static ob rxq(pt v, FILE *i) {
+  ob x; return
+    (x = rx(v, i)) &&
+    (x = pair(v, x, nil)) ?
+    (x = pair(v, v->lex[Quote], x)) : 0; }
 
 static ob ana_fd(ph v, FILE *in, ob k) {
   ob x; return
@@ -155,17 +156,9 @@ static mo act(pt v, bool shell, const char **nfs) {
      k[2].ll = (host*) k,
      k); }
 
-static NoInline int trace(char **argv, bool shell, const char *prelu) {
-  pt v = la_ini();
-  ob r = v &&
-    (r = (ob) act(v, shell, (const char**) argv)) &&
-    (!prelu || (r = (ob) ana_p(v, prelu, r))) &&
-    (r = pair(v, r, nil)) ? ev(v, r) : 0;
-  la_fin(v);
-  return r ? EXIT_SUCCESS : EXIT_FAILURE; }
-
 #include <getopt.h>
 int main(int argc, char **argv) {
+  bool shell = argc == 1;
   const char
     *prelu = PREF "/lib/" LANG "/" LANG "." SUFF,
     *usage =
@@ -176,8 +169,6 @@ int main(int argc, char **argv) {
       "  -i interagir\n"
       "  -_ mode nu\n";
 
-  bool shell = argc == 1;
-
   for (;;) switch (getopt(argc, argv, "hi_")) {
     default: return EXIT_FAILURE;
     case 'h': fprintf(stdout, usage, *argv); continue;
@@ -186,4 +177,11 @@ int main(int argc, char **argv) {
     case -1:
       argv += optind;
       prelu = shell || optind != argc ? prelu : NULL;
-      return trace(argv, shell, prelu); } }
+
+      pt v = la_ini();
+      ob r = v &&
+        (r = (ob) act(v, shell, (const char**) argv)) &&
+        (!prelu || (r = (ob) ana_p(v, prelu, r))) &&
+        (r = pair(v, r, nil)) ? ev(v, r) : 0;
+      la_fin(v);
+      return r ? EXIT_SUCCESS : EXIT_FAILURE; } }

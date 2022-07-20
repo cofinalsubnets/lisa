@@ -46,9 +46,7 @@ static Inline mo pb2(host *i, ob x, mo k) {
 // if a function is not variadic its arity signature is
 // n = number of required arguments; otherwise it is -n-1
 
-#define Push(...) pushs(v, __VA_ARGS__, (ob) 0)
-static bool pushs(ps, ...),
-            scan(pt, ob*, ob);
+static bool scan(pt, ob*, ob);
 
 static mo
   i1d0(pt, ob*, size_t),
@@ -400,7 +398,7 @@ static bool pushss(ps v, size_t i, va_list xs) {
   with(x, _ = pushss(v, i+1, xs));
   return _ && (*--v->sp = x, true); }
 
-static bool pushs(pt v, ...) {
+bool pushs(pt v, ...) {
   va_list xs;
   va_start(xs, v);
   bool _ = pushss(v, 0, xs);

@@ -3,16 +3,64 @@
 #include "chars.h"
 #include <ctype.h>
 
-// FIXME
-// the parser uses stack recursion so reading sufficiently
-// large data will cause stack overflow, rather than fail
-// gracefully with oom
-
 static ob
   buf_atom(pt, FILE*, char),
-  rx_two(pt, FILE*), rx_num(pt, ob, const char*),
-  rx_str(pt, FILE*), rx_num_sym(pt, FILE*, char);
+  rx_num(pt, ob, const char*),
+  rx_str(pt, FILE*);
 static int nextc(FILE*);
+
+////
+/// " the parser "
+//
+
+// get the next token character from the stream
+static int nextc(FILE *i) {
+  for (int c;;) switch ((c = fgetc(i))) {
+    default: return c;
+    case Space: case Tab: case Newline: continue;
+    case NumeralSign: case Semicolon:
+      for (;;) switch (fgetc(i)) {
+        case Newline: case EndOfFile:
+          return nextc(i); } } }
+
+static ob rx2(pt, FILE*), rx_(pt, FILE*);
+static Inline ob pull(pt v, FILE *i, ob x) { return
+  ((ob (*)(pt, FILE*, ob))(getnum(*v->sp++)))(v, i, x); }
+
+static ob pret(pt v, FILE *i, ob x) { return x; }
+
+static ob pxx(pt v, FILE *i, ob x) { return
+  pull(v, i, x ? pair(v, *v->sp++, x) : x); }
+
+static ob rx2r(pt v, FILE *i, ob x) {
+  return !x || !Push(putnum(pxx), x) ?
+    pull(v, i, 0) : rx2(v, i); }
+
+static ob pxq(pt v, FILE* i, ob x) { return
+  x = x ? pair(v, x, nil) : x,
+  pull(v, i, x ? pair(v, v->lex[Quote], x) : x); }
+
+static ob rx_(pt v, FILE *i) {
+  int c = nextc(i);
+  switch (c) {
+    case RightParen: case EndOfFile: return pull(v, i, 0);
+    case LeftParen: return rx2(v, i);
+    case DoubleQuote: return pull(v, i, rx_str(v, i));
+    case SingleQuote: return Push(putnum(pxq)) ? rx_(v, i) : pull(v, i, 0); }
+  ob a = buf_atom(v, i, c);
+  return pull(v, i, a ? rx_num(v, a, getstr(a)->text) : 0); }
+
+static ob rx2(pt v, FILE *i) {
+  int c = nextc(i);
+  switch (c) {
+    case RightParen: return pull(v, i, nil);
+    case EndOfFile: return pull(v, i, 0);
+    default: return
+      ungetc(c, i),
+      Push(putnum(rx2r)) ? rx_(v, i) : pull(v, i, 0); } }
+
+ob rx(pt v, FILE *i) { return
+  Push(putnum(pret)) ? rx_(v, i) : 0; }
 
 static str new_buf(pt v) {
   str s = cells(v, Width(str) + 1);
@@ -29,48 +77,6 @@ static str grow_buf(pt v, str s) {
      t->ext = 0,
      cpyw(t->text, s->text, l),
      t); }
-
-////
-/// " the parser "
-//
-ob rx(pt v, FILE *i) {
-  int c = nextc(i);
-  switch (c) {
-    case RightParen: case EndOfFile: return 0;
-    case LeftParen: return rx_two(v, i);
-    case DoubleQuote: return rx_str(v, i);
-    case SingleQuote: return rxq(v, i);
-    default: return rx_num_sym(v, i, c); } }
-
-ob rxq(pt v, FILE *i) {
-  ob x; return
-    (x = rx(v, i)) &&
-    (x = pair(v, x, nil)) ?
-    (x = pair(v, v->lex[Quote], x)) : 0; }
-
-static ob rx_num_sym(pt v, FILE *i, char ch) {
-  ob a = buf_atom(v, i, ch);
-  return a ? rx_num(v, a, getstr(a)->text) : a; }
-
-static int nextc(FILE *i) {
-  for (int c;;) switch ((c = fgetc(i))) {
-    default: return c;
-    case Space: case Tab: case Newline: continue;
-    case NumeralSign: case Semicolon:
-      for (;;) switch (fgetc(i)) {
-        case Newline: case EndOfFile:
-          return nextc(i); } } }
-
-static ob rx_two(pt v, FILE *i) {
-  ob x, y, c = nextc(i);
-  switch (c) {
-    case RightParen: return nil;
-    case EndOfFile: return 0;
-    default: return
-      ungetc(c, i),
-      (x = rx(v, i)) &&
-      (with(x, y = rx_two(v, i)), y) ?
-        pair(v, x, y) : 0; } }
 
 // read the contents of a string literal into a string
 static ob rx_str(pt v, FILE *p) {
@@ -99,10 +105,7 @@ static ob buf_atom(pt v, FILE *p, char ch) {
       case SingleQuote: case DoubleQuote:
         ungetc(x, p);
       case EndOfFile:
-        return
-          o->text[n++] = 0,
-          o->len = n,
-          putstr(o); }
+        return o->text[n++] = 0, o->len = n, putstr(o); }
   return 0; }
 
 static Inline int cmin(int c) {
@@ -114,8 +117,7 @@ static NoInline ob rx_numb(pt v, ob b, const char *in, int base) {
   if (!c) return intern(v, b); // fail to parse empty string
   do {
     int dig = 0;
-    const char *ds = digits;
-    while (*ds && *ds != c) ds++, dig++;
+    for (const char *ds = digits; *ds && *ds != c; ds++, dig++);
     if (dig >= base) return intern(v, b); // fail to parse oob digit
     out = out * base + dig;
   } while ((c = cmin(*in++)));
@@ -168,13 +170,13 @@ void tx(pt v, FILE *o, ob x) {
 static void emhomn(pt v, FILE *o, ob x) {
   if (symp(x)) fputc(Backslash, o), tx(v, o, x);
   else if (!twop(x)) fputc(Backslash, o);
-  else { // FIXME this is weird lol
+  else { // FIXME this is weird
     if (symp(A(x)) || twop(A(x))) emhomn(v, o, A(x));
     if (symp(B(x)) || twop(B(x))) emhomn(v, o, B(x)); } }
 
 #include "vm.h"
 Vm(show_u) {
-  uintptr_t i, l = getnum(fp->argc);
+  size_t i, l = getnum(fp->argc);
   if (l > 0) {
     for (i = 0; i < l - 1; i++)
       tx(v, stdout, fp->argv[i]),

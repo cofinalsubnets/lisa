@@ -60,14 +60,14 @@ ob tbl_get(pt v, ob t, ob k) {
   return e == nil ? 0 : R(e)[1]; }
 
 Vm(tget_u) { return
-  Arity < 2 ? ArityError(2) :
-  TypeOf(fp->argv[0]) != Tbl ? Undefined() :
+  fp->argc < putnum(2) ? ArityError(2) :
+  !tblp(fp->argv[0]) ? Undefined() :
   (xp = tbl_get(v, fp->argv[0], fp->argv[1]),
    ApC(ret, xp ? xp : nil)); }
 
 Vm(tdel_u) { return
-  Arity < 2 ? ArityError(2) :
-  TypeOf(fp->argv[0]) != Tbl ? Undefined() :
+  fp->argc < putnum(2) ? ArityError(2) :
+  !tblp(fp->argv[0]) ? Undefined() :
     (Pack(),
      v->xp = tbl_del(v, fp->argv[0], fp->argv[1]),
      Unpack(),
@@ -91,14 +91,14 @@ Vm(tkeys) { return
   xp ? ApN(1, xp) : ApC(oom_err, xp); }
 
 Vm(thas_u) { return
-  Arity < 2 ? ArityError(2) :
-  TypeOf(fp->argv[0]) != Tbl ? Undefined() :
+  fp->argc < putnum(2) ? ArityError(2) :
+  !tblp(fp->argv[0]) ? Undefined() :
     (xp = tbl_get(v, fp->argv[0], fp->argv[1]),
      ApC(ret, xp ? T : nil)); }
 
 Vm(tset_u) { return
-  Arity == 0 ? ArityError(1) :
-  TypeOf(fp->argv[0]) != Tbl ? Undefined() :
+  fp->argc == N0 ? ArityError(1) :
+  !tblp(fp->argv[0]) ? Undefined() :
     (xp = *fp->argv,
      Pack(),
      v->xp = tblss(v, 1, getZ(fp->argc)),
@@ -112,17 +112,17 @@ Vm(tbl_u) {
     Unpack(),
     ApC(_ ? ret : oom_err, xp); }
 
-Vm(tkeys_u) {
-  ArityCheck(1);
-  TypeCheck(*fp->argv, Tbl);
-  Pack();
-  v->xp = tks_i(v, *fp->argv, 0);
-  Unpack();
-  return ApC(xp ? ret : oom_err, xp); }
+Vm(tkeys_u) { return
+  fp->argc == N0 ? ArityError(1) :
+  !tblp(fp->argv[0]) ? Undefined() :
+  (Pack(),
+   v->xp = tks_i(v, *fp->argv, 0),
+   Unpack(),
+   ApC(xp ? ret : oom_err, xp)); }
 
 Vm(tlen_u) { return
-  Arity == 0 ? ArityError(1) :
-  TypeOf(fp->argv[0]) != Tbl ? Undefined() :
+  fp->argc == N0 ? ArityError(1) :
+  !tblp(fp->argv[0]) ? Undefined() :
   ApC(ret, putnum(gettbl(*fp->argv)->len)); }
 
 Vm(tset) {
@@ -177,8 +177,8 @@ static ob tbl_del(la v, ob t, ob key) {
 // the old table entries are reused to populate the modified table.
 static ob tbl_grow(la v, ob t) {
   ob *tab0, *tab1;
-  N cap0 = gettbl(t)->cap, cap1 = cap0 + 1,
-    len = 1<<cap1;
+  size_t cap0 = gettbl(t)->cap, cap1 = cap0 + 1,
+         len = 1<<cap1;
   with(t, tab1 = cells(v, len + 2));
   if (!tab1) return 0;
   tab1[len] = 0, tab1[len+1] = (ob) tab1;
@@ -200,16 +200,16 @@ static ob tbl_set_s(pt v, ob t, ob k, ob x) {
   ob *e = (ob*) tbl_ent(v, t, k);
   size_t i = tbl_idx(gettbl(t)->cap, hash(v, k));
   return (ob) e != nil ? e[1] = x :
-    (with(t, with(k, with(x, e = cells(v, 5)))),
-     !e ? 0 : (y = gettbl(t),
-               e[0] = k,
-               e[1] = x,
-               e[2] = (ob) y->tab[i],
-               e[3] = 0,
-               e[4] = (ob) e,
-               y->tab[i] = (ob) e,
-               y->len += 1,
-               x)); }
+    (with(t, with(k, with(x, e = cells(v, 5)))), !e) ? 0 :
+    (y = gettbl(t),
+     e[0] = k,
+     e[1] = x,
+     e[2] = (ob) y->tab[i],
+     e[3] = 0,
+     e[4] = (ob) e,
+     y->tab[i] = (ob) e,
+     y->len += 1,
+     x); }
 
 static ob tks_j(pt v, ob e, ob l) {
   ob x; return e == nil ? l :

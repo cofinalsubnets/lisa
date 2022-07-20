@@ -92,12 +92,13 @@ ob hnom(pt, ob); // FIXME try to get function name
 mo ana(pt, ob, ob), // compiler interface
    button(mo); // get tag at end
                //
+#define Push(...) pushs(v, __VA_ARGS__, (ob) 0)
 bool
+  pushs(pt, ...),
   please(pt, size_t), // gc interface
   eql(ob, ob); // logical equality
 
-ob err(pt, ob, const char*, ...),
-   refer(pt, ob), // FIXME these should be private
+ob refer(pt, ob), // FIXME these should be private
    sskc(pt, ob*, ob); // FIXME
 
 #define N0 putnum(0)
@@ -120,8 +121,8 @@ ob err(pt, ob, const char*, ...),
 
 #define nilp(_) ((_)==nil)
 
-#define F(_) ((dt)(_)+1)
-#define G(_) (((dt)(_))->ll)
+#define F(_) ((mo)(_)+1)
+#define G(_) (((mo)(_))->ll)
 
 #define putstr(_) ((ob)(_)+Str)
 #define getnum getZ
@@ -140,22 +141,25 @@ ob err(pt, ob, const char*, ...),
 #define get2(_) ((two)((_)-Two))
 #define put2(_) ((ob)(_)+Two)
 
+#define ptr(x) ((ob*)(x))
+#define R ptr
+#define T putZ(-1)
+
 #define Inline inline __attribute__((always_inline))
 #define NoInline __attribute__((noinline))
 
-static Inline enum class Q(ob _) { return _ & TagMask; }
+#define Q TypeOf
+#define TypeOf(_) (((ob)(_))&TagMask)
+#define nump(_) (TypeOf(_)==Num)
+#define strp(_) (TypeOf(_)==Str)
+#define twop(_) (TypeOf(_)==Two)
+#define tblp(_) (TypeOf(_)==Tbl)
+#define homp(_) (TypeOf(_)==Hom)
+#define symp(_) (TypeOf(_)==Sym)
 
-static Inline bool nump(ob _) { return Q(_) == Num; }
-static Inline bool strp(ob _) { return Q(_) == Str; }
-static Inline bool symp(ob _) { return Q(_) == Sym; }
-static Inline bool twop(ob _) { return Q(_) == Two; }
-static Inline bool tblp(ob _) { return Q(_) == Tbl; }
-static Inline bool homp(ob _) { return Q(_) == Hom; }
-
-
-static Inline uintptr_t b2w(uintptr_t b) {
-  uintptr_t quot = b / sizeof(ob),
-            rem = b % sizeof(ob);
+static Inline size_t b2w(size_t b) {
+  size_t quot = b / sizeof(ob),
+         rem = b % sizeof(ob);
   return rem ? quot + 1 : quot; }
 
 static Inline void setw(void *x, intptr_t i, uintptr_t l) {
@@ -183,11 +187,6 @@ static Inline void *cells(pt v, uintptr_t n) {
 static Inline intptr_t lcprng(intptr_t s) {
   const intptr_t steele_vigna_2021 = 0xaf251af3b0f025b5;
   return (s * steele_vigna_2021 + 1) >> 8; }
-
-#define ptr(x) ((ob*)(x))
-#define R ptr
-#define T putZ(-1)
-#define TypeOf Q
 
 // XXX FIXME XXX
 _Static_assert(sizeof(intptr_t) == 8, "64bit");

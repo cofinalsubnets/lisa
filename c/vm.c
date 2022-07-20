@@ -25,12 +25,12 @@
 
 // calling and returning
 Vm(ap_u) {
-  ArityCheck(2);
+  if (Arity < 2) return ArityError(2);
+  if (!homp(fp->argv[0])) return Undefined();
   ip = (mo) fp->argv[0];
-  TypeCheck((ob)ip, Hom);
   ob x = fp->argv[1];
-  uintptr_t adic = llen(x);
-  if (Slack < adic) return Pray(adic);
+  size_t adic = llen(x);
+  if (Free < adic) return Collect(adic);
   ob off = fp->subd, rp = fp->retp;
   sp = fp->argv + getZ(fp->argc) - adic;
   for (N j = 0; j < adic; sp[j++] = A(x), x = B(x));
@@ -50,7 +50,7 @@ Vm(vararg) {
   // in this case we need to add another argument
   // slot to hold the nil.
   if (!vdic) return
-    !Slack ? Pray(1) :
+    Free == 0 ? Collect(1) :
     (cpyw((ob*)fp - 1, fp, Width(fr) + getZ(fp->argc)),
      fp = (fr) ((ob*) fp - 1),
      sp = (ob*) fp,
@@ -61,7 +61,7 @@ Vm(vararg) {
   // the path is knowable at compile time in many cases
   // so maybe vararg should be two or more different
   // functions.
-  if (Slack < 2 * vdic) return Pray(2 * vdic);
+  if (Free < 2 * vdic) return Collect(2 * vdic);
   two t = (two) hp;
   hp += 2 * vdic;
   for (N i = vdic; i--;
@@ -85,7 +85,7 @@ Vm(call) {
   intptr_t adic = getZ((ob) ip[1].ll),
            off = (ob*) fp - (sp + adic);
   return
-    Slack < Width(fr) ? Pray(Width(fr)) :
+    Free < Width(fr) ? Collect(Width(fr)) :
     (fp = (fr) sp - 1,
      sp = (ob*) fp,
      fp->retp = (ob) (ip + 2),
@@ -370,8 +370,18 @@ Vm(id2) { return twop(xp) ? ApN(1, xp) : Undefined(); }
 Vm(arity) {
   ob reqd = (ob) ip[1].ll;
   return reqd <= fp->argc ? ApN(2, xp) : ApC(ary_err, reqd); }
+Vm(cwm_u) { return ApC(ret, v->wns); }
+ob refer(pt v, ob _) {
+  ob x, mod = v->wns;
+  for (; twop(mod); mod = B(mod))
+    if ((x = tbl_get(v, A(mod), _))) return x;
+  return 0; }
 
-Vm(dom_err) { return Pack(), err(v, 0, "est indéfini"); }
+// error handling
+static ob err(pt, ob, const char*, ...) NoInline;
+
+Vm(dom_err) { return Pack(),
+  err(v, 0, "est indéfini"); }
 Vm(oom_err) { return Pack(),
   err(v, 0, "mémoire insuffisante (à %d mots)", v->len); }
 Vm(nom_err) { return Pack(),
@@ -379,9 +389,49 @@ Vm(nom_err) { return Pack(),
 Vm(ary_err) { return Pack(),
   err(v, 0, "nécessite %d paramètres", getZ(xp)); }
 
-Vm(cwm_u) { return ApC(ret, v->wns); }
-ob refer(pt v, ob _) {
-  ob x, mod = v->wns;
-  for (; twop(mod); mod = B(mod))
-    if ((x = tbl_get(v, A(mod), _))) return x;
-  return 0; }
+#include "io.h"
+#include "chars.h"
+#include <stdarg.h>
+static void show_call(pt v, mo ip, fr fp) {
+  fputc(LeftParen, stderr);
+  tx(v, stderr, (ob) ip);
+  for (size_t i = 0, argc = getZ(fp->argc); i < argc;)
+    fputc(Space, stderr),
+    tx(v, stderr, fp->argv[i++]);
+  fputc(RightParen, stderr); }
+
+#define bottom (ptr(fp) == v->pool + v->len)
+static NoInline ob err(pt v, ob x, const char *msg, ...) {
+  mo ip = v->ip;
+  fr fp = v->fp;
+
+  // print error
+  fputs("# ", stderr);
+  if (!bottom) // show call if possible
+    show_call(v, ip, fp),
+    fputc(Space, stderr);
+
+  // show message
+  va_list xs;
+  va_start(xs, msg);
+  vfprintf(stderr, msg, xs);
+  va_end(xs);
+  if (x) fputc(Space, stderr), tx(v, stderr, x);
+  fputc(Newline, stderr);
+
+  // show backtrace
+  while (!bottom)
+    fputs("# à ", stderr),
+    show_call(v, ip, fp),
+    fputc(Newline, stderr),
+    ip = (mo) fp->retp,
+    fp = (fr) ((ob*) (fp + 1) + getZ(fp->argc)
+                              + getZ(fp->subd));
+
+  // reset and yield
+  return
+    v->fp = (fr) (v->pool + v->len),
+    v->sp = (ob*) v->fp,
+    v->xp = nil,
+    v->ip = (mo) nil,
+    0; }
