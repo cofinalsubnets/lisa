@@ -5,9 +5,11 @@
 // FIXME
 // the garbage collector uses stack recursion so a process
 // that constructs infinite data will stack overflow, rather
-// than fail gracefully with oom.
+// than fail gracefully with oom. we could fix this by using
+// cheney's algorithm but to do that we need to stop using
+// tagged pointers.
 
-#define Gc(n) ob n(ph v, ob x, intptr_t len0, ob *pool0)
+#define Gc(n) ob n(pt v, ob x, intptr_t len0, ob *pool0)
 typedef Gc(copier);
 static copier
   cphom, cptwo, cpsym, cpstr, cptbl, cpid,
@@ -210,4 +212,3 @@ NoInline Vm(gc) {
   req = please(v, req);
   Unpack();
   return req ? ApY(ip, xp) : ApC(oom_err, xp); }
-

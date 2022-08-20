@@ -56,7 +56,7 @@ pt la_ini(void) {
   // allocation initializes the pool
   v->hp = v->sp,
   // everything else starts empty
-  v->ip = (dt) nil,
+  v->ip = (mo) nil,
   v->wns = v->sns = v->syms = v->xp = nil,
   setw(v->lex, nil, LexN);
 
@@ -109,7 +109,7 @@ static ob ev(pt v, ob x) {
        k[5] = (ob) ev_u,
        k[6] = 0,
        k[7] = x = (ob) k,
-       imm(v, nil, (dt) x, v->hp, v->sp, v->fp)); }
+       imm(v, nil, (mo) x, v->hp, v->sp, v->fp)); }
 
 static ob rxq(pt v, FILE *i) {
   ob x; return
@@ -117,7 +117,7 @@ static ob rxq(pt v, FILE *i) {
     (x = pair(v, x, nil)) ?
     (x = pair(v, v->lex[Quote], x)) : 0; }
 
-static ob ana_fd(ph v, FILE *in, ob k) {
+static ob ana_fd(pt v, FILE *in, ob k) {
   ob x; return
     with(k, x = rxq(v, in)),
     !x ? feof(in) ? k : 0 :

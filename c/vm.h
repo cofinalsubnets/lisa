@@ -94,7 +94,7 @@ insts(ninl)
 
 #define ApN(n, x) ApY(ip+(n), (x))
 #define ApC(f, x) (f)(v, (x), ip, hp, sp, fp)
-#define ApY(f, x) (ip = (dt) (f), ApC(ip->ll, (x)))
+#define ApY(f, x) (ip = (mo) (f), ApC(ip->ll, (x)))
 
 #define Argv fp->argv
 #define Argc fp->argc

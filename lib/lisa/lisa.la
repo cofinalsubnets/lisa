@@ -21,6 +21,7 @@
      ((flip f) x y) (f y x)
      ((cu f x .) y .) (ap f (append x y))
      (map f x) (? (2? x) (X (f (A x)) (map f (B x))) x)
+     (map- x f) (? (2? x) (X (f (A x)) (map- (B x) f)) x)
      (append a b) (? (2? a) (X (A a) (append (B a) b)) b)
 
      (flat-map x f) (? (2? x) (append (f (A x)) (flat-map (B x) f)))
@@ -56,7 +57,7 @@
        (f (A x) (foldr1 (B x) f)) 
       (A x))
      (zip f a .) (? (? a (all id a))
-      (X (ap f (map A a)) (ap zip (X f (map B a)))))
+      (X (ap f (map- a A)) (ap zip (X f (map- a B)))))
      (snoc l x) (? l (X (A l) (snoc (B l) x)) (L x))
      (randn n) (% (abs (rand)) n)
      (init l) (? (B l) (X (A l) (init (B l))))
@@ -73,9 +74,11 @@
      )
 
   (tset macros
-   '::: (: (defm n x .) (X ', (X (L tset macros (Q n) (A x))
-                                 (? (B x) (ap defm (B x)))))
-         defm)
+   '::: (:
+    (defm n x .) (X ',
+     (X (L tset macros (Q n) (A x))
+      (? (B x) (ap defm (B x)))))
+    defm)
    'imm ev
    'AA (\ x (L A (L A x))) 'AB (\ x (L A (L B x)))
    'BA (\ x (L B (L A x))) 'BB (\ x (L B (L B x)))
@@ -153,7 +156,8 @@
    i-gteq (br2 i-brgteq i-brlt)
    i-eq (br2 i-breq i-brne)
    i-nilpp (f1 peeki i-branch i-barnch i-barnch i-branch)
-   i-imm (f1 peekx 0 i-zero 1 i-one)))
+   i-imm (f1 peekx 0 i-zero 1 i-one)
+   ))
 
  ; special function compiler table
  inliners (:
@@ -245,7 +249,7 @@
    = (\ x k (?
 
     (|| (~ x)
-     (? (: q (map unq (filter x qtd)))
+     (? (: q (map- (filter x qtd) unq))
         (: r (A q) (any (\ v (~ (= v r))) (B q)))))
      (Im () k)
 
@@ -454,7 +458,7 @@
 
   ; only bother with any of this if there are inner defs
   (? (: ks (tkeys (: def (Tg e'def))))
-   (f4 (f3 (f2 (f1 (map (\ k (X k (Tg def k))) (Ts e'loc ks))))))))
+   (f4 (f3 (f2 (f1 (map- (Ts e'loc ks) (\ k (X k (Tg def k))))))))))
 
  (wv e x)  (:
   (list e x) (:
@@ -520,13 +524,13 @@
     (= a ?) (cond e (B x))
     (= a ,) (seq e x)
     (? (Th macros a) (wv e (ap (Tg macros a) (B x)))
-     (: z (map (\ x (wv e x)) x) q (A z) r (B z) (?
+     (: z (map- x (\ x (wv e x))) q (A z) r (B z) (?
       (~ (Th pure q)) (check-arity z)
-      (all qtd r) (quote (ap q (map unq r)))
+      (all qtd r) (quote (ap q (map- r unq)))
       (Th monoids q) (mono q (q) r)
       (Th abelians q) (:
        ff (part qtd r)
-       fg (ap q (map unq (A ff)))
+       fg (ap q (map- (A ff) unq))
        (X q (? (= fg (q)) (B ff) (X fg (B ff)))))
       (check-arity z))))))
 

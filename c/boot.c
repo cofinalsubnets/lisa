@@ -15,7 +15,7 @@ Vm(ev_u) {
   if (xp && homp(xp) && gethom(xp)->ll != ev_u)
     return ApY((mo) xp, nil);
   Pack();
-  dt y = ana(v, *fp->argv, putZ(ret));
+  mo y = ana(v, *fp->argv, putZ(ret));
   if (!y) return 0;
   Unpack();
   return ApY(y, xp); }
@@ -25,10 +25,10 @@ Vm(ev_u) {
 typedef struct env {
   ob arg, loc, clo, par, name, asig, s1, s2; } *env;
 
-static Inline mo pull(ps v, ob *e, size_t m) {
-  return ((mo (*)(ps, ob*, N)) getZ(*v->sp++))(v, e, m); }
+static Inline mo pull(pt v, ob *e, size_t m) {
+  return ((mo (*)(pt, ob*, N)) getZ(*v->sp++))(v, e, m); }
 
-static Inline mo pb1(host *i, dt k) {
+static Inline mo pb1(host *i, mo k) {
   return (--k)->ll = i, k; }
 
 static Inline mo pb2(host *i, ob x, mo k) {
@@ -59,7 +59,7 @@ static mo
   co_x(pt, ob*, size_t, ob);
 
 // pull back over an expression
-mo ana(ph v, ob x, ob k) {
+mo ana(pt v, ob x, ob k) {
   // k can be a continuation or an instruction pointer
   bool ok = nump(k) ?
     Push(putZ(co__), x, putZ(i1d0), k, putZ(co_ini)) :
@@ -96,7 +96,7 @@ static ob asign(pt v, ob a, intptr_t i, ob *m) {
   with(a, x = asign(v, B(a), i+1, m));
   return x ? pair(v, A(a), x) : 0; }
 
-static Inline ob new_scope(ps v, ob *e, ob a, ob n) {
+static Inline ob new_scope(pt v, ob *e, ob a, ob n) {
   intptr_t *x, s = 0;
   with(n,
     a = asign(v, a, 0, &s),
@@ -110,7 +110,7 @@ static Inline ob new_scope(ps v, ob *e, ob a, ob n) {
      x[8] = 0,
      x[9] = (ob) x); }
 
-static int scan_def(ps v, ob *e, ob x) {
+static int scan_def(pt v, ob *e, ob x) {
   int r;
   if (!twop(x)) return 1; // this is an even case so export all the definitions to the local scope
   if (!twop(B(x))) return 0; // this is an odd case so ignore these, they'll be imported after the rewrite
@@ -378,7 +378,7 @@ Co(co_2, ob x) {
     z == v->lex[Seq] ? co_se(v, e, m, x) :
     co_ap(v, e, m, A(x), B(x)); }
 
-Co(i1d0) { dt k;
+Co(i1d0) { mo k;
   host *i = (void*) getZ(*v->sp++);
   k = pull(v, e, m+1);
   return k ? pb1(i, k): 0; }
@@ -391,7 +391,7 @@ Co(i1d1) {
   return pf ? pb2(i, x, pf) : 0; }
 
 // stack manips
-static bool pushss(ps v, size_t i, va_list xs) {
+static bool pushss(pt v, size_t i, va_list xs) {
   ob x = va_arg(xs, ob);
   if (!x) return Avail >= i || please(v, i);
   bool _;

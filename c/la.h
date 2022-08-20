@@ -7,15 +7,15 @@
 typedef uintptr_t N;
 typedef intptr_t ob;
 
-typedef struct mo *mo, *dt; // procedure type
-typedef struct fr *fr, *ar; // frame pointer
-typedef struct pt *la, *ph, *ps, *pt; // runtime point
+typedef struct mo *mo; // procedure type
+typedef struct fr *fr; // frame pointer
+typedef struct pt *la, *pt; // runtime point
 #define Vm(n, ...)\
-  ob n(pt v, ob xp, dt ip, ob *hp, ob *sp, fr fp)
+  ob n(pt v, ob xp, mo ip, ob *hp, ob *sp, fr fp)
 #define Ll Vm
 #define Dt Ll
-typedef Vm(host);
-typedef host vm, ll, go;
+typedef Vm(vm);
+typedef vm host, ll;
 
 // FIXME 2bit
 #define TagBits 3
@@ -36,7 +36,7 @@ typedef struct two { ob a, b; } *two;
 typedef struct tbl { ob *tab, len, cap; } *tbl;
 
 struct fr { ob clos, retp, subd, argc, argv[]; };
-struct mo { host *ll; };
+struct mo { vm *ll; };
 
 // language symbols
 enum lex {
@@ -49,7 +49,7 @@ typedef struct keep { ob *it; struct keep *et; } *keep;
 struct pt {
   // vm state -- kept in CPU registers most of the time
   mo ip; // current thread
-  ar fp; // top of control stack
+  fr fp; // top of control stack
   ob xp, // free register
      *hp, // top of heap
      *sp; // top of data stack
