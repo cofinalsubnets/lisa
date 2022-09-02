@@ -4,7 +4,6 @@
 
 // thanks !!
 
-typedef uintptr_t N;
 typedef intptr_t ob;
 
 typedef struct mo *mo; // procedure type
@@ -15,7 +14,6 @@ typedef struct la *la; // runtime point
 #define Ll Vm
 #define Dt Ll
 typedef Vm(vm);
-typedef vm host, ll;
 
 // FIXME 2bit
 #define TagBits 3

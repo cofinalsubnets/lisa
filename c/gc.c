@@ -207,7 +207,7 @@ Gc(cptwo) {
 #include "vm.h"
 // Run a GC cycle from inside the VM
 NoInline Vm(gc) {
-  N req = v->xp;
+  size_t req = v->xp;
   Pack();
   req = please(v, req);
   Unpack();

@@ -1,5 +1,5 @@
 // these are vm functions used by C but not lisp.
-host
+vm
   gc NoInline,
   dom_err NoInline,
   nom_err NoInline,
@@ -53,7 +53,7 @@ host
  _(symp_u, "symp") _(strp_u, "strp")\
  _(nilp_u, "nilp") _(rnd_u, "rand")
 
-#define ninl(x, _) host x NoInline;
+#define ninl(x, _) vm x NoInline;
 insts(ninl)
 #undef ninl
 

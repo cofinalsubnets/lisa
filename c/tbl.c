@@ -185,7 +185,7 @@ static ob tbl_grow(la v, ob t) {
   setw(tab1, nil, 1<<cap1);
   tab0 = gettbl(t)->tab;
 
-  for (N i, cap = 1 << cap0; cap--;)
+  for (size_t i, cap = 1 << cap0; cap--;)
     for (ob e, es = tab0[cap]; es != nil;)
       e = es,
       es = R(es)[2],

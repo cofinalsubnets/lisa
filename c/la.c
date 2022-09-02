@@ -15,21 +15,21 @@ static ob interns(la v, const char *s) {
 //
 // store an instruction address under a variable in the
 // toplevel namespace // FIXME use a different namespace
-static NoInline ob inst(la v, const char *a, host *b) {
+static NoInline ob inst(la v, const char *a, vm *b) {
   ob z = interns(v, a);
   return z ? tbl_set(v, A(v->wns), z, putnum(b)) : 0; }
 
 // make a primitive function
-static NoInline ob prim(la v, const char *a, host *i) {
+static NoInline ob prim(la v, const char *a, vm *i) {
   mo k = 0;
   ob nom = interns(v, a);
   if (nom) nom = pair(v, nom, nil);
   if (nom) with(nom, k = cells(v, 4));
   if (!k) return 0;
   k[0].ll = i;
-  k[1].ll = (host*) nom;
+  k[1].ll = (vm*) nom;
   k[2].ll = 0;
-  k[3].ll = (host*) k;
+  k[3].ll = (vm*) k;
   return tbl_set(v, A(v->wns), A(nom), (ob) k); }
 
 // initialize a process
@@ -153,7 +153,7 @@ static mo act(la v, bool shell, const char **nfs) {
     nf ? ana_p(v, nf, (ob) k) :
     (k[0].ll = shell ? repl : yield,
      k[1].ll = 0,
-     k[2].ll = (host*) k,
+     k[2].ll = (vm*) k,
      k); }
 
 #include <getopt.h>

@@ -26,13 +26,13 @@ typedef struct env {
   ob arg, loc, clo, par, name, asig, s1, s2; } *env;
 
 static Inline mo pull(la v, ob *e, size_t m) {
-  return ((mo (*)(la, ob*, N)) getZ(*v->sp++))(v, e, m); }
+  return ((mo (*)(la, ob*, size_t)) getZ(*v->sp++))(v, e, m); }
 
-static Inline mo pb1(host *i, mo k) {
+static Inline mo pb1(vm *i, mo k) {
   return (--k)->ll = i, k; }
 
-static Inline mo pb2(host *i, ob x, mo k) {
-  return pb1(i, pb1((host *) x, k)); }
+static Inline mo pb2(vm *i, ob x, mo k) {
+  return pb1(i, pb1((vm*) x, k)); }
 
 // " compilation environments "
 #define arg(x)  ((env)(x))->arg // argument variables : a list
@@ -66,9 +66,9 @@ mo ana(la v, ob x, ob k) {
     Push(putZ(co__), x, putZ(i1d1), putZ(jump), k, putZ(co_ini));
   return ok ? pull(v, 0, 0) : 0; }
 
-#define Co(nom,...) static mo nom(la v, ob *e, N m, ##__VA_ARGS__)
+#define Co(nom,...) static mo nom(la v, ob *e, size_t m, ##__VA_ARGS__)
 
-static mo imx(la v, ob *e, intptr_t m, host *i, ob x) {
+static mo imx(la v, ob *e, intptr_t m, vm *i, ob x) {
   return Push(putnum(i), x) ? i1d1(v, e, m) : 0; }
 
 static ob snoc(la v, ob l, ob x) {
@@ -186,7 +186,7 @@ static Inline ob co_t_clo(la v, ob*e, ob arg, ob seq) {
   return um, um, pair(v, seq, arg); }
 
 Co(co_t, ob x) {
- host* j = imm;
+ vm* j = imm;
  ob k, nom = *v->sp == putnum(co_ys) ? v->sp[1] : nil;
  with(nom, with(x, k = (ob) pull(v, e, m+2)));
  if (!k) return 0;
@@ -292,7 +292,7 @@ Co(em_call) {
   ob ary = *v->sp++;
   mo pf = pull(v, e, m + 2);
   if (!pf) return 0;
-  host *i = pf->ll == ret ? rec : call;
+  vm *i = pf->ll == ret ? rec : call;
   return pb2(i, ary, pf); }
 
 enum where { Here, Loc, Arg, Clo, Wait };
@@ -379,12 +379,12 @@ Co(co_2, ob x) {
     co_ap(v, e, m, A(x), B(x)); }
 
 Co(i1d0) { mo k;
-  host *i = (void*) getZ(*v->sp++);
+  vm *i = (void*) getZ(*v->sp++);
   k = pull(v, e, m+1);
   return k ? pb1(i, k): 0; }
 
 Co(i1d1) {
-  host *i = (host*) getZ(*v->sp++);
+  vm *i = (vm*) getZ(*v->sp++);
   ob x = *v->sp++;
   mo pf;
   with(x, pf = pull(v, e, m+2));

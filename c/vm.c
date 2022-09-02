@@ -33,7 +33,7 @@ Vm(ap_u) {
   if (Free < adic) return Collect(adic);
   ob off = fp->subd, rp = fp->retp;
   sp = fp->argv + getZ(fp->argc) - adic;
-  for (N j = 0; j < adic; sp[j++] = A(x), x = B(x));
+  for (size_t j = 0; j < adic; sp[j++] = A(x), x = B(x));
   return
     fp = (fr) sp - 1,
     sp = (ob*) fp,
@@ -64,7 +64,7 @@ Vm(vararg) {
   if (Free < 2 * vdic) return Collect(2 * vdic);
   two t = (two) hp;
   hp += 2 * vdic;
-  for (N i = vdic; i--;
+  for (size_t i = vdic; i--;
     t[i].a = fp->argv[reqd + i],
     t[i].b = put2(t+i+1));
   return
@@ -198,7 +198,7 @@ Vm(latebind) {
     xp = (ob) (ptr(xp) + 2);
   return
     ip[0].ll = imm,
-    ip[1].ll = (host*) xp,
+    ip[1].ll = (vm*) xp,
     ApN(2, xp); }
 
 // this is used to create closures.
@@ -221,7 +221,7 @@ Vm(clos) { return
 // finalize function instance closure
 Vm(clos1) { return
   ip->ll = clos,
-  ip[1].ll = (host*) xp,
+  ip[1].ll = (vm*) xp,
   ApY(ip, xp); }
 
 // this function is run the first time a user
