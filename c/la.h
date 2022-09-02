@@ -9,9 +9,9 @@ typedef intptr_t ob;
 
 typedef struct mo *mo; // procedure type
 typedef struct fr *fr; // frame pointer
-typedef struct pt *la, *pt; // runtime point
+typedef struct la *la; // runtime point
 #define Vm(n, ...)\
-  ob n(pt v, ob xp, mo ip, ob *hp, ob *sp, fr fp)
+  ob n(la v, ob xp, mo ip, ob *hp, ob *sp, fr fp)
 #define Ll Vm
 #define Dt Ll
 typedef Vm(vm);
@@ -46,7 +46,7 @@ enum lex {
 // linked list for gc protection
 typedef struct keep { ob *it; struct keep *et; } *keep;
 
-struct pt {
+struct la {
   // vm state -- kept in CPU registers most of the time
   mo ip; // current thread
   fr fp; // top of control stack
@@ -69,37 +69,37 @@ struct pt {
      lex[LexN]; }; // grammar symbols
 
 // runtime constructor/destructor
-pt la_ini(void);
-void la_fin(pt);
+la la_ini(void);
+void la_fin(la);
 
 // pairs
-ob pair(pt, ob, ob);
+ob pair(la, ob, ob);
 size_t llen(ob);
 intptr_t lidx(ob, ob);
 
 // hash tables
-size_t hash(pt, ob);
-ob table(pt),
-   tbl_set(pt, ob, ob, ob),
-   tbl_get(pt, ob, ob);
+size_t hash(la, ob);
+ob table(la),
+   tbl_set(la, ob, ob, ob),
+   tbl_get(la, ob, ob);
 
 // strings & symbols
-ob string(pt, const char*),
-   intern(pt, ob);
+ob string(la, const char*),
+   intern(la, ob);
 
 // functions
-ob hnom(pt, ob); // FIXME try to get function name
-mo ana(pt, ob, ob), // compiler interface
+ob hnom(la, ob); // FIXME try to get function name
+mo ana(la, ob, ob), // compiler interface
    button(mo); // get tag at end
                //
 #define Push(...) pushs(v, __VA_ARGS__, (ob) 0)
 bool
-  pushs(pt, ...),
-  please(pt, size_t), // gc interface
+  pushs(la, ...),
+  please(la, size_t), // gc interface
   eql(ob, ob); // logical equality
 
-ob refer(pt, ob), // FIXME these should be private
-   sskc(pt, ob*, ob); // FIXME
+ob refer(la, ob), // FIXME these should be private
+   sskc(la, ob*, ob); // FIXME
 
 #define N0 putnum(0)
 #define nil N0
@@ -176,12 +176,12 @@ static Inline void rcpyw(void *x, const void *y, uintptr_t l) {
   while (l--) *d-- = *s--; }
 
 // unchecked allocator -- make sure there's enough memory!
-static Inline void *bump(pt v, intptr_t n) {
+static Inline void *bump(la v, intptr_t n) {
   void *x = v->hp;
   v->hp += n;
   return x; }
 
-static Inline void *cells(pt v, uintptr_t n) {
+static Inline void *cells(la v, uintptr_t n) {
   return Avail >= n || please(v, n) ? bump(v, n) : 0; }
 
 static Inline intptr_t lcprng(intptr_t s) {

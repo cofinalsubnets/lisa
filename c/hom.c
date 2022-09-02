@@ -3,8 +3,8 @@
 mo button(mo k) { return G(k) ? button(F(k)) : k; }
 
 #include "vm.h"
-ob hnom(pt v, ob x) {
-  host *k = gethom(x)->ll;
+ob hnom(la v, ob x) {
+  vm *k = gethom(x)->ll;
   if (k == clos || k == clos0 || k == clos1)
     return hnom(v, (ob) gethom(x)[2].ll);
   ob* h = (ob*) gethom(x);
@@ -34,17 +34,17 @@ Vm(hom_u) {
 Vm(hfin_u) { return
   Arity == 0 ? ArityError(1) :
   TypeOf(xp = fp->argv[0]) != Hom ? Undefined() :
-  (button((mo)xp)[1].ll = (host*) xp,
+  (button((mo)xp)[1].ll = (vm*) xp,
    ApC(ret, xp)); }
 
 Vm(emx) {
   mo k = (mo) *sp++ - 1;
-  return k->ll = (ll*) xp,
+  return k->ll = (vm*) xp,
          ApN(1, (ob) k); }
 
 Vm(emi) {
   mo k = (mo) *sp++ - 1;
-  return k->ll = (ll*) getZ(xp),
+  return k->ll = (vm*) getZ(xp),
          ApN(1, (ob) k); }
 
 Vm(emx_u) { return

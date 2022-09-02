@@ -1,7 +1,7 @@
 #include "la.h"
 
-static ob pair_ok(pt, ob, ob) NoInline,
-          pair_gc(pt, ob, ob) NoInline;
+static ob pair_ok(la, ob, ob) NoInline,
+          pair_gc(la, ob, ob) NoInline;
 
 // pairs and lists
 
@@ -9,7 +9,7 @@ static ob pair_ok(pt, ob, ob) NoInline,
 ob pair(la v, ob a, ob b) {
   return (Avail < 2 ? pair_gc : pair_ok)(v, a, b); }
 
-static NoInline ob pair_ok(pt v, ob a, ob b) {
+static NoInline ob pair_ok(la v, ob a, ob b) {
   two w = bump(v, 2);
   return w->a = a, w->b = b, put2(w); }
 

@@ -12,7 +12,7 @@
 // existing code is unsuitable because it dynamically resizes
 // the table and unpredictable memory allocation isn't safe
 // during garbage collection.
-ob sskc(pt v, ob *y, ob x) {
+ob sskc(la v, ob *y, ob x) {
   int i; sym z; return
     !nilp(*y) ?
       (z = getsym(*y),
@@ -25,7 +25,7 @@ ob sskc(pt v, ob *y, ob x) {
      z->l = z->r = nil,
      *y = putsym(z)); }
 
-ob intern(pt v, ob x) {
+ob intern(la v, ob x) {
   bool _; return
     Avail >= Width(sym) ||
     (with(x, _ = please(v, Width(sym))), _) ?

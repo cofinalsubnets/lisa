@@ -12,13 +12,11 @@
  (dict-set d k v) (X (X k (A d)) (X v (B d)))
 
  (anon? x) (&& (symp x) (nilp (ystr x)))
- (var? x) (&& (2? x) (anon? (B x)))
+ (var? x) (&& (twop x) (anon? (B x)))
  (var x) (X x (sym))
 
   has-s dict-has
-  ref-s dict-get
   (ext-s s k v) (dict-set s k v)
-  st-empty ~~
  )
 (:::
  zz (\ x (: a (sym) b (sym) c (sym)
@@ -74,7 +72,7 @@
  (Run n ks g) (:
   (walk* u s) (?
    (var? u) (? (: t (has-s s u)) (walk* (A t) s) u)
-   (2? u) (X (walk* (A u) s) (walk* (B u) s))
+   (twop u) (X (walk* (A u) s) (walk* (B u) s))
    u)
   (re st) (flat-map ks (\ k
    (? (: it (has-s (X (map A (A st)) (B st)) k)) (L k (walk* (A it) st)))))

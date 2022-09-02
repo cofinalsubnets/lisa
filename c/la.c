@@ -5,9 +5,9 @@
 #include <stdlib.h>
 
 // finalize a process
-void la_fin(pt v) { if (v) free(v->pool), free(v); }
+void la_fin(la v) { if (v) free(v->pool), free(v); }
 
-static ob interns(pt v, const char *s) {
+static ob interns(la v, const char *s) {
   ob _ = string(v, s);
   return _ ? intern(v, _) : 0; }
 
@@ -15,12 +15,12 @@ static ob interns(pt v, const char *s) {
 //
 // store an instruction address under a variable in the
 // toplevel namespace // FIXME use a different namespace
-static NoInline ob inst(pt v, const char *a, host *b) {
+static NoInline ob inst(la v, const char *a, host *b) {
   ob z = interns(v, a);
   return z ? tbl_set(v, A(v->wns), z, putnum(b)) : 0; }
 
 // make a primitive function
-static NoInline ob prim(pt v, const char *a, host *i) {
+static NoInline ob prim(la v, const char *a, host *i) {
   mo k = 0;
   ob nom = interns(v, a);
   if (nom) nom = pair(v, nom, nil);
@@ -33,9 +33,9 @@ static NoInline ob prim(pt v, const char *a, host *i) {
   return tbl_set(v, A(v->wns), A(nom), (ob) k); }
 
 // initialize a process
-pt la_ini(void) {
+la la_ini(void) {
   ob _;
-  pt v = malloc(sizeof(struct pt));
+  la v = malloc(sizeof(struct la));
   if (!v) return 0;
   // set time & random seed
   v->t0 = clock(),
@@ -98,7 +98,7 @@ pt la_ini(void) {
 // called after finishing successfully
 static Vm(yield) { return Pack(), xp; }
 
-static ob ev(pt v, ob x) {
+static ob ev(la v, ob x) {
   ob *k; return
     !Push(x) || !(k = cells(v, 8)) ? 0 :
       (k[0] = (ob) imm,
@@ -111,13 +111,13 @@ static ob ev(pt v, ob x) {
        k[7] = x = (ob) k,
        imm(v, nil, (mo) x, v->hp, v->sp, v->fp)); }
 
-static ob rxq(pt v, FILE *i) {
+static ob rxq(la v, FILE *i) {
   ob x; return
     (x = rx(v, i)) &&
     (x = pair(v, x, nil)) ?
     (x = pair(v, v->lex[Quote], x)) : 0; }
 
-static ob ana_fd(pt v, FILE *in, ob k) {
+static ob ana_fd(la v, FILE *in, ob k) {
   ob x; return
     with(k, x = rxq(v, in)),
     !x ? feof(in) ? k : 0 :
@@ -146,7 +146,7 @@ static Vm(repl) {
   return nil; }
 
 // takes scripts and if we want a repl, gives a thread
-static mo act(pt v, bool shell, const char **nfs) {
+static mo act(la v, bool shell, const char **nfs) {
   const char *nf = *nfs;
   mo k = nf ? act(v, shell, nfs + 1) : cells(v, 3);
   return !k ? 0 :
@@ -178,7 +178,7 @@ int main(int argc, char **argv) {
       argv += optind;
       prelu = shell || optind != argc ? prelu : NULL;
 
-      pt v = la_ini();
+      la v = la_ini();
       ob r = v &&
         (r = (ob) act(v, shell, (const char**) argv)) &&
         (!prelu || (r = (ob) ana_p(v, prelu, r))) &&

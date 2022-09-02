@@ -16,15 +16,15 @@ static Inline size_t tbl_load(ob t) {
   return gettbl(t)->len >> gettbl(t)->cap; }
 
 static ob
-  tbl_ent(pt, ob, ob),
-  tbl_grow(pt, ob),
-  tbl_del(pt, ob, ob),
-  tblss(pt, intptr_t, intptr_t),
-  tks_i(pt, ob, intptr_t),
-  tks_j(pt, ob, ob),
-  tbl_set_s(pt, ob, ob, ob);
+  tbl_ent(la, ob, ob),
+  tbl_grow(la, ob),
+  tbl_del(la, ob, ob),
+  tblss(la, intptr_t, intptr_t),
+  tks_i(la, ob, intptr_t),
+  tks_j(la, ob, ob),
+  tbl_set_s(la, ob, ob, ob);
 
-size_t hash(pt v, ob x) {
+size_t hash(la v, ob x) {
   switch (TypeOf(x)) {
     case Sym: return getsym(x)->code;
     case Two: return ror(hash(v, A(x)) * hash(v, B(x)), 32);
@@ -38,7 +38,7 @@ size_t hash(pt v, ob x) {
       for (size_t h = 1;; h ^= *us++, h *= mix)
         if (!len--) return h; } } }
 
-ob table(pt v) {
+ob table(la v) {
   tbl t = cells(v, Width(tbl) + 3);
   ob *b = (ob*) (t + 1);
   return !t ? 0 :
@@ -55,7 +55,7 @@ ob tbl_set(la v, ob t, ob k, ob x) { return
           !(with(x, t = tbl_grow(v, t)), t)) ?
     0 : x; }
 
-ob tbl_get(pt v, ob t, ob k) {
+ob tbl_get(la v, ob t, ob k) {
   ob e = tbl_ent(v, t, k);
   return e == nil ? 0 : R(e)[1]; }
 
@@ -195,7 +195,7 @@ static ob tbl_grow(la v, ob t) {
 
   return gettbl(t)->cap = cap1, gettbl(t)->tab = tab1, t; }
 
-static ob tbl_set_s(pt v, ob t, ob k, ob x) {
+static ob tbl_set_s(la v, ob t, ob k, ob x) {
   tbl y;
   ob *e = (ob*) tbl_ent(v, t, k);
   size_t i = tbl_idx(gettbl(t)->cap, hash(v, k));
@@ -211,18 +211,18 @@ static ob tbl_set_s(pt v, ob t, ob k, ob x) {
      y->len += 1,
      x); }
 
-static ob tks_j(pt v, ob e, ob l) {
+static ob tks_j(la v, ob e, ob l) {
   ob x; return e == nil ? l :
     (x = R(e)[0],
      with(x, l = tks_j(v, R(e)[2], l)),
      l ? pair(v, x, l) : 0); }
 
-static ob tks_i(pt v, ob t, intptr_t i) {
+static ob tks_i(la v, ob t, intptr_t i) {
   ob k; return i == 1 << gettbl(t)->cap ? nil :
     (with(t, k = tks_i(v, t, i+1)),
      k ? tks_j(v, gettbl(t)->tab[i], k) : 0); }
 
-static ob tblss(pt v, intptr_t i, intptr_t l) {
+static ob tblss(la v, intptr_t i, intptr_t l) {
   fr fp = (fr) v->fp;
   return
     i > l - 2 ? fp->argv[i - 1] :

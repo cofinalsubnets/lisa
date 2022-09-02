@@ -25,8 +25,8 @@ Vm(ev_u) {
 typedef struct env {
   ob arg, loc, clo, par, name, asig, s1, s2; } *env;
 
-static Inline mo pull(pt v, ob *e, size_t m) {
-  return ((mo (*)(pt, ob*, N)) getZ(*v->sp++))(v, e, m); }
+static Inline mo pull(la v, ob *e, size_t m) {
+  return ((mo (*)(la, ob*, N)) getZ(*v->sp++))(v, e, m); }
 
 static Inline mo pb1(host *i, mo k) {
   return (--k)->ll = i, k; }
@@ -46,20 +46,20 @@ static Inline mo pb2(host *i, ob x, mo k) {
 // if a function is not variadic its arity signature is
 // n = number of required arguments; otherwise it is -n-1
 
-static bool scan(pt, ob*, ob);
+static bool scan(la, ob*, ob);
 
 static mo
-  i1d0(pt, ob*, size_t),
-  i1d1(pt, ob*, size_t),
-  co_ini(pt, ob*, size_t),
-  co__(pt, ob*, size_t),
-  co_ys(pt, ob*, size_t),
-  co_var(pt, ob*, size_t, ob),
-  co_2(pt, ob*, size_t, ob),
-  co_x(pt, ob*, size_t, ob);
+  i1d0(la, ob*, size_t),
+  i1d1(la, ob*, size_t),
+  co_ini(la, ob*, size_t),
+  co__(la, ob*, size_t),
+  co_ys(la, ob*, size_t),
+  co_var(la, ob*, size_t, ob),
+  co_2(la, ob*, size_t, ob),
+  co_x(la, ob*, size_t, ob);
 
 // pull back over an expression
-mo ana(pt v, ob x, ob k) {
+mo ana(la v, ob x, ob k) {
   // k can be a continuation or an instruction pointer
   bool ok = nump(k) ?
     Push(putZ(co__), x, putZ(i1d0), k, putZ(co_ini)) :
@@ -68,16 +68,16 @@ mo ana(pt v, ob x, ob k) {
 
 #define Co(nom,...) static mo nom(la v, ob *e, N m, ##__VA_ARGS__)
 
-static mo imx(pt v, ob *e, intptr_t m, host *i, ob x) {
+static mo imx(la v, ob *e, intptr_t m, host *i, ob x) {
   return Push(putnum(i), x) ? i1d1(v, e, m) : 0; }
 
-static ob snoc(pt v, ob l, ob x) {
+static ob snoc(la v, ob l, ob x) {
   return !twop(l) ? pair(v, x, l) :
     (with(l, x = snoc(v, B(l), x)),
      x ? pair(v, A(l), x) : 0); }
 
 #define Bind(v, x) if(!((v)=(x)))goto fail
-static NoInline ob rw_let_fn(pt v, ob x) {
+static NoInline ob rw_let_fn(la v, ob x) {
   mm(&x);
   for (ob _; twop(A(x));)
     if (!(_ = snoc(v, BA(x), AB(x)))  ||
@@ -88,7 +88,7 @@ static NoInline ob rw_let_fn(pt v, ob x) {
   return um, x; }
 
 
-static ob asign(pt v, ob a, intptr_t i, ob *m) {
+static ob asign(la v, ob a, intptr_t i, ob *m) {
   ob x;
   if (!twop(a)) return *m = i, a;
   if (twop(B(a)) && AB(a) == v->lex[Splat])
@@ -96,7 +96,7 @@ static ob asign(pt v, ob a, intptr_t i, ob *m) {
   with(a, x = asign(v, B(a), i+1, m));
   return x ? pair(v, A(a), x) : 0; }
 
-static Inline ob new_scope(pt v, ob *e, ob a, ob n) {
+static Inline ob new_scope(la v, ob *e, ob a, ob n) {
   intptr_t *x, s = 0;
   with(n,
     a = asign(v, a, 0, &s),
@@ -110,7 +110,7 @@ static Inline ob new_scope(pt v, ob *e, ob a, ob n) {
      x[8] = 0,
      x[9] = (ob) x); }
 
-static int scan_def(pt v, ob *e, ob x) {
+static int scan_def(la v, ob *e, ob x) {
   int r;
   if (!twop(x)) return 1; // this is an even case so export all the definitions to the local scope
   if (!twop(B(x))) return 0; // this is an odd case so ignore these, they'll be imported after the rewrite
@@ -122,7 +122,7 @@ static int scan_def(pt v, ob *e, ob x) {
       !scan(v, e, AB(x)) ? -1 : 1);
   return r; }
 
-static bool scan(pt v, ob* e, ob x) {
+static bool scan(la v, ob* e, ob x) {
   bool _;
   if (!twop(x) || A(x) == v->lex[Lamb] || A(x) == v->lex[Quote])
     return 1;
@@ -130,7 +130,7 @@ static bool scan(pt v, ob* e, ob x) {
   with(x, _ = scan(v, e, A(x)));
   return _ && scan(v, e, B(x)); }
 
-static Inline ob comp_body(pt v, ob*e, ob x) {
+static Inline ob comp_body(la v, ob*e, ob x) {
   intptr_t i;
   if (!Push(putZ(co__), x, putZ(i1d0), putZ(ret), putZ(co_ini)) ||
       !scan(v, e, v->sp[1]) ||
@@ -144,10 +144,10 @@ static Inline ob comp_body(pt v, ob*e, ob x) {
       i < 0 ?
         (ob) pb2(vararg, putZ(-i-1), (mo) x) :
       x;
-  button(gethom(x))[1].ll = (ll*) x;
+  button(gethom(x))[1].ll = (vm*) x;
   return !twop(clo(*e)) ? x : pair(v, clo(*e), x); }
 
-static ob linitp(pt v, ob x, ob* d) {
+static ob linitp(la v, ob x, ob* d) {
   ob y;
   if (!twop(B(x))) return *d = x, nil;
   with(x, y = linitp(v, B(x), d));
@@ -171,7 +171,7 @@ static Inline ob co_tl(la v, ob* e, ob n, ob l) {
       return um, um, um, 0;
   return um, um, um, l; }
 
-static Inline ob co_t_clo(pt v, ob*e, ob arg, ob seq) {
+static Inline ob co_t_clo(la v, ob*e, ob arg, ob seq) {
   intptr_t i = llen(arg);
   mm(&arg), mm(&seq);
   if (!Push(putZ(i1d1), putZ(take), putZ(i), putZ(co_ini)))
@@ -203,7 +203,7 @@ Co(co_ys) {
   _ = pair(v, A(v->wns), _);
   return _ ? imx(v, e, m, tbind, _) : 0; }
 
-static bool dty_r(pt v, ob*e, ob x) {
+static bool dty_r(la v, ob*e, ob x) {
   bool _;
   return !twop(x) ||
     ((x = rw_let_fn(v, x)) &&
@@ -211,7 +211,7 @@ static bool dty_r(pt v, ob*e, ob x) {
      Push(putnum(co__), AB(x), putnum(co_ys), A(x))); }
 
 // syntactic sugar for define
-static bool def_sug(pt v, ob x) {
+static bool def_sug(la v, ob x) {
   ob _ = nil;
   with(_, x = linitp(v, x, &_));
   return x &&
@@ -267,7 +267,7 @@ Co(co_p_pre_ant) {
   s1(*e) = B(s1(*e));
   return x; }
 
-static bool co_p_loop(pt v, ob*e, ob x) {
+static bool co_p_loop(la v, ob*e, ob x) {
   bool _;
   x = twop(x) ? x : pair(v, nil, nil);
   if (!x) return 0;
@@ -297,7 +297,7 @@ Co(em_call) {
 
 enum where { Here, Loc, Arg, Clo, Wait };
 
-static ob ls_lex(pt v, ob e, ob y) {
+static ob ls_lex(la v, ob e, ob y) {
   ob q; return
     nilp(e) ?
       (q = refer(v, y)) ? pair(v, putZ(Here), q) :
@@ -349,7 +349,7 @@ Co(co_ap, ob f, ob args) {
       return um, NULL;
   return um, pull(v, e, m); }
 
-static bool seq_mo_loop(pt v, ob *e, ob x) {
+static bool seq_mo_loop(la v, ob *e, ob x) {
   if (!twop(x)) return 1;
   bool _;
   with(x, _ = seq_mo_loop(v, e, B(x)));
@@ -391,14 +391,14 @@ Co(i1d1) {
   return pf ? pb2(i, x, pf) : 0; }
 
 // stack manips
-static bool pushss(pt v, size_t i, va_list xs) {
+static bool pushss(la v, size_t i, va_list xs) {
   ob x = va_arg(xs, ob);
   if (!x) return Avail >= i || please(v, i);
   bool _;
   with(x, _ = pushss(v, i+1, xs));
   return _ && (*--v->sp = x, true); }
 
-bool pushs(pt v, ...) {
+bool pushs(la v, ...) {
   va_list xs;
   va_start(xs, v);
   bool _ = pushss(v, 0, xs);

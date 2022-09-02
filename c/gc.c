@@ -9,7 +9,7 @@
 // cheney's algorithm but to do that we need to stop using
 // tagged pointers.
 
-#define Gc(n) ob n(pt v, ob x, intptr_t len0, ob *pool0)
+#define Gc(n) ob n(la v, ob x, intptr_t len0, ob *pool0)
 typedef Gc(copier);
 static copier
   cphom, cptwo, cpsym, cpstr, cptbl, cpid,
@@ -146,13 +146,13 @@ Gc(cphom) {
 
   for (mo k = start; k < end;)
     j->ll = k->ll,
-    k++->ll = (ll*) j++;
-  j[0].ll = NULL, j[1].ll = (ll*) dst;
+    k++->ll = (vm*) j++;
+  j[0].ll = NULL, j[1].ll = (vm*) dst;
 
   for (ob u; j-- > dst;)
     u = (ob) j->ll,
     u = !stale(u) ? u : cp(v, u, len0, pool0),
-    j->ll = (ll*) u;
+    j->ll = (vm*) u;
 
   return (ob) (src - start + dst); }
 

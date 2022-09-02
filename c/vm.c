@@ -371,14 +371,14 @@ Vm(arity) {
   ob reqd = (ob) ip[1].ll;
   return reqd <= fp->argc ? ApN(2, xp) : ApC(ary_err, reqd); }
 Vm(cwm_u) { return ApC(ret, v->wns); }
-ob refer(pt v, ob _) {
+ob refer(la v, ob _) {
   ob x, mod = v->wns;
   for (; twop(mod); mod = B(mod))
     if ((x = tbl_get(v, A(mod), _))) return x;
   return 0; }
 
 // error handling
-static ob err(pt, ob, const char*, ...) NoInline;
+static ob err(la, ob, const char*, ...) NoInline;
 
 Vm(dom_err) { return Pack(),
   err(v, 0, "est indéfini"); }
@@ -392,7 +392,7 @@ Vm(ary_err) { return Pack(),
 #include "io.h"
 #include "chars.h"
 #include <stdarg.h>
-static void show_call(pt v, mo ip, fr fp) {
+static void show_call(la v, mo ip, fr fp) {
   fputc(LeftParen, stderr);
   tx(v, stderr, (ob) ip);
   for (size_t i = 0, argc = getZ(fp->argc); i < argc;)
@@ -401,7 +401,7 @@ static void show_call(pt v, mo ip, fr fp) {
   fputc(RightParen, stderr); }
 
 #define bottom (ptr(fp) == v->pool + v->len)
-static NoInline ob err(pt v, ob x, const char *msg, ...) {
+static NoInline ob err(la v, ob x, const char *msg, ...) {
   mo ip = v->ip;
   fr fp = v->fp;
 
