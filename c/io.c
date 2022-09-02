@@ -85,10 +85,10 @@ static ob rx_str(pt v, FILE *p) {
     for (ob x; n < lim;) switch (x = fgetc(p)) {
       // backslash causes the next character to be read literally
       case Backslash:
-        if ((x = fgetc(p)) == EOF)
+        if ((x = fgetc(p)) != EOF) goto ok;
       case DoubleQuote: case EndOfFile:
-          return o->text[n++] = 0, o->len = n, putstr(o);
-      default: o->text[n++] = x; }
+        return o->text[n++] = 0, o->len = n, putstr(o);
+      default: ok: o->text[n++] = x; }
   return 0; }
 
 // read the characters of an atom into a string
@@ -143,12 +143,14 @@ static void emhomn(pt, FILE*, ob);
 // s-expression writer
 void tx(pt v, FILE *o, ob x) {
   switch (TypeOf(x)) {
-    case Hom: return emhomn(v, o, hnom(v, x));
-    case Num: return (void) fprintf(o, "%ld", getZ(x));
+    case Hom: emhomn(v, o, hnom(v, x)); return;
+    case Num: fprintf(o, "%ld", getZ(x)); return;
     case Two:
       for (fputc(LeftParen, o);; x = B(x)) {
         tx(v, o, A(x));
-        if (!twop(B(x))) return (void) fputc(RightParen, o);
+        if (!twop(B(x))) {
+          fputc(RightParen, o);
+          return; }
         fputc(Space, o); }
     case Sym: {
       sym y = getsym(x);
