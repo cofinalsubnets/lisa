@@ -163,15 +163,15 @@ static Inline size_t b2w(size_t b) {
          rem = b % sizeof(ob);
   return rem ? quot + 1 : quot; }
 
-static Inline void setw(void *x, intptr_t i, uintptr_t l) {
+static Inline void setw(void *x, intptr_t i, size_t l) {
   for (intptr_t *d = x; l--; *d++ = i); }
 
-static Inline void cpyw(void *x, const void *y, uintptr_t l) {
+static Inline void cpyw(void *x, const void *y, size_t l) {
   intptr_t *d = x;
   const intptr_t *s = y;
   while (l--) *d++ = *s++; }
 
-static Inline void rcpyw(void *x, const void *y, uintptr_t l) {
+static Inline void rcpyw(void *x, const void *y, size_t l) {
   intptr_t *d = (ob*) x + (l - 1);
   const intptr_t *s = (const intptr_t*) y + (l - 1);
   while (l--) *d-- = *s--; }
@@ -182,8 +182,13 @@ static Inline void *bump(la v, intptr_t n) {
   v->hp += n;
   return x; }
 
-static Inline void *cells(la v, uintptr_t n) {
+static Inline void *cells(la v, size_t n) {
   return Avail >= n || please(v, n) ? bump(v, n) : 0; }
+
+static Inline mo mkthd(la v, size_t n) {
+  mo k = cells(v, n+2);
+  if (k) k[n].ll = 0, k[n+1].ll = (vm*) k;
+  return k; }
 
 static Inline intptr_t lcprng(intptr_t s) {
   const intptr_t steele_vigna_2021 = 0xaf251af3b0f025b5;
@@ -192,4 +197,3 @@ static Inline intptr_t lcprng(intptr_t s) {
 // XXX FIXME XXX
 _Static_assert(sizeof(intptr_t) == 8, "64bit");
 _Static_assert(-1 == -1 >> 1, "signed >>");
-

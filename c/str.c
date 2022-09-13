@@ -13,12 +13,12 @@ ob string(la v, const char* c) {
 
 // string instructions
 Vm(slen_u) {
-  Ary(1);
+  ArityCheck(1);
   TypeCheck(fp->argv[0], Str);
   return ApC(ret, putZ(getstr(*fp->argv)->len-1)); }
 
 Vm(sget_u) {
-  Ary(2);
+  ArityCheck(2);
   TypeCheck(fp->argv[0], Str);
   TypeCheck(fp->argv[1], Num);
   return ApC(ret,
@@ -48,7 +48,7 @@ Vm(scat_u) {
 #define min(a,b)(a<b?a:b)
 #define max(a,b)(a>b?a:b)
 Vm(ssub_u) {
-  Ary(3);
+  ArityCheck(3);
   TypeCheck(fp->argv[0], Str);
   TypeCheck(fp->argv[1], Num);
   TypeCheck(fp->argv[2], Num);

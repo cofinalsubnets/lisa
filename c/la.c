@@ -24,12 +24,10 @@ static NoInline ob prim(la v, const char *a, vm *i) {
   mo k = 0;
   ob nom = interns(v, a);
   if (nom) nom = pair(v, nom, nil);
-  if (nom) with(nom, k = cells(v, 4));
+  if (nom) with(nom, k = mkthd(v, 2));
   if (!k) return 0;
   k[0].ll = i;
   k[1].ll = (vm*) nom;
-  k[2].ll = 0;
-  k[3].ll = (vm*) k;
   return tbl_set(v, A(v->wns), A(nom), (ob) k); }
 
 // initialize a process
@@ -99,17 +97,15 @@ la la_ini(void) {
 static Vm(yield) { return Pack(), xp; }
 
 static ob ev(la v, ob x) {
-  ob *k; return
-    !Push(x) || !(k = cells(v, 8)) ? 0 :
-      (k[0] = (ob) imm,
-       k[1] = (ob) (k + 5),
-       k[2] = (ob) call,
-       k[3] = putZ(1),
-       k[4] = (ob) yield,
-       k[5] = (ob) ev_u,
-       k[6] = 0,
-       k[7] = x = (ob) k,
-       imm(v, nil, (mo) x, v->hp, v->sp, v->fp)); }
+  mo k;
+  if (!Push(x) || !(k = mkthd(v, 6))) return 0;
+  k[0].ll = imm;
+  k[1].ll = (vm*) (k + 5);
+  k[2].ll =  call;
+  k[3].ll = (vm*) putnum(1);
+  k[4].ll =  yield;
+  k[5].ll =  ev_u;
+  return imm(v, nil, k, v->hp, v->sp, v->fp); }
 
 static ob rxq(la v, FILE *i) {
   ob x; return
@@ -130,12 +126,12 @@ static ob ana_fd(la v, FILE *in, ob k) {
 #include <errno.h>
 static mo ana_p(la v, const char *path, ob k) {
   FILE *in = fopen(path, "r");
-  return
-    !in ? (fprintf(stderr, "%s : %s", path, strerror(errno)),
-           NULL) :
-    (k = ana_fd(v, in, k),
-     fclose(in),
-     (mo) k); }
+  if (!in) return
+    fprintf(stderr, "%s : %s", path, strerror(errno)),
+    NULL;
+  k = ana_fd(v, in, k);
+  fclose(in);
+  return (mo) k; }
 
 // read eval print loop. starts after all scripts if indicated
 static Vm(repl) {
@@ -148,13 +144,10 @@ static Vm(repl) {
 // takes scripts and if we want a repl, gives a thread
 static mo act(la v, bool shell, const char **nfs) {
   const char *nf = *nfs;
-  mo k = nf ? act(v, shell, nfs + 1) : cells(v, 3);
+  mo k = nf ? act(v, shell, nfs + 1) : mkthd(v, 1);
   return !k ? 0 :
     nf ? ana_p(v, nf, (ob) k) :
-    (k[0].ll = shell ? repl : yield,
-     k[1].ll = 0,
-     k[2].ll = (vm*) k,
-     k); }
+    (k[0].ll = shell ? repl : yield, k); }
 
 #include <getopt.h>
 int main(int argc, char **argv) {

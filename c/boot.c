@@ -15,7 +15,7 @@ Vm(ev_u) {
   if (xp && homp(xp) && gethom(xp)->ll != ev_u)
     return ApY((mo) xp, nil);
   Pack();
-  mo y = ana(v, *fp->argv, putZ(ret));
+  mo y = ana(v, *fp->argv, putnum(ret));
   if (!y) return 0;
   Unpack();
   return ApY(y, xp); }
@@ -26,7 +26,7 @@ typedef struct env {
   ob arg, loc, clo, par, name, asig, s1, s2; } *env;
 
 static Inline mo pull(la v, ob *e, size_t m) {
-  return ((mo (*)(la, ob*, size_t)) getZ(*v->sp++))(v, e, m); }
+  return ((mo (*)(la, ob*, size_t)) getnum(*v->sp++))(v, e, m); }
 
 static Inline mo pb1(vm *i, mo k) {
   return (--k)->ll = i, k; }
@@ -62,8 +62,8 @@ static mo
 mo ana(la v, ob x, ob k) {
   // k can be a continuation or an instruction pointer
   bool ok = nump(k) ?
-    Push(putZ(co__), x, putZ(i1d0), k, putZ(co_ini)) :
-    Push(putZ(co__), x, putZ(i1d1), putZ(jump), k, putZ(co_ini));
+    Push(putnum(co__), x, putnum(i1d0), k, putnum(co_ini)) :
+    Push(putnum(co__), x, putnum(i1d1), putnum(jump), k, putnum(co_ini));
   return ok ? pull(v, 0, 0) : 0; }
 
 #define Co(nom,...) static mo nom(la v, ob *e, size_t m, ##__VA_ARGS__)
@@ -102,15 +102,14 @@ static Inline ob new_scope(la v, ob *e, ob a, ob n) {
   return
     with(n,
       a = asign(v, a, 0, &s),
-      x = !a ? 0 : (with(a, x = cells(v, 10)), x)),
+      x = !a ? 0 : (with(a, x = (ob*) mkthd(v, 8)), x)),
     !x ? 0 :
     (arg(x) = a,
      loc(x) = clo(x) = s1(x) = s2(x) = nil,
      par(x) = e ? *e : nil,
      name(x) = n,
-     asig(x) = putZ(s),
-     x[8] = 0,
-     x[9] = (ob) x); }
+     asig(x) = putnum(s),
+     (ob) x); }
 
 static int scan_def(la v, ob *e, ob x) {
   int r; return
@@ -133,18 +132,18 @@ static bool scan(la v, ob* e, ob x) {
 
 static Inline ob comp_body(la v, ob*e, ob x) {
   intptr_t i;
-  if (!Push(putZ(co__), x, putZ(i1d0), putZ(ret), putZ(co_ini)) ||
+  if (!Push(putnum(co__), x, putnum(i1d0), putnum(ret), putnum(co_ini)) ||
       !scan(v, e, v->sp[1]) ||
       !(x = (ob) pull(v, e, 4)))
     return 0;
 
   return
     x = !(i = llen(loc(*e))) ? x :
-     (ob) pb2(locals, putZ(i), (mo) x),
-    x = (i = getZ(asig(*e))) > 0 ?
-          (ob) pb2(arity, putZ(i), (mo) x) :
+     (ob) pb2(locals, putnum(i), (mo) x),
+    x = (i = getnum(asig(*e))) > 0 ?
+          (ob) pb2(arity, putnum(i), (mo) x) :
         i < 0 ?
-          (ob) pb2(vararg, putZ(-i-1), (mo) x) :
+          (ob) pb2(vararg, putnum(-i-1), (mo) x) :
         x,
     button(gethom(x))[1].ll = (vm*) x,
     !twop(clo(*e)) ? x : pair(v, clo(*e), x); }
@@ -177,11 +176,11 @@ static Inline ob co_tl(la v, ob* e, ob n, ob l) {
 static Inline ob co_t_clo(la v, ob*e, ob arg, ob seq) {
   intptr_t i = llen(arg);
   mm(&arg), mm(&seq);
-  if (!Push(putZ(i1d1), putZ(take), putZ(i), putZ(co_ini)))
+  if (!Push(putnum(i1d1), putnum(take), putnum(i), putnum(co_ini)))
     return um, um, 0;
 
   for (; twop(arg); arg = B(arg))
-    if (!Push(putZ(co__), A(arg), putZ(i1d0), putZ(push)))
+    if (!Push(putnum(co__), A(arg), putnum(i1d0), putnum(push)))
       return um, um, 0;
 
   if (!(arg = (ob) pull(v, e, 0))) return um, um, 0;
@@ -202,7 +201,7 @@ Co(co_t, ob x) {
 
 Co(co_ys) {
   ob _ = *v->sp++;
-  if (e) return imx(v, e, m, loc_, putZ(lidx(loc(*e), _)));
+  if (e) return imx(v, e, m, loc_, putnum(lidx(loc(*e), _)));
   _ = pair(v, A(v->wns), _);
   return _ ? imx(v, e, m, tbind, _) : 0; }
 
@@ -275,17 +274,17 @@ static bool co_p_loop(la v, ob*e, ob x) {
   x = twop(x) ? x : pair(v, nil, nil);
   if (!x) return 0;
   if (!twop(B(x))) return
-    Push(putZ(co__), A(x), putZ(co_p_pre_con));
+    Push(putnum(co__), A(x), putnum(co_p_pre_con));
   with(x,
-    _ = Push(putZ(co_p_post_con), putZ(co__),
-             AB(x), putZ(co_p_pre_con)),
+    _ = Push(putnum(co_p_post_con), putnum(co__),
+             AB(x), putnum(co_p_pre_con)),
     _ = _ ? co_p_loop(v, e, BB(x)) : _);
-  return _ ? Push(putZ(co__), A(x), putZ(co_p_pre_ant)) : 0; }
+  return _ ? Push(putnum(co__), A(x), putnum(co_p_pre_ant)) : 0; }
 
 Co(co_p, ob x) {
   bool _;
   mo pf;
-  with(x, _ = Push(putZ(co_p_pre)));
+  with(x, _ = Push(putnum(co_p_pre)));
   _ = _ ? co_p_loop(v, e, B(x)) : _;
   if (!_ || !(pf = pull(v, e, m))) return 0;
   s2(*e) = B(s2(*e));
@@ -303,11 +302,11 @@ enum where { Here, Loc, Arg, Clo, Wait };
 static ob ls_lex(la v, ob e, ob y) {
   ob q; return
     nilp(e) ?
-      (q = refer(v, y)) ? pair(v, putZ(Here), q) :
-                          pair(v, putZ(Wait), A(v->wns)) :
-    lidx(loc(e), y) >= 0 ? pair(v, putZ(Loc), e) :
-    lidx(arg(e), y) >= 0 ? pair(v, putZ(Arg), e) :
-    lidx(clo(e), y) >= 0 ? pair(v, putZ(Clo), e) :
+      (q = refer(v, y)) ? pair(v, putnum(Here), q) :
+                          pair(v, putnum(Wait), A(v->wns)) :
+    lidx(loc(e), y) >= 0 ? pair(v, putnum(Loc), e) :
+    lidx(arg(e), y) >= 0 ? pair(v, putnum(Arg), e) :
+    lidx(clo(e), y) >= 0 ? pair(v, putnum(Clo), e) :
     ls_lex(v, par(e), y); }
 
 Co(co_var, ob x) {
@@ -315,25 +314,25 @@ Co(co_var, ob x) {
   with(x, q = ls_lex(v, e ? *e : nil, x));
   if (!q) return 0;
   y = A(q);
-  if (y == putZ(Here)) return co_x(v, e, m, B(q)) ;
-  if (y == putZ(Wait)) return
+  if (y == putnum(Here)) return co_x(v, e, m, B(q)) ;
+  if (y == putnum(Wait)) return
     (x = pair(v, B(q), x)) &&
     (with(x, y = (ob) pull(v, e, m+2)), y) &&
-    (with(y, x = pair(v, putZ(sizeof(ob)), x)), x) ?
+    (with(y, x = pair(v, putnum(sizeof(ob)), x)), x) ?
       pb2(latebind, x, (mo) y) : 0;
 
   if (B(q) == *e) return
-    y == putZ(Loc) ?
-      imx(v, e, m, loc, putZ(lidx(loc(*e), x))) :
-    y == putZ(Arg) ?
-      imx(v, e, m, arg, putZ(lidx(arg(*e), x))) :
-    imx(v, e, m, clo, putZ(lidx(clo(*e), x)));
+    y == putnum(Loc) ?
+      imx(v, e, m, loc, putnum(lidx(loc(*e), x))) :
+    y == putnum(Arg) ?
+      imx(v, e, m, arg, putnum(lidx(arg(*e), x))) :
+    imx(v, e, m, clo, putnum(lidx(clo(*e), x)));
 
   y = llen(clo(*e));
   with(x, q = snoc(v, clo(*e), x));
   if (!q) return 0;
   clo(*e) = q;
-  return imx(v, e, m, clo, putZ(y)); }
+  return imx(v, e, m, clo, putnum(y)); }
 
 Co(co__) {
   ob x = *v->sp++;
@@ -343,12 +342,12 @@ Co(co__) {
 
 Co(co_ap, ob f, ob args) {
   mm(&args);
-  if (!Push(putZ(co__), f,
-            putZ(i1d0), putZ(idH),
-            putZ(em_call), putZ(llen(args))))
+  if (!Push(putnum(co__), f,
+            putnum(i1d0), putnum(idH),
+            putnum(em_call), putnum(llen(args))))
     return um, NULL;
   for (; twop(args); args = B(args))
-    if (!Push(putZ(co__), A(args), putZ(i1d0), putZ(push)))
+    if (!Push(putnum(co__), A(args), putnum(i1d0), putnum(push)))
       return um, NULL;
   return um, pull(v, e, m); }
 
@@ -356,10 +355,10 @@ static bool seq_mo_loop(la v, ob *e, ob x) {
   if (!twop(x)) return 1;
   bool _;
   with(x, _ = seq_mo_loop(v, e, B(x)));
-  return _ && Push(putZ(co__), A(x)); }
+  return _ && Push(putnum(co__), A(x)); }
 
 Co(co_x, ob x) { return
-  Push(putZ(imm), x) ? i1d1(v, e, m) : 0; }
+  Push(putnum(imm), x) ? i1d1(v, e, m) : 0; }
 
 Co(co_q, ob x) { return
   x = twop(B(x)) ? AB(x) : B(x),
@@ -382,12 +381,12 @@ Co(co_2, ob x) {
     co_ap(v, e, m, A(x), B(x)); }
 
 Co(i1d0) { mo k;
-  vm *i = (void*) getZ(*v->sp++);
+  vm *i = (void*) getnum(*v->sp++);
   k = pull(v, e, m+1);
   return k ? pb1(i, k): 0; }
 
 Co(i1d1) {
-  vm *i = (vm*) getZ(*v->sp++);
+  vm *i = (vm*) getnum(*v->sp++);
   ob x = *v->sp++;
   mo pf;
   with(x, pf = pull(v, e, m+2));
@@ -409,10 +408,8 @@ bool pushs(la v, ...) {
   return _; }
 
 Co(co_ini) {
-  ob *k = cells(v, m + 3);
+  mo k = mkthd(v, m + 1);
   return !k ? 0 :
-    (k[m+1] = 0,
-     k[m+2] = (ob) k,
-     k[m] = e ? name(*e) : nil,
+    (k[m].ll = (vm*) (e ? name(*e) : nil),
      setw(k, nil, m),
-     (mo) k + m); }
+     k + m); }

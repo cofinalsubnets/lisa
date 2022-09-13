@@ -5,7 +5,6 @@ static ob pair_ok(la, ob, ob) NoInline,
 
 // pairs and lists
 
-// cons
 ob pair(la v, ob a, ob b) { return
   Avail < 2 ? pair_gc(v, a, b) : pair_ok(v, a, b); }
 
@@ -37,30 +36,31 @@ intptr_t lidx(ob l, ob x) {
 Vm(car) { return ApN(1, A(xp)); }
 Vm(cdr) { return ApN(1, B(xp)); }
 
-Vm(cons) { return
-  Free == 0 ? Collect(1) :
-  (hp[0] = xp,
-   hp[1] = *sp++,
-   xp = put2(hp),
-   hp += 2,
-   ApN(1, xp)); }
+Vm(cons) {
+  Have1();
+  return
+    hp[0] = xp,
+    hp[1] = *sp++,
+    xp = put2(hp),
+    hp += 2,
+    ApN(1, xp); }
 
-Vm(car_u) { return
-  Arity < 1 ? ArityError(1) :
-  TypeOf(fp->argv[0]) != Two ? DomainError() :
-  ApC(ret, A(*fp->argv)); }
+Vm(car_u) {
+  ArityCheck(1);
+  TypeCheck(fp->argv[0], Two);
+  return ApC(ret, A(*fp->argv)); }
 
-Vm(cdr_u) { return
-  Arity < 1 ? ArityError(1) :
-  TypeOf(fp->argv[0]) != Two ? DomainError() :
-  ApC(ret, B(fp->argv[0])); }
+Vm(cdr_u) {
+  ArityCheck(1);
+  TypeCheck(fp->argv[0], Two);
+  return ApC(ret, B(fp->argv[0])); }
 
 Vm(cons_u) {
+  ArityCheck(2);
+  Have(2);
   return
-    Free < 2 ? Collect(2) :
-    Arity < 2 ? ArityError(2) :
-    (xp = put2(hp),
-     hp += 2,
-     A(xp) = fp->argv[0],
-     B(xp) = fp->argv[1],
-     ApC(ret, xp)); }
+    xp = put2(hp),
+    hp += 2,
+    A(xp) = fp->argv[0],
+    B(xp) = fp->argv[1],
+    ApC(ret, xp); }

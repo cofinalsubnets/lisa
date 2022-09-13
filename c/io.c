@@ -16,12 +16,6 @@ enum Char {
   Plus = '+',
   Minus = '-',
   NumeralZero = '0',
-  Radix2 = 'b',
-  Radix8 = 'o',
-  Radix10 = 'd',
-  Radix12 = 'z',
-  Radix16 = 'x',
-  Radix3b = 't',
   EndOfFile = EOF, };
 
 static ob
@@ -133,7 +127,7 @@ static Inline int cmin(int c) {
   return c >= 'A' && c <= 'Z' ? c + ('a'-'A') : c; }
 
 static NoInline ob rx_numb(la v, ob b, const char *in, int base) {
-  static const char *digits = "0123456789abcdef";
+  static const char *digits = "0123456789abcdefghijklmnopqrstuvwxyz";
   ob out = 0, c = cmin(*in++);
   if (!c) return intern(v, b); // fail to parse empty string
   do {
@@ -144,6 +138,14 @@ static NoInline ob rx_numb(la v, ob b, const char *in, int base) {
   } while ((c = cmin(*in++)));
   return putZ(out); }
 
+// numbers can be input in bases 2, 6, 8, 10, 12, 16, 36
+static char radicize(char c) {
+  static const char *radices =
+    "b\2s\6o\10d\12z\14x\20n\44";
+  for (const char *r = radices; *r; r += 2)
+    if (*r == c) return r[1];
+  return 0; }
+
 static NoInline ob rx_num(la v, ob b, const char *s) {
   ob n;
   switch (*s) {
@@ -151,12 +153,9 @@ static NoInline ob rx_num(la v, ob b, const char *s) {
     case Minus: return
       n = rx_num(v, b, s+1),
       !nump(n) ? n : putZ(-getZ(n));
-    case NumeralZero: switch (cmin(s[1])) {
-      case Radix2: return rx_numb(v, b, s+2, 2);
-      case Radix8: return rx_numb(v, b, s+2, 8);
-      case Radix10: return rx_numb(v, b, s+2, 10);
-      case Radix12: return rx_numb(v, b, s+2, 12);
-      case Radix16: return rx_numb(v, b, s+2, 16); } }
+    case NumeralZero: {
+      char r = radicize(cmin(s[1]));
+      if (r) return rx_numb(v, b, s+2, r); } }
   return rx_numb(v, b, s, 10); }
 
 static void emhomn(la, FILE*, ob);

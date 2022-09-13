@@ -143,7 +143,7 @@ static void tbl_fit(la v, ob t) {
   tbl u = gettbl(t);
 
   // collect all entries
-  for (uintptr_t i = 1 << u->cap; i--;)
+  for (size_t i = 1 << u->cap; i--;)
     for (f = u->tab[i], u->tab[i] = nil; f != nil;
       g = R(f)[2], R(f)[2] = e,
       e = f, f = g);
@@ -153,7 +153,7 @@ static void tbl_fit(la v, ob t) {
 
   // reinsert
   while (e != nil) {
-    uintptr_t i = tbl_idx(u->cap, hash(v, R(e)[0]));
+    size_t i = tbl_idx(u->cap, hash(v, R(e)[0]));
     f = R(e)[2],
     R(e)[2] = u->tab[i],
     u->tab[i] = e,
@@ -201,13 +201,11 @@ static ob tbl_set_s(la v, ob t, ob k, ob x) {
   ob *e = (ob*) tbl_ent(v, t, k);
   size_t i = tbl_idx(gettbl(t)->cap, hash(v, k));
   return (ob) e != nil ? e[1] = x :
-    (with(t, with(k, with(x, e = cells(v, 5)))), !e) ? 0 :
+    (with(t, with(k, with(x, e = (void*) mkthd(v, 3)))), !e) ? 0 :
     (y = gettbl(t),
      e[0] = k,
      e[1] = x,
      e[2] = (ob) y->tab[i],
-     e[3] = 0,
-     e[4] = (ob) e,
      y->tab[i] = (ob) e,
      y->len += 1,
      x); }

@@ -98,20 +98,13 @@ insts(ninl)
 
 #define Argv fp->argv
 #define Argc fp->argc
-#define HasArgs(n) (putnum(n) <= Argc)
-#define ArityCheck(n) if (!HasArgs(n)) return ApC(ary_err, putZ(n))
-#define Ary ArityCheck
-#define IsA(t, x) (t==Q((x)))
+#define ArityCheck(n) if (putnum(n) > Argc) return ApC(ary_err, putnum(n))
 #define TypeCheck(x,t) if (Q(x) != t) return ApC(dom_err, xp)
 #define Collect(n) ApC((v->xp=n, gc), xp)
-#define Pray Collect
 #define Free (sp - hp)
-#define Hope Free
-#define Slack Hope
-#define Have1() if (!Hope) return Pray(1)
-#define Have(n) if (Hope < n) return Pray(n)
-#define Arity getZ(fp->argv)
-#define NeedArgs(n) ApC(ary_err, putZ(n))
-#define ArityError NeedArgs
+#define Have1() if (!Free) return Collect(1)
+#define Have(n) if (Free < n) return Collect(n)
+#define Arity getnum(fp->argv)
+#define ArityError(n) ApC(ary_err, putnum(n))
 #define Undefined() ApC(dom_err, xp)
 #define DomainError Undefined

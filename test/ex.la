@@ -1,5 +1,6 @@
 ; heron's method for finding square roots
 ; named for hero(n) of alexandria (ca 10-70)
+; fun fact: always converges to root from above (unless initial guess was correct)
 (test heron
  (: (heron x g) (? (= g (/ x g)) g
      (heron x (/ (+ g (/ x g)) 2))))
