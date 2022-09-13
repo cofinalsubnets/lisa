@@ -89,19 +89,21 @@ static NoInline ob rw_let_fn(la v, ob x) {
 
 
 static ob asign(la v, ob a, intptr_t i, ob *m) {
-  ob x;
-  if (!twop(a)) return *m = i, a;
-  if (twop(B(a)) && AB(a) == v->lex[Splat])
-    return *m = -i-1, pair(v, A(a), nil);
-  with(a, x = asign(v, B(a), i+1, m));
-  return x ? pair(v, A(a), x) : 0; }
+  ob x; return
+    !twop(a) ? (*m = i, a) :
+    twop(B(a)) && AB(a) == v->lex[Splat] ?
+      (*m = -i-1,
+       pair(v, A(a), nil)) :
+    (with(a, x = asign(v, B(a), i+1, m)),
+     x ? pair(v, A(a), x) : 0); }
 
 static Inline ob new_scope(la v, ob *e, ob a, ob n) {
   intptr_t *x, s = 0;
-  with(n,
-    a = asign(v, a, 0, &s),
-    x = !a ? 0 : (with(a, x = cells(v, 10)), x));
-  return !x ? 0 :
+  return
+    with(n,
+      a = asign(v, a, 0, &s),
+      x = !a ? 0 : (with(a, x = cells(v, 10)), x)),
+    !x ? 0 :
     (arg(x) = a,
      loc(x) = clo(x) = s1(x) = s2(x) = nil,
      par(x) = e ? *e : nil,
@@ -111,24 +113,23 @@ static Inline ob new_scope(la v, ob *e, ob a, ob n) {
      x[9] = (ob) x); }
 
 static int scan_def(la v, ob *e, ob x) {
-  int r;
-  if (!twop(x)) return 1; // this is an even case so export all the definitions to the local scope
-  if (!twop(B(x))) return 0; // this is an odd case so ignore these, they'll be imported after the rewrite
-  with(x,
-    r = scan_def(v, e, BB(x)),
-    r = r != 1 ? r :
-      !(x = rw_let_fn(v, x)) ||
-      !(loc(*e) = pair(v, A(x), loc(*e))) ||
-      !scan(v, e, AB(x)) ? -1 : 1);
-  return r; }
+  int r; return
+    !twop(x) ? 1 : // this is an even case so export all the definitions to the local scope
+    !twop(B(x)) ? 0 : // this is an odd case so ignore these, they'll be imported after the rewrite
+    (with(x,
+       r = scan_def(v, e, BB(x)),
+       r = r != 1 ? r :
+         !(x = rw_let_fn(v, x)) ||
+         !(loc(*e) = pair(v, A(x), loc(*e))) ||
+         !scan(v, e, AB(x)) ? -1 : 1),
+     r); }
 
 static bool scan(la v, ob* e, ob x) {
-  bool _;
-  if (!twop(x) || A(x) == v->lex[Lamb] || A(x) == v->lex[Quote])
-    return 1;
-  if (A(x) == v->lex[Def]) return scan_def(v, e, B(x)) != -1;
-  with(x, _ = scan(v, e, A(x)));
-  return _ && scan(v, e, B(x)); }
+  bool _; return
+   !twop(x) || A(x) == v->lex[Lamb] || A(x) == v->lex[Quote] ? 1 :
+   A(x) == v->lex[Def] ? scan_def(v, e, B(x)) != -1 :
+   (with(x, _ = scan(v, e, A(x))),
+    _ && scan(v, e, B(x))); }
 
 static Inline ob comp_body(la v, ob*e, ob x) {
   intptr_t i;
@@ -137,21 +138,23 @@ static Inline ob comp_body(la v, ob*e, ob x) {
       !(x = (ob) pull(v, e, 4)))
     return 0;
 
-  x = !(i = llen(loc(*e))) ? x :
-   (ob) pb2(locals, putZ(i), (mo) x);
-  x = (i = getZ(asig(*e))) > 0 ?
-        (ob) pb2(arity, putZ(i), (mo) x) :
-      i < 0 ?
-        (ob) pb2(vararg, putZ(-i-1), (mo) x) :
-      x;
-  button(gethom(x))[1].ll = (vm*) x;
-  return !twop(clo(*e)) ? x : pair(v, clo(*e), x); }
+  return
+    x = !(i = llen(loc(*e))) ? x :
+     (ob) pb2(locals, putZ(i), (mo) x),
+    x = (i = getZ(asig(*e))) > 0 ?
+          (ob) pb2(arity, putZ(i), (mo) x) :
+        i < 0 ?
+          (ob) pb2(vararg, putZ(-i-1), (mo) x) :
+        x,
+    button(gethom(x))[1].ll = (vm*) x,
+    !twop(clo(*e)) ? x : pair(v, clo(*e), x); }
 
 static ob linitp(la v, ob x, ob* d) {
   ob y;
   if (!twop(B(x))) return *d = x, nil;
-  with(x, y = linitp(v, B(x), d));
-  return y ? pair(v, A(x), y) : 0; }
+  return
+    with(x, y = linitp(v, B(x), d)),
+    y ? pair(v, A(x), y) : 0; }
 
 // takes a lambda expr, returns either a pair or or a
 // hom depending on if the function has free variables or not
@@ -355,18 +358,18 @@ static bool seq_mo_loop(la v, ob *e, ob x) {
   with(x, _ = seq_mo_loop(v, e, B(x)));
   return _ && Push(putZ(co__), A(x)); }
 
-Co(co_x, ob x) {
-  return Push(putZ(imm), x) ? i1d1(v, e, m) : 0; }
+Co(co_x, ob x) { return
+  Push(putZ(imm), x) ? i1d1(v, e, m) : 0; }
 
-Co(co_q, ob x) {
-  x = twop(B(x)) ? AB(x) : B(x);
-  return co_x(v, e, m, x); }
+Co(co_q, ob x) { return
+  x = twop(B(x)) ? AB(x) : B(x),
+  co_x(v, e, m, x); }
 
-Co(co_se, ob x) {
-  x = B(x);
-  x = twop(x) ? x : pair(v, x, nil);
-  x = x ? seq_mo_loop(v, e, x) : x;
-  return x ? pull(v, e, m) : 0; }
+Co(co_se, ob x) { return
+  x = B(x),
+  x = twop(x) ? x : pair(v, x, nil),
+  x = x ? seq_mo_loop(v, e, x) : x,
+  x ? pull(v, e, m) : 0; }
 
 Co(co_2, ob x) {
   ob z = A(x);

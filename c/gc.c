@@ -3,16 +3,25 @@
 #include <time.h>
 
 // FIXME
-// the garbage collector uses stack recursion so a process
-// that constructs infinite data will stack overflow, rather
-// than fail gracefully with oom. we could fix this by using
-// cheney's algorithm but to do that we need to stop using
-// tagged pointers.
+//
+// the garbage collector works pretty well but it could be better:
+//
+// - it uses stack recursion so a process that constructs infinite
+//   data will stack overflow, rather than fail gracefully with oom.
+//   we could fix this with cheney's alg but for that we would need
+//   to stop using tagged pointers.
+//
+// - we allocate a new pool every cycle rather than keeping two pools
+//   at all times. theoretically this means we have less memory allocated
+//   most of the time, and if malloc is efficient then the overhead from
+//   calling it every cycle should be negligible, but it would still be
+//   better only to call out when we need to grow or shrink the pool.
+//
+// - i'd rather use fibonacci numbers for scaling than powers of 2.
 
 #define Gc(n) ob n(la v, ob x, intptr_t len0, ob *pool0)
 typedef Gc(copier);
-static copier
-  cphom, cptwo, cpsym, cpstr, cptbl, cpid,
+static copier cphom, cptwo, cpsym, cpstr, cptbl, cpid,
   *copiers[] = {
     [Hom] = cphom, [Num] = cpid, [Two] = cptwo,
     [Str] = cpstr, [Tbl] = cptbl, [Sym] = cpsym, };
@@ -56,9 +65,9 @@ static Inline ob evacd(la v, ob _, enum class q) {
 //
 //       u = (t2 - t0) / (t2 - t1)
 //
-// t values come from clock(). if t0 < t1 < t2 then
-// u will be >= 1. however, sometimes t1 == t2. in that case
-// u = 1.
+// t values come from clock(). if t0 < t1 < t2
+// then u will be >= 1. however, sometimes
+// t1 == t2. in that case u = 1.
 static clock_t copy(la v, intptr_t len1) {
   clock_t t0, t1 = clock(), t2;
   ob len0 = v->len,
@@ -69,7 +78,7 @@ static clock_t copy(la v, intptr_t len1) {
      *top1 = pool1 + len1,
      shift = top1 - top0;
 
-  // fail if we can't get a new pool
+  // fail if we didn't get a new pool
   if (!pool1) return 0;
 
   // copy memory

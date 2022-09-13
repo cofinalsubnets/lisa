@@ -378,7 +378,6 @@ ob refer(la v, ob _) {
   return 0; }
 
 // error handling
-static ob err(la, ob, const char*, ...) NoInline;
 
 Vm(dom_err) { return Pack(),
   err(v, 0, "est indéfini"); }
@@ -388,50 +387,3 @@ Vm(nom_err) { return Pack(),
   err(v, xp, "a appelé la variable indéfinie"); }
 Vm(ary_err) { return Pack(),
   err(v, 0, "nécessite %d paramètres", getZ(xp)); }
-
-#include "io.h"
-#include "chars.h"
-#include <stdarg.h>
-static void show_call(la v, mo ip, fr fp) {
-  fputc(LeftParen, stderr);
-  tx(v, stderr, (ob) ip);
-  for (size_t i = 0, argc = getZ(fp->argc); i < argc;)
-    fputc(Space, stderr),
-    tx(v, stderr, fp->argv[i++]);
-  fputc(RightParen, stderr); }
-
-#define bottom (ptr(fp) == v->pool + v->len)
-static NoInline ob err(la v, ob x, const char *msg, ...) {
-  mo ip = v->ip;
-  fr fp = v->fp;
-
-  // print error
-  fputs("# ", stderr);
-  if (!bottom) // show call if possible
-    show_call(v, ip, fp),
-    fputc(Space, stderr);
-
-  // show message
-  va_list xs;
-  va_start(xs, msg);
-  vfprintf(stderr, msg, xs);
-  va_end(xs);
-  if (x) fputc(Space, stderr), tx(v, stderr, x);
-  fputc(Newline, stderr);
-
-  // show backtrace
-  while (!bottom)
-    fputs("# à ", stderr),
-    show_call(v, ip, fp),
-    fputc(Newline, stderr),
-    ip = (mo) fp->retp,
-    fp = (fr) ((ob*) (fp + 1) + getZ(fp->argc)
-                              + getZ(fp->subd));
-
-  // reset and yield
-  return
-    v->fp = (fr) (v->pool + v->len),
-    v->sp = (ob*) v->fp,
-    v->xp = nil,
-    v->ip = (mo) nil,
-    0; }

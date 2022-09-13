@@ -1,7 +1,28 @@
 #include "la.h"
 #include "io.h"
-#include "chars.h"
 #include <ctype.h>
+
+enum Char {
+  LeftParen = '(',
+  RightParen = ')',
+  SingleQuote = '\'',
+  DoubleQuote = '"',
+  Backslash = '\\',
+  Newline = '\n',
+  Space = ' ',
+  Tab = '\t',
+  NumeralSign = '#',
+  Semicolon = ';',
+  Plus = '+',
+  Minus = '-',
+  NumeralZero = '0',
+  Radix2 = 'b',
+  Radix8 = 'o',
+  Radix10 = 'd',
+  Radix12 = 'z',
+  Radix16 = 'x',
+  Radix3b = 't',
+  EndOfFile = EOF, };
 
 static ob
   buf_atom(la, FILE*, char),
@@ -175,6 +196,51 @@ static void emhomn(la v, FILE *o, ob x) {
   else { // FIXME this is weird
     if (symp(A(x)) || twop(A(x))) emhomn(v, o, A(x));
     if (symp(B(x)) || twop(B(x))) emhomn(v, o, B(x)); } }
+
+#include <stdarg.h>
+static void show_call(la v, mo ip, fr fp) {
+  fputc(LeftParen, stderr);
+  tx(v, stderr, (ob) ip);
+  for (size_t i = 0, argc = getZ(fp->argc); i < argc;)
+    fputc(Space, stderr),
+    tx(v, stderr, fp->argv[i++]);
+  fputc(RightParen, stderr); }
+
+#define bottom (ptr(fp) == v->pool + v->len)
+NoInline ob err(la v, ob x, const char *msg, ...) {
+  mo ip = v->ip;
+  fr fp = v->fp;
+
+  // print error
+  fputs("# ", stderr);
+  if (!bottom) // show call if possible
+    show_call(v, ip, fp),
+    fputc(Space, stderr);
+
+  // show message
+  va_list xs;
+  va_start(xs, msg);
+  vfprintf(stderr, msg, xs);
+  va_end(xs);
+  if (x) fputc(Space, stderr), tx(v, stderr, x);
+  fputc(Newline, stderr);
+
+  // show backtrace
+  while (!bottom)
+    fputs("# à ", stderr),
+    show_call(v, ip, fp),
+    fputc(Newline, stderr),
+    ip = (mo) fp->retp,
+    fp = (fr) ((ob*) (fp + 1) + getZ(fp->argc)
+                              + getZ(fp->subd));
+
+  // reset and yield
+  return
+    v->fp = (fr) (v->pool + v->len),
+    v->sp = (ob*) v->fp,
+    v->xp = nil,
+    v->ip = (mo) nil,
+    0; }
 
 #include "vm.h"
 Vm(show_u) {

@@ -12,9 +12,9 @@ PREFIX ?= .local
 CPPFLAGS=\
 	-DPREF=\"$(DESTDIR)/$(PREFIX)\" -DLANG=\"$(lang)\" -DSUFF=\"$(suff)\"
 CFLAGS=\
-	-std=c17 -g -Os -flto\
+	-std=c99 -g -Os -flto\
 	-Wall -Wstrict-prototypes -Wno-shift-negative-value\
-	-fno-stack-protector -fno-unroll-loops
+	-fno-stack-protector -fno-unroll-loops -fno-align-functions
 VIMPREFIX ?= $(HOME)/.vim
 vim_files=$(addprefix $(VIMPREFIX)/,syntax/$(lang).vim ftdetect/$(lang).vim)
 whither=$(DESTDIR)/$(PREFIX)/

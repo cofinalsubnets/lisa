@@ -2,6 +2,7 @@
 #include "vm.h"
 
 // hash tables
+// some of the worst code is here :(
 //
 // a big random number
 static const uint64_t mix = 2708237354241864315;

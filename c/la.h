@@ -70,6 +70,7 @@ struct la {
 la la_ini(void);
 void la_fin(la);
 
+
 // pairs
 ob pair(la, ob, ob);
 size_t llen(ob);
@@ -155,6 +156,8 @@ ob refer(la, ob), // FIXME these should be private
 #define homp(_) (TypeOf(_)==Hom)
 #define symp(_) (TypeOf(_)==Sym)
 
+ob err(la, ob, const char*, ...) NoInline;
+
 static Inline size_t b2w(size_t b) {
   size_t quot = b / sizeof(ob),
          rem = b % sizeof(ob);
@@ -189,3 +192,4 @@ static Inline intptr_t lcprng(intptr_t s) {
 // XXX FIXME XXX
 _Static_assert(sizeof(intptr_t) == 8, "64bit");
 _Static_assert(-1 == -1 >> 1, "signed >>");
+

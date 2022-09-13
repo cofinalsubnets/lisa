@@ -103,7 +103,6 @@ insts(ninl)
 #define Ary ArityCheck
 #define IsA(t, x) (t==Q((x)))
 #define TypeCheck(x,t) if (Q(x) != t) return ApC(dom_err, xp)
-#define MemCheck(n) if (Slack < n) return Pray(n)
 #define Collect(n) ApC((v->xp=n, gc), xp)
 #define Pray Collect
 #define Free (sp - hp)
@@ -116,7 +115,3 @@ insts(ninl)
 #define ArityError NeedArgs
 #define Undefined() ApC(dom_err, xp)
 #define DomainError Undefined
-
-#define Op(n, nom, x) Ll(nom) { xp = (x); return ApN(n, xp); }
-#define OP1(nom, x) Op(1, nom, x)
-#define BINOP(nom, xpn) Vm(nom) { xp = (xpn); return ApN(1, xp); }

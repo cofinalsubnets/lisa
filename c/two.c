@@ -6,8 +6,8 @@ static ob pair_ok(la, ob, ob) NoInline,
 // pairs and lists
 
 // cons
-ob pair(la v, ob a, ob b) {
-  return (Avail < 2 ? pair_gc : pair_ok)(v, a, b); }
+ob pair(la v, ob a, ob b) { return
+  Avail < 2 ? pair_gc(v, a, b) : pair_ok(v, a, b); }
 
 static NoInline ob pair_ok(la v, ob a, ob b) {
   two w = bump(v, 2);
