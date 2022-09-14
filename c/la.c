@@ -101,10 +101,10 @@ static ob ev(la v, ob x) {
   if (!Push(x) || !(k = mkthd(v, 6))) return 0;
   k[0].ll = imm;
   k[1].ll = (vm*) (k + 5);
-  k[2].ll =  call;
+  k[2].ll = call;
   k[3].ll = (vm*) putnum(1);
-  k[4].ll =  yield;
-  k[5].ll =  ev_u;
+  k[4].ll = yield;
+  k[5].ll = ev_u;
   return imm(v, nil, k, v->hp, v->sp, v->fp); }
 
 static ob rxq(la v, FILE *i) {
@@ -129,16 +129,19 @@ static mo ana_p(la v, const char *path, ob k) {
   if (!in) return
     fprintf(stderr, "%s : %s", path, strerror(errno)),
     NULL;
-  k = ana_fd(v, in, k);
-  fclose(in);
-  return (mo) k; }
+  return
+    k = ana_fd(v, in, k),
+    fclose(in),
+    (mo) k; }
 
 // read eval print loop. starts after all scripts if indicated
 static Vm(repl) {
-  for (Pack(); !feof(stdin);)
-    if ((xp = rx(v, stdin)) && (xp = ev(v, xp)))
+  for (Pack(); !feof(stdin);) {
+    if (!(xp = rx(v, stdin)))
+      err(v, 0, "parse error");
+    else if ((xp = ev(v, xp)))
       tx(v, stdout, xp),
-      fputc('\n', stdout);
+      fputc('\n', stdout); }
   return nil; }
 
 // takes scripts and if we want a repl, gives a thread
@@ -149,32 +152,44 @@ static mo act(la v, bool shell, const char **nfs) {
     nf ? ana_p(v, nf, (ob) k) :
     (k[0].ll = shell ? repl : yield, k); }
 
-#include <getopt.h>
-int main(int argc, char **argv) {
-  bool shell = argc == 1;
-  const char
-    *prelu = PREF "/lib/" LANG "/" LANG "." SUFF,
-    *usage =
-      "usage: %s [choix et scripts]\n"
-      "sans paramètres, commencer l'interaction\n"
-      "les choix:\n"
-      "  -h afficher ce message\n"
-      "  -i interagir\n"
-      "  -_ mode nu\n";
+static mo actn(la v, bool shell, const char *prelu, const char **scripts) {
+  mo k = act(v, shell, scripts);
+  if (k && prelu) k = ana_p(v, prelu, (ob) k);
+  return k; }
 
-  for (;;) switch (getopt(argc, argv, "hi_")) {
+static NoInline ob la_run(la v) {
+  ob xp, *hp, *sp; fr fp; mo ip;
+  Unpack();
+  return ApN(0, xp); }
+
+static NoInline int la_main(bool shell, const char *prelu, const char **scripts) {
+  la v = la_ini();
+  if (!v) return 0;
+  mo k = actn(v, shell, prelu, scripts);
+  if (!k) return 0;
+  v->ip = k;
+  ob r = la_run(v);
+  la_fin(v);
+  return r ? EXIT_SUCCESS : EXIT_FAILURE; }
+
+static const char
+  *prelu = PREF "/lib/" LANG "/" LANG "." SUFF,
+  *usage =
+    "usage: %s [options and scripts]\n"
+    "with no arguments, interact\n"
+    "option:\n"
+    "  -h show this message\n"
+    "  -i interact\n"
+    "  -_ don't bootstrap\n";
+
+#include <getopt.h>
+int main(int ac, char **av) {
+  for (bool shell = ac == 1;;) switch (getopt(ac, av, "hi_")) {
     default: return EXIT_FAILURE;
-    case 'h': fprintf(stdout, usage, *argv); continue;
+    case 'h': fprintf(stdout, usage, *av); continue;
     case 'i': shell = true; continue;
     case '_': prelu = NULL; continue;
     case -1:
-      argv += optind;
-      prelu = shell || optind != argc ? prelu : NULL;
-
-      la v = la_ini();
-      ob r = v &&
-        (r = (ob) act(v, shell, (const char**) argv)) &&
-        (!prelu || (r = (ob) ana_p(v, prelu, r))) &&
-        (r = pair(v, r, nil)) ? ev(v, r) : 0;
-      la_fin(v);
-      return r ? EXIT_SUCCESS : EXIT_FAILURE; } }
+      av += optind;
+      prelu = shell || optind != ac ? prelu : NULL;
+      return la_main(shell, prelu, (const char**) av); } }

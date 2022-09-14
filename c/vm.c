@@ -25,43 +25,44 @@
 
 // calling and returning
 Vm(ap_u) {
-  if (Arity < 2) return ArityError(2);
-  if (!homp(fp->argv[0])) return Undefined();
+  ArityCheck(2);
+  TypeCheck(Argv[0], Hom);
   ip = (mo) fp->argv[0];
   ob x = fp->argv[1];
   size_t adic = llen(x);
-  if (Free < adic) return Collect(adic);
+  Have(adic);
   ob off = fp->subd, rp = fp->retp;
-  sp = fp->argv + getZ(fp->argc) - adic;
+  sp = fp->argv + getnum(fp->argc) - adic;
   for (size_t j = 0; j < adic; sp[j++] = A(x), x = B(x));
   return
     fp = (fr) sp - 1,
     sp = (ob*) fp,
     fp->retp = rp,
-    fp->argc = putZ(adic),
+    fp->argc = putnum(adic),
     fp->subd = off,
     fp->clos = nil,
     ApY(ip, nil); }
 
 Vm(vararg) {
-  intptr_t reqd = getZ((ob) ip[1].ll),
-           vdic = getZ(fp->argc) - reqd;
+  intptr_t reqd = getnum((ob) ip[1].ll),
+           vdic = getnum(fp->argc) - reqd;
   ArityCheck(reqd);
   // in this case we need to add another argument
   // slot to hold the nil.
-  if (!vdic) return
-    Free == 0 ? Collect(1) :
-    (cpyw((ob*)fp - 1, fp, Width(fr) + getZ(fp->argc)),
-     fp = (fr) ((ob*) fp - 1),
-     sp = (ob*) fp,
-     fp->argc += sizeof(ob),
-     fp->argv[reqd] = nil,
-     ApN(2, xp));
+  if (!vdic) {
+    Have1();
+    return
+      cpyw((ob*)fp - 1, fp, Width(fr) + getnum(fp->argc)),
+      fp = (fr) ((ob*) fp - 1),
+      sp = (ob*) fp,
+      fp->argc += sizeof(ob),
+      fp->argv[reqd] = nil,
+      ApN(2, xp); }
   // in this case we just keep the existing slots.
   // the path is knowable at compile time in many cases
   // so maybe vararg should be two or more different
   // functions.
-  if (Free < 2 * vdic) return Collect(2 * vdic);
+  Have(2 * vdic);
   two t = (two) hp;
   hp += 2 * vdic;
   for (size_t i = vdic; i--;
@@ -82,43 +83,44 @@ Vm(ret) { return
 
 // "inner" function call
 Vm(call) {
-  intptr_t adic = getZ((ob) ip[1].ll),
+  intptr_t adic = getnum((ob) ip[1].ll),
            off = (ob*) fp - (sp + adic);
+  Have(Width(fr));
   return
-    Free < Width(fr) ? Collect(Width(fr)) :
-    (fp = (fr) sp - 1,
-     sp = (ob*) fp,
-     fp->retp = (ob) (ip + 2),
-     fp->subd = putZ(off),
-     fp->clos = nil,
-     fp->argc = putZ(adic),
-     ApY(xp, nil)); }
+    fp = (fr) sp - 1,
+    sp = (ob*) fp,
+    fp->retp = (ob) (ip + 2),
+    fp->subd = putnum(off),
+    fp->clos = nil,
+    fp->argc = putnum(adic),
+    ApY(xp, nil); }
 
 // tail call
-Vm(rec) { return
-  ip = (mo) ip[1].ll,
-  fp->argc == (ob) ip ?
-    (cpyw(fp->argv, sp, getZ((ob) ip)),
-     sp = (ob*) fp,
-     ApY(xp, nil)) :
-    (v->xp = fp->subd,
-     v->ip = (mo) fp->retp, // save return info
-     fp = (fr) (fp->argv + getZ(fp->argc - (ob) ip)),
-     rcpyw(fp, sp, getZ((ob) ip)), // copy from high to low
-     sp = (ob*) (--fp),
-     fp->retp = (ob) v->ip,
-     fp->argc = (ob) ip,
-     fp->subd = v->xp,
-     fp->clos = nil,
-     ApY(xp, nil)); }
+Vm(rec) {
+  ip = (mo) ip[1].ll;
+  if (fp->argc == (ob) ip) return
+    cpyw(fp->argv, sp, getnum((ob) ip)),
+    sp = (ob*) fp,
+    ApY(xp, nil);
+  return
+    v->xp = fp->subd,
+    v->ip = (mo) fp->retp, // save return info
+    fp = (fr) (fp->argv + getnum(fp->argc - (ob) ip)),
+    rcpyw(fp, sp, getnum((ob) ip)), // copy from high to low
+    sp = (ob*) (--fp),
+    fp->retp = (ob) v->ip,
+    fp->argc = (ob) ip,
+    fp->subd = v->xp,
+    fp->clos = nil,
+    ApY(xp, nil); }
 
 ////
 /// Load Instructions
 //
 
 // constants
-Vm(one) { return ApN(1, putZ(1)); }
-Vm(zero) { return ApN(1, putZ(0)); }
+Vm(one) { return ApN(1, putnum(1)); }
+Vm(zero) { return ApN(1, putnum(0)); }
 // immediate value from thread
 Vm(imm) { return xp = (ob) ip[1].ll, ApN(2, xp); }
 
@@ -144,22 +146,17 @@ Vm(clo1) { return ApN(1, Clos[1]); }
 ////
 /// Store Instructions
 // // stack push
-Vm(push) { return
-  Free == 0 ? Collect(1) :
-  (*--sp = xp,
-   ApN(1, xp)); }
+Vm(push) {
+  Have1();
+  return *--sp = xp, ApN(1, xp); }
 
 // dup top of stack
-Vm(dupl) { return
-  Free == 0 ? Collect(1) :
-  (--sp,
-   sp[0] = sp[1],
-   ApN(1, xp)); }
+Vm(dupl) {
+  Have1();
+  return --sp, sp[0] = sp[1], ApN(1, xp); }
 
 // set a local variable
-Vm(loc_) { return
-  Ref(Locs) = xp,
-  ApN(2, xp); }
+Vm(loc_) { return Ref(Locs) = xp, ApN(2, xp); }
 
 // set a module variable
 Vm(tbind) { ob a; return
@@ -171,14 +168,14 @@ Vm(tbind) { ob a; return
 
 // allocate local variable array
 Vm(locals) {
-  ob *t = hp, n = getZ((ob) ip[1].ll);
+  ob *t = hp, n = getnum((ob) ip[1].ll);
+  Have(3);
   return
-    Free < n + 3 ? Collect(n + 3) :
-    (hp += n + 2,
-     setw(t, nil, n),
-     t[n] = 0,
-     *--sp = t[n+1] = (ob) t,
-     ApN(2, xp)); }
+    hp += n + 2,
+    setw(t, nil, n),
+    t[n] = 0,
+    *--sp = t[n+1] = (ob) t,
+    ApN(2, xp); }
 
 // late binding
 // long b/c it does the "static" type and arity checks
@@ -203,16 +200,16 @@ Vm(latebind) {
 
 // this is used to create closures.
 Dt(take) {
-  ob *t, n = getZ((ob) ip[1].ll);
+  ob *t, n = getnum((ob) ip[1].ll);
+  Have(n + 2);
   return
-    Free < n + 2 ? Collect(n + 2) :
-    (t = hp,
-     hp += n + 2,
-     cpyw(t, sp, n),
-     sp += n,
-     t[n] = 0,
-     t[n+1] = (ob) t,
-     ApC(ret, (ob) t)); }
+    t = hp,
+    hp += n + 2,
+    cpyw(t, sp, n),
+    sp += n,
+    t[n] = 0,
+    t[n+1] = (ob) t,
+    ApC(ret, (ob) t); }
 
 Vm(clos) { return
   fp->clos = (ob) ip[1].ll,
@@ -236,9 +233,9 @@ Vm(clos0) {
   ob *ec = (ob*) ip[1].ll,
      arg = ec[0],
      loc = ec[1];
-  intptr_t adic = nilp(arg) ? 0 : getZ(*(ob*)arg),
+  intptr_t adic = nilp(arg) ? 0 : getnum(*(ob*)arg),
            req = Width(fr) + adic + 1;
-  if (Free < req) return Collect(req);
+  Have(req);
 
   intptr_t off = (ob*) fp - sp;
   ip->ll = clos1;
@@ -259,9 +256,9 @@ Vm(clos0) {
 // lexical environments.
 // FIXME magic numbers
 static Vm(encl) {
-  intptr_t m = getZ(fp->argc),
+  intptr_t m = getnum(fp->argc),
            n = m + (m ? 14 : 11);
-  if (Free < n) return Collect(n);
+  Have(n);
   ob x = (ob) ip[1].ll,
      arg = nil,
      *block = hp;
@@ -273,7 +270,7 @@ static Vm(encl) {
     for (ptr(arg)[n-2] = 0,
          ptr(arg)[n-1] = (ob) arg,
          n -= 3,
-         ptr(arg)[0] = putZ(n);
+         ptr(arg)[0] = putnum(n);
          n--;
          ptr(arg)[n+1] = fp->argv[n]); }
 
@@ -371,19 +368,9 @@ Vm(arity) {
   ob reqd = (ob) ip[1].ll;
   return reqd <= fp->argc ? ApN(2, xp) : ApC(ary_err, reqd); }
 Vm(cwm_u) { return ApC(ret, v->wns); }
-ob refer(la v, ob _) {
-  ob x, mod = v->wns;
-  for (; twop(mod); mod = B(mod))
-    if ((x = tbl_get(v, A(mod), _))) return x;
-  return 0; }
 
-// error handling
-
-Vm(dom_err) { return Pack(),
-  err(v, 0, "est indéfini"); }
-Vm(oom_err) { return Pack(),
-  err(v, 0, "mémoire insuffisante (à %d mots)", v->len); }
-Vm(nom_err) { return Pack(),
-  err(v, xp, "a appelé la variable indéfinie"); }
-Vm(ary_err) { return Pack(),
-  err(v, 0, "nécessite %d paramètres", getZ(xp)); }
+// errors
+Vm(dom_err) { return Pack(), err(v, 0, "is undefined"); }
+Vm(oom_err) { return Pack(), err(v, 0, "oom at %d words", v->len); }
+Vm(nom_err) { return Pack(), err(v, xp, "used a free variable"); }
+Vm(ary_err) { return Pack(), err(v, 0, "takes %d parameters", getnum(xp)); }

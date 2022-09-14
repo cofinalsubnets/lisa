@@ -32,17 +32,19 @@ ob intern(la v, ob x) {
       sskc(v, &v->syms, x) :
       0; }
 
-Vm(sym_u) { sym y; return
-  Free < Width(sym) ? Collect(Width(sym)) :
-  Arity > 0 && strp(fp->argv[0]) ?
-    ApC(ret, sskc(v, &v->syms, fp->argv[0])) :
-  (y = (sym) hp,
-   hp += Width(sym),
-   y->nom = y->l = y->r = nil,
-   y->code = v->rand = lcprng(v->rand),
-   ApC(ret, putsym(y))); }
+Vm(sym_u) {
+  sym y;
+  Have(Width(sym));
+  if (Argc > N0 && strp(Argv[0]))
+    return ApC(ret, sskc(v, &v->syms, fp->argv[0]));
+  return
+    y = (sym) hp,
+    hp += Width(sym),
+    y->nom = y->l = y->r = nil,
+    y->code = v->rand = lcprng(v->rand),
+    ApC(ret, putsym(y)); }
 
-Vm(ystr_u) { return
-  Arity < 1 ? ArityError(1) :
-  TypeOf(fp->argv[0]) != Sym ? DomainError() :
-  ApC(ret, getsym(fp->argv[0])->nom); }
+Vm(ystr_u) {
+  ArityCheck(1);
+  TypeCheck(xp = Argv[0], Sym);
+  return ApC(ret, getsym(xp)->nom); }

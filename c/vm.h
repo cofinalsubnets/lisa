@@ -45,7 +45,7 @@ vm
  _(tlen_u, "tlen") _(tbl_u, "tbl") _(tget_u, "tget")\
  _(thas_u, "thas") _(tset_u, "tset") _(tdel_u, "tdel")\
  _(tkeys_u, "tkeys") _(seek_u, "seek") _(dom_err, "fail")\
- _(putc_u, "putc") _(ystr_u, "ystr") _(hnom_u, "hnom")\
+ _(putc_u, "putc") _(ystr_u, "ystr")\
  _(emx_u, "emx") _(emi_u, "emi") _(show_u, ".") _(ev_u, "ev")\
  _(ap_u, "ap") _(peeki_u, "peeki")\
  _(hfin_u, "hfin") _(peekx_u, "peekx") _(twop_u, "twop")\

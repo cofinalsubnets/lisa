@@ -70,7 +70,6 @@ struct la {
 la la_ini(void);
 void la_fin(la);
 
-
 // pairs
 ob pair(la, ob, ob);
 size_t llen(ob);
@@ -90,15 +89,13 @@ ob string(la, const char*),
 ob hnom(la, ob); // FIXME try to get function name
 mo ana(la, ob, ob), // compiler interface
    button(mo); // get tag at end
-               //
 #define Push(...) pushs(v, __VA_ARGS__, (ob) 0)
 bool
   pushs(la, ...),
   please(la, size_t), // gc interface
   eql(ob, ob); // logical equality
 
-ob refer(la, ob), // FIXME these should be private
-   sskc(la, ob*, ob); // FIXME
+ob sskc(la, ob*, ob); // FIXME
 
 #define N0 putnum(0)
 #define nil N0

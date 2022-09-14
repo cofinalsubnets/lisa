@@ -2,24 +2,6 @@
 #include "vm.h"
 #include <stdarg.h>
 
-
-// bootstrap eval interpreter function
-Vm(ev_u) {
-  ArityCheck(1);
-  // check to see if ev has been overridden in the
-  // toplevel namespace and if so call that. this way
-  // ev calls compiled pre-bootstrap will use the
-  // bootstrapped compiler, which is what we want?
-  // seems kind of strange to need this ...
-  xp = refer(v, v->lex[Eval]);
-  if (xp && homp(xp) && gethom(xp)->ll != ev_u)
-    return ApY((mo) xp, nil);
-  Pack();
-  mo y = ana(v, *fp->argv, putnum(ret));
-  if (!y) return 0;
-  Unpack();
-  return ApY(y, xp); }
-
 // bootstrap thread compiler
 //
 typedef struct env {
@@ -99,36 +81,36 @@ static ob asign(la v, ob a, intptr_t i, ob *m) {
 
 static Inline ob new_scope(la v, ob *e, ob a, ob n) {
   intptr_t *x, s = 0;
+  with(n,
+    a = asign(v, a, 0, &s),
+    x = !a ? 0 : (with(a, x = (ob*) mkthd(v, 8)), x));
+  if (!x) return 0;
   return
-    with(n,
-      a = asign(v, a, 0, &s),
-      x = !a ? 0 : (with(a, x = (ob*) mkthd(v, 8)), x)),
-    !x ? 0 :
-    (arg(x) = a,
-     loc(x) = clo(x) = s1(x) = s2(x) = nil,
-     par(x) = e ? *e : nil,
-     name(x) = n,
-     asig(x) = putnum(s),
-     (ob) x); }
+    arg(x) = a,
+    loc(x) = clo(x) = s1(x) = s2(x) = nil,
+    par(x) = e ? *e : nil,
+    name(x) = n,
+    asig(x) = putnum(s),
+    (ob) x; }
 
 static int scan_def(la v, ob *e, ob x) {
-  int r; return
-    !twop(x) ? 1 : // this is an even case so export all the definitions to the local scope
-    !twop(B(x)) ? 0 : // this is an odd case so ignore these, they'll be imported after the rewrite
-    (with(x,
-       r = scan_def(v, e, BB(x)),
-       r = r != 1 ? r :
-         !(x = rw_let_fn(v, x)) ||
-         !(loc(*e) = pair(v, A(x), loc(*e))) ||
-         !scan(v, e, AB(x)) ? -1 : 1),
-     r); }
+  int r;
+  if (!twop(x)) return 1; // this is an even case so export all the definitions to the local scope
+  if (!twop(B(x))) return 0; // this is an odd case so ignore these, they'll be imported after the rewrite
+  with(x,
+     r = scan_def(v, e, BB(x)),
+     r = r != 1 ? r :
+       !(x = rw_let_fn(v, x)) ||
+       !(loc(*e) = pair(v, A(x), loc(*e))) ||
+       !scan(v, e, AB(x)) ? -1 : 1);
+  return r; }
 
 static bool scan(la v, ob* e, ob x) {
   bool _; return
-   !twop(x) || A(x) == v->lex[Lamb] || A(x) == v->lex[Quote] ? 1 :
-   A(x) == v->lex[Def] ? scan_def(v, e, B(x)) != -1 :
-   (with(x, _ = scan(v, e, A(x))),
-    _ && scan(v, e, B(x))); }
+    !twop(x) || A(x) == v->lex[Lamb] || A(x) == v->lex[Quote] ? 1 :
+    A(x) == v->lex[Def] ? scan_def(v, e, B(x)) != -1 :
+    (with(x, _ = scan(v, e, A(x))),
+      _ && scan(v, e, B(x))); }
 
 static Inline ob comp_body(la v, ob*e, ob x) {
   intptr_t i;
@@ -188,16 +170,16 @@ static Inline ob co_t_clo(la v, ob*e, ob arg, ob seq) {
   return um, um, pair(v, seq, arg); }
 
 Co(co_t, ob x) {
- vm* j = imm;
- ob k, nom = *v->sp == putnum(co_ys) ? v->sp[1] : nil;
- with(nom, with(x, k = (ob) pull(v, e, m+2)));
- if (!k) return 0;
- mm(&k);
- if (twop(x = co_tl(v, e, nom, x)))
-   j = e && twop(loc(*e)) ? encll : encln,
-   x = co_t_clo(v, e, A(x), B(x));
- um;
- return !x ? 0 : pb2(j, x, (mo) k); }
+  vm* j = imm;
+  ob k, nom = *v->sp == putnum(co_ys) ? v->sp[1] : nil;
+  with(nom, with(x, k = (ob) pull(v, e, m+2)));
+  if (!k) return 0;
+  mm(&k);
+  if (twop(x = co_tl(v, e, nom, x)))
+    j = e && twop(loc(*e)) ? encll : encln,
+    x = co_t_clo(v, e, A(x), B(x));
+  um;
+  return !x ? 0 : pb2(j, x, (mo) k); }
 
 Co(co_ys) {
   ob _ = *v->sp++;
@@ -205,11 +187,11 @@ Co(co_ys) {
   _ = pair(v, A(v->wns), _);
   return _ ? imx(v, e, m, tbind, _) : 0; }
 
-static bool dty_r(la v, ob*e, ob x) {
+static bool co_let_r(la v, ob*e, ob x) {
   bool _;
   return !twop(x) ||
     ((x = rw_let_fn(v, x)) &&
-     (with(x, _ = dty_r(v, e, BB(x))), _) &&
+     (with(x, _ = co_let_r(v, e, BB(x))), _) &&
      Push(putnum(co__), AB(x), putnum(co_ys), A(x))); }
 
 // syntactic sugar for define
@@ -224,9 +206,9 @@ static bool def_sug(la v, ob x) {
       Push(putnum(co__), pair(v, x, nil)) :
       0; }
 
-Co(dty, ob x) {
+Co(co_let, ob x) {
   if (!twop(B(x))) return co_x(v, e, m, nil);
-  x = llen(B(x)) % 2 ? def_sug(v, x) : dty_r(v, e, B(x));
+  x = llen(B(x)) % 2 ? def_sug(v, x) : co_let_r(v, e, B(x));
   return x ? pull(v, e, m) : 0; }
 
 // the following functions are "post" or "pre"
@@ -298,6 +280,12 @@ Co(em_call) {
   return pb2(i, ary, pf); }
 
 enum where { Here, Loc, Arg, Clo, Wait };
+
+static ob refer(la v, ob _) {
+  ob x, mod = v->wns;
+  for (; twop(mod); mod = B(mod))
+    if ((x = tbl_get(v, A(mod), _))) return x;
+  return 0; }
 
 static ob ls_lex(la v, ob e, ob y) {
   ob q; return
@@ -376,7 +364,7 @@ Co(co_2, ob x) {
     z == v->lex[Quote] ? co_q(v, e, m, x) :
     z == v->lex[Cond] ? co_p(v, e, m, x) :
     z == v->lex[Lamb] ? co_t(v, e, m, x) :
-    z == v->lex[Def] ? dty(v, e, m, x) :
+    z == v->lex[Def] ? co_let(v, e, m, x) :
     z == v->lex[Seq] ? co_se(v, e, m, x) :
     co_ap(v, e, m, A(x), B(x)); }
 
@@ -413,3 +401,20 @@ Co(co_ini) {
     (k[m].ll = (vm*) (e ? name(*e) : nil),
      setw(k, nil, m),
      k + m); }
+
+// bootstrap eval interpreter function
+Vm(ev_u) {
+  ArityCheck(1);
+  // check to see if ev has been overridden in the
+  // toplevel namespace and if so call that. this way
+  // ev calls compiled pre-bootstrap will use the
+  // bootstrapped compiler, which is what we want?
+  // seems kind of strange to need this ...
+  xp = refer(v, v->lex[Eval]);
+  if (xp && homp(xp) && gethom(xp)->ll != ev_u)
+    return ApY((mo) xp, nil);
+  Pack();
+  mo y = ana(v, *fp->argv, putnum(ret));
+  if (!y) return 0;
+  Unpack();
+  return ApY(y, xp); }
