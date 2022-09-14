@@ -237,7 +237,7 @@ Vm(show_u) {
   return fputc('\n', stdout),
          ApC(ret, xp); }
 
-Vm(putc_u) { return
-  Arity == 0 ? ArityError(1) :
-  (fputc(getZ(fp->argv[0]), stdout),
-   ApC(ret, xp)); }
+Vm(putc_u) {
+  ArityCheck(1);
+  return fputc(getnum(Argv[0]), stdout),
+         ApC(ret, xp); }

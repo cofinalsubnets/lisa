@@ -81,7 +81,6 @@ insts(ninl)
 // "external" function calls.
 #define Pack() (v->ip=ip,v->sp=sp,v->hp=hp,v->fp=fp,v->xp=xp)
 #define Unpack() (fp=v->fp,hp=v->hp,sp=v->sp,ip=v->ip,xp=v->xp)
-#define Out(...) (Pack(),(__VA_ARGS__),Unpack())
 
 // FIXME confusing premature optimization
 #define Locs ((ob**)fp)[-1]
@@ -104,7 +103,5 @@ insts(ninl)
 #define Free (sp - hp)
 #define Have1() if (!Free) return Collect(1)
 #define Have(n) if (Free < n) return Collect(n)
-#define Arity getnum(fp->argv)
 #define ArityError(n) ApC(ary_err, putnum(n))
 #define Undefined() ApC(dom_err, xp)
-#define DomainError Undefined
