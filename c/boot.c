@@ -137,6 +137,12 @@ static ob linitp(la v, ob x, ob* d) {
     with(x, y = linitp(v, B(x), d)),
     y ? pair(v, A(x), y) : 0; }
 
+// index of item in list (-1 if absent)
+static intptr_t lidx(ob l, ob x) {
+  for (intptr_t i = 0; twop(l); l = B(l), i++)
+    if (x == A(l)) return i;
+  return -1; }
+
 // takes a lambda expr, returns either a pair or or a
 // hom depending on if the function has free variables or not
 // (in the former case the car is the list of free variables

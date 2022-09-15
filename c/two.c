@@ -10,7 +10,7 @@ ob pair(la v, ob a, ob b) { return
 
 static NoInline ob pair_ok(la v, ob a, ob b) {
   two w = bump(v, 2);
-  return w->a = a, w->b = b, put2(w); }
+  return w->a = a, w->b = b, puttwo(w); }
 
 // functions for pairs and lists
 static NoInline ob pair_gc(la v, ob a, ob b) {
@@ -24,12 +24,6 @@ size_t llen(ob l) {
   while (twop(l)) l = B(l), i++;
   return i; }
 
-// index of item in list (-1 if absent)
-intptr_t lidx(ob l, ob x) {
-  for (intptr_t i = 0; twop(l); l = B(l), i++)
-    if (x == A(l)) return i;
-  return -1; }
-
 // vm functions
 #include "vm.h"
 
@@ -41,7 +35,7 @@ Vm(cons) {
   return
     hp[0] = xp,
     hp[1] = *sp++,
-    xp = put2(hp),
+    xp = puttwo(hp),
     hp += 2,
     ApN(1, xp); }
 
@@ -59,7 +53,7 @@ Vm(cons_u) {
   ArityCheck(2);
   Have(2);
   return
-    xp = put2(hp),
+    xp = puttwo(hp),
     hp += 2,
     A(xp) = fp->argv[0],
     B(xp) = fp->argv[1],

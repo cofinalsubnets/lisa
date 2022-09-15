@@ -11,8 +11,6 @@ typedef struct fr *fr; // frame pointer
 typedef struct la *la; // runtime point
 #define Vm(n, ...)\
   ob n(la v, ob xp, mo ip, ob *hp, ob *sp, fr fp)
-#define Ll Vm
-#define Dt Ll
 typedef Vm(vm);
 
 // FIXME 2bit
@@ -39,7 +37,7 @@ struct mo { vm *ll; };
 // language symbols
 enum lex {
   Def, Cond, Lamb, Quote, Seq, Splat,
-  Eval, Apply, LexN };
+  Eval, LexN };
 
 // linked list for gc protection
 typedef struct keep { ob *it; struct keep *et; } *keep;
@@ -61,7 +59,6 @@ struct la {
 
   // other runtime state
   ob wns, // working namespace -- a stack of dicts
-     sns, // system namespace -- a dict of dicts
      syms, // internal symbols
      rand, // random seed
      lex[LexN]; }; // grammar symbols
@@ -73,7 +70,6 @@ void la_fin(la);
 // pairs
 ob pair(la, ob, ob);
 size_t llen(ob);
-intptr_t lidx(ob, ob);
 
 // hash tables
 size_t hash(la, ob);
@@ -95,7 +91,7 @@ bool
   please(la, size_t), // gc interface
   eql(ob, ob); // logical equality
 
-ob sskc(la, ob*, ob); // FIXME
+ob sskc(la, ob*, ob); // FIXME ugly
 
 #define N0 putnum(0)
 #define nil N0
@@ -103,8 +99,8 @@ ob sskc(la, ob*, ob); // FIXME
 #define FG(x) F(G(x))
 #define GF(x) G(F(x))
 #define GG(x) G(G(x))
-#define A(o) get2(o)->a
-#define B(o) get2(o)->b
+#define A(o) gettwo(o)->a
+#define B(o) gettwo(o)->b
 #define AA(o) A(A(o))
 #define AB(o) A(B(o))
 #define BA(o) B(A(o))
@@ -121,21 +117,19 @@ ob sskc(la, ob*, ob); // FIXME
 #define G(_) (((mo)(_))->ll)
 
 #define putstr(_) ((ob)(_)+Str)
-#define getnum getZ
-#define putnum putZ
-#define getZ(_) ((ob)(_)>>TagBits)
-#define putZ(_) (((ob)(_)<<TagBits)+Num)
+#define getZ getnum
+#define putZ putnum
+#define getnum(_) ((ob)(_)>>TagBits)
+#define putnum(_) (((ob)(_)<<TagBits)+Num)
 #define getstr(_) ((str)((_)-Str))
 #define puthom(_) ((ob)(_))
 #define gethom(_) ((mo)(_))
-#define getsym getY
-#define putsym putY
-#define getY(_) ((sym)((_)-Sym))
-#define putY(_) ((ob)(_)+Sym)
+#define getsym(_) ((sym)((_)-Sym))
+#define putsym(_) ((ob)(_)+Sym)
 #define gettbl(_) ((tbl)((_)-Tbl))
 #define puttbl(_) ((ob)(_)+Tbl)
-#define get2(_) ((two)((_)-Two))
-#define put2(_) ((ob)(_)+Two)
+#define gettwo(_) ((two)((_)-Two))
+#define puttwo(_) ((ob)(_)+Two)
 
 #define ptr(x) ((ob*)(x))
 #define R ptr
@@ -153,7 +147,7 @@ ob sskc(la, ob*, ob); // FIXME
 #define homp(_) (TypeOf(_)==Hom)
 #define symp(_) (TypeOf(_)==Sym)
 
-ob err(la, ob, const char*, ...) NoInline;
+ob err(la, const char*, ...) NoInline;
 
 static Inline size_t b2w(size_t b) {
   size_t quot = b / sizeof(ob),

@@ -83,7 +83,7 @@ Vm(thas) { return
   ApN(1, xp ? T : nil); }
 
 Vm(tlen) { return
-  ApN(1, putZ(gettbl(xp)->len)); }
+  ApN(1, putnum(gettbl(xp)->len)); }
 
 Vm(tkeys) { return
   Pack(),
@@ -102,14 +102,14 @@ Vm(tset_u) { return
   !tblp(fp->argv[0]) ? Undefined() :
     (xp = *fp->argv,
      Pack(),
-     v->xp = tblss(v, 1, getZ(fp->argc)),
+     v->xp = tblss(v, 1, getnum(fp->argc)),
      Unpack(),
      ApC(xp ? ret : oom_err, xp)); }
 
 Vm(tbl_u) {
   bool _; return
     Pack(),
-    _ = (v->xp = table(v)) && tblss(v, 0, getZ(fp->argc)),
+    _ = (v->xp = table(v)) && tblss(v, 0, getnum(fp->argc)),
     Unpack(),
     ApC(_ ? ret : oom_err, xp); }
 

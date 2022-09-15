@@ -46,7 +46,7 @@ Vm(emx) {
 
 Vm(emi) {
   mo k = (mo) *sp++ - 1;
-  return k->ll = (vm*) getZ(xp),
+  return k->ll = (vm*) getnum(xp),
          ApN(1, (ob) k); }
 
 Vm(emx_u) {
@@ -64,7 +64,7 @@ Vm(emi_u) {
   TypeCheck(xp = Argv[1], Hom);
   return
     xp = (ob) (ptr(xp) - 1),
-    ptr(xp)[0] = getZ(n),
+    ptr(xp)[0] = getnum(n),
     ApC(ret, xp); }
 
 Vm(peeki_u) {

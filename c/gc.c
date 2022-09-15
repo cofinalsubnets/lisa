@@ -87,7 +87,7 @@ static clock_t copy(la v, intptr_t len1) {
   v->pool = v->hp = pool1;
   v->sp = sp0 + shift;
   v->fp = (fr) ((ob*) v->fp + shift);
-  CP(v->xp), CP(v->sns), CP(v->wns);
+  CP(v->xp), CP(v->wns);
   v->ip = (mo) cp(v, (ob) v->ip, len0, pool0);
   for (int i = 0; i < LexN; CP(v->lex[i]), i++);
   for (ob *sp1 = v->sp; sp0 < top0; COPY(*sp1++, *sp0++));
@@ -207,7 +207,7 @@ Gc(cptbl) {
 Gc(cptwo) {
   ob dst = evacd(v, x, Two);
   if (!dst)
-    dst = put2(bump(v, Width(two))),
+    dst = puttwo(bump(v, Width(two))),
     A(dst) = A(x), A(x) = dst,
     B(dst) = cp(v, B(x), len0, pool0),
     A(dst) = cp(v, A(dst), len0, pool0);

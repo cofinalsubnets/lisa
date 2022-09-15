@@ -121,7 +121,7 @@ static NoInline ob rx_numb(la v, ob b, const char *in, int base) {
     if (dig >= base) return intern(v, b); // fail to parse oob digit
     out = out * base + dig;
   } while ((c = cmin(*in++)));
-  return putZ(out); }
+  return putnum(out); }
 
 // numbers can be input in bases 2, 6, 8, 10, 12, 16, 36
 static char radicize(char c) {
@@ -137,7 +137,7 @@ static NoInline ob rx_num(la v, ob b, const char *s) {
     case '+': return rx_num(v, b, s+1);
     case '-': return
       n = rx_num(v, b, s+1),
-      !nump(n) ? n : putZ(-getZ(n));
+      !nump(n) ? n : putnum(-getnum(n));
     case '0': {
       char r = radicize(cmin(s[1]));
       if (r) return rx_numb(v, b, s+2, r); } }
@@ -149,7 +149,7 @@ static void emhomn(la, FILE*, ob);
 void tx(la v, FILE *o, ob x) {
   switch (TypeOf(x)) {
     case Hom: emhomn(v, o, hnom(v, x)); return;
-    case Num: fprintf(o, "%ld", getZ(x)); return;
+    case Num: fprintf(o, "%ld", getnum(x)); return;
     case Two:
       for (fputc('(', o);; x = B(x)) {
         tx(v, o, A(x));
@@ -185,13 +185,13 @@ static void emhomn(la v, FILE *o, ob x) {
 static void show_call(la v, mo ip, fr fp) {
   fputc('(', stderr);
   tx(v, stderr, (ob) ip);
-  for (size_t i = 0, argc = getZ(fp->argc); i < argc;)
+  for (size_t i = 0, argc = getnum(fp->argc); i < argc;)
     fputc(' ', stderr),
     tx(v, stderr, fp->argv[i++]);
   fputc(')', stderr); }
 
 #define bottom (ptr(fp) == v->pool + v->len)
-NoInline ob err(la v, ob x, const char *msg, ...) {
+NoInline ob err(la v, const char *msg, ...) {
   mo ip = v->ip;
   fr fp = v->fp;
 
@@ -206,7 +206,6 @@ NoInline ob err(la v, ob x, const char *msg, ...) {
   va_start(xs, msg);
   vfprintf(stderr, msg, xs);
   va_end(xs);
-  if (x) fputc(' ', stderr), tx(v, stderr, x);
   fputc('\n', stderr);
 
   // show backtrace

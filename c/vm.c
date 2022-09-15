@@ -26,7 +26,7 @@
 // calling and returning
 Vm(ap_u) {
   ArityCheck(2);
-  TypeCheck(Argv[0], Hom);
+  TypeCheck(fp->argv[0], Hom);
   ip = (mo) fp->argv[0];
   ob x = fp->argv[1];
   size_t adic = llen(x);
@@ -67,10 +67,10 @@ Vm(vararg) {
   hp += 2 * vdic;
   for (size_t i = vdic; i--;
     t[i].a = fp->argv[reqd + i],
-    t[i].b = put2(t+i+1));
+    t[i].b = puttwo(t+i+1));
   return
     t[vdic-1].b = nil,
-    fp->argv[reqd] = put2(t),
+    fp->argv[reqd] = puttwo(t),
     ApN(2, xp); }
 
 
@@ -199,7 +199,7 @@ Vm(latebind) {
     ApN(2, xp); }
 
 // this is used to create closures.
-Dt(take) {
+Vm(take) {
   ob *t, n = getnum((ob) ip[1].ll);
   Have(n + 2);
   return
@@ -293,8 +293,8 @@ static Vm(encl) {
 
     ApN(2, (ob) at); }
 
-Ll(encll) { return ApC(encl, (ob) Locs); }
-Ll(encln) { return ApC(encl, nil); }
+Vm(encll) { return ApC(encl, (ob) Locs); }
+Vm(encln) { return ApC(encl, nil); }
 
 ////
 /// Branch Instructions
@@ -331,8 +331,8 @@ cmp(LT, lt) cmp(LE, lteq) cmp(GE, gteq) cmp(GT, gt) cmp(eql, eq)
 
 // type predicates
 #define Tp(t)\
-  Ll(t##pp) { return ApN(1, (t##p(xp)?T:nil)); }\
-  Ll(t##p_u) {\
+  Vm(t##pp) { return ApN(1, (t##p(xp)?T:nil)); }\
+  Vm(t##p_u) {\
     for (ob *xs = fp->argv, *l = xs + getnum(fp->argc); xs < l;)\
       if (!t##p(*xs++)) return ApC(ret, nil);\
     return ApC(ret, T); }
@@ -341,7 +341,7 @@ Tp(num) Tp(hom) Tp(two) Tp(sym) Tp(str) Tp(tbl) Tp(nil)
 // conditional jumps
 //
 // args: test, yes addr, yes val, no addr, no val
-#define Br(nom, test, a, x, b, y) Ll(nom) {\
+#define Br(nom, test, a, x, b, y) Vm(nom) {\
   return ApY(test ? (ob) a(ip) : (ob) b(ip), x); }
 // combined test/branch instructions
 Br(branch, xp != nil, GF, xp, FF, xp)
@@ -350,12 +350,12 @@ Br(barnch, xp != nil, FF, xp, GF, xp)
 Br(breq, eql(*sp++, xp), GF, T, FF, nil)
 Br(brne, eql(*sp++, xp), FF, T, GF, nil)
 
-Br(brlt,    *sp++ < xp,  GF, xp, FF, nil)
-Br(brlt2,   *sp++ < xp,  FF, xp, GF, nil)
+Br(brlt,    *sp++ <  xp, GF, xp, FF, nil)
+Br(brlt2,   *sp++ <  xp, FF, xp, GF, nil)
 Br(brlteq,  *sp++ <= xp, GF, xp, FF, nil)
 Br(brlteq2, *sp++ <= xp, FF, xp, GF, nil)
-Br(brgt,    *sp++ > xp,  GF, xp, FF, nil)
-Br(brgt2,   *sp++ > xp,  FF, xp, GF, nil)
+Br(brgt,    *sp++ >  xp, GF, xp, FF, nil)
+Br(brgt2,   *sp++ >  xp, FF, xp, GF, nil)
 Br(brgteq,  *sp++ >= xp, GF, xp, FF, nil)
 // brgteq2 is brlt
 //
@@ -366,11 +366,14 @@ Vm(idT) { return tblp(xp) ? ApN(1, xp) : Undefined(); }
 Vm(id2) { return twop(xp) ? ApN(1, xp) : Undefined(); }
 Vm(arity) {
   ob reqd = (ob) ip[1].ll;
-  return reqd <= fp->argc ? ApN(2, xp) : ApC(ary_err, reqd); }
+  return fp->argc >= reqd ? ApN(2, xp) : ApC(ary_err, reqd); }
 Vm(cwm_u) { return ApC(ret, v->wns); }
 
 // errors
-Vm(dom_err) { return Pack(), err(v, 0, "is undefined"); }
-Vm(oom_err) { return Pack(), err(v, 0, "oom at %d words", v->len); }
-Vm(nom_err) { return Pack(), err(v, xp, "used a free variable"); }
-Vm(ary_err) { return Pack(), err(v, 0, "takes %d parameters", getnum(xp)); }
+Vm(dom_err) { return Pack(), err(v, "is undefined"); }
+Vm(oom_err) { return Pack(), err(v, "oom at %d words", v->len); }
+Vm(nom_err) {
+  xp = getsym(xp)->nom;
+  return Pack(),
+    err(v, "referenced free variable `%s'", nilp(xp) ? 0 : getstr(xp)->text); }
+Vm(ary_err) { return Pack(), err(v, "takes %d parameters", getnum(xp)); }

@@ -55,13 +55,12 @@ la la_ini(void) {
   v->hp = v->sp,
   // everything else starts empty
   v->ip = (mo) nil,
-  v->wns = v->sns = v->syms = v->xp = nil,
+  v->wns = v->syms = v->xp = nil,
   setw(v->lex, nil, LexN);
 
   bool ok = 
     // global symbols // FIXME stop using these if possible
     (v->lex[Eval] = interns(v, "ev")) &&
-    (v->lex[Apply] = interns(v, "ap")) &&
     (v->lex[Def] = interns(v, ":")) &&
     (v->lex[Cond] = interns(v, "?")) &&
     (v->lex[Lamb] = interns(v, "\\")) &&
@@ -71,11 +70,7 @@ la la_ini(void) {
 
     // make the toplevel namespace and initialize the cwd
     (_ = table(v)) &&
-    (v->wns = pair(v, _, nil)) &&
-
-    // create the directory and store toplevel at 0
-    (v->sns = table(v)) &&
-    (tbl_set(v, v->sns, nil, A(v->wns))) // &&
+    (v->wns = pair(v, _, nil))
     // register instruction addresses at toplevel so the
     // compiler can use them.
 #define register_inst(a, b) && ((b) ? prim(v,b,a) : inst(v, "i-"#a,a))
