@@ -15,19 +15,19 @@ ob string(la v, const char* c) {
 Vm(slen_u) {
   ArityCheck(1);
   TypeCheck(fp->argv[0], Str);
-  return ApC(ret, putZ(getstr(*fp->argv)->len-1)); }
+  return ApC(ret, putnum(getstr(*fp->argv)->len-1)); }
 
 Vm(sget_u) {
   ArityCheck(2);
   TypeCheck(fp->argv[0], Str);
   TypeCheck(fp->argv[1], Num);
   return ApC(ret,
-    getZ(fp->argv[1]) < getstr(fp->argv[0])->len-1 ?
-      putZ(getstr(fp->argv[0])->text[getZ(fp->argv[1])]) :
+    getnum(fp->argv[1]) < getstr(fp->argv[0])->len-1 ?
+      putnum(getstr(fp->argv[0])->text[getnum(fp->argv[1])]) :
       nil); }
 
 Vm(scat_u) {
-  intptr_t l = getZ(fp->argc), sum = 0, i = 0;
+  intptr_t l = getnum(fp->argc), sum = 0, i = 0;
   while (i < l) {
     ob x = fp->argv[i++];
     TypeCheck(x, Str);
@@ -53,8 +53,8 @@ Vm(ssub_u) {
   TypeCheck(fp->argv[1], Num);
   TypeCheck(fp->argv[2], Num);
   str src = getstr(fp->argv[0]);
-  intptr_t lb = getZ(fp->argv[1]),
-           ub = getZ(fp->argv[2]);
+  intptr_t lb = getnum(fp->argv[1]),
+           ub = getnum(fp->argv[2]);
   lb = max(lb, 0);
   ub = min(ub, src->len-1);
   ub = max(ub, lb);

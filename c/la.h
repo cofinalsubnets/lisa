@@ -2,13 +2,17 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
+// XXX FIXME XXX
+_Static_assert(sizeof(intptr_t) == 8, "64bit");
+_Static_assert(-1 == -1 >> 1, "signed >>");
+
 // thanks !!
 
 typedef intptr_t ob;
 
 typedef struct mo *mo; // procedure type
 typedef struct fr *fr; // frame pointer
-typedef struct la *la; // runtime point
+typedef struct la *la; // what lists act on
 #define Vm(n, ...)\
   ob n(la v, ob xp, mo ip, ob *hp, ob *sp, fr fp)
 typedef Vm(vm);
@@ -184,7 +188,3 @@ static Inline mo mkthd(la v, size_t n) {
 static Inline intptr_t lcprng(intptr_t s) {
   const intptr_t steele_vigna_2021 = 0xaf251af3b0f025b5;
   return (s * steele_vigna_2021 + 1) >> 8; }
-
-// XXX FIXME XXX
-_Static_assert(sizeof(intptr_t) == 8, "64bit");
-_Static_assert(-1 == -1 >> 1, "signed >>");
