@@ -70,12 +70,13 @@ Vm(bxor_u) { mm_u(getnum(fp->argc), fp->argv, 0, ^); }
 Vm(mul_u) { mm_u(getnum(fp->argc), fp->argv, 1, *); }
 Vm(band_u) { mm_u(getnum(fp->argc), fp->argv, -1, &); }
 
-#define BINOP(nom, xpn) Vm(nom) { xp = (xpn); return ApN(1, xp); }
-BINOP(add,  xp + *sp++ - Num)
-BINOP(bor,  xp | *sp++)
-BINOP(bxor, (xp ^ *sp++) | Num)
-BINOP(mul,  putnum(getnum(*sp++) * getnum(xp)))
-BINOP(band, xp & *sp++)
-BINOP(sub,  *sp++ - xp + Num)
-BINOP(sar,  putnum(getnum(*sp++) >> getnum(xp)))
-BINOP(sal,  putnum(getnum(*sp++) << getnum(xp)))
+Vm(add) { xp = xp + *sp++ - Num; return ApN(1, xp); }
+Vm(sub) { xp = *sp++ - xp + Num; return ApN(1, xp); }
+
+Vm(bor) { xp = xp | *sp++; return ApN(1, xp); }
+Vm(band) { xp = xp & *sp++; return ApN(1, xp); }
+Vm(bxor) { xp = (xp ^ *sp++) | Num; return ApN(1, xp); }
+
+Vm(mul) { xp = putnum(getnum(*sp++) * getnum(xp)); return ApN(1, xp); }
+Vm(sar) { xp = putnum(getnum(*sp++) >> getnum(xp)); return ApN(1, xp); }
+Vm(sal) { xp = putnum(getnum(*sp++) << getnum(xp)); return ApN(1, xp); }

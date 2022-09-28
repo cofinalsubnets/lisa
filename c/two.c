@@ -42,7 +42,7 @@ Vm(cons) {
 Vm(car_u) {
   ArityCheck(1);
   TypeCheck(fp->argv[0], Two);
-  return ApC(ret, A(*fp->argv)); }
+  return ApC(ret, A(fp->argv[0])); }
 
 Vm(cdr_u) {
   ArityCheck(1);

@@ -161,7 +161,7 @@ static Inline ob co_tl(la v, ob* e, ob n, ob l) {
       return um, um, um, 0;
   return um, um, um, l; }
 
-static Inline ob co_t_clo(la v, ob*e, ob arg, ob seq) {
+static Inline ob co_t_clo(la v, ob *e, ob arg, ob seq) {
   intptr_t i = llen(arg);
   mm(&arg), mm(&seq);
   if (!Push(putnum(i1d1), putnum(take), putnum(i), putnum(co_ini)))
