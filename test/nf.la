@@ -4,9 +4,9 @@
    (lhs x) (AB x)
    (rhs x) (A (BB x))
 
-   (andp x) (&& (2p x) (= 'and (A x)))
-   (orp  x) (&& (2p x) (= 'or  (A x)))
-   (notp x) (&& (2p x) (= 'not (A x)))
+   (andp x) (&& (twop x) (= 'and (A x)))
+   (orp  x) (&& (twop x) (= 'or  (A x)))
+   (notp x) (&& (twop x) (= 'not (A x)))
 
    (nnf x) (:
     (not_ x) (?
@@ -15,7 +15,7 @@
      (orp  x) (and_ (not_ (lhs x)) (not_ (rhs x)))
               (L 'not x))
     (? (notp x) (not_ (nnf (lhs x)))
-       (2p x) (X (A x) (map nnf (B x)))
+       (twop x) (X (A x) (map nnf (B x)))
        x))
 
    
@@ -24,7 +24,7 @@
      (? (p2 l) (_nf (c2 (c1 (lhs l) r) (c1 (rhs l) r)))
         (p2 r) (_nf (c2 (c1 l (lhs r)) (c1 l (rhs r))))
         (c1 l r)))
-    (2p x) (X (A x) (map _nf (B x)))
+    (twop x) (X (A x) (map _nf (B x)))
     x)))
 
 
