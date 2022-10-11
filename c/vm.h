@@ -98,7 +98,7 @@ insts(ninl)
 #define Argv fp->argv
 #define Argc fp->argc
 #define ArityCheck(n) if (putnum(n) > Argc) return ApC(ary_err, putnum(n))
-#define TypeCheck(x,t) if (Q(x) != t) return ApC(dom_err, xp)
+#define TypeCheck(x,t) if (TypeOf(x) != t) return ApC(dom_err, xp)
 #define Collect(n) ApC((v->xp=n, gc), xp)
 #define Free (sp - hp)
 #define Have1() if (!Free) return Collect(1)

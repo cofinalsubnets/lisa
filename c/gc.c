@@ -25,7 +25,7 @@ static copier cphom, cptwo, cpsym, cpstr, cptbl, cpid,
   *copiers[] = {
     [Hom] = cphom, [Num] = cpid, [Two] = cptwo,
     [Str] = cpstr, [Tbl] = cptbl, [Sym] = cpsym, };
-static Inline Gc(cp) { return copiers[Q(x)](v, x, len0, pool0); }
+static Inline Gc(cp) { return copiers[TypeOf(x)](v, x, len0, pool0); }
 static Gc(cpid) { return x; }
 
 // the exact method for copying an object into
@@ -43,7 +43,7 @@ static Gc(cpid) { return x; }
 
 static Inline ob evacd(la v, ob _, enum class q) {
   ob x = *ptr(_ - q);
-  return Q(x) == q && fresh(x) ? x : 0; }
+  return TypeOf(x) == q && fresh(x) ? x : 0; }
 
 // a simple copying garbage collector
 //

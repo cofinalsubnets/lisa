@@ -108,9 +108,6 @@ static ob buf_atom(la v, FILE *p, char ch) {
         return o->text[n++] = 0, o->len = n, putstr(o); }
   return 0; }
 
-static Inline int cmin(int c) {
-  return c >= 'A' && c <= 'Z' ? c + ('a'-'A') : c; }
-
 static NoInline ob rx_numb(la v, ob b, const char *in, int base) {
   static const char *digits = "0123456789abcdefghijklmnopqrstuvwxyz";
   ob out = 0, c = cmin(*in++);

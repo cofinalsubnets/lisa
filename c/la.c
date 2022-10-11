@@ -24,7 +24,7 @@ static NoInline ob prim(la v, const char *a, vm *i) {
   mo k = 0;
   ob nom = interns(v, a);
   if (nom) nom = pair(v, nom, nil);
-  if (nom) with(nom, k = mkthd(v, 2));
+  if (nom) with(nom, k = mkmo(v, 2));
   if (!k) return 0;
   k[0].ll = i;
   k[1].ll = (vm*) nom;
@@ -93,7 +93,7 @@ static Vm(yield) { return Pack(), xp; }
 
 static ob ev(la v, ob x) {
   mo k;
-  if (!Push(x) || !(k = mkthd(v, 6))) return 0;
+  if (!Push(x) || !(k = mkmo(v, 6))) return 0;
   k[0].ll = imm;
   k[1].ll = (vm*) (k + 5);
   k[2].ll = call;
@@ -142,7 +142,7 @@ static Vm(repl) {
 // takes scripts and if we want a repl, gives a thread
 static mo act(la v, bool shell, const char **nfs) {
   const char *nf = *nfs;
-  mo k = nf ? act(v, shell, nfs + 1) : mkthd(v, 1);
+  mo k = nf ? act(v, shell, nfs + 1) : mkmo(v, 1);
   return !k ? 0 :
     nf ? ana_p(v, nf, (ob) k) :
     (k[0].ll = shell ? repl : yield, k); }

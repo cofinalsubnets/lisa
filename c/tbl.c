@@ -201,7 +201,7 @@ static ob tbl_set_s(la v, ob t, ob k, ob x) {
   ob *e = (ob*) tbl_ent(v, t, k);
   size_t i = tbl_idx(gettbl(t)->cap, hash(v, k));
   return (ob) e != nil ? e[1] = x :
-    (with(t, with(k, with(x, e = (void*) mkthd(v, 3)))), !e) ? 0 :
+    (with(t, with(k, with(x, e = (void*) mkmo(v, 3)))), !e) ? 0 :
     (y = gettbl(t),
      e[0] = k,
      e[1] = x,

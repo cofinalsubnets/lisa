@@ -304,10 +304,10 @@ Vm(jump) { return ApY((ob) ip[1].ll, xp); }
 
 #include <string.h>
 bool eql(ob a, ob b) {
-  return a == b || (Q(a) == Q(b) &&
+  return a == b || (TypeOf(a) == TypeOf(b) &&
     ((twop(a) && eql(A(a), A(b)) && eql(B(a), B(b))) ||
      (strp(a) && getstr(a)->len == getstr(b)->len &&
-      0 == strcmp(getstr(a)->text, getstr(b)->text)))); }
+      0 == scmp(getstr(a)->text, getstr(b)->text)))); }
 
 Vm(lt) { return xp = *sp++ < xp ? xp : nil, ApN(1, xp); }
 Vm(lteq) { return xp = *sp++ <= xp ? xp : nil, ApN(1, xp); }

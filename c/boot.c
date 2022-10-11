@@ -83,7 +83,7 @@ static Inline ob new_scope(la v, ob *e, ob a, ob n) {
   intptr_t *x, s = 0;
   with(n,
     a = asign(v, a, 0, &s),
-    x = !a ? 0 : (with(a, x = (ob*) mkthd(v, 8)), x));
+    x = !a ? 0 : (with(a, x = (ob*) mkmo(v, 8)), x));
   if (!x) return 0;
   return
     arg(x) = a,
@@ -152,13 +152,12 @@ static Inline ob co_tl(la v, ob* e, ob n, ob l) {
   ob y = nil;
   l = B(l);
   mm(&n), mm(&y), mm(&l);
-  if (
-    !(l = twop(l) ? l : pair(v, l, nil)) ||
-    !(l = linitp(v, l, &y)) ||
-    !(n = pair(v, n, e ? name(*e) : nil)) ||
-    !(n = new_scope(v, e, l, n)) ||
-    !(l = comp_body(v, &n, A(y))))
-      return um, um, um, 0;
+  if (!(l = twop(l) ? l : pair(v, l, nil)) ||
+      !(l = linitp(v, l, &y)) ||
+      !(n = pair(v, n, e ? name(*e) : nil)) ||
+      !(n = new_scope(v, e, l, n)) ||
+      !(l = comp_body(v, &n, A(y))))
+        return um, um, um, 0;
   return um, um, um, l; }
 
 static Inline ob co_t_clo(la v, ob *e, ob arg, ob seq) {
@@ -402,7 +401,7 @@ bool pushs(la v, ...) {
   return _; }
 
 Co(co_ini) {
-  mo k = mkthd(v, m + 1);
+  mo k = mkmo(v, m + 1);
   return !k ? 0 :
     (k[m].ll = (vm*) (e ? name(*e) : nil),
      setw(k, nil, m),

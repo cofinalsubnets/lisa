@@ -2,6 +2,11 @@
 
 mo button(mo k) { return G(k) ? button(F(k)) : k; }
 
+mo mkmo(la v, size_t n) {
+  mo k = cells(v, n+2);
+  if (k) k[n].ll = 0, k[n+1].ll = (vm*) k;
+  return k; }
+
 #include "vm.h"
 ob hnom(la v, ob x) {
   vm *k = gethom(x)->ll;

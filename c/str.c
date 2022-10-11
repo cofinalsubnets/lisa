@@ -3,7 +3,7 @@
 #include <string.h>
 
 ob string(la v, const char* c) {
-  intptr_t bs = 1 + strlen(c);
+  intptr_t bs = 1 + slen(c);
   str o = cells(v, Width(str) + b2w(bs));
   if (!o) return 0;
   o->len = bs;

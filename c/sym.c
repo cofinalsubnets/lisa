@@ -16,7 +16,7 @@ ob sskc(la v, ob *y, ob x) {
   int i; sym z; return
     !nilp(*y) ?
       (z = getsym(*y),
-       i = strcmp(getstr(z->nom)->text, getstr(x)->text),
+       i = scmp(getstr(z->nom)->text, getstr(x)->text),
        i == 0 ? *y : sskc(v, i < 0 ? &z->r : &z->l, x)) :
     // FIXME the caller must ensure Avail >= Width(sym)
     // (because GC here would void the tree)
