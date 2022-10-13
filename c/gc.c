@@ -8,8 +8,8 @@
 //
 // - it uses stack recursion so a process that constructs infinite
 //   data will stack overflow, rather than fail gracefully with oom.
-//   we could fix this with cheney's alg but for that we would need
-//   to stop using tagged pointers.
+//   we could fix this with cheney's algorithm  but for that we would
+//   need to give up tagged pointers.
 //
 // - we allocate a new pool every cycle rather than keeping two pools
 //   at all times. theoretically this means we have less memory allocated
@@ -17,9 +17,9 @@
 //   calling it every cycle should be negligible, but it would still be
 //   better only to call out when we need to grow or shrink the pool.
 //
-// - i'd rather use fibonacci numbers for scaling than powers of 2.
+// - it'd be nice to scale by fibonaccis instead of powers of 2
 
-#define Gc(n) ob n(la v, ob x, intptr_t len0, ob *pool0)
+#define Gc(n) ob n(la v, ob x, size_t len0, ob *pool0)
 typedef Gc(copier);
 static copier cphom, cptwo, cpsym, cpstr, cptbl, cpid,
   *copiers[] = {
@@ -40,10 +40,6 @@ static Gc(cpid) { return x; }
 // we use this to test if an object has been moved already
 #define COPY(dst,src) (dst=cp(v,src,len0,pool0))
 #define CP(x) COPY(x,x)
-
-static Inline ob evacd(la v, ob _, enum class q) {
-  ob x = *ptr(_ - q);
-  return TypeOf(x) == q && fresh(x) ? x : 0; }
 
 // a simple copying garbage collector
 //
@@ -68,12 +64,12 @@ static Inline ob evacd(la v, ob _, enum class q) {
 // t values come from clock(). if t0 < t1 < t2
 // then u will be >= 1. however, sometimes
 // t1 == t2. in that case u = 1.
-static clock_t copy(la v, intptr_t len1) {
+static clock_t copy(la v, size_t len1) {
   clock_t t0, t1 = clock(), t2;
   ob len0 = v->len,
      *sp0 = v->sp,
      *pool0 = v->pool,
-     *pool1 = malloc(len1 * sizeof(ob)),
+     *pool1 = calloc(len1, sizeof(ob)),
      *top0 = pool0 + len0,
      *top1 = pool1 + len1,
      shift = top1 - top0;
@@ -116,43 +112,33 @@ static clock_t copy(la v, intptr_t len1) {
 //   enough free space (ie. we tried to grow for performance
 //   reasons). but otherwise the request fails (oom).
 //
-// at a constant rate of allocation, doubling the size of the
-// heap halves the amount of time spent in garbage collection.
-// the memory manager uses this relation to automatically trade
+// heap size is governed by a simple feedback mechanism. at a
+// constant rate of allocation, doubling the size of the heap
+// halves the amount of time spent in garbage collection. the
+// memory manager uses this relation to automatically trade
 // space for time to keep the time spent in garbage collection
 // under a certain proportion of total running time: amortized
-// time in garbage collection should be less than about 6%, at
-// the cost of more memory use under pressure.
-#define growp (allocd > len || vit < 32) // lower bound
-#define shrinkp (allocd < (len>>1) && vit >= 128) // upper bound
+// time in garbage collection should be under about 6%, at the
+// cost of more memory use under pressure.
 
-static ob gro(ob allocd, ob len, ob vit) {
-  return len <<= 1, vit <<= 1, !growp ? len :
-    gro(allocd, len, vit); }
-
-static ob shr(ob allocd, ob len, ob vit) {
-  return len >>= 1, vit >>= 1, !shrinkp ? len :
-    shr(allocd, len, vit); }
-
-bool please(la v, uintptr_t req) {
-  intptr_t len = v->len,
-           vit = copy(v, len),
-           allocd = len - (Avail - req);
-  return len = v->len, !vit ? 0 : !growp && !shrinkp ? 1 :
-    copy(v, (growp ? gro : shr)(allocd, len, vit)) ||
-    allocd <= v->len; }
-
+bool please(la v, size_t req) {
+  size_t len = v->len, vit = copy(v, len);
+  if (!vit) return 0;
+  size_t tar = len, all = len - (Avail - req);
+  while (all > tar || vit < 32) tar <<= 1, vit <<= 1;
+  while (all < (tar>>1) && vit >= 128) tar >>= 1, vit >>= 1;
+  return tar == len || copy(v, tar) || all <= len; }
 
 #define stale(o) inb((ob*)(o),pool0,pool0+len0)
 Gc(cphom) {
-  ob e = evacd(v, x, Hom);
-  if (e) return e;
-  mo src = (mo) x,
-     end = button(src),
+  mo src = gethom(x);
+  if (fresh(src->ll)) return (ob) src->ll;
+  mo end = button(src),
      start = (mo) end[1].ll,
      dst = bump(v, end - start + 2),
      j = dst;
 
+  // this is not a very good way to find the head :(
   for (mo k = start; k < end;)
     j->ll = k->ll,
     k++->ll = (vm*) j++;
@@ -166,35 +152,32 @@ Gc(cphom) {
   return (ob) (src - start + dst); }
 
 Gc(cpstr) {
-  ob e = evacd(v, x, Str);
-  if (e) return e;
-  str dst, src = (str) (x - Str);
-  dst = bump(v, Width(str) + b2w(src->len));
-  cpyw(dst->text, src->text, b2w(src->len));
+  str dst, src = getstr(x);
+  if (fresh(src->ext)) return src->ext;
+  size_t ws = b2w(src->len);
+  dst = bump(v, Width(str) + ws);
+  cpyw(dst->text, src->text, ws);
   dst->len = src->len;
   dst->ext = src->ext;
-  x = (ob) dst + Str;
-  src->ext = x;
-  return x; }
+  return src->ext = putstr(dst); }
 
 Gc(cpsym) {
-  ob e = evacd(v, x, Sym);
-  if (e) return e;
   sym src = getsym(x), dst;
+  ob nom = src->nom;
+  if (fresh(nom)) return nom;
+  if (nilp(nom)) return // anonymous symbol
+    dst = bump(v, Width(sym)),
+    cpyw(dst, src, Width(sym)),
+    src->nom = putsym(dst);
   return
-    src->nom == nil ? // anonymous symbol
-      (dst = bump(v, Width(sym)),
-       cpyw(dst, src, Width(sym)),
-       src->nom = putsym(dst)) :
-      (x = cp(v, src->nom, len0, pool0),
-       dst = getsym(sskc(v, &v->syms, x)),
-       src->nom = putsym(dst) ); }
+    x = cp(v, src->nom, len0, pool0),
+    dst = getsym(sskc(v, &v->syms, x)),
+    src->nom = putsym(dst); }
 
 Gc(cptbl) {
-  ob e = evacd(v, x, Tbl);
-  if (e) return e;
   tbl src = gettbl(x);
-  intptr_t src_cap = src->cap;
+  if (fresh(src->tab)) return (ob) src->tab;
+  size_t src_cap = src->cap;
   tbl dst = bump(v, Width(tbl));
   dst->len = src->len;
   dst->cap = src_cap;
@@ -205,13 +188,14 @@ Gc(cptbl) {
   return puttbl(dst); }
 
 Gc(cptwo) {
-  ob dst = evacd(v, x, Two);
-  if (!dst)
-    dst = puttwo(bump(v, Width(two))),
-    A(dst) = A(x), A(x) = dst,
-    B(dst) = cp(v, B(x), len0, pool0),
-    A(dst) = cp(v, A(dst), len0, pool0);
-  return dst; }
+  two src = gettwo(x), dst;
+  if (fresh(src->a)) return src->a;
+  dst = bump(v, Width(two));
+  dst->a = src->a;
+  src->a = puttwo(dst);
+  dst->b = cp(v, src->b, len0, pool0);
+  dst->a = cp(v, dst->a, len0, pool0);
+  return puttwo(dst); }
 
 #include "vm.h"
 // Run a GC cycle from inside the VM

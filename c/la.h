@@ -24,24 +24,28 @@ enum class { Hom, Num, Two, Str, Sym, Tbl, };
 #define NomHom "hom"
 #define NomNum "num"
 #define NomTwo "two"
-// FIXME ext
 #define NomTbl "tbl"
 // FIXME principled reason to separate sym & str?
 #define NomStr "str"
 #define NomSym "sym"
 
-typedef struct str { ob ext; intptr_t len; char text[]; } *str;
+typedef struct str { ob ext; uintptr_t len; char text[]; } *str;
 typedef struct sym { ob nom, code, l, r; } *sym;
 typedef struct two { ob a, b; } *two;
-typedef struct tbl { ob *tab, len, cap; } *tbl;
+typedef struct tbl { ob *tab; uintptr_t len, cap; } *tbl;
+
+typedef struct vtbl {
+  vm *ap;
+  ob (*gc)(la, ob, size_t, ob*),
+     dtbl; } *vtbl;
+typedef struct dyn { vm *go; vtbl vt; ob dat[]; } *dyn;
 
 struct fr { ob clos, retp, subd, argc, argv[]; };
 struct mo { vm *ll; };
 
 // language symbols
 enum lex {
-  Def, Cond, Lamb, Quote, Seq, Splat,
-  Eval, LexN };
+  Def, Cond, Lamb, Quote, Seq, Splat, Eval, LexN };
 
 // linked list for gc protection
 typedef struct keep { ob *it; struct keep *et; } *keep;
