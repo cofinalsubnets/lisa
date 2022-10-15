@@ -1,23 +1,24 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdlib.h>
-
-// XXX FIXME XXX
-_Static_assert(sizeof(intptr_t) == 8, "64bit");
-_Static_assert(-1 == -1 >> 1, "signed >>");
+#include <stdio.h>
 
 // thanks !!
 
 typedef intptr_t ob;
 
-typedef struct mo *mo; // procedure type
-typedef struct fr *fr; // frame pointer
 typedef struct la *la; // what lists act on
-#define Vm(n, ...)\
-  ob n(la v, ob xp, mo ip, ob *hp, ob *sp, fr fp)
+// frame pointer
+typedef struct fr { ob clos, retp, subd, argc, argv[]; } *fr;
+typedef struct mo *mo; // procedures
+#define Vm(n, ...) ob n(la v, ob xp, mo ip, ob *hp, ob *sp, fr fp)
 typedef Vm(vm);
+struct mo { vm *ll; };
 
-// FIXME 2bit
+// FIXME stop using tagged pointers!
+// - it assumes pointer alignment that limits the platforms we can run on
+// - it stops us from using cheney's algorithm to gc in constant stack
+// instead just use the least significant bit to distinguish immediate values
 #define TagBits 3
 #define TagMask ((1<<TagBits)-1)
 enum class { Hom, Num, Two, Str, Sym, Tbl, };
@@ -29,23 +30,32 @@ enum class { Hom, Num, Two, Str, Sym, Tbl, };
 #define NomStr "str"
 #define NomSym "sym"
 
-typedef struct str { ob ext; uintptr_t len; char text[]; } *str;
-typedef struct sym { ob nom, code, l, r; } *sym;
+// pairs
 typedef struct two { ob a, b; } *two;
+
+// strings
+typedef struct str { ob ext; uintptr_t len; char text[]; } *str;
+// TODO pre-hash strings for faster lookup & comparison
+
+// symbols
+typedef struct sym { ob nom, code, l, r; } *sym;
+// FIXME this is a silly way to do internal symbols
+// - it's slower than a hash table
+// - anonymous symbols waste 2 words
+
+// hash tables
 typedef struct tbl { ob *tab; uintptr_t len, cap; } *tbl;
 
+// TODO inline type data
 typedef struct vtbl {
   vm *ap;
-  ob (*gc)(la, ob, size_t, ob*),
-     dtbl; } *vtbl;
+  void (*show)(la, ob, FILE*);
+  ob (*gc)(la, ob, size_t, ob*), dtbl; } *vtbl;
 typedef struct dyn { vm *go; vtbl vt; ob dat[]; } *dyn;
 
-struct fr { ob clos, retp, subd, argc, argv[]; };
-struct mo { vm *ll; };
 
-// language symbols
-enum lex {
-  Def, Cond, Lamb, Quote, Seq, Splat, Eval, LexN };
+// grammar symbols
+enum lex { Def, Cond, Lamb, Quote, Seq, Splat, Eval, LexN };
 
 // linked list for gc protection
 typedef struct keep { ob *it; struct keep *et; } *keep;
@@ -91,7 +101,8 @@ ob string(la, const char*),
 
 // functions
 ob hnom(la, ob); // FIXME try to get function name
-mo ana(la, ob, ob), // compiler interface
+mo mkmo(la, size_t), // allocator
+   ana(la, ob, ob), // compiler interface
    button(mo); // get tag at end
 #define Push(...) pushs(v, __VA_ARGS__, (ob) 0)
 bool
@@ -100,6 +111,10 @@ bool
   eql(ob, ob); // logical equality
 
 ob sskc(la, ob*, ob); // FIXME ugly
+
+// read/write s-expressions
+ob rx(la, FILE*);
+void tx(la, FILE*, ob);
 
 #define N0 putnum(0)
 #define nil N0
@@ -123,8 +138,6 @@ ob sskc(la, ob*, ob); // FIXME ugly
 #define G(_) (((mo)(_))->ll)
 
 #define putstr(_) ((ob)(_)+Str)
-#define getZ getnum
-#define putZ putnum
 #define getnum(_) ((ob)(_)>>TagBits)
 #define putnum(_) (((ob)(_)<<TagBits)+Num)
 #define getstr(_) ((str)((_)-Str))
@@ -168,8 +181,6 @@ static Inline void *bump(la v, intptr_t n) {
 static Inline void *cells(la v, size_t n) {
   return Avail >= n || please(v, n) ? bump(v, n) : 0; }
 
-#define mkthd mkmo
-mo mkmo(la, size_t);
 
 // lib
 intptr_t lcprng(intptr_t);
@@ -179,3 +190,9 @@ void setw(void*, intptr_t, size_t),
 char cmin(char);
 size_t slen(const char*);
 int scmp(const char*, const char*);
+
+// XXX FIXME XXX
+_Static_assert(sizeof(ob) == 8, "64bit");
+_Static_assert(-1 == -1 >> 1, "signed >>");
+_Static_assert(sizeof(ob) == sizeof(size_t), "size_t matches address space");
+

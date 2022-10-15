@@ -1,22 +1,112 @@
 #include "la.h"
+
+// functions related to functions
+
+// function allocator
+mo mkmo(la v, size_t n) {
+  mo k = cells(v, n+2);
+  if (k) k[n].ll = 0, k[n+1].ll = (vm*) k;
+  return k; }
+
+// get the tag at the end of a function
+mo button(mo k) { return G(k) ? button(F(k)) : k; }
+
 #include "vm.h"
-#include <stdarg.h>
+// try to get the name of a function
+ob hnom(la v, ob x) {
+  vm *k = gethom(x)->ll;
+  if (k == clos || k == clos0 || k == clos1)
+    return hnom(v, (ob) gethom(x)[2].ll);
+  ob* h = (ob*) gethom(x);
+  while (*h) h++;
+  x = h[-1];
+  int inb = (ob*) x >= v->pool && (ob*) x < v->pool+v->len;
+  return inb ? x : nil; }
+
+Vm(hnom_u) {
+  ArityCheck(1);
+  TypeCheck(xp = Argv[0], Hom);
+  return ApC(ret, hnom(v, xp)); }
+
+// instructions for the internal compiler
+Vm(hom_u) {
+  ArityCheck(1);
+  TypeCheck(xp = fp->argv[0], Num);
+  size_t len = getnum(xp) + 2;
+  Have(len);
+  return
+    xp = (ob) hp,
+    hp += len,
+    setw((ob*) xp, nil, len),
+    ptr(xp)[len-2] = 0,
+    ptr(xp)[len-1] = xp,
+    ApC(ret, (ob) (ptr(xp) + len - 2)); }
+
+Vm(hfin_u) {
+  ArityCheck(1);
+  TypeCheck(xp = Argv[0], Hom);
+  return
+    button((mo)xp)[1].ll = (vm*) xp,
+    ApC(ret, xp); }
+
+Vm(emx) {
+  mo k = (mo) *sp++ - 1;
+  return k->ll = (vm*) xp,
+         ApN(1, (ob) k); }
+
+Vm(emi) {
+  mo k = (mo) *sp++ - 1;
+  return k->ll = (vm*) getnum(xp),
+         ApN(1, (ob) k); }
+
+Vm(emx_u) {
+  ArityCheck(2);
+  TypeCheck(xp = Argv[1], Hom);
+  return
+    xp = (ob) (ptr(xp) - 1),
+    ptr(xp)[0] = fp->argv[0],
+    ApC(ret, xp); }
+
+Vm(emi_u) {
+  ob n;
+  ArityCheck(2);
+  TypeCheck(n = Argv[0], Num);
+  TypeCheck(xp = Argv[1], Hom);
+  return
+    xp = (ob) (ptr(xp) - 1),
+    ptr(xp)[0] = getnum(n),
+    ApC(ret, xp); }
+
+Vm(peeki_u) {
+  ArityCheck(1);
+  TypeCheck(xp = Argv[0], Hom);
+  return ApC(ret, putnum(gethom(xp)->ll)); }
+
+Vm(peekx_u) {
+  ArityCheck(1);
+  TypeCheck(xp = Argv[0], Hom);
+  return ApC(ret, (ob) gethom(xp)->ll); }
+
+Vm(seek_u) {
+  ArityCheck(2);
+  TypeCheck(xp = Argv[0], Hom);
+  TypeCheck(Argv[1], Num);
+  return ApC(ret, xp + Argv[1] - Num); }
+
 
 // bootstrap thread compiler
-//
-typedef struct env {
-  ob arg, loc, clo, par, name, asig, s1, s2; } *env;
+#include <stdarg.h>
+
 
 static Inline mo pull(la v, ob *e, size_t m) {
   return ((mo (*)(la, ob*, size_t)) getnum(*v->sp++))(v, e, m); }
 
-static Inline mo pb1(vm *i, mo k) {
-  return (--k)->ll = i, k; }
-
-static Inline mo pb2(vm *i, ob x, mo k) {
-  return pb1(i, pb1((vm*) x, k)); }
+// apply instruction pullbacks
+static Inline mo pb1(vm *i, mo k) { return (--k)->ll = i, k; }
+static Inline mo pb2(vm *i, ob x, mo k) { return pb1(i, pb1((vm*) x, k)); }
 
 // " compilation environments "
+typedef struct env { ob arg, loc, clo, par, name, asig, s1, s2; } *env;
 #define arg(x)  ((env)(x))->arg // argument variables : a list
 #define loc(x)  ((env)(x))->loc // local variables : a list
 #define clo(x)  ((env)(x))->clo // closure variables : a list
@@ -40,7 +130,7 @@ static mo
   co_2(la, ob*, size_t, ob),
   co_x(la, ob*, size_t, ob);
 
-// pull back over an expression
+// apply expression pullbacks
 mo ana(la v, ob x, ob k) {
   // k can be a continuation or an instruction pointer
   bool ok = nump(k) ?
@@ -68,7 +158,6 @@ static NoInline ob rw_let_fn(la v, ob x) {
         !(x = pair(v, AA(x), _)))
       return um, 0;
   return um, x; }
-
 
 static ob asign(la v, ob a, intptr_t i, ob *m) {
   ob x; return

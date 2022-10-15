@@ -1,5 +1,4 @@
 #include "la.h"
-#include "io.h"
 #include <ctype.h>
 
 static ob

@@ -1,5 +1,4 @@
 #include "la.h"
-#include "io.h"
 #include "vm.h"
 #include <time.h>
 #include <stdlib.h>

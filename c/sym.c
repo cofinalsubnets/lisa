@@ -21,7 +21,7 @@ ob sskc(la v, ob *y, ob x) {
     // FIXME the caller must ensure Avail >= Width(sym)
     // (because GC here would void the tree)
     (z = cells(v, Width(sym)),
-     z->code = hash(v, putZ(hash(v, z->nom = x))),
+     z->code = hash(v, putnum(hash(v, z->nom = x))),
      z->l = z->r = nil,
      *y = putsym(z)); }
 
@@ -33,16 +33,14 @@ ob intern(la v, ob x) {
       0; }
 
 Vm(sym_u) {
-  sym y;
   Have(Width(sym));
   if (Argc > N0 && strp(Argv[0]))
     return ApC(ret, sskc(v, &v->syms, fp->argv[0]));
-  return
-    y = (sym) hp,
-    hp += Width(sym),
-    y->nom = y->l = y->r = nil,
-    y->code = v->rand = lcprng(v->rand),
-    ApC(ret, putsym(y)); }
+  sym y = (sym) hp;
+  hp += Width(sym);
+  y->nom = y->l = y->r = nil;
+  y->code = v->rand = lcprng(v->rand);
+  return ApC(ret, putsym(y)); }
 
 Vm(ystr_u) {
   ArityCheck(1);

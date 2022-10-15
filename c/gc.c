@@ -2,6 +2,43 @@
 #include <stdlib.h>
 #include <time.h>
 
+#define Gc(n) ob n(la v, ob x, size_t len0, ob *pool0)
+static Gc(cp);
+static clock_t copy(la, size_t);
+
+// please : u1 la size_t
+//
+// try to return with at least req words of available memory.
+// return true on success, false otherwise. this function also
+// manages the size of the memory pool. here is the procedure
+// in a nutshell:
+//
+// - copy into a new pool of the same size. if this fails,
+//   the request fails (oom).
+// - if there's enough space and the garbage collector
+//   is running fast enough, return success.
+// - otherwise adjust the size and copy again. if this fails,
+//   we can still succeed if the first copy left us with
+//   enough free space (ie. we tried to grow for performance
+//   reasons). but otherwise the request fails (oom).
+//
+// heap size is governed by a simple feedback mechanism. at a
+// constant rate of allocation, doubling the size of the heap
+// halves the amount of time spent in garbage collection. the
+// memory manager uses this relation to automatically trade
+// space for time to keep the time spent in garbage collection
+// under a certain proportion of total running time: amortized
+// time in garbage collection should be under about 6%, at the
+// cost of more memory use under pressure.
+
+bool please(la v, size_t req) {
+  size_t len = v->len, vit = copy(v, len);
+  if (!vit) return 0;
+  size_t tar = len, all = len - (Avail - req);
+  while (all > tar || vit < 32) tar <<= 1, vit <<= 1;
+  while (all < (tar>>1) && vit >= 128) tar >>= 1, vit >>= 1;
+  return tar == len || copy(v, tar) || all <= len; }
+
 // FIXME
 //
 // the garbage collector works pretty well but it could be better:
@@ -18,15 +55,6 @@
 //   better only to call out when we need to grow or shrink the pool.
 //
 // - it'd be nice to scale by fibonaccis instead of powers of 2
-
-#define Gc(n) ob n(la v, ob x, size_t len0, ob *pool0)
-typedef Gc(copier);
-static copier cphom, cptwo, cpsym, cpstr, cptbl, cpid,
-  *copiers[] = {
-    [Hom] = cphom, [Num] = cpid, [Two] = cptwo,
-    [Str] = cpstr, [Tbl] = cptbl, [Sym] = cpsym, };
-static Inline Gc(cp) { return copiers[TypeOf(x)](v, x, len0, pool0); }
-static Gc(cpid) { return x; }
 
 // the exact method for copying an object into
 // the new pool depends on its type. copied
@@ -96,39 +124,6 @@ static clock_t copy(la v, size_t len1) {
     t1 = t2 - t1,
     t1 ? (t2 - t0) / t1 : 1; }
 
-// please : u1 em intptr_t
-//
-// try to return with at least req words of available memory.
-// return true on success, false otherwise. this function also
-// manages the size of the memory pool. here is the procedure
-// in a nutshell:
-//
-// - copy into a new pool of the same size. if this fails,
-//   the request fails (oom).
-// - if there's enough space and the garbage collector
-//   is running fast enough, return success.
-// - otherwise adjust the size and copy again. if this fails,
-//   we can still succeed if the first copy left us with
-//   enough free space (ie. we tried to grow for performance
-//   reasons). but otherwise the request fails (oom).
-//
-// heap size is governed by a simple feedback mechanism. at a
-// constant rate of allocation, doubling the size of the heap
-// halves the amount of time spent in garbage collection. the
-// memory manager uses this relation to automatically trade
-// space for time to keep the time spent in garbage collection
-// under a certain proportion of total running time: amortized
-// time in garbage collection should be under about 6%, at the
-// cost of more memory use under pressure.
-
-bool please(la v, size_t req) {
-  size_t len = v->len, vit = copy(v, len);
-  if (!vit) return 0;
-  size_t tar = len, all = len - (Avail - req);
-  while (all > tar || vit < 32) tar <<= 1, vit <<= 1;
-  while (all < (tar>>1) && vit >= 128) tar >>= 1, vit >>= 1;
-  return tar == len || copy(v, tar) || all <= len; }
-
 #define stale(o) inb((ob*)(o),pool0,pool0+len0)
 Gc(cphom) {
   mo src = gethom(x);
@@ -196,6 +191,15 @@ Gc(cptwo) {
   dst->b = cp(v, src->b, len0, pool0);
   dst->a = cp(v, dst->a, len0, pool0);
   return puttwo(dst); }
+
+static Gc(cp) {
+  switch (TypeOf(x)) {
+    default: return x;
+    case Hom: return cphom(v, x, len0, pool0);
+    case Two: return cptwo(v, x, len0, pool0);
+    case Str: return cpstr(v, x, len0, pool0);
+    case Tbl: return cptbl(v, x, len0, pool0);
+    case Sym: return cpsym(v, x, len0, pool0); } }
 
 #include "vm.h"
 // Run a GC cycle from inside the VM

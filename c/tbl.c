@@ -41,38 +41,40 @@ size_t hash(la v, ob x) {
 
 ob table(la v) {
   tbl t = cells(v, Width(tbl) + 3);
+  if (!t) return 0;
   ob *b = (ob*) (t + 1);
-  return !t ? 0 :
-    (t->len = t->cap = 0,
-     t->tab = b,
-     b[0] = nil,
-     b[1] = 0,
-     b[2] = (ob) b,
-     puttbl(t)); }
+  t->len = t->cap = 0;
+  t->tab = b;
+  b[0] = nil;
+  b[1] = 0;
+  b[2] = (ob) b;
+  return puttbl(t); }
 
-ob tbl_set(la v, ob t, ob k, ob x) { return
-  with(t, x = tbl_set_s(v, t, k, x)),
-  !x  || (tbl_load(t) > 1 &&
-          !(with(x, t = tbl_grow(v, t)), t)) ?
-    0 : x; }
+ob tbl_set(la v, ob t, ob k, ob x) {
+  with(t, x = tbl_set_s(v, t, k, x));
+  if (!x) return 0;
+  if (tbl_load(t) > 1) {
+    with(x, t = tbl_grow(v, t));
+    if (!t) return 0; }
+  return x; }
 
 ob tbl_get(la v, ob t, ob k) {
   ob e = tbl_ent(v, t, k);
   return e == nil ? 0 : R(e)[1]; }
 
-Vm(tget_u) { return
-  fp->argc < putnum(2) ? ArityError(2) :
-  !tblp(fp->argv[0]) ? Undefined() :
-  (xp = tbl_get(v, fp->argv[0], fp->argv[1]),
-   ApC(ret, xp ? xp : nil)); }
+Vm(tget_u) {
+  ArityCheck(2);
+  TypeCheck(Argv[0], Tbl);
+  xp = tbl_get(v, fp->argv[0], fp->argv[1]);
+  return ApC(ret, xp ? xp : nil); }
 
-Vm(tdel_u) { return
-  fp->argc < putnum(2) ? ArityError(2) :
-  !tblp(fp->argv[0]) ? Undefined() :
-    (Pack(),
-     v->xp = tbl_del(v, fp->argv[0], fp->argv[1]),
-     Unpack(),
-     ApC(ret, xp)); }
+Vm(tdel_u) {
+  ArityCheck(2);
+  TypeCheck(Argv[0], Tbl);
+  Pack();
+  v->xp = tbl_del(v, fp->argv[0], fp->argv[1]);
+  Unpack();
+  return ApC(ret, xp); }
 
 Vm(tget) { return
   xp = tbl_get(v, xp, *sp++),
@@ -82,57 +84,53 @@ Vm(thas) { return
   xp = tbl_get(v, xp, *sp++),
   ApN(1, xp ? T : nil); }
 
-Vm(tlen) { return
-  ApN(1, putnum(gettbl(xp)->len)); }
+Vm(tlen) { return ApN(1, putnum(gettbl(xp)->len)); }
 
-Vm(tkeys) { return
-  Pack(),
-  v->xp = tks_i(v, xp, 0),
-  Unpack(),
-  xp ? ApN(1, xp) : ApC(oom_err, xp); }
+Vm(tkeys) {
+  Pack();
+  v->xp = tks_i(v, xp, 0);
+  Unpack();
+  return xp ? ApN(1, xp) : ApC(oom_err, nil); }
 
-Vm(thas_u) { return
-  fp->argc < putnum(2) ? ArityError(2) :
-  !tblp(fp->argv[0]) ? Undefined() :
-    (xp = tbl_get(v, fp->argv[0], fp->argv[1]),
-     ApC(ret, xp ? T : nil)); }
+Vm(thas_u) {
+  ArityCheck(2);
+  TypeCheck(Argv[0], Tbl);
+  xp = tbl_get(v, fp->argv[0], fp->argv[1]);
+  return ApC(ret, xp ? T : nil); }
 
-Vm(tset_u) { return
-  fp->argc == N0 ? ArityError(1) :
-  !tblp(fp->argv[0]) ? Undefined() :
-    (xp = *fp->argv,
-     Pack(),
-     v->xp = tblss(v, 1, getnum(fp->argc)),
-     Unpack(),
-     ApC(xp ? ret : oom_err, xp)); }
+Vm(tset_u) {
+  ArityCheck(1);
+  TypeCheck(xp = Argv[0], Tbl);
+  Pack();
+  v->xp = tblss(v, 1, getnum(fp->argc));
+  Unpack();
+  return ApC(xp ? ret : oom_err, xp); }
 
 Vm(tbl_u) {
-  bool _; return
-    Pack(),
-    _ = (v->xp = table(v)) && tblss(v, 0, getnum(fp->argc)),
-    Unpack(),
-    ApC(_ ? ret : oom_err, xp); }
+  Pack();
+  bool _ = (v->xp = table(v)) && tblss(v, 0, getnum(fp->argc));
+  Unpack();
+  return ApC(_ ? ret : oom_err, xp); }
 
-Vm(tkeys_u) { return
-  fp->argc == N0 ? ArityError(1) :
-  !tblp(fp->argv[0]) ? Undefined() :
-  (Pack(),
-   v->xp = tks_i(v, *fp->argv, 0),
-   Unpack(),
-   ApC(xp ? ret : oom_err, xp)); }
+Vm(tkeys_u) {
+  ArityCheck(1);
+  TypeCheck(Argv[0], Tbl);
+  Pack();
+  v->xp = tks_i(v, Argv[0], 0);
+  Unpack();
+  return ApC(xp ? ret : oom_err, xp); }
 
-Vm(tlen_u) { return
-  fp->argc == N0 ? ArityError(1) :
-  !tblp(fp->argv[0]) ? Undefined() :
-  ApC(ret, putnum(gettbl(*fp->argv)->len)); }
+Vm(tlen_u) {
+  ArityCheck(1);
+  TypeCheck(Argv[0], Tbl);
+  return ApC(ret, putnum(gettbl(*fp->argv)->len)); }
 
 Vm(tset) {
   ob x = *sp++, y = *sp++;
-  return
-    Pack(),
-    v->xp = tbl_set(v, xp, x, y),
-    Unpack(),
-    xp ? ApN(1, xp) : ApC(oom_err, xp); }
+  Pack();
+  v->xp = tbl_set(v, xp, x, y);
+  Unpack();
+  return xp ? ApN(1, xp) : ApC(oom_err, xp); }
 
 // shrinking a table never allocates memory, so it's safe
 // to do at any time.
@@ -171,7 +169,9 @@ static ob tbl_del(la v, ob t, ob key) {
       R(l)[2] = R(R(l)[2])[2];
       y->len--;
       break; }
-  return y->tab[b] = prev[2], tbl_fit(v, t), val; }
+  y->tab[b] = prev[2];
+  tbl_fit(v, t);
+  return val; }
 
 // tbl_grow(vm, tbl, new_size): destructively resize a hash table.
 // new_size words of memory are allocated for the new bucket array.
@@ -194,27 +194,30 @@ static ob tbl_grow(la v, ob t) {
       R(e)[2] = tab1[i],
       tab1[i] = e;
 
-  return gettbl(t)->cap = cap1, gettbl(t)->tab = tab1, t; }
+  gettbl(t)->cap = cap1;
+  gettbl(t)->tab = tab1;
+  return t; }
 
 static ob tbl_set_s(la v, ob t, ob k, ob x) {
   tbl y;
-  ob *e = (ob*) tbl_ent(v, t, k);
+  ob e = tbl_ent(v, t, k);
   size_t i = tbl_idx(gettbl(t)->cap, hash(v, k));
-  return (ob) e != nil ? e[1] = x :
-    (with(t, with(k, with(x, e = (void*) mkmo(v, 3)))), !e) ? 0 :
-    (y = gettbl(t),
-     e[0] = k,
-     e[1] = x,
-     e[2] = (ob) y->tab[i],
-     y->tab[i] = (ob) e,
-     y->len += 1,
-     x); }
+  if (!nilp(e)) return ptr(e)[1] = x;
+  with(t, with(k, with(x, e = (ob) mkmo(v, 3))));
+  if (!e) return 0;
+  y = gettbl(t),
+  ptr(e)[0] = k,
+  ptr(e)[1] = x,
+  ptr(e)[2] = (ob) y->tab[i],
+  y->tab[i] = (ob) e,
+  y->len += 1;
+  return x; }
 
 static ob tks_j(la v, ob e, ob l) {
-  ob x; return e == nil ? l :
-    (x = R(e)[0],
-     with(x, l = tks_j(v, R(e)[2], l)),
-     l ? pair(v, x, l) : 0); }
+  if (nilp(e)) return l;
+  ob x = R(e)[0];
+  with(x, l = tks_j(v, R(e)[2], l));
+  return l ? pair(v, x, l) : 0; }
 
 static ob tks_i(la v, ob t, intptr_t i) {
   ob k; return i == 1 << gettbl(t)->cap ? nil :
@@ -222,18 +225,16 @@ static ob tks_i(la v, ob t, intptr_t i) {
      k ? tks_j(v, gettbl(t)->tab[i], k) : 0); }
 
 static ob tblss(la v, intptr_t i, intptr_t l) {
-  fr fp = (fr) v->fp;
+  fr fp = v->fp;
   return
     i > l - 2 ? fp->argv[i - 1] :
     !tbl_set(v, v->xp, fp->argv[i], fp->argv[i + 1]) ? 0 :
     tblss(v, i + 2, l); }
 
 static ob tbl_ent_(la v, ob e, ob k) {
-  return e == nil || eql(R(e)[0], k) ? e :
-    tbl_ent_(v, R(e)[2], k); }
+  return nilp(e) || eql(R(e)[0], k) ? e : tbl_ent_(v, R(e)[2], k); }
 
 static ob tbl_ent(la v, ob u, ob k) {
   tbl t = gettbl(u);
-  return
-    u = t->tab[tbl_idx(t->cap, hash(v, k))],
-    tbl_ent_(v, u, k); }
+  u = t->tab[tbl_idx(t->cap, hash(v, k))];
+  return tbl_ent_(v, u, k); }
