@@ -38,9 +38,8 @@ some useful functions:
 
 ## examples
 
-### an autograph
+### a quine
 ```lisp
-; aka a quine
 ((\ - (L - (L ` -))) '(\ - (L - (L ` -))))
 ```
 

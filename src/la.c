@@ -3,9 +3,6 @@
 #include <time.h>
 #include <stdlib.h>
 
-// finalize a process
-void la_fin(la v) { if (v) free(v->pool), free(v); }
-
 static ob interns(la v, const char *s) {
   ob _ = string(v, s);
   return _ ? intern(v, _) : 0; }
@@ -30,10 +27,8 @@ static NoInline ob prim(la v, const char *a, vm *i) {
   return tbl_set(v, A(v->wns), A(nom), (ob) k); }
 
 // initialize a process
-la la_ini(void) {
+static bool la_ini(la v) {
   ob _;
-  la v = malloc(sizeof(struct la));
-  if (!v) return 0;
   // set time & random seed
   v->t0 = clock(),
   v->rand = v->t0,
@@ -67,7 +62,7 @@ la la_ini(void) {
     (v->lex[Seq] = interns(v, ",")) &&
     (v->lex[Splat] = interns(v, ".")) &&
 
-    // make the toplevel namespace and initialize the cwd
+    // make the global namespace
     (_ = table(v)) &&
     (v->wns = pair(v, _, nil))
     // register instruction addresses at toplevel so the
@@ -75,7 +70,8 @@ la la_ini(void) {
 #define register_inst(a, b) && ((b) ? prim(v,b,a) : inst(v, "i-"#a,a))
     insts(register_inst);
 
-  return ok ? v : (la_fin(v), NULL); }
+  if (!ok) free(v->pool);
+  return ok; }
 
 #ifndef PREF
 #define PREF
@@ -142,28 +138,29 @@ static Vm(repl) {
 static mo act(la v, bool shell, const char **nfs) {
   const char *nf = *nfs;
   mo k = nf ? act(v, shell, nfs + 1) : mkmo(v, 1);
-  return !k ? 0 :
-    nf ? ana_p(v, nf, (ob) k) :
-    (k[0].ll = shell ? repl : yield, k); }
+  if (!k) return 0;
+  if (nf) return ana_p(v, nf, (ob) k);
+  k[0].ll = shell ? repl : yield;
+  return k; }
 
 static mo actn(la v, bool shell, const char *prelu, const char **scripts) {
   mo k = act(v, shell, scripts);
   if (k && prelu) k = ana_p(v, prelu, (ob) k);
   return k; }
 
-static NoInline ob la_run(la v) {
+static NoInline ob la_go(la v) {
   ob xp, *hp, *sp; fr fp; mo ip;
   Unpack();
   return ApN(0, xp); }
 
 static NoInline int la_main(bool shell, const char *prelu, const char **scripts) {
-  la v = la_ini();
-  if (!v) return 0;
+  la v = &((struct la){});
+  if (!la_ini(v)) return EXIT_FAILURE;
   mo k = actn(v, shell, prelu, scripts);
-  if (!k) return 0;
+  if (!k) return EXIT_FAILURE;
   v->ip = k;
-  ob r = la_run(v);
-  la_fin(v);
+  ob r = la_go(v);
+  free(v->pool);
   return r ? EXIT_SUCCESS : EXIT_FAILURE; }
 
 static const char

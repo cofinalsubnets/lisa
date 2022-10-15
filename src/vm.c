@@ -360,10 +360,10 @@ Br(brgteq,  *sp++ >= xp, GF, xp, FF, nil)
 // brgteq2 is brlt
 //
 // type/arity checking
-Vm(idZ) { return nump(xp) ? ApN(1, xp) : Undefined(); }
-Vm(idH) { return homp(xp) ? ApN(1, xp) : Undefined(); }
-Vm(idT) { return tblp(xp) ? ApN(1, xp) : Undefined(); }
-Vm(id2) { return twop(xp) ? ApN(1, xp) : Undefined(); }
+Vm(idZ) { return nump(xp) ? ApN(1, xp) : ApC(dom_err, xp); }
+Vm(idH) { return homp(xp) ? ApN(1, xp) : ApC(dom_err, xp); }
+Vm(idT) { return tblp(xp) ? ApN(1, xp) : ApC(dom_err, xp); }
+Vm(id2) { return twop(xp) ? ApN(1, xp) : ApC(dom_err, xp); }
 Vm(arity) {
   ob reqd = (ob) ip[1].ll;
   return fp->argc >= reqd ? ApN(2, xp) : ApC(ary_err, reqd); }

@@ -1,12 +1,10 @@
 lang=lisa
 suff=la
 lib=lib/$(lang)/$(lang).$(suff)
-
 testcmd=bin/$(lang).bin -_ $(lib) test/*.$(suff)
+
 test: bin/$(lang).bin
 	/usr/bin/env TIMEFORMAT="in %Rs" bash -c "time $(testcmd)"
-repl: bin/$(lang)
-	which rlwrap && rlwrap $(testcmd) -i || $(testcmd) -i
 
 # build
 # tested with gcc, clang, and compcert
@@ -18,28 +16,26 @@ CFLAGS=\
 	-fno-stack-protector -fno-unroll-loops -fno-align-functions
 # set locale for sorting
 LC_COLLATE=C
-h=$(sort $(wildcard c/*.h))
-c=$(sort $(wildcard c/*.c))
-%.o: %.c $h makefile
-	$(CC) -c -o $@ $(CFLAGS) $(CPPFLAGS) $(@:.o=.c)
-bin/$(lang).bin: $(c:.c=.o)
+h=$(sort $(wildcard src/*.h))
+c=$(sort $(wildcard src/*.c))
+build/%.o: src/%.c $h makefile
+	$(CC) -c -o $@ $(CFLAGS) $(CPPFLAGS) $<
+bin/$(lang).bin: $(addprefix build/,$(notdir $(c:.c=.o)))
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 bin/$(lang): bin/$(lang).bin
 	strip -o $@ $^
-clean:
-	rm -f `git check-ignore * */*`
 
 # installation
 DESTDIR ?= $(HOME)
 PREFIX ?= .local
 bin=bin/$(lang)
 doc=share/man/man1/$(lang).1
-whither=$(DESTDIR)/$(PREFIX)/
-installed_files=$(addprefix $(whither),$(bin) $(lib) $(doc))
+whither=$(DESTDIR)/$(PREFIX)
+installed_files=$(addprefix $(whither)/,$(bin) $(lib) $(doc))
 install: $(installed_files)
 uninstall:
 	rm -f $(installed_files)
-$(whither)%: %
+$(whither)/%: %
 	install -D $^ $@
 
 # vim stuff
@@ -51,8 +47,12 @@ uninstall-vim:
 $(VIMPREFIX)/%: vim/%
 	install -D $^ $@
 
-# other useful tasks
+# other tasks
 #
+clean:
+	rm -f `git check-ignore * */*`
+repl: bin/$(lang)
+	which rlwrap && rlwrap $(testcmd) -i || $(testcmd) -i
 # profile on linux with perf
 perf: perf.data
 	perf report

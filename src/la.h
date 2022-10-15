@@ -81,10 +81,6 @@ struct la {
      rand, // random seed
      lex[LexN]; }; // grammar symbols
 
-// runtime constructor/destructor
-la la_ini(void);
-void la_fin(la);
-
 // pairs
 ob pair(la, ob, ob);
 size_t llen(ob);
