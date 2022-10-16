@@ -114,6 +114,8 @@ Vm(rec) {
     fp->clos = nil,
     ApY(xp, nil); }
 
+Vm(disp) { return ApY(((dyn)ip)->vt->ap, xp); }
+
 ////
 /// Load Instructions
 //

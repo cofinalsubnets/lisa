@@ -5,6 +5,7 @@ vm
   nom_err NoInline,
   oom_err NoInline,
   ary_err NoInline,
+  disp NoInline,
   clos NoInline,
   clos0 NoInline,
   clos1 NoInline;

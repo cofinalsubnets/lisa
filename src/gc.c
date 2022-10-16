@@ -124,7 +124,6 @@ static clock_t copy(la v, size_t len1) {
     t1 = t2 - t1,
     t1 ? (t2 - t0) / t1 : 1; }
 
-#define stale(o) inb((ob*)(o),pool0,pool0+len0)
 Gc(cphom) {
   mo src = gethom(x);
   if (fresh(src->ll)) return (ob) src->ll;
@@ -134,15 +133,9 @@ Gc(cphom) {
      j = dst;
 
   // this is not a very good way to find the head :(
-  for (mo k = start; k < end;)
-    j->ll = k->ll,
-    k++->ll = (vm*) j++;
-  j[0].ll = NULL, j[1].ll = (vm*) dst;
-
-  for (ob u; j-- > dst;)
-    u = (ob) j->ll,
-    u = !stale(u) ? u : cp(v, u, len0, pool0),
-    j->ll = (vm*) u;
+  for (mo k = start; k < end; j->ll = k->ll, k++->ll = (vm*) j++);
+  for (j[0].ll = NULL, j[1].ll = (vm*) dst; j-- > dst;)
+    j->ll = (vm*) cp(v, (ob) j->ll, len0, pool0);
 
   return (ob) (src - start + dst); }
 
@@ -160,14 +153,14 @@ Gc(cpsym) {
   sym src = getsym(x), dst;
   ob nom = src->nom;
   if (fresh(nom)) return nom;
-  if (nilp(nom)) return // anonymous symbol
-    dst = bump(v, Width(sym)),
-    cpyw(dst, src, Width(sym)),
-    src->nom = putsym(dst);
-  return
-    x = cp(v, src->nom, len0, pool0),
-    dst = getsym(sskc(v, &v->syms, x)),
-    src->nom = putsym(dst); }
+  if (nilp(nom)) {
+    // anonymous symbol
+    dst = bump(v, Width(sym));
+    cpyw(dst, src, Width(sym));
+    return src->nom = putsym(dst); }
+  x = cp(v, src->nom, len0, pool0);
+  dst = getsym(sskc(v, &v->syms, x));
+  return src->nom = putsym(dst); }
 
 Gc(cptbl) {
   tbl src = gettbl(x);
@@ -192,10 +185,11 @@ Gc(cptwo) {
   dst->a = cp(v, dst->a, len0, pool0);
   return puttwo(dst); }
 
+#define stale(o) inb((ob*)(o),pool0,pool0+len0)
 static Gc(cp) {
+  if (nump(x) || !stale(x)) return x;
   switch (TypeOf(x)) {
-    default: return x;
-    case Hom: return cphom(v, x, len0, pool0);
+    default: return cphom(v, x, len0, pool0);
     case Two: return cptwo(v, x, len0, pool0);
     case Str: return cpstr(v, x, len0, pool0);
     case Tbl: return cptbl(v, x, len0, pool0);
@@ -205,7 +199,5 @@ static Gc(cp) {
 // Run a GC cycle from inside the VM
 NoInline Vm(gc) {
   size_t req = v->xp;
-  Pack();
-  req = please(v, req);
-  Unpack();
+  Pack(), req = please(v, req), Unpack();
   return req ? ApY(ip, xp) : ApC(oom_err, xp); }

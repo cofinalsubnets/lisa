@@ -104,13 +104,15 @@ static ob rxq(la v, FILE *i) {
     (x = pair(v, v->lex[Quote], x)) : 0; }
 
 static ob ana_fd(la v, FILE *in, ob k) {
-  ob x; return
-    with(k, x = rxq(v, in)),
-    !x ? feof(in) ? k : 0 :
-      (with(x, k = ana_fd(v, in, k)), k) &&
-      (with(k, x = (x = pair(v, x, nil)) ?
-                   pair(v, v->lex[Eval], x) : 0), x) ?
-      (ob) ana(v, x, k) : 0; }
+  ob x;
+  with(k, x = rxq(v, in));
+  if (!x) return feof(in) ? k : x;
+  with(x, k = ana_fd(v, in, k));
+  if (!k) return k;
+  with(k,
+    x = pair(v, x, nil),
+    x = x ? pair(v, v->lex[Eval], x) : x);
+  return x ? (ob) ana(v, x, k) : x; }
 
 #include <string.h>
 #include <errno.h>
@@ -119,10 +121,9 @@ static mo ana_p(la v, const char *path, ob k) {
   if (!in) return
     fprintf(stderr, "%s : %s", path, strerror(errno)),
     NULL;
-  return
-    k = ana_fd(v, in, k),
-    fclose(in),
-    (mo) k; }
+  k = ana_fd(v, in, k);
+  fclose(in);
+  return (mo) k; }
 
 // read eval print loop. starts after all scripts if indicated
 static Vm(repl) {
