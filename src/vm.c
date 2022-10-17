@@ -305,11 +305,16 @@ Vm(encln) { return ApC(encl, nil); }
 Vm(jump) { return ApY((ob) ip[1].ll, xp); }
 
 #include <string.h>
-bool eql(ob a, ob b) {
-  return a == b || (TypeOf(a) == TypeOf(b) &&
+// isolate the more complicated logic from the simple
+// pointer comparisons so eql() doesn't touch the stack
+// unless it has to
+static NoInline bool eql2(ob a, ob b) {
+  return 
     ((twop(a) && eql(A(a), A(b)) && eql(B(a), B(b))) ||
      (strp(a) && getstr(a)->len == getstr(b)->len &&
-      0 == scmp(getstr(a)->text, getstr(b)->text)))); }
+      0 == scmp(getstr(a)->text, getstr(b)->text))); }
+bool eql(ob a, ob b) {
+  return a == b ? 1 : TypeOf(a) != TypeOf(b) ? 0 : eql2(a, b); }
 
 Vm(lt) { return xp = *sp++ < xp ? xp : nil, ApN(1, xp); }
 Vm(lteq) { return xp = *sp++ <= xp ? xp : nil, ApN(1, xp); }
@@ -372,10 +377,10 @@ Vm(arity) {
 Vm(cwm_u) { return ApC(ret, v->wns); }
 
 // errors
-Vm(dom_err) { return Pack(), err(v, "is undefined"); }
-Vm(oom_err) { return Pack(), err(v, "oom at %d words", v->len); }
+Vm(dom_err) { return Pack(), nope(v, "is undefined"); }
+Vm(oom_err) { return Pack(), nope(v, "oom with %d words", v->len); }
+Vm(ary_err) { return Pack(), nope(v, "takes %d parameters", getnum(xp)); }
 Vm(nom_err) {
   xp = getsym(xp)->nom;
   return Pack(),
-    err(v, "referenced free variable `%s'", nilp(xp) ? 0 : getstr(xp)->text); }
-Vm(ary_err) { return Pack(), err(v, "takes %d parameters", getnum(xp)); }
+    nope(v, "referenced free variable `%s'", nilp(xp) ? 0 : getstr(xp)->text); }

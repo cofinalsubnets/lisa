@@ -2,6 +2,15 @@
 #include <stdlib.h>
 #include <time.h>
 
+// unchecked allocator -- make sure there's enough memory!
+static Inline void *bump(la v, size_t n) {
+  void *x = v->hp;
+  v->hp += n;
+  return x; }
+
+void *cells(la v, size_t n) {
+  return Avail >= n || please(v, n) ? bump(v, n) : 0; }
+
 #define Gc(n) ob n(la v, ob x, size_t len0, ob *pool0)
 static Gc(cp);
 static clock_t copy(la, size_t);

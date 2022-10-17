@@ -18,7 +18,7 @@ CFLAGS=\
 LC_COLLATE=C
 h=$(sort $(wildcard src/*.h))
 c=$(sort $(wildcard src/*.c))
-build/%.o: src/%.c $h makefile
+build/%.o: src/%.c $h Makefile
 	$(CC) -c -o $@ $(CFLAGS) $(CPPFLAGS) $<
 bin/$(lang).bin: $(addprefix build/,$(notdir $(c:.c=.o)))
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^

@@ -92,25 +92,35 @@ ob table(la),
    tbl_get(la, ob, ob);
 
 // strings & symbols
-ob string(la, const char*),
-   intern(la, ob);
+ob string(la, const char*), intern(la, ob),
+  sskc(la, ob*, ob); // FIXME a symbol-interning function that should be private
+
 
 // functions
 ob hnom(la, ob); // FIXME try to get function name
 mo mkmo(la, size_t), // allocator
    ana(la, ob, ob), // compiler interface
    button(mo); // get tag at end
+               //
 #define Push(...) pushs(v, __VA_ARGS__, (ob) 0)
 bool
   pushs(la, ...),
   please(la, size_t), // gc interface
   eql(ob, ob); // logical equality
 
-ob sskc(la, ob*, ob); // FIXME ugly
+ob rx(la, FILE*); // read sexp
+void tx(la, FILE*, ob); // write sexp
+void *cells(la, size_t); // allocate memory
 
-// read/write s-expressions
-ob rx(la, FILE*);
-void tx(la, FILE*, ob);
+// internal libc substitutes
+intptr_t lcprng(intptr_t);
+void setw(void*, uintptr_t, size_t),
+     cpyw(void*, const void*, size_t),
+     rcpyw(void*, const void*, size_t),
+     cpy8(void*, const void*, size_t);
+char cmin(char);
+size_t slen(const char*);
+int scmp(const char*, const char*);
 
 #define N0 putnum(0)
 #define nil N0
@@ -152,6 +162,7 @@ void tx(la, FILE*, ob);
 
 #define Inline inline __attribute__((always_inline))
 #define NoInline __attribute__((noinline))
+ob nope(la, const char*, ...) NoInline; // runtime error
 
 #define TypeOf(_) (((ob)(_))&TagMask)
 #define nump(_) (TypeOf(_)==Num)
@@ -161,34 +172,14 @@ void tx(la, FILE*, ob);
 #define homp(_) (TypeOf(_)==Hom)
 #define symp(_) (TypeOf(_)==Sym)
 
-ob err(la, const char*, ...) NoInline;
+#define err nope
 
 static Inline size_t b2w(size_t b) {
   size_t quot = b / sizeof(ob),
          rem = b % sizeof(ob);
   return rem ? quot + 1 : quot; }
 
-// unchecked allocator -- make sure there's enough memory!
-static Inline void *bump(la v, intptr_t n) {
-  void *x = v->hp;
-  v->hp += n;
-  return x; }
-
-static Inline void *cells(la v, size_t n) {
-  return Avail >= n || please(v, n) ? bump(v, n) : 0; }
-
-
-// lib
-intptr_t lcprng(intptr_t);
-void setw(void*, intptr_t, size_t),
-     cpyw(void*, const void*, size_t),
-     rcpyw(void*, const void*, size_t);
-char cmin(char);
-size_t slen(const char*);
-int scmp(const char*, const char*);
-
 // XXX FIXME XXX
 _Static_assert(sizeof(ob) == 8, "64bit");
 _Static_assert(-1 == -1 >> 1, "signed >>");
 _Static_assert(sizeof(ob) == sizeof(size_t), "size_t matches address space");
-

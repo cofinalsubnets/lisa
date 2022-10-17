@@ -128,8 +128,7 @@ static mo ana_p(la v, const char *path, ob k) {
 // read eval print loop. starts after all scripts if indicated
 static Vm(repl) {
   for (Pack(); !feof(stdin);) {
-    if (!(xp = rx(v, stdin)))
-      err(v, 0, "parse error");
+    if (!(xp = rx(v, stdin))) nope(v, "parse error");
     else if ((xp = ev(v, xp)))
       tx(v, stdout, xp),
       fputc('\n', stdout); }
