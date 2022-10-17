@@ -12,8 +12,11 @@ we need this to preclude stack overflows, which we can't
 handle safely in a portable way. the number one culprit
 here is garbage collection. using cheney's algorithm would
 fix it, but to do that we would need to be able to collect
-an object from an untagged pointer. the parser and bootstrap
-compiler are also recursive, but are much less likely to
-overflow the stack. still, fixing the parser is be easy, so
-we might as well.
+an object from an untagged pointer. the bootstrap compiler
+is also recursive, but that's acceptable since we only need
+it to handle the stage 2 compiler. the parser avoids recursion
+by using the internal stack.
+
+## embedded compile-time options
+## gc statistics
 

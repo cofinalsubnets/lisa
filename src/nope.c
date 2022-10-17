@@ -1,4 +1,4 @@
-#include "la.h"
+#include "lisa.h"
 #include <stdarg.h>
 static void show_call(la v, mo ip, fr fp) {
   fputc('(', stderr);
@@ -8,16 +8,15 @@ static void show_call(la v, mo ip, fr fp) {
     tx(v, stderr, fp->argv[i++]);
   fputc(')', stderr); }
 
-#define bottom (ptr(fp) == v->pool + v->len)
+#define aubas (ptr(fp) == v->pool + v->len)
 NoInline ob nope(la v, const char *msg, ...) {
   mo ip = v->ip;
   fr fp = v->fp;
 
   // print error
   fputs("# ", stderr);
-  if (!bottom) // show call if possible
-    show_call(v, ip, fp),
-    fputc(' ', stderr);
+  // show the function if there is one
+  if (!aubas) show_call(v, ip, fp), fputc(' ', stderr);
 
   // show message
   va_list xs;
@@ -27,7 +26,7 @@ NoInline ob nope(la v, const char *msg, ...) {
   fputc('\n', stderr);
 
   // show backtrace
-  while (!bottom)
+  while (!aubas)
     fputs("# in ", stderr),
     show_call(v, ip, fp),
     fputc('\n', stderr),

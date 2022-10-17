@@ -1,4 +1,4 @@
-#include "la.h"
+#include "lisa.h"
 #include "vm.h"
 
 // " the virtual machine "
@@ -114,7 +114,7 @@ Vm(rec) {
     fp->clos = nil,
     ApY(xp, nil); }
 
-Vm(disp) { return ApY(((dyn)ip)->vt->ap, xp); }
+Vm(disp) { return ApY(((ext)ip)->dtbl->ap, xp); }
 
 ////
 /// Load Instructions

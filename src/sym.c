@@ -1,4 +1,4 @@
-#include "la.h"
+#include "lisa.h"
 #include "vm.h"
 #include <string.h>
 //symbols

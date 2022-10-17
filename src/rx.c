@@ -1,4 +1,5 @@
-#include "la.h"
+#include "lisa.h"
+#include "vm.h"
 
 static ob
   buf_atom(la, FILE*, char),
@@ -61,7 +62,7 @@ ob rx(la v, FILE *i) { return
 
 static str new_buf(la v) {
   str s = cells(v, Width(str) + 1);
-  if (s) s->len = 8, s->ext = 0;
+  if (s) s->len = 8, s->disp = disp;
   return s; }
 
 static str grow_buf(la v, str s) {
@@ -72,7 +73,7 @@ static str grow_buf(la v, str s) {
   if (!t) return 0;
   return
     t->len = 2 * l * sizeof(ob),
-    t->ext = 0,
+    t->disp = disp,
     cpyw(t->text, s->text, l),
     t; }
 

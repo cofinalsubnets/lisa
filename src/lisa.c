@@ -1,9 +1,9 @@
-#include "la.h"
+#include "lisa.h"
 #include "vm.h"
 #include <time.h>
 #include <stdlib.h>
 
-static ob interns(la v, const char *s) {
+ob interns(la v, const char *s) {
   ob _ = string(v, s);
   return _ ? intern(v, _) : 0; }
 
@@ -13,22 +13,10 @@ static ob interns(la v, const char *s) {
 // toplevel namespace // FIXME use a different namespace
 static NoInline ob inst(la v, const char *a, vm *b) {
   ob z = interns(v, a);
-  return z ? tbl_set(v, A(v->wns), z, putnum(b)) : 0; }
-
-// make a primitive function
-static NoInline ob prim(la v, const char *a, vm *i) {
-  mo k = 0;
-  ob nom = interns(v, a);
-  if (nom) nom = pair(v, nom, nil);
-  if (nom) with(nom, k = mkmo(v, 2));
-  if (!k) return 0;
-  k[0].ll = i;
-  k[1].ll = (vm*) nom;
-  return tbl_set(v, A(v->wns), A(nom), (ob) k); }
+  return z ? tbl_set(v, v->wns, z, putnum(b)) : 0; }
 
 // initialize a process
 static bool la_ini(la v) {
-  ob _;
   // set time & random seed
   v->t0 = clock(),
   v->rand = v->t0,
@@ -63,12 +51,12 @@ static bool la_ini(la v) {
     (v->lex[Splat] = interns(v, ".")) &&
 
     // make the global namespace
-    (_ = table(v)) &&
-    (v->wns = pair(v, _, nil))
+    (v->wns = table(v))
     // register instruction addresses at toplevel so the
     // compiler can use them.
-#define register_inst(a, b) && ((b) ? prim(v,b,a) : inst(v, "i-"#a,a))
-    insts(register_inst);
+#define reg_intl(a) && inst(v, "i-"#a, a)
+    i_internals(reg_intl)
+    && define_primitives(v);
 
   if (!ok) free(v->pool);
   return ok; }
@@ -157,24 +145,24 @@ static NoInline int la_main(bool shell, const char *prelu, const char **scripts)
   la v = &((struct la){});
   if (!la_ini(v)) return EXIT_FAILURE;
   mo k = actn(v, shell, prelu, scripts);
-  if (!k) return EXIT_FAILURE;
+  if (!k) return free(v->pool), EXIT_FAILURE;
   v->ip = k;
-  ob r = la_go(v);
+  ob _ = la_go(v);
   free(v->pool);
-  return r ? EXIT_SUCCESS : EXIT_FAILURE; }
-
-static const char
-  *prelu = PREF "/lib/" LANG "/" LANG "." SUFF,
-  *usage =
-    "usage: %s [options and scripts]\n"
-    "with no arguments, interact\n"
-    "option:\n"
-    "  -h show this message\n"
-    "  -i interact\n"
-    "  -_ don't bootstrap\n";
+  return _ ? EXIT_SUCCESS : EXIT_FAILURE; }
 
 #include <getopt.h>
 int main(int ac, char **av) {
+  const char
+    *prelu = PREF "/lib/" LANG "/" LANG "." SUFF,
+    *usage =
+      "usage: %s [options and scripts]\n"
+      "with no arguments, interact\n"
+      "option:\n"
+      "  -h show this message\n"
+      "  -i interact\n"
+      "  -_ don't bootstrap\n";
+
   for (bool shell = ac == 1;;) switch (getopt(ac, av, "hi_")) {
     default: return EXIT_FAILURE;
     case 'h': fprintf(stdout, usage, *av); continue;

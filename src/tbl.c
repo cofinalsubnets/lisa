@@ -1,4 +1,4 @@
-#include "la.h"
+#include "lisa.h"
 #include "vm.h"
 // hash tables
 // some of the worst code is here :(
@@ -28,7 +28,7 @@ size_t hash(la v, ob x) {
   switch (TypeOf(x)) {
     case Sym: return getsym(x)->code;
     case Two: return ror(hash(v, A(x)) * hash(v, B(x)), 32);
-    case Hom: return hash(v, hnom(v, x)) ^ mix;
+    case Hom: return mix ^ (primp(x) ? x * mix : hash(v, hnom(v, x)));
     case Tbl: return ror(mix * Tbl, 48);
     case Num: return ror(mix * x, 16);
     case Str: default: {

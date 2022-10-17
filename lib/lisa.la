@@ -1,5 +1,5 @@
 (: macros (tbl)
-   _ns (A (cwm)))
+   _ns (cwm))
 ; to bootstrap first we define an expression that when
 ; eval'd defines the standard environment and compiler, and
 ; redefines eval. then we eval it twice. the first time

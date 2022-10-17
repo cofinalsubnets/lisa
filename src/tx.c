@@ -1,10 +1,9 @@
-#include "la.h"
-static void emhomn(la, FILE*, ob);
+#include "lisa.h"
 
 // s-expression writer
 void tx(la v, FILE *o, ob x) {
   switch (TypeOf(x)) {
-    case Hom: emhomn(v, o, hnom(v, x)); return;
+    case Hom: emhom(v, o, x); return;
     case Num: fprintf(o, "%ld", getnum(x)); return;
     case Two:
       for (fputc('(', o);; x = B(x)) {
@@ -29,14 +28,6 @@ void tx(la v, FILE *o, ob x) {
         if (*t == '"') fputc('\\', o);
       fputc('"', o);
       return; } }
-
-static void emhomn(la v, FILE *o, ob x) {
-  if (symp(x)) fputc('\\', o), tx(v, o, x);
-  else if (!twop(x)) fputc('\\', o);
-  else { // FIXME this is weird
-    if (symp(A(x)) || twop(A(x))) emhomn(v, o, A(x));
-    if (symp(B(x)) || twop(B(x))) emhomn(v, o, B(x)); } }
-
 
 #include "vm.h"
 Vm(show_u) {

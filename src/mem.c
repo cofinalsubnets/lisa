@@ -1,4 +1,4 @@
-#include "la.h"
+#include "lisa.h"
 #include <stdlib.h>
 #include <time.h>
 
@@ -150,13 +150,13 @@ Gc(cphom) {
 
 Gc(cpstr) {
   str dst, src = getstr(x);
-  if (fresh(src->ext)) return src->ext;
+  if (fresh(src->disp)) return (ob) src->disp;
   size_t ws = b2w(src->len);
   dst = bump(v, Width(str) + ws);
   cpyw(dst->text, src->text, ws);
   dst->len = src->len;
-  dst->ext = src->ext;
-  return src->ext = putstr(dst); }
+  dst->disp = src->disp;
+  return (ob) (src->disp = (vm*) putstr(dst)); }
 
 Gc(cpsym) {
   sym src = getsym(x), dst;

@@ -34,7 +34,7 @@ enum class { Hom, Num, Two, Str, Sym, Tbl, };
 typedef struct two { ob a, b; } *two;
 
 // strings
-typedef struct str { ob ext; uintptr_t len; char text[]; } *str;
+typedef struct str { vm *disp; size_t len; char text[]; } *str;
 // TODO pre-hash strings for faster lookup & comparison
 
 // symbols
@@ -46,12 +46,14 @@ typedef struct sym { ob nom, code, l, r; } *sym;
 // hash tables
 typedef struct tbl { ob *tab; uintptr_t len, cap; } *tbl;
 
-// TODO inline type data
-typedef struct vtbl {
+// TODO include type data
+typedef struct dtbl {
   vm *ap;
   void (*show)(la, ob, FILE*);
-  ob (*gc)(la, ob, size_t, ob*), dtbl; } *vtbl;
-typedef struct dyn { vm *go; vtbl vt; ob dat[]; } *dyn;
+  ob (*gc)(la, ob, size_t, ob*);
+  // ob dyn; // TODO do we want this?
+} *dtbl;
+typedef struct ext { vm *disp; dtbl dtbl; ob data[]; } *ext;
 
 
 // grammar symbols
@@ -92,24 +94,27 @@ ob table(la),
    tbl_get(la, ob, ob);
 
 // strings & symbols
-ob string(la, const char*), intern(la, ob),
+ob string(la, const char*), intern(la, ob), interns(la, const char*),
   sskc(la, ob*, ob); // FIXME a symbol-interning function that should be private
 
 
 // functions
-ob hnom(la, ob); // FIXME try to get function name
 mo mkmo(la, size_t), // allocator
    ana(la, ob, ob), // compiler interface
    button(mo); // get tag at end
                //
 #define Push(...) pushs(v, __VA_ARGS__, (ob) 0)
 bool
+  define_primitives(la),
+  primp(ob),
   pushs(la, ...),
   please(la, size_t), // gc interface
   eql(ob, ob); // logical equality
 
+ob hnom(la, ob); // FIXME try to get function name
 ob rx(la, FILE*); // read sexp
-void tx(la, FILE*, ob); // write sexp
+void tx(la, FILE*, ob), // write sexp
+     emhom(la, FILE*, ob);
 void *cells(la, size_t); // allocate memory
 
 // internal libc substitutes
@@ -173,11 +178,15 @@ ob nope(la, const char*, ...) NoInline; // runtime error
 #define symp(_) (TypeOf(_)==Sym)
 
 #define err nope
+#define LEN(ary) (sizeof(ary)/sizeof(*ary))
 
 static Inline size_t b2w(size_t b) {
   size_t quot = b / sizeof(ob),
          rem = b % sizeof(ob);
   return rem ? quot + 1 : quot; }
+
+struct prim { vm *go; const char *nom; };
+extern struct prim primitives[];
 
 // XXX FIXME XXX
 _Static_assert(sizeof(ob) == 8, "64bit");
