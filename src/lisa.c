@@ -3,10 +3,6 @@
 #include <time.h>
 #include <stdlib.h>
 
-ob interns(la v, const char *s) {
-  ob _ = string(v, s);
-  return _ ? intern(v, _) : 0; }
-
 // initialization helpers
 //
 // store an instruction address under a variable in the
@@ -71,19 +67,11 @@ static bool la_ini(la v) {
 #define SUFF
 #endif
 
-// called after finishing successfully
-static Vm(yield) { return Pack(), xp; }
-
-static ob ev(la v, ob x) {
-  static struct mo go[] = {
-    {imm}, {(vm*) primitives}, {call}, {(vm*) putnum(1)}, {yield} };
-  return Push(x) ? imm(v, nil, go, v->hp, v->sp, v->fp) : 0; }
-
 static ob rxq(la v, FILE *i) {
   ob x; return
     (x = rx(v, i)) &&
     (x = pair(v, x, nil)) ?
-    (x = pair(v, v->lex[Quote], x)) : 0; }
+    pair(v, v->lex[Quote], x) : 0; }
 
 static ob ana_fd(la v, FILE *in, ob k) {
   ob x;
@@ -100,20 +88,24 @@ static ob ana_fd(la v, FILE *in, ob k) {
 static mo ana_p(la v, const char *path, ob k) {
   FILE *in = fopen(path, "r");
   if (!in) return
-    fprintf(stderr, "%s : %s", path, strerror(errno)),
+    fprintf(stderr, "# %s : %s", path, strerror(errno)),
     NULL;
   k = ana_fd(v, in, k);
   fclose(in);
   return (mo) k; }
 
+// called after finishing successfully
+static Vm(yield) { return Pack(), xp; }
+
 // read eval print loop. starts after all scripts if indicated
 static Vm(repl) {
+  struct mo go[] = { {call}, {(vm*) putnum(1)}, {yield} };
   for (Pack(); !feof(stdin);) {
     if (!(xp = rx(v, stdin))) {
-      if (!feof(stdin)) nope(v, "parse error"); }
-    else if ((xp = ev(v, xp)))
-      tx(v, stdout, xp),
-      fputc('\n', stdout); }
+      if (!feof(stdin)) fputs("# parse error\n", stderr); }
+    else if (Push(xp)) {
+      xp = call(v, (ob) primitives, go, v->hp, v->sp, v->fp);
+      if (xp) tx(v, stdout, xp), fputc('\n', stdout); } }
   return nil; }
 
 // takes scripts and if we want a repl, gives a thread
@@ -127,20 +119,17 @@ static mo act(la v, bool shell, const char **nfs) {
 
 static mo actn(la v, bool shell, const char *prelu, const char **scripts) {
   mo k = act(v, shell, scripts);
-  if (k && prelu) k = ana_p(v, prelu, (ob) k);
-  return k; }
+  return k && prelu ? ana_p(v, prelu, (ob) k) : k; }
 
 static NoInline ob la_go(la v) {
   ob xp, *hp, *sp; fr fp; mo ip;
-  Unpack();
-  return ApN(0, xp); }
+  return Unpack(), ApN(0, xp); }
 
 static NoInline int la_main(bool shell, const char *prelu, const char **scripts) {
   la v = &((struct la){});
   if (!la_ini(v)) return EXIT_FAILURE;
-  mo k = actn(v, shell, prelu, scripts);
-  if (!k) return free(v->pool), EXIT_FAILURE;
-  v->ip = k;
+  v->ip = actn(v, shell, prelu, scripts);
+  if (!v->ip) return free(v->pool), EXIT_FAILURE;
   ob _ = la_go(v);
   free(v->pool);
   return _ ? EXIT_SUCCESS : EXIT_FAILURE; }

@@ -41,8 +41,8 @@ Vm(cdr_u) {
 Vm(cons_u) {
   ArityCheck(2);
   Have(2);
+  hp[0] = Argv[0];
+  hp[1] = Argv[1];
   xp = puttwo(hp);
   hp += 2;
-  A(xp) = Argv[0];
-  B(xp) = Argv[1];
   return ApC(ret, xp); }

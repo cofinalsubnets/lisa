@@ -1,5 +1,7 @@
 #include "lisa.h"
 
+static void emhom(la, FILE*, ob);
+
 // s-expression writer
 void tx(la v, FILE *o, ob x) {
   switch (TypeOf(x)) {
@@ -28,6 +30,17 @@ void tx(la v, FILE *o, ob x) {
         if (*t == '"') fputc('\\', o);
       fputc('"', o);
       return; } }
+
+static void emhomn(la v, FILE *o, ob x) {
+  if (symp(x)) fputc('\\', o), tx(v, o, x);
+  else if (!twop(x)) fputc('\\', o);
+  else { // FIXME this is weird
+    if (symp(A(x)) || twop(A(x))) emhomn(v, o, A(x));
+    if (symp(B(x)) || twop(B(x))) emhomn(v, o, B(x)); } }
+
+static void emhom(la v, FILE *o, ob x) {
+  if (primp(x)) fprintf(o, "\\%s", ((struct prim*)x)->nom);
+  else emhomn(v, o, hnom(v, x)); }
 
 #include "vm.h"
 Vm(show_u) {

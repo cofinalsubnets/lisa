@@ -33,20 +33,9 @@ ob hnom(la v, ob x) {
   int inb = (ob*) x >= v->pool && (ob*) x < v->pool+v->len;
   return inb ? x : nil; }
 
-static void emhomn(la v, FILE *o, ob x) {
-  if (symp(x)) fputc('\\', o), tx(v, o, x);
-  else if (!twop(x)) fputc('\\', o);
-  else { // FIXME this is weird
-    if (symp(A(x)) || twop(A(x))) emhomn(v, o, A(x));
-    if (symp(B(x)) || twop(B(x))) emhomn(v, o, B(x)); } }
-
 bool primp(ob x) {
   struct prim *_ = (struct prim*) x;
   return _ >= primitives && _ < primitives + LEN(primitives); }
-
-void emhom(la v, FILE *o, ob x) {
-  if (primp(x)) fprintf(o, "\\%s", ((struct prim*)x)->nom);
-  else emhomn(v, o, hnom(v, x)); }
 
 // instructions for the internal compiler
 Vm(hom_u) {

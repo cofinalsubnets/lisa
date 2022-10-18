@@ -98,8 +98,7 @@ bool
 
 ob hnom(la, ob); // FIXME try to get function name
 ob rx(la, FILE*); // read sexp
-void tx(la, FILE*, ob), // write sexp
-     emhom(la, FILE*, ob);
+void tx(la, FILE*, ob); // write sexp
 void *cells(la, size_t); // allocate memory
 
 // internal libc substitutes

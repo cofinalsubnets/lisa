@@ -47,6 +47,6 @@ Vm(ystr_u) {
   TypeCheck(xp = Argv[0], Sym);
   return ApC(ret, getsym(xp)->nom); }
 
-bool symofp(ob y, const char *nom) {
-  y = getsym(y)->nom;
-  return strp(y) && 0 == scmp(nom, getstr(y)->text); }
+ob interns(la v, const char *s) {
+  ob _ = string(v, s);
+  return _ ? intern(v, _) : 0; }

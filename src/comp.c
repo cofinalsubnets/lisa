@@ -45,13 +45,13 @@ mo ana(la v, ob x, ob k) {
 
 #define Co(nom,...) static mo nom(la v, ob *e, size_t m, ##__VA_ARGS__)
 
-static mo imx(la v, ob *e, intptr_t m, vm *i, ob x) {
+static mo imx(la v, ob *e, size_t m, vm *i, ob x) {
   return Push(putnum(i), x) ? i1d1(v, e, m) : 0; }
 
 static ob snoc(la v, ob l, ob x) {
-  return !twop(l) ? pair(v, x, l) :
-    (with(l, x = snoc(v, B(l), x)),
-     x ? pair(v, A(l), x) : 0); }
+  if (!twop(l)) return pair(v, x, l);
+  with(l, x = snoc(v, B(l), x));
+  return x ? pair(v, A(l), x) : 0; }
 
 #define Bind(v, x) if(!((v)=(x)))goto fail
 static NoInline ob rw_let_fn(la v, ob x) {
@@ -79,13 +79,12 @@ static Inline ob new_scope(la v, ob *e, ob a, ob n) {
     a = asign(v, a, 0, &s),
     x = !a ? 0 : (with(a, x = (ob*) mkmo(v, 8)), x));
   if (!x) return 0;
-  return
-    arg(x) = a,
-    loc(x) = clo(x) = s1(x) = s2(x) = nil,
-    par(x) = e ? *e : nil,
-    name(x) = n,
-    asig(x) = putnum(s),
-    (ob) x; }
+  arg(x) = a;
+  loc(x) = clo(x) = s1(x) = s2(x) = nil;
+  par(x) = e ? *e : nil;
+  name(x) = n;
+  asig(x) = putnum(s);
+  return (ob) x; }
 
 static int scan_def(la v, ob *e, ob x) {
   int r;
@@ -201,9 +200,9 @@ static bool def_sug(la v, ob x) {
     (x = pair(v, x, _)) &&
     (x = pair(v, v->lex[Seq], x)) &&
     (x = pair(v, x, nil)) &&
-    (x = pair(v, v->lex[Lamb], x)) ?
-      Push(putnum(co__), pair(v, x, nil)) :
-      0; }
+    (x = pair(v, v->lex[Lamb], x)) &&
+    (x = pair(v, x, nil)) &&
+    Push(putnum(co__), x); }
 
 Co(co_let, ob x) {
   if (!twop(B(x))) return co_x(v, e, m, nil);
@@ -343,8 +342,7 @@ Co(co_x, ob x) { return
   Push(putnum(imm), x) ? i1d1(v, e, m) : 0; }
 
 Co(co_q, ob x) { return
-  x = twop(B(x)) ? AB(x) : B(x),
-  co_x(v, e, m, x); }
+  co_x(v, e, m, twop(B(x)) ? AB(x) : B(x)); }
 
 Co(co_se, ob x) { return
   x = B(x),
@@ -362,9 +360,9 @@ Co(co_2, ob x) {
     if (z == v->lex[Seq]) return co_se(v, e, m, x); }
   return co_ap(v, e, m, A(x), B(x)); }
 
-Co(i1d0) { mo k;
+Co(i1d0) {
   vm *i = (void*) getnum(*v->sp++);
-  k = pull(v, e, m+1);
+  mo k = pull(v, e, m+1);
   return k ? pb1(i, k): 0; }
 
 Co(i1d1) {
@@ -408,7 +406,7 @@ Vm(ev_u) {
   if (xp && homp(xp) && gethom(xp)->ll != ev_u)
     return ApY((mo) xp, nil);
   Pack();
-  mo y = ana(v, *fp->argv, putnum(ret));
+  mo y = ana(v, Argv[0], putnum(ret));
   if (!y) return 0;
   Unpack();
   return ApY(y, xp); }
