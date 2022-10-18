@@ -65,13 +65,12 @@ static NoInline ob rw_let_fn(la v, ob x) {
   return um, x; }
 
 static ob asign(la v, ob a, intptr_t i, ob *m) {
-  ob x; return
-    !twop(a) ? (*m = i, a) :
-    twop(B(a)) && AB(a) == v->lex[Splat] ?
-      (*m = -i-1,
-       pair(v, A(a), nil)) :
-    (with(a, x = asign(v, B(a), i+1, m)),
-     x ? pair(v, A(a), x) : 0); }
+  ob x;
+  if (!twop(a)) return *m = i, a;
+  if (twop(B(a)) && AB(a) == v->lex[Splat])
+    return *m = -i-1, pair(v, A(a), nil);
+  with(a, x = asign(v, B(a), i+1, m));
+  return x ? pair(v, A(a), x) : 0; }
 
 static Inline ob new_scope(la v, ob *e, ob a, ob n) {
   intptr_t *x, s = 0;
@@ -111,24 +110,21 @@ static Inline ob comp_body(la v, ob*e, ob x) {
       !scan(v, e, v->sp[1]) ||
       !(x = (ob) pull(v, e, 4)))
     return 0;
+  x = !(i = llen(loc(*e))) ? x :
+   (ob) pb2(locals, putnum(i), (mo) x);
+  x = (i = getnum(asig(*e))) > 0 ?
+        (ob) pb2(arity, putnum(i), (mo) x) :
+      i < 0 ?
+        (ob) pb2(vararg, putnum(-i-1), (mo) x) :
+      x;
+  button(gethom(x))[1].ll = (vm*) x;
+  return twop(clo(*e)) ? pair(v, clo(*e), x) : x; }
 
-  return
-    x = !(i = llen(loc(*e))) ? x :
-     (ob) pb2(locals, putnum(i), (mo) x),
-    x = (i = getnum(asig(*e))) > 0 ?
-          (ob) pb2(arity, putnum(i), (mo) x) :
-        i < 0 ?
-          (ob) pb2(vararg, putnum(-i-1), (mo) x) :
-        x,
-    button(gethom(x))[1].ll = (vm*) x,
-    !twop(clo(*e)) ? x : pair(v, clo(*e), x); }
-
-static ob linitp(la v, ob x, ob* d) {
+static ob linitp(la v, ob x, ob *d) {
   ob y;
   if (!twop(B(x))) return *d = x, nil;
-  return
-    with(x, y = linitp(v, B(x), d)),
-    y ? pair(v, A(x), y) : 0; }
+  with(x, y = linitp(v, B(x), d));
+  return y ? pair(v, A(x), y) : 0; }
 
 // index of item in list (-1 if absent)
 static intptr_t lidx(ob l, ob x) {
@@ -272,10 +268,8 @@ Co(co_p, ob x) {
 
 Co(em_call) {
   ob ary = *v->sp++;
-  mo pf = pull(v, e, m + 2);
-  if (!pf) return 0;
-  vm *i = pf->ll == ret ? rec : call;
-  return pb2(i, ary, pf); }
+  mo k = pull(v, e, m + 2);
+  return k ? pb2(k->ll == ret ? rec : call, ary, k) : 0; }
 
 enum where { Here, Loc, Arg, Clo, Wait };
 
