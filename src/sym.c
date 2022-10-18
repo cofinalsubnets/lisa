@@ -46,3 +46,7 @@ Vm(ystr_u) {
   ArityCheck(1);
   TypeCheck(xp = Argv[0], Sym);
   return ApC(ret, getsym(xp)->nom); }
+
+bool symofp(ob y, const char *nom) {
+  y = getsym(y)->nom;
+  return strp(y) && 0 == scmp(nom, getstr(y)->text); }

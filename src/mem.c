@@ -120,7 +120,7 @@ static clock_t copy(la v, size_t len1) {
   v->pool = v->hp = pool1;
   v->sp = sp0 + shift;
   v->fp = (fr) ((ob*) v->fp + shift);
-  CP(v->xp), CP(v->wns);
+  CP(v->xp), CP(v->topl);
   v->ip = (mo) cp(v, (ob) v->ip, len0, pool0);
   for (int i = 0; i < LexN; CP(v->lex[i]), i++);
   for (ob *sp1 = v->sp; sp0 < top0; COPY(*sp1++, *sp0++));

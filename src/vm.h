@@ -22,7 +22,9 @@ cfns(ninl)
 i_internals(ninl)
 
 // primitive functions
-#define i_primitives(_)\
+// ev must be the first item in this list!
+#define i_primitives(_) _(ev_u, "ev")\
+ _(nilp_u, "nilp") _(rnd_u, "rand")\
  _(sym_u, "sym") _(cwm_u, "cwm") _(sar_u, ">>") _(sal_u, "<<")\
  _(band_u, "&") _(bnot_u, "!") _(bor_u, "|") _(bxor_u, "^")\
  _(add_u, "+") _(hom_u, "hom") _(sub_u, "-") _(mul_u, "*")\
@@ -34,11 +36,10 @@ i_internals(ninl)
  _(thas_u, "thas") _(tset_u, "tset") _(tdel_u, "tdel")\
  _(tkeys_u, "tkeys") _(seek_u, "seek") _(dom_err, "fail")\
  _(putc_u, "putc") _(ystr_u, "ystr") _(emx_u, "emx")\
- _(emi_u, "emi") _(show_u, ".") _(ev_u, "ev") _(ap_u, "ap")\
+ _(emi_u, "emi") _(show_u, ".") _(ap_u, "ap")\
  _(peeki_u, "peeki") _(hfin_u, "hfin") _(peekx_u, "peekx")\
  _(twop_u, "twop") _(nump_u, "nump") _(homp_u, "homp")\
  _(tblp_u, "tblp") _(symp_u, "symp") _(strp_u, "strp")\
- _(nilp_u, "nilp") _(rnd_u, "rand")
 
 i_primitives(ninl)
 #undef ninl

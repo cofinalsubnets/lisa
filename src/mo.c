@@ -9,7 +9,7 @@ bool define_primitives(la v) {
               *lim = p + LEN(primitives);
   for (;p < lim; p++) {
     ob z = interns(v, p->nom);
-    if (!z || !tbl_set(v, v->wns, z, (ob) p)) return false; }
+    if (!z || !tbl_set(v, v->topl, z, (ob) p)) return false; }
   return true; }
 
 // function functions

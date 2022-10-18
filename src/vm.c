@@ -374,7 +374,7 @@ Vm(id2) { return twop(xp) ? ApN(1, xp) : ApC(dom_err, xp); }
 Vm(arity) {
   ob reqd = (ob) ip[1].ll;
   return fp->argc >= reqd ? ApN(2, xp) : ApC(ary_err, reqd); }
-Vm(cwm_u) { return ApC(ret, v->wns); }
+Vm(cwm_u) { return ApC(ret, v->topl); }
 
 // errors
 Vm(dom_err) { return Pack(), nope(v, "is undefined"); }

@@ -15,21 +15,6 @@ typedef struct mo *mo; // procedures
 typedef Vm(vm);
 struct mo { vm *ll; };
 
-// FIXME stop using tagged pointers!
-// - it assumes pointer alignment that limits the platforms we can run on
-// - it stops us from using cheney's algorithm to gc in constant stack
-// instead just use the least significant bit to distinguish immediate values
-#define TagBits 3
-#define TagMask ((1<<TagBits)-1)
-enum class { Hom, Num, Two, Str, Sym, Tbl, };
-#define NomHom "hom"
-#define NomNum "num"
-#define NomTwo "two"
-#define NomTbl "tbl"
-// FIXME principled reason to separate sym & str?
-#define NomStr "str"
-#define NomSym "sym"
-
 // pairs
 typedef struct two { ob a, b; } *two;
 
@@ -44,17 +29,17 @@ typedef struct sym { ob nom, code, l, r; } *sym;
 // - anonymous symbols waste 2 words
 
 // hash tables
-typedef struct tbl { ob *tab; uintptr_t len, cap; } *tbl;
+typedef struct tbl { ob *tab; size_t len, cap; } *tbl;
 
 // TODO include type data
 typedef struct dtbl {
   vm *ap;
-  void (*show)(la, ob, FILE*);
+  void (*show)(la, FILE*, ob);
   ob (*gc)(la, ob, size_t, ob*);
-  // ob dyn; // TODO do we want this?
+  // TODO do we want this?
+  // tbl dyn; // everything else
 } *dtbl;
 typedef struct ext { vm *disp; dtbl dtbl; ob data[]; } *ext;
-
 
 // grammar symbols
 enum lex { Def, Cond, Lamb, Quote, Seq, Splat, Eval, LexN };
@@ -78,7 +63,7 @@ struct la {
            *pool; // memory pool
 
   // other runtime state
-  ob wns, // working namespace -- a stack of dicts
+  ob topl,
      syms, // internal symbols
      rand, // random seed
      lex[LexN]; }; // grammar symbols
@@ -126,6 +111,9 @@ void setw(void*, uintptr_t, size_t),
 char cmin(char);
 size_t slen(const char*);
 int scmp(const char*, const char*);
+
+struct prim { vm *go; const char *nom; };
+extern struct prim primitives[];
 
 #define N0 putnum(0)
 #define nil N0
@@ -177,16 +165,27 @@ ob nope(la, const char*, ...) NoInline; // runtime error
 #define homp(_) (TypeOf(_)==Hom)
 #define symp(_) (TypeOf(_)==Sym)
 
-#define err nope
+// FIXME stop using tagged pointers!
+// - it assumes pointer alignment that limits the platforms we can run on
+// - it stops us from using cheney's algorithm to gc in constant stack
+// instead just use the least significant bit to distinguish immediate values
+#define TagBits 3
+#define TagMask ((1<<TagBits)-1)
+enum class { Hom, Num, Two, Str, Sym, Tbl, };
+#define NomHom "hom"
+#define NomNum "num"
+#define NomTwo "two"
+#define NomTbl "tbl"
+// FIXME principled reason to separate sym & str?
+#define NomStr "str"
+#define NomSym "sym"
+
 #define LEN(ary) (sizeof(ary)/sizeof(*ary))
 
 static Inline size_t b2w(size_t b) {
   size_t quot = b / sizeof(ob),
          rem = b % sizeof(ob);
   return rem ? quot + 1 : quot; }
-
-struct prim { vm *go; const char *nom; };
-extern struct prim primitives[];
 
 // XXX FIXME XXX
 _Static_assert(sizeof(ob) == 8, "64bit");

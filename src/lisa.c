@@ -13,7 +13,7 @@ ob interns(la v, const char *s) {
 // toplevel namespace // FIXME use a different namespace
 static NoInline ob inst(la v, const char *a, vm *b) {
   ob z = interns(v, a);
-  return z ? tbl_set(v, v->wns, z, putnum(b)) : 0; }
+  return z ? tbl_set(v, v->topl, z, putnum(b)) : 0; }
 
 // initialize a process
 static bool la_ini(la v) {
@@ -22,7 +22,7 @@ static bool la_ini(la v) {
   v->rand = v->t0,
 
   // configure memory
-  // how big a memory pool do we start with?
+  // how big a memory pool to start with?
   v->len = 1 << 10,
   // there is no pool yet
   v->pool = NULL,
@@ -37,10 +37,10 @@ static bool la_ini(la v) {
   v->hp = v->sp,
   // everything else starts empty
   v->ip = (mo) nil,
-  v->wns = v->syms = v->xp = nil,
+  v->topl = v->syms = v->xp = nil,
   setw(v->lex, nil, LexN);
 
-  bool ok = 
+  bool ok =
     // global symbols // FIXME stop using these if possible
     (v->lex[Eval] = interns(v, "ev")) &&
     (v->lex[Def] = interns(v, ":")) &&
@@ -51,7 +51,7 @@ static bool la_ini(la v) {
     (v->lex[Splat] = interns(v, ".")) &&
 
     // make the global namespace
-    (v->wns = table(v))
+    (v->topl = table(v))
     // register instruction addresses at toplevel so the
     // compiler can use them.
 #define reg_intl(a) && inst(v, "i-"#a, a)
@@ -75,15 +75,9 @@ static bool la_ini(la v) {
 static Vm(yield) { return Pack(), xp; }
 
 static ob ev(la v, ob x) {
-  mo k;
-  if (!Push(x) || !(k = mkmo(v, 6))) return 0;
-  k[0].ll = imm;
-  k[1].ll = (vm*) (k + 5);
-  k[2].ll = call;
-  k[3].ll = (vm*) putnum(1);
-  k[4].ll = yield;
-  k[5].ll = ev_u;
-  return imm(v, nil, k, v->hp, v->sp, v->fp); }
+  static struct mo go[] = {
+    {imm}, {(vm*) primitives}, {call}, {(vm*) putnum(1)}, {yield} };
+  return Push(x) ? imm(v, nil, go, v->hp, v->sp, v->fp) : 0; }
 
 static ob rxq(la v, FILE *i) {
   ob x; return
@@ -97,9 +91,8 @@ static ob ana_fd(la v, FILE *in, ob k) {
   if (!x) return feof(in) ? k : x;
   with(x, k = ana_fd(v, in, k));
   if (!k) return k;
-  with(k,
-    x = pair(v, x, nil),
-    x = x ? pair(v, v->lex[Eval], x) : x);
+  with(k, x = pair(v, x, nil),
+          x = x ? pair(v, v->lex[Eval], x) : x);
   return x ? (ob) ana(v, x, k) : x; }
 
 #include <string.h>
@@ -116,7 +109,8 @@ static mo ana_p(la v, const char *path, ob k) {
 // read eval print loop. starts after all scripts if indicated
 static Vm(repl) {
   for (Pack(); !feof(stdin);) {
-    if (!(xp = rx(v, stdin))) nope(v, "parse error");
+    if (!(xp = rx(v, stdin))) {
+      if (!feof(stdin)) nope(v, "parse error"); }
     else if ((xp = ev(v, xp)))
       tx(v, stdout, xp),
       fputc('\n', stdout); }

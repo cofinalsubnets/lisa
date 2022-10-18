@@ -183,7 +183,7 @@ Co(co_t, ob x) {
 Co(co_ys) {
   ob _ = *v->sp++;
   if (e) return imx(v, e, m, loc_, putnum(lidx(loc(*e), _)));
-  _ = pair(v, v->wns, _);
+  _ = pair(v, v->topl, _);
   return _ ? imx(v, e, m, tbind, _) : 0; }
 
 static bool co_let_r(la v, ob*e, ob x) {
@@ -280,17 +280,12 @@ Co(em_call) {
 
 enum where { Here, Loc, Arg, Clo, Wait };
 
-static ob refer(la v, ob _) {
-  ob x, mod = v->wns;
-  for (; twop(mod); mod = B(mod))
-    if ((x = tbl_get(v, A(mod), _))) return x;
-  return 0; }
-
 static ob ls_lex(la v, ob e, ob y) {
   ob q; return
     nilp(e) ?
-      (q = refer(v, y)) ? pair(v, putnum(Here), q) :
-                          pair(v, putnum(Wait), v->wns) :
+      (q = tbl_get(v, v->topl, y)) ?
+        pair(v, putnum(Here), q) :
+        pair(v, putnum(Wait), v->topl) :
     lidx(loc(e), y) >= 0 ? pair(v, putnum(Loc), e) :
     lidx(arg(e), y) >= 0 ? pair(v, putnum(Arg), e) :
     lidx(clo(e), y) >= 0 ? pair(v, putnum(Clo), e) :
@@ -359,13 +354,13 @@ Co(co_se, ob x) { return
 
 Co(co_2, ob x) {
   ob z = A(x);
-  return
-    z == v->lex[Quote] ? co_q(v, e, m, x) :
-    z == v->lex[Cond] ? co_p(v, e, m, x) :
-    z == v->lex[Lamb] ? co_t(v, e, m, x) :
-    z == v->lex[Def] ? co_let(v, e, m, x) :
-    z == v->lex[Seq] ? co_se(v, e, m, x) :
-    co_ap(v, e, m, A(x), B(x)); }
+  if (symp(z)) {
+    if (z == v->lex[Quote]) return co_q(v, e, m, x);
+    if (z == v->lex[Cond]) return co_p(v, e, m, x);
+    if (z == v->lex[Lamb]) return co_t(v, e, m, x);
+    if (z == v->lex[Def]) return co_let(v, e, m, x);
+    if (z == v->lex[Seq]) return co_se(v, e, m, x); }
+  return co_ap(v, e, m, A(x), B(x)); }
 
 Co(i1d0) { mo k;
   vm *i = (void*) getnum(*v->sp++);
@@ -396,10 +391,10 @@ bool pushs(la v, ...) {
 
 Co(co_ini) {
   mo k = mkmo(v, m + 1);
-  return !k ? 0 :
-    (k[m].ll = (vm*) (e ? name(*e) : nil),
-     setw(k, nil, m),
-     k + m); }
+  if (!k) return 0;
+  k[m].ll = (vm*) (e ? name(*e) : nil);
+  setw(k, nil, m);
+  return k + m; }
 
 // bootstrap eval interpreter function
 Vm(ev_u) {
@@ -409,7 +404,7 @@ Vm(ev_u) {
   // ev calls compiled pre-bootstrap will use the
   // bootstrapped compiler, which is what we want?
   // seems kind of strange to need this ...
-  xp = refer(v, v->lex[Eval]);
+  xp = tbl_get(v, v->topl, v->lex[Eval]);
   if (xp && homp(xp) && gethom(xp)->ll != ev_u)
     return ApY((mo) xp, nil);
   Pack();
