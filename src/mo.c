@@ -1,19 +1,29 @@
 #include "lisa.h"
 #include "vm.h"
 
-#define prim_ent(go, nom) { go, nom },
-struct prim primitives[] = { i_primitives(prim_ent) };
-
-bool define_primitives(la v) {
-  struct prim *p = primitives,
-              *lim = p + LEN(primitives);
-  for (;p < lim; p++) {
-    ob z = interns(v, p->nom);
-    if (!z || !tbl_set(v, v->topl, z, (ob) p)) return false; }
-  return true; }
-
 // function functions
-// allocator
+//
+// functions are laid out in memory like this
+//
+// *|*|*|*|*|*|?|0|^
+// * = function pointer or inline value
+// ? = function name / metadata (optional)
+// 0 = null
+// ^ = pointer to head of function
+//
+// this way we can support internal pointers for branch
+// destinations, return addresses, etc, while letting
+// the garbage collector always find the head.
+//
+// two easy potential optimizations are:
+// - add a tail pointer to the start of the function,
+//   so GC can find the head quickly (since often we
+//   won't have an internal pointer)
+// - tag the tail/head pointers instead of using a null
+//   sentinel (but then the C compiler would need to
+//   align functions)
+
+// allocate a thread
 mo mkmo(la v, size_t n) {
   mo k = cells(v, n+2);
   if (k) k[n].ll = 0, k[n+1].ll = (vm*) k;
@@ -32,10 +42,6 @@ ob hnom(la v, ob x) {
   x = h[-1];
   int inb = (ob*) x >= v->pool && (ob*) x < v->pool+v->len;
   return inb ? x : nil; }
-
-bool primp(ob x) {
-  struct prim *_ = (struct prim*) x;
-  return _ >= primitives && _ < primitives + LEN(primitives); }
 
 // instructions for the internal compiler
 Vm(hom_u) {
@@ -97,3 +103,19 @@ Vm(seek_u) {
   TypeCheck(xp = Argv[0], Hom);
   TypeCheck(Argv[1], Num);
   return ApC(ret, xp + Argv[1] - Num); }
+
+// static table of primitive functions
+#define prim_ent(go, nom) { go, nom },
+struct prim primitives[] = { i_primitives(prim_ent) };
+
+bool primp(ob x) {
+  struct prim *_ = (struct prim*) x;
+  return _ >= primitives && _ < primitives + LEN(primitives); }
+
+bool define_primitives(la v) {
+  struct prim *p = primitives,
+              *lim = p + LEN(primitives);
+  for (;p < lim; p++) {
+    ob z = interns(v, p->nom);
+    if (!z || !tbl_set(v, v->topl, z, (ob) p)) return false; }
+  return true; }

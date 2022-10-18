@@ -27,12 +27,14 @@ CFLAGS=\
 LC_COLLATE=C
 h=$(sort $(wildcard $(srcdir)/*.h))
 c=$(sort $(wildcard $(srcdir)/*.c))
-$(builddir)/%.o: $(srcdir)/%.c $h Makefile
+$(builddir)/%.o: $(srcdir)/%.c $h Makefile $(builddir)
 	$(CC) -c -o $@ $(CFLAGS) $(CPPFLAGS) $<
 $(bin_debug): $(addprefix $(builddir)/,$(notdir $(c:.c=.o)))
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 $(bin_rel): $(bin_debug)
 	strip -o $@ $^
+$(builddir):
+	mkdir $@
 
 # installation
 DESTDIR ?= $(HOME)

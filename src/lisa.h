@@ -35,7 +35,7 @@ typedef struct tbl { ob *tab; size_t len, cap; } *tbl;
 typedef struct dtbl {
   vm *ap;
   void (*show)(la, FILE*, ob);
-  ob (*gc)(la, ob, size_t, ob*);
+  ob (*cp)(la, ob, size_t, ob*);
   // TODO do we want this?
   // tbl dyn; // everything else
 } *dtbl;

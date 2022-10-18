@@ -1,4 +1,5 @@
 #include "lisa.h"
+#include "vm.h"
 #include <stdlib.h>
 #include <time.h>
 
@@ -142,6 +143,9 @@ Gc(cphom) {
      j = dst;
 
   // this is not a very good way to find the head :(
+  // since many function references will be to the head it
+  // would be an easy optimization to have a head bracket
+  // pointing to the tail.
   for (mo k = start; k < end; j->ll = k->ll, k++->ll = (vm*) j++);
   for (j[0].ll = NULL, j[1].ll = (vm*) dst; j-- > dst;)
     j->ll = (vm*) cp(v, (ob) j->ll, len0, pool0);
@@ -198,7 +202,10 @@ Gc(cptwo) {
 static Gc(cp) {
   if (nump(x) || !stale(x)) return x;
   switch (TypeOf(x)) {
-    default: return cphom(v, x, len0, pool0);
+    default:
+      if ((vm*) ptr(x)[0] == disp)
+        return ((dtbl) ptr(x)[1])->cp(v, x, len0, pool0);
+      return cphom(v, x, len0, pool0);
     case Two: return cptwo(v, x, len0, pool0);
     case Str: return cpstr(v, x, len0, pool0);
     case Tbl: return cptbl(v, x, len0, pool0);

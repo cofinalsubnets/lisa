@@ -20,7 +20,7 @@ static ob
   tbl_grow(la, ob),
   tbl_del(la, ob, ob),
   tblss(la, intptr_t, intptr_t),
-  tks_i(la, ob, intptr_t),
+  tks_i(la, ob, size_t),
   tks_j(la, ob, ob),
   tbl_set_s(la, ob, ob, ob);
 
@@ -101,13 +101,13 @@ Vm(tset_u) {
   ArityCheck(1);
   TypeCheck(xp = Argv[0], Tbl);
   Pack();
-  v->xp = tblss(v, 1, getnum(fp->argc));
+  v->xp = tblss(v, 1, getnum(Argc));
   Unpack();
   return ApC(xp ? ret : oom_err, xp); }
 
 Vm(tbl_u) {
   Pack();
-  bool _ = (v->xp = table(v)) && tblss(v, 0, getnum(fp->argc));
+  bool _ = (v->xp = table(v)) && tblss(v, 0, getnum(Argc));
   Unpack();
   return ApC(_ ? ret : oom_err, xp); }
 
@@ -218,16 +218,17 @@ static ob tks_j(la v, ob e, ob l) {
   with(x, l = tks_j(v, R(e)[2], l));
   return l ? pair(v, x, l) : 0; }
 
-static ob tks_i(la v, ob t, intptr_t i) {
-  ob k; return i == 1 << gettbl(t)->cap ? nil :
-    (with(t, k = tks_i(v, t, i+1)),
-     k ? tks_j(v, gettbl(t)->tab[i], k) : 0); }
+static ob tks_i(la v, ob t, size_t i) {
+  if (i == 1 << gettbl(t)->cap) return nil;
+  ob k;
+  with(t, k = tks_i(v, t, i+1));
+  return k ? tks_j(v, gettbl(t)->tab[i], k) : 0; }
 
 static ob tblss(la v, intptr_t i, intptr_t l) {
   fr fp = v->fp;
   return
-    i > l - 2 ? fp->argv[i - 1] :
-    !tbl_set(v, v->xp, fp->argv[i], fp->argv[i + 1]) ? 0 :
+    i > l - 2 ? Argv[i - 1] :
+    !tbl_set(v, v->xp, Argv[i], Argv[i + 1]) ? 0 :
     tblss(v, i + 2, l); }
 
 static ob tbl_ent_(la v, ob e, ob k) {

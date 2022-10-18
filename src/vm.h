@@ -1,4 +1,5 @@
 #define ninl(x, ...) vm x NoInline;
+
 // these are vm functions used by C but not lisp.
 #define cfns(_)\
   _(gc) _(dom_err) _(nom_err) _(oom_err) _(ary_err)\
@@ -86,8 +87,7 @@ i_primitives(ninl)
 #define Argc fp->argc
 #define ArityCheck(n) if (putnum(n) > Argc) return ApC(ary_err, putnum(n))
 #define TypeCheck(x,t) if (TypeOf(x) != t) return ApC(dom_err, xp)
-#define Collect(n) ApC((v->xp=n, gc), xp)
+#define Collect(n) (v->xp = n, ApC(gc, xp))
 #define Free (sp - hp)
 #define Have1() if (!Free) return Collect(1)
 #define Have(n) if (Free < n) return Collect(n)
-#define ArityError(n) ApC(ary_err, putnum(n))
