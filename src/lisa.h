@@ -33,12 +33,12 @@ typedef struct tbl { ob *tab; size_t len, cap; } *tbl;
 
 // TODO include type data
 typedef struct dtbl {
-  vm *ap;
+  vm *does;
   void (*show)(la, FILE*, ob);
-  ob (*cp)(la, ob, size_t, ob*);
+  ob (*copy)(la, ob, size_t, ob*);
   // TODO do we want this?
   // tbl dyn; // everything else
-} *dtbl;
+} *mtbl, *dtbl;
 typedef struct ext { vm *disp; dtbl dtbl; ob data[]; } *ext;
 
 // grammar symbols
@@ -81,7 +81,6 @@ ob table(la),
 // strings & symbols
 ob string(la, const char*), intern(la, ob), interns(la, const char*),
   sskc(la, ob*, ob); // FIXME a symbol-interning function that should be private
-
 
 // functions
 mo mkmo(la, size_t), // allocator
@@ -130,10 +129,36 @@ extern struct prim primitives[];
 #define with(y,...) (mm(&(y)),(__VA_ARGS__),um)
 #define Width(t) b2w(sizeof(struct t))
 
-#define nilp(_) ((_)==nil)
 
 #define F(_) ((mo)(_)+1)
 #define G(_) (((mo)(_))->ll)
+
+#define ptr(x) ((ob*)(x))
+#define R ptr
+#define T putnum(-1)
+#define LEN(ary) (sizeof(ary)/sizeof(*ary))
+
+#define Inline inline __attribute__((always_inline))
+#define NoInline __attribute__((noinline))
+ob nope(la, const char*, ...) NoInline; // runtime error
+
+
+#define TagBits 3
+#define TagMask ((1<<TagBits)-1)
+#define TypeOf(_) (((ob)(_))&TagMask)
+// FIXME stop using tagged pointers!
+// - it assumes pointer alignment that limits the platforms we can run on
+// - it stops us from using cheney's algorithm to gc in constant stack
+// instead just use the least significant bit to distinguish immediate values
+enum ptr_tag { Hom, Num, Two, Str, Sym, Tbl, };
+
+static Inline bool nump(ob _) { return TypeOf(_) == Num; }
+static Inline bool strp(ob _) { return TypeOf(_) == Str; }
+static Inline bool homp(ob _) { return TypeOf(_) == Hom; }
+static Inline bool twop(ob _) { return TypeOf(_) == Two; }
+static Inline bool tblp(ob _) { return TypeOf(_) == Tbl; }
+static Inline bool symp(ob _) { return TypeOf(_) == Sym; }
+#define nilp(_) ((_)==nil)
 
 #define putstr(_) ((ob)(_)+Str)
 #define getnum(_) ((ob)(_)>>TagBits)
@@ -148,45 +173,12 @@ extern struct prim primitives[];
 #define gettwo(_) ((two)((_)-Two))
 #define puttwo(_) ((ob)(_)+Two)
 
-#define ptr(x) ((ob*)(x))
-#define R ptr
-#define T putnum(-1)
-
-#define Inline inline __attribute__((always_inline))
-#define NoInline __attribute__((noinline))
-ob nope(la, const char*, ...) NoInline; // runtime error
-
-#define TypeOf(_) (((ob)(_))&TagMask)
-#define nump(_) (TypeOf(_)==Num)
-#define strp(_) (TypeOf(_)==Str)
-#define twop(_) (TypeOf(_)==Two)
-#define tblp(_) (TypeOf(_)==Tbl)
-#define homp(_) (TypeOf(_)==Hom)
-#define symp(_) (TypeOf(_)==Sym)
-
-// FIXME stop using tagged pointers!
-// - it assumes pointer alignment that limits the platforms we can run on
-// - it stops us from using cheney's algorithm to gc in constant stack
-// instead just use the least significant bit to distinguish immediate values
-#define TagBits 3
-#define TagMask ((1<<TagBits)-1)
-enum class { Hom, Num, Two, Str, Sym, Tbl, };
-#define NomHom "hom"
-#define NomNum "num"
-#define NomTwo "two"
-#define NomTbl "tbl"
-// FIXME principled reason to separate sym & str?
-#define NomStr "str"
-#define NomSym "sym"
-
-#define LEN(ary) (sizeof(ary)/sizeof(*ary))
 
 static Inline size_t b2w(size_t b) {
-  size_t quot = b / sizeof(ob),
-         rem = b % sizeof(ob);
+  size_t quot = b / sizeof(ob), rem = b % sizeof(ob);
   return rem ? quot + 1 : quot; }
 
-// this might give a false positive if x is a fixnum
+// this can give a false positive if x is a fixnum
 static Inline bool livep(la v, ob x) {
   return (ob*)x >= v->pool && (ob*)x < v->pool + v->len; }
 

@@ -204,7 +204,7 @@ static Gc(cp) {
   switch (TypeOf(x)) {
     default:
       if ((vm*) ptr(x)[0] == disp)
-        return ((dtbl) ptr(x)[1])->cp(v, x, len0, pool0);
+        return ((mtbl) ptr(x)[1])->copy(v, x, len0, pool0);
       return cphom(v, x, len0, pool0);
     case Two: return cptwo(v, x, len0, pool0);
     case Str: return cpstr(v, x, len0, pool0);

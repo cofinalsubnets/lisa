@@ -114,7 +114,7 @@ Vm(rec) {
     fp->clos = nil,
     ApY(xp, nil); }
 
-Vm(disp) { return ApY(((ext)ip)->dtbl->ap, xp); }
+Vm(disp) { return ApY(((mtbl) GF(ip))->does, xp); }
 
 ////
 /// Load Instructions

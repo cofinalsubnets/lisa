@@ -1,11 +1,16 @@
 #include "lisa.h"
+#include "vm.h"
 
-static void emhom(la, FILE*, ob);
+static void emhomn(la, FILE*, ob);
 
 // s-expression writer
 void tx(la v, FILE *o, ob x) {
   switch (TypeOf(x)) {
-    case Hom: emhom(v, o, x); return;
+    case Hom:
+      if (primp(x)) fprintf(o, "\\%s", ((struct prim*)x)->nom);
+      else if (G(x) == disp) ((mtbl) GF(x))->show(v, o, x);
+      else emhomn(v, o, hnom(v, x));
+      return;
     case Num: fprintf(o, "%ld", getnum(x)); return;
     case Two:
       for (fputc('(', o);; x = B(x)) {
@@ -37,10 +42,6 @@ static void emhomn(la v, FILE *o, ob x) {
   else { // FIXME this is weird
     if (symp(A(x)) || twop(A(x))) emhomn(v, o, A(x));
     if (symp(B(x)) || twop(B(x))) emhomn(v, o, B(x)); } }
-
-static void emhom(la v, FILE *o, ob x) {
-  if (primp(x)) fprintf(o, "\\%s", ((struct prim*)x)->nom);
-  else emhomn(v, o, hnom(v, x)); }
 
 #include "vm.h"
 Vm(show_u) {
