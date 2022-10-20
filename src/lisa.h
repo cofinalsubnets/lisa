@@ -73,7 +73,7 @@ ob pair(la, ob, ob);
 size_t llen(ob);
 
 // hash tables
-size_t hash(la, ob);
+size_t hash(la, ob), hashb(const char*, size_t);
 ob table(la),
    tbl_set(la, ob, ob, ob),
    tbl_get(la, ob, ob);
@@ -185,6 +185,10 @@ static Inline size_t b2w(size_t b) {
   size_t quot = b / sizeof(ob),
          rem = b % sizeof(ob);
   return rem ? quot + 1 : quot; }
+
+// this might give a false positive if x is a fixnum
+static Inline bool livep(la v, ob x) {
+  return (ob*)x >= v->pool && (ob*)x < v->pool + v->len; }
 
 // XXX FIXME XXX
 _Static_assert(sizeof(ob) == 8, "64bit");

@@ -3,12 +3,6 @@
 // hash tables
 // some of the worst code is here :(
 //
-// a big random number
-static const uint64_t mix = 2708237354241864315;
-
-static Inline size_t ror(size_t x, size_t n) {
-  return (x<<((8*sizeof(size_t))-n))|(x>>n); }
-
 static Inline size_t tbl_idx(size_t cap, size_t co) {
   return co & ((1 << cap) - 1); }
 
@@ -23,20 +17,6 @@ static ob
   tks_i(la, ob, size_t),
   tks_j(la, ob, ob),
   tbl_set_s(la, ob, ob, ob);
-
-size_t hash(la v, ob x) {
-  switch (TypeOf(x)) {
-    case Sym: return getsym(x)->code;
-    case Two: return ror(hash(v, A(x)) * hash(v, B(x)), 32);
-    case Hom: return mix ^ (primp(x) ? x * mix : hash(v, hnom(v, x)));
-    case Tbl: return ror(mix * Tbl, 48);
-    case Num: return ror(mix * x, 16);
-    case Str: default: {
-      str s = getstr(x);
-      size_t len = s->len;
-      char *us = s->text;
-      for (size_t h = 1;; h ^= *us++, h *= mix)
-        if (!len--) return h; } } }
 
 ob table(la v) {
   tbl t = cells(v, Width(tbl) + 3);
