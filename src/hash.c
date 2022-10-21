@@ -1,6 +1,10 @@
 #include "lisa.h"
+#include "vm.h"
 
-// a big random number
+// FIXME this is a totally naive, unproven hashing method.
+// TODO replace with something better, verify & benchmark
+
+// just a big random number!
 static const uint64_t mix = 2708237354241864315;
 
 static Inline size_t ror(size_t x, size_t n) {
@@ -15,10 +19,9 @@ size_t hash(la v, ob x) {
   switch (TypeOf(x)) {
     case Sym: return getsym(x)->code;
     case Two: return ror(hash(v, A(x)) * hash(v, B(x)), 32);
-    case Hom:
-      if (!livep(v, x)) return mix ^ (x * mix);
-      return mix ^ hash(v, hnom(v, x));
     case Tbl: return ror(mix * Tbl, 48);
     case Num: return ror(mix * x, 16);
-    case Str: default:
-      return hashb(getstr(x)->text, getstr(x)->len); } }
+    case Str: return hashb(getstr(x)->text, getstr(x)->len); }
+  if (!livep(v, x)) return mix ^ (x * mix);
+  if (G(x) == disp) return ((mtbl) GF(x))->hash(v, x);
+  return mix ^ hash(v, hnom(v, x)); }

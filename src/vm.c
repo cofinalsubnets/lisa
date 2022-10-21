@@ -98,14 +98,14 @@ Vm(call) {
 // tail call
 Vm(rec) {
   ip = (mo) ip[1].ll;
-  if (fp->argc == (ob) ip) return
-    cpyw(fp->argv, sp, getnum((ob) ip)),
+  if (Argc == (ob) ip) return
+    cpyw(Argv, sp, getnum((ob) ip)),
     sp = (ob*) fp,
     ApY(xp, nil);
   return
     v->xp = fp->subd,
     v->ip = (mo) fp->retp, // save return info
-    fp = (fr) (fp->argv + getnum(fp->argc - (ob) ip)),
+    fp = (fr) (Argv + getnum(Argc - (ob) ip)),
     rcpyw(fp, sp, getnum((ob) ip)), // copy from high to low
     sp = (ob*) (--fp),
     fp->retp = (ob) v->ip,
@@ -171,13 +171,12 @@ Vm(tbind) { ob a; return
 // allocate local variable array
 Vm(locals) {
   ob *t = hp, n = getnum((ob) ip[1].ll);
-  Have(3);
-  return
-    hp += n + 2,
-    setw(t, nil, n),
-    t[n] = 0,
-    *--sp = t[n+1] = (ob) t,
-    ApN(2, xp); }
+  Have(n + 2);
+  hp += n + 2;
+  setw(t, nil, n);
+  t[n] = 0;
+  *--sp = t[n+1] = (ob) t;
+  return ApN(2, xp); }
 
 // late binding
 // long b/c it does the "static" type and arity checks
@@ -308,13 +307,17 @@ Vm(jump) { return ApY((ob) ip[1].ll, xp); }
 // isolate the more complicated logic from the simple
 // pointer comparisons so eql() doesn't touch the stack
 // unless it has to
-static NoInline bool eql2(ob a, ob b) {
-  return 
-    ((twop(a) && eql(A(a), A(b)) && eql(B(a), B(b))) ||
-     (strp(a) && getstr(a)->len == getstr(b)->len &&
-      0 == scmp(getstr(a)->text, getstr(b)->text))); }
+static NoInline bool eql_two(two a, two b) {
+  return eql(a->a, b->a) && eql(a->b, b->b); }
+static NoInline bool eql_str(str a, str b) {
+  return a->len == b->len && 0 == scmp(a->text, b->text); }
+static NoInline bool eql_(ob a, ob b) {
+  switch (TypeOf(a)) {
+    case Two: return eql_two(gettwo(a), gettwo(b));
+    case Str: return eql_str(getstr(a), getstr(b));
+    default: return false; } }
 bool eql(ob a, ob b) {
-  return a == b ? 1 : TypeOf(a) != TypeOf(b) ? 0 : eql2(a, b); }
+  return a == b ? true : TypeOf(a) != TypeOf(b) ? false : eql_(a, b); }
 
 Vm(lt) { return xp = *sp++ < xp ? xp : nil, ApN(1, xp); }
 Vm(lteq) { return xp = *sp++ <= xp ? xp : nil, ApN(1, xp); }

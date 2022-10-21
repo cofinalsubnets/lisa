@@ -12,7 +12,7 @@ static Inline void *bump(la v, size_t n) {
 void *cells(la v, size_t n) {
   return Avail >= n || please(v, n) ? bump(v, n) : 0; }
 
-#define Gc(n) ob n(la v, ob x, size_t len0, ob *pool0)
+#define Gc(n) NoInline ob n(la v, ob x, size_t len0, ob *pool0)
 static Gc(cp);
 static clock_t copy(la, size_t);
 
@@ -135,9 +135,8 @@ static clock_t copy(la v, size_t len1) {
     t1 ? (t2 - t0) / t1 : 1; }
 
 Gc(cphom) {
-  mo src = gethom(x);
-  if (fresh(src->ll)) return (ob) src->ll;
-  mo end = button(src),
+  mo src = gethom(x),
+     end = button(src),
      start = (mo) end[1].ll,
      dst = bump(v, end - start + 2),
      j = dst;
@@ -202,14 +201,15 @@ Gc(cptwo) {
 static Gc(cp) {
   if (nump(x) || !stale(x)) return x;
   switch (TypeOf(x)) {
-    default:
-      if ((vm*) ptr(x)[0] == disp)
-        return ((mtbl) ptr(x)[1])->copy(v, x, len0, pool0);
-      return cphom(v, x, len0, pool0);
     case Two: return cptwo(v, x, len0, pool0);
     case Str: return cpstr(v, x, len0, pool0);
     case Tbl: return cptbl(v, x, len0, pool0);
-    case Sym: return cpsym(v, x, len0, pool0); } }
+    case Sym: return cpsym(v, x, len0, pool0); }
+  ob y = *ptr(x);
+  if (fresh(y)) return y;
+  if ((vm*) y == disp) return
+    ((mtbl) ptr(x)[1])->copy(v, x, len0, pool0);
+  return cphom(v, x, len0, pool0); }
 
 #include "vm.h"
 // Run a GC cycle from inside the VM

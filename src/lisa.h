@@ -32,14 +32,14 @@ typedef struct sym { ob nom, code, l, r; } *sym;
 typedef struct tbl { ob *tab; size_t len, cap; } *tbl;
 
 // TODO include type data
-typedef struct dtbl {
+typedef struct mtbl {
   vm *does;
   void (*show)(la, FILE*, ob);
   ob (*copy)(la, ob, size_t, ob*);
-  // TODO do we want this?
-  // tbl dyn; // everything else
-} *mtbl, *dtbl;
-typedef struct ext { vm *disp; dtbl dtbl; ob data[]; } *ext;
+  size_t (*hash)(la, ob);
+  // tbl dyn; // TODO everything else; user methods
+} *mtbl;
+typedef struct ext { vm *disp; mtbl mtbl; ob data[]; } *ext;
 
 // grammar symbols
 enum lex { Def, Cond, Lamb, Quote, Seq, Splat, Eval, LexN };
