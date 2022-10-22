@@ -1,7 +1,13 @@
 #include "lisa.h"
 #include "vm.h"
 #include <stdarg.h>
-// bootstrap thread compiler
+
+//// 
+///  the thread compiler
+//
+// ironically this is the most complicated part of the C code but it
+// normally only gets used during initialization to bootstrap the
+// self-hosted compiler.
 
 static Inline mo pull(la v, ob *e, size_t m) {
   return ((mo (*)(la, ob*, size_t)) getnum(*v->sp++))(v, e, m); }
