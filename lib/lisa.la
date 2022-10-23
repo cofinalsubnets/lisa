@@ -178,7 +178,7 @@
    (eval (A x) (>- 'num (2f i k (B x))))) (mono f (f) x))
 
   (nary i tR xs .) (: arity (len xs) (\ x k (?
-   (< (len x) arity) (fail "wrong arity")
+   (< (len x) arity) (, (. 'nary) (fail "wrong arity"))
    (: (fo k z) (co (eval (AA z) (>- (BA z) k)) (B z))
       (co k z) (? z (fo (xc i-push k) z) k)
       l (xc i (-> tR k))
@@ -447,7 +447,7 @@
     (~ (? (homp z) (= i-arity (peeki z)))) x
     (? (>= (len (B x)) (peekx (seek z 1)))
      (X (seek z 2) (B x)) ; we're good, skip the check
-     (fail)))) ; oops wrong arity, good thing we caught it at compile time !
+     (, (. 'check-arity) (fail))))) ; oops wrong arity, good thing we caught it at compile time !
 
    (defn e x) (:
     (nom s) (? (twop s) (nom (A s)) s)
@@ -534,10 +534,9 @@
 
  (Im x k) (:
   (type-sym x) (?
-   (homp x) 'hom (nump x) 'num
-   (twop x) 'two
-   (symp x) 'sym (strp x) 'str
-   (tblp x) 'tbl)
+   (nump x) 'num
+   (twop x) 'two (symp x) 'sym (strp x) 'str (tblp x) 'tbl
+   (homp x) 'hom)
   (xc i-imm (xd x (-> (type-sym x) k))))
 
  ; these make functions that do certain side effects
@@ -557,13 +556,13 @@
  (>- t k) (? (~ t) k
   (xc (? (= t 'two) i-id2 (= t 'num) i-idZ
          (= t 'hom) i-idH (= t 'tbl) i-idT
-         (fail)) k))
+         (, (. '>-) (fail))) k))
 
  (-> t k) (:
   (produces t h)
    (? (~ (: q (consumes h))) h
       (= t q) (produces t (seek h 1))
-      (fail)) ; type error
+      (, (. 'type 'error t q) (fail))) ; type error
   (co k (? t (cu produces t) id)))
 
  (consumes h) (: i (peeki h) (?

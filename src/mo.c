@@ -34,7 +34,7 @@ mo button(mo k) { return G(k) ? button(F(k)) : k; }
 
 // try to get the name of a function
 ob hnom(la v, ob x) {
-  vm *k = ((mo) x)->ll;
+  vm *k = G(x);
   if (k == clos || k == clos0 || k == clos1)
     return hnom(v, (ob) G(FF(x)));
   ob* h = (ob*) x;
@@ -53,15 +53,15 @@ Vm(hom_u) {
   xp = (ob) hp;
   hp += len;
   setw((ob*) xp, nil, len);
-  ptr(xp)[len-2] = 0;
-  ptr(xp)[len-1] = xp;
+  ((ob*) xp)[len-2] = 0;
+  ((ob*) xp)[len-1] = xp;
   return ApC(ret, (ob) (ptr(xp) + len - 2)); }
 
 Vm(hfin_u) {
   ArityCheck(1);
   xp = Argv[0];
   Check(homp(xp) && G(xp) != disp);
-  button((mo)xp)[1].ll = (vm*) xp;
+  GF(button((mo)xp)) = (vm*) xp;
   return ApC(ret, xp); }
 
 Vm(emx) {

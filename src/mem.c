@@ -62,7 +62,7 @@ bool please(la v, size_t req) {
 // old data.
 
 #define inb(o,l,u) (o>=l&&o<u)
-#define fresh(x) inb(ptr(x),v->pool,v->pool+v->len)
+#define fresh(x) inb(((ob*) (x)),v->pool,v->pool+v->len)
 
 // we use this to test if an object has been moved already
 #define COPY(dst,src) (dst=cp(v,src,len0,pool0))
@@ -153,21 +153,6 @@ Gc(cpsym) {
   dst = getsym(sskc(v, &v->syms, x));
   return src->nom = putsym(dst); }
 
-Gc(cptbl) {
-  tbl src = gettbl(x);
-  if (fresh(src->tab)) return (ob) src->tab;
-  size_t src_cap = src->cap;
-  tbl dst = bump(v, Width(tbl) + (1l<<src->cap));
-  dst->len = src->len;
-  dst->cap = src_cap;
-  dst->tab = (ob*) (dst + 1);
-  dst->disp = disp;
-  dst->mtbl = mtbl_tbl;
-  ob *src_tab = src->tab;
-  src->tab = (ob*) puttbl(dst);
-  dst->tab = (ob*) cp(v, (ob) src_tab, len0, pool0);
-  return puttbl(dst); }
-
 Gc(cptwo) {
   two src = gettwo(x), dst;
   if (fresh(src->a)) return src->a;
@@ -183,7 +168,6 @@ Gc(cp) {
   if (nump(x) || !stale(x)) return x;
   switch (TypeOf(x)) {
     case Two: return cptwo(v, x, len0, pool0);
-    case Tbl: return cptbl(v, x, len0, pool0);
     case Sym: return cpsym(v, x, len0, pool0); }
   ob y = (ob) G(x);
   if (!nump(y) && livep(v, y)) return y;

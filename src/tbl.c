@@ -44,7 +44,7 @@ ob tbl_set(la v, ob t, ob k, ob x) {
 
 ob tbl_get(la v, ob t, ob k) {
   ob e = tbl_ent(v, t, k);
-  return e == nil ? 0 : R(e)[1]; }
+  return e == nil ? 0 : ((ob*) e)[1]; }
 
 Vm(tget_u) {
   ArityCheck(2);
@@ -133,7 +133,8 @@ static void tbl_fit(la v, ob t) {
   // collect all entries
   for (size_t i = 1 << u->cap; i--;)
     for (f = u->tab[i], u->tab[i] = nil; f != nil;
-      g = R(f)[2], R(f)[2] = e,
+      g = ((ob*) f)[2],
+      ((ob*) f)[2] = e,
       e = f, f = g);
 
   // shrink bucket array
@@ -141,9 +142,9 @@ static void tbl_fit(la v, ob t) {
 
   // reinsert
   while (e != nil) {
-    size_t i = tbl_idx(u->cap, hash(v, R(e)[0]));
-    f = R(e)[2],
-    R(e)[2] = u->tab[i],
+    size_t i = tbl_idx(u->cap, hash(v, ((ob*) e)[0]));
+    f = ((ob*) e)[2],
+    ((ob*) e)[2] = u->tab[i],
     u->tab[i] = e,
     e = f; } }
 
@@ -153,10 +154,10 @@ static ob tbl_del(la v, ob t, ob key) {
   intptr_t b = tbl_idx(y->cap, hash(v, key));
   ob e = y->tab[b],
      prev[] = {0,0,e};
-  for (ob l = (ob) &prev; l != nil && R(l)[2] != nil; l = R(l)[2])
-    if (R(R(l)[2])[0] == key) {
-      val = R(R(l)[2])[1];
-      R(l)[2] = R(R(l)[2])[2];
+  for (ob l = (ob) &prev; l != nil && ((ob*) l)[2] != nil; l = ((ob*) l)[2])
+    if (((ob*) ((ob*) l)[2])[0] == key) {
+      val = ((ob*) ((ob*) l)[2])[1];
+      ((ob*) l)[2] = ((ob*) ((ob*) l)[2])[2];
       y->len--;
       break; }
   y->tab[b] = prev[2];
@@ -179,9 +180,9 @@ static ob tbl_grow(la v, ob t) {
   for (size_t i, cap = 1 << cap0; cap--;)
     for (ob e, es = tab0[cap]; es != nil;)
       e = es,
-      es = R(es)[2],
-      i = tbl_idx(cap1, hash(v, R(e)[0])),
-      R(e)[2] = tab1[i],
+      es = ((ob*) es)[2],
+      i = tbl_idx(cap1, hash(v, ((ob*) e)[0])),
+      ((ob*) e)[2] = tab1[i],
       tab1[i] = e;
 
   gettbl(t)->cap = cap1;
@@ -192,21 +193,21 @@ static ob tbl_set_s(la v, ob t, ob k, ob x) {
   tbl y;
   ob e = tbl_ent(v, t, k);
   size_t i = tbl_idx(gettbl(t)->cap, hash(v, k));
-  if (!nilp(e)) return ptr(e)[1] = x;
+  if (!nilp(e)) return ((ob*) e)[1] = x;
   with(t, with(k, with(x, e = (ob) mkmo(v, 3))));
   if (!e) return 0;
   y = gettbl(t),
-  ptr(e)[0] = k,
-  ptr(e)[1] = x,
-  ptr(e)[2] = (ob) y->tab[i],
+  ((ob*) e)[0] = k,
+  ((ob*) e)[1] = x,
+  ((ob*) e)[2] = (ob) y->tab[i],
   y->tab[i] = (ob) e,
   y->len += 1;
   return x; }
 
 static ob tks_j(la v, ob e, ob l) {
   if (nilp(e)) return l;
-  ob x = R(e)[0];
-  with(x, l = tks_j(v, R(e)[2], l));
+  ob x = ((ob*) e)[0];
+  with(x, l = tks_j(v, ((ob*) e)[2], l));
   return l ? pair(v, x, l) : 0; }
 
 static ob tks_i(la v, ob t, size_t i) {
@@ -223,9 +224,9 @@ static ob tblss(la v, intptr_t i, intptr_t l) {
     tblss(v, i + 2, l); }
 
 static ob tbl_ent_(la v, ob e, ob k) {
-  return nilp(e) || eql(R(e)[0], k) ?
+  return nilp(e) || eql(((ob*) e)[0], k) ?
     e :
-    tbl_ent_(v, R(e)[2], k); }
+    tbl_ent_(v, ((ob*) e)[2], k); }
 
 static ob tbl_ent(la v, ob u, ob k) {
   tbl t = gettbl(u);

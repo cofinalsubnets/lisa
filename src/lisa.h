@@ -140,7 +140,6 @@ extern struct prim primitives[];
 #define G(_) (((mo)(_))->ll)
 
 #define ptr(x) ((ob*)(x))
-#define R ptr
 #define T putnum(-1)
 #define LEN(ary) (sizeof(ary)/sizeof(*ary))
 
@@ -155,13 +154,13 @@ ob nope(la, const char*, ...) NoInline; // runtime error
 #define TagBits 3
 #define TagMask ((1<<TagBits)-1)
 #define TypeOf(_) (((ob)(_))&TagMask)
-enum builtin_type { Hom, Num, Two, Sym, Tbl, };
+enum builtin_type { Hom, Num, Two, Sym, };
 #define getnum(_) ((ob)(_)>>TagBits)
 #define putnum(_) (((ob)(_)<<TagBits)|Num)
 #define getsym(_) ((sym)((ob)(_)^Sym))
 #define putsym(_) ((ob)(_)^Sym)
-#define gettbl(_) ((tbl)((ob)(_)^Tbl))
-#define puttbl(_) ((ob)(_)^Tbl)
+#define gettbl(_) ((tbl)((ob)(_)))
+#define puttbl(_) ((ob)(_))
 #define gettwo(_) ((two)((ob)(_)^Two))
 #define puttwo(_) ((ob)(_)^Two)
 

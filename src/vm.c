@@ -418,7 +418,7 @@ bool homp(ob _) { return TypeOf(_) == Hom; }
 bool twop(ob _) { return TypeOf(_) == Two; }
 bool symp(ob _) { return TypeOf(_) == Sym; }
 bool tblp(ob _) {
-  return TypeOf(_) == Tbl; }
-  //return homp(_) && GF(_) == (vm*) mtbl_tbl; }
+  //return TypeOf(_) == Tbl; }
+  return homp(_) && GF(_) == (vm*) mtbl_tbl; }
 bool strp(ob _) {
   return homp(_) && GF(_) == (vm*) mtbl_str; }
