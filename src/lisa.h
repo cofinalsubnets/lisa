@@ -158,8 +158,8 @@ ob nope(la, const char*, ...) NoInline; // runtime error
 enum builtin_type { Hom, Num, Two, Str, Sym, Tbl, };
 #define getnum(_) ((ob)(_)>>TagBits)
 #define putnum(_) (((ob)(_)<<TagBits)|Num)
-#define getstr(_) ((str)((ob)(_)^Str))
-#define putstr(_) ((ob)(_)^Str)
+#define getstr(_) ((str)((ob)(_)))
+#define putstr(_) ((ob)(_))
 #define gethom(_) ((mo)(_))
 #define puthom(_) ((ob)(_))
 #define getsym(_) ((sym)((ob)(_)^Sym))
@@ -210,6 +210,9 @@ extern struct mtbl
   s_mtbl_tbl,
   s_mtbl_sym;
 #define mtbl_str (&s_mtbl_str)
+#define mtbl_two (&s_mtbl_two)
+#define mtbl_sym (&s_mtbl_sym)
+#define mtbl_tbl (&s_mtbl_tbl)
 
 static Inline size_t ror(size_t x, size_t n) {
   return (x<<((8*sizeof(size_t))-n))|(x>>n); }

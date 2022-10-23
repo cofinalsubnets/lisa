@@ -118,7 +118,7 @@ Vm(rec) {
   fp->clos = nil;
   return ApY(xp, nil); }
 
-Vm(disp) { return ApY(((mtbl) GF(ip))->does, xp); }
+Vm(disp) { return ApC(((mtbl) GF(ip))->does, xp); }
 
 ////
 /// Load Instructions
@@ -416,8 +416,9 @@ Vm(nom_err) {
 // might need pointers to them.
 bool nilp(ob _) { return _ == nil; }
 bool nump(ob _) { return TypeOf(_) == Num; }
-bool strp(ob _) { return TypeOf(_) == Str; }
 bool homp(ob _) { return TypeOf(_) == Hom; }
 bool twop(ob _) { return TypeOf(_) == Two; }
 bool tblp(ob _) { return TypeOf(_) == Tbl; }
 bool symp(ob _) { return TypeOf(_) == Sym; }
+bool strp(ob _) {
+  return homp(_) && GF(_) == (vm*) mtbl_str; }
