@@ -50,13 +50,12 @@ Vm(vararg) {
   // slot to hold the nil.
   if (!vdic) {
     Have1();
-    return
-      cpyw((ob*)fp - 1, fp, Width(fr) + getnum(fp->argc)),
-      fp = (fr) ((ob*) fp - 1),
-      sp = (ob*) fp,
-      fp->argc += sizeof(ob),
-      fp->argv[reqd] = nil,
-      ApN(2, xp); }
+    cpyw((ob*)fp - 1, fp, Width(fr) + getnum(Argc));
+    fp = (fr) ((ob*) fp - 1);
+    sp = (ob*) fp;
+    Argc += sizeof(ob);
+    Argv[reqd] = nil;
+    return ApN(2, xp); }
   // in this case we just keep the existing slots.
   // the path is knowable at compile time in many cases
   // so maybe vararg should be two or more different
@@ -128,9 +127,9 @@ Vm(imm) { return xp = (ob) ip[1].ll, ApN(2, xp); }
 // pointer arithmetic works because fixnums are premultiplied by W
 
 // function arguments
-Vm(arg) { return xp = Ref(fp->argv), ApN(2, xp); }
-Vm(arg0) { return ApN(1, fp->argv[0]); }
-Vm(arg1) { return ApN(1, fp->argv[1]); }
+Vm(arg) { return xp = Ref(Argv), ApN(2, xp); }
+Vm(arg0) { return ApN(1, Argv[0]); }
+Vm(arg1) { return ApN(1, Argv[1]); }
 
 // local variables
 Vm(loc) { return xp = Ref(Locs), ApN(2, xp); }
@@ -313,14 +312,26 @@ static NoInline bool eql_(ob a, ob b) {
     case Two: return eql_two(gettwo(a), gettwo(b));
     case Str: return eql_str(getstr(a), getstr(b));
     default: return false; } }
+
 bool eql(ob a, ob b) {
   return a == b ? true : TypeOf(a) != TypeOf(b) ? false : eql_(a, b); }
 
-Vm(lt) { return xp = *sp++ < xp ? xp : nil, ApN(1, xp); }
-Vm(lteq) { return xp = *sp++ <= xp ? xp : nil, ApN(1, xp); }
-Vm(eq) { return xp = eql(xp, *sp++) ? T : nil, ApN(1, xp); }
-Vm(gteq) { return xp = *sp++ >= xp ? xp : nil, ApN(1, xp); }
-Vm(gt) { return xp = *sp++ > xp ? xp : nil, ApN(1, xp); }
+// XXX FIXME returning xp is wrong now that 0 = nil
+Vm(lt) {
+  xp = *sp++ < xp ? xp : nil;
+  return ApN(1, xp); }
+Vm(lteq) {
+  xp = *sp++ <= xp ? xp : nil;
+  return ApN(1, xp); }
+Vm(eq) {
+  xp = eql(xp, *sp++) ? T : nil;
+  return ApN(1, xp); }
+Vm(gteq) {
+  xp = *sp++ >= xp ? xp : nil;
+  return ApN(1, xp); }
+Vm(gt) {
+  xp = *sp++ > xp ? xp : nil;
+  return ApN(1, xp); }
 
 // FIXME remove macros
 #define LT(a,b) (a<b)
@@ -328,7 +339,7 @@ Vm(gt) { return xp = *sp++ > xp ? xp : nil, ApN(1, xp); }
 #define GE(a,b) (a>=b)
 #define GT(a,b) (a>b)
 #define cmp(op, n) Vm(n##_u) {\
-  ob n = getnum(fp->argc), *xs = fp->argv, m, *l;\
+  ob n = getnum(Argc), *xs = Argv, m, *l;\
   switch (n) {\
     case 0: return ApC(ret, nil);\
     default: for (l = xs + n - 1, m = *xs; xs < l; m= *++xs)\
@@ -340,7 +351,7 @@ cmp(LT, lt) cmp(LE, lteq) cmp(GE, gteq) cmp(GT, gt) cmp(eql, eq)
 #define Tp(t)\
   Vm(t##pp) { return ApN(1, (t##p(xp)?T:nil)); }\
   Vm(t##p_u) {\
-    for (ob *xs = fp->argv, *l = xs + getnum(fp->argc); xs < l;)\
+    for (ob *xs = Argv, *l = xs + getnum(Argc); xs < l;)\
       if (!t##p(*xs++)) return ApC(ret, nil);\
     return ApC(ret, T); }
 Tp(num) Tp(hom) Tp(two) Tp(sym) Tp(str) Tp(tbl) Tp(nil)
@@ -349,7 +360,7 @@ Tp(num) Tp(hom) Tp(two) Tp(sym) Tp(str) Tp(tbl) Tp(nil)
 //
 // args: test, yes addr, yes val, no addr, no val
 #define Br(nom, test, a, x, b, y) Vm(nom) {\
-  return ApY(test ? (ob) a(ip) : (ob) b(ip), x); }
+  return ApY((test) ? (ob) a(ip) : (ob) b(ip), x); }
 // combined test/branch instructions
 Br(branch, xp != nil, GF, xp, FF, xp)
 Br(barnch, xp != nil, FF, xp, GF, xp)
@@ -374,7 +385,6 @@ Vm(id2) { return twop(xp) ? ApN(1, xp) : ApC(dom_err, xp); }
 Vm(arity) {
   ob reqd = (ob) ip[1].ll;
   return fp->argc >= reqd ? ApN(2, xp) : ApC(ary_err, reqd); }
-Vm(cwm_u) { return ApC(ret, v->topl); }
 
 // errors
 Vm(dom_err) { return Pack(), nope(v, "is undefined"); }

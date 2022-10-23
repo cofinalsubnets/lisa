@@ -26,7 +26,7 @@ i_internals(ninl)
 // ev must be the first item in this list!
 #define i_primitives(_) _(ev_u, "ev")\
  _(nilp_u, "nilp") _(rnd_u, "rand")\
- _(sym_u, "sym") _(cwm_u, "cwm") _(sar_u, ">>") _(sal_u, "<<")\
+ _(sym_u, "sym") _(sar_u, ">>") _(sal_u, "<<")\
  _(band_u, "&") _(bnot_u, "!") _(bor_u, "|") _(bxor_u, "^")\
  _(add_u, "+") _(hom_u, "hom") _(sub_u, "-") _(mul_u, "*")\
  _(div_u, "/") _(mod_u, "%") _(lt_u, "<") _(lteq_u, "<=")\

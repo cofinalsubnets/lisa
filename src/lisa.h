@@ -89,7 +89,6 @@ mo mkmo(la, size_t), // allocator
                //
 #define Push(...) pushs(v, __VA_ARGS__, (ob) 0)
 bool
-  define_primitives(la),
   primp(ob),
   pushs(la, ...),
   please(la, size_t), // gc interface

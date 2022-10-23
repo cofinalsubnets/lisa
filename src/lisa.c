@@ -3,6 +3,21 @@
 #include <time.h>
 #include <stdlib.h>
 
+// static table of primitive functions
+#define prim_ent(go, nom) { go, nom },
+struct prim primitives[] = { i_primitives(prim_ent) };
+
+bool primp(ob x) {
+  struct prim *_ = (struct prim*) x;
+  return _ >= primitives && _ < primitives + LEN(primitives); }
+
+static bool define_primitives(la v) {
+  struct prim *p = primitives,
+              *lim = p + LEN(primitives);
+  for (;p < lim; p++) {
+    ob z = interns(v, p->nom);
+    if (!z || !tbl_set(v, v->topl, z, (ob) p)) return false; }
+  return true; }
 // initialization helpers
 //
 // store an instruction address under a variable in the
@@ -36,6 +51,8 @@ static bool la_ini(la v) {
   v->topl = v->syms = v->xp = nil,
   setw(v->lex, nil, LexN);
 
+  ob _;
+
   bool ok =
     // global symbols // FIXME stop using these if possible
     (v->lex[Eval] = interns(v, "ev")) &&
@@ -46,8 +63,11 @@ static bool la_ini(la v) {
     (v->lex[Seq] = interns(v, ",")) &&
     (v->lex[Splat] = interns(v, ".")) &&
 
+
     // make the global namespace
-    (v->topl = table(v))
+    (v->topl = table(v)) &&
+    (_ = interns(v, "_ns")) &&
+    tbl_set(v, v->topl, _, v->topl)
     // register instruction addresses at toplevel so the
     // compiler can use them.
 #define reg_intl(a) && inst(v, "i-"#a, a)

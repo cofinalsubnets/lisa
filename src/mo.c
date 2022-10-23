@@ -104,18 +104,3 @@ Vm(seek_u) {
   TypeCheck(Argv[1], Num);
   return ApC(ret, xp + Argv[1] - Num); }
 
-// static table of primitive functions
-#define prim_ent(go, nom) { go, nom },
-struct prim primitives[] = { i_primitives(prim_ent) };
-
-bool primp(ob x) {
-  struct prim *_ = (struct prim*) x;
-  return _ >= primitives && _ < primitives + LEN(primitives); }
-
-bool define_primitives(la v) {
-  struct prim *p = primitives,
-              *lim = p + LEN(primitives);
-  for (;p < lim; p++) {
-    ob z = interns(v, p->nom);
-    if (!z || !tbl_set(v, v->topl, z, (ob) p)) return false; }
-  return true; }
