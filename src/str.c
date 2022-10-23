@@ -18,13 +18,14 @@ ob string(la v, const char* c) {
 // string instructions
 Vm(slen_u) {
   ArityCheck(1);
-  TypeCheck(Argv[0], Str);
-  return ApC(ret, putnum(getstr(Argv[0])->len-1)); }
+  xp = Argv[0];
+  Check(strp(xp));
+  return ApC(ret, putnum(getstr(xp)->len-1)); }
 
 Vm(sget_u) {
   ArityCheck(2);
-  TypeCheck(Argv[0], Str);
-  TypeCheck(Argv[1], Num);
+  Check(strp(Argv[0]));
+  Check(nump(Argv[1]));
   return ApC(ret,
     getnum(Argv[1]) < getstr(Argv[0])->len-1 ?
       putnum(getstr(Argv[0])->text[getnum(Argv[1])]) :
@@ -34,7 +35,7 @@ Vm(scat_u) {
   size_t sum = 0, i = 0, l = getnum(Argc);
   while (i < l) {
     ob x = Argv[i++];
-    TypeCheck(x, Str);
+    Check(strp(x));
     sum += getstr(x)->len - 1; }
   size_t words = Width(str) + b2w(sum+1);
   Have(words);
@@ -54,9 +55,9 @@ Vm(scat_u) {
 #define max(a,b)(a>b?a:b)
 Vm(ssub_u) {
   ArityCheck(3);
-  TypeCheck(Argv[0], Str);
-  TypeCheck(Argv[1], Num);
-  TypeCheck(Argv[2], Num);
+  Check(strp(Argv[0]));
+  Check(nump(Argv[1]));
+  Check(nump(Argv[2]));
   str src = getstr(Argv[0]);
   intptr_t lb = getnum(Argv[1]), ub = getnum(Argv[2]);
   lb = max(lb, 0);
@@ -82,7 +83,7 @@ Vm(str_u) {
   hp += words;
   for (ob x; i < bytes-1; s->text[i++] = getnum(x)) {
     x = Argv[i];
-    TypeCheck(x, Num);
+    Check(nump(x));
     if (x == N0) break; }
   s->text[i] = 0;
   s->disp = disp;

@@ -155,27 +155,21 @@ ob nope(la, const char*, ...) NoInline; // runtime error
 #define TagBits 3
 #define TagMask ((1<<TagBits)-1)
 #define TypeOf(_) (((ob)(_))&TagMask)
-enum ptr_tag { Hom, Num, Two, Str, Sym, Tbl, };
-#define putstr(_) ((ob)(_)+Str)
+enum builtin_type { Hom, Num, Two, Str, Sym, Tbl, };
 #define getnum(_) ((ob)(_)>>TagBits)
-#define putnum(_) (((ob)(_)<<TagBits)+Num)
-#define getstr(_) ((str)((_)-Str))
-#define puthom(_) ((ob)(_))
+#define putnum(_) (((ob)(_)<<TagBits)|Num)
+#define getstr(_) ((str)((ob)(_)^Str))
+#define putstr(_) ((ob)(_)^Str)
 #define gethom(_) ((mo)(_))
-#define getsym(_) ((sym)((_)-Sym))
-#define putsym(_) ((ob)(_)+Sym)
-#define gettbl(_) ((tbl)((_)-Tbl))
-#define puttbl(_) ((ob)(_)+Tbl)
-#define gettwo(_) ((two)((_)-Two))
-#define puttwo(_) ((ob)(_)+Two)
+#define puthom(_) ((ob)(_))
+#define getsym(_) ((sym)((ob)(_)^Sym))
+#define putsym(_) ((ob)(_)^Sym)
+#define gettbl(_) ((tbl)((ob)(_)^Tbl))
+#define puttbl(_) ((ob)(_)^Tbl)
+#define gettwo(_) ((two)((ob)(_)^Two))
+#define puttwo(_) ((ob)(_)^Two)
 
-static Inline bool nilp(ob _) { return _ == nil; }
-static Inline bool nump(ob _) { return TypeOf(_) == Num; }
-static Inline bool strp(ob _) { return TypeOf(_) == Str; }
-static Inline bool homp(ob _) { return TypeOf(_) == Hom; }
-static Inline bool twop(ob _) { return TypeOf(_) == Two; }
-static Inline bool tblp(ob _) { return TypeOf(_) == Tbl; }
-static Inline bool symp(ob _) { return TypeOf(_) == Sym; }
+bool nilp(ob), nump(ob), strp(ob), homp(ob), twop(ob), tblp(ob), symp(ob);
 
 static Inline size_t b2w(size_t b) {
   size_t quot = b / sizeof(ob), rem = b % sizeof(ob);

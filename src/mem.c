@@ -124,7 +124,7 @@ static clock_t copy(la v, size_t len1) {
   return t1 ? (t2 - t0) / t1 : 1; }
 
 Gc(cphom) {
-  mo src = gethom(x),
+  mo src = (mo) x,
      end = button(src),
      start = (mo) end[1].ll,
      dst = bump(v, end - start + 2),

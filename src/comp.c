@@ -123,7 +123,7 @@ static Inline ob comp_body(la v, ob*e, ob x) {
       i < 0 ?
         (ob) pb2(varg, putnum(-i-1), (mo) x) :
       x;
-  GF(button(gethom(x))) = (vm*) x;
+  GF(button((mo) x)) = (vm*) x;
   return twop(clo(*e)) ? pair(v, clo(*e), x) : x; }
 
 static ob linitp(la v, ob x, ob *d) {
@@ -156,7 +156,7 @@ static Inline ob co_tl(la v, ob* e, ob n, ob l) {
   return um, um, um, l; }
 
 static Inline ob co_t_clo(la v, ob *e, ob arg, ob seq) {
-  intptr_t i = llen(arg);
+  size_t i = llen(arg);
   mm(&arg), mm(&seq);
   if (!Push(putnum(i1d1), putnum(take), putnum(i), putnum(co_ini)))
     return um, um, 0;
@@ -404,7 +404,7 @@ Vm(ev_u) {
   // bootstrapped compiler, which is what we want?
   // seems kind of strange to need this ...
   xp = tbl_get(v, v->topl, v->lex[Eval]);
-  if (xp && homp(xp) && gethom(xp)->ll != ev_u)
+  if (xp && homp(xp) && G(xp) != ev_u)
     return ApY((mo) xp, nil);
   Pack();
   mo y = ana(v, Argv[0], putnum(ret));
