@@ -2,12 +2,16 @@
 #include "vm.h"
 #include <string.h>
 
+struct mtbl s_mtbl_str = { do_str, em_str, cp_str, hash_str };
+
+
 ob string(la v, const char* c) {
   intptr_t bs = 1 + slen(c);
   str o = cells(v, Width(str) + b2w(bs));
   if (!o) return 0;
   o->len = bs;
   o->disp = disp;
+  o->mtbl = mtbl_str;
   cpy8(o->text, c, bs);
   return putstr(o); }
 
@@ -38,6 +42,7 @@ Vm(scat_u) {
   hp += words;
   d->len = sum + 1;
   d->disp = disp;
+  d->mtbl = mtbl_str;
   d->text[sum] = 0;
   while (i) {
     str x = getstr(Argv[--i]);
@@ -63,6 +68,7 @@ Vm(ssub_u) {
   hp += words;
   dst->len = ub - lb + 1;
   dst->disp = disp;
+  dst->mtbl = mtbl_str;
   dst->text[ub - lb] = 0;
   cpy8(dst->text, src->text + lb, ub - lb);
   return ApC(ret, putstr(dst)); }
@@ -80,5 +86,31 @@ Vm(str_u) {
     if (x == N0) break; }
   s->text[i] = 0;
   s->disp = disp;
+  s->mtbl = mtbl_str;
   s->len = i+1;
   return ApC(ret, putstr(s)); }
+
+Vm(do_str) {
+  fputs(((str) ip)->text, stdout);
+  return ApC(ret, (ob) ip); }
+
+size_t hash_str(la v, ob _) {
+  str s = (str) _;
+  return hashb(s->text, s->len); }
+
+void em_str(la v, FILE *o, ob _) {
+  str s = (str) _;
+  fputc('"', o);
+  for (char *t = s->text; *t; fputc(*t++, o))
+    if (*t == '"') fputc('\\', o);
+  fputc('"', o); }
+
+ob cp_str(la v, ob _, size_t len0, ob *pool0) {
+  str src = getstr(_);
+  size_t ws = b2w(src->len);
+  str dst = bump(v, Width(str) + ws);
+  cpyw(dst, src, Width(str) + ws);
+  src->disp = (vm*) dst;
+  return (ob) dst; }
+
+

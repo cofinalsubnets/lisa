@@ -26,26 +26,25 @@
 // calling and returning
 Vm(ap_u) {
   ArityCheck(2);
-  TypeCheck(fp->argv[0], Hom);
-  ip = (mo) fp->argv[0];
-  ob x = fp->argv[1];
+  TypeCheck(Argv[0], Hom);
+  ip = (mo) Argv[0];
+  ob x = Argv[1];
   size_t adic = llen(x);
   Have(adic);
   ob off = fp->subd, rp = fp->retp;
-  sp = fp->argv + getnum(fp->argc) - adic;
+  sp = Argv + getnum(Argc) - adic;
   for (size_t j = 0; j < adic; sp[j++] = A(x), x = B(x));
-  return
-    fp = (fr) sp - 1,
-    sp = (ob*) fp,
-    fp->retp = rp,
-    fp->argc = putnum(adic),
-    fp->subd = off,
-    fp->clos = nil,
-    ApY(ip, nil); }
+  fp = (fr) sp - 1,
+  sp = (ob*) fp;
+  fp->retp = rp;
+  fp->argc = putnum(adic);
+  fp->subd = off;
+  fp->clos = nil;
+  return ApY(ip, nil); }
 
 Vm(vararg) {
   intptr_t reqd = getnum((ob) ip[1].ll),
-           vdic = getnum(fp->argc) - reqd;
+           vdic = getnum(Argc) - reqd;
   ArityCheck(reqd);
   // in this case we need to add another argument
   // slot to hold the nil.
@@ -75,44 +74,42 @@ Vm(vararg) {
 
 
 // return from a function
-Vm(ret) { return
-  ip = (mo) fp->retp,
-  sp = (ob*) ((ob) fp->argv + fp->argc - Num),
-  fp = (fr) ((ob) sp + fp->subd - Num),
-  ApY(ip, xp); }
+Vm(ret) {
+  ip = (mo) fp->retp;
+  sp = (ob*) ((ob) fp->argv + fp->argc - Num);
+  fp = (fr) ((ob) sp + fp->subd - Num);
+  return ApY(ip, xp); }
 
 // "inner" function call
 Vm(call) {
   intptr_t adic = getnum((ob) ip[1].ll),
            off = (ob*) fp - (sp + adic);
   Have(Width(fr));
-  return
-    fp = (fr) sp - 1,
-    sp = (ob*) fp,
-    fp->retp = (ob) (ip + 2),
-    fp->subd = putnum(off),
-    fp->clos = nil,
-    fp->argc = putnum(adic),
-    ApY(xp, nil); }
+  fp = (fr) sp - 1;
+  sp = (ob*) fp;
+  fp->retp = (ob) (ip + 2);
+  fp->subd = putnum(off);
+  fp->clos = nil;
+  fp->argc = putnum(adic);
+  return ApY(xp, nil); }
 
 // tail call
 Vm(rec) {
   ip = (mo) ip[1].ll;
-  if (Argc == (ob) ip) return
-    cpyw(Argv, sp, getnum((ob) ip)),
-    sp = (ob*) fp,
-    ApY(xp, nil);
-  return
-    v->xp = fp->subd,
-    v->ip = (mo) fp->retp, // save return info
-    fp = (fr) (Argv + getnum(Argc - (ob) ip)),
-    rcpyw(fp, sp, getnum((ob) ip)), // copy from high to low
-    sp = (ob*) (--fp),
-    fp->retp = (ob) v->ip,
-    fp->argc = (ob) ip,
-    fp->subd = v->xp,
-    fp->clos = nil,
-    ApY(xp, nil); }
+  if (Argc == (ob) ip) {
+    cpyw(Argv, sp, getnum((ob) ip));
+    sp = (ob*) fp;
+    return ApY(xp, nil); }
+  v->xp = fp->subd;
+  v->ip = (mo) fp->retp; // save return info
+  fp = (fr) (Argv + getnum(Argc - (ob) ip)),
+  rcpyw(fp, sp, getnum((ob) ip)); // copy from high to low
+  sp = (ob*) (--fp);
+  fp->retp = (ob) v->ip;
+  fp->argc = (ob) ip;
+  fp->subd = v->xp;
+  fp->clos = nil;
+  return ApY(xp, nil); }
 
 Vm(disp) { return ApY(((mtbl) GF(ip))->does, xp); }
 
@@ -150,23 +147,26 @@ Vm(clo1) { return ApN(1, Clos[1]); }
 // // stack push
 Vm(push) {
   Have1();
-  return *--sp = xp, ApN(1, xp); }
+  *--sp = xp;
+  return ApN(1, xp); }
 
 // dup top of stack
 Vm(dupl) {
   Have1();
-  return --sp, sp[0] = sp[1], ApN(1, xp); }
+  --sp;
+  sp[0] = sp[1];
+  return ApN(1, xp); }
 
 // set a local variable
 Vm(loc_) { return Ref(Locs) = xp, ApN(2, xp); }
 
 // set a module variable
-Vm(tbind) { ob a; return
-  a = (ob) ip[1].ll,
-  Pack(),
-  v->xp = tbl_set(v, A(a), B(a), xp),
-  Unpack(),
-  xp ? ApN(2, xp) : 0; }
+Vm(tbind) {
+  ob a = (ob) ip[1].ll;
+  Pack();
+  v->xp = tbl_set(v, A(a), B(a), xp);
+  Unpack();
+  return xp ? ApN(2, xp) : 0; }
 
 // allocate local variable array
 Vm(locals) {
@@ -194,33 +194,31 @@ Vm(latebind) {
       ptr(xp)[0] == (ob) arity &&
       ptr(ip)[3] >= ptr(xp)[1])
     xp = (ob) (ptr(xp) + 2);
-  return
-    ip[0].ll = imm,
-    ip[1].ll = (vm*) xp,
-    ApN(2, xp); }
+  ip[0].ll = imm,
+  ip[1].ll = (vm*) xp;
+  return ApN(2, xp); }
 
 // this is used to create closures.
 Vm(take) {
   ob *t, n = getnum((ob) ip[1].ll);
   Have(n + 2);
-  return
-    t = hp,
-    hp += n + 2,
-    cpyw(t, sp, n),
-    sp += n,
-    t[n] = 0,
-    t[n+1] = (ob) t,
-    ApC(ret, (ob) t); }
+  t = hp;
+  hp += n + 2;
+  cpyw(t, sp, n);
+  sp += n;
+  t[n] = 0;
+  t[n+1] = (ob) t;
+  return ApC(ret, (ob) t); }
 
-Vm(clos) { return
-  fp->clos = (ob) ip[1].ll,
-  ApY((ob) ip[2].ll, xp); }
+Vm(clos) {
+  fp->clos = (ob) ip[1].ll;
+  return ApY((ob) ip[2].ll, xp); }
 
 // finalize function instance closure
-Vm(clos1) { return
-  ip->ll = clos,
-  ip[1].ll = (vm*) xp,
-  ApY(ip, xp); }
+Vm(clos1) {
+  ip->ll = clos;
+  ip[1].ll = (vm*) xp;
+  return ApY(ip, xp); }
 
 // this function is run the first time a user
 // function with a closure is called. its
@@ -234,8 +232,8 @@ Vm(clos0) {
   ob *ec = (ob*) ip[1].ll,
      arg = ec[0],
      loc = ec[1];
-  intptr_t adic = nilp(arg) ? 0 : getnum(*(ob*)arg),
-           req = Width(fr) + adic + 1;
+  size_t adic = nilp(arg) ? 0 : getnum(*(ob*)arg),
+         req = Width(fr) + adic + 1;
   Have(req);
 
   intptr_t off = (ob*) fp - sp;
@@ -257,7 +255,7 @@ Vm(clos0) {
 // lexical environments.
 // FIXME magic numbers
 static Vm(encl) {
-  intptr_t m = getnum(fp->argc),
+  intptr_t m = getnum(Argc),
            n = m + (m ? 14 : 11);
   Have(n);
   ob x = (ob) ip[1].ll,
@@ -273,26 +271,25 @@ static Vm(encl) {
          n -= 3,
          ptr(arg)[0] = putnum(n);
          n--;
-         ptr(arg)[n+1] = fp->argv[n]); }
+         ptr(arg)[n+1] = Argv[n]); }
 
   ob *t = (ob*) block, // compiler thread closure array
      *at = t + 6; // compiler thread
 
-  return
-    t[0] = arg,
-    t[1] = xp, // Locs or nil
-    t[2] = fp->clos,
-    t[3] = B(x),
-    t[4] = 0,
-    t[5] = (ob) t,
+  t[0] = arg;
+  t[1] = xp; // Locs or nil
+  t[2] = fp->clos;
+  t[3] = B(x);
+  t[4] = 0;
+  t[5] = (ob) t;
 
-    at[0] = (ob) clos0,
-    at[1] = (ob) t,
-    at[2] = A(x),
-    at[3] = 0,
-    at[4] = (ob) at,
+  at[0] = (ob) clos0;
+  at[1] = (ob) t;
+  at[2] = A(x);
+  at[3] = 0;
+  at[4] = (ob) at;
 
-    ApN(2, (ob) at); }
+  return ApN(2, (ob) at); }
 
 Vm(encll) { return ApC(encl, (ob) Locs); }
 Vm(encln) { return ApC(encl, nil); }
@@ -308,7 +305,7 @@ Vm(jump) { return ApY((ob) ip[1].ll, xp); }
 // pointer comparisons so eql() doesn't touch the stack
 // unless it has to
 static NoInline bool eql_two(two a, two b) {
-  return eql(a->a, b->a) && eql(a->b, b->b); }
+  return eql(a->a, b->a) ? eql(a->b, b->b) : false; }
 static NoInline bool eql_str(str a, str b) {
   return a->len == b->len && 0 == scmp(a->text, b->text); }
 static NoInline bool eql_(ob a, ob b) {

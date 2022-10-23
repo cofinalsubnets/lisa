@@ -14,9 +14,6 @@ size_t llen(ob l) {
   while (twop(l)) l = B(l), i++;
   return i; }
 
-// vm functions
-#include "vm.h"
-
 Vm(car) { return ApN(1, A(xp)); }
 Vm(cdr) { return ApN(1, B(xp)); }
 

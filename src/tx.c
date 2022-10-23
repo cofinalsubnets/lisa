@@ -29,16 +29,12 @@ void tx(la v, FILE *o, ob x) {
       fprintf(o, "#tbl:%ld/%ld", t->len, t->cap);
       return; }
     case Str:
-      fputc('"', o);
-      for (char *t = getstr(x)->text; *t; fputc(*t++, o))
-        if (*t == '"') fputc('\\', o);
-      fputc('"', o);
+      em_str(v, o, (ob) getstr(x));
       return; }
   if (primp(x)) fprintf(o, "\\%s", ((struct prim*)x)->nom);
   else if (G(x) == disp) ((mtbl) GF(x))->show(v, o, x);
   else emhomn(v, o, hnom(v, x)); }
 
-#include "vm.h"
 Vm(show_u) {
   size_t i = 0, l = getnum(Argc);
   if (l) {

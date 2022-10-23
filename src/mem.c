@@ -3,14 +3,6 @@
 #include <stdlib.h>
 #include <time.h>
 
-// unchecked allocator -- make sure there's enough memory!
-static Inline void *bump(la v, size_t n) {
-  void *x = v->hp;
-  v->hp += n;
-  return x; }
-
-void *cells(la v, size_t n) {
-  return Avail >= n || please(v, n) ? bump(v, n) : 0; }
 
 #define Gc(n) NoInline ob n(la v, ob x, size_t len0, ob *pool0)
 static Gc(cp);
@@ -123,16 +115,16 @@ static clock_t copy(la v, size_t len1) {
   v->fp = (fr) ((ob*) v->fp + shift);
   CP(v->xp), CP(v->topl);
   v->ip = (mo) cp(v, (ob) v->ip, len0, pool0);
-  for (int i = 0; i < LexN; CP(v->lex[i]), i++);
+
+  for (size_t i = 0; i < LexN; CP(v->lex[i]), i++);
   for (ob *sp1 = v->sp; sp0 < top0; COPY(*sp1++, *sp0++));
   for (keep r = v->keep; r; CP(*r->it), r = r->et);
 
-  return
-    free(pool0),
-    t0 = v->t0,
-    v->t0 = t2 = clock(),
-    t1 = t2 - t1,
-    t1 ? (t2 - t0) / t1 : 1; }
+  free(pool0);
+  t0 = v->t0;
+  v->t0 = t2 = clock();
+  t1 = t2 - t1;
+  return t1 ? (t2 - t0) / t1 : 1; }
 
 Gc(cphom) {
   mo src = gethom(x),
@@ -159,6 +151,7 @@ Gc(cpstr) {
   cpyw(dst->text, src->text, ws);
   dst->len = src->len;
   dst->disp = src->disp;
+  dst->mtbl = src->mtbl;
   return (ob) (src->disp = (vm*) putstr(dst)); }
 
 Gc(cpsym) {
@@ -205,10 +198,10 @@ static Gc(cp) {
     case Str: return cpstr(v, x, len0, pool0);
     case Tbl: return cptbl(v, x, len0, pool0);
     case Sym: return cpsym(v, x, len0, pool0); }
-  ob y = *ptr(x);
-  if (fresh(y)) return y;
+  ob y = (ob) G(x);
+  if (!nump(y) && livep(v, y)) return y;
   if ((vm*) y == disp) return
-    ((mtbl) ptr(x)[1])->copy(v, x, len0, pool0);
+    ((mtbl) GF(x))->copy(v, x, len0, pool0);
   return cphom(v, x, len0, pool0); }
 
 #include "vm.h"
