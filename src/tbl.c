@@ -1,8 +1,12 @@
 #include "lisa.h"
 #include "vm.h"
+
 // hash tables
 // some of the worst code is here :(
-//
+
+
+struct mtbl s_mtbl_tbl = { do_tbl, em_tbl, cp_tbl, hash_tbl };
+
 static Inline size_t tbl_idx(size_t cap, size_t co) {
   return co & ((1 << cap) - 1); }
 
@@ -218,3 +222,33 @@ static ob tbl_ent(la v, ob u, ob k) {
   tbl t = gettbl(u);
   u = t->tab[tbl_idx(t->cap, hash(v, k))];
   return tbl_ent_(v, u, k); }
+
+Vm(do_tbl) {
+  tbl t = (tbl) ip;
+  size_t a = getnum(Argc);
+  switch (a) {
+    case 0: return ApC(ret, putnum(t->len));
+    case 1:
+      xp = tbl_get(v, (ob) ip, Argv[0]);
+      return ApC(ret, xp ? xp : nil);
+    default:
+      Pack();
+      v->xp = tblss(v, 1, a);
+      Unpack();
+      return ApC(xp ? ret : oom_err, xp); } }
+
+Gc(cp_tbl) {
+  tbl src = gettbl(x);
+  size_t src_cap = src->cap;
+  tbl dst = bump(v, Width(tbl) + (1l<<src_cap));
+  dst->len = src->len;
+  dst->cap = src_cap;
+  dst->tab = (ob*) (dst + 1);
+  ob *src_tab = src->tab;
+  src->tab = (ob*) puttbl(dst);
+  dst->tab = (ob*) cp(v, (ob) src_tab, len0, pool0);
+  return puttbl(dst); }
+
+void em_tbl(la v, FILE *o, ob x) {
+  tbl t = gettbl(x);
+  fprintf(o, "#tbl:%ld/%ld", t->len, 1l<<t->cap); }

@@ -3,7 +3,7 @@
 // these are vm functions used by C but not lisp.
 #define cfns(_)\
   _(gc) _(dom_err) _(nom_err) _(oom_err) _(ary_err)\
-  _(disp) _(clos) _(clos0) _(clos1)
+  _(disp) _(clos) _(clos0) _(clos1) _(do_id)
 cfns(ninl)
 #undef cfns
 

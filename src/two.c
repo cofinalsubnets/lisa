@@ -43,3 +43,22 @@ Vm(cons_u) {
   xp = puttwo(hp);
   hp += 2;
   return ApC(ret, xp); }
+
+Vm(do_two) {
+  xp = Argc == putnum(0) ? A(ip) : B(ip);
+  return ApC(ret, xp); }
+
+Gc(cp_two) {
+  two src = gettwo(x), dst;
+  dst = bump(v, Width(two));
+  dst->a = src->a;
+  src->a = puttwo(dst);
+  dst->b = cp(v, src->b, len0, pool0);
+  dst->a = cp(v, dst->a, len0, pool0);
+  return puttwo(dst); }
+
+void em_two(la v, FILE *o, ob x) {
+  for (fputc('(', o);; fputc(' ', o)) {
+    tx(v, o, A(x));
+    if (!twop(x = B(x))) break; }
+  fputc(')', o); }

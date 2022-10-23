@@ -1,6 +1,8 @@
 #include "lisa.h"
 #include "vm.h"
 #include <string.h>
+
+struct mtbl s_mtbl_sym = { do_id, em_sym, cp_sym, hash_sym };
 //symbols
 
 // FIXME this is bad
@@ -50,3 +52,24 @@ Vm(ystr_u) {
 ob interns(la v, const char *s) {
   ob _ = string(v, s);
   return _ ? intern(v, _) : 0; }
+
+Gc(cp_sym) {
+  sym src = getsym(x), dst;
+  ob nom = src->nom;
+  if (nilp(nom)) {
+    dst = bump(v, Width(sym));
+    cpyw(dst, src, Width(sym)); }
+  else {
+    x = cp(v, nom, len0, pool0);
+    dst = getsym(sskc(v, &v->syms, x)); }
+  return src->nom = putsym(dst); }
+
+size_t hash_sym(la v, ob x) { return getsym(x)->code; }
+
+void em_sym(la v, FILE *o, ob x) {
+  sym y = getsym(x);
+  strp(y->nom) ?
+    fputs(getstr(y->nom)->text, o) :
+    fprintf(o, "#sym@%lx", (long) y); }
+
+Vm(do_id) { return ApC(ret, (ob) ip); }

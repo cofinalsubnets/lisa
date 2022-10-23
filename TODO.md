@@ -32,6 +32,17 @@ it would make sense to do this after adding gc stats and
 benchmarks. fibonacci numbers would give a gentler memory
 curve than powers of 2.
 
+## add missing functionality
+- dynamic arrays
+- continuations 
+- error handling
+- finalizers
+- shell functions
+- file & network i/o
+
+## use hash table for internal symbols
+instead of the current binary tree.
+
 ## better hashing
 right now hashing performance on functions and esp. hash
 tables is very poor. also the hashing algorithm is totally
@@ -41,3 +52,5 @@ ad hoc and untested.
 and link with main executable. this also means choosing a
 client API.
 
+## static type inference / checking
+use k2 code for this.

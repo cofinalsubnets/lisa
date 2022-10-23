@@ -6,23 +6,26 @@
 // thanks !!
 
 typedef intptr_t ob;
-
 typedef struct la *la; // what lists act on
-// frame pointer
-typedef struct fr { ob clos, retp, subd, argc, argv[]; } *fr;
+typedef struct fr { // call frame
+  ob clos, retp, subd, argc, argv[]; } *fr;
 typedef struct mo *mo; // procedures
-#define Vm(n, ...) ob n(la v, ob xp, mo ip, ob *hp, ob *sp, fr fp)
+#define Vm(n, ...)\
+  ob n(la v, ob xp, mo ip, ob *hp, ob *sp, fr fp)
 typedef Vm(vm);
-struct mo { vm *ll; };
+#define Gc(n) ob n(la v, ob x, size_t len0, ob *pool0)
+Gc(cp);
 
 // TODO include type data
 typedef struct mtbl {
   vm *does;
-  void (*show)(la, FILE*, ob);
+  void (*emit)(la, FILE*, ob);
   ob (*copy)(la, ob, size_t, ob*);
   size_t (*hash)(la, ob);
   // tbl dyn; // TODO everything else; user methods
 } *mtbl;
+
+struct mo { vm *ll; };
 
 // pairs
 typedef struct two { ob a, b; } *two;
@@ -32,20 +35,27 @@ typedef struct str { vm *disp; mtbl mtbl; size_t len; char text[]; } *str;
 // TODO pre-hash strings for faster lookup & comparison
 
 // symbols
-typedef struct sym { ob nom, code, l, r; } *sym;
-// FIXME this is a silly way to do internal symbols
+// FIXME this is a silly way to store internal symbols
 // - it's slower than a hash table
 // - anonymous symbols waste 2 words
+typedef struct sym { ob nom, code, l, r; } *sym;
 
 // hash tables
 typedef struct tbl { ob *tab; size_t len, cap; } *tbl;
-
 
 // grammar symbols
 enum lex { Def, Cond, Lamb, Quote, Seq, Splat, Eval, LexN };
 
 // linked list for gc protection
 typedef struct keep { ob *it; struct keep *et; } *keep;
+
+enum la_err {
+  NoError,
+  SyntaxError,
+  DomainError,
+  SystemError,
+  OutOfBounds,
+  OutOfMemory, };
 
 struct la {
   // vm state -- kept in CPU registers most of the time
@@ -58,12 +68,9 @@ struct la {
 
   // memory state
   keep keep; // list of C stack addresses to copy on gc
-  intptr_t t0, // gc timestamp, governs len
-           len, // memory pool size
-           *pool; // memory pool
-
-  // other runtime state
-  ob topl,
+  size_t t0, len; // memory pool size
+  ob *pool, // memory pool
+     topl, // global namespace
      syms, // internal symbols
      rand, // random seed
      lex[LexN]; }; // grammar symbols
@@ -79,8 +86,10 @@ ob table(la),
    tbl_get(la, ob, ob);
 
 // strings & symbols
-ob string(la, const char*), intern(la, ob), interns(la, const char*),
-  sskc(la, ob*, ob); // FIXME a symbol-interning function that should be private
+ob string(la, const char*),
+   intern(la, ob),
+   interns(la, const char*),
+   sskc(la, ob*, ob); // FIXME a symbol-interning function that should be private
 
 // functions
 mo mkmo(la, size_t), // allocator
@@ -89,12 +98,12 @@ mo mkmo(la, size_t), // allocator
                //
 #define Push(...) pushs(v, __VA_ARGS__, (ob) 0)
 bool
-  primp(ob),
-  pushs(la, ...),
+  primp(ob), // is it a primitive function?
+  pushs(la, ...), // push onto stack
   please(la, size_t), // gc interface
   eql(ob, ob); // logical equality
 
-ob hnom(la, ob); // FIXME try to get function name
+ob hnom(la, ob); // try to get function name FIXME don't expose
 ob rx(la, FILE*); // read sexp
 void tx(la, FILE*, ob); // write sexp
 
@@ -121,12 +130,11 @@ extern struct prim primitives[];
 #define AB(o) A(B(o))
 #define BA(o) B(A(o))
 #define BB(o) B(B(o))
-#define Avail (v->sp-v->hp)
-#define mm(r) ((v->keep=&((struct keep){(r),v->keep})))
-#define um (v->keep=v->keep->et)
-#define with(y,...) (mm(&(y)),(__VA_ARGS__),um)
+#define Avail (v->sp - v->hp)
+#define mm(r) ((v->keep = &((struct keep){(r), v->keep})))
+#define um (v->keep = v->keep->et)
+#define with(y,...) (mm(&(y)), (__VA_ARGS__), um)
 #define Width(t) b2w(sizeof(struct t))
-
 
 #define F(_) ((mo)(_)+1)
 #define G(_) (((mo)(_))->ll)
@@ -175,7 +183,7 @@ static Inline size_t b2w(size_t b) {
 
 // this can give a false positive if x is a fixnum
 static Inline bool livep(la v, ob x) {
-  return (ob*)x >= v->pool && (ob*)x < v->pool + v->len; }
+  return (ob*) x >= v->pool && (ob*) x < v->pool + v->len; }
 
 // unchecked allocator -- make sure there's enough memory!
 static Inline void *bump(la v, size_t n) {
@@ -207,4 +215,4 @@ extern struct mtbl
   s_mtbl_str,
   s_mtbl_tbl,
   s_mtbl_sym;
-#define mtbl_str NULL
+#define mtbl_str (&s_mtbl_str)

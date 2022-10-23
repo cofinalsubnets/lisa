@@ -3,9 +3,6 @@
 #include <stdlib.h>
 #include <time.h>
 
-
-#define Gc(n) NoInline ob n(la v, ob x, size_t len0, ob *pool0)
-static Gc(cp);
 static clock_t copy(la, size_t);
 
 // please : u1 la size_t
@@ -171,7 +168,7 @@ Gc(cptbl) {
   tbl src = gettbl(x);
   if (fresh(src->tab)) return (ob) src->tab;
   size_t src_cap = src->cap;
-  tbl dst = bump(v, Width(tbl));
+  tbl dst = bump(v, Width(tbl) + (1l<<src->cap));
   dst->len = src->len;
   dst->cap = src_cap;
   dst->tab = (ob*) (dst + 1);
@@ -191,7 +188,7 @@ Gc(cptwo) {
   return puttwo(dst); }
 
 #define stale(o) inb((ob*)(o),pool0,pool0+len0)
-static Gc(cp) {
+Gc(cp) {
   if (nump(x) || !stale(x)) return x;
   switch (TypeOf(x)) {
     case Two: return cptwo(v, x, len0, pool0);

@@ -344,22 +344,21 @@ Co(co_x, ob x) { return
   Push(putnum(imm), x) ? i1d1(v, e, m) : 0; }
 
 Co(co_q, ob x) { return
-  co_x(v, e, m, twop(B(x)) ? AB(x) : B(x)); }
+  co_x(v, e, m, twop(x) ? A(x) : x); }
 
-Co(co_se, ob x) { return
-  x = B(x),
-  x = twop(x) ? x : pair(v, x, nil),
-  x = x ? seq_mo_loop(v, e, x) : x,
-  x ? pull(v, e, m) : 0; }
+Co(co_se, ob x) {
+  x = twop(x) ? x : pair(v, x, nil);
+  x = x ? seq_mo_loop(v, e, x) : x;
+  return x ? pull(v, e, m) : 0; }
 
 Co(co_2, ob x) {
   ob z = A(x);
   if (symp(z)) {
-    if (z == v->lex[Quote]) return co_q(v, e, m, x);
+    if (z == v->lex[Quote]) return co_q(v, e, m, B(x));
     if (z == v->lex[Cond]) return co_p(v, e, m, x);
     if (z == v->lex[Lamb]) return co_t(v, e, m, x);
     if (z == v->lex[Def]) return co_let(v, e, m, x);
-    if (z == v->lex[Seq]) return co_se(v, e, m, x); }
+    if (z == v->lex[Seq]) return co_se(v, e, m, B(x)); }
   return co_ap(v, e, m, A(x), B(x)); }
 
 Co(i1d0) {
