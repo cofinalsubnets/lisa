@@ -13,22 +13,22 @@ ob string(la v, const char* c) {
   o->disp = disp;
   o->mtbl = mtbl_str;
   cpy8(o->text, c, bs);
-  return putstr(o); }
+  return (ob) o; }
 
 // string instructions
 Vm(slen_u) {
   ArityCheck(1);
   xp = Argv[0];
   Check(strp(xp));
-  return ApC(ret, putnum(getstr(xp)->len-1)); }
+  return ApC(ret, putnum(((str) xp)->len-1)); }
 
 Vm(sget_u) {
   ArityCheck(2);
   Check(strp(Argv[0]));
   Check(nump(Argv[1]));
   return ApC(ret,
-    getnum(Argv[1]) < getstr(Argv[0])->len-1 ?
-      putnum(getstr(Argv[0])->text[getnum(Argv[1])]) :
+    getnum(Argv[1]) < ((str) Argv[0])->len-1 ?
+      putnum(((str) Argv[0])->text[getnum(Argv[1])]) :
       nil); }
 
 Vm(scat_u) {
@@ -36,7 +36,7 @@ Vm(scat_u) {
   while (i < l) {
     ob x = Argv[i++];
     Check(strp(x));
-    sum += getstr(x)->len - 1; }
+    sum += ((str) x)->len - 1; }
   size_t words = Width(str) + b2w(sum+1);
   Have(words);
   str d = (str) hp;
@@ -46,10 +46,10 @@ Vm(scat_u) {
   d->mtbl = mtbl_str;
   d->text[sum] = 0;
   while (i) {
-    str x = getstr(Argv[--i]);
+    str x = ((str) Argv[--i]);
     sum -= x->len - 1;
     cpy8(d->text+sum, x->text, x->len - 1); }
-  return ApC(ret, putstr(d)); }
+  return ApC(ret, (ob) d); }
 
 #define min(a,b)(a<b?a:b)
 #define max(a,b)(a>b?a:b)
@@ -58,7 +58,7 @@ Vm(ssub_u) {
   Check(strp(Argv[0]));
   Check(nump(Argv[1]));
   Check(nump(Argv[2]));
-  str src = getstr(Argv[0]);
+  str src = ((str) Argv[0]);
   intptr_t lb = getnum(Argv[1]), ub = getnum(Argv[2]);
   lb = max(lb, 0);
   ub = min(ub, src->len-1);
@@ -72,7 +72,7 @@ Vm(ssub_u) {
   dst->mtbl = mtbl_str;
   dst->text[ub - lb] = 0;
   cpy8(dst->text, src->text + lb, ub - lb);
-  return ApC(ret, putstr(dst)); }
+  return ApC(ret, (ob) dst); }
 
 Vm(str_u) {
   size_t i = 0,
@@ -89,25 +89,25 @@ Vm(str_u) {
   s->disp = disp;
   s->mtbl = mtbl_str;
   s->len = i+1;
-  return ApC(ret, putstr(s)); }
+  return ApC(ret, (ob) s); }
 
 Vm(do_str) {
   fputs(((str) ip)->text, stdout);
   return ApC(ret, (ob) ip); }
 
 size_t hash_str(la v, ob _) {
-  str s = getstr(_);
+  str s = (str) _;
   return hashb(s->text, s->len); }
 
 void em_str(la v, FILE *o, ob _) {
-  str s = getstr(_);
+  str s = (str) _;
   fputc('"', o);
   for (char *t = s->text; *t; fputc(*t++, o))
     if (*t == '"') fputc('\\', o);
   fputc('"', o); }
 
 ob cp_str(la v, ob _, size_t len0, ob *pool0) {
-  str src = getstr(_);
+  str src = (str) _;
   size_t ws = b2w(src->len);
   str dst = bump(v, Width(str) + ws);
   cpyw(dst, src, Width(str) + ws);

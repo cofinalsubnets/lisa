@@ -34,10 +34,10 @@ mo button(mo k) { return G(k) ? button(F(k)) : k; }
 
 // try to get the name of a function
 ob hnom(la v, ob x) {
-  vm *k = gethom(x)->ll;
+  vm *k = ((mo) x)->ll;
   if (k == clos || k == clos0 || k == clos1)
-    return hnom(v, (ob) gethom(x)[2].ll);
-  ob* h = (ob*) gethom(x);
+    return hnom(v, (ob) G(FF(x)));
+  ob* h = (ob*) x;
   while (*h) h++;
   x = h[-1];
   int inb = (ob*) x >= v->pool && (ob*) x < v->pool+v->len;
@@ -91,12 +91,12 @@ Vm(emi_u) {
 Vm(peeki_u) {
   ArityCheck(1);
   TypeCheck(xp = Argv[0], Hom);
-  return ApC(ret, putnum(gethom(xp)->ll)); }
+  return ApC(ret, putnum(G(xp))); }
 
 Vm(peekx_u) {
   ArityCheck(1);
   TypeCheck(xp = Argv[0], Hom);
-  return ApC(ret, (ob) gethom(xp)->ll); }
+  return ApC(ret, (ob) G(xp)); }
 
 Vm(seek_u) {
   ArityCheck(2);

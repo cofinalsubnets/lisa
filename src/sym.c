@@ -18,7 +18,7 @@ ob sskc(la v, ob *y, ob x) {
   int i; sym z; return
     !nilp(*y) ?
       (z = getsym(*y),
-       i = scmp(getstr(z->nom)->text, getstr(x)->text),
+       i = scmp(((str) z->nom)->text, ((str) x)->text),
        i == 0 ? *y : sskc(v, i < 0 ? &z->r : &z->l, x)) :
     // FIXME the caller must ensure Avail >= Width(sym)
     // (because GC here would void the tree)
@@ -69,8 +69,9 @@ size_t hash_sym(la v, ob x) { return getsym(x)->code; }
 
 void em_sym(la v, FILE *o, ob x) {
   sym y = getsym(x);
-  strp(y->nom) ?
-    fputs(getstr(y->nom)->text, o) :
+  x = y->nom;
+  strp(x) ?
+    fputs(((str)x)->text, o) :
     fprintf(o, "#sym@%lx", (long) y); }
 
 Vm(do_id) { return ApC(ret, (ob) ip); }

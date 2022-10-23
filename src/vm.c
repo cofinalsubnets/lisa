@@ -196,18 +196,16 @@ Vm(locals) {
   return ApN(2, xp); }
 
 // late binding
-// long b/c it does the "static" type and arity checks
-// that would have been done by the compiler if the function
-// had been bound early.
+// TODO dynamic type checking here
 Vm(late) {
-  ob w = (ob) GF(ip), d = AB(w), typ = A(w) >> TagBits;
-  xp = BB(w);
+  ob w = (ob) GF(ip), d = A(w);
+  xp = B(w);
   w = tbl_get(v, d, xp);
   if (!w) return ApC(nom_err, xp);
-  if (typ != -1) TypeCheck(w, typ);
   xp = w;
   // omit the arity check if possible
-  if ((ip[2].ll == call || ip[2].ll == rec) && // xp will be a hom
+  vm *n = G(FF(ip));
+  if ((n == call || n == rec) && // xp will be a hom
       ptr(xp)[0] == (ob) arity &&
       ptr(ip)[3] >= ptr(xp)[1])
     xp = (ob) (ptr(xp) + 2);
@@ -327,7 +325,7 @@ static NoInline bool eql_str(str a, str b) {
   return a->len == b->len && 0 == scmp(a->text, b->text); }
 static NoInline bool eql_(ob a, ob b) {
   if (twop(a)) return eql_two(gettwo(a), gettwo(b));
-  if (strp(a)) return eql_str(getstr(a), getstr(b));
+  if (strp(a)) return eql_str((str) a, (str) b);
   return false; }
 
 bool eql(ob a, ob b) {
@@ -410,7 +408,7 @@ Vm(ary_err) { return Pack(), nope(v, "takes %d parameters", getnum(xp)); }
 Vm(nom_err) {
   xp = getsym(xp)->nom;
   return Pack(),
-    nope(v, "referenced free variable `%s'", nilp(xp) ? 0 : getstr(xp)->text); }
+    nope(v, "referenced free variable `%s'", nilp(xp) ? 0 : ((str) xp)->text); }
 
 // these should hopefully almost always be inlined but we
 // might need pointers to them.

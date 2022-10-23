@@ -300,8 +300,7 @@ Co(co_var, ob x) {
   if (y == putnum(Here)) return co_x(v, e, m, B(q)) ;
   if (y == putnum(Wait)) return
     (x = pair(v, B(q), x)) &&
-    (with(x, y = (ob) pull(v, e, m+2)), y) &&
-    (with(y, x = pair(v, putnum(-1), x)), x) ?
+    (with(x, y = (ob) pull(v, e, m+2)), y) ?
       pb2(late, x, (mo) y) : 0;
 
   if (B(q) == *e) return

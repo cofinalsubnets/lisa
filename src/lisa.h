@@ -158,10 +158,6 @@ ob nope(la, const char*, ...) NoInline; // runtime error
 enum builtin_type { Hom, Num, Two, Sym, Tbl, };
 #define getnum(_) ((ob)(_)>>TagBits)
 #define putnum(_) (((ob)(_)<<TagBits)|Num)
-#define getstr(_) ((str)((ob)(_)))
-#define putstr(_) ((ob)(_))
-#define gethom(_) ((mo)(_))
-#define puthom(_) ((ob)(_))
 #define getsym(_) ((sym)((ob)(_)^Sym))
 #define putsym(_) ((ob)(_)^Sym)
 #define gettbl(_) ((tbl)((ob)(_)^Tbl))

@@ -269,13 +269,6 @@
 
    ) (: ; new let expn makes sure ^^^ exist & don't make a closure vvv
 
- (type-sym x) (?
-  (homp x) 'hom (nump x) 'num
-  (twop x) 'two
-  (symp x) 'sym (strp x) 'str
-  (tblp x) 'tbl (fail))
-
-
  ; this function creates a new lexical environment.
  ; if the second argument (the parent scope) is nil,
  ; then the expression is compiled in the global scope.
@@ -538,7 +531,14 @@
  ((xd x k) e m) (emx x (k e (+ m 1)))
 
  (emf i h) ((? (: q (tget fuse i)) q emi) i h)
- (Im x k) (xc i-imm (xd x (-> (type-sym x) k)))
+
+ (Im x k) (:
+  (type-sym x) (?
+   (homp x) 'hom (nump x) 'num
+   (twop x) 'two
+   (symp x) 'sym (strp x) 'str
+   (tblp x) 'tbl)
+  (xc i-imm (xd x (-> (type-sym x) k))))
 
  ; these make functions that do certain side effects
  ; with env stack structures during code generation:
@@ -563,7 +563,7 @@
   (produces t h)
    (? (~ (: q (consumes h))) h
       (= t q) (produces t (seek h 1))
-      (fail))
+      (fail)) ; type error
   (co k (? t (cu produces t) id)))
 
  (consumes h) (: i (peeki h) (?
@@ -632,20 +632,8 @@
     (= z ,) (seq (B x) k)
     (app z (B x) k))))
 
-  (type-sym-num x) (?
-   (= x 'hom) 0
-   (= x 'num) 1
-   (= x 'two) 2
-   (= x 'sym) 3
-   (= x 'tbl) 4
-   -1)
-
   ((symb x k) e m) (:
-   (late d) (:
-    h (k e (+ m 2))
-    t (consumes h)
-    c (type-sym-num t) ; get the runtime type tag
-    (emf i-late (emx (X c (X d x)) (? t (seek h 1) h))))
+   (late d) (emf i-late (emx (X d x) (k e (+ m 2))))
 
    s (A (: r (look e x))) (?
     (= s 'here) ((Im (B r) k) e m)

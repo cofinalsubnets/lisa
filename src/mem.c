@@ -140,17 +140,6 @@ Gc(cphom) {
 
   return (ob) (src - start + dst); }
 
-Gc(cpstr) {
-  str dst, src = getstr(x);
-  if (fresh(src->disp)) return (ob) src->disp;
-  size_t ws = b2w(src->len);
-  dst = bump(v, Width(str) + ws);
-  cpyw(dst->text, src->text, ws);
-  dst->len = src->len;
-  dst->disp = src->disp;
-  dst->mtbl = src->mtbl;
-  return (ob) (src->disp = (vm*) putstr(dst)); }
-
 Gc(cpsym) {
   sym src = getsym(x), dst;
   ob nom = src->nom;

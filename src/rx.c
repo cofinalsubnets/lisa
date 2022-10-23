@@ -45,7 +45,7 @@ static ob rx_(la v, FILE *i) {
     case '"': return pull(v, i, rx_str(v, i));
     case '\'': return Push(putnum(pxq)) ? rx_(v, i) : pull(v, i, 0); }
   ob a = buf_atom(v, i, c);
-  a = a ? rx_num(v, a, getstr(a)->text) : a;
+  a = a ? rx_num(v, a, ((str)a)->text) : a;
   return pull(v, i, a); }
 
 static ob rx2(la v, FILE *i) {
@@ -67,16 +67,15 @@ static str new_buf(la v) {
 
 static str grow_buf(la v, str s) {
   str t; size_t l = b2w(s->len);
-  ob _ = putstr(s);
+  ob _ = (ob) s;
   with(_, t = cells(v, Width(str) + 2 * l));
-  s = getstr(_);
+  s = (str) _;
   if (!t) return 0;
-  return
-    t->len = 2 * l * sizeof(ob),
-    t->disp = disp,
-    t->mtbl = mtbl_str,
-    cpyw(t->text, s->text, l),
-    t; }
+  t->len = 2 * l * sizeof(ob);
+  t->disp = disp;
+  t->mtbl = mtbl_str;
+  cpyw(t->text, s->text, l);
+  return t; }
 
 // read the contents of a string literal into a string
 static ob rx_str(la v, FILE *p) {
@@ -87,7 +86,9 @@ static ob rx_str(la v, FILE *p) {
       case '\\':
         if ((x = fgetc(p)) != EOF) goto ok;
       case '"': case EOF:
-        return o->text[n++] = 0, o->len = n, putstr(o);
+        o->text[n++] = 0;
+        o->len = n;
+        return (ob) o;
       default: ok: o->text[n++] = x; }
   return 0; }
 
@@ -105,7 +106,9 @@ static ob buf_atom(la v, FILE *p, char ch) {
       case '\'': case '"':
         ungetc(x, p);
       case EOF:
-        return o->text[n++] = 0, o->len = n, putstr(o); }
+        o->text[n++] = 0;
+        o->len = n;
+        return (ob) o; }
   return 0; }
 
 static NoInline ob rx_numb(la v, ob b, const char *in, int base) {
