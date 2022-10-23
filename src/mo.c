@@ -40,13 +40,14 @@ ob hnom(la v, ob x) {
   ob* h = (ob*) x;
   while (*h) h++;
   x = h[-1];
-  int inb = (ob*) x >= v->pool && (ob*) x < v->pool+v->len;
+  bool inb = (ob*) x >= v->pool && (ob*) x < v->pool + v->len;
   return inb ? x : nil; }
 
 // instructions for the internal compiler
 Vm(hom_u) {
   ArityCheck(1);
-  TypeCheck(xp = Argv[0], Num);
+  xp = Argv[0];
+  Check(nump(xp));
   size_t len = getnum(xp) + 2;
   Have(len);
   xp = (ob) hp;
@@ -58,7 +59,8 @@ Vm(hom_u) {
 
 Vm(hfin_u) {
   ArityCheck(1);
-  TypeCheck(xp = Argv[0], Hom);
+  xp = Argv[0];
+  Check(homp(xp) && G(xp) != disp);
   button((mo)xp)[1].ll = (vm*) xp;
   return ApC(ret, xp); }
 
@@ -74,33 +76,37 @@ Vm(emi) {
 
 Vm(emx_u) {
   ArityCheck(2);
-  TypeCheck(xp = Argv[1], Hom);
+  xp = Argv[1];
+  Check(homp(xp));
   xp = (ob) (ptr(xp) - 1);
   ptr(xp)[0] = Argv[0];
   return ApC(ret, xp); }
 
 Vm(emi_u) {
-  ob n;
   ArityCheck(2);
-  TypeCheck(n = Argv[0], Num);
-  TypeCheck(xp = Argv[1], Hom);
+  ob n = Argv[0];
+  xp = Argv[1];
+  Check(nump(n));
+  Check(homp(xp));
   xp = (ob) (ptr(xp) - 1);
   ptr(xp)[0] = getnum(n);
   return ApC(ret, xp); }
 
 Vm(peeki_u) {
   ArityCheck(1);
-  TypeCheck(xp = Argv[0], Hom);
+  xp = Argv[0];
+  Check(homp(xp));
   return ApC(ret, putnum(G(xp))); }
 
 Vm(peekx_u) {
   ArityCheck(1);
-  TypeCheck(xp = Argv[0], Hom);
+  xp = Argv[0];
+  Check(homp(xp));
   return ApC(ret, (ob) G(xp)); }
 
 Vm(seek_u) {
   ArityCheck(2);
-  TypeCheck(xp = Argv[0], Hom);
-  TypeCheck(Argv[1], Num);
+  xp = Argv[0];
+  Check(homp(xp));
+  Check(nump(Argv[1]));
   return ApC(ret, xp + Argv[1] - Num); }
-

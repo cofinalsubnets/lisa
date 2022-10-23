@@ -161,6 +161,8 @@ Gc(cptbl) {
   dst->len = src->len;
   dst->cap = src_cap;
   dst->tab = (ob*) (dst + 1);
+  dst->disp = disp;
+  dst->mtbl = mtbl_tbl;
   ob *src_tab = src->tab;
   src->tab = (ob*) puttbl(dst);
   dst->tab = (ob*) cp(v, (ob) src_tab, len0, pool0);

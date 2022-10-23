@@ -223,7 +223,9 @@ static ob tblss(la v, intptr_t i, intptr_t l) {
     tblss(v, i + 2, l); }
 
 static ob tbl_ent_(la v, ob e, ob k) {
-  return nilp(e) || eql(R(e)[0], k) ? e : tbl_ent_(v, R(e)[2], k); }
+  return nilp(e) || eql(R(e)[0], k) ?
+    e :
+    tbl_ent_(v, R(e)[2], k); }
 
 static ob tbl_ent(la v, ob u, ob k) {
   tbl t = gettbl(u);
@@ -248,13 +250,13 @@ Gc(cp_tbl) {
   tbl src = gettbl(x);
   size_t src_cap = src->cap;
   tbl dst = bump(v, Width(tbl) + (1l<<src_cap));
-  dst->len = src->len;
-  dst->cap = src_cap;
   dst->disp = disp;
   dst->mtbl = mtbl_tbl;
+  dst->len = src->len;
+  dst->cap = src_cap;
   dst->tab = (ob*) (dst + 1);
   ob *src_tab = src->tab;
-  src->tab = (ob*) puttbl(dst);
+  G(src) = (vm*) puttbl(dst);
   dst->tab = (ob*) cp(v, (ob) src_tab, len0, pool0);
   return puttbl(dst); }
 

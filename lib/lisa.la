@@ -50,7 +50,7 @@
      (foldl1  x f) (foldl (B x) (A x) f)
      (foldr1  x f) (?
       (twop (B x))
-       (f (A x) (foldr1 (B x) f)) 
+       (f (A x) (foldr1 (B x) f))
       (A x))
      (zip f a .) (? (? a (all id a))
       (X (ap f (map- a A)) (ap zip (X f (map- a B)))))

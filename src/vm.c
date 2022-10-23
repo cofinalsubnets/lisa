@@ -26,14 +26,14 @@
 // calling and returning
 Vm(ap_u) {
   ArityCheck(2);
-  TypeCheck(Argv[0], Hom);
   ip = (mo) Argv[0];
-  ob x = Argv[1];
-  size_t adic = llen(x);
+  Check(homp((ob) ip));
+  xp = Argv[1];
+  size_t adic = llen(xp);
   Have(adic);
   ob off = fp->subd, rp = fp->retp;
   sp = Argv + getnum(Argc) - adic;
-  for (size_t j = 0; j < adic; sp[j++] = A(x), x = B(x));
+  for (size_t j = 0; j < adic; sp[j++] = A(xp), xp = B(xp));
   fp = (fr) sp - 1,
   sp = (ob*) fp;
   fp->retp = rp;
@@ -45,7 +45,7 @@ Vm(ap_u) {
 static NoInline Vm(varg0) {
   size_t reqd = getnum((ob) GF(ip));
   Have1();
-  cpyw((ob*)fp - 1, fp, Width(fr) + getnum(Argc));
+  cpyw((ob*) fp - 1, fp, Width(fr) + getnum(Argc));
   fp = (fr) ((ob*) fp - 1);
   sp = (ob*) fp;
   Argc += sizeof(ob);
@@ -416,7 +416,9 @@ bool nilp(ob _) { return _ == nil; }
 bool nump(ob _) { return TypeOf(_) == Num; }
 bool homp(ob _) { return TypeOf(_) == Hom; }
 bool twop(ob _) { return TypeOf(_) == Two; }
-bool tblp(ob _) { return TypeOf(_) == Tbl; }
 bool symp(ob _) { return TypeOf(_) == Sym; }
+bool tblp(ob _) {
+  return TypeOf(_) == Tbl; }
+  //return homp(_) && GF(_) == (vm*) mtbl_tbl; }
 bool strp(ob _) {
   return homp(_) && GF(_) == (vm*) mtbl_str; }
