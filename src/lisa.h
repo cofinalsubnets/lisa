@@ -151,7 +151,7 @@ ob nope(la, const char*, ...) NoInline; // runtime error
 // - it assumes pointer alignment that limits the platforms we can run on
 // - it stops us from using cheney's algorithm to gc in constant stack
 // instead just use the least significant bit to distinguish immediate values
-#define TagBits 3
+#define TagBits 2
 #define TagMask ((1<<TagBits)-1)
 #define TypeOf(_) (((ob)(_))&TagMask)
 enum builtin_type { Hom, Num, Two, Sym, };

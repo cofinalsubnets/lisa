@@ -109,4 +109,4 @@ Vm(seek_u) {
   xp = Argv[0];
   Check(homp(xp));
   Check(nump(Argv[1]));
-  return ApC(ret, xp + Argv[1] - Num); }
+  return ApC(ret, (ob) ((mo) xp + getnum(Argv[1]))); }

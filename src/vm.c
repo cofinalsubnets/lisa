@@ -48,7 +48,7 @@ static NoInline Vm(varg0) {
   cpyw((ob*) fp - 1, fp, Width(fr) + getnum(Argc));
   fp = (fr) ((ob*) fp - 1);
   sp = (ob*) fp;
-  Argc += sizeof(ob);
+  Argc += (1<<TagBits);
   Argv[reqd] = nil;
   return ApN(2, xp); }
 
@@ -74,8 +74,8 @@ Vm(varg) {
 // return from a function
 Vm(ret) {
   ip = (mo) fp->retp;
-  sp = (ob*) ((ob) fp->argv + fp->argc - Num);
-  fp = (fr) ((ob) sp + fp->subd - Num);
+  sp = Argv + getnum(Argc);
+  fp = (fr) (sp + getnum(fp->subd));
   return ApY(ip, xp); }
 
 // "inner" function call
@@ -106,7 +106,7 @@ Vm(rec) {
   v->xp = fp->subd;
   v->ip = (mo) fp->retp;
   // set fp to the new argv address
-  fp = (fr) (Argv + getnum(Argc - (ob) ip)),
+  fp = (fr) (Argv + getnum(Argc) - getnum((ob) ip)),
   // copy the args high to low
   rcpyw(fp, sp, getnum((ob) ip));
   // bump fp & set sp
@@ -129,30 +129,26 @@ Vm(one) { return ApN(1, putnum(1)); }
 Vm(zero) { return ApN(1, putnum(0)); }
 // immediate value from thread
 Vm(imm) {
-  xp = (ob) ip[1].ll;
+  xp = (ob) GF(ip);
   return ApN(2, xp); }
-
-// indexed references
-#define Ref(b) (*(ob*)((ob)(b)+(ob)ip[1].ll-Num))
-// pointer arithmetic works because fixnums are premultiplied by W
 
 // function arguments
 Vm(arg) {
-  xp = Ref(Argv);
+  xp = Argv[getnum(GF(ip))];
   return ApN(2, xp); }
 Vm(arg0) { return ApN(1, Argv[0]); }
 Vm(arg1) { return ApN(1, Argv[1]); }
 
 // local variables
 Vm(loc) {
-  xp = Ref(Locs);
+  xp = Locs[getnum(GF(ip))];
   return ApN(2, xp); }
 Vm(loc0) { return ApN(1, Locs[0]); }
 Vm(loc1) { return ApN(1, Locs[1]); }
 
 // closure variables
 Vm(clo) {
-  xp = Ref(Clos);
+  xp = Clos[getnum(GF(ip))];
   return ApN(2, xp); }
 Vm(clo0) { return ApN(1, Clos[0]); }
 Vm(clo1) { return ApN(1, Clos[1]); }
@@ -174,7 +170,7 @@ Vm(dupl) {
 
 // set a local variable
 Vm(loc_) {
-  Ref(Locs) = xp;
+  Locs[getnum(GF(ip))] = xp;
   return ApN(2, xp); }
 
 // set a module variable
