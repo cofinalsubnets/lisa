@@ -46,7 +46,8 @@ Vm(sym_u) {
 
 Vm(ystr_u) {
   ArityCheck(1);
-  TypeCheck(xp = Argv[0], Sym);
+  xp = Argv[0];
+  Check(symp(xp));
   return ApC(ret, getsym(xp)->nom); }
 
 ob interns(la v, const char *s) {

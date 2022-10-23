@@ -326,10 +326,9 @@ static NoInline bool eql_two(two a, two b) {
 static NoInline bool eql_str(str a, str b) {
   return a->len == b->len && 0 == scmp(a->text, b->text); }
 static NoInline bool eql_(ob a, ob b) {
-  switch (TypeOf(a)) {
-    case Two: return eql_two(gettwo(a), gettwo(b));
-    case Str: return eql_str(getstr(a), getstr(b));
-    default: return false; } }
+  if (twop(a)) return eql_two(gettwo(a), gettwo(b));
+  if (strp(a)) return eql_str(getstr(a), getstr(b));
+  return false; }
 
 bool eql(ob a, ob b) {
   return a == b ? true : TypeOf(a) != TypeOf(b) ? false : eql_(a, b); }

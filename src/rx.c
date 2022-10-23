@@ -62,7 +62,7 @@ ob rx(la v, FILE *i) { return
 
 static str new_buf(la v) {
   str s = cells(v, Width(str) + 1);
-  if (s) s->len = 8, s->disp = disp;
+  if (s) s->len = 8, s->disp = disp, s->mtbl = mtbl_str;
   return s; }
 
 static str grow_buf(la v, str s) {
@@ -74,6 +74,7 @@ static str grow_buf(la v, str s) {
   return
     t->len = 2 * l * sizeof(ob),
     t->disp = disp,
+    t->mtbl = mtbl_str,
     cpyw(t->text, s->text, l),
     t; }
 
