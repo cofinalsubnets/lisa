@@ -32,8 +32,7 @@ size_t hash(la v, ob x) {
   switch (TypeOf(x)) {
     case Sym: return hash_sym(v, x);
     case Two: return hash_two(v, x);
-    case Tbl: return hash_tbl(v, x);
-    case Str: return hash_str(v, x); }
+    case Tbl: return hash_tbl(v, x); }
   if (!livep(v, x)) return mix ^ (x * mix);
   if (G(x) == disp) return ((mtbl) GF(x))->hash(v, x);
   return mix ^ hash(v, hnom(v, x)); }

@@ -192,7 +192,6 @@ Gc(cp) {
   if (nump(x) || !stale(x)) return x;
   switch (TypeOf(x)) {
     case Two: return cptwo(v, x, len0, pool0);
-    case Str: return cpstr(v, x, len0, pool0);
     case Tbl: return cptbl(v, x, len0, pool0);
     case Sym: return cpsym(v, x, len0, pool0); }
   ob y = (ob) G(x);

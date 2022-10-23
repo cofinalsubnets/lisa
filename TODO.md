@@ -39,6 +39,9 @@ curve than powers of 2.
 - finalizers
 - shell functions
 - file & network i/o
+- string escape sequences
+- hash literals
+- quasiquotes
 
 ## use hash table for internal symbols
 instead of the current binary tree.

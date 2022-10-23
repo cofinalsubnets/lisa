@@ -155,7 +155,7 @@ ob nope(la, const char*, ...) NoInline; // runtime error
 #define TagBits 3
 #define TagMask ((1<<TagBits)-1)
 #define TypeOf(_) (((ob)(_))&TagMask)
-enum builtin_type { Hom, Num, Two, Str, Sym, Tbl, };
+enum builtin_type { Hom, Num, Two, Sym, Tbl, };
 #define getnum(_) ((ob)(_)>>TagBits)
 #define putnum(_) (((ob)(_)<<TagBits)|Num)
 #define getstr(_) ((str)((ob)(_)))
