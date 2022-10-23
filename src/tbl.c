@@ -10,7 +10,7 @@ static Inline size_t tbl_idx(size_t cap, size_t co) {
   return co & ((1 << cap) - 1); }
 
 static Inline size_t tbl_load(ob t) {
-  return gettbl(t)->len >> gettbl(t)->cap; }
+  return ((tbl) t)->len >> ((tbl) t)->cap; }
 
 static ob
   tbl_ent(la, ob, ob),
@@ -32,7 +32,7 @@ ob table(la v) {
   b[0] = nil;
   b[1] = 0;
   b[2] = (ob) b;
-  return puttbl(t); }
+  return (ob) t; }
 
 ob tbl_set(la v, ob t, ob k, ob x) {
   with(t, x = tbl_set_s(v, t, k, x));
@@ -70,7 +70,7 @@ Vm(thas) {
   xp = tbl_get(v, xp, *sp++);
   return ApN(1, xp ? T : nil); }
 
-Vm(tlen) { return ApN(1, putnum(gettbl(xp)->len)); }
+Vm(tlen) { return ApN(1, putnum(((tbl) xp)->len)); }
 
 Vm(tkeys) {
   Pack();
@@ -113,7 +113,7 @@ Vm(tlen_u) {
   ArityCheck(1);
   xp = Argv[0];
   Check(tblp(xp));
-  return ApC(ret, putnum(gettbl(xp)->len)); }
+  return ApC(ret, putnum(((tbl) xp)->len)); }
 
 Vm(tset) {
   ob x = *sp++, y = *sp++;
@@ -128,7 +128,7 @@ static void tbl_fit(la v, ob t) {
   if (tbl_load(t)) return;
 
   ob e = nil, f, g;
-  tbl u = gettbl(t);
+  tbl u = (tbl) t;
 
   // collect all entries
   for (size_t i = 1 << u->cap; i--;)
@@ -149,7 +149,7 @@ static void tbl_fit(la v, ob t) {
     e = f; } }
 
 static ob tbl_del(la v, ob t, ob key) {
-  tbl y = gettbl(t);
+  tbl y = (tbl) t;
   ob val = nil;
   intptr_t b = tbl_idx(y->cap, hash(v, key));
   ob e = y->tab[b],
@@ -169,13 +169,13 @@ static ob tbl_del(la v, ob t, ob key) {
 // the old table entries are reused to populate the modified table.
 static ob tbl_grow(la v, ob t) {
   ob *tab0, *tab1;
-  size_t cap0 = gettbl(t)->cap, cap1 = cap0 + 1,
+  size_t cap0 = ((tbl) t)->cap, cap1 = cap0 + 1,
          len = 1<<cap1;
   with(t, tab1 = cells(v, len + 2));
   if (!tab1) return 0;
   tab1[len] = 0, tab1[len+1] = (ob) tab1;
   setw(tab1, nil, 1<<cap1);
-  tab0 = gettbl(t)->tab;
+  tab0 = ((tbl) t)->tab;
 
   for (size_t i, cap = 1 << cap0; cap--;)
     for (ob e, es = tab0[cap]; es != nil;)
@@ -185,18 +185,18 @@ static ob tbl_grow(la v, ob t) {
       ((ob*) e)[2] = tab1[i],
       tab1[i] = e;
 
-  gettbl(t)->cap = cap1;
-  gettbl(t)->tab = tab1;
+  ((tbl) t)->cap = cap1;
+  ((tbl) t)->tab = tab1;
   return t; }
 
 static ob tbl_set_s(la v, ob t, ob k, ob x) {
   tbl y;
   ob e = tbl_ent(v, t, k);
-  size_t i = tbl_idx(gettbl(t)->cap, hash(v, k));
+  size_t i = tbl_idx(((tbl) t)->cap, hash(v, k));
   if (!nilp(e)) return ((ob*) e)[1] = x;
   with(t, with(k, with(x, e = (ob) mkmo(v, 3))));
   if (!e) return 0;
-  y = gettbl(t),
+  y = (tbl) t,
   ((ob*) e)[0] = k,
   ((ob*) e)[1] = x,
   ((ob*) e)[2] = (ob) y->tab[i],
@@ -211,10 +211,10 @@ static ob tks_j(la v, ob e, ob l) {
   return l ? pair(v, x, l) : 0; }
 
 static ob tks_i(la v, ob t, size_t i) {
-  if (i == 1 << gettbl(t)->cap) return nil;
+  if (i == 1 << ((tbl) t)->cap) return nil;
   ob k;
   with(t, k = tks_i(v, t, i+1));
-  return k ? tks_j(v, gettbl(t)->tab[i], k) : 0; }
+  return k ? tks_j(v, ((tbl) t)->tab[i], k) : 0; }
 
 static ob tblss(la v, intptr_t i, intptr_t l) {
   fr fp = v->fp;
@@ -229,7 +229,7 @@ static ob tbl_ent_(la v, ob e, ob k) {
     tbl_ent_(v, ((ob*) e)[2], k); }
 
 static ob tbl_ent(la v, ob u, ob k) {
-  tbl t = gettbl(u);
+  tbl t = (tbl) u;
   u = t->tab[tbl_idx(t->cap, hash(v, k))];
   return tbl_ent_(v, u, k); }
 
@@ -248,7 +248,7 @@ Vm(do_tbl) {
       return ApC(xp ? ret : oom_err, xp); } }
 
 Gc(cp_tbl) {
-  tbl src = gettbl(x);
+  tbl src = (tbl) x;
   size_t src_cap = src->cap;
   tbl dst = bump(v, Width(tbl) + (1l<<src_cap));
   dst->disp = disp;
@@ -257,10 +257,10 @@ Gc(cp_tbl) {
   dst->cap = src_cap;
   dst->tab = (ob*) (dst + 1);
   ob *src_tab = src->tab;
-  G(src) = (vm*) puttbl(dst);
+  G(src) = (vm*) dst;
   dst->tab = (ob*) cp(v, (ob) src_tab, len0, pool0);
-  return puttbl(dst); }
+  return (ob) dst; }
 
 void em_tbl(la v, FILE *o, ob x) {
-  tbl t = gettbl(x);
+  tbl t = (tbl) x;
   fprintf(o, "#tbl:%ld/%ld", t->len, 1l<<t->cap); }

@@ -159,8 +159,6 @@ enum builtin_type { Hom, Num, Two, Sym, };
 #define putnum(_) (((ob)(_)<<TagBits)|Num)
 #define getsym(_) ((sym)((ob)(_)^Sym))
 #define putsym(_) ((ob)(_)^Sym)
-#define gettbl(_) ((tbl)((ob)(_)))
-#define puttbl(_) ((ob)(_))
 #define gettwo(_) ((two)((ob)(_)^Two))
 #define puttwo(_) ((ob)(_)^Two)
 
@@ -184,7 +182,7 @@ static Inline void *cells(la v, size_t n) {
   return Avail >= n || please(v, n) ? bump(v, n) : 0; }
 
 // XXX FIXME XXX
-_Static_assert(sizeof(ob) == 8, "64bit");
+_Static_assert(sizeof(ob) >= (1 << TagBits), "enough bits");
 _Static_assert(-1 == -1 >> 1, "signed >>");
 _Static_assert(sizeof(ob) == sizeof(size_t), "size_t matches address space");
 
