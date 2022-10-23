@@ -62,3 +62,6 @@ void em_two(la v, FILE *o, ob x) {
     tx(v, o, A(x));
     if (!twop(x = B(x))) break; }
   fputc(')', o); }
+
+size_t hash_two(la v, ob x) {
+  return ror(hash(v, A(x)) & hash(v, B(x)), 32); }

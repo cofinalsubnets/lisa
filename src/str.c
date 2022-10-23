@@ -95,11 +95,11 @@ Vm(do_str) {
   return ApC(ret, (ob) ip); }
 
 size_t hash_str(la v, ob _) {
-  str s = (str) _;
+  str s = getstr(_);
   return hashb(s->text, s->len); }
 
 void em_str(la v, FILE *o, ob _) {
-  str s = (str) _;
+  str s = getstr(_);
   fputc('"', o);
   for (char *t = s->text; *t; fputc(*t++, o))
     if (*t == '"') fputc('\\', o);
@@ -112,5 +112,3 @@ ob cp_str(la v, ob _, size_t len0, ob *pool0) {
   cpyw(dst, src, Width(str) + ws);
   src->disp = (vm*) dst;
   return (ob) dst; }
-
-

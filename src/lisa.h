@@ -216,3 +216,6 @@ extern struct mtbl
   s_mtbl_tbl,
   s_mtbl_sym;
 #define mtbl_str (&s_mtbl_str)
+
+static Inline size_t ror(size_t x, size_t n) {
+  return (x<<((8*sizeof(size_t))-n))|(x>>n); }

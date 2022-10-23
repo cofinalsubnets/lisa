@@ -173,11 +173,13 @@ Vm(dupl) {
   return ApN(1, xp); }
 
 // set a local variable
-Vm(loc_) { return Ref(Locs) = xp, ApN(2, xp); }
+Vm(loc_) {
+  Ref(Locs) = xp;
+  return ApN(2, xp); }
 
 // set a module variable
 Vm(tbind) {
-  ob a = (ob) ip[1].ll;
+  ob a = (ob) GF(ip);
   Pack();
   v->xp = tbl_set(v, A(a), B(a), xp);
   Unpack();
@@ -198,7 +200,7 @@ Vm(locals) {
 // that would have been done by the compiler if the function
 // had been bound early.
 Vm(latebind) {
-  ob w = (ob) ip[1].ll, d = AB(w), typ = A(w) >> TagBits;
+  ob w = (ob) GF(ip), d = AB(w), typ = A(w) >> TagBits;
   xp = BB(w);
   w = tbl_get(v, d, xp);
   if (!w) return ApC(nom_err, xp);
@@ -215,7 +217,7 @@ Vm(latebind) {
 
 // this is used to create closures.
 Vm(take) {
-  ob *t, n = getnum((ob) ip[1].ll);
+  ob *t, n = getnum((ob) GF(ip));
   Have(n + 2);
   t = hp;
   hp += n + 2;
@@ -226,13 +228,13 @@ Vm(take) {
   return ApC(ret, (ob) t); }
 
 Vm(clos) {
-  fp->clos = (ob) ip[1].ll;
-  return ApY((ob) ip[2].ll, xp); }
+  fp->clos = (ob) GF(ip);
+  return ApY((ob) G(FF(ip)), xp); }
 
 // finalize function instance closure
 Vm(clos1) {
-  ip->ll = clos;
-  ip[1].ll = (vm*) xp;
+  G(ip) = clos;
+  GF(ip) = (vm*) xp;
   return ApY(ip, xp); }
 
 // this function is run the first time a user
@@ -399,8 +401,8 @@ Vm(idH) { return homp(xp) ? ApN(1, xp) : ApC(dom_err, xp); }
 Vm(idT) { return tblp(xp) ? ApN(1, xp) : ApC(dom_err, xp); }
 Vm(id2) { return twop(xp) ? ApN(1, xp) : ApC(dom_err, xp); }
 Vm(arity) {
-  ob reqd = (ob) ip[1].ll;
-  return fp->argc >= reqd ? ApN(2, xp) : ApC(ary_err, reqd); }
+  ob reqd = (ob) GF(ip);
+  return Argc >= reqd ? ApN(2, xp) : ApC(ary_err, reqd); }
 
 // errors
 Vm(dom_err) { return Pack(), nope(v, "is undefined"); }
