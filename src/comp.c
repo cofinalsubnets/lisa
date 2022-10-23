@@ -121,9 +121,9 @@ static Inline ob comp_body(la v, ob*e, ob x) {
   x = (i = getnum(asig(*e))) > 0 ?
         (ob) pb2(arity, putnum(i), (mo) x) :
       i < 0 ?
-        (ob) pb2(vararg, putnum(-i-1), (mo) x) :
+        (ob) pb2(varg, putnum(-i-1), (mo) x) :
       x;
-  button(gethom(x))[1].ll = (vm*) x;
+  GF(button(gethom(x))) = (vm*) x;
   return twop(clo(*e)) ? pair(v, clo(*e), x) : x; }
 
 static ob linitp(la v, ob x, ob *d) {
@@ -231,7 +231,9 @@ Co(co_p_pre_con) {
   mo k, x = pull(v, e, m + 2);
   if (!x) return 0;
   k = (mo) A(s2(*e));
-  return k->ll == ret ? pb1(ret, x) : pb2(jump, (ob) k, x); }
+  return k->ll == ret ?
+    pb1(ret, x) :
+    pb2(jump, (ob) k, x); }
 
 // after generating a branch store its address
 // in stack 1

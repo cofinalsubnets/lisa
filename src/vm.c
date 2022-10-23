@@ -42,34 +42,33 @@ Vm(ap_u) {
   fp->clos = nil;
   return ApY(ip, nil); }
 
-Vm(vararg) {
-  intptr_t reqd = getnum((ob) ip[1].ll),
+static NoInline Vm(varg0) {
+  size_t reqd = getnum((ob) GF(ip));
+  Have1();
+  cpyw((ob*)fp - 1, fp, Width(fr) + getnum(Argc));
+  fp = (fr) ((ob*) fp - 1);
+  sp = (ob*) fp;
+  Argc += sizeof(ob);
+  Argv[reqd] = nil;
+  return ApN(2, xp); }
+
+Vm(varg) {
+  intptr_t reqd = getnum((ob) GF(ip)),
            vdic = getnum(Argc) - reqd;
   ArityCheck(reqd);
   // in this case we need to add another argument
   // slot to hold the nil.
-  if (!vdic) {
-    Have1();
-    cpyw((ob*)fp - 1, fp, Width(fr) + getnum(Argc));
-    fp = (fr) ((ob*) fp - 1);
-    sp = (ob*) fp;
-    Argc += sizeof(ob);
-    Argv[reqd] = nil;
-    return ApN(2, xp); }
+  if (!vdic) return ApC(varg0, xp);
   // in this case we just keep the existing slots.
-  // the path is knowable at compile time in many cases
-  // so maybe vararg should be two or more different
-  // functions.
   Have(2 * vdic);
   two t = (two) hp;
   hp += 2 * vdic;
   for (size_t i = vdic; i--;
-    t[i].a = fp->argv[reqd + i],
+    t[i].a = Argv[reqd + i],
     t[i].b = puttwo(t+i+1));
-  return
-    t[vdic-1].b = nil,
-    fp->argv[reqd] = puttwo(t),
-    ApN(2, xp); }
+  t[vdic-1].b = nil,
+  Argv[reqd] = puttwo(t);
+  return ApN(2, xp); }
 
 
 // return from a function
@@ -92,21 +91,30 @@ Vm(call) {
   fp->argc = putnum(adic);
   return ApY(xp, nil); }
 
-// tail call
+// tail calls
+//
+// fast case where the calls have the same number of args
+static NoInline Vm(recq) {
+  cpyw(Argv, sp, getnum((ob) ip));
+  sp = (ob*) fp;
+  return ApY(xp, nil); }
+
 Vm(rec) {
-  ip = (mo) ip[1].ll;
-  if (Argc == (ob) ip) {
-    cpyw(Argv, sp, getnum((ob) ip));
-    sp = (ob*) fp;
-    return ApY(xp, nil); }
+  ip = (mo) GF(ip);
+  if (Argc == (ob) ip) return ApC(recq, xp);
+  // save return address
   v->xp = fp->subd;
-  v->ip = (mo) fp->retp; // save return info
+  v->ip = (mo) fp->retp;
+  // set fp to the new argv address
   fp = (fr) (Argv + getnum(Argc - (ob) ip)),
-  rcpyw(fp, sp, getnum((ob) ip)); // copy from high to low
+  // copy the args high to low
+  rcpyw(fp, sp, getnum((ob) ip));
+  // bump fp & set sp
   sp = (ob*) (--fp);
+  // set return address & call info
   fp->retp = (ob) v->ip;
-  fp->argc = (ob) ip;
   fp->subd = v->xp;
+  fp->argc = (ob) ip;
   fp->clos = nil;
   return ApY(xp, nil); }
 
@@ -120,24 +128,32 @@ Vm(disp) { return ApY(((mtbl) GF(ip))->does, xp); }
 Vm(one) { return ApN(1, putnum(1)); }
 Vm(zero) { return ApN(1, putnum(0)); }
 // immediate value from thread
-Vm(imm) { return xp = (ob) ip[1].ll, ApN(2, xp); }
+Vm(imm) {
+  xp = (ob) ip[1].ll;
+  return ApN(2, xp); }
 
 // indexed references
 #define Ref(b) (*(ob*)((ob)(b)+(ob)ip[1].ll-Num))
 // pointer arithmetic works because fixnums are premultiplied by W
 
 // function arguments
-Vm(arg) { return xp = Ref(Argv), ApN(2, xp); }
+Vm(arg) {
+  xp = Ref(Argv);
+  return ApN(2, xp); }
 Vm(arg0) { return ApN(1, Argv[0]); }
 Vm(arg1) { return ApN(1, Argv[1]); }
 
 // local variables
-Vm(loc) { return xp = Ref(Locs), ApN(2, xp); }
+Vm(loc) {
+  xp = Ref(Locs);
+  return ApN(2, xp); }
 Vm(loc0) { return ApN(1, Locs[0]); }
 Vm(loc1) { return ApN(1, Locs[1]); }
 
 // closure variables
-Vm(clo) { return xp = Ref(Clos), ApN(2, xp); }
+Vm(clo) {
+  xp = Ref(Clos);
+  return ApN(2, xp); }
 Vm(clo0) { return ApN(1, Clos[0]); }
 Vm(clo1) { return ApN(1, Clos[1]); }
 
@@ -193,8 +209,8 @@ Vm(latebind) {
       ptr(xp)[0] == (ob) arity &&
       ptr(ip)[3] >= ptr(xp)[1])
     xp = (ob) (ptr(xp) + 2);
-  ip[0].ll = imm,
-  ip[1].ll = (vm*) xp;
+  G(ip) = imm;
+  GF(ip) = (vm*) xp;
   return ApN(2, xp); }
 
 // this is used to create closures.
@@ -228,10 +244,10 @@ Vm(clos1) {
 // instruction that sets the closure and enters
 // the function.
 Vm(clos0) {
-  ob *ec = (ob*) ip[1].ll,
+  ob *ec = (ob*) GF(ip),
      arg = ec[0],
      loc = ec[1];
-  size_t adic = nilp(arg) ? 0 : getnum(*(ob*)arg),
+  size_t adic = nilp(arg) ? 0 : getnum(G(arg)),
          req = Width(fr) + adic + 1;
   Have(req);
 
@@ -254,8 +270,8 @@ Vm(clos0) {
 // lexical environments.
 // FIXME magic numbers
 static Vm(encl) {
-  intptr_t m = getnum(Argc),
-           n = m + (m ? 14 : 11);
+  size_t m = getnum(Argc),
+         n = m + (m ? 14 : 11);
   Have(n);
   ob x = (ob) ip[1].ll,
      arg = nil,

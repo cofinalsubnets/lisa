@@ -334,7 +334,7 @@
    (? (~ loc) k (emi i-locals (emx (len loc) k))))
   (ar k) (: i (tget f 'sig) (?
    (> i 0) (emf i-arity (emx i k))
-   (< i 0) (emi i-vararg (emx (- (- i) 1) k))
+   (< i 0) (emi i-varg (emx (- (- i) 1) k))
    k))
 
   n (? (B l) (B l) ~~)
@@ -511,7 +511,6 @@
     (? (: y (B x)) (: z (loop e y)
                     (? (B z) (X ', z) (A z)))))
 
-
    a (A x) (?
     (= a `) (? (B x) x)
     (= a \) (lamb e x)
@@ -677,32 +676,30 @@
 ; " drop privileges "
 (: dels (cu (flip each) (cu tdel _ns))
    insns (filter (tkeys _ns) (\ k (= "i-" (ssub (ystr k) 0 2))))
-   locs '(cwm boot egg emi macros emx hom seek peeki peekx hfin _ns)
- (, (tdel macros 'i-)
-    (each (L insns locs) dels)))
+   locs '(boot egg emi macros emx hom seek peeki peekx hfin _ns)
+  (each (L insns locs) dels))
 ;ev
 (:
-     ((diag f) x) (f x x)
+ ((diag f) x) (f x x)
 
-     ; strings
-     (strip-prefix p s)
-      (? (= p (ssub s 0 (: a (slen p)))) (ssub s a (slen s)))
-     (chars s)
-      (: (loop s n)
-          (? (< n (slen s))
-           (X (sget s n) (loop s (+ n 1))))
-       (loop s 0))
-     (puts s)
-      (: (loop s n)
-       (? (< n (slen s))
-        (, (putc (sget s n))
-           (loop s (+ n 1))))
-       (loop s 0))
-      (endl) (putc 10)
-     (iota n x .)
-      (: (loop m n) (? (< m n) (X m (loop (+ m 1) n)))
-       (? (~ x) (loop 0 n) (loop n (A x))))
-     (rho n xs .)
-      (: (loop n x) (? (= n 1) x (append x (loop (- n 1) x)))
-       (? (> n 0) (loop n xs)))
-)
+ ; strings
+ (strip-prefix p s)
+  (? (= p (ssub s 0 (: a (slen p)))) (ssub s a (slen s)))
+ (chars s)
+  (: (loop s n)
+      (? (< n (slen s))
+       (X (sget s n) (loop s (+ n 1))))
+   (loop s 0))
+ (puts s)
+  (: (loop s n)
+   (? (< n (slen s))
+    (, (putc (sget s n))
+       (loop s (+ n 1))))
+   (loop s 0))
+  (endl) (putc 10)
+ (iota n x .)
+  (: (loop m n) (? (< m n) (X m (loop (+ m 1) n)))
+   (? (~ x) (loop 0 n) (loop n (A x))))
+ (rho n xs .)
+  (: (loop n x) (? (= n 1) x (append x (loop (- n 1) x)))
+   (? (> n 0) (loop n xs))))

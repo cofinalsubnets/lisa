@@ -18,7 +18,7 @@ cfns(ninl)
  _(nilpp) _(strpp) _(tblpp) _(sympp) _(hompp) _(car) _(cdr)\
  _(cons) _(one) _(zero) _(arg0) _(arg1) _(loc0) _(loc1)\
  _(clo0) _(clo1) _(brlt) _(brlteq) _(breq) _(brgteq) _(brlt2)\
- _(brlteq2) _(brgt2) _(brgt) _(brne) _(dupl) _(emi) _(emx) _(vararg)
+ _(brlteq2) _(brgt2) _(brgt) _(brne) _(dupl) _(emi) _(emx) _(varg)
 
 i_internals(ninl)
 
