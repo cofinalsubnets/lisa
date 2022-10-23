@@ -4,7 +4,6 @@
 // hash tables
 // some of the worst code is here :(
 
-
 struct mtbl s_mtbl_tbl = { do_tbl, em_tbl, cp_tbl, hash_tbl };
 
 static Inline size_t tbl_idx(size_t cap, size_t co) {
@@ -28,6 +27,8 @@ ob table(la v) {
   ob *b = (ob*) (t + 1);
   t->len = t->cap = 0;
   t->tab = b;
+  t->disp = disp;
+  t->mtbl = mtbl_tbl;
   b[0] = nil;
   b[1] = 0;
   b[2] = (ob) b;
@@ -47,25 +48,27 @@ ob tbl_get(la v, ob t, ob k) {
 
 Vm(tget_u) {
   ArityCheck(2);
-  TypeCheck(Argv[0], Tbl);
-  xp = tbl_get(v, fp->argv[0], fp->argv[1]);
+  xp = Argv[0];
+  Check(tblp(xp));
+  xp = tbl_get(v, xp, Argv[1]);
   return ApC(ret, xp ? xp : nil); }
 
 Vm(tdel_u) {
   ArityCheck(2);
-  TypeCheck(Argv[0], Tbl);
+  xp = Argv[0];
+  Check(tblp(xp));
   Pack();
-  v->xp = tbl_del(v, fp->argv[0], fp->argv[1]);
+  v->xp = tbl_del(v, xp, Argv[1]);
   Unpack();
   return ApC(ret, xp); }
 
-Vm(tget) { return
-  xp = tbl_get(v, xp, *sp++),
-  ApN(1, xp ? xp : nil); }
+Vm(tget) {
+  xp = tbl_get(v, xp, *sp++);
+  return ApN(1, xp ? xp : nil); }
 
-Vm(thas) { return
-  xp = tbl_get(v, xp, *sp++),
-  ApN(1, xp ? T : nil); }
+Vm(thas) {
+  xp = tbl_get(v, xp, *sp++);
+  return ApN(1, xp ? T : nil); }
 
 Vm(tlen) { return ApN(1, putnum(gettbl(xp)->len)); }
 
@@ -77,13 +80,15 @@ Vm(tkeys) {
 
 Vm(thas_u) {
   ArityCheck(2);
-  TypeCheck(Argv[0], Tbl);
-  xp = tbl_get(v, fp->argv[0], fp->argv[1]);
+  xp = Argv[0];
+  Check(tblp(xp));
+  xp = tbl_get(v, xp, Argv[1]);
   return ApC(ret, xp ? T : nil); }
 
 Vm(tset_u) {
   ArityCheck(1);
-  TypeCheck(xp = Argv[0], Tbl);
+  xp = Argv[0];
+  Check(tblp(xp));
   Pack();
   v->xp = tblss(v, 1, getnum(Argc));
   Unpack();
@@ -97,16 +102,18 @@ Vm(tbl_u) {
 
 Vm(tkeys_u) {
   ArityCheck(1);
-  TypeCheck(Argv[0], Tbl);
+  xp = Argv[0];
+  Check(tblp(xp));
   Pack();
-  v->xp = tks_i(v, Argv[0], 0);
+  v->xp = tks_i(v, xp, 0);
   Unpack();
   return ApC(xp ? ret : oom_err, xp); }
 
 Vm(tlen_u) {
   ArityCheck(1);
-  TypeCheck(Argv[0], Tbl);
-  return ApC(ret, putnum(gettbl(*fp->argv)->len)); }
+  xp = Argv[0];
+  Check(tblp(xp));
+  return ApC(ret, putnum(gettbl(xp)->len)); }
 
 Vm(tset) {
   ob x = *sp++, y = *sp++;
@@ -243,6 +250,8 @@ Gc(cp_tbl) {
   tbl dst = bump(v, Width(tbl) + (1l<<src_cap));
   dst->len = src->len;
   dst->cap = src_cap;
+  dst->disp = disp;
+  dst->mtbl = mtbl_tbl;
   dst->tab = (ob*) (dst + 1);
   ob *src_tab = src->tab;
   src->tab = (ob*) puttbl(dst);

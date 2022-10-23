@@ -199,12 +199,12 @@ Vm(locals) {
 // long b/c it does the "static" type and arity checks
 // that would have been done by the compiler if the function
 // had been bound early.
-Vm(latebind) {
+Vm(late) {
   ob w = (ob) GF(ip), d = AB(w), typ = A(w) >> TagBits;
   xp = BB(w);
   w = tbl_get(v, d, xp);
   if (!w) return ApC(nom_err, xp);
-  if (typ != sizeof(ob)) TypeCheck(w, typ);
+  if (typ != -1) TypeCheck(w, typ);
   xp = w;
   // omit the arity check if possible
   if ((ip[2].ll == call || ip[2].ll == rec) && // xp will be a hom

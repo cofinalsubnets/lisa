@@ -269,15 +269,6 @@
 
    ) (: ; new let expn makes sure ^^^ exist & don't make a closure vvv
 
- (type-sym-num x) (?
-  (= x 'hom) 0
-  (= x 'num) 1
-  (= x 'two) 2
-  (= x 'sym) 3
-  (= x 'tbl) 4
-  (= x 'str) 5
-  (= x 0) 8)
-
  (type-sym x) (?
   (homp x) 'hom (nump x) 'num
   (twop x) 'two
@@ -641,12 +632,20 @@
     (= z ,) (seq (B x) k)
     (app z (B x) k))))
 
+  (type-sym-num x) (?
+   (= x 'hom) 0
+   (= x 'num) 1
+   (= x 'two) 2
+   (= x 'sym) 3
+   (= x 'tbl) 4
+   -1)
+
   ((symb x k) e m) (:
    (late d) (:
     h (k e (+ m 2))
     t (consumes h)
     c (type-sym-num t) ; get the runtime type tag
-    (emf i-latebind (emx (X c (X d x)) (? t (seek h 1) h))))
+    (emf i-late (emx (X c (X d x)) (? t (seek h 1) h))))
 
    s (A (: r (look e x))) (?
     (= s 'here) ((Im (B r) k) e m)

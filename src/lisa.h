@@ -41,7 +41,7 @@ typedef struct str { vm *disp; mtbl mtbl; size_t len; char text[]; } *str;
 typedef struct sym { ob nom, code, l, r; } *sym;
 
 // hash tables
-typedef struct tbl { ob *tab; size_t len, cap; } *tbl;
+typedef struct tbl { vm *disp; mtbl mtbl; ob *tab; size_t len, cap; } *tbl;
 
 // grammar symbols
 enum lex { Def, Cond, Lamb, Quote, Seq, Splat, Eval, LexN };

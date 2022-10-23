@@ -301,8 +301,8 @@ Co(co_var, ob x) {
   if (y == putnum(Wait)) return
     (x = pair(v, B(q), x)) &&
     (with(x, y = (ob) pull(v, e, m+2)), y) &&
-    (with(y, x = pair(v, putnum(sizeof(ob)), x)), x) ?
-      pb2(latebind, x, (mo) y) : 0;
+    (with(y, x = pair(v, putnum(-1), x)), x) ?
+      pb2(late, x, (mo) y) : 0;
 
   if (B(q) == *e) return
     y == putnum(Loc) ?

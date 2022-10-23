@@ -12,7 +12,7 @@ cfns(ninl)
  _(tget) _(tset) _(thas) _(tlen) _(arity) _(idZ) _(idH)\
  _(id2) _(idT) _(imm) _(arg) _(clo) _(loc) _(take) _(locals)\
  _(loc_) _(encll) _(encln) _(ret) _(jump) _(branch) _(barnch)\
- _(call) _(rec) _(latebind) _(sar) _(sal) _(band) _(bor)\
+ _(call) _(rec) _(late) _(sar) _(sal) _(band) _(bor)\
  _(bxor) _(tbind) _(push) _(add) _(sub) _(mul) _(dqv) _(mod)\
  _(neg) _(lt) _(lteq) _(eq) _(gteq) _(gt) _(twopp) _(numpp)\
  _(nilpp) _(strpp) _(tblpp) _(sympp) _(hompp) _(car) _(cdr)\
