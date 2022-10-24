@@ -264,3 +264,5 @@ Gc(cp_tbl) {
 void em_tbl(la v, FILE *o, ob x) {
   tbl t = (tbl) x;
   fprintf(o, "#tbl:%ld/%ld", t->len, 1l<<t->cap); }
+
+bool tblp(ob _) { return homp(_) && GF(_) == (vm*) mtbl_tbl; }

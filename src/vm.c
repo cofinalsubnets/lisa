@@ -405,16 +405,3 @@ Vm(nom_err) {
   xp = getsym(xp)->nom;
   return Pack(),
     nope(v, "referenced free variable `%s'", nilp(xp) ? 0 : ((str) xp)->text); }
-
-// these should hopefully almost always be inlined but we
-// might need pointers to them.
-bool nilp(ob _) { return _ == nil; }
-bool nump(ob _) { return TypeOf(_) == Num; }
-bool homp(ob _) { return TypeOf(_) == Hom; }
-bool twop(ob _) { return TypeOf(_) == Two; }
-bool symp(ob _) { return TypeOf(_) == Sym; }
-bool tblp(ob _) {
-  //return TypeOf(_) == Tbl; }
-  return homp(_) && GF(_) == (vm*) mtbl_tbl; }
-bool strp(ob _) {
-  return homp(_) && GF(_) == (vm*) mtbl_str; }

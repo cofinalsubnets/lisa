@@ -110,3 +110,5 @@ Vm(seek_u) {
   Check(homp(xp));
   Check(nump(Argv[1]));
   return ApC(ret, (ob) ((mo) xp + getnum(Argv[1]))); }
+
+bool homp(ob _) { return TypeOf(_) == Hom; }

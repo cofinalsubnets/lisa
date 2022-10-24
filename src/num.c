@@ -85,3 +85,5 @@ Vm(sar) {
 Vm(sal) {
   xp = putnum(getnum(*sp++) << getnum(xp));
   return ApN(1, xp); }
+
+bool nump(ob _) { return TypeOf(_) == Num; }

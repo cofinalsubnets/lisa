@@ -113,3 +113,5 @@ ob cp_str(la v, ob _, size_t len0, ob *pool0) {
   cpyw(dst, src, Width(str) + ws);
   src->disp = (vm*) dst;
   return (ob) dst; }
+
+bool strp(ob _) { return homp(_) && GF(_) == (vm*) mtbl_str; }

@@ -76,3 +76,5 @@ void em_sym(la v, FILE *o, ob x) {
             fprintf(o, "#sym@%lx", (long) y); }
 
 Vm(do_id) { return ApC(ret, (ob) ip); }
+
+bool symp(ob _) { return TypeOf(_) == Sym; }

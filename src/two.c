@@ -65,3 +65,5 @@ void em_two(la v, FILE *o, ob x) {
 
 size_t hash_two(la v, ob x) {
   return ror(hash(v, A(x)) & hash(v, B(x)), 32); }
+
+bool twop(ob _) { return TypeOf(_) == Two; }

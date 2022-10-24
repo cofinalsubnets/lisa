@@ -37,7 +37,9 @@ typedef struct mtbl {
 struct mo { vm *ll; };
 
 // pairs
-typedef struct two { ob a, b; } *two;
+typedef struct two {
+  // vm *disp; mtbl mtbl;
+  ob a, b; } *two;
 
 // strings
 typedef struct str { vm *disp; mtbl mtbl; size_t len; char text[]; } *str;
@@ -47,7 +49,9 @@ typedef struct str { vm *disp; mtbl mtbl; size_t len; char text[]; } *str;
 // FIXME this is a silly way to store internal symbols
 // - it's slower than a hash table
 // - anonymous symbols waste 2 words
-typedef struct sym { ob nom, code, l, r; } *sym;
+typedef struct sym {
+  // vm *disp; mtbl mtbl;
+  ob nom, code, l, r; } *sym;
 
 // hash tables
 typedef struct tbl { vm *disp; mtbl mtbl; ob *tab; size_t len, cap; } *tbl;
@@ -155,7 +159,10 @@ ob nope(la, const char*, ...) NoInline; // runtime error
 #define gettwo(_) ((two)((ob)(_)^Two))
 #define puttwo(_) ((ob)(_)^Two)
 
-bool nilp(ob), nump(ob), strp(ob), homp(ob), twop(ob), tblp(ob), symp(ob);
+#define nilp(_) ((ob)(_)==nil)
+// these should hopefully almost always be inlined but we
+// might need pointers to them.
+bool nump(ob), strp(ob), homp(ob), twop(ob), tblp(ob), symp(ob);
 
 static Inline size_t b2w(size_t b) {
   size_t quot = b / sizeof(ob), rem = b % sizeof(ob);
