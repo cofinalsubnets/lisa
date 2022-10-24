@@ -144,13 +144,11 @@ Gc(cpsym) {
   sym src = getsym(x), dst;
   ob nom = src->nom;
   if (fresh(nom)) return nom;
-  if (nilp(nom)) {
-    // anonymous symbol
-    dst = bump(v, Width(sym));
+  if (nilp(nom)) // anonymous symbol
+    dst = bump(v, Width(sym)),
     cpyw(dst, src, Width(sym));
-    return src->nom = putsym(dst); }
-  x = cp(v, src->nom, len0, pool0);
-  dst = getsym(sskc(v, &v->syms, x));
+  else x = cp(v, src->nom, len0, pool0),
+       dst = getsym(sskc(v, &v->syms, x));
   return src->nom = putsym(dst); }
 
 Gc(cptwo) {

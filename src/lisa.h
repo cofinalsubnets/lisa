@@ -50,7 +50,7 @@ typedef struct str { vm *disp; mtbl mtbl; size_t len; char text[]; } *str;
 // - it's slower than a hash table
 // - anonymous symbols waste 2 words
 typedef struct sym {
-  // vm *disp; mtbl mtbl;
+  vm *disp; mtbl mtbl;
   ob nom, code, l, r; } *sym;
 
 // hash tables
@@ -68,7 +68,7 @@ struct la {
   fr fp; // top of control stack
   ob xp, // free register
      *hp, // top of heap
-     *sp; // top of data stack
+     *sp; // top of stack
           // sp - hp = free memory
 
   // memory state

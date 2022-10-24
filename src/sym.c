@@ -25,6 +25,7 @@ ob sskc(la v, ob *y, ob x) {
   // sym allocated here
   sym z = cells(v, Width(sym));
   z->code = hash(v, putnum(hash(v, z->nom = x)));
+  z->disp = disp; z->mtbl = mtbl_sym;
   z->l = z->r = nil;
   return *y = putsym(z); }
 
@@ -43,6 +44,7 @@ Vm(sym_u) {
   sym y = (sym) hp;
   hp += Width(sym);
   y->nom = y->l = y->r = nil;
+  y->disp = disp; y->mtbl = mtbl_sym;
   y->code = v->rand = lcprng(v->rand);
   return ApC(ret, putsym(y)); }
 
@@ -77,4 +79,6 @@ void em_sym(la v, FILE *o, ob x) {
 
 Vm(do_id) { return ApC(ret, (ob) ip); }
 
-bool symp(ob _) { return TypeOf(_) == Sym; }
+bool symp(ob _) {
+  // return homp(_) && GF(_) == (vm*) mtbl_sym; }
+  return TypeOf(_) == Sym; }
