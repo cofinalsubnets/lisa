@@ -30,7 +30,6 @@ size_t hash_tbl(la v, ob _) { return ror(mix * 9, 48); }
 size_t hash(la v, ob x) {
   if (nump(x)) return ror(mix * x, 16);
   switch (TypeOf(x)) {
-    case Sym: return hash_sym(v, x);
     case Two: return hash_two(v, x); }
   if (!livep(v, x)) return mix ^ (x * mix);
   if (G(x) == disp) return ((mtbl) GF(x))->hash(v, x);

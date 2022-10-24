@@ -140,17 +140,6 @@ Gc(cphom) {
 
   return (ob) (src - start + dst); }
 
-Gc(cpsym) {
-  sym src = getsym(x), dst;
-  ob nom = src->nom;
-  if (fresh(nom)) return nom;
-  if (nilp(nom)) // anonymous symbol
-    dst = bump(v, Width(sym)),
-    cpyw(dst, src, Width(sym));
-  else x = cp(v, src->nom, len0, pool0),
-       dst = getsym(sskc(v, &v->syms, x));
-  return src->nom = putsym(dst); }
-
 Gc(cptwo) {
   two src = gettwo(x), dst;
   if (fresh(src->a)) return src->a;
@@ -165,8 +154,7 @@ Gc(cptwo) {
 Gc(cp) {
   if (nump(x) || !stale(x)) return x;
   switch (TypeOf(x)) {
-    case Two: return cptwo(v, x, len0, pool0);
-    case Sym: return cpsym(v, x, len0, pool0); }
+    case Two: return cptwo(v, x, len0, pool0); }
   ob y = (ob) G(x);
   if (!nump(y) && livep(v, y)) return y;
   if ((vm*) y == disp) return

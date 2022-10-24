@@ -402,6 +402,6 @@ Vm(dom_err) { return Pack(), nope(v, "is undefined"); }
 Vm(oom_err) { return Pack(), nope(v, "oom with %d words", v->len); }
 Vm(ary_err) { return Pack(), nope(v, "takes %d parameters", getnum(xp)); }
 Vm(nom_err) {
-  xp = getsym(xp)->nom;
+  xp = ((sym) xp)->nom;
   return Pack(),
     nope(v, "referenced free variable `%s'", nilp(xp) ? 0 : ((str) xp)->text); }

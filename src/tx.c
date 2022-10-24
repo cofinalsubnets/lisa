@@ -16,8 +16,7 @@ void tx(la v, FILE *o, ob x) {
     fprintf(o, "%ld", getnum(x));
     return; }
   switch (TypeOf(x)) {
-    case Two: em_two(v, o, x); return;
-    case Sym: em_sym(v, o, x); return; }
+    case Two: em_two(v, o, x); return; }
   if (primp(x)) fprintf(o, "\\%s", ((struct prim*)x)->nom);
   else if (G(x) == disp) ((mtbl) GF(x))->emit(v, o, x);
   else emhomn(v, o, hnom(v, x)); }
