@@ -14,18 +14,19 @@ struct mtbl s_mtbl_sym = { do_id, em_sym, cp_sym, hash_sym };
 // existing code is unsuitable because it dynamically resizes
 // the table and unpredictable memory allocation isn't safe
 // during garbage collection.
+//
+// FIXME the caller must ensure Avail >= Width(sym)
+// (because GC here would void the tree)
 ob sskc(la v, ob *y, ob x) {
-  int i; sym z; return
-    !nilp(*y) ?
-      (z = getsym(*y),
-       i = scmp(((str) z->nom)->text, ((str) x)->text),
-       i == 0 ? *y : sskc(v, i < 0 ? &z->r : &z->l, x)) :
-    // FIXME the caller must ensure Avail >= Width(sym)
-    // (because GC here would void the tree)
-    (z = cells(v, Width(sym)),
-     z->code = hash(v, putnum(hash(v, z->nom = x))),
-     z->l = z->r = nil,
-     *y = putsym(z)); }
+  if (!nilp(*y)) {
+    sym z = getsym(*y);
+    int i = scmp(((str) z->nom)->text, ((str) x)->text);
+    return i == 0 ? *y : sskc(v, i < 0 ? &z->r : &z->l, x); }
+  // sym allocated here
+  sym z = cells(v, Width(sym));
+  z->code = hash(v, putnum(hash(v, z->nom = x)));
+  z->l = z->r = nil;
+  return *y = putsym(z); }
 
 ob intern(la v, ob x) {
   bool _; return
@@ -36,8 +37,9 @@ ob intern(la v, ob x) {
 
 Vm(sym_u) {
   Have(Width(sym));
-  if (Argc > N0 && strp(Argv[0]))
-    return ApC(ret, sskc(v, &v->syms, fp->argv[0]));
+  if (Argc > putnum(0) && strp(Argv[0]))
+    return ApC(ret, sskc(v, &v->syms, Argv[0]));
+  // sym allocated here
   sym y = (sym) hp;
   hp += Width(sym);
   y->nom = y->l = y->r = nil;
@@ -57,12 +59,12 @@ ob interns(la v, const char *s) {
 Gc(cp_sym) {
   sym src = getsym(x), dst;
   ob nom = src->nom;
-  if (nilp(nom)) {
-    dst = bump(v, Width(sym));
-    cpyw(dst, src, Width(sym)); }
-  else {
-    x = cp(v, nom, len0, pool0);
-    dst = getsym(sskc(v, &v->syms, x)); }
+  if (nilp(nom))
+    dst = bump(v, Width(sym)),
+    cpyw(dst, src, Width(sym));
+  else 
+    x = cp(v, nom, len0, pool0),
+    dst = getsym(sskc(v, &v->syms, x));
   return src->nom = putsym(dst); }
 
 size_t hash_sym(la v, ob x) { return getsym(x)->code; }
@@ -70,8 +72,7 @@ size_t hash_sym(la v, ob x) { return getsym(x)->code; }
 void em_sym(la v, FILE *o, ob x) {
   sym y = getsym(x);
   x = y->nom;
-  strp(x) ?
-    fputs(((str)x)->text, o) :
-    fprintf(o, "#sym@%lx", (long) y); }
+  strp(x) ? fputs(((str)x)->text, o) :
+            fprintf(o, "#sym@%lx", (long) y); }
 
 Vm(do_id) { return ApC(ret, (ob) ip); }

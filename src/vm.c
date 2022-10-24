@@ -183,7 +183,7 @@ Vm(tbind) {
 
 // allocate local variable array
 Vm(locals) {
-  ob *t = hp, n = getnum((ob) ip[1].ll);
+  ob *t = hp, n = getnum((ob) GF(ip));
   Have(n + 2);
   hp += n + 2;
   setw(t, nil, n);

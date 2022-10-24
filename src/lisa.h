@@ -16,6 +16,15 @@ typedef Vm(vm);
 #define Gc(n) ob n(la v, ob x, size_t len0, ob *pool0)
 Gc(cp);
 
+// FIXME stop using tagged pointers!
+// - it assumes pointer alignment that limits the platforms we can run on
+// - it stops us from using cheney's algorithm to gc in constant stack
+// instead just use the least significant bit to distinguish immediate values
+#define TagBits 2
+#define TagMask ((1<<TagBits)-1)
+#define TypeOf(_) (((ob)(_))&TagMask)
+enum builtin_type { Hom, Num, Two, Sym, };
+
 // TODO include type data
 typedef struct mtbl {
   vm *does;
@@ -48,14 +57,6 @@ enum lex { Def, Cond, Lamb, Quote, Seq, Splat, Eval, LexN };
 
 // linked list for gc protection
 typedef struct keep { ob *it; struct keep *et; } *keep;
-
-enum la_err {
-  NoError,
-  SyntaxError,
-  DomainError,
-  SystemError,
-  OutOfBounds,
-  OutOfMemory, };
 
 struct la {
   // vm state -- kept in CPU registers most of the time
@@ -147,14 +148,6 @@ extern struct prim primitives[];
 #define NoInline __attribute__((noinline))
 ob nope(la, const char*, ...) NoInline; // runtime error
 
-// FIXME stop using tagged pointers!
-// - it assumes pointer alignment that limits the platforms we can run on
-// - it stops us from using cheney's algorithm to gc in constant stack
-// instead just use the least significant bit to distinguish immediate values
-#define TagBits 2
-#define TagMask ((1<<TagBits)-1)
-#define TypeOf(_) (((ob)(_))&TagMask)
-enum builtin_type { Hom, Num, Two, Sym, };
 #define getnum(_) ((ob)(_)>>TagBits)
 #define putnum(_) (((ob)(_)<<TagBits)|Num)
 #define getsym(_) ((sym)((ob)(_)^Sym))
@@ -181,10 +174,9 @@ static Inline void *bump(la v, size_t n) {
 static Inline void *cells(la v, size_t n) {
   return Avail >= n || please(v, n) ? bump(v, n) : 0; }
 
-// XXX FIXME XXX
-_Static_assert(sizeof(ob) >= (1 << TagBits), "enough bits");
+_Static_assert(sizeof(void*) >= (1 << TagBits), "enough bits");
 _Static_assert(-1 == -1 >> 1, "signed >>");
-_Static_assert(sizeof(ob) == sizeof(size_t), "size_t matches address space");
+_Static_assert(sizeof(void*) == sizeof(size_t), "size_t matches pointer size");
 
 #define Builtins(_) _(two) _(str) _(sym) _(tbl)
 #define GcProto(n) ob cp_##n(la, ob, size_t, ob*);

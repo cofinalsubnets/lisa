@@ -20,9 +20,9 @@ test: $(bin_debug)
 CPPFLAGS=\
 	-DPREF=\"$(DESTDIR)/$(PREFIX)\" -DLANG=\"$(lang)\" -DSUFF=\"$(suff)\"
 CFLAGS=\
-	-std=c99 -g -Os -flto\
-	-Wall -Werror -Wstrict-prototypes -Wno-shift-negative-value\
-	-fno-stack-protector -fno-unroll-loops -fno-align-functions
+	-std=c99 -g -Os -flto -Wall -Werror\
+ 	-Wstrict-prototypes -Wno-shift-negative-value\
+	-fno-stack-protector
 # set locale for sorting
 LC_COLLATE=C
 h=$(sort $(wildcard $(srcdir)/*.h))
