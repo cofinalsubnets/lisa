@@ -154,8 +154,8 @@ ob nope(la, const char*, ...) NoInline; // runtime error
 
 #define getnum(_) ((ob)(_)>>TagBits)
 #define putnum(_) (((ob)(_)<<TagBits)|Num)
-#define getsym(_) ((sym)((ob)(_)^Sym))
-#define putsym(_) ((ob)(_)^Sym)
+#define getsym(_) ((sym)((ob)(_)))
+#define putsym(_) ((ob)(_))
 #define gettwo(_) ((two)((ob)(_)^Two))
 #define puttwo(_) ((ob)(_)^Two)
 

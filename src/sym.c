@@ -23,7 +23,7 @@ ob sskc(la v, ob *y, ob x) {
     int i = scmp(((str) z->nom)->text, ((str) x)->text);
     return i == 0 ? *y : sskc(v, i < 0 ? &z->r : &z->l, x); }
   // sym allocated here
-  sym z = cells(v, Width(sym));
+  sym z = bump(v, Width(sym));
   z->code = hash(v, putnum(hash(v, z->nom = x)));
   z->disp = disp; z->mtbl = mtbl_sym;
   z->l = z->r = nil;
@@ -67,7 +67,8 @@ Gc(cp_sym) {
   else 
     x = cp(v, nom, len0, pool0),
     dst = getsym(sskc(v, &v->syms, x));
-  return src->nom = putsym(dst); }
+  src->disp = (vm*) dst;
+  return (ob) dst; }
 
 size_t hash_sym(la v, ob x) { return getsym(x)->code; }
 
@@ -80,5 +81,5 @@ void em_sym(la v, FILE *o, ob x) {
 Vm(do_id) { return ApC(ret, (ob) ip); }
 
 bool symp(ob _) {
-  // return homp(_) && GF(_) == (vm*) mtbl_sym; }
-  return TypeOf(_) == Sym; }
+  return homp(_) && GF(_) == (vm*) mtbl_sym; }
+  //return TypeOf(_) == Sym; }

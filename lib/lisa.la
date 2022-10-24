@@ -116,6 +116,8 @@
    abelians (set && || + *) ; arguments can be combined freely
    monoids (set scat append) ; pairs of consecutive arguments can be combined in place
 
+   (homp-strict x) (? (homp x) (~ (= i-disp (peeki x))))
+
 
  ; instruction fusion table
  fuse (:
@@ -331,7 +333,7 @@
    ; a second known function to its exact list of arguments,
    ; then it's an alias for the second function.
    (? (>= (tget f 'sig) 0)
-      (? (twop x) (? (homp (A x)) (= (B x) (tget f 'arg)))))
+      (? (twop x) (? (homp-strict (A x)) (= (B x) (tget f 'arg)))))
     (A x)
    ; otherwise compile it
    (? (: k (hfin (ar (loc ((eval x ini) f 4))))
@@ -600,7 +602,7 @@
     l ((-> 'hom k) e (+ m 2))
     y (ltu e (nom e l) x)
     (? (homp y) (emf i-imm (emx y l))
-     (emi (? (tget e'loc) i-encll i-encln)
+     (emi (? (tget e 'loc) i-encll i-encln)
       (emx (X (B y) (clo-thd e (A y) k)) l))))
 
    (seq x k) (? x (eval (A x) (seq (B x) k)) k)

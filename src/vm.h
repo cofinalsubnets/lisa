@@ -3,7 +3,7 @@
 // these are vm functions used by C but not lisp.
 #define cfns(_)\
   _(gc) _(dom_err) _(nom_err) _(oom_err) _(ary_err)\
-  _(disp) _(clos) _(clos0) _(clos1) _(do_id)
+  _(clos) _(clos0) _(clos1) _(do_id)
 cfns(ninl)
 #undef cfns
 
@@ -16,7 +16,7 @@ cfns(ninl)
  _(bxor) _(tbind) _(push) _(add) _(sub) _(mul) _(dqv) _(mod)\
  _(neg) _(lt) _(lteq) _(eq) _(gteq) _(gt) _(twopp) _(numpp)\
  _(nilpp) _(strpp) _(tblpp) _(sympp) _(hompp) _(car) _(cdr)\
- _(cons) _(one) _(zero) _(arg0) _(arg1) _(loc0) _(loc1)\
+ _(cons) _(one) _(zero) _(arg0) _(arg1) _(loc0) _(loc1) _(disp)\
  _(clo0) _(clo1) _(brlt) _(brlteq) _(breq) _(brgteq) _(brlt2)\
  _(brlteq2) _(brgt2) _(brgt) _(brne) _(dupl) _(emi) _(emx) _(varg)
 

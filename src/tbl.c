@@ -257,7 +257,7 @@ Gc(cp_tbl) {
   dst->cap = src_cap;
   dst->tab = (ob*) (dst + 1);
   ob *src_tab = src->tab;
-  G(src) = (vm*) dst;
+  src->disp = (vm*) dst;
   dst->tab = (ob*) cp(v, (ob) src_tab, len0, pool0);
   return (ob) dst; }
 
