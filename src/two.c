@@ -82,5 +82,4 @@ size_t hash_two(la v, ob x) {
   return ror(hash(v, A(x)) & hash(v, B(x)), 32); }
 
 bool twop(ob _) {
-  // return homp(_) && GF(_) == (vm*) mtbl_two; }
-  return TypeOf(_) == Two; }
+  return homp(_) && GF(_) == (vm*) mtbl_two; }

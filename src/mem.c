@@ -153,8 +153,6 @@ Gc(cptwo) {
 #define stale(o) inb((ob*)(o),pool0,pool0+len0)
 Gc(cp) {
   if (nump(x) || !stale(x)) return x;
-  switch (TypeOf(x)) {
-    case Two: return cptwo(v, x, len0, pool0); }
   ob y = (ob) G(x);
   if (!nump(y) && livep(v, y)) return y;
   if ((vm*) y == disp) return

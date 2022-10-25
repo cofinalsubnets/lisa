@@ -23,7 +23,7 @@ Gc(cp);
 #define TagBits 2
 #define TagMask ((1<<TagBits)-1)
 #define TypeOf(_) (((ob)(_))&TagMask)
-enum builtin_type { Hom, Num, Two, };
+enum builtin_type { Hom, Num, };
 
 // TODO include type data
 typedef struct mtbl {
@@ -154,8 +154,8 @@ ob nope(la, const char*, ...) NoInline; // runtime error
 
 #define getnum(_) ((ob)(_)>>TagBits)
 #define putnum(_) (((ob)(_)<<TagBits)|Num)
-#define gettwo(_) ((two)((ob)(_)^Two))
-#define puttwo(_) ((ob)(_)^Two)
+#define gettwo(_) ((two)((ob)(_)))
+#define puttwo(_) ((ob)(_))
 
 #define nilp(_) ((ob)(_)==nil)
 // these should hopefully almost always be inlined but we
