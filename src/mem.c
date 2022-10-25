@@ -144,10 +144,10 @@ Gc(cptwo) {
   two src = gettwo(x), dst;
   if (fresh(src->a)) return src->a;
   dst = bump(v, Width(two));
-  dst->a = src->a;
+  ob src_a = src->a;
   src->a = puttwo(dst);
   dst->b = cp(v, src->b, len0, pool0);
-  dst->a = cp(v, dst->a, len0, pool0);
+  dst->a = cp(v, src_a, len0, pool0);
   return puttwo(dst); }
 
 #define stale(o) inb((ob*)(o),pool0,pool0+len0)

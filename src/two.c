@@ -4,9 +4,11 @@
 // pairs and lists
 ob pair(la v, ob a, ob b) {
   two w;
-  with(a, with(b, w = cells(v, 2)));
+  with(a, with(b, w = cells(v, Width(two))));
   if (!w) return 0;
-  return w->a = a, w->b = b, puttwo(w); }
+  w->a = a;
+  w->b = b;
+  return puttwo(w); }
 
 // length of list
 size_t llen(ob l) {
@@ -18,30 +20,32 @@ Vm(car) { return ApN(1, A(xp)); }
 Vm(cdr) { return ApN(1, B(xp)); }
 
 Vm(cons) {
-  Have1();
+  Have(Width(two) - 1);
   hp[0] = xp;
   hp[1] = *sp++;
   xp = puttwo(hp);
-  hp += 2;
+  hp += Width(two);
   return ApN(1, xp); }
 
 Vm(car_u) {
   ArityCheck(1);
-  TypeCheck(Argv[0], Two);
-  return ApC(ret, A(Argv[0])); }
+  xp = Argv[0];
+  Check(twop(xp));
+  return ApC(ret, A(xp)); }
 
 Vm(cdr_u) {
   ArityCheck(1);
-  TypeCheck(Argv[0], Two);
-  return ApC(ret, B(Argv[0])); }
+  xp = Argv[0];
+  Check(twop(xp));
+  return ApC(ret, B(xp)); }
 
 Vm(cons_u) {
   ArityCheck(2);
-  Have(2);
+  Have(Width(two));
   hp[0] = Argv[0];
   hp[1] = Argv[1];
   xp = puttwo(hp);
-  hp += 2;
+  hp += Width(two);
   return ApC(ret, xp); }
 
 Vm(do_two) {
@@ -51,10 +55,10 @@ Vm(do_two) {
 Gc(cp_two) {
   two src = gettwo(x), dst;
   dst = bump(v, Width(two));
-  dst->a = src->a;
-  src->a = puttwo(dst);
+  ob src_a = src->a;
+  G(src) = (vm*) puttwo(dst);
   dst->b = cp(v, src->b, len0, pool0);
-  dst->a = cp(v, dst->a, len0, pool0);
+  dst->a = cp(v, src_a, len0, pool0);
   return puttwo(dst); }
 
 void em_two(la v, FILE *o, ob x) {

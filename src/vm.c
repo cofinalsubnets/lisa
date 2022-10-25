@@ -60,9 +60,9 @@ Vm(varg) {
   // slot to hold the nil.
   if (!vdic) return ApC(varg0, xp);
   // in this case we just keep the existing slots.
-  Have(2 * vdic);
+  Have(Width(two) * vdic);
   two t = (two) hp;
-  hp += 2 * vdic;
+  hp += Width(two) * vdic;
   for (size_t i = vdic; i--;
     t[i].a = Argv[reqd + i],
     t[i].b = puttwo(t+i+1));
