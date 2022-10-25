@@ -87,7 +87,6 @@ i_primitives(ninl)
 #define Argc fp->argc
 #define ArityCheck(n) if (putnum(n) > Argc) return ApC(ary_err, putnum(n))
 #define Check(_) if (!(_)) return ApC(dom_err, xp)
-#define TypeCheck(x,t) Check(TypeOf(x) == t)
 #define Collect(n) (v->xp = n, ApC(gc, xp))
 #define Free (sp - hp)
 #define Have1() if (!Free) return Collect(1)

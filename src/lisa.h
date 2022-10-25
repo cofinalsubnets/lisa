@@ -38,7 +38,7 @@ struct mo { vm *ll; };
 
 // pairs
 typedef struct two {
-  //vm *disp; mtbl mtbl;
+  vm *disp; mtbl mtbl;
   ob a, b; } *two;
 
 // strings

@@ -25,10 +25,10 @@ ob table(la v) {
   tbl t = cells(v, Width(tbl) + 3);
   if (!t) return 0;
   ob *b = (ob*) (t + 1);
-  t->len = t->cap = 0;
-  t->tab = b;
   t->disp = disp;
   t->mtbl = mtbl_tbl;
+  t->len = t->cap = 0;
+  t->tab = b;
   b[0] = nil;
   b[1] = 0;
   b[2] = (ob) b;
@@ -133,13 +133,17 @@ static void tbl_fit(la v, ob t) {
 
   // collect all entries
   for (size_t i = 1 << u->cap; i--;)
-    for (f = u->tab[i], u->tab[i] = nil; f != nil;
+    for (f = u->tab[i], u->tab[i] = nil; !nilp(f);
       g = ((ob*) f)[2],
       ((ob*) f)[2] = e,
-      e = f, f = g);
+      e = f,
+      f = g);
 
   // shrink bucket array
   while (u->cap && tbl_load(t) < 1) u->cap--;
+  size_t len = 1ul << u->cap;
+  u->tab[len] = 0;
+  u->tab[len+1] = (ob) u->tab;
 
   // reinsert
   while (e != nil) {
@@ -152,7 +156,7 @@ static void tbl_fit(la v, ob t) {
 static ob tbl_del(la v, ob t, ob key) {
   tbl y = (tbl) t;
   ob val = nil;
-  intptr_t b = tbl_idx(y->cap, hash(v, key));
+  size_t b = tbl_idx(y->cap, hash(v, key));
   ob e = y->tab[b],
      prev[] = {0,0,e};
   for (ob l = (ob) &prev; l != nil && ((ob*) l)[2] != nil; l = ((ob*) l)[2])
@@ -170,16 +174,17 @@ static ob tbl_del(la v, ob t, ob key) {
 // the old table entries are reused to populate the modified table.
 static ob tbl_grow(la v, ob t) {
   ob *tab0, *tab1;
-  size_t cap0 = ((tbl) t)->cap, cap1 = cap0 + 1,
-         len = 1<<cap1;
+  size_t cap0 = ((tbl) t)->cap,
+         cap1 = cap0 + 1,
+         len = 1l << cap1;
   with(t, tab1 = cells(v, len + 2));
   if (!tab1) return 0;
   tab1[len] = 0, tab1[len+1] = (ob) tab1;
-  setw(tab1, nil, 1<<cap1);
+  setw(tab1, nil, len);
   tab0 = ((tbl) t)->tab;
 
   for (size_t i, cap = 1 << cap0; cap--;)
-    for (ob e, es = tab0[cap]; es != nil;)
+    for (ob e, es = tab0[cap]; !nilp(es);)
       e = es,
       es = ((ob*) es)[2],
       i = tbl_idx(cap1, hash(v, ((ob*) e)[0])),
@@ -212,7 +217,7 @@ static ob tks_j(la v, ob e, ob l) {
   return l ? pair(v, x, l) : 0; }
 
 static ob tks_i(la v, ob t, size_t i) {
-  if (i == 1 << ((tbl) t)->cap) return nil;
+  if (i == 1ul << ((tbl) t)->cap) return nil;
   ob k;
   with(t, k = tks_i(v, t, i+1));
   return k ? tks_j(v, ((tbl) t)->tab[i], k) : 0; }
@@ -250,16 +255,13 @@ Vm(do_tbl) {
 
 Gc(cp_tbl) {
   tbl src = (tbl) x;
-  size_t src_cap = src->cap;
-  tbl dst = bump(v, Width(tbl) + (1l<<src_cap));
+  tbl dst = bump(v, Width(tbl));
+  src->disp = (vm*) dst;
   dst->disp = disp;
   dst->mtbl = mtbl_tbl;
   dst->len = src->len;
-  dst->cap = src_cap;
-  dst->tab = (ob*) (dst + 1);
-  ob *src_tab = src->tab;
-  src->disp = (vm*) dst;
-  dst->tab = (ob*) cp(v, (ob) src_tab, len0, pool0);
+  dst->cap = src->cap;
+  dst->tab = (ob*) cp(v, (ob) src->tab, len0, pool0);
   return (ob) dst; }
 
 void em_tbl(la v, FILE *o, ob x) {

@@ -1,11 +1,15 @@
 #include "lisa.h"
 #include "vm.h"
 
+struct mtbl s_mtbl_two = { do_two, em_two, cp_two, hash_two, };
+
 // pairs and lists
 ob pair(la v, ob a, ob b) {
   two w;
   with(a, with(b, w = cells(v, Width(two))));
   if (!w) return 0;
+  w->disp = disp;
+  w->mtbl = mtbl_two;
   w->a = a;
   w->b = b;
   return puttwo(w); }
@@ -23,6 +27,8 @@ Vm(cons) {
   Have(Width(two));
   two w = (two) hp;
   hp += Width(two);
+  w->disp = disp;
+  w->mtbl = mtbl_two;
   w->a = xp;
   w->b = *sp++;
   xp = puttwo(w);
@@ -45,6 +51,8 @@ Vm(cons_u) {
   Have(Width(two));
   two w = (two) hp;
   hp += Width(two);
+  w->disp = disp;
+  w->mtbl = mtbl_two;
   w->a = Argv[0];
   w->b = Argv[1];
   xp = puttwo(w);
@@ -55,13 +63,14 @@ Vm(do_two) {
   return ApC(ret, xp); }
 
 Gc(cp_two) {
-  two src = gettwo(x), dst;
+  two src = (two) x, dst;
   dst = bump(v, Width(two));
-  ob src_a = src->a;
-  G(src) = (vm*) puttwo(dst);
+  src->disp = (vm*) dst;
+  dst->disp = disp;
+  dst->mtbl = mtbl_two;
   dst->b = cp(v, src->b, len0, pool0);
-  dst->a = cp(v, src_a, len0, pool0);
-  return puttwo(dst); }
+  dst->a = cp(v, src->a, len0, pool0);
+  return (ob) dst; }
 
 void em_two(la v, FILE *o, ob x) {
   for (fputc('(', o);; fputc(' ', o)) {

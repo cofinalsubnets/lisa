@@ -10,18 +10,18 @@
 
 Vm(sub_u) {
   if (!(xp = getnum(Argc))) return ApC(ret, N0);
-  TypeCheck(*Argv, Num);
+  Check(nump(*Argv));
   if (xp == 1) return ApC(ret, putnum(-getnum(*Argv)));
   mm_u(xp-1, Argv+1, getnum(*Argv), -); }
 
 Vm(sar_u) {
   if (Argc == N0) return ApC(ret, N0);
-  TypeCheck(Argv[0], Num);
+  Check(nump(Argv[0]));
   mm_u(getnum(Argc)-1, Argv+1, getnum(Argv[0]), >>); }
 
 Vm(sal_u) {
   if (Argc == N0) return ApC(ret, N0);
-  TypeCheck(Argv[0], Num);
+  Check(nump(Argv[0]));
   mm_u(getnum(Argc)-1, Argv+1, getnum(Argv[0]), <<); }
 
 Vm(dqv) {
@@ -38,18 +38,18 @@ Vm(mod) {
   ob x,*xs=_v,*l=xs+_c;\
   for(xp=_z;xs<l;xp=xp op getnum(x)){\
     x = *xs++;\
-    TypeCheck(x, Num);\
+    Check(nump(x));\
     if (x == N0) return ApC(dom_err, x);}\
   return ApC(ret, putnum(xp));}
 
 Vm(div_u) {
   if (!(xp = getnum(Argc))) return ApC(ret, T);
-  TypeCheck(Argv[0], Num);
+  Check(nump(Argv[0]));
   mm_void(xp-1, Argv+1, getnum(Argv[0]), /); }
 
 Vm(mod_u) {
   if (!(xp = getnum(Argc))) return ApC(ret, T);
-  TypeCheck(*Argv, Num);
+  Check(nump(*Argv));
   mm_void(xp-1, Argv+1, getnum(*Argv), %); }
 
 Vm(rnd_u) { return

@@ -64,6 +64,8 @@ Vm(varg) {
   two t = (two) hp;
   hp += Width(two) * vdic;
   for (size_t i = vdic; i--;
+    t[i].disp = disp,
+    t[i].mtbl = mtbl_two,
     t[i].a = Argv[reqd + i],
     t[i].b = puttwo(t+i+1));
   t[vdic-1].b = nil,
@@ -184,8 +186,9 @@ Vm(tbind) {
 // allocate local variable array
 Vm(locals) {
   ob *t = hp, n = getnum((ob) GF(ip));
-  Have(n + 2);
-  hp += n + 2;
+  // n + 2 for the vector thread + 1 for the stack slot
+  Have(n + 3);
+  hp += n + 3;
   setw(t, nil, n);
   t[n] = 0;
   *--sp = t[n+1] = (ob) t;
@@ -215,10 +218,10 @@ Vm(take) {
   Have(n + 2);
   t = hp;
   hp += n + 2;
-  cpyw(t, sp, n);
-  sp += n;
   t[n] = 0;
   t[n+1] = (ob) t;
+  cpyw(t, sp, n);
+  sp += n;
   return ApC(ret, (ob) t); }
 
 Vm(clos) {
@@ -309,7 +312,7 @@ Vm(encln) { return ApC(encl, nil); }
 /// Branch Instructions
 //
 // unconditional jump
-Vm(jump) { return ApY((ob) ip[1].ll, xp); }
+Vm(jump) { return ApY((ob) GF(ip), xp); }
 
 #include <string.h>
 // isolate the more complicated logic from the simple
