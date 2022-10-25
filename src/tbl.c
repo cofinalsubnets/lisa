@@ -96,7 +96,8 @@ Vm(tset_u) {
 
 Vm(tbl_u) {
   Pack();
-  bool _ = (v->xp = table(v)) && tblss(v, 0, getnum(Argc));
+  xp = getnum(Argc);
+  bool _ = (v->xp = table(v)) && tblss(v, 0, xp);
   Unpack();
   return ApC(_ ? ret : oom_err, xp); }
 
