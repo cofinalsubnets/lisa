@@ -320,12 +320,12 @@ static NoInline bool eql_two(two a, two b) {
 static NoInline bool eql_str(str a, str b) {
   return a->len == b->len && 0 == scmp(a->text, b->text); }
 static NoInline bool eql_(ob a, ob b) {
-  if (twop(a)) return eql_two(gettwo(a), gettwo(b));
-  if (strp(a)) return eql_str((str) a, (str) b);
+  if (twop(a) && twop(b)) return eql_two(gettwo(a), gettwo(b));
+  if (strp(a) && strp(b)) return eql_str((str) a, (str) b);
   return false; }
 
 bool eql(ob a, ob b) {
-  return a == b ? true : TypeOf(a) != TypeOf(b) ? false : eql_(a, b); }
+  return a == b ? true : eql_(a, b); }
 
 // XXX FIXME returning xp is wrong now that 0 = nil
 Vm(lt) {

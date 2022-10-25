@@ -20,11 +20,12 @@ Vm(car) { return ApN(1, A(xp)); }
 Vm(cdr) { return ApN(1, B(xp)); }
 
 Vm(cons) {
-  Have(Width(two) - 1);
-  hp[0] = xp;
-  hp[1] = *sp++;
-  xp = puttwo(hp);
+  Have(Width(two));
+  two w = (two) hp;
   hp += Width(two);
+  w->a = xp;
+  w->b = *sp++;
+  xp = puttwo(w);
   return ApN(1, xp); }
 
 Vm(car_u) {
@@ -42,10 +43,11 @@ Vm(cdr_u) {
 Vm(cons_u) {
   ArityCheck(2);
   Have(Width(two));
-  hp[0] = Argv[0];
-  hp[1] = Argv[1];
-  xp = puttwo(hp);
+  two w = (two) hp;
   hp += Width(two);
+  w->a = Argv[0];
+  w->b = Argv[1];
+  xp = puttwo(w);
   return ApC(ret, xp); }
 
 Vm(do_two) {
@@ -70,4 +72,6 @@ void em_two(la v, FILE *o, ob x) {
 size_t hash_two(la v, ob x) {
   return ror(hash(v, A(x)) & hash(v, B(x)), 32); }
 
-bool twop(ob _) { return TypeOf(_) == Two; }
+bool twop(ob _) {
+  // return homp(_) && GF(_) == (vm*) mtbl_two; }
+  return TypeOf(_) == Two; }

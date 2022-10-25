@@ -38,12 +38,12 @@ struct mo { vm *ll; };
 
 // pairs
 typedef struct two {
-  // vm *disp; mtbl mtbl;
+  //vm *disp; mtbl mtbl;
   ob a, b; } *two;
 
 // strings
+// TODO maybe pre-hash strings for faster lookup & comparison
 typedef struct str { vm *disp; mtbl mtbl; size_t len; char text[]; } *str;
-// TODO pre-hash strings for faster lookup & comparison
 
 // symbols
 // FIXME this is a silly way to store internal symbols

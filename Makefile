@@ -17,7 +17,7 @@ test: $(bin_debug)
 
 lots=2048
 test_lots:
-	for n in {1..$(lots)}; do make test || exit 1; done
+	for n in {1..$(lots)}; do make -s test || exit 1; done
 
 # build
 # tested with gcc, clang, and compcert
