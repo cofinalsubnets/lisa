@@ -48,7 +48,7 @@ static NoInline Vm(varg0) {
   cpyw((ob*) fp - 1, fp, Width(fr) + getnum(Argc));
   fp = (fr) ((ob*) fp - 1);
   sp = (ob*) fp;
-  Argc += (1<<TagBits);
+  Argc += 2; // 1 << 1
   Argv[reqd] = nil;
   return ApN(2, xp); }
 

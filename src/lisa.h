@@ -20,9 +20,6 @@ Gc(cp);
 // - it assumes pointer alignment that limits the platforms we can run on
 // - it stops us from using cheney's algorithm to gc in constant stack
 // instead just use the least significant bit to distinguish immediate values
-#define TagBits 2
-#define TagMask ((1<<TagBits)-1)
-#define TypeOf(_) (((ob)(_))&TagMask)
 enum builtin_type { Hom, Num, };
 
 // TODO include type data
@@ -152,15 +149,17 @@ extern struct prim primitives[];
 #define NoInline __attribute__((noinline))
 ob nope(la, const char*, ...) NoInline; // runtime error
 
-#define getnum(_) ((ob)(_)>>TagBits)
-#define putnum(_) (((ob)(_)<<TagBits)|Num)
+#define getnum(_) ((ob)(_)>>1)
+#define putnum(_) (((ob)(_)<<1)|1)
 #define gettwo(_) ((two)((ob)(_)))
 #define puttwo(_) ((ob)(_))
 
 #define nilp(_) ((ob)(_)==nil)
 // these should hopefully almost always be inlined but we
 // might need pointers to them.
-bool nump(ob), strp(ob), homp(ob), twop(ob), tblp(ob), symp(ob);
+bool strp(ob), twop(ob), tblp(ob), symp(ob);
+#define nump(_) ((ob)(_)&1)
+#define homp(_) (!nump(_))
 
 static Inline size_t b2w(size_t b) {
   size_t quot = b / sizeof(ob), rem = b % sizeof(ob);
@@ -179,7 +178,6 @@ static Inline void *bump(la v, size_t n) {
 static Inline void *cells(la v, size_t n) {
   return Avail >= n || please(v, n) ? bump(v, n) : 0; }
 
-_Static_assert(sizeof(void*) >= (1 << TagBits), "enough bits");
 _Static_assert(-1 == -1 >> 1, "signed >>");
 _Static_assert(sizeof(void*) == sizeof(size_t), "size_t matches pointer size");
 
