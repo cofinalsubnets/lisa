@@ -15,6 +15,10 @@ testcmd=$(bin_debug) -_ $(lib) $(testdir)/*.$(suff)
 test: $(bin_debug)
 	/usr/bin/env TIMEFORMAT="in %Rs" bash -c "time $(testcmd)"
 
+lots=2048
+test_lots:
+	for n in {1..$(lots)}; do make test || exit 1; done
+
 # build
 # tested with gcc, clang, and compcert
 CPPFLAGS=\
@@ -85,4 +89,4 @@ sloc:
 bits: $(bin_rel) $(bin_debug)
 	du -h $^
 
-.PHONY: test repl install install-vim uninstall uninstall-vim sloc bits valg perf clean
+.PHONY: test repl install install-vim uninstall uninstall-vim sloc bits valg perf clean test_lots
