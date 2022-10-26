@@ -60,19 +60,19 @@ Vm(tdel_u) {
   CallOut(v->xp = tbl_del(v, xp, fp->argv[1]));
   return ApC(ret, xp); }
 
-Vm(tget) {
-  xp = tbl_get(v, xp, *sp++);
-  return ApN(1, xp ? xp : nil); }
+Vm(tget) { return
+  xp = tbl_get(v, xp, *sp++),
+  ApN(1, xp ? xp : nil); }
 
-Vm(thas) {
-  xp = tbl_get(v, xp, *sp++);
-  return ApN(1, xp ? T : nil); }
+Vm(thas) { return
+  xp = tbl_get(v, xp, *sp++),
+  ApN(1, xp ? T : nil); }
 
 Vm(tlen) { return ApN(1, putnum(((tbl) xp)->len)); }
 
-Vm(tkeys) {
-  CallOut(v->xp = tks_i(v, xp, 0));
-  return xp ? ApN(1, xp) : ApC(oom_err, nil); }
+Vm(tkeys) { return
+  CallOut(v->xp = tks_i(v, xp, 0)),
+  xp ? ApN(1, xp) : ApC(oom_err, nil); }
 
 Vm(thas_u) {
   ArityCheck(2);
@@ -119,28 +119,28 @@ static void tbl_fit(la v, ob t) {
 
   ob e = nil, f, g;
   tbl u = (tbl) t;
+  size_t i = 1ul << u->cap;
 
   // collect all entries
-  for (size_t i = 1 << u->cap; i--;)
-    for (f = u->tab[i], u->tab[i] = nil; !nilp(f);
-      g = ((ob*) f)[2],
-      ((ob*) f)[2] = e,
-      e = f,
-      f = g);
+  while (i--) for (f = u->tab[i], u->tab[i] = nil; !nilp(f);
+    g = ((ob*) f)[2],
+    ((ob*) f)[2] = e,
+    e = f,
+    f = g);
 
   // shrink bucket array
   while (u->cap && tbl_load(t) < 1) u->cap--;
-  size_t len = 1ul << u->cap;
-  u->tab[len] = 0;
-  u->tab[len+1] = (ob) u->tab;
+  i = 1ul << u->cap;
+  u->tab[i] = 0;
+  u->tab[i+1] = (ob) u->tab;
 
   // reinsert
-  while (e != nil) {
-    size_t i = tbl_idx(u->cap, hash(v, ((ob*) e)[0]));
+  while (e != nil)
+    i = tbl_idx(u->cap, hash(v, ((ob*) e)[0])),
     f = ((ob*) e)[2],
     ((ob*) e)[2] = u->tab[i],
     u->tab[i] = e,
-    e = f; } }
+    e = f; }
 
 static ob tbl_del(la v, ob t, ob key) {
   tbl y = (tbl) t;
@@ -191,11 +191,11 @@ static ob tbl_set_s(la v, ob t, ob k, ob x) {
   if (!nilp(e)) return ((ob*) e)[1] = x;
   with(t, with(k, with(x, e = (ob) mkmo(v, 3))));
   if (!e) return 0;
-  y = (tbl) t,
-  ((ob*) e)[0] = k,
-  ((ob*) e)[1] = x,
-  ((ob*) e)[2] = (ob) y->tab[i],
-  y->tab[i] = (ob) e,
+  y = (tbl) t;
+  ((ob*) e)[0] = k;
+  ((ob*) e)[1] = x;
+  ((ob*) e)[2] = (ob) y->tab[i];
+  y->tab[i] = (ob) e;
   y->len += 1;
   return x; }
 
@@ -211,6 +211,7 @@ static ob tks_i(la v, ob t, size_t i) {
   with(t, k = tks_i(v, t, i+1));
   return k ? tks_j(v, ((tbl) t)->tab[i], k) : 0; }
 
+// FIXME what ??
 static ob tblss(la v, intptr_t i, intptr_t l) {
   fr fp = v->fp;
   return
@@ -219,30 +220,27 @@ static ob tblss(la v, intptr_t i, intptr_t l) {
     tblss(v, i + 2, l); }
 
 static ob tbl_ent_(la v, ob e, ob k) {
-  return nilp(e) || eql(((ob*) e)[0], k) ?
-    e :
+  return nilp(e) || eql(((ob*) e)[0], k) ? e :
     tbl_ent_(v, ((ob*) e)[2], k); }
 
-static ob tbl_ent(la v, ob u, ob k) {
-  tbl t = (tbl) u;
-  u = t->tab[tbl_idx(t->cap, hash(v, k))];
-  return tbl_ent_(v, u, k); }
+static ob tbl_ent(la v, ob u, ob k) { return
+  u = ((tbl) u)->tab[tbl_idx(((tbl) u)->cap, hash(v, k))],
+  tbl_ent_(v, u, k); }
 
 Vm(do_tbl) {
-  tbl t = (tbl) ip;
   size_t a = getnum(fp->argc);
   switch (a) {
-    case 0: return ApC(ret, putnum(t->len));
-    case 1:
-      xp = tbl_get(v, (ob) ip, fp->argv[0]);
-      return ApC(ret, xp ? xp : nil);
-    default:
-      CallOut(v->xp = tblss(v, 1, a));
-      return ApC(xp ? ret : oom_err, xp); } }
+    case 0: return ApC(ret, putnum(((tbl) ip)->len));
+    case 1: return
+      xp = tbl_get(v, (ob) ip, fp->argv[0]),
+      ApC(ret, xp ? xp : nil);
+    default: return
+      xp = (ob) ip,
+      CallOut(v->xp = tblss(v, 1, a)),
+      ApC(xp ? ret : oom_err, xp); } }
 
 Gc(cp_tbl) {
-  tbl src = (tbl) x;
-  tbl dst = bump(v, Width(tbl));
+  tbl src = (tbl) x, dst = bump(v, Width(tbl));
   src->disp = (vm*) dst;
   dst->disp = disp;
   dst->mtbl = mtbl_tbl;
@@ -252,7 +250,6 @@ Gc(cp_tbl) {
   return (ob) dst; }
 
 void em_tbl(la v, FILE *o, ob x) {
-  tbl t = (tbl) x;
-  fprintf(o, "#tbl:%ld/%ld", t->len, 1l<<t->cap); }
+  fprintf(o, "#tbl:%ld/%ld", ((tbl) x)->len, 1l<<((tbl) x)->cap); }
 
 bool tblp(ob _) { return homp(_) && GF(_) == (vm*) mtbl_tbl; }

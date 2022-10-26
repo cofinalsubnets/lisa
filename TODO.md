@@ -38,6 +38,7 @@ curve than powers of 2.
 - string escape sequences
 - hash literals
 - quasiquotes
+- sprintf
 
 ## use hash table for internal symbols
 instead of the current binary tree.
