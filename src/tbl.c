@@ -143,9 +143,9 @@ static void tbl_fit(la v, ob t) {
 
 static ob tbl_del(la v, ob t, ob key) {
   tbl y = (tbl) t;
-  ob val = nil;
   size_t b = tbl_idx(y->cap, hash(v, key));
-  ob e = y->tab[b],
+  ob val = nil,
+     e = y->tab[b],
      prev[] = {0,0,e};
   for (ob l = (ob) &prev; l != nil && ((ob*) l)[2] != nil; l = ((ob*) l)[2])
     if (((ob*) ((ob*) l)[2])[0] == key) {
@@ -172,29 +172,28 @@ static ob tbl_grow(la v, ob t) {
   tab0 = ((tbl) t)->tab;
 
   for (size_t i, cap = 1 << cap0; cap--;)
-    for (ob e, es = tab0[cap]; !nilp(es);)
+    for (ob e, es = tab0[cap]; !nilp(es);
       e = es,
       es = ((ob*) es)[2],
       i = tbl_idx(cap1, hash(v, ((ob*) e)[0])),
       ((ob*) e)[2] = tab1[i],
-      tab1[i] = e;
+      tab1[i] = e);
 
   ((tbl) t)->cap = cap1;
   ((tbl) t)->tab = tab1;
   return t; }
 
 static ob tbl_set_s(la v, ob t, ob k, ob x) {
-  tbl y;
   ob e = tbl_ent(v, t, k);
   size_t i = tbl_idx(((tbl) t)->cap, hash(v, k));
   if (!nilp(e)) return ((ob*) e)[1] = x;
   with(t, with(k, with(x, e = (ob) mkmo(v, 3))));
   if (!e) return 0;
-  y = (tbl) t;
+  tbl y = (tbl) t;
   ((ob*) e)[0] = k;
   ((ob*) e)[1] = x;
-  ((ob*) e)[2] = (ob) y->tab[i];
-  y->tab[i] = (ob) e;
+  ((ob*) e)[2] = y->tab[i];
+  y->tab[i] = e;
   y->len += 1;
   return x; }
 
@@ -251,6 +250,6 @@ Gc(cp_tbl) {
   return (ob) dst; }
 
 void em_tbl(la v, FILE *o, ob x) {
-  fprintf(o, "#tbl:%ld/%ld", ((tbl) x)->len, 1l<<((tbl) x)->cap); }
+  fprintf(o, "#tbl:%ld/%ld", ((tbl) x)->len, 1ul<<((tbl) x)->cap); }
 
 bool tblp(ob _) { return homp(_) && GF(_) == (vm*) mtbl_tbl; }

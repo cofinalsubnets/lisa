@@ -15,6 +15,7 @@ testcmd=$(bin_debug) -_ $(lib) $(testdir)/*.$(suff)
 test: $(bin_debug)
 	/usr/bin/env TIMEFORMAT="in %Rs" bash -c "time $(testcmd)"
 
+# run the tests a lot of times to try and catch nondeterministic bugs
 lots=2048
 test_lots:
 	for n in {1..$(lots)}; do make -s test || exit 1; done

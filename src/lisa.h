@@ -84,14 +84,14 @@ ob table(la),
 // strings & symbols
 ob string(la, const char*),
    intern(la, ob),
-   interns(la, const char*),
-   sskc(la, ob*, ob); // FIXME a symbol-interning function that should be private
+   interns(la, const char*);
 
 // functions
 mo mkmo(la, size_t), // allocator
    ana(la, ob, ob), // compiler interface
    button(mo); // get tag at end
-               //
+ob hnom(la, ob); // try to get function name FIXME don't expose
+
 #define Push(...) pushs(v, __VA_ARGS__, (ob) 0)
 bool
   primp(ob), // is it a primitive function?
@@ -99,7 +99,6 @@ bool
   please(la, size_t), // gc interface
   eql(ob, ob); // logical equality
 
-ob hnom(la, ob); // try to get function name FIXME don't expose
 ob rx(la, FILE*); // read sexp
 void tx(la, FILE*, ob); // write sexp
 

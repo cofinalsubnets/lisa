@@ -1,4 +1,7 @@
 #include "lisa.h"
+
+// freestanding libc substitutes
+
 intptr_t lcprng(intptr_t s) {
   const intptr_t steele_vigna_2021 = 0xaf251af3b0f025b5;
   return (s * steele_vigna_2021 + 1) >> 8; }
@@ -24,10 +27,11 @@ void cpy8(void *x, const void *y, size_t l) {
   const uint8_t *s = (uint8_t*) (((uintptr_t*)y)+quot);
   while (rem--) *d++ = *s++; }
 
-#define coff ('a'-'A')
 char cmin(char c) {
- return c >= 'A' && c <= 'Z' ? c + coff : c; }
+  return c >= 'A' && c <= 'Z' ? c + ('a'-'A') : c; }
+
 size_t slen(const char *s) {
- for (size_t l = 0;;l++) if (!*s++) return l; }
+  for (size_t l = 0;;l++) if (!*s++) return l; }
+
 int scmp(const char *a, const char *b) {
- for (;;a++, b++) if (!(*a && *a == *b)) return *a - *b; }
+  for (;;a++, b++) if (!(*a && *a == *b)) return *a - *b; }

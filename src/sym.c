@@ -17,7 +17,7 @@ struct mtbl s_mtbl_sym = { do_id, em_sym, cp_sym, hash_sym };
 //
 // FIXME the caller must ensure Avail >= Width(sym)
 // (because GC here would void the tree)
-ob sskc(la v, ob *y, ob x) {
+static ob sskc(la v, ob *y, ob x) {
   if (!nilp(*y)) {
     sym z = (sym) *y;
     int i = scmp(((str) z->nom)->text, ((str) x)->text);
@@ -44,7 +44,8 @@ Vm(sym_u) {
   sym y = (sym) hp;
   hp += Width(sym);
   y->nom = y->l = y->r = nil;
-  y->disp = disp; y->mtbl = mtbl_sym;
+  y->disp = disp;
+  y->mtbl = mtbl_sym;
   y->code = v->rand = lcprng(v->rand);
   return ApC(ret, (ob) y); }
 
@@ -80,5 +81,4 @@ void em_sym(la v, FILE *o, ob x) {
 
 Vm(do_id) { return ApC(ret, (ob) ip); }
 
-bool symp(ob _) {
-  return homp(_) && GF(_) == (vm*) mtbl_sym; }
+bool symp(ob _) { return homp(_) && GF(_) == (vm*) mtbl_sym; }

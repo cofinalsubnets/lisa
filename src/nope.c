@@ -1,6 +1,11 @@
 #include "lisa.h"
 #include "vm.h"
-#include <stdarg.h>
+
+// errors
+Vm(dom_err) { return Pack(), nope(v, "is undefined"); }
+Vm(oom_err) { return Pack(), nope(v, "oom with %d words", v->len); }
+Vm(ary_err) { return Pack(), nope(v, "takes %d parameters", getnum(xp)); }
+
 static NoInline void show_call(la v, mo ip, fr fp) {
   fputc('(', stderr);
   tx(v, stderr, (ob) ip);
@@ -8,6 +13,7 @@ static NoInline void show_call(la v, mo ip, fr fp) {
     fputc(' ', stderr), tx(v, stderr, fp->argv[i++]));
   fputc(')', stderr); }
 
+#include <stdarg.h>
 #define aubas (((ob*) fp) == v->pool + v->len)
 NoInline ob nope(la v, const char *msg, ...) {
   mo ip = v->ip;
@@ -34,11 +40,3 @@ NoInline ob nope(la v, const char *msg, ...) {
   v->fp = (fr) (v->sp = v->pool + v->len);
   v->ip = (mo) (v->xp = nil);
   return 0; }
-
-// errors
-Vm(dom_err) { return Pack(),
-  nope(v, "is undefined"); }
-Vm(oom_err) { return Pack(),
-  nope(v, "oom with %d words", v->len); }
-Vm(ary_err) { return Pack(),
-  nope(v, "takes %d parameters", getnum(xp)); }
