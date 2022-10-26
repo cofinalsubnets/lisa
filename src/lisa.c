@@ -152,7 +152,7 @@ static NoInline int la_main(bool shell, const char *prelu, const char **scripts)
 
 #include <getopt.h>
 int main(int ac, char **av) {
-  const char
+  static const char
     *prelu = PREF "/lib/" LANG "/" LANG "." SUFF,
     *usage =
       "usage: %s [options and scripts]\n"

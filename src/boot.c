@@ -367,9 +367,8 @@ Co(i1d1) {
 
 Co(co_ini) {
   mo k = mkmo(v, m + 1);
-  if (!k) return 0;
-  setw(k, nil, m);
-  G(k += m) = (vm*) (e ? name(*e) : nil);
+  if (k) setw(k, nil, m),
+         G(k += m) = (vm*) (e ? name(*e) : nil);
   return k; }
 
 // bootstrap eval interpreter function

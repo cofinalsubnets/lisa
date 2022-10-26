@@ -2,7 +2,7 @@
 
 // these are vm functions used by C but not lisp.
 #define cfns(_)\
-  _(gc) _(dom_err) _(nom_err) _(oom_err) _(ary_err)\
+  _(gc) _(dom_err) _(oom_err) _(ary_err)\
   _(clos) _(clos0) _(clos1) _(do_id)
 cfns(ninl)
 #undef cfns
@@ -73,14 +73,13 @@ i_primitives(ninl)
 
 // FIXME confusing premature optimization
 #define Locs ((ob**)fp)[-1]
-#define Clos ((ob*)fp->clos)
 // the pointer to the local variables array isn't in the frame struct. it
 // isn't present for all functions, but if it is it's in the word of memory
 // immediately preceding the frame pointer. if a function has
 // locals, this will have been initialized before they are
 // referenced.
 
-#define ApN(n, x) ApY(ip+(n), (x))
+#define ApN(n, x) (xp = (x), ip += (n), ApC(G(ip), xp))
 #define ApC(f, x) (f)(v, (x), ip, hp, sp, fp)
 #define ApY(f, x) (ip = (mo) (f), ApC(G(ip), (x)))
 
