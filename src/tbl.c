@@ -16,9 +16,8 @@ static ob
   tbl_ent(la, ob, ob),
   tbl_grow(la, ob),
   tbl_del(la, ob, ob),
-  tblss(la, intptr_t, intptr_t),
-  tks_i(la, ob, size_t),
-  tks_j(la, ob, ob),
+  tblss(la, intptr_t, const intptr_t),
+  tks(la, ob),
   tbl_set_s(la, ob, ob, ob);
 
 ob table(la v) {
@@ -71,7 +70,7 @@ Vm(thas) { return
 Vm(tlen) { return ApN(1, putnum(((tbl) xp)->len)); }
 
 Vm(tkeys) { return
-  CallOut(v->xp = tks_i(v, xp, 0)),
+  CallOut(v->xp = tks(v, xp)),
   xp ? ApN(1, xp) : ApC(oom_err, nil); }
 
 Vm(thas_u) {
@@ -98,7 +97,7 @@ Vm(tkeys_u) {
   ArityCheck(1);
   xp = fp->argv[0];
   Check(tblp(xp));
-  CallOut(v->xp = tks_i(v, xp, 0));
+  CallOut(v->xp = tks(v, xp));
   return ApC(xp ? ret : oom_err, xp); }
 
 Vm(tlen_u) {
@@ -199,33 +198,35 @@ static ob tbl_set_s(la v, ob t, ob k, ob x) {
   y->len += 1;
   return x; }
 
-static ob tks_j(la v, ob e, ob l) {
-  if (nilp(e)) return l;
-  ob x = ((ob*) e)[0];
-  with(x, l = tks_j(v, ((ob*) e)[2], l));
-  return l ? pair(v, x, l) : 0; }
+// get table keys
+static ob tks(la v, ob t) {
+  size_t len = ((tbl) t)->len;
+  two ks;
+  with(t, ks = cells(v, Width(two) * len));
+  if (!ks) return 0;
+  ob r = nil, *tab = ((tbl) t)->tab;
+  while (len) for (ob *e = *(ob**)tab++; !nilp((ob) e);
+    ks->disp = disp,
+    ks->mtbl = mtbl_two,
+    ks->a = e[0],
+    ks->b = r,
+    r = (ob) ks++,
+    e = (ob*) e[2],
+    len--);
+  return r; }
 
-static ob tks_i(la v, ob t, size_t i) {
-  if (i == 1ul << ((tbl) t)->cap) return nil;
-  ob k;
-  with(t, k = tks_i(v, t, i+1));
-  return k ? tks_j(v, ((tbl) t)->tab[i], k) : 0; }
+// do a bunch of table assignments.
+// XXX calling convention: table in v->xp
+static ob tblss(la v, intptr_t i, const intptr_t l) {
+  for (;i <= l - 2; i += 2)
+    if (!tbl_set(v, v->xp, v->fp->argv[i], v->fp->argv[i+1]))
+      return 0;
+  return v->fp->argv[i - 1]; }
 
-// FIXME what ??
-static ob tblss(la v, intptr_t i, intptr_t l) {
-  fr fp = v->fp;
-  return
-    i > l - 2 ? fp->argv[i - 1] :
-    !tbl_set(v, v->xp, fp->argv[i], fp->argv[i + 1]) ? 0 :
-    tblss(v, i + 2, l); }
-
-static ob tbl_ent_(la v, ob e, ob k) {
-  return nilp(e) || eql(((ob*) e)[0], k) ? e :
-    tbl_ent_(v, ((ob*) e)[2], k); }
-
-static ob tbl_ent(la v, ob u, ob k) { return
-  u = ((tbl) u)->tab[tbl_idx(((tbl) u)->cap, hash(v, k))],
-  tbl_ent_(v, u, k); }
+static ob tbl_ent(la v, ob e, ob k) {
+  e = ((tbl) e)->tab[tbl_idx(((tbl) e)->cap, hash(v, k))];
+  while (!nilp(e) && !eql(((ob*) e)[0], k)) e = ((ob*) e)[2];
+  return e; }
 
 Vm(do_tbl) {
   size_t a = getnum(fp->argc);
