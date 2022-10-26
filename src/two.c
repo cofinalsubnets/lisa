@@ -12,7 +12,7 @@ ob pair(la v, ob a, ob b) {
   w->mtbl = mtbl_two;
   w->a = a;
   w->b = b;
-  return puttwo(w); }
+  return (ob) w; }
 
 // length of list
 size_t llen(ob l) {
@@ -31,18 +31,18 @@ Vm(cons) {
   w->mtbl = mtbl_two;
   w->a = xp;
   w->b = *sp++;
-  xp = puttwo(w);
+  xp = (ob) w;
   return ApN(1, xp); }
 
 Vm(car_u) {
   ArityCheck(1);
-  xp = Argv[0];
+  xp = fp->argv[0];
   Check(twop(xp));
   return ApC(ret, A(xp)); }
 
 Vm(cdr_u) {
   ArityCheck(1);
-  xp = Argv[0];
+  xp = fp->argv[0];
   Check(twop(xp));
   return ApC(ret, B(xp)); }
 
@@ -53,13 +53,12 @@ Vm(cons_u) {
   hp += Width(two);
   w->disp = disp;
   w->mtbl = mtbl_two;
-  w->a = Argv[0];
-  w->b = Argv[1];
-  xp = puttwo(w);
-  return ApC(ret, xp); }
+  w->a = fp->argv[0];
+  w->b = fp->argv[1];
+  return ApC(ret, (ob) w); }
 
 Vm(do_two) {
-  xp = Argc == putnum(0) ? A(ip) : B(ip);
+  xp = fp->argc == putnum(0) ? A(ip) : B(ip);
   return ApC(ret, xp); }
 
 Gc(cp_two) {

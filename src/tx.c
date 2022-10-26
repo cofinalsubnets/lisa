@@ -18,16 +18,16 @@ void tx(la v, FILE *o, ob x) {
   else emhomn(v, o, hnom(v, x)); }
 
 Vm(show_u) {
-  size_t i = 0, l = getnum(Argc);
+  size_t i = 0, l = getnum(fp->argc);
   if (l) {
     while (i < l - 1)
-      tx(v, stdout, Argv[i++]),
+      tx(v, stdout, fp->argv[i++]),
       fputc(' ', stdout);
-    tx(v, stdout, xp = Argv[i]); }
+    tx(v, stdout, xp = fp->argv[i]); }
   fputc('\n', stdout);
   return ApC(ret, xp); }
 
 Vm(putc_u) {
   ArityCheck(1);
-  fputc(getnum(Argv[0]), stdout);
+  fputc(getnum(fp->argv[0]), stdout);
   return ApC(ret, xp); }

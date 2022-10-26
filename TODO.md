@@ -1,7 +1,3 @@
-## stop using tagged pointers
-this will let us run on 32-bit hardware and use cheney's
-algorithm for garbage collection.
-
 ## semispace gc
 this is the "traditional" way to do copying GC. it will
 minimize calls to the block allocator and ensure we can
@@ -12,7 +8,7 @@ the garbage collector is recursive in C right now, which
 means that eg. trying to construct infinite data will cause
 a stack overflow during GC instead of failing with OOM,
 which we would be able to handle. cheney's algorithm will
-fix this but we need to stop using tagged pointers first.
+fix this.
 
 ## compile options for embedded
 at a minimum this means adding an option for statically

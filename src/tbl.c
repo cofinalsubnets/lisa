@@ -48,18 +48,16 @@ ob tbl_get(la v, ob t, ob k) {
 
 Vm(tget_u) {
   ArityCheck(2);
-  xp = Argv[0];
+  xp = fp->argv[0];
   Check(tblp(xp));
-  xp = tbl_get(v, xp, Argv[1]);
+  xp = tbl_get(v, xp, fp->argv[1]);
   return ApC(ret, xp ? xp : nil); }
 
 Vm(tdel_u) {
   ArityCheck(2);
-  xp = Argv[0];
+  xp = fp->argv[0];
   Check(tblp(xp));
-  Pack();
-  v->xp = tbl_del(v, xp, Argv[1]);
-  Unpack();
+  CallOut(v->xp = tbl_del(v, xp, fp->argv[1]));
   return ApC(ret, xp); }
 
 Vm(tget) {
@@ -73,54 +71,45 @@ Vm(thas) {
 Vm(tlen) { return ApN(1, putnum(((tbl) xp)->len)); }
 
 Vm(tkeys) {
-  Pack();
-  v->xp = tks_i(v, xp, 0);
-  Unpack();
+  CallOut(v->xp = tks_i(v, xp, 0));
   return xp ? ApN(1, xp) : ApC(oom_err, nil); }
 
 Vm(thas_u) {
   ArityCheck(2);
-  xp = Argv[0];
+  xp = fp->argv[0];
   Check(tblp(xp));
-  xp = tbl_get(v, xp, Argv[1]);
+  xp = tbl_get(v, xp, fp->argv[1]);
   return ApC(ret, xp ? T : nil); }
 
 Vm(tset_u) {
   ArityCheck(1);
-  xp = Argv[0];
+  xp = fp->argv[0];
   Check(tblp(xp));
-  Pack();
-  v->xp = tblss(v, 1, getnum(Argc));
-  Unpack();
+  CallOut(v->xp = tblss(v, 1, getnum(fp->argc)));
   return ApC(xp ? ret : oom_err, xp); }
 
 Vm(tbl_u) {
-  Pack();
-  xp = getnum(Argc);
-  bool _ = (v->xp = table(v)) && tblss(v, 0, xp);
-  Unpack();
+  bool _;
+  CallOut(xp = getnum(fp->argc),
+          _ = (v->xp = table(v)) && tblss(v, 0, xp));
   return ApC(_ ? ret : oom_err, xp); }
 
 Vm(tkeys_u) {
   ArityCheck(1);
-  xp = Argv[0];
+  xp = fp->argv[0];
   Check(tblp(xp));
-  Pack();
-  v->xp = tks_i(v, xp, 0);
-  Unpack();
+  CallOut(v->xp = tks_i(v, xp, 0));
   return ApC(xp ? ret : oom_err, xp); }
 
 Vm(tlen_u) {
   ArityCheck(1);
-  xp = Argv[0];
+  xp = fp->argv[0];
   Check(tblp(xp));
   return ApC(ret, putnum(((tbl) xp)->len)); }
 
 Vm(tset) {
   ob x = *sp++, y = *sp++;
-  Pack();
-  v->xp = tbl_set(v, xp, x, y);
-  Unpack();
+  CallOut(v->xp = tbl_set(v, xp, x, y));
   return xp ? ApN(1, xp) : ApC(oom_err, xp); }
 
 // shrinking a table never allocates memory, so it's safe
@@ -225,8 +214,8 @@ static ob tks_i(la v, ob t, size_t i) {
 static ob tblss(la v, intptr_t i, intptr_t l) {
   fr fp = v->fp;
   return
-    i > l - 2 ? Argv[i - 1] :
-    !tbl_set(v, v->xp, Argv[i], Argv[i + 1]) ? 0 :
+    i > l - 2 ? fp->argv[i - 1] :
+    !tbl_set(v, v->xp, fp->argv[i], fp->argv[i + 1]) ? 0 :
     tblss(v, i + 2, l); }
 
 static ob tbl_ent_(la v, ob e, ob k) {
@@ -241,16 +230,14 @@ static ob tbl_ent(la v, ob u, ob k) {
 
 Vm(do_tbl) {
   tbl t = (tbl) ip;
-  size_t a = getnum(Argc);
+  size_t a = getnum(fp->argc);
   switch (a) {
     case 0: return ApC(ret, putnum(t->len));
     case 1:
-      xp = tbl_get(v, (ob) ip, Argv[0]);
+      xp = tbl_get(v, (ob) ip, fp->argv[0]);
       return ApC(ret, xp ? xp : nil);
     default:
-      Pack();
-      v->xp = tblss(v, 1, a);
-      Unpack();
+      CallOut(v->xp = tblss(v, 1, a));
       return ApC(xp ? ret : oom_err, xp); } }
 
 Gc(cp_tbl) {

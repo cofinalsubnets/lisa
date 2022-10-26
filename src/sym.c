@@ -38,8 +38,8 @@ ob intern(la v, ob x) {
 
 Vm(sym_u) {
   Have(Width(sym));
-  if (Argc > putnum(0) && strp(Argv[0]))
-    return ApC(ret, sskc(v, &v->syms, Argv[0]));
+  if (fp->argc > putnum(0) && strp(fp->argv[0]))
+    return ApC(ret, sskc(v, &v->syms, fp->argv[0]));
   // sym allocated here
   sym y = (sym) hp;
   hp += Width(sym);
@@ -50,7 +50,7 @@ Vm(sym_u) {
 
 Vm(ystr_u) {
   ArityCheck(1);
-  xp = Argv[0];
+  xp = fp->argv[0];
   Check(symp(xp));
   return ApC(ret, ((sym) xp)->nom); }
 

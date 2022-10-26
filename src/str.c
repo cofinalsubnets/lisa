@@ -18,23 +18,23 @@ ob string(la v, const char* c) {
 // string instructions
 Vm(slen_u) {
   ArityCheck(1);
-  xp = Argv[0];
+  xp = fp->argv[0];
   Check(strp(xp));
   return ApC(ret, putnum(((str) xp)->len-1)); }
 
 Vm(sget_u) {
   ArityCheck(2);
-  Check(strp(Argv[0]));
-  Check(nump(Argv[1]));
+  Check(strp(fp->argv[0]));
+  Check(nump(fp->argv[1]));
   return ApC(ret,
-    getnum(Argv[1]) < ((str) Argv[0])->len-1 ?
-      putnum(((str) Argv[0])->text[getnum(Argv[1])]) :
+    getnum(fp->argv[1]) < ((str) fp->argv[0])->len-1 ?
+      putnum(((str) fp->argv[0])->text[getnum(fp->argv[1])]) :
       nil); }
 
 Vm(scat_u) {
-  size_t sum = 0, i = 0, l = getnum(Argc);
+  size_t sum = 0, i = 0, l = getnum(fp->argc);
   while (i < l) {
-    ob x = Argv[i++];
+    ob x = fp->argv[i++];
     Check(strp(x));
     sum += ((str) x)->len - 1; }
   size_t words = Width(str) + b2w(sum+1);
@@ -46,7 +46,7 @@ Vm(scat_u) {
   d->mtbl = mtbl_str;
   d->text[sum] = 0;
   while (i) {
-    str x = ((str) Argv[--i]);
+    str x = ((str) fp->argv[--i]);
     sum -= x->len - 1;
     cpy8(d->text+sum, x->text, x->len - 1); }
   return ApC(ret, (ob) d); }
@@ -55,11 +55,11 @@ Vm(scat_u) {
 #define max(a,b)(a>b?a:b)
 Vm(ssub_u) {
   ArityCheck(3);
-  Check(strp(Argv[0]));
-  Check(nump(Argv[1]));
-  Check(nump(Argv[2]));
-  str src = ((str) Argv[0]);
-  intptr_t lb = getnum(Argv[1]), ub = getnum(Argv[2]);
+  Check(strp(fp->argv[0]));
+  Check(nump(fp->argv[1]));
+  Check(nump(fp->argv[2]));
+  str src = ((str) fp->argv[0]);
+  intptr_t lb = getnum(fp->argv[1]), ub = getnum(fp->argv[2]);
   lb = max(lb, 0);
   ub = min(ub, src->len-1);
   ub = max(ub, lb);
@@ -76,19 +76,19 @@ Vm(ssub_u) {
 
 Vm(str_u) {
   size_t i = 0,
-    bytes = getnum(Argc) + 1,
+    bytes = getnum(fp->argc) + 1,
     words = Width(str) + b2w(bytes);
   Have(words);
   str s = (str) hp;
   hp += words;
   for (ob x; i < bytes-1; s->text[i++] = getnum(x)) {
-    x = Argv[i];
+    x = fp->argv[i];
     Check(nump(x));
-    if (x == N0) break; }
+    if (x == putnum(0)) break; }
   s->text[i] = 0;
   s->disp = disp;
   s->mtbl = mtbl_str;
-  s->len = i+1;
+  s->len = i + 1;
   return ApC(ret, (ob) s); }
 
 Vm(do_str) {

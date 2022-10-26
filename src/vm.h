@@ -69,6 +69,7 @@ i_primitives(ninl)
 // "external" function calls.
 #define Pack() (v->ip=ip,v->sp=sp,v->hp=hp,v->fp=fp,v->xp=xp)
 #define Unpack() (fp=v->fp,hp=v->hp,sp=v->sp,ip=v->ip,xp=v->xp)
+#define CallOut(...) (Pack(), __VA_ARGS__, Unpack())
 
 // FIXME confusing premature optimization
 #define Locs ((ob**)fp)[-1]
@@ -81,11 +82,9 @@ i_primitives(ninl)
 
 #define ApN(n, x) ApY(ip+(n), (x))
 #define ApC(f, x) (f)(v, (x), ip, hp, sp, fp)
-#define ApY(f, x) (ip = (mo) (f), ApC(ip->ll, (x)))
+#define ApY(f, x) (ip = (mo) (f), ApC(G(ip), (x)))
 
-#define Argv fp->argv
-#define Argc fp->argc
-#define ArityCheck(n) if (putnum(n) > Argc) return ApC(ary_err, putnum(n))
+#define ArityCheck(n) if (putnum(n) > fp->argc) return ApC(ary_err, putnum(n))
 #define Check(_) if (!(_)) return ApC(dom_err, xp)
 #define Collect(n) (v->xp = n, ApC(gc, xp))
 #define Free (sp - hp)

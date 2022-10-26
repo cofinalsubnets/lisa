@@ -1,8 +1,7 @@
 #include "lisa.h"
 #include "vm.h"
-#include <stdarg.h>
 
-//// 
+////
 ///  the thread compiler
 //
 // ironically this is the most complicated part of the C code but it
@@ -10,10 +9,11 @@
 // self-hosted compiler.
 
 static Inline mo pull(la v, ob *e, size_t m) {
-  return ((mo (*)(la, ob*, size_t)) getnum(*v->sp++))(v, e, m); }
+  return ((mo (*)(la, ob*, size_t))
+    getnum(*v->sp++))(v, e, m); }
 
 // apply instruction pullbacks
-static Inline mo pb1(vm *i, mo k) { return (--k)->ll = i, k; }
+static Inline mo pb1(vm *i, mo k) { return G(--k) = i, k; }
 static Inline mo pb2(vm *i, ob x, mo k) { return pb1(i, pb1((vm*) x, k)); }
 
 // " compilation environments "
@@ -91,8 +91,8 @@ static Inline ob new_scope(la v, ob *e, ob a, ob n) {
   asig(x) = putnum(s);
   return (ob) x; }
 
-static int scan_def(la v, ob *e, ob x) {
-  int r;
+static char scan_def(la v, ob *e, ob x) {
+  char r;
   if (!twop(x)) return 1; // this is an even case so export all the definitions to the local scope
   if (!twop(B(x))) return 0; // this is an odd case so ignore these, they'll be imported after the rewrite
   with(x,
@@ -145,15 +145,13 @@ static intptr_t lidx(ob l, ob x) {
 // are available in the closure).
 static Inline ob co_tl(la v, ob* e, ob n, ob l) {
   ob y = nil;
-  l = B(l);
-  mm(&n), mm(&y), mm(&l);
-  if (!(l = twop(l) ? l : pair(v, l, nil)) ||
-      !(l = linitp(v, l, &y)) ||
-      !(n = pair(v, n, e ? name(*e) : nil)) ||
-      !(n = new_scope(v, e, l, n)) ||
-      !(l = comp_body(v, &n, A(y))))
-        return um, um, um, 0;
-  return um, um, um, l; }
+  with(n, with(y, with(l,
+    l = (l = twop(l) ? l : pair(v, l, nil)) &&
+        (l = linitp(v, l, &y)) &&
+        (n = pair(v, n, e ? name(*e) : nil)) &&
+        (n = new_scope(v, e, l, n)) ?
+      comp_body(v, &n, A(y)) : 0)));
+  return l; }
 
 static Inline ob co_t_clo(la v, ob *e, ob arg, ob seq) {
   size_t i = llen(arg);
@@ -165,17 +163,17 @@ static Inline ob co_t_clo(la v, ob *e, ob arg, ob seq) {
     if (!Push(putnum(co__), A(arg), putnum(i1d0), putnum(push)))
       return um, um, 0;
 
-  if (!(arg = (ob) pull(v, e, 0))) return um, um, 0;
-
-  return um, um, pair(v, seq, arg); }
+  arg = (ob) pull(v, e, 0);
+  arg = arg ? pair(v, seq, arg) : arg;
+  return um, um, arg; }
 
 Co(co_t, ob x) {
-  vm* j = imm;
+  vm *j = imm;
   ob k, nom = *v->sp == putnum(co_ys) ? v->sp[1] : nil;
   with(nom, with(x, k = (ob) pull(v, e, m+2)));
   if (!k) return 0;
   mm(&k);
-  if (twop(x = co_tl(v, e, nom, x)))
+  if (twop(x = co_tl(v, e, nom, B(x))))
     j = e && twop(loc(*e)) ? encll : encln,
     x = co_t_clo(v, e, A(x), B(x));
   um;
@@ -221,9 +219,7 @@ Co(co_let, ob x) {
 Co(co_p_pre) {
   ob x = (ob) pull(v, e, m);
   x = x ? pair(v, x, s2(*e)) : x;
-  if (!x) return 0;
-  s2(*e) = x;
-  return (mo) A(x); }
+  return x ? (mo) A(s2(*e) = x) : 0; }
 
 // before generating a branch emit a jump to
 // the top of stack 2
@@ -231,7 +227,7 @@ Co(co_p_pre_con) {
   mo k, x = pull(v, e, m + 2);
   if (!x) return 0;
   k = (mo) A(s2(*e));
-  return k->ll == ret ?
+  return G(k) == ret ?
     pb1(ret, x) :
     pb2(jump, (ob) k, x); }
 
@@ -240,9 +236,7 @@ Co(co_p_pre_con) {
 Co(co_p_post_con) {
   ob x = (ob) pull(v, e, m);
   x = x ? pair(v, x, s1(*e)) : x;
-  if (!x) return 0;
-  s1(*e) = x;
-  return (mo) A(x); }
+  return x ? (mo) A(s1(*e) = x) : 0; }
 
 // before generating an antecedent emit a branch to
 // the top of stack 1
@@ -269,7 +263,7 @@ Co(co_p, ob x) {
   bool _;
   mo pf;
   with(x, _ = Push(putnum(co_p_pre)));
-  _ = _ ? co_p_loop(v, e, B(x)) : _;
+  _ = _ ? co_p_loop(v, e, x) : _;
   if (!_ || !(pf = pull(v, e, m))) return 0;
   s2(*e) = B(s2(*e));
   return pf; }
@@ -277,7 +271,7 @@ Co(co_p, ob x) {
 Co(em_call) {
   ob ary = *v->sp++;
   mo k = pull(v, e, m + 2);
-  return k ? pb2(k->ll == ret ? rec : call, ary, k) : 0; }
+  return k ? pb2(G(k) == ret ? rec : call, ary, k) : 0; }
 
 enum where { Here, Loc, Arg, Clo, Wait };
 
@@ -297,7 +291,7 @@ Co(co_var, ob x) {
   with(x, q = ls_lex(v, e ? *e : nil, x));
   if (!q) return 0;
   y = A(q);
-  if (y == putnum(Here)) return co_x(v, e, m, B(q)) ;
+  if (y == putnum(Here)) return co_x(v, e, m, B(q));
   if (y == putnum(Wait)) return
     (x = pair(v, B(q), x)) &&
     (with(x, y = (ob) pull(v, e, m+2)), y) ?
@@ -317,10 +311,10 @@ Co(co_var, ob x) {
   return imx(v, e, m, clo, putnum(y)); }
 
 Co(co__) {
-  ob x = *v->sp++;
-  return symp(x) ? co_var(v, e, m, x) :
-         twop(x) ? co_2(v, e, m, x) :
-         co_x(v, e, m, x); }
+  ob x = *v->sp++; return
+    symp(x) ? co_var(v, e, m, x) :
+    twop(x) ? co_2(v, e, m, x) :
+    co_x(v, e, m, x); }
 
 Co(co_ap, ob f, ob args) {
   mm(&args);
@@ -334,7 +328,7 @@ Co(co_ap, ob f, ob args) {
   return um, pull(v, e, m); }
 
 static bool seq_mo_loop(la v, ob *e, ob x) {
-  if (!twop(x)) return 1;
+  if (!twop(x)) return true;
   bool _;
   with(x, _ = seq_mo_loop(v, e, B(x)));
   return _ && Push(putnum(co__), A(x)); }
@@ -342,8 +336,7 @@ static bool seq_mo_loop(la v, ob *e, ob x) {
 Co(co_x, ob x) { return
   Push(putnum(imm), x) ? i1d1(v, e, m) : 0; }
 
-Co(co_q, ob x) { return
-  co_x(v, e, m, twop(x) ? A(x) : x); }
+Co(co_q, ob x) { return co_x(v, e, m, twop(x) ? A(x) : x); }
 
 Co(co_se, ob x) {
   x = twop(x) ? x : pair(v, x, nil);
@@ -351,48 +344,33 @@ Co(co_se, ob x) {
   return x ? pull(v, e, m) : 0; }
 
 Co(co_2, ob x) {
-  ob z = A(x);
-  if (symp(z)) {
-    if (z == v->lex[Quote]) return co_q(v, e, m, B(x));
-    if (z == v->lex[Cond]) return co_p(v, e, m, x);
-    if (z == v->lex[Lamb]) return co_t(v, e, m, x);
-    if (z == v->lex[Def]) return co_let(v, e, m, x);
-    if (z == v->lex[Seq]) return co_se(v, e, m, B(x)); }
-  return co_ap(v, e, m, A(x), B(x)); }
+  ob a = A(x);
+  if (symp(a)) {
+    if (a == v->lex[Quote]) return co_q(v, e, m, B(x));
+    if (a == v->lex[Cond]) return co_p(v, e, m, B(x));
+    if (a == v->lex[Lamb]) return co_t(v, e, m, x);
+    if (a == v->lex[Def]) return co_let(v, e, m, x);
+    if (a == v->lex[Seq]) return co_se(v, e, m, B(x)); }
+  return co_ap(v, e, m, a, B(x)); }
 
 Co(i1d0) {
   vm *i = (void*) getnum(*v->sp++);
-  mo k = pull(v, e, m+1);
+  mo k = pull(v, e, m + 1);
   return k ? pb1(i, k): 0; }
 
 Co(i1d1) {
   vm *i = (vm*) getnum(*v->sp++);
   ob x = *v->sp++;
   mo pf;
-  with(x, pf = pull(v, e, m+2));
+  with(x, pf = pull(v, e, m + 2));
   return pf ? pb2(i, x, pf) : 0; }
-
-// stack manips
-static bool pushss(la v, size_t i, va_list xs) {
-  ob x = va_arg(xs, ob);
-  if (!x) return Avail >= i || please(v, i);
-  bool _;
-  with(x, _ = pushss(v, i+1, xs));
-  return _ && (*--v->sp = x, true); }
-
-bool pushs(la v, ...) {
-  va_list xs;
-  va_start(xs, v);
-  bool _ = pushss(v, 0, xs);
-  va_end(xs);
-  return _; }
 
 Co(co_ini) {
   mo k = mkmo(v, m + 1);
   if (!k) return 0;
-  k[m].ll = (vm*) (e ? name(*e) : nil);
   setw(k, nil, m);
-  return k + m; }
+  G(k += m) = (vm*) (e ? name(*e) : nil);
+  return k; }
 
 // bootstrap eval interpreter function
 Vm(ev_u) {
@@ -403,10 +381,7 @@ Vm(ev_u) {
   // bootstrapped compiler, which is what we want?
   // seems kind of strange to need this ...
   xp = tbl_get(v, v->topl, v->lex[Eval]);
-  if (xp && homp(xp) && G(xp) != ev_u)
-    return ApY((mo) xp, nil);
-  Pack();
-  mo y = ana(v, Argv[0], putnum(ret));
-  if (!y) return 0;
-  Unpack();
-  return ApY(y, xp); }
+  if (xp && homp(xp) && G(xp) != ev_u) return ApY((mo) xp, nil);
+  mo y;
+  CallOut(y = ana(v, fp->argv[0], putnum(ret)));
+  return y ? ApY(y, xp) : ApC(oom_err, xp); }

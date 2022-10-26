@@ -46,7 +46,7 @@ ob hnom(la v, ob x) {
 // instructions for the internal compiler
 Vm(hom_u) {
   ArityCheck(1);
-  xp = Argv[0];
+  xp = fp->argv[0];
   Check(nump(xp));
   size_t len = getnum(xp) + 2;
   Have(len);
@@ -55,58 +55,58 @@ Vm(hom_u) {
   setw((ob*) xp, nil, len);
   ((ob*) xp)[len-2] = 0;
   ((ob*) xp)[len-1] = xp;
-  return ApC(ret, (ob) (ptr(xp) + len - 2)); }
+  return ApC(ret, (ob) ((ob*) xp + len - 2)); }
 
 Vm(hfin_u) {
   ArityCheck(1);
-  xp = Argv[0];
+  xp = fp->argv[0];
   Check(homp(xp) && G(xp) != disp);
   GF(button((mo)xp)) = (vm*) xp;
   return ApC(ret, xp); }
 
 Vm(emx) {
   mo k = (mo) *sp++ - 1;
-  k->ll = (vm*) xp;
+  G(k) = (vm*) xp;
   return ApN(1, (ob) k); }
 
 Vm(emi) {
   mo k = (mo) *sp++ - 1;
-  k->ll = (vm*) getnum(xp);
+  G(k) = (vm*) getnum(xp);
   return ApN(1, (ob) k); }
 
 Vm(emx_u) {
   ArityCheck(2);
-  xp = Argv[1];
+  xp = fp->argv[1];
   Check(homp(xp));
-  xp = (ob) (ptr(xp) - 1);
-  ptr(xp)[0] = Argv[0];
+  xp = (ob) ((ob*) xp - 1);
+  ((ob*) xp)[0] = fp->argv[0];
   return ApC(ret, xp); }
 
 Vm(emi_u) {
   ArityCheck(2);
-  ob n = Argv[0];
-  xp = Argv[1];
+  ob n = fp->argv[0];
+  xp = fp->argv[1];
   Check(nump(n));
   Check(homp(xp));
-  xp = (ob) (ptr(xp) - 1);
-  ptr(xp)[0] = getnum(n);
+  xp = (ob) ((ob*) xp - 1);
+  ((ob*) xp)[0] = getnum(n);
   return ApC(ret, xp); }
 
 Vm(peeki_u) {
   ArityCheck(1);
-  xp = Argv[0];
+  xp = fp->argv[0];
   Check(homp(xp));
   return ApC(ret, putnum(G(xp))); }
 
 Vm(peekx_u) {
   ArityCheck(1);
-  xp = Argv[0];
+  xp = fp->argv[0];
   Check(homp(xp));
   return ApC(ret, (ob) G(xp)); }
 
 Vm(seek_u) {
   ArityCheck(2);
-  xp = Argv[0];
+  xp = fp->argv[0];
   Check(homp(xp));
-  Check(nump(Argv[1]));
-  return ApC(ret, (ob) ((mo) xp + getnum(Argv[1]))); }
+  Check(nump(fp->argv[1]));
+  return ApC(ret, (ob) ((mo) xp + getnum(fp->argv[1]))); }

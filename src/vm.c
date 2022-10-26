@@ -24,37 +24,49 @@
 // effects before Have() or similar.
 
 // calling and returning
+Vm(call) {
+  Have(Width(fr));
+  intptr_t adic = (ob) GF(ip),
+           off = (ob*) fp - (sp + getnum(adic));
+  fp = (fr) sp - 1;
+  sp = (ob*) fp;
+  fp->retp = (ob) FF(ip);
+  fp->subd = putnum(off);
+  fp->clos = nil;
+  fp->argc = adic;
+  return ApY(xp, nil); }
+
 Vm(ap_u) {
   ArityCheck(2);
-  ip = (mo) Argv[0];
+  ip = (mo) fp->argv[0];
   Check(homp((ob) ip));
-  xp = Argv[1];
+  xp = fp->argv[1];
   size_t adic = llen(xp);
   Have(adic);
-  ob off = fp->subd, rp = fp->retp;
-  sp = Argv + getnum(Argc) - adic;
+  ob subd = fp->subd, retp = fp->retp;
+  sp = fp->argv + getnum(fp->argc) - adic;
   for (size_t j = 0; j < adic; sp[j++] = A(xp), xp = B(xp));
-  fp = (fr) sp - 1,
+  fp = (fr) sp - 1;
   sp = (ob*) fp;
-  fp->retp = rp;
+  fp->retp = retp;
   fp->argc = putnum(adic);
-  fp->subd = off;
+  fp->subd = subd;
   fp->clos = nil;
   return ApY(ip, nil); }
 
 static NoInline Vm(varg0) {
   size_t reqd = getnum((ob) GF(ip));
   Have1();
-  cpyw((ob*) fp - 1, fp, Width(fr) + getnum(Argc));
+  cpyw((ob*) fp - 1, fp, Width(fr) + getnum(fp->argc));
   fp = (fr) ((ob*) fp - 1);
   sp = (ob*) fp;
-  Argc += 2; // 1 << 1
-  Argv[reqd] = nil;
+  fp->argc += 2; // 1 << 1
+  fp->argv[reqd] = nil;
   return ApN(2, xp); }
 
 Vm(varg) {
   intptr_t reqd = getnum((ob) GF(ip)),
-           vdic = getnum(Argc) - reqd;
+           vdic = getnum(fp->argc) - reqd;
   ArityCheck(reqd);
   // in this case we need to add another argument
   // slot to hold the nil.
@@ -66,49 +78,36 @@ Vm(varg) {
   for (size_t i = vdic; i--;
     t[i].disp = disp,
     t[i].mtbl = mtbl_two,
-    t[i].a = Argv[reqd + i],
-    t[i].b = puttwo(t+i+1));
+    t[i].a = fp->argv[reqd + i],
+    t[i].b = (ob) (t+i+1));
   t[vdic-1].b = nil,
-  Argv[reqd] = puttwo(t);
+  fp->argv[reqd] = (ob) t;
   return ApN(2, xp); }
 
 
 // return from a function
 Vm(ret) {
   ip = (mo) fp->retp;
-  sp = Argv + getnum(Argc);
+  sp = fp->argv + getnum(fp->argc);
   fp = (fr) (sp + getnum(fp->subd));
   return ApY(ip, xp); }
-
-// "inner" function call
-Vm(call) {
-  intptr_t adic = getnum((ob) ip[1].ll),
-           off = (ob*) fp - (sp + adic);
-  Have(Width(fr));
-  fp = (fr) sp - 1;
-  sp = (ob*) fp;
-  fp->retp = (ob) (ip + 2);
-  fp->subd = putnum(off);
-  fp->clos = nil;
-  fp->argc = putnum(adic);
-  return ApY(xp, nil); }
 
 // tail calls
 //
 // fast case where the calls have the same number of args
 static NoInline Vm(recq) {
-  cpyw(Argv, sp, getnum((ob) ip));
+  for (size_t i = getnum((ob) ip); i--; fp->argv[i] = sp[i]);
   sp = (ob*) fp;
   return ApY(xp, nil); }
 
 Vm(rec) {
   ip = (mo) GF(ip);
-  if (Argc == (ob) ip) return ApC(recq, xp);
+  if (fp->argc == (ob) ip) return ApC(recq, xp);
   // save return address
   v->xp = fp->subd;
   v->ip = (mo) fp->retp;
   // set fp to the new argv address
-  fp = (fr) (Argv + getnum(Argc) - getnum((ob) ip)),
+  fp = (fr) (fp->argv + getnum(fp->argc - (ob) ip));
   // copy the args high to low
   rcpyw(fp, sp, getnum((ob) ip));
   // bump fp & set sp
@@ -136,10 +135,10 @@ Vm(imm) {
 
 // function arguments
 Vm(arg) {
-  xp = Argv[getnum(GF(ip))];
+  xp = fp->argv[getnum(GF(ip))];
   return ApN(2, xp); }
-Vm(arg0) { return ApN(1, Argv[0]); }
-Vm(arg1) { return ApN(1, Argv[1]); }
+Vm(arg0) { return ApN(1, fp->argv[0]); }
+Vm(arg1) { return ApN(1, fp->argv[1]); }
 
 // local variables
 Vm(loc) {
@@ -178,10 +177,8 @@ Vm(loc_) {
 // set a module variable
 Vm(tbind) {
   ob a = (ob) GF(ip);
-  Pack();
-  v->xp = tbl_set(v, A(a), B(a), xp);
-  Unpack();
-  return xp ? ApN(2, xp) : 0; }
+  CallOut(v->xp = tbl_set(v, A(a), B(a), xp));
+  return xp ? ApN(2, xp) : ApC(oom_err, xp); }
 
 // allocate local variable array
 Vm(locals) {
@@ -205,9 +202,9 @@ Vm(late) {
   // omit the arity check if possible
   vm *n = G(FF(ip));
   if ((n == call || n == rec) && // xp will be a hom
-      ptr(xp)[0] == (ob) arity &&
-      ptr(ip)[3] >= ptr(xp)[1])
-    xp = (ob) (ptr(xp) + 2);
+      ((ob*) xp)[0] == (ob) arity &&
+      ((ob*) ip)[3] >= ((ob*) xp)[1])
+    xp = (ob) ((ob*) xp + 2);
   G(ip) = imm;
   GF(ip) = (vm*) xp;
   return ApN(2, xp); }
@@ -251,7 +248,7 @@ Vm(clos0) {
   Have(req);
 
   intptr_t off = (ob*) fp - sp;
-  ip->ll = clos1;
+  G(ip) = clos1;
   sp -= adic;
   cpyw(sp, (ob*) arg + 1, adic);
   ec = (ob*) ip[1].ll;
@@ -269,7 +266,7 @@ Vm(clos0) {
 // lexical environments.
 // FIXME magic numbers
 static Vm(encl) {
-  size_t m = getnum(Argc),
+  size_t m = getnum(fp->argc),
          n = m + (m ? 14 : 11);
   Have(n);
   ob x = (ob) ip[1].ll,
@@ -280,12 +277,11 @@ static Vm(encl) {
     n -= 11;
     arg = (ob) block;
     block += n;
-    for (ptr(arg)[n-2] = 0,
-         ptr(arg)[n-1] = (ob) arg,
-         n -= 3,
-         ptr(arg)[0] = putnum(n);
-         n--;
-         ptr(arg)[n+1] = Argv[n]); }
+    block[-2] = 0;
+    block[-1] = arg;
+    n -= 3;
+    ((ob*) arg)[0] = putnum(n);
+    while (n--) ((ob*) arg)[n+1] = fp->argv[n]; }
 
   ob *t = (ob*) block, // compiler thread closure array
      *at = t + 6; // compiler thread
@@ -314,23 +310,6 @@ Vm(encln) { return ApC(encl, nil); }
 // unconditional jump
 Vm(jump) { return ApY((ob) GF(ip), xp); }
 
-#include <string.h>
-// isolate the more complicated logic from the simple
-// pointer comparisons so eql() doesn't touch the stack
-// unless it has to
-static NoInline bool eql_two(two a, two b) {
-  return eql(a->a, b->a) ? eql(a->b, b->b) : false; }
-static NoInline bool eql_str(str a, str b) {
-  return a->len == b->len && 0 == scmp(a->text, b->text); }
-static NoInline bool eql_(ob a, ob b) {
-  if (nump(a) || nump(b) || G(a) != disp || G(b) != disp || GF(a) != GF(b)) return false;
-  if (twop(a)) return eql_two(gettwo(a), gettwo(b));
-  if (strp(a)) return eql_str((str) a, (str) b);
-  return false; }
-
-bool eql(ob a, ob b) {
-  return a == b ? true : eql_(a, b); }
-
 // XXX FIXME returning xp is wrong now that 0 = nil
 Vm(lt) {
   xp = *sp++ < xp ? xp : nil;
@@ -348,13 +327,13 @@ Vm(gt) {
   xp = *sp++ > xp ? xp : nil;
   return ApN(1, xp); }
 
-// FIXME remove macros
+// TODO remove macros
 #define LT(a,b) (a<b)
 #define LE(a,b) (a<=b)
 #define GE(a,b) (a>=b)
 #define GT(a,b) (a>b)
 #define cmp(op, n) Vm(n##_u) {\
-  ob n = getnum(Argc), *xs = Argv, m, *l;\
+  ob n = getnum(fp->argc), *xs = fp->argv, m, *l;\
   switch (n) {\
     case 0: return ApC(ret, nil);\
     default: for (l = xs + n - 1, m = *xs; xs < l; m= *++xs)\
@@ -366,7 +345,7 @@ cmp(LT, lt) cmp(LE, lteq) cmp(GE, gteq) cmp(GT, gt) cmp(eql, eq)
 #define Tp(t)\
   Vm(t##pp) { return ApN(1, (t##p(xp)?T:nil)); }\
   Vm(t##p_u) {\
-    for (ob *xs = Argv, *l = xs + getnum(Argc); xs < l;)\
+    for (ob *xs = fp->argv, *l = xs + getnum(fp->argc); xs < l;)\
       if (!t##p(*xs++)) return ApC(ret, nil);\
     return ApC(ret, T); }
 Tp(num) Tp(hom) Tp(two) Tp(sym) Tp(str) Tp(tbl) Tp(nil)
@@ -399,7 +378,7 @@ Vm(idT) { return tblp(xp) ? ApN(1, xp) : ApC(dom_err, xp); }
 Vm(id2) { return twop(xp) ? ApN(1, xp) : ApC(dom_err, xp); }
 Vm(arity) {
   ob reqd = (ob) GF(ip);
-  return Argc >= reqd ? ApN(2, xp) : ApC(ary_err, reqd); }
+  return fp->argc >= reqd ? ApN(2, xp) : ApC(ary_err, reqd); }
 
 // errors
 Vm(dom_err) { return Pack(), nope(v, "is undefined"); }

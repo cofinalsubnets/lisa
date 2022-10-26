@@ -16,12 +16,6 @@ typedef Vm(vm);
 #define Gc(n) ob n(la v, ob x, size_t len0, ob *pool0)
 Gc(cp);
 
-// FIXME stop using tagged pointers!
-// - it assumes pointer alignment that limits the platforms we can run on
-// - it stops us from using cheney's algorithm to gc in constant stack
-// instead just use the least significant bit to distinguish immediate values
-enum builtin_type { Hom, Num, };
-
 // TODO include type data
 typedef struct mtbl {
   vm *does;
@@ -119,15 +113,13 @@ char cmin(char);
 size_t slen(const char*);
 int scmp(const char*, const char*);
 
-struct prim { vm *go; const char *nom; };
-extern struct prim primitives[];
-
-#define N0 putnum(0)
-#define nil N0
+#define nil putnum(0)
+#define F(_) ((mo)(_)+1)
+#define G(_) ((mo)(_))->ll
 #define FF(x) F(F(x))
 #define GF(x) G(F(x))
-#define A(o) gettwo(o)->a
-#define B(o) gettwo(o)->b
+#define A(o) ((two)(o))->a
+#define B(o) ((two)(o))->b
 #define AA(o) A(A(o))
 #define AB(o) A(B(o))
 #define BA(o) B(A(o))
@@ -138,12 +130,7 @@ extern struct prim primitives[];
 #define with(y,...) (mm(&(y)), (__VA_ARGS__), um)
 #define Width(t) b2w(sizeof(struct t))
 
-#define F(_) ((mo)(_)+1)
-#define G(_) (((mo)(_))->ll)
-
-#define ptr(x) ((ob*)(x))
 #define T putnum(-1)
-#define LEN(ary) (sizeof(ary)/sizeof(*ary))
 
 #define Inline inline __attribute__((always_inline))
 #define NoInline __attribute__((noinline))
@@ -151,15 +138,13 @@ ob nope(la, const char*, ...) NoInline; // runtime error
 
 #define getnum(_) ((ob)(_)>>1)
 #define putnum(_) (((ob)(_)<<1)|1)
-#define gettwo(_) ((two)((ob)(_)))
-#define puttwo(_) ((ob)(_))
 
 #define nilp(_) ((ob)(_)==nil)
+#define nump(_) ((ob)(_)&1)
+#define homp(_) (!nump(_))
 // these should hopefully almost always be inlined but we
 // might need pointers to them.
 bool strp(ob), twop(ob), tblp(ob), symp(ob);
-#define nump(_) ((ob)(_)&1)
-#define homp(_) (!nump(_))
 
 static Inline size_t b2w(size_t b) {
   size_t quot = b / sizeof(ob), rem = b % sizeof(ob);
@@ -191,6 +176,9 @@ Builtins(GcProto) Builtins(HashProto) Builtins(EmProto) Builtins(DoProto)
 #undef HashProto
 #undef EmProto
 #undef DoProto
+
+struct prim { vm *go; const char *nom; };
+extern struct prim primitives[];
 
 extern struct mtbl
   s_mtbl_two,

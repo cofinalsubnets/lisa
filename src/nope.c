@@ -8,7 +8,7 @@ static void show_call(la v, mo ip, fr fp) {
     tx(v, stderr, fp->argv[i++]);
   fputc(')', stderr); }
 
-#define aubas (ptr(fp) == v->pool + v->len)
+#define aubas (((ob*) fp) == v->pool + v->len)
 NoInline ob nope(la v, const char *msg, ...) {
   mo ip = v->ip;
   fr fp = v->fp;

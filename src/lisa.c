@@ -7,6 +7,7 @@
 #define prim_ent(go, nom) { go, nom },
 struct prim primitives[] = { i_primitives(prim_ent) };
 
+#define LEN(ary) (sizeof(ary)/sizeof(*ary))
 bool primp(ob x) {
   struct prim *_ = (struct prim*) x;
   return _ >= primitives && _ < primitives + LEN(primitives); }
@@ -29,26 +30,22 @@ static NoInline ob inst(la v, const char *a, vm *b) {
 // initialize a process
 static bool la_ini(la v) {
   // set time & random seed
-  v->t0 = clock(),
-  v->rand = v->t0,
+  v->rand = v->t0 = clock();
 
   // configure memory
   // how big a memory pool to start with?
-  v->len = 1 << 10,
+  v->len = 1 << 10;
   // there is no pool yet
-  v->pool = NULL,
+  v->pool = NULL;
   // no protected values
-  v->keep = NULL,
+  v->keep = NULL;
   // the data stack starts at the top of memory
-  v->sp = v->pool + v->len,
   // the call stack lives on the data stack
-  v->fp = (fr) v->sp,
   // the heap is all used up to start, so the first
   // allocation initializes the pool
-  v->hp = v->sp,
+  v->fp = (fr) (v->hp = v->sp = v->pool + v->len);
   // everything else starts empty
-  v->ip = (mo) nil,
-  v->topl = v->syms = v->xp = nil,
+  v->ip = (mo) (v->topl = v->syms = v->xp = nil);
   setw(v->lex, nil, LexN);
 
   ob _;
@@ -62,7 +59,6 @@ static bool la_ini(la v) {
     (v->lex[Quote] = interns(v, "`")) &&
     (v->lex[Seq] = interns(v, ",")) &&
     (v->lex[Splat] = interns(v, ".")) &&
-
 
     // make the global namespace
     (v->topl = table(v)) &&
