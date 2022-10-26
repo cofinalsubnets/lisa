@@ -97,7 +97,7 @@ bool
   primp(ob), // is it a primitive function?
   pushs(la, ...), // push onto stack
   please(la, size_t), // gc interface
-  eql(ob, ob); // logical equality
+  eql(la, ob, ob); // logical equality
 
 ob rx(la, FILE*); // read sexp
 void tx(la, FILE*, ob); // write sexp

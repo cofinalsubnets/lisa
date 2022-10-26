@@ -81,8 +81,8 @@ Vm(jump) { return ApY(GF(ip), xp); }
 Br(branch, xp != nil, GF, xp, FF, xp)
 Br(barnch, xp != nil, FF, xp, GF, xp)
 
-Br(breq, eql(*sp++, xp), GF, T, FF, nil)
-Br(brne, eql(*sp++, xp), FF, T, GF, nil)
+Br(breq, eql(v, xp, *sp++), GF, T, FF, nil)
+Br(brne, eql(v, xp, *sp++), FF, T, GF, nil)
 
 Br(brlt,    *sp++ <  xp, GF, xp, FF, nil)
 Br(brlt2,   *sp++ <  xp, FF, xp, GF, nil)

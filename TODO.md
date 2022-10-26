@@ -1,3 +1,12 @@
+## remove recursion from C
+either replace recursive routines with nonrecursive
+versions, or move the recursion onto the managed stack.
+this is the only portable way to handle stack overflows.
+
+- eql
+- tx
+- hash
+
 ## benchmarks
 this is in the git history somewhere, but it's a ruby
 script. we should add enough scripting functionality to do

@@ -224,7 +224,7 @@ static ob tblss(la v, intptr_t i, const intptr_t l) {
 
 static ob tbl_ent(la v, ob e, ob k) {
   e = ((tbl) e)->tab[tbl_idx(((tbl) e)->cap, hash(v, k))];
-  while (!nilp(e) && !eql(((ob*) e)[0], k)) e = ((ob*) e)[2];
+  while (!nilp(e) && !eql(v, ((ob*) e)[0], k)) e = ((ob*) e)[2];
   return e; }
 
 Vm(do_tbl) {

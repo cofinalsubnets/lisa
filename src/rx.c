@@ -83,12 +83,8 @@ static ob rx_str(la v, FILE *p) {
   for (size_t n = 0, lim = 8; o; o = grow_buf(v, o), lim *= 2)
     for (ob x; n < lim;) switch (x = fgetc(p)) {
       // backslash causes the next character to be read literally
-      case '\\':
-        if ((x = fgetc(p)) != EOF) goto ok;
-      case '"': case EOF:
-        o->text[n++] = 0;
-        o->len = n;
-        return (ob) o;
+      case '\\': if ((x = fgetc(p)) != EOF) goto ok;
+      case '"': case EOF: return o->text[n++] = 0, o->len = n, (ob) o;
       default: ok: o->text[n++] = x; }
   return 0; }
 
@@ -100,15 +96,13 @@ static ob buf_atom(la v, FILE *p, char ch) {
     for (int x; n < lim;) switch (x = fgetc(p)) {
       default: o->text[n++] = x; continue;
       // these characters terminate an atom
-      case ' ': case '\n': case '\t':
-      case ';': case '#':
-      case '(': case ')':
-      case '\'': case '"':
+      case ' ': case '\n': case '\t': case ';': case '#':
+      case '(': case ')': case '\'': case '"':
         ungetc(x, p);
-      case EOF:
-        o->text[n++] = 0;
-        o->len = n;
-        return (ob) o; }
+      case EOF: return
+        o->text[n++] = 0,
+        o->len = n,
+        (ob) o; }
   return 0; }
 
 static NoInline ob rx_numb(la v, ob b, const char *in, int base) {
@@ -125,10 +119,8 @@ static NoInline ob rx_numb(la v, ob b, const char *in, int base) {
 
 // numbers can be input in bases 2, 6, 8, 10, 12, 16, 36
 static char radicize(char c) {
-  static const char *radices =
-    "b\2s\6o\10d\12z\14x\20n\44";
-  for (const char *r = radices; *r; r += 2)
-    if (*r == c) return r[1];
+  static const char *radices = "b\2s\6o\10d\12z\14x\20n\44";
+  for (const char *r = radices; *r; r += 2) if (*r == c) return r[1];
   return 0; }
 
 static NoInline ob rx_num(la v, ob b, const char *s) {
