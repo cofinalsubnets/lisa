@@ -14,11 +14,6 @@ void cpyw(void *x, const void *y, size_t l) {
   const uintptr_t *s = y;
   while (l--) *d++ = *s++; }
 
-void rcpyw(void *x, const void *y, size_t l) {
-  uintptr_t *d = (uintptr_t*) x + (l - 1);
-  const uintptr_t *s = (const uintptr_t*) y + (l - 1);
-  while (l--) *d-- = *s--; }
-
 void cpy8(void *x, const void *y, size_t l) {
   size_t quot = l / sizeof(uintptr_t),
          rem = l % sizeof(uintptr_t);

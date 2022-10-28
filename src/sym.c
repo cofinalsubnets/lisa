@@ -66,7 +66,7 @@ Gc(cp_sym) {
     dst = bump(v, Width(sym)),
     cpyw(dst, src, Width(sym));
   else 
-    x = cp(v, nom, len0, pool0),
+    x = cp(v, nom, pool0, top0),
     dst = (sym) sskc(v, &v->syms, x);
   src->disp = (vm*) dst;
   return (ob) dst; }

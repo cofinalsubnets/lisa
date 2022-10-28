@@ -44,33 +44,36 @@ Vm(ret) { return
 
 // tail calls
 //
-// fast case where the calls have the same number of args
-static NoInline Vm(recq) {
-  for (size_t i = getnum((ob) ip); i--; fp->argv[i] = sp[i]);
-  return sp = (ob*) fp, ApY(xp, nil); }
 
-Vm(rec) {
-  ip = (mo) GF(ip);
-  if (fp->argc == (ob) ip) return ApC(recq, xp);
+// if the adicity is different we need to do more.
+static NoInline Vm(recne) {
   // save return address
   v->xp = fp->subd;
   v->ip = (mo) fp->retp;
-  // set fp to the new argv address
-  fp = (fr) (fp->argv + getnum(fp->argc - (ob) ip));
+  // reset fp
+  fp = (fr) (fp->argv + getnum(fp->argc - xp)) - 1;
   // copy the args high to low
-  rcpyw(fp, sp, getnum((ob) ip));
-  // bump fp & set sp
-  sp = (ob*) (--fp);
-  // set return address & call info
+  for (size_t i = getnum(xp); i--; fp->argv[i] = sp[i]);
+  sp = (ob*) fp;
+  // populate fp
   fp->retp = (ob) v->ip;
   fp->subd = v->xp;
-  fp->argc = (ob) ip;
+  fp->argc = xp;
   fp->clos = nil;
-  return ApY(xp, nil); }
+  return ApY(ip, nil); }
+
+Vm(rec) {
+  ob _ = (ob) GF(ip);
+  ip = (mo) xp;
+  xp = _;
+  if (fp->argc != xp) return ApC(recne, xp);
+  // fast case where the calls have the same number of args
+  for (xp = getnum(xp); xp--; fp->argv[xp] = sp[xp]);
+  sp = (ob*) fp;
+  return ApY(ip, nil); }
 
 // unconditional jump
 Vm(jump) { return ApY(GF(ip), xp); }
-
 
 // conditional jumps
 //

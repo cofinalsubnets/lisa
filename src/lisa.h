@@ -13,14 +13,14 @@ typedef struct mo *mo; // procedures
 #define Vm(n, ...)\
   ob n(la v, ob xp, mo ip, ob *hp, ob *sp, fr fp)
 typedef Vm(vm);
-#define Gc(n) ob n(la v, ob x, size_t len0, ob *pool0)
+#define Gc(n) ob n(la v, ob x, ob *pool0, ob *top0)
 Gc(cp);
 
 // TODO include type data
 typedef struct mtbl {
   vm *does;
   void (*emit)(la, FILE*, ob);
-  ob (*copy)(la, ob, size_t, ob*);
+  ob (*copy)(la, ob, ob*, ob*);
   size_t (*hash)(la, ob);
   // tbl dyn; // TODO everything else; user methods
 } *mtbl;
@@ -34,7 +34,9 @@ typedef struct two {
 
 // strings
 // TODO maybe pre-hash strings for faster lookup & comparison
-typedef struct str { vm *disp; mtbl mtbl; size_t len; char text[]; } *str;
+typedef struct str {
+  vm *disp; mtbl mtbl;
+  size_t len; char text[]; } *str;
 
 // symbols
 // FIXME this is a silly way to store internal symbols
@@ -45,7 +47,9 @@ typedef struct sym {
   ob nom, code, l, r; } *sym;
 
 // hash tables
-typedef struct tbl { vm *disp; mtbl mtbl; ob *tab; size_t len, cap; } *tbl;
+typedef struct tbl {
+  vm *disp; mtbl mtbl;
+  ob *tab; size_t len, cap; } *tbl;
 
 // grammar symbols
 enum lex { Def, Cond, Lamb, Quote, Seq, Splat, Eval, LexN };
@@ -59,12 +63,12 @@ struct la {
   fr fp; // top of control stack
   ob xp, // free register
      *hp, // top of heap
-     *sp; // top of stack
-          // sp - hp = free memory
+     *sp; // top of stack, free space = sp - hp
 
   // memory state
   keep keep; // list of C stack addresses to copy on gc
-  size_t t0, len; // memory pool size
+  size_t t0, // gc timestamp, governs len
+         len; // size of pool
   ob *pool, // memory pool
      topl, // global namespace
      syms, // internal symbols
@@ -88,7 +92,7 @@ ob string(la, const char*),
 
 // functions
 mo mkmo(la, size_t), // allocator
-   ana(la, ob, ob), // compiler interface
+   ana_p(la, const char*, ob),
    button(mo); // get tag at end
 ob hnom(la, ob); // try to get function name FIXME don't expose
 
@@ -106,11 +110,14 @@ void tx(la, FILE*, ob); // write sexp
 intptr_t lcprng(intptr_t);
 void setw(void*, uintptr_t, size_t),
      cpyw(void*, const void*, size_t),
-     rcpyw(void*, const void*, size_t),
      cpy8(void*, const void*, size_t);
 char cmin(char);
 size_t slen(const char*);
 int scmp(const char*, const char*);
+
+// these should hopefully almost always be inlined but we
+// might need pointers to them.
+bool strp(ob), twop(ob), tblp(ob), symp(ob);
 
 #define nil putnum(0)
 #define F(_) ((mo)(_)+1)
@@ -141,9 +148,6 @@ ob nope(la, const char*, ...) NoInline; // runtime error
 #define nilp(_) ((ob)(_)==nil)
 #define nump(_) ((ob)(_)&1)
 #define homp(_) (!nump(_))
-// these should hopefully almost always be inlined but we
-// might need pointers to them.
-bool strp(ob), twop(ob), tblp(ob), symp(ob);
 
 static Inline size_t b2w(size_t b) {
   size_t quot = b / sizeof(ob), rem = b % sizeof(ob);
@@ -166,7 +170,7 @@ _Static_assert(-1 == -1 >> 1, "signed >>");
 _Static_assert(sizeof(void*) == sizeof(size_t), "size_t matches pointer size");
 
 #define Builtins(_) _(two) _(str) _(sym) _(tbl)
-#define GcProto(n) ob cp_##n(la, ob, size_t, ob*);
+#define GcProto(n) ob cp_##n(la, ob, ob*, ob*);
 #define HashProto(n) size_t hash_##n(la, ob);
 #define EmProto(n) void em_##n(la, FILE*, ob);
 #define DoProto(n) Vm(do_##n);
@@ -179,11 +183,7 @@ Builtins(GcProto) Builtins(HashProto) Builtins(EmProto) Builtins(DoProto)
 struct prim { vm *go; const char *nom; };
 extern struct prim primitives[];
 
-extern struct mtbl
-  s_mtbl_two,
-  s_mtbl_str,
-  s_mtbl_tbl,
-  s_mtbl_sym;
+extern struct mtbl s_mtbl_two, s_mtbl_str, s_mtbl_tbl, s_mtbl_sym;
 #define mtbl_str (&s_mtbl_str)
 #define mtbl_two (&s_mtbl_two)
 #define mtbl_sym (&s_mtbl_sym)

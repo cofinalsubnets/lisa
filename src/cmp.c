@@ -55,8 +55,10 @@ Tp(num) Tp(hom) Tp(two) Tp(sym) Tp(str) Tp(tbl) Tp(nil)
 // type/arity checking
 Vm(idZ) { return nump(xp) ? ApN(1, xp) : ApC(dom_err, xp); }
 Vm(idH) { return homp(xp) ? ApN(1, xp) : ApC(dom_err, xp); }
-Vm(idT) { return tblp(xp) ? ApN(1, xp) : ApC(dom_err, xp); }
-Vm(id2) { return twop(xp) ? ApN(1, xp) : ApC(dom_err, xp); }
+Vm(idT) { return homp(xp) && GF(xp) == (vm*) mtbl_tbl ?
+  ApN(1, xp) : ApC(dom_err, xp); }
+Vm(id2) { return homp(xp) && GF(xp) == (vm*) mtbl_two ?
+  ApN(1, xp) : ApC(dom_err, xp); }
 Vm(arity) {
   ob reqd = (ob) GF(ip);
   return fp->argc >= reqd ? ApN(2, xp) : ApC(ary_err, reqd); }

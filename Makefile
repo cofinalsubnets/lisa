@@ -22,19 +22,19 @@ test_lots:
 
 # build
 # tested with gcc, clang, and compcert
-CPPFLAGS=\
+CPPFLAGS ?=\
 	-DPREF=\"$(DESTDIR)/$(PREFIX)\" -DLANG=\"$(lang)\" -DSUFF=\"$(suff)\"
-CFLAGS=\
-	-std=c99 -g -Os -flto -Wall -Werror\
+CFLAGS ?=\
+	-std=c99 -g -O2 -flto -Wall -Werror\
  	-Wstrict-prototypes -Wno-shift-negative-value\
 	-fno-stack-protector
 # set locale for sorting
 LC_COLLATE=C
-h=$(sort $(wildcard $(srcdir)/*.h))
-c=$(sort $(wildcard $(srcdir)/*.c))
-$(builddir)/%.o: $(srcdir)/%.c $h Makefile
+src_h=$(sort $(wildcard $(srcdir)/*.h))
+src_c=$(sort $(wildcard $(srcdir)/*.c))
+$(builddir)/%.o: $(srcdir)/%.c $(src_h) Makefile
 	$(CC) -c -o $@ $(CFLAGS) $(CPPFLAGS) $<
-$(bin_debug): $(addprefix $(builddir)/,$(notdir $(c:.c=.o)))
+$(bin_debug): $(addprefix $(builddir)/,$(notdir $(src_c:.c=.o)))
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 $(bin_rel): $(bin_debug)
 	strip -o $@ $^

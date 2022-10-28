@@ -246,7 +246,7 @@ Gc(cp_tbl) {
   dst->mtbl = mtbl_tbl;
   dst->len = src->len;
   dst->cap = src->cap;
-  dst->tab = (ob*) cp(v, (ob) src->tab, len0, pool0);
+  dst->tab = (ob*) cp(v, (ob) src->tab, pool0, top0);
   return (ob) dst; }
 
 void em_tbl(la v, FILE *o, ob x) {

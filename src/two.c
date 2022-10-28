@@ -67,8 +67,8 @@ Gc(cp_two) {
   src->disp = (vm*) dst;
   dst->disp = disp;
   dst->mtbl = mtbl_two;
-  dst->b = cp(v, src->b, len0, pool0);
-  dst->a = cp(v, src->a, len0, pool0);
+  dst->b = cp(v, src->b, pool0, top0);
+  dst->a = cp(v, src->a, pool0, top0);
   return (ob) dst; }
 
 void em_two(la v, FILE *o, ob x) {

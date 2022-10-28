@@ -42,12 +42,38 @@ static mo
   co_x(la, ob*, size_t, ob);
 
 // apply expression pullbacks
-mo ana(la v, ob x, ob k) {
+static mo ana(la v, ob x, ob k) {
   // k can be a continuation or an instruction pointer
   bool ok = nump(k) ?
     Push(putnum(co__), x, putnum(i1d0), k, putnum(co_ini)) :
     Push(putnum(co__), x, putnum(i1d1), putnum(jump), k, putnum(co_ini));
   return ok ? pull(v, 0, 0) : 0; }
+
+static ob rxq(la v, FILE *i) {
+  ob x = rx(v, i);
+  x = x ? pair(v, x, nil) : x;
+  return x ? pair(v, v->lex[Quote], x) : 0; }
+
+static ob ana_fd(la v, FILE *in, ob k) {
+  ob x;
+  with(k, x = rxq(v, in));
+  if (!x) return feof(in) ? k : x;
+  with(x, k = ana_fd(v, in, k));
+  if (!k) return k;
+  with(k, x = pair(v, x, nil),
+          x = x ? pair(v, v->lex[Eval], x) : x);
+  return x ? (ob) ana(v, x, k) : x; }
+
+#include <string.h>
+#include <errno.h>
+mo ana_p(la v, const char *path, ob k) {
+  FILE *in = fopen(path, "r");
+  if (!in) return
+    fprintf(stderr, "# %s : %s", path, strerror(errno)),
+    NULL;
+  k = ana_fd(v, in, k);
+  fclose(in);
+  return (mo) k; }
 
 #define Co(nom,...) static mo nom(la v, ob *e, size_t m, ##__VA_ARGS__)
 

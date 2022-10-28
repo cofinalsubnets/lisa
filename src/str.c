@@ -81,33 +81,31 @@ Vm(str_u) {
   Have(words);
   str s = (str) hp;
   hp += words;
-  for (ob x; i < bytes-1; s->text[i++] = getnum(x)) {
-    x = fp->argv[i];
-    Check(nump(x));
-    if (x == putnum(0)) break; }
+  for (; i < bytes-1; s->text[i++] = getnum(xp)) {
+    xp = fp->argv[i];
+    Check(nump(xp));
+    if (xp == putnum(0)) break; }
   s->text[i] = 0;
   s->disp = disp;
   s->mtbl = mtbl_str;
   s->len = i + 1;
   return ApC(ret, (ob) s); }
 
-Vm(do_str) {
-  fputs(((str) ip)->text, stdout);
-  return ApC(ret, (ob) ip); }
+Vm(do_str) { return
+  fputs(((str) ip)->text, stdout),
+  ApC(ret, (ob) ip); }
 
 size_t hash_str(la v, ob _) {
-  str s = (str) _;
-  return hashb(s->text, s->len); }
+  return hashb(((str)_)->text, ((str)_)->len); }
 
 void em_str(la v, FILE *o, ob _) {
-  str s = (str) _;
   fputc('"', o);
-  for (char *t = s->text; *t; fputc(*t++, o))
+  for (char *t = ((str)_)->text; *t; fputc(*t++, o))
     if (*t == '"') fputc('\\', o);
   fputc('"', o); }
 
-ob cp_str(la v, ob _, size_t len0, ob *pool0) {
-  str src = (str) _;
+Gc(cp_str) {
+  str src = (str) x;
   size_t ws = b2w(src->len);
   str dst = bump(v, Width(str) + ws);
   cpyw(dst, src, Width(str) + ws);
