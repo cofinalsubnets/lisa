@@ -30,9 +30,9 @@ la_ob
   la_getcar(la_ob),
   la_getcdr(la_ob);
 
-long
-  la_tx_f(la, FILE*, la_ob),
-  la_getnum(la_ob);
+int la_tx_f(la, FILE*, la_ob);
+
+intptr_t la_getnum(la_ob);
 
 char
   *la_tx_s(la, la_ob),

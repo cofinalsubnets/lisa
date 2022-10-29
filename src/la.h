@@ -26,14 +26,12 @@ typedef const struct mtbl {
   int (*emit)(la, FILE*, ob);
   ob (*copy)(la, ob, ob*, ob*);
   size_t (*hash)(la, ob);
-  bool (*equi)(la, ob, ob);
-} *mtbl;
+  bool (*equi)(la, ob, ob); } *mtbl;
 
 // pairs
 typedef struct two { vm *disp; mtbl mtbl; ob a, b; } *two;
 
 // strings
-// TODO maybe pre-hash strings for faster lookup & comparison
 typedef struct str { vm *disp; mtbl mtbl; size_t len; char text[]; } *str;
 
 // symbols
@@ -99,9 +97,6 @@ bool
   pushs(la, ...), // push onto stack
   please(la, size_t), // gc interface
   eql(la, ob, ob); // logical equality
-
-#define rx(...) la_rx_f(__VA_ARGS__)
-int tx(la, FILE*, ob); // write sexp
 
 intptr_t lcprng(intptr_t);
 void setw(void*, uintptr_t, size_t),

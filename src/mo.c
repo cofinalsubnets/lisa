@@ -169,8 +169,7 @@ Vm(clos) { return
 // lexical environments.
 // FIXME magic numbers
 static Vm(encl) {
-  size_t m = fp->argc,
-         n = m + (m ? 14 : 11);
+  size_t m = fp->argc, n = m + (m ? 14 : 11);
   Have(n);
   ob x = (ob) GF(ip),
      arg = nil,
