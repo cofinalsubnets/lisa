@@ -97,16 +97,16 @@ Vm(late) {
 static NoInline Vm(varg0) {
   size_t reqd = getnum((ob) GF(ip));
   Have1();
-  cpyw((ob*) fp - 1, fp, Width(fr) + getnum(fp->argc));
+  cpyw((ob*) fp - 1, fp, Width(fr) + ARITY);
   fp = (fr) ((ob*) fp - 1);
   sp = (ob*) fp;
-  fp->argc += 2; // 1 << 1
+  fp->argc += 2; // 1 << 1 // XXX
   fp->argv[reqd] = nil;
   return ApN(2, xp); }
 
 Vm(varg) {
   size_t reqd = getnum((ob) GF(ip)),
-         vdic = getnum(fp->argc) - reqd;
+         vdic = ARITY - reqd;
   ArityCheck(reqd);
   // in this case we need to add another argument
   // slot to hold the nil.

@@ -154,6 +154,7 @@ static void copy_(la v, size_t len1, ob *pool1) {
 
   copy_stack(v, pool0, top0, sp0); }
 
+#include "vm.h"
 static void copy_stack(la v, ob *pool0, ob *top0, ob *sp0) {
   ob *sp = v->sp;
   fr fp = v->fp;
@@ -167,9 +168,8 @@ static void copy_stack(la v, ob *pool0, ob *top0, ob *sp0) {
     fp->retp = cp(v, fp0->retp, pool0, top0);
     sp = (ob*) (fp + 1);
     sp0 = (ob*) (fp0 + 1);
-    fp = (fr) (sp + getnum(fp->argc) + fp->subd); } }
+    fp = (fr) (sp + ARITY + fp->subd); } }
 
-#include "vm.h"
 // Run a GC cycle from inside the VM
 // XXX calling convention: size of request (bare size_t) in v->xp
 NoInline Vm(gc) {

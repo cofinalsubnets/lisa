@@ -403,9 +403,9 @@
   ; the known values. otherwise collect the name, definition,
   ; and list of free variables into a list.
   (f2 kvs) (? kvs (: kv (A kvs) rr (f2 (B kvs)) (?
-   (homp-strict (: i (ltu e (: k (A kv)) (: v (B kv)))))
-    (, (tset (tget e'val) k i) (tdel (tget e'def) k) rr)
-   (X (X k (X (A i) v)) rr))))
+   (twop (: i (ltu e (: k (A kv)) (: v (B kv)))))
+    (X (X k (X (A i) v)) rr)
+   (, (tset (tget e'val) k i) (tdel (tget e'def) k) rr))))
 
   ; step three: reject from the list all definitions that
   ; depend on values that won't be available until runtime.

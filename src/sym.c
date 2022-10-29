@@ -37,7 +37,7 @@ ob intern(la v, ob x) {
 
 Vm(sym_u) {
   Have(Width(sym));
-  if (fp->argc > putnum(0) && strp(fp->argv[0]))
+  if (ARITY && strp(fp->argv[0]))
     return ApC(ret, sskc(v, &v->syms, fp->argv[0]));
   // sym allocated here
   sym y = (sym) hp;

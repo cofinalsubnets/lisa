@@ -26,7 +26,7 @@ Vm(gt) { return ApN(1, *sp++ > xp ? xp : nil); }
 #define GT(a,b) (a>b)
 #define EQ(a,b) eql(v,a,b)
 #define cmp(op, n) Vm(n##_u) {\
-  ob n = getnum(fp->argc), *xs = fp->argv, m, *l;\
+  ob n = ARITY, *xs = fp->argv, m, *l;\
   switch (n) {\
     case 0: return ApC(ret, nil);\
     default: for (l = xs + n - 1, m = *xs; xs < l; m = *++xs)\
@@ -38,7 +38,7 @@ cmp(LT, lt) cmp(LE, lteq) cmp(GE, gteq) cmp(GT, gt) cmp(EQ, eq)
 #define Tp(t)\
   Vm(t##pp) { return ApN(1, (t##p(xp)?T:nil)); }\
   Vm(t##p_u) {\
-    for (ob *xs = fp->argv, *l = xs + getnum(fp->argc); xs < l;)\
+    for (ob *xs = fp->argv, *l = xs + ARITY; xs < l;)\
       if (!t##p(*xs++)) return ApC(ret, nil);\
     return ApC(ret, T); }
 Tp(num) Tp(hom) Tp(two) Tp(sym) Tp(str) Tp(tbl) Tp(nil)
@@ -49,8 +49,8 @@ Vm(idH) { return homp(xp) ? ApN(1, xp) : ApC(dom_err, xp); }
 Vm(idT) { return tblp(xp) ? ApN(1, xp) : ApC(dom_err, xp); }
 Vm(id2) { return twop(xp) ? ApN(1, xp) : ApC(dom_err, xp); }
 Vm(arity) {
-  ob reqd = (ob) GF(ip);
-  return fp->argc >= reqd ? ApN(2, xp) : ApC(ary_err, reqd); }
+  ob reqd = getnum(GF(ip));
+  return ARITY >= reqd ? ApN(2, xp) : ApC(ary_err, (ob) GF(ip)); }
 
 bool la_nilp(ob _) { return nilp(_); }
 bool la_nump(ob _) { return nump(_); }

@@ -43,8 +43,7 @@ Vm(cons_u) {
   return ApC(ret, (ob) w); }
 
 static Vm(do_two) {
-  xp = fp->argc == putnum(0) ? A(ip) : B(ip);
-  return ApC(ret, xp); }
+  return ApC(ret, ARITY ? B(ip) : A(ip)); }
 
 static Gc(cp_two) {
   two src = (two) x, dst;

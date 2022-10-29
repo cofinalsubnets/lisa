@@ -96,13 +96,12 @@ Vm(tset_u) {
   ArityCheck(1);
   xp = fp->argv[0];
   Check(tblp(xp));
-  CallOut(v->xp = tblss(v, 1, getnum(fp->argc)));
+  CallOut(v->xp = tblss(v, 1, ARITY));
   return ApC(xp ? ret : oom_err, xp); }
 
 Vm(tbl_u) {
-  bool _;
-  CallOut(xp = getnum(fp->argc),
-          _ = (v->xp = table(v)) && tblss(v, 0, xp));
+  ob _ = ARITY;
+  CallOut(_ = (v->xp = table(v)) && tblss(v, 0, _));
   return ApC(_ ? ret : oom_err, xp); }
 
 Vm(tkeys_u) {
@@ -229,7 +228,7 @@ static ob tblss(la v, intptr_t i, const intptr_t l) {
   return v->fp->argv[i - 1]; }
 
 static Vm(do_tbl) {
-  size_t a = getnum(fp->argc);
+  size_t a = ARITY;
   switch (a) {
     case 0: return ApC(ret, putnum(((tbl) ip)->len));
     case 1: return
