@@ -157,12 +157,12 @@ static void copy_(la v, size_t len1, ob *pool1) {
     if (sp0 == top0) break;
     fr fp0 = (fr) sp0;
     fp->argc = fp0->argc;
-    fp->subd = fp0->subd;
+    fp->subd = (fr) (((ob*) fp0->subd) + shift);
     fp->clos = cp(v, fp0->clos, pool0, top0);
-    fp->retp = cp(v, fp0->retp, pool0, top0);
+    fp->retp = (mo) cp(v, (ob) fp0->retp, pool0, top0);
     sp = (ob*) (fp + 1);
     sp0 = (ob*) (fp0 + 1);
-    fp = (fr) (sp + fp->argc + fp->subd); } }
+    fp = fp->subd; } }
 
 // Run a GC cycle from inside the VM
 // XXX calling convention: size of request (bare size_t) in v->xp

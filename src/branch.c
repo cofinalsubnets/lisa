@@ -7,11 +7,11 @@
 // calling and returning
 Vm(call) {
   Have(Width(fr));
-  size_t adic = getnum(GF(ip)),
-         subd = (ob*) fp - (sp + adic);
+  size_t adic = getnum(GF(ip));
+  fr subd = fp;
   fp = (fr) sp - 1;
   sp = (ob*) fp;
-  fp->retp = (ob) FF(ip);
+  fp->retp = FF(ip);
   fp->subd = subd;
   fp->clos = nil;
   fp->argc = adic; // XXX
@@ -24,7 +24,8 @@ Vm(ap_u) {
   Have(adic);
   ip = (mo) fp->argv[0];
   xp = fp->argv[1];
-  ob subd = fp->subd, retp = fp->retp;
+  fr subd = fp->subd;
+  mo retp = fp->retp;
   sp = fp->argv + fp->argc - adic;
   for (size_t j = 0; j < adic; sp[j++] = A(xp), xp = B(xp));
   fp = (fr) sp - 1;
@@ -39,7 +40,7 @@ Vm(ap_u) {
 Vm(ret) { return
   ip = (mo) fp->retp,
   sp = fp->argv + fp->argc,
-  fp = (fr) (sp + fp->subd),
+  fp = fp->subd,
   ApN(0, xp); }
 
 // tail calls
@@ -48,7 +49,7 @@ Vm(ret) { return
 // if the adicity is different we need to do more.
 static NoInline Vm(recne) {
   // save return address
-  v->xp = fp->subd;
+  v->xp = (ob) fp->subd;
   v->ip = (mo) fp->retp;
   // reset fp
   fp = (fr) (fp->argv + fp->argc - xp) - 1;
@@ -56,8 +57,8 @@ static NoInline Vm(recne) {
   for (size_t i = xp; i--; fp->argv[i] = sp[i]);
   sp = (ob*) fp;
   // populate fp
-  fp->retp = (ob) v->ip;
-  fp->subd = v->xp;
+  fp->retp =  v->ip;
+  fp->subd = (fr) v->xp;
   fp->argc = xp; // XXX
   fp->clos = nil;
   return ApY(ip, nil); }

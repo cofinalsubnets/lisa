@@ -14,8 +14,10 @@ Gc(cp);
 
 struct mo { vm *go; };
 struct fr {
-  ob clos, retp;
-  size_t subd, argc;
+  ob clos;
+  mo retp;
+  fr subd;
+  size_t argc;
   ob argv[]; };
 
 // static method table for built-in types

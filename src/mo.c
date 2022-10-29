@@ -140,15 +140,15 @@ Vm(clos0) {
   size_t adic = nilp(arg) ? 0 : getnum(G(arg));
   Have(Width(fr) + adic + 1);
   ob loc = ec[1];
-  size_t off = (ob*) fp - sp;
+  fr subd = fp;
   G(ip) = clos1;
   sp -= adic;
   cpyw(sp, (ob*) arg + 1, adic);
   ec = (ob*) GF(ip);
   fp = (fr) sp - 1;
   sp = (ob*) fp;
-  fp->retp = (ob) ip;
-  fp->subd = off;
+  fp->retp = ip;
+  fp->subd = subd;
   fp->argc = adic; // XXX
   fp->clos = ec[2];
   if (!nilp(loc)) *--sp = loc;
