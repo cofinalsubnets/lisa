@@ -6,19 +6,19 @@
 
 typedef la_ob ob;
 typedef struct mo *mo; // procedures
-typedef struct fr {
-  ob clos, retp;
-  size_t subd, argc;
-  ob argv[]; } *fr; // stack frame
+typedef struct fr *fr; // stack frame
 #define Vm(n, ...) ob n(la v, ob xp, mo ip, ob *hp, ob *sp, fr fp)
 typedef Vm(vm);
 #define Gc(n) ob n(la v, ob x, ob *pool0, ob *top0)
 Gc(cp);
 
-struct mo { vm *ll; };
+struct mo { vm *go; };
+struct fr {
+  ob clos, retp;
+  size_t subd, argc;
+  ob argv[]; };
 
 // static method table for built-in types
-// TODO eq in here
 typedef const struct mtbl {
   vm *does;
   int (*emit)(la, FILE*, ob);
@@ -112,7 +112,7 @@ ob nope(la, const char*, ...) NoInline; // panic with error msg
 
 #define nil putnum(0)
 #define F(_) ((mo)(_)+1)
-#define G(_) ((mo)(_))->ll
+#define G(_) ((mo)(_))->go
 #define FF(x) F(F(x))
 #define GF(x) G(F(x))
 #define A(o) ((two)(o))->a

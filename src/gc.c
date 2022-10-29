@@ -1,9 +1,7 @@
 #include "la.h"
 
 static clock_t copy(la, size_t);
-static void
-  copy_(la, size_t, ob*),
-  copy_stack(la, ob*, ob*, ob*);
+static void copy_(la, size_t, ob*);
 
 // please : u1 la size_t
 //
@@ -99,7 +97,7 @@ static clock_t copy(la v, size_t len1) {
   t1 = t2 - t1;
   return t1 ? (t2 - t0) / t1 : 1; }
 
-Gc(cp_hom) {
+static NoInline Gc(cp_hom) {
   // this is not a very good way to find the head :(
   // since many function references will be to the head it
   // would be an easy optimization to have a head bracket
@@ -110,9 +108,8 @@ Gc(cp_hom) {
      dst = bump(v, end - start + 2),
      j = dst;
 
-  for (mo k = start; k < end;
-    G(j) = G(k), G(k++) = (vm*) j++);
-  for (G(j) = NULL, GF(j) = (vm*) dst; j-- > dst;
+  for (mo k = start; (G(j) = G(k)); G(k++) = (vm*) j++);
+  for (GF(j) = (vm*) dst; j-- > dst;
     G(j) = (vm*) cp(v, (ob) G(j), pool0, top0));
 
   return (ob) (src - start + dst); }
@@ -126,6 +123,7 @@ Gc(cp) {
   return cp_hom(v, x, pool0, top0); }
 
 
+#include "vm.h"
 static void copy_(la v, size_t len1, ob *pool1) {
 
   ob len0 = v->len,
@@ -152,10 +150,6 @@ static void copy_(la v, size_t len1, ob *pool1) {
   for (keep r = v->safe; r; r = r->et)
     *r->it = cp(v, *r->it, pool0, top0);
 
-  copy_stack(v, pool0, top0, sp0); }
-
-#include "vm.h"
-static void copy_stack(la v, ob *pool0, ob *top0, ob *sp0) {
   ob *sp = v->sp;
   fr fp = v->fp;
   for (;;) {
