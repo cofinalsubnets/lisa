@@ -21,11 +21,11 @@ test_lots:
 	for n in {1..$(lots)}; do make -s test || exit 1; done
 
 # build
-# tested with gcc, clang, and compcert
+# tested with gcc & clang
 CPPFLAGS ?=\
 	-DPREF=\"$(DESTDIR)/$(PREFIX)\" -DLANG=\"$(lang)\" -DSUFF=\"$(suff)\"
 CFLAGS ?=\
-	-std=c99 -g -O2 -flto -Wall -Werror\
+	-std=gnu17 -g -O2 -flto -Wall -Werror\
  	-Wstrict-prototypes -Wno-shift-negative-value\
 	-fno-stack-protector
 # set locale for sorting

@@ -68,9 +68,9 @@ static ob ana_fd(la v, FILE *in, ob k) {
 #include <errno.h>
 mo ana_p(la v, const char *path, ob k) {
   FILE *in = fopen(path, "r");
-  if (!in) return
-    fprintf(stderr, "# %s : %s", path, strerror(errno)),
-    NULL;
+  if (!in) {
+    errp(v, "# %s : %s", path, strerror(errno));
+    return NULL; }
   k = ana_fd(v, in, k);
   fclose(in);
   return (mo) k; }

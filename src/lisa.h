@@ -11,6 +11,7 @@ void la_fin(la);
 
 la_ob
   la_ev_x(la, la_ob),
+  la_ev_f(la, FILE*),
   la_ev_s(la, const char **),
   la_rx_f(la, FILE*),
   la_rx_s(la, const char **);

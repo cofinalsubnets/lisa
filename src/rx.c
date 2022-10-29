@@ -60,6 +60,14 @@ static ob rx2(la v, FILE *i) {
 ob la_rx_f(la v, FILE *i) { return
   Push(putnum(pret)) ? rx_(v, i) : 0; }
 
+ob la_rx_s(la v, const char **s) {
+  FILE *i = fmemopen((char*) *s, slen(*s), "r");
+  if (!i) return 0;
+  ob _ = la_rx_f(v, i);
+  if (_) *s += ftell(i);
+  fclose(i);
+  return _; }
+
 static str new_buf(la v) {
   str s = cells(v, Width(str) + 1);
   if (s) s->len = 8, s->disp = disp, s->mtbl = mtbl_str;

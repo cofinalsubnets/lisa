@@ -13,25 +13,31 @@
 
 // called after finishing successfully
 static Vm(yield) { return Pack(), xp; }
+static const struct mo go[] = { {call}, {(vm*) putnum(1)}, {yield} };
 
 ob la_ev_x(la v, ob _) {
   if (!Push(_)) return 0;
-  struct mo go[] = { {call}, {(vm*) putnum(1)}, {yield} };
-  return call(v, (ob) primitives, go, v->hp, v->sp, v->fp); }
+  return call(v, (ob) primitives, (mo) go, v->hp, v->sp, v->fp); }
+
+ob la_ev_f(la v, FILE *i) {
+  ob _ = la_rx_f(v, i);
+  return _ ? la_ev_x(v, _) : 0; }
+
+ob la_ev_s(la v, const char **s) {
+  ob _ = la_rx_s(v, s);
+  return _ ? la_ev_x(v, _) : 0; }
 
 static void repl(la v) {
   while (!feof(stdin)) {
     ob _ = rx(v, stdin);
-    if (!_ && !feof(stdin)) fputs("# parse error\n", stderr);
+    if (!_ && !feof(stdin)) errp(v, "# parse error\n");
     if (_ && (_ = la_ev_x(v, _))) tx(v, stdout, _), fputc('\n', stdout); } }
 
 // takes scripts and if we want a repl, gives a thread
 static mo act(la v, const char **nfs) {
   const char *nf = *nfs;
-  mo k = nf ? act(v, nfs + 1) : mkmo(v, 1);
-  return !k ? 0 :
-    nf ? ana_p(v, nf, (ob) k) :
-    (G(k) = yield, k); }
+  mo k = nf ? act(v, nfs + 1) : (mo) go + 2;
+  return !k || !nf ? k : ana_p(v, nf, (ob) k); }
 
 static mo actn(la v, const char *prelu, const char **scripts) {
   mo k = act(v, scripts);

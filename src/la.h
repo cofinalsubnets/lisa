@@ -109,6 +109,11 @@ int scmp(const char*, const char*);
 // might need pointers to them.
 bool strp(ob), twop(ob), tblp(ob), symp(ob);
 
+#define Inline inline __attribute__((always_inline))
+#define NoInline __attribute__((noinline))
+void errp(la, const char*, ...); // print an error
+ob nope(la, const char*, ...) NoInline; // panic with error msg
+
 #define nil putnum(0)
 #define F(_) ((mo)(_)+1)
 #define G(_) ((mo)(_))->ll
@@ -128,9 +133,6 @@ bool strp(ob), twop(ob), tblp(ob), symp(ob);
 
 #define T putnum(-1)
 
-#define Inline inline __attribute__((always_inline))
-#define NoInline __attribute__((noinline))
-ob nope(la, const char*, ...) NoInline; // runtime error
 
 #define getnum(_) ((ob)(_)>>1)
 #define putnum(_) (((ob)(_)<<1)|1)

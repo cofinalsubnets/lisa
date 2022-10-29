@@ -1,11 +1,13 @@
 #include "la.h"
 #include "vm.h"
+#include <stdarg.h>
 
 // errors
 Vm(dom_err) { return Pack(), nope(v, "is undefined"); }
 Vm(oom_err) { return Pack(), nope(v, "oom with %d words", v->len); }
 Vm(ary_err) { return Pack(), nope(v, "takes %d parameters", getnum(xp)); }
 
+#define aubas (((ob*) fp) == v->pool + v->len)
 static NoInline void show_call(la v, mo ip, fr fp) {
   fputc('(', stderr);
   tx(v, stderr, (ob) ip);
@@ -13,9 +15,7 @@ static NoInline void show_call(la v, mo ip, fr fp) {
     fputc(' ', stderr), tx(v, stderr, fp->argv[i++]));
   fputc(')', stderr); }
 
-#include <stdarg.h>
-#define aubas (((ob*) fp) == v->pool + v->len)
-NoInline ob nope(la v, const char *msg, ...) {
+static void verrp(la v, const char *msg, va_list xs) {
   mo ip = v->ip;
   fr fp = v->fp;
 
@@ -24,9 +24,7 @@ NoInline ob nope(la v, const char *msg, ...) {
   // show the function if there is one
   if (!aubas) show_call(v, ip, fp), fputc(' ', stderr);
   // show message
-  va_list xs;
-  va_start(xs, msg), vfprintf(stderr, msg, xs), va_end(xs);
-  fputc('\n', stderr);
+  vfprintf(stderr, msg, xs), fputc('\n', stderr);
 
   // show backtrace
   while (!aubas)
@@ -35,7 +33,16 @@ NoInline ob nope(la v, const char *msg, ...) {
     fputc('\n', stderr),
     ip = (mo) fp->retp,
     fp = (fr) ((ob*) (fp + 1) + getnum(fp->argc)
-                              + getnum(fp->subd));
+                              + getnum(fp->subd)); }
+
+void errp(la v, const char *msg, ...) {
+  va_list xs;
+  va_start(xs, msg), verrp(v, msg, xs), va_end(xs); }
+
+NoInline ob nope(la v, const char *msg, ...) {
+  if (msg) {
+    va_list xs;
+    va_start(xs, msg), verrp(v, msg, xs), va_end(xs); }
   // reset and yield
   v->fp = (fr) (v->sp = v->pool + v->len);
   v->ip = (mo) (v->xp = nil);
