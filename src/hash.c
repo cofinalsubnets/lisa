@@ -18,14 +18,12 @@
 // TODO replace with something better, verify & benchmark
 
 // just a big random number!
-static const uint64_t mix = 2708237354241864315;
+const uint64_t mix = 2708237354241864315;
 
 size_t hashb(const char *at, size_t n) {
   size_t h = 1;
   while (n--) h ^= mix * *at++, h *= mix;
   return h; }
-
-size_t hash_tbl(la v, ob _) { return ror(mix * 9, 48); }
 
 size_t hash(la v, ob x) {
   if (nump(x)) return ror(mix * x, 16);

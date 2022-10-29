@@ -1,7 +1,6 @@
 #include "la.h"
 #include "vm.h"
 
-struct mtbl s_mtbl_two = { do_two, em_two, cp_two, hash_two, };
 
 // pairs and lists
 ob pair(la v, ob a, ob b) {
@@ -57,11 +56,11 @@ Vm(cons_u) {
   w->b = fp->argv[1];
   return ApC(ret, (ob) w); }
 
-Vm(do_two) {
+static Vm(do_two) {
   xp = fp->argc == putnum(0) ? A(ip) : B(ip);
   return ApC(ret, xp); }
 
-Gc(cp_two) {
+static Gc(cp_two) {
   two src = (two) x, dst;
   dst = bump(v, Width(two));
   src->disp = (vm*) dst;
@@ -71,14 +70,23 @@ Gc(cp_two) {
   dst->a = cp(v, src->a, pool0, top0);
   return (ob) dst; }
 
-void em_two(la v, FILE *o, ob x) {
-  for (fputc('(', o);; fputc(' ', o)) {
-    tx(v, o, A(x));
+static int em_two(la v, FILE *o, ob x) {
+  int r = 2;
+  for (fputc('(', o);; fputc(' ', o), r++) {
+    r += tx(v, o, A(x));
     if (!twop(x = B(x))) break; }
-  fputc(')', o); }
+  fputc(')', o);
+  return r; }
 
-size_t hash_two(la v, ob x) {
+static size_t hash_two(la v, ob x) {
   return ror(hash(v, A(x)) & hash(v, B(x)), 32); }
 
 bool twop(ob _) {
   return homp(_) && GF(_) == (vm*) mtbl_two; }
+
+struct mtbl s_mtbl_two = {
+  .does = do_two,
+  .emit = em_two,
+  .copy = cp_two,
+  .hash = hash_two,
+};

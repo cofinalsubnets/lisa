@@ -4,7 +4,6 @@
 // hash tables
 // some of the worst code is here :(
 
-struct mtbl s_mtbl_tbl = { do_tbl, em_tbl, cp_tbl, hash_tbl };
 
 static Inline size_t tbl_idx(size_t cap, size_t co) {
   return co & ((1 << cap) - 1); }
@@ -227,7 +226,7 @@ static ob tbl_ent(la v, ob e, ob k) {
   while (!nilp(e) && !eql(v, ((ob*) e)[0], k)) e = ((ob*) e)[2];
   return e; }
 
-Vm(do_tbl) {
+static Vm(do_tbl) {
   size_t a = getnum(fp->argc);
   switch (a) {
     case 0: return ApC(ret, putnum(((tbl) ip)->len));
@@ -239,7 +238,7 @@ Vm(do_tbl) {
       CallOut(v->xp = tblss(v, 1, a)),
       ApC(xp ? ret : oom_err, xp); } }
 
-Gc(cp_tbl) {
+static Gc(cp_tbl) {
   tbl src = (tbl) x, dst = bump(v, Width(tbl));
   src->disp = (vm*) dst;
   dst->disp = disp;
@@ -249,7 +248,12 @@ Gc(cp_tbl) {
   dst->tab = (ob*) cp(v, (ob) src->tab, pool0, top0);
   return (ob) dst; }
 
-void em_tbl(la v, FILE *o, ob x) {
-  fprintf(o, "#tbl:%ld/%ld", ((tbl) x)->len, 1ul<<((tbl) x)->cap); }
+static int em_tbl(la v, FILE *o, ob x) {
+  tbl t = (tbl) x;
+  return fprintf(o, "#tbl:%ld/%ld", t->len, 1ul << t->cap); }
+
+static size_t hash_tbl(la v, ob _) { return ror(mix * 9, 48); }
 
 bool tblp(ob _) { return homp(_) && GF(_) == (vm*) mtbl_tbl; }
+
+struct mtbl s_mtbl_tbl = { do_tbl, em_tbl, cp_tbl, hash_tbl };

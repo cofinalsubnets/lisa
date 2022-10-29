@@ -17,7 +17,7 @@ struct mo { vm *ll; };
 // static method table for built-in types
 typedef struct mtbl {
   vm *does;
-  void (*emit)(la, FILE*, ob);
+  int (*emit)(la, FILE*, ob);
   ob (*copy)(la, ob, ob*, ob*);
   size_t (*hash)(la, ob);
 } *mtbl;
@@ -94,7 +94,7 @@ bool
   eql(la, ob, ob); // logical equality
 
 #define rx(...) la_rx_f(__VA_ARGS__)
-void tx(la, FILE*, ob); // write sexp
+int tx(la, FILE*, ob); // write sexp
 
 // internal libc substitutes
 intptr_t lcprng(intptr_t);
@@ -159,17 +159,7 @@ static Inline void *cells(la v, size_t n) {
 _Static_assert(-1 == -1 >> 1, "signed >>");
 _Static_assert(sizeof(void*) == sizeof(size_t), "size_t matches pointer size");
 
-#define Builtins(_) _(two) _(str) _(sym) _(tbl)
-#define GcProto(n) ob cp_##n(la, ob, ob*, ob*);
-#define HashProto(n) size_t hash_##n(la, ob);
-#define EmProto(n) void em_##n(la, FILE*, ob);
-#define DoProto(n) Vm(do_##n);
-Builtins(GcProto) Builtins(HashProto) Builtins(EmProto) Builtins(DoProto)
-#undef GcProto
-#undef HashProto
-#undef EmProto
-#undef DoProto
-
+extern const uint64_t mix;
 struct prim { vm *go; const char *nom; };
 extern struct prim primitives[];
 extern struct mtbl s_mtbl_two, s_mtbl_str, s_mtbl_tbl, s_mtbl_sym;

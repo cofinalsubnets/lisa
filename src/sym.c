@@ -2,7 +2,6 @@
 #include "vm.h"
 #include <string.h>
 
-struct mtbl s_mtbl_sym = { do_id, em_sym, cp_sym, hash_sym };
 //symbols
 
 // FIXME this is bad
@@ -59,7 +58,7 @@ ob interns(la v, const char *s) {
   ob _ = string(v, s);
   return _ ? intern(v, _) : 0; }
 
-Gc(cp_sym) {
+static Gc(cp_sym) {
   sym src = (sym) x, dst;
   ob nom = src->nom;
   if (nilp(nom))
@@ -71,14 +70,22 @@ Gc(cp_sym) {
   src->disp = (vm*) dst;
   return (ob) dst; }
 
-size_t hash_sym(la v, ob x) { return ((sym) x)->code; }
+static size_t hash_sym(la v, ob x) { return ((sym) x)->code; }
 
-void em_sym(la v, FILE *o, ob x) {
+static int em_sym(la v, FILE *o, ob x) {
   sym y = (sym) x;
   x = y->nom;
-  strp(x) ? fputs(((str)x)->text, o) :
-            fprintf(o, "#sym@%lx", (long) y); }
+  if (!strp(x)) return fprintf(o, "#sym@%lx", (long) y);
+  fputs(((str) x)->text, o);
+  return ((str) x)->len-1; }
 
 Vm(do_id) { return ApC(ret, (ob) ip); }
 
 bool symp(ob _) { return homp(_) && GF(_) == (vm*) mtbl_sym; }
+
+struct mtbl s_mtbl_sym = {
+  .does = do_id,
+  .emit = em_sym,
+  .copy = cp_sym,
+  .hash = hash_sym,
+};

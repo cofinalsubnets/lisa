@@ -2,9 +2,6 @@
 #include "vm.h"
 #include <string.h>
 
-struct mtbl s_mtbl_str = { do_str, em_str, cp_str, hash_str };
-
-
 ob string(la v, const char* c) {
   size_t bs = 1 + slen(c);
   str o = cells(v, Width(str) + b2w(bs));
@@ -91,20 +88,22 @@ Vm(str_u) {
   s->len = i + 1;
   return ApC(ret, (ob) s); }
 
-Vm(do_str) { return
+static Vm(do_str) { return
   fputs(((str) ip)->text, stdout),
   ApC(ret, (ob) ip); }
 
-size_t hash_str(la v, ob _) {
+static size_t hash_str(la v, ob _) {
   return hashb(((str)_)->text, ((str)_)->len); }
 
-void em_str(la v, FILE *o, ob _) {
+static int em_str(la v, FILE *o, ob _) {
+  int r = 2;
   fputc('"', o);
-  for (char *t = ((str)_)->text; *t; fputc(*t++, o))
-    if (*t == '"') fputc('\\', o);
-  fputc('"', o); }
+  for (char *t = ((str)_)->text; *t; fputc(*t++, o), r++)
+    if (*t == '"') r++, fputc('\\', o);
+  fputc('"', o);
+  return r; }
 
-Gc(cp_str) {
+static Gc(cp_str) {
   str src = (str) x;
   size_t ws = b2w(src->len);
   str dst = bump(v, Width(str) + ws);
@@ -113,3 +112,11 @@ Gc(cp_str) {
   return (ob) dst; }
 
 bool strp(ob _) { return homp(_) && GF(_) == (vm*) mtbl_str; }
+
+struct mtbl s_mtbl_str = {
+  .does = do_str,
+  .emit = em_str,
+  .copy = cp_str,
+  .hash = hash_str,
+};
+
