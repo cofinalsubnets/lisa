@@ -11,7 +11,7 @@ Vm(ary_err) { return Pack(), nope(v, "takes %d parameters", getnum(xp)); }
 static NoInline void show_call(la v, mo ip, fr fp) {
   fputc('(', stderr);
   tx(v, stderr, (ob) ip);
-  for (size_t i = 0, argc = ARITY; i < argc;
+  for (size_t i = 0, argc = fp->argc; i < argc;
     fputc(' ', stderr), tx(v, stderr, fp->argv[i++]));
   fputc(')', stderr); }
 
@@ -32,7 +32,7 @@ static void verrp(la v, const char *msg, va_list xs) {
     show_call(v, ip, fp),
     fputc('\n', stderr),
     ip = (mo) fp->retp,
-    fp = (fr) ((ob*) (fp + 1) + ARITY + fp->subd); }
+    fp = (fr) ((ob*) (fp + 1) + fp->argc + fp->subd); }
 
 void errp(la v, const char *msg, ...) {
   va_list xs;

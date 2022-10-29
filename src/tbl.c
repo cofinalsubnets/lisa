@@ -96,11 +96,11 @@ Vm(tset_u) {
   ArityCheck(1);
   xp = fp->argv[0];
   Check(tblp(xp));
-  CallOut(v->xp = tblss(v, 1, ARITY));
+  CallOut(v->xp = tblss(v, 1, fp->argc));
   return ApC(xp ? ret : oom_err, xp); }
 
 Vm(tbl_u) {
-  ob _ = ARITY;
+  ob _ = fp->argc;
   CallOut(_ = (v->xp = table(v)) && tblss(v, 0, _));
   return ApC(_ ? ret : oom_err, xp); }
 
@@ -221,14 +221,16 @@ static ob tks(la v, ob t) {
 
 // do a bunch of table assignments.
 // XXX calling convention: table in v->xp
+// FIXME gross!
 static ob tblss(la v, intptr_t i, const intptr_t l) {
+  ob r = nil;
   for (;i <= l - 2; i += 2)
-    if (!tbl_set(v, v->xp, v->fp->argv[i], v->fp->argv[i+1]))
+    if (!(r = tbl_set(v, v->xp, v->fp->argv[i], v->fp->argv[i+1])))
       return 0;
-  return v->fp->argv[i - 1]; }
+  return r; }
 
 static Vm(do_tbl) {
-  size_t a = ARITY;
+  size_t a = fp->argc;
   switch (a) {
     case 0: return ApC(ret, putnum(((tbl) ip)->len));
     case 1: return

@@ -8,8 +8,7 @@ typedef la_ob ob;
 typedef struct mo *mo; // procedures
 typedef struct fr {
   ob clos, retp;
-  size_t subd;
-  ob argc;
+  size_t subd, argc;
   ob argv[]; } *fr; // stack frame
 #define Vm(n, ...) ob n(la v, ob xp, mo ip, ob *hp, ob *sp, fr fp)
 typedef Vm(vm);

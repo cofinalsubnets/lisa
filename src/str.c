@@ -29,7 +29,7 @@ Vm(sget_u) {
       nil); }
 
 Vm(scat_u) {
-  size_t sum = 0, i = 0, l = ARITY;
+  size_t sum = 0, i = 0, l = fp->argc;
   while (i < l) {
     ob x = fp->argv[i++];
     Check(strp(x));
@@ -73,7 +73,7 @@ Vm(ssub_u) {
 
 Vm(str_u) {
   size_t i = 0,
-    bytes = ARITY + 1,
+    bytes = fp->argc + 1,
     words = Width(str) + b2w(bytes);
   Have(words);
   str s = (str) hp;

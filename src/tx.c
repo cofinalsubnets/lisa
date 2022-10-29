@@ -23,7 +23,7 @@ int tx(la v, FILE *o, ob x) {
   return emhomn(v, o, hnom(v, x)); }
 
 Vm(show_u) {
-  size_t i = 0, l = ARITY;
+  size_t i = 0, l = fp->argc;
   if (l) {
     while (i < l - 1)
       tx(v, stdout, fp->argv[i++]),

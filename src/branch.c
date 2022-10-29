@@ -14,7 +14,7 @@ Vm(call) {
   fp->retp = (ob) FF(ip);
   fp->subd = subd;
   fp->clos = nil;
-  fp->argc = putnum(adic); // XXX
+  fp->argc = adic; // XXX
   return ApY(xp, nil); }
 
 Vm(ap_u) {
@@ -25,12 +25,12 @@ Vm(ap_u) {
   ip = (mo) fp->argv[0];
   xp = fp->argv[1];
   ob subd = fp->subd, retp = fp->retp;
-  sp = fp->argv + ARITY - adic;
+  sp = fp->argv + fp->argc - adic;
   for (size_t j = 0; j < adic; sp[j++] = A(xp), xp = B(xp));
   fp = (fr) sp - 1;
   sp = (ob*) fp;
   fp->retp = retp;
-  fp->argc = putnum(adic); // XXX
+  fp->argc = adic; // XXX
   fp->subd = subd;
   fp->clos = nil;
   return ApY(ip, nil); }
@@ -38,7 +38,7 @@ Vm(ap_u) {
 // return from a function
 Vm(ret) { return
   ip = (mo) fp->retp,
-  sp = fp->argv + ARITY,
+  sp = fp->argv + fp->argc,
   fp = (fr) (sp + fp->subd),
   ApN(0, xp); }
 
@@ -51,14 +51,14 @@ static NoInline Vm(recne) {
   v->xp = fp->subd;
   v->ip = (mo) fp->retp;
   // reset fp
-  fp = (fr) (fp->argv + ARITY - xp) - 1;
+  fp = (fr) (fp->argv + fp->argc - xp) - 1;
   // copy the args high to low
   for (size_t i = xp; i--; fp->argv[i] = sp[i]);
   sp = (ob*) fp;
   // populate fp
   fp->retp = (ob) v->ip;
   fp->subd = v->xp;
-  fp->argc = putnum(xp); // XXX
+  fp->argc = xp; // XXX
   fp->clos = nil;
   return ApY(ip, nil); }
 
@@ -66,7 +66,7 @@ Vm(rec) {
   ob _ = getnum(GF(ip));
   ip = (mo) xp;
   xp = _;
-  if (ARITY != xp) return ApC(recne, xp);
+  if (fp->argc != xp) return ApC(recne, xp);
   // fast case where the calls have the same number of args
   for (; xp--; fp->argv[xp] = sp[xp]);
   sp = (ob*) fp;

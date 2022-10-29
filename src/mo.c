@@ -149,7 +149,7 @@ Vm(clos0) {
   sp = (ob*) fp;
   fp->retp = (ob) ip;
   fp->subd = off;
-  fp->argc = putnum(adic); // XXX
+  fp->argc = adic; // XXX
   fp->clos = ec[2];
   if (!nilp(loc)) *--sp = loc;
   return ApY(ec[3], xp); }
@@ -169,7 +169,7 @@ Vm(clos) { return
 // lexical environments.
 // FIXME magic numbers
 static Vm(encl) {
-  size_t m = ARITY,
+  size_t m = fp->argc,
          n = m + (m ? 14 : 11);
   Have(n);
   ob x = (ob) GF(ip),
