@@ -81,9 +81,6 @@ static int em_two(la v, FILE *o, ob x) {
 static size_t hash_two(la v, ob x) {
   return ror(hash(v, A(x)) & hash(v, B(x)), 32); }
 
-bool twop(ob _) {
-  return homp(_) && GF(_) == (vm*) mtbl_two; }
-
 const struct mtbl s_mtbl_two = {
   .does = do_two,
   .emit = em_two,

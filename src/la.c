@@ -12,21 +12,13 @@ la la_ini(void) {
   la v = malloc(sizeof(struct la));
   if (!v) return NULL;
 
-  // set time & random seed
   v->rand = v->t0 = clock();
-  // configure memory
-  // how big a memory pool to start with?
-  v->len = 1 << 10;
-  // there is no pool yet
+  v->len = 1 << 10; // initial memory size
   v->pool = NULL;
-  // no protected values
-  v->keep = NULL;
-  // the data stack starts at the top of memory
-  // the call stack lives on the data stack
-  // the heap is all used up to start, so the first
-  // allocation initializes the pool
+  v->safe = NULL;
+  v->panic = NULL;
+  // the heap is all used up to start, so the first allocation initializes the pool
   v->fp = (fr) (v->hp = v->sp = v->pool + v->len);
-  // everything else starts empty
   v->ip = (mo) (v->topl = v->syms = v->xp = nil);
   setw(v->lex, nil, LexN);
 

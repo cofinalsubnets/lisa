@@ -111,7 +111,7 @@ static clock_t copy(la v, size_t len1) {
 
   for (size_t i = LexN; i--;)
     v->lex[i] = cp(v, v->lex[i], pool0, top0);
-  for (keep r = v->keep; r; r = r->et)
+  for (keep r = v->safe; r; r = r->et)
     *r->it = cp(v, *r->it, pool0, top0);
   // copy the stack
   // TODO do this a little more intelligently so we can store

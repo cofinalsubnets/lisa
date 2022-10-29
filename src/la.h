@@ -1,5 +1,4 @@
 #include "lisa.h"
-#include <stdbool.h>
 #include <stdlib.h>
 
 // thanks !!
@@ -53,14 +52,15 @@ struct la {
      *sp; // top of stack, free space = sp - hp
 
   // memory state
-  keep keep; // list of C stack addresses to copy on gc
+  keep safe; // list of C stack addresses to copy on gc
   size_t t0, // gc timestamp, governs len
          len; // size of pool
   ob *pool, // memory pool
      topl, // global namespace
      syms, // internal symbols
-     rand, // random seed
-     lex[LexN]; }; // grammar symbols
+     lex[LexN]; // grammar symbols
+  intptr_t rand;
+  ob (*panic)(struct la*); };
 
 la la_ini(void);
 void la_fin(la);
@@ -105,10 +105,6 @@ char cmin(char);
 size_t slen(const char*);
 int scmp(const char*, const char*);
 
-// these should hopefully almost always be inlined but we
-// might need pointers to them.
-bool strp(ob), twop(ob), tblp(ob), symp(ob);
-
 #define Inline inline __attribute__((always_inline))
 #define NoInline __attribute__((noinline))
 void errp(la, const char*, ...); // print an error
@@ -126,8 +122,8 @@ ob nope(la, const char*, ...) NoInline; // panic with error msg
 #define BA(o) B(A(o))
 #define BB(o) B(B(o))
 #define Avail (v->sp - v->hp)
-#define mm(r) ((v->keep = &((struct keep){(r), v->keep})))
-#define um (v->keep = v->keep->et)
+#define mm(r) ((v->safe = &((struct keep){(r), v->safe})))
+#define um (v->safe = v->safe->et)
 #define with(y,...) (mm(&(y)), (__VA_ARGS__), um)
 #define Width(t) b2w(sizeof(struct t))
 
@@ -137,9 +133,23 @@ ob nope(la, const char*, ...) NoInline; // panic with error msg
 #define getnum(_) ((ob)(_)>>1)
 #define putnum(_) (((ob)(_)<<1)|1)
 
-#define nilp(_) ((ob)(_)==nil)
-#define nump(_) ((ob)(_)&1)
-#define homp(_) (!nump(_))
+struct prim { vm *go; const char *nom; };
+extern const uint64_t mix;
+extern const struct prim primitives[];
+extern const struct mtbl s_mtbl_two, s_mtbl_str, s_mtbl_tbl, s_mtbl_sym;
+
+#define mtbl_str (&s_mtbl_str)
+#define mtbl_two (&s_mtbl_two)
+#define mtbl_sym (&s_mtbl_sym)
+#define mtbl_tbl (&s_mtbl_tbl)
+
+static Inline bool nilp(ob _) { return _ == nil; }
+static Inline bool nump(ob _) { return _ & 1; }
+static Inline bool homp(ob _) { return !nump(_); }
+static Inline bool tblp(ob _) { return homp(_) && GF(_) == (vm*) mtbl_tbl; }
+static Inline bool strp(ob _) { return homp(_) && GF(_) == (vm*) mtbl_str; }
+static Inline bool twop(ob _) { return homp(_) && GF(_) == (vm*) mtbl_two; }
+static Inline bool symp(ob _) { return homp(_) && GF(_) == (vm*) mtbl_sym; }
 
 static Inline size_t b2w(size_t b) {
   size_t quot = b / sizeof(ob), rem = b % sizeof(ob);
@@ -161,15 +171,6 @@ static Inline void *cells(la v, size_t n) {
 _Static_assert(-1 == -1 >> 1, "signed >>");
 _Static_assert(sizeof(void*) == sizeof(size_t), "size_t matches pointer size");
 
-struct prim { vm *go; const char *nom; };
-extern const uint64_t mix;
-extern const struct prim primitives[];
-extern const struct mtbl s_mtbl_two, s_mtbl_str, s_mtbl_tbl, s_mtbl_sym;
-
-#define mtbl_str (&s_mtbl_str)
-#define mtbl_two (&s_mtbl_two)
-#define mtbl_sym (&s_mtbl_sym)
-#define mtbl_tbl (&s_mtbl_tbl)
 
 static Inline size_t ror(size_t x, size_t n) {
   return (x<<((8*sizeof(size_t))-n))|(x>>n); }

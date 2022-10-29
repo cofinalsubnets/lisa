@@ -81,8 +81,6 @@ static int em_sym(la v, FILE *o, ob x) {
 
 Vm(do_id) { return ApC(ret, (ob) ip); }
 
-bool symp(ob _) { return homp(_) && GF(_) == (vm*) mtbl_sym; }
-
 const struct mtbl s_mtbl_sym = {
   .does = do_id,
   .emit = em_sym,

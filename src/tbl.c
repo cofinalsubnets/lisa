@@ -259,8 +259,6 @@ static int em_tbl(la v, FILE *o, ob x) {
 
 static size_t hash_tbl(la v, ob _) { return ror(mix * 9, 48); }
 
-bool tblp(ob _) { return homp(_) && GF(_) == (vm*) mtbl_tbl; }
-
 const struct mtbl s_mtbl_tbl = {
   .does = do_tbl,
   .emit = em_tbl,

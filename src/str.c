@@ -111,8 +111,6 @@ static Gc(cp_str) {
   src->disp = (vm*) dst;
   return (ob) dst; }
 
-bool strp(ob _) { return homp(_) && GF(_) == (vm*) mtbl_str; }
-
 const struct mtbl s_mtbl_str = {
   .does = do_str,
   .emit = em_str,

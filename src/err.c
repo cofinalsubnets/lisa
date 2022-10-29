@@ -43,7 +43,7 @@ NoInline ob nope(la v, const char *msg, ...) {
   if (msg) {
     va_list xs;
     va_start(xs, msg), verrp(v, msg, xs), va_end(xs); }
-  // reset and yield
+  if (v->panic) return v->panic(v);
   v->fp = (fr) (v->sp = v->pool + v->len);
   v->ip = (mo) (v->xp = nil);
   return 0; }
