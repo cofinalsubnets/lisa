@@ -6,7 +6,11 @@
 
 typedef la_ob ob;
 typedef struct mo *mo; // procedures
-typedef struct fr { ob clos, retp, subd, argc, argv[]; } *fr; // stack frame
+typedef struct fr {
+  ob clos, retp;
+  size_t subd;
+  ob argc;
+  ob argv[]; } *fr; // stack frame
 #define Vm(n, ...) ob n(la v, ob xp, mo ip, ob *hp, ob *sp, fr fp)
 typedef Vm(vm);
 #define Gc(n) ob n(la v, ob x, ob *pool0, ob *top0)

@@ -12,7 +12,7 @@ Vm(call) {
   fp = (fr) sp - 1;
   sp = (ob*) fp;
   fp->retp = (ob) FF(ip);
-  fp->subd = putnum(subd);
+  fp->subd = subd;
   fp->clos = nil;
   fp->argc = adic;
   return ApY(xp, nil); }
@@ -39,7 +39,7 @@ Vm(ap_u) {
 Vm(ret) { return
   ip = (mo) fp->retp,
   sp = fp->argv + getnum(fp->argc),
-  fp = (fr) (sp + getnum(fp->subd)),
+  fp = (fr) (sp + fp->subd),
   ApN(0, xp); }
 
 // tail calls

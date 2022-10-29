@@ -148,7 +148,7 @@ Vm(clos0) {
   fp = (fr) sp - 1;
   sp = (ob*) fp;
   fp->retp = (ob) ip;
-  fp->subd = putnum(off);
+  fp->subd = off;
   fp->argc = putnum(adic);
   fp->clos = ec[2];
   if (!nilp(loc)) *--sp = loc;

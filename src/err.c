@@ -33,7 +33,7 @@ static void verrp(la v, const char *msg, va_list xs) {
     fputc('\n', stderr),
     ip = (mo) fp->retp,
     fp = (fr) ((ob*) (fp + 1) + getnum(fp->argc)
-                              + getnum(fp->subd)); }
+                              + fp->subd); }
 
 void errp(la v, const char *msg, ...) {
   va_list xs;
