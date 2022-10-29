@@ -28,7 +28,7 @@ static NoInline ob inst(la v, const char *a, vm *b) {
   return z ? tbl_set(v, v->topl, z, putnum(b)) : 0; }
 
 // initialize a process
-static bool la_ini(la v) {
+static bool la_ini_(la v) {
   // set time & random seed
   v->rand = v->t0 = clock();
 
@@ -70,74 +70,12 @@ static bool la_ini(la v) {
     i_internals(reg_intl)
     && define_primitives(v);
 
-  if (!ok) free(v->pool);
+  if (!ok) la_fin(v);
   return ok; }
 
-#ifndef PREF
-#define PREF
-#endif
-#ifndef LANG
-#define LANG
-#endif
-#ifndef SUFF
-#define SUFF
-#endif
+la la_ini(void) {
+  la v = malloc(sizeof(struct la));
+  if (v && !la_ini_(v)) v = NULL;
+  return v; }
 
-// called after finishing successfully
-static Vm(yield) { return Pack(), xp; }
-
-static void repl(la v) {
-  struct mo go[] = { {call}, {(vm*) putnum(1)}, {yield} };
-  while (!feof(stdin)) {
-    ob _ = rx(v, stdin);
-    if (!_ && !feof(stdin)) fputs("# parse error\n", stderr);
-    if (_ && Push(_)) {
-      _ = call(v, (ob) primitives, go, v->hp, v->sp, v->fp);
-      if (_) tx(v, stdout, _), fputc('\n', stdout); } } }
-
-// takes scripts and if we want a repl, gives a thread
-static mo act(la v, const char **nfs) {
-  const char *nf = *nfs;
-  mo k = nf ? act(v, nfs + 1) : mkmo(v, 1);
-  return !k ? 0 :
-    nf ? ana_p(v, nf, (ob) k) :
-    (G(k) = yield, k); }
-
-static mo actn(la v, const char *prelu, const char **scripts) {
-  mo k = act(v, scripts);
-  return k && prelu ? ana_p(v, prelu, (ob) k) : k; }
-
-static NoInline ob la_go(la v) {
-  ob xp, *hp, *sp; fr fp; mo ip;
-  return Unpack(), ApN(0, xp); }
-
-static NoInline int la_main(bool shell, const char *prelu, const char **scripts) {
-  struct la V;
-  if (!la_ini(&V)) return EXIT_FAILURE;
-  V.ip = actn(&V, prelu, scripts);
-  bool _ = V.ip && la_go(&V);
-  if (_ && shell) repl(&V);
-  free(V.pool);
-  return _ ? EXIT_SUCCESS : EXIT_FAILURE; }
-
-#include <getopt.h>
-int main(int ac, char **av) {
-  static const char
-    *prelu = PREF "/lib/" LANG "/" LANG "." SUFF,
-    *usage =
-      "usage: %s [options and scripts]\n"
-      "with no arguments, interact\n"
-      "option:\n"
-      "  -h show this message\n"
-      "  -i interact\n"
-      "  -_ don't bootstrap\n";
-
-  for (bool shell = ac == 1;;) switch (getopt(ac, av, "hi_")) {
-    default: return EXIT_FAILURE;
-    case 'h': fprintf(stdout, usage, *av); continue;
-    case 'i': shell = true; continue;
-    case '_': prelu = NULL; continue;
-    case -1:
-      av += optind;
-      prelu = shell || optind != ac ? prelu : NULL;
-      return la_main(shell, prelu, (const char**) av); } }
+void la_fin(la v) { if (v) free(v->pool), free(v); }
