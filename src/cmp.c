@@ -1,24 +1,15 @@
 #include "la.h"
 #include "vm.h"
-#include <string.h>
 
-// isolate the more complicated logic from the simple
-// pointer comparisons so eql() doesn't touch the stack
-// unless it has to
-static NoInline bool eql_two(la v, two a, two b) {
-  return eql(v, a->a, b->a) ? eql(v, a->b, b->b) : false; }
+bool eq_no(la v, ob x, ob y) { return false; }
 
-static NoInline bool eql_str(str a, str b) {
-  return a->len == b->len && 0 == scmp(a->text, b->text); }
-
-static NoInline bool eql_(la v, ob a, ob b) {
-  if (G(a) != disp || G(b) != disp || GF(a) != GF(b)) return false;
-  if (GF(a) == (vm*) mtbl_two) return eql_two(v, (two) a, (two) b);
-  if (GF(a) == (vm*) mtbl_str) return eql_str((str) a, (str) b);
-  return false; }
-
+// break it up into two functions to give the compiler
+// a hint about how to inline, maybe
+static bool eql_(la v, ob a, ob b) {
+  return !nump(a|b) && G(a) == disp &&
+    ((mtbl) GF(a))->equi(v, a, b); }
 bool eql(la v, ob a, ob b) {
-  return a == b ? true : nump(a|b) ? false : eql_(v, a, b); }
+  return a == b || eql_(v, a, b); }
 
 // comparison operators
 // XXX FIXME returning xp is wrong now that 0 = nil
@@ -38,7 +29,7 @@ Vm(gt) { return ApN(1, *sp++ > xp ? xp : nil); }
   ob n = getnum(fp->argc), *xs = fp->argv, m, *l;\
   switch (n) {\
     case 0: return ApC(ret, nil);\
-    default: for (l = xs + n - 1, m = *xs; xs < l; m= *++xs)\
+    default: for (l = xs + n - 1, m = *xs; xs < l; m = *++xs)\
                if (!op(m, xs[1])) return ApC(ret, nil);\
     case 1: return ApC(ret, T); } }
 cmp(LT, lt) cmp(LE, lteq) cmp(GE, gteq) cmp(GT, gt) cmp(EQ, eq)
@@ -60,3 +51,11 @@ Vm(id2) { return twop(xp) ? ApN(1, xp) : ApC(dom_err, xp); }
 Vm(arity) {
   ob reqd = (ob) GF(ip);
   return fp->argc >= reqd ? ApN(2, xp) : ApC(ary_err, reqd); }
+
+bool la_nilp(ob _) { return nilp(_); }
+bool la_nump(ob _) { return nump(_); }
+bool la_strp(ob _) { return strp(_); }
+bool la_twop(ob _) { return twop(_); }
+bool la_tblp(ob _) { return tblp(_); }
+bool la_symp(ob _) { return symp(_); }
+bool la_homp(ob _) { return homp(_); }

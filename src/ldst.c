@@ -116,10 +116,7 @@ Vm(varg) {
   two t = (two) hp;
   hp += Width(two) * vdic;
   for (size_t i = vdic; i--;
-    t[i].disp = disp,
-    t[i].mtbl = mtbl_two,
-    t[i].a = fp->argv[reqd + i],
-    t[i].b = (ob) (t+i+1));
+    ini_two(t + i, fp->argv[reqd + i], (ob) (t + i + 1)));
   t[vdic-1].b = nil,
   fp->argv[reqd] = (ob) t;
   return ApN(2, xp); }

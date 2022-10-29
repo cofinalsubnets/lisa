@@ -1,8 +1,9 @@
 #include "la.h"
-#include "vm.h"
-#include <time.h>
 
 static clock_t copy(la, size_t);
+static void
+  copy_(la, size_t, ob*),
+  copy_stack(la, ob*, ob*, ob*);
 
 // please : u1 la size_t
 //
@@ -90,36 +91,10 @@ static clock_t copy(la v, size_t len1) {
   ob *pool1 = calloc(len1, sizeof(ob));
   if (!pool1) return 0;
 
-  ob len0 = v->len,
-     *sp0 = v->sp,
-     *pool0 = v->pool,
-     *top0 = pool0 + len0,
-     *top1 = pool1 + len1,
-     shift = top1 - top0;
-
-  // reset state
-  v->syms = nil;
-  v->len = len1;
-  v->pool = v->hp = pool1;
-  v->sp = sp0 + shift;
-  v->fp = (fr) ((ob*) v->fp + shift);
-
-  // copy memory
-  v->xp = cp(v, v->xp, pool0, top0);
-  v->ip = (mo) cp(v, (ob) v->ip, pool0, top0);
-  v->topl = cp(v, v->topl, pool0, top0);
-
-  for (size_t i = LexN; i--;)
-    v->lex[i] = cp(v, v->lex[i], pool0, top0);
-  for (keep r = v->safe; r; r = r->et)
-    *r->it = cp(v, *r->it, pool0, top0);
-  // copy the stack
-  // TODO do this a little more intelligently so we can store
-  // bare numbers in frames.
-  for (ob *sp1 = v->sp; sp0 < top0;)
-    *sp1++ = cp(v, *sp0++, pool0, top0);
-
+  ob *pool0 = v->pool;
+  copy_(v, len1, pool1);
   free(pool0);
+
   v->t0 = t2 = clock();
   t1 = t2 - t1;
   return t1 ? (t2 - t0) / t1 : 1; }
@@ -149,6 +124,50 @@ Gc(cp) {
   if (!nump(y) && livep(v, y)) return y;
   if ((vm*) y == disp) return ((mtbl) GF(x))->copy(v, x, pool0, top0);
   return cp_hom(v, x, pool0, top0); }
+
+
+static void copy_(la v, size_t len1, ob *pool1) {
+
+  ob len0 = v->len,
+     *sp0 = v->sp,
+     *pool0 = v->pool,
+     *top0 = pool0 + len0,
+     *top1 = pool1 + len1,
+     shift = top1 - top0;
+
+  // reset state
+  v->syms = nil;
+  v->len = len1;
+  v->pool = v->hp = pool1;
+  v->sp = sp0 + shift;
+  v->fp = (fr) ((ob*) v->fp + shift);
+
+  // copy memory
+  v->xp = cp(v, v->xp, pool0, top0);
+  v->ip = (mo) cp(v, (ob) v->ip, pool0, top0);
+  v->topl = cp(v, v->topl, pool0, top0);
+
+  for (size_t i = LexN; i--;)
+    v->lex[i] = cp(v, v->lex[i], pool0, top0);
+  for (keep r = v->safe; r; r = r->et)
+    *r->it = cp(v, *r->it, pool0, top0);
+
+  copy_stack(v, pool0, top0, sp0); }
+
+static void copy_stack(la v, ob *pool0, ob *top0, ob *sp0) {
+  ob *sp = v->sp;
+  fr fp = v->fp;
+  for (;;) {
+    while (sp < (ob*) fp) *sp++ = cp(v, *sp0++, pool0, top0);
+    if (sp0 == top0) break;
+    fr fp0 = (fr) sp0;
+    fp->argc = fp0->argc;
+    fp->subd = fp0->subd;
+    fp->clos = cp(v, fp0->clos, pool0, top0);
+    fp->retp = cp(v, fp0->retp, pool0, top0);
+    sp = (ob*) (fp + 1);
+    sp0 = (ob*) (fp0 + 1);
+    fp = (fr) (sp + getnum(fp->argc) + getnum(fp->subd)); } }
 
 #include "vm.h"
 // Run a GC cycle from inside the VM

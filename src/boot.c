@@ -50,7 +50,7 @@ static mo ana(la v, ob x, ob k) {
   return ok ? pull(v, 0, 0) : 0; }
 
 static ob rxq(la v, FILE *i) {
-  ob x = rx(v, i);
+  ob x = la_rx_f(v, i);
   x = x ? pair(v, x, nil) : x;
   return x ? pair(v, v->lex[Quote], x) : 0; }
 
@@ -92,8 +92,9 @@ static NoInline ob rw_let_fn(la v, ob x) {
     if (!(_ = snoc(v, BA(x), AB(x)))  ||
         !(_ = pair(v, v->lex[Lamb], _)) ||
         !(_ = pair(v, _, BB(x))) ||
-        !(x = pair(v, AA(x), _)))
-      return um, 0;
+        !(x = pair(v, AA(x), _))) {
+      x = 0;
+      break; }
   return um, x; }
 
 static ob asign(la v, ob a, intptr_t i, ob *m) {

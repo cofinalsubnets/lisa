@@ -19,7 +19,7 @@
 static ob sskc(la v, ob *y, ob x) {
   if (!nilp(*y)) {
     sym z = (sym) *y;
-    int i = scmp(((str) z->nom)->text, ((str) x)->text);
+    int i = strcmp(((str) z->nom)->text, ((str) x)->text);
     return i == 0 ? *y : sskc(v, i < 0 ? &z->r : &z->l, x); }
   // sym allocated here
   sym z = bump(v, Width(sym));
@@ -86,4 +86,4 @@ const struct mtbl s_mtbl_sym = {
   .emit = em_sym,
   .copy = cp_sym,
   .hash = hash_sym,
-};
+  .equi = eq_no, };

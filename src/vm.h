@@ -3,7 +3,7 @@
 // these are vm functions used by C but not lisp.
 #define cfns(_)\
   _(gc) _(dom_err) _(oom_err) _(ary_err)\
-  _(clos) _(clos0) _(clos1) _(do_id)
+  _(clos) _(clos0) _(clos1) _(do_id) _(yield)
 cfns(ninl)
 #undef cfns
 
@@ -25,7 +25,7 @@ i_internals(ninl)
 // primitive functions
 // ev must be the first item in this list!
 #define i_primitives(_) _(ev_u, "ev")\
- _(nilp_u, "nilp") _(rnd_u, "rand")\
+ _(rx_u, "rx") _(nilp_u, "nilp") _(rnd_u, "rand")\
  _(sym_u, "sym") _(sar_u, ">>") _(sal_u, "<<")\
  _(band_u, "&") _(bnot_u, "!") _(bor_u, "|") _(bxor_u, "^")\
  _(add_u, "+") _(hom_u, "hom") _(sub_u, "-") _(mul_u, "*")\

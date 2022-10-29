@@ -3,13 +3,13 @@
 #include <string.h>
 
 ob string(la v, const char* c) {
-  size_t bs = 1 + slen(c);
+  size_t bs = 1 + strlen(c);
   str o = cells(v, Width(str) + b2w(bs));
   if (!o) return 0;
   o->len = bs;
   o->disp = disp;
   o->mtbl = mtbl_str;
-  cpy8(o->text, c, bs);
+  memcpy(o->text, c, bs);
   return (ob) o; }
 
 // string instructions
@@ -45,7 +45,7 @@ Vm(scat_u) {
   while (i) {
     str x = ((str) fp->argv[--i]);
     sum -= x->len - 1;
-    cpy8(d->text+sum, x->text, x->len - 1); }
+    memcpy(d->text+sum, x->text, x->len - 1); }
   return ApC(ret, (ob) d); }
 
 #define min(a,b)(a<b?a:b)
@@ -68,7 +68,7 @@ Vm(ssub_u) {
   dst->disp = disp;
   dst->mtbl = mtbl_str;
   dst->text[ub - lb] = 0;
-  cpy8(dst->text, src->text + lb, ub - lb);
+  memcpy(dst->text, src->text + lb, ub - lb);
   return ApC(ret, (ob) dst); }
 
 Vm(str_u) {
@@ -111,10 +111,13 @@ static Gc(cp_str) {
   src->disp = (vm*) dst;
   return (ob) dst; }
 
+static bool eq_str(la v, ob x, ob y) {
+  return strp(y) && 0 == strcmp(((str) x)->text, ((str) y)->text); }
+
 const struct mtbl s_mtbl_str = {
   .does = do_str,
   .emit = em_str,
   .copy = cp_str,
   .hash = hash_str,
-};
+  .equi = eq_str, };
 

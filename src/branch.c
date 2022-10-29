@@ -95,3 +95,6 @@ Br(brgt,    *sp++ >  xp, GF, xp, FF, nil)
 Br(brgt2,   *sp++ >  xp, FF, xp, GF, nil)
 Br(brgteq,  *sp++ >= xp, GF, xp, FF, nil)
 // brgteq2 is brlt
+
+// return to C
+Vm(yield) { return Pack(), xp; }

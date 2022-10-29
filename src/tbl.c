@@ -214,10 +214,7 @@ static ob tks(la v, ob t) {
   if (!ks) return 0;
   ob r = nil, *tab = ((tbl) t)->tab;
   while (len) for (ob e = *tab++; !nilp(e);
-    ks->disp = disp,
-    ks->mtbl = mtbl_two,
-    ks->a = KEY(e),
-    ks->b = r,
+    ini_two(ks, KEY(e), r),
     r = (ob) ks++,
     e = NEXT(e),
     len--);
@@ -264,4 +261,4 @@ const struct mtbl s_mtbl_tbl = {
   .emit = em_tbl,
   .copy = cp_tbl,
   .hash = hash_tbl,
-};
+  .equi = eq_no, };

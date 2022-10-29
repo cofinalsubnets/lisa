@@ -1,12 +1,21 @@
 #include "la.h"
 #include "vm.h"
-#include <time.h>
 #include <stdlib.h>
 
-static bool define_primitives(la);
-static ob inst(la, const char*, vm*) NoInline;
+ob la_ev_x(la v, ob _) {
+  if (!Push(_)) return 0;
+  struct mo go[] = { {call}, {(vm*) putnum(1)}, {yield} };
+  return call(v, (ob) prims, go, v->hp, v->sp, v->fp); }
+
+ob la_ev_f(la v, FILE *i) {
+  ob _ = la_rx_f(v, i);
+  return _ ? la_ev_x(v, _) : 0; }
 
 void la_fin(la v) { if (v) free(v->pool), free(v); }
+void la_atpanic(la v, ob (*p)(la)) { v->panic = p; }
+
+static bool defprims(la);
+static ob inst(la, const char*, vm*) NoInline;
 
 la la_ini(void) {
   la v = malloc(sizeof(struct la));
@@ -41,26 +50,26 @@ la la_ini(void) {
     // compiler can use them.
 #define reg_intl(a) && inst(v, "i-"#a, a)
     i_internals(reg_intl)
-    && define_primitives(v);
+    && defprims(v);
 
   return ok ? v : (la_fin(v), NULL); }
 
 
 // static table of primitive functions
 #define prim_ent(go, nom) { go, nom },
-const struct prim primitives[] = { i_primitives(prim_ent) };
+const struct prim prims[] = { i_primitives(prim_ent) };
 
 #define LEN(ary) (sizeof(ary)/sizeof(*ary))
 bool primp(ob x) {
   struct prim *_ = (struct prim*) x;
-  return _ >= primitives && _ < primitives + LEN(primitives); }
+  return _ >= prims && _ < prims + LEN(prims); }
 
-static bool define_primitives(la v) {
-  const struct prim *p = primitives,
-                    *lim = p + LEN(primitives);
-  for (;p < lim; p++) {
+static bool defprims(la v) {
+  const struct prim *p = prims,
+                    *lim = p + LEN(prims);
+  while (p < lim) {
     ob z = interns(v, p->nom);
-    if (!z || !tbl_set(v, v->topl, z, (ob) p)) return false; }
+    if (!z || !tbl_set(v, v->topl, z, (ob) p++)) return false; }
   return true; }
 // initialization helpers
 //

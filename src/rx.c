@@ -1,5 +1,7 @@
 #include "la.h"
 #include "vm.h"
+#include <string.h>
+#include <ctype.h>
 
 static ob
   buf_atom(la, FILE*, char),
@@ -60,14 +62,6 @@ static ob rx2(la v, FILE *i) {
 ob la_rx_f(la v, FILE *i) { return
   Push(putnum(pret)) ? rx_(v, i) : 0; }
 
-ob la_rx_s(la v, const char **s) {
-  FILE *i = fmemopen((char*) *s, slen(*s), "r");
-  if (!i) return 0;
-  ob _ = la_rx_f(v, i);
-  if (_) *s += ftell(i);
-  fclose(i);
-  return _; }
-
 static str new_buf(la v) {
   str s = cells(v, Width(str) + 1);
   if (s) s->len = 8, s->disp = disp, s->mtbl = mtbl_str;
@@ -115,14 +109,14 @@ static ob buf_atom(la v, FILE *p, char ch) {
 
 static NoInline ob rx_numb(la v, ob b, const char *in, int base) {
   static const char *digits = "0123456789abcdefghijklmnopqrstuvwxyz";
-  ob out = 0, c = cmin(*in++);
+  ob out = 0, c = tolower(*in++);
   if (!c) return intern(v, b); // fail to parse empty string
   do {
     int dig = 0;
     for (const char *ds = digits; *ds && *ds != c; ds++, dig++);
     if (dig >= base) return intern(v, b); // fail to parse oob digit
     out = out * base + dig;
-  } while ((c = cmin(*in++)));
+  } while ((c = tolower(*in++)));
   return putnum(out); }
 
 // numbers can be input in bases 2, 6, 8, 10, 12, 16, 36
@@ -139,6 +133,17 @@ static NoInline ob rx_num(la v, ob b, const char *s) {
       n = rx_num(v, b, s+1),
       !nump(n) ? n : putnum(-getnum(n));
     case '0': {
-      char r = radicize(cmin(s[1]));
+      char r = radicize(tolower(s[1]));
       if (r) return rx_numb(v, b, s+2, r); } }
   return rx_numb(v, b, s, 10); }
+
+Vm(rx_u) {
+  Have(Width(two));
+  sp -= Width(two);
+  setw(sp, nil, Width(two));
+  Pack();
+  ob _ = la_rx_f(v, stdin);
+  Unpack();
+  if (!_) return ApC(ret, feof(stdin) ? nil : putnum(1));
+  two w = ini_two(sp, _, nil);
+  return ApC(ret, (ob) w); }

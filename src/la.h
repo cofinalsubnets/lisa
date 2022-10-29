@@ -1,5 +1,6 @@
 #include "lisa.h"
 #include <stdlib.h>
+#include <time.h>
 
 // thanks !!
 
@@ -14,11 +15,13 @@ Gc(cp);
 struct mo { vm *ll; };
 
 // static method table for built-in types
+// TODO eq in here
 typedef const struct mtbl {
   vm *does;
   int (*emit)(la, FILE*, ob);
   ob (*copy)(la, ob, ob*, ob*);
   size_t (*hash)(la, ob);
+  bool (*equi)(la, ob, ob);
 } *mtbl;
 
 // pairs
@@ -44,21 +47,19 @@ enum lex { Def, Cond, Lamb, Quote, Seq, Splat, Eval, LexN };
 typedef struct keep { ob *it; struct keep *et; } *keep;
 
 struct la {
-  // vm state -- kept in CPU registers most of the time
-  mo ip; // current thread
-  fr fp; // top of control stack
-  ob xp, // free register
-     *hp, // top of heap
-     *sp; // top of stack, free space = sp - hp
+  // vm state
+  mo ip;
+  fr fp;
+  ob xp, *hp, *sp;
 
-  // memory state
-  keep safe; // list of C stack addresses to copy on gc
-  size_t t0, // gc timestamp, governs len
-         len; // size of pool
-  ob *pool, // memory pool
-     topl, // global namespace
-     syms, // internal symbols
-     lex[LexN]; // grammar symbols
+  // gc state
+  size_t len;
+  ob *pool;
+  keep safe;
+  clock_t t0;
+
+  // system data
+  ob topl, syms, lex[LexN];
   intptr_t rand;
   ob (*panic)(struct la*); };
 
@@ -88,6 +89,7 @@ ob hnom(la, ob); // try to get function name FIXME don't expose
 
 #define Push(...) pushs(v, __VA_ARGS__, (ob) 0)
 bool
+  eq_no(la, ob, ob),
   primp(ob), // is it a primitive function?
   pushs(la, ...), // push onto stack
   please(la, size_t), // gc interface
@@ -96,14 +98,9 @@ bool
 #define rx(...) la_rx_f(__VA_ARGS__)
 int tx(la, FILE*, ob); // write sexp
 
-// internal libc substitutes
 intptr_t lcprng(intptr_t);
 void setw(void*, uintptr_t, size_t),
-     cpyw(void*, const void*, size_t),
-     cpy8(void*, const void*, size_t);
-char cmin(char);
-size_t slen(const char*);
-int scmp(const char*, const char*);
+     cpyw(void*, const void*, size_t);
 
 #define Inline inline __attribute__((always_inline))
 #define NoInline __attribute__((noinline))
@@ -135,7 +132,7 @@ ob nope(la, const char*, ...) NoInline; // panic with error msg
 
 struct prim { vm *go; const char *nom; };
 extern const uint64_t mix;
-extern const struct prim primitives[];
+extern const struct prim prims[];
 extern const struct mtbl s_mtbl_two, s_mtbl_str, s_mtbl_tbl, s_mtbl_sym;
 
 #define mtbl_str (&s_mtbl_str)
@@ -168,9 +165,15 @@ static Inline void *bump(la v, size_t n) {
 static Inline void *cells(la v, size_t n) {
   return Avail >= n || please(v, n) ? bump(v, n) : 0; }
 
+vm disp;
+static Inline two ini_two(void *_, ob a, ob b) {
+  two w = _;
+  w->disp = disp, w->mtbl = mtbl_two;
+  w->a = a, w->b = b;
+  return w; }
+
 _Static_assert(-1 == -1 >> 1, "signed >>");
 _Static_assert(sizeof(void*) == sizeof(size_t), "size_t matches pointer size");
-
 
 static Inline size_t ror(size_t x, size_t n) {
   return (x<<((8*sizeof(size_t))-n))|(x>>n); }
