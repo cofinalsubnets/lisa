@@ -1,4 +1,4 @@
-#include "lisa.h"
+#include "la.h"
 #include "vm.h"
 
 struct mtbl s_mtbl_two = { do_two, em_two, cp_two, hash_two, };

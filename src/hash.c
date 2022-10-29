@@ -1,4 +1,4 @@
-#include "lisa.h"
+#include "la.h"
 #include "vm.h"
 
 // FIXME this is a totally naive, unproven hashing method.

@@ -1,4 +1,4 @@
-#include "lisa.h"
+#include "la.h"
 #include "vm.h"
 
 static ob
@@ -57,7 +57,7 @@ static ob rx2(la v, FILE *i) {
       ungetc(c, i),
       Push(putnum(rx2r)) ? rx_(v, i) : pull(v, i, 0); } }
 
-ob rx(la v, FILE *i) { return
+ob la_rx_f(la v, FILE *i) { return
   Push(putnum(pret)) ? rx_(v, i) : 0; }
 
 static str new_buf(la v) {

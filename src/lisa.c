@@ -1,4 +1,4 @@
-#include "lisa.h"
+#include "la.h"
 #include "vm.h"
 #include <time.h>
 #include <stdlib.h>
@@ -28,7 +28,11 @@ static NoInline ob inst(la v, const char *a, vm *b) {
   return z ? tbl_set(v, v->topl, z, putnum(b)) : 0; }
 
 // initialize a process
-static bool la_ini_(la v) {
+
+la la_ini(void) {
+  la v = malloc(sizeof(struct la));
+  if (!v) return NULL;
+
   // set time & random seed
   v->rand = v->t0 = clock();
 
@@ -70,12 +74,6 @@ static bool la_ini_(la v) {
     i_internals(reg_intl)
     && define_primitives(v);
 
-  if (!ok) la_fin(v);
-  return ok; }
-
-la la_ini(void) {
-  la v = malloc(sizeof(struct la));
-  if (v && !la_ini_(v)) v = NULL;
-  return v; }
+  return ok ? v : (la_fin(v), NULL); }
 
 void la_fin(la v) { if (v) free(v->pool), free(v); }

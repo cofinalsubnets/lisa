@@ -1,4 +1,4 @@
-#include "lisa.h"
+#include "la.h"
 #include "vm.h"
 
 #ifndef PREF
@@ -14,14 +14,16 @@
 // called after finishing successfully
 static Vm(yield) { return Pack(), xp; }
 
-static void repl(la v) {
+ob la_ev_x(la v, ob _) {
+  if (!Push(_)) return 0;
   struct mo go[] = { {call}, {(vm*) putnum(1)}, {yield} };
+  return call(v, (ob) primitives, go, v->hp, v->sp, v->fp); }
+
+static void repl(la v) {
   while (!feof(stdin)) {
     ob _ = rx(v, stdin);
     if (!_ && !feof(stdin)) fputs("# parse error\n", stderr);
-    if (_ && Push(_)) {
-      _ = call(v, (ob) primitives, go, v->hp, v->sp, v->fp);
-      if (_) tx(v, stdout, _), fputc('\n', stdout); } } }
+    if (_ && (_ = la_ev_x(v, _))) tx(v, stdout, _), fputc('\n', stdout); } }
 
 // takes scripts and if we want a repl, gives a thread
 static mo act(la v, const char **nfs) {
