@@ -4,15 +4,28 @@
 // hash tables
 // some of the worst code is here :(
 
+#define KEY(e) ((ob*)(e))[0]
+#define VAL(e) ((ob*)(e))[1]
+#define NEXT(e) ((ob*)(e))[2]
 
 static Inline size_t tbl_idx(size_t cap, size_t co) {
   return co & ((1 << cap) - 1); }
 
-static Inline size_t tbl_load(ob t) {
-  return ((tbl) t)->len >> ((tbl) t)->cap; }
+static Inline size_t tbl_load(tbl t) {
+  return t->len >> t->cap; }
+
+static Inline ob tbl_bkt_hc(la v, ob t, size_t hc) {
+  return ((tbl) t)->tab[tbl_idx(((tbl) t)->cap, hc)]; }
+
+static ob tbl_ent_hc(la v, ob t, ob k, size_t hc) {
+  t = tbl_bkt_hc(v, t, hc);
+  while (!nilp(t) && !eql(v, KEY(t), k)) t = NEXT(t);
+  return t; }
+
+static ob tbl_ent(la v, ob t, ob k) {
+  return tbl_ent_hc(v, t, k, hash(v, k)); }
 
 static ob
-  tbl_ent(la, ob, ob),
   tbl_grow(la, ob),
   tbl_del(la, ob, ob),
   tblss(la, intptr_t, const intptr_t),
@@ -35,14 +48,14 @@ ob table(la v) {
 ob tbl_set(la v, ob t, ob k, ob x) {
   with(t, x = tbl_set_s(v, t, k, x));
   if (!x) return 0;
-  if (tbl_load(t) > 1) {
+  if (tbl_load((tbl) t) > 1) {
     with(x, t = tbl_grow(v, t));
     if (!t) return 0; }
   return x; }
 
-ob tbl_get(la v, ob t, ob k) {
-  ob e = tbl_ent(v, t, k);
-  return e == nil ? 0 : ((ob*) e)[1]; }
+ob tbl_get(la v, ob t, ob k) { return
+  t = tbl_ent(v, t, k),
+  nilp(t) ? 0 : VAL(t); }
 
 Vm(tget_u) {
   ArityCheck(2);
@@ -113,7 +126,7 @@ Vm(tset) {
 // shrinking a table never allocates memory, so it's safe
 // to do at any time.
 static void tbl_fit(la v, ob t) {
-  if (tbl_load(t)) return;
+  if (tbl_load((tbl) t)) return;
 
   ob e = nil, f, g;
   tbl u = (tbl) t;
@@ -121,38 +134,36 @@ static void tbl_fit(la v, ob t) {
 
   // collect all entries
   while (i--) for (f = u->tab[i], u->tab[i] = nil; !nilp(f);
-    g = ((ob*) f)[2],
-    ((ob*) f)[2] = e,
-    e = f,
-    f = g);
+    g = NEXT(f), NEXT(f) = e, e = f, f = g);
 
   // shrink bucket array
-  while (u->cap && tbl_load(t) < 1) u->cap--;
+  while (u->cap && tbl_load((tbl) t) < 1) u->cap--;
   i = 1ul << u->cap;
   u->tab[i] = 0;
   u->tab[i+1] = (ob) u->tab;
 
   // reinsert
   while (e != nil)
-    i = tbl_idx(u->cap, hash(v, ((ob*) e)[0])),
-    f = ((ob*) e)[2],
-    ((ob*) e)[2] = u->tab[i],
+    i = tbl_idx(u->cap, hash(v, KEY(e))),
+    f = NEXT(e),
+    NEXT(e) = u->tab[i],
     u->tab[i] = e,
     e = f; }
 
+// FIXME so bad :(
 static ob tbl_del(la v, ob t, ob key) {
   tbl y = (tbl) t;
   size_t b = tbl_idx(y->cap, hash(v, key));
   ob val = nil,
      e = y->tab[b],
      prev[] = {0,0,e};
-  for (ob l = (ob) &prev; l != nil && ((ob*) l)[2] != nil; l = ((ob*) l)[2])
-    if (((ob*) ((ob*) l)[2])[0] == key) {
-      val = ((ob*) ((ob*) l)[2])[1];
-      ((ob*) l)[2] = ((ob*) ((ob*) l)[2])[2];
+  for (ob l = (ob) &prev; l != nil && NEXT(l) != nil; l = NEXT(l))
+    if (KEY(NEXT(l)) == key) {
+      val = VAL(NEXT(l));
+      NEXT(l) = NEXT(NEXT(l));
       y->len--;
       break; }
-  y->tab[b] = prev[2];
+  y->tab[b] = NEXT(prev);
   tbl_fit(v, t);
   return val; }
 
@@ -173,9 +184,9 @@ static ob tbl_grow(la v, ob t) {
   for (size_t i, cap = 1 << cap0; cap--;)
     for (ob e, es = tab0[cap]; !nilp(es);
       e = es,
-      es = ((ob*) es)[2],
-      i = tbl_idx(cap1, hash(v, ((ob*) e)[0])),
-      ((ob*) e)[2] = tab1[i],
+      es = NEXT(es),
+      i = tbl_idx(cap1, hash(v, KEY(e))),
+      NEXT(e) = tab1[i],
       tab1[i] = e);
 
   ((tbl) t)->cap = cap1;
@@ -183,17 +194,16 @@ static ob tbl_grow(la v, ob t) {
   return t; }
 
 static ob tbl_set_s(la v, ob t, ob k, ob x) {
-  ob e = tbl_ent(v, t, k);
-  size_t i = tbl_idx(((tbl) t)->cap, hash(v, k));
-  if (!nilp(e)) return ((ob*) e)[1] = x;
+  size_t hc = hash(v, k);
+  ob e = tbl_ent_hc(v, t, k, hc);
+  size_t i = tbl_idx(((tbl) t)->cap, hc);
+  if (!nilp(e)) return VAL(e) = x;
   with(t, with(k, with(x, e = (ob) mkmo(v, 3))));
   if (!e) return 0;
   tbl y = (tbl) t;
-  ((ob*) e)[0] = k;
-  ((ob*) e)[1] = x;
-  ((ob*) e)[2] = y->tab[i];
+  KEY(e) = k, VAL(e) = x, NEXT(e) = y->tab[i];
   y->tab[i] = e;
-  y->len += 1;
+  y->len++;
   return x; }
 
 // get table keys
@@ -203,13 +213,13 @@ static ob tks(la v, ob t) {
   with(t, ks = cells(v, Width(two) * len));
   if (!ks) return 0;
   ob r = nil, *tab = ((tbl) t)->tab;
-  while (len) for (ob *e = *(ob**)tab++; !nilp((ob) e);
+  while (len) for (ob e = *tab++; !nilp(e);
     ks->disp = disp,
     ks->mtbl = mtbl_two,
-    ks->a = e[0],
+    ks->a = KEY(e),
     ks->b = r,
     r = (ob) ks++,
-    e = (ob*) e[2],
+    e = NEXT(e),
     len--);
   return r; }
 
@@ -220,11 +230,6 @@ static ob tblss(la v, intptr_t i, const intptr_t l) {
     if (!tbl_set(v, v->xp, v->fp->argv[i], v->fp->argv[i+1]))
       return 0;
   return v->fp->argv[i - 1]; }
-
-static ob tbl_ent(la v, ob e, ob k) {
-  e = ((tbl) e)->tab[tbl_idx(((tbl) e)->cap, hash(v, k))];
-  while (!nilp(e) && !eql(v, ((ob*) e)[0], k)) e = ((ob*) e)[2];
-  return e; }
 
 static Vm(do_tbl) {
   size_t a = getnum(fp->argc);
@@ -256,4 +261,9 @@ static size_t hash_tbl(la v, ob _) { return ror(mix * 9, 48); }
 
 bool tblp(ob _) { return homp(_) && GF(_) == (vm*) mtbl_tbl; }
 
-struct mtbl s_mtbl_tbl = { do_tbl, em_tbl, cp_tbl, hash_tbl };
+const struct mtbl s_mtbl_tbl = {
+  .does = do_tbl,
+  .emit = em_tbl,
+  .copy = cp_tbl,
+  .hash = hash_tbl,
+};

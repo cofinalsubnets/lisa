@@ -113,7 +113,7 @@ static Gc(cp_str) {
 
 bool strp(ob _) { return homp(_) && GF(_) == (vm*) mtbl_str; }
 
-struct mtbl s_mtbl_str = {
+const struct mtbl s_mtbl_str = {
   .does = do_str,
   .emit = em_str,
   .copy = cp_str,

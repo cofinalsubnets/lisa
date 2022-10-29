@@ -15,7 +15,7 @@ Gc(cp);
 struct mo { vm *ll; };
 
 // static method table for built-in types
-typedef struct mtbl {
+typedef const struct mtbl {
   vm *does;
   int (*emit)(la, FILE*, ob);
   ob (*copy)(la, ob, ob*, ob*);
@@ -159,10 +159,11 @@ static Inline void *cells(la v, size_t n) {
 _Static_assert(-1 == -1 >> 1, "signed >>");
 _Static_assert(sizeof(void*) == sizeof(size_t), "size_t matches pointer size");
 
-extern const uint64_t mix;
 struct prim { vm *go; const char *nom; };
-extern struct prim primitives[];
-extern struct mtbl s_mtbl_two, s_mtbl_str, s_mtbl_tbl, s_mtbl_sym;
+extern const uint64_t mix;
+extern const struct prim primitives[];
+extern const struct mtbl s_mtbl_two, s_mtbl_str, s_mtbl_tbl, s_mtbl_sym;
+
 #define mtbl_str (&s_mtbl_str)
 #define mtbl_two (&s_mtbl_two)
 #define mtbl_sym (&s_mtbl_sym)

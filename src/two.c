@@ -84,7 +84,7 @@ static size_t hash_two(la v, ob x) {
 bool twop(ob _) {
   return homp(_) && GF(_) == (vm*) mtbl_two; }
 
-struct mtbl s_mtbl_two = {
+const struct mtbl s_mtbl_two = {
   .does = do_two,
   .emit = em_two,
   .copy = cp_two,

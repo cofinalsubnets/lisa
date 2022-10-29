@@ -5,7 +5,7 @@
 
 // static table of primitive functions
 #define prim_ent(go, nom) { go, nom },
-struct prim primitives[] = { i_primitives(prim_ent) };
+const struct prim primitives[] = { i_primitives(prim_ent) };
 
 #define LEN(ary) (sizeof(ary)/sizeof(*ary))
 bool primp(ob x) {
@@ -13,8 +13,8 @@ bool primp(ob x) {
   return _ >= primitives && _ < primitives + LEN(primitives); }
 
 static bool define_primitives(la v) {
-  struct prim *p = primitives,
-              *lim = p + LEN(primitives);
+  const struct prim *p = primitives,
+                    *lim = p + LEN(primitives);
   for (;p < lim; p++) {
     ob z = interns(v, p->nom);
     if (!z || !tbl_set(v, v->topl, z, (ob) p)) return false; }
