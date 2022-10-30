@@ -51,11 +51,3 @@ Vm(id2) { return twop(xp) ? ApN(1, xp) : ApC(dom_err, xp); }
 Vm(arity) {
   ob reqd = getnum(GF(ip));
   return fp->argc >= reqd ? ApN(2, xp) : ApC(ary_err, (ob) GF(ip)); }
-
-bool la_nilp(ob _) { return nilp(_); }
-bool la_nump(ob _) { return nump(_); }
-bool la_strp(ob _) { return strp(_); }
-bool la_twop(ob _) { return twop(_); }
-bool la_tblp(ob _) { return tblp(_); }
-bool la_symp(ob _) { return symp(_); }
-bool la_homp(ob _) { return homp(_); }

@@ -3,6 +3,11 @@
 #include <string.h>
 
 //symbols
+static Inline sym ini_sym(void *_, ob nom, size_t code) {
+  sym y = _;
+  y->disp = disp, y->mtbl = mtbl_sym, y->nom = nom;
+  y->code = code, y->l = y->r = nil;
+  return y; }
 
 // FIXME this is bad
 // symbols are interned into a binary search tree. we make no
@@ -21,12 +26,8 @@ static ob sskc(la v, ob *y, ob x) {
     sym z = (sym) *y;
     int i = strcmp(((str) z->nom)->text, ((str) x)->text);
     return i == 0 ? *y : sskc(v, i < 0 ? &z->r : &z->l, x); }
-  // sym allocated here
-  sym z = bump(v, Width(sym));
-  z->code = hash(v, putnum(hash(v, z->nom = x)));
-  z->disp = disp; z->mtbl = mtbl_sym;
-  z->l = z->r = nil;
-  return *y = (ob) z; }
+  return *y = (ob) ini_sym(bump(v, Width(sym)), x,
+    hash(v, putnum(hash(v, x)))); }
 
 ob intern(la v, ob x) {
   bool _; return
@@ -40,12 +41,8 @@ Vm(sym_u) {
   if (fp->argc && strp(fp->argv[0]))
     return ApC(ret, sskc(v, &v->syms, fp->argv[0]));
   // sym allocated here
-  sym y = (sym) hp;
+  sym y = ini_sym(hp, nil, v->rand = lcprng(v->rand));
   hp += Width(sym);
-  y->nom = y->l = y->r = nil;
-  y->disp = disp;
-  y->mtbl = mtbl_sym;
-  y->code = v->rand = lcprng(v->rand);
   return ApC(ret, (ob) y); }
 
 Vm(ystr_u) {

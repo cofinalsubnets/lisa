@@ -2,6 +2,11 @@
 #include "vm.h"
 
 // hash tables
+static Inline tbl ini_tbl(void *_, size_t len, size_t cap, ob *tab) {
+  tbl t = _;
+  t->disp = disp, t->mtbl = mtbl_tbl;
+  t->len = len, t->cap = cap, t->tab = tab;
+  return t; }
 // some of the worst code is here :(
 
 #define KEY(e) ((ob*)(e))[0]
@@ -35,14 +40,10 @@ static ob
 ob table(la v) {
   tbl t = cells(v, Width(tbl) + 3);
   if (!t) return 0;
-  ob *b = (ob*) (t + 1);
-  t->disp = disp;
-  t->mtbl = mtbl_tbl;
-  t->len = t->cap = 0;
-  t->tab = b;
-  b[0] = nil;
-  b[1] = 0;
-  b[2] = (ob) b;
+  t = ini_tbl(t, 0, 0, (ob*) (t+1));
+  t->tab[0] = nil;
+  t->tab[1] = 0;
+  t->tab[2] = (ob) t->tab;
   return (ob) t; }
 
 ob tbl_set(la v, ob t, ob k, ob x) {
@@ -244,12 +245,8 @@ static Vm(do_tbl) {
 static Gc(cp_tbl) {
   tbl src = (tbl) x, dst = bump(v, Width(tbl));
   src->disp = (vm*) dst;
-  dst->disp = disp;
-  dst->mtbl = mtbl_tbl;
-  dst->len = src->len;
-  dst->cap = src->cap;
-  dst->tab = (ob*) cp(v, (ob) src->tab, pool0, top0);
-  return (ob) dst; }
+  return (ob) ini_tbl(dst, src->len, src->cap,
+    (ob*) cp(v, (ob) src->tab, pool0, top0)); }
 
 static int em_tbl(la v, FILE *o, ob x) {
   tbl t = (tbl) x;

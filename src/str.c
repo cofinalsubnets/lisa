@@ -2,13 +2,16 @@
 #include "vm.h"
 #include <string.h>
 
+static Inline str ini_str(void *_, size_t len) {
+  str s = _;
+  s->disp = disp, s->mtbl = mtbl_str, s->len = len;
+  return s; }
+
 ob string(la v, const char* c) {
   size_t bs = 1 + strlen(c);
   str o = cells(v, Width(str) + b2w(bs));
   if (!o) return 0;
-  o->len = bs;
-  o->disp = disp;
-  o->mtbl = mtbl_str;
+  o = ini_str(o, bs);
   memcpy(o->text, c, bs);
   return (ob) o; }
 
@@ -36,16 +39,13 @@ Vm(scat_u) {
     sum += ((str) x)->len - 1; }
   size_t words = Width(str) + b2w(sum+1);
   Have(words);
-  str d = (str) hp;
+  str d = ini_str(hp, sum + 1);
   hp += words;
-  d->len = sum + 1;
-  d->disp = disp;
-  d->mtbl = mtbl_str;
   d->text[sum] = 0;
-  while (i) {
-    str x = ((str) fp->argv[--i]);
-    sum -= x->len - 1;
-    memcpy(d->text+sum, x->text, x->len - 1); }
+  for (str x; i--;
+    x = ((str) fp->argv[i]),
+    sum -= x->len - 1,
+    memcpy(d->text+sum, x->text, x->len - 1));
   return ApC(ret, (ob) d); }
 
 #define min(a,b)(a<b?a:b)
@@ -55,18 +55,15 @@ Vm(ssub_u) {
   Check(strp(fp->argv[0]));
   Check(nump(fp->argv[1]));
   Check(nump(fp->argv[2]));
-  str src = ((str) fp->argv[0]);
+  str src = (str) fp->argv[0];
   intptr_t lb = getnum(fp->argv[1]), ub = getnum(fp->argv[2]);
   lb = max(lb, 0);
   ub = min(ub, src->len-1);
   ub = max(ub, lb);
   size_t words = Width(str) + b2w(ub - lb + 1);
   Have(words);
-  str dst = (str) hp;
+  str dst = ini_str(hp, ub - lb + 1);
   hp += words;
-  dst->len = ub - lb + 1;
-  dst->disp = disp;
-  dst->mtbl = mtbl_str;
   dst->text[ub - lb] = 0;
   memcpy(dst->text, src->text + lb, ub - lb);
   return ApC(ret, (ob) dst); }
@@ -78,13 +75,11 @@ Vm(str_u) {
   Have(words);
   str s = (str) hp;
   hp += words;
-  for (; i < bytes-1; s->text[i++] = getnum(xp)) {
-    xp = fp->argv[i];
-    Check(nump(xp));
-    if (xp == putnum(0)) break; }
+  for (; i < bytes-1; s->text[i++] = xp)
+    if (!(xp = getnum(fp->argv[i]))) break;
   s->text[i] = 0;
   s->disp = disp;
-  s->mtbl = mtbl_str;
+  s->mtbl = mtbl_str; // FIXME
   s->len = i + 1;
   return ApC(ret, (ob) s); }
 
@@ -104,12 +99,9 @@ static int em_str(la v, FILE *o, ob _) {
   return r; }
 
 static Gc(cp_str) {
-  str src = (str) x;
-  size_t ws = b2w(src->len);
-  str dst = bump(v, Width(str) + ws);
-  cpyw(dst, src, Width(str) + ws);
-  src->disp = (vm*) dst;
-  return (ob) dst; }
+  str src = (str) x, dst = bump(v, Width(str) + b2w(src->len));
+  memcpy(dst, src, sizeof(struct str) + src->len);
+  return (ob) (src->disp = (vm*) dst); }
 
 static bool eq_str(la v, ob x, ob y) {
   return strp(y) && 0 == strcmp(((str) x)->text, ((str) y)->text); }
@@ -120,4 +112,3 @@ const struct mtbl s_mtbl_str = {
   .copy = cp_str,
   .hash = hash_str,
   .equi = eq_str, };
-

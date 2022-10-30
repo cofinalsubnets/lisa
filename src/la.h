@@ -66,8 +66,7 @@ struct la {
   intptr_t rand;
   ob (*panic)(struct la*); };
 
-la la_ini(void);
-void la_fin(la);
+void *cells(la, size_t);
 
 // pairs
 ob pair(la, ob, ob);
@@ -162,14 +161,11 @@ static Inline void *bump(la v, size_t n) {
   v->hp += n;
   return x; }
 
-static Inline void *cells(la v, size_t n) {
-  return Avail >= n || please(v, n) ? bump(v, n) : 0; }
-
+// FIXME put this in two.c if possible?
 vm disp;
 static Inline two ini_two(void *_, ob a, ob b) {
   two w = _;
-  w->disp = disp, w->mtbl = mtbl_two;
-  w->a = a, w->b = b;
+  w->disp = disp, w->mtbl = mtbl_two, w->a = a, w->b = b;
   return w; }
 
 _Static_assert(-1 == -1 >> 1, "signed >>");

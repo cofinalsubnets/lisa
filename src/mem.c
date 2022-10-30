@@ -1,5 +1,8 @@
 #include "la.h"
 
+void *cells(la v, size_t n) {
+  return Avail >= n || please(v, n) ? bump(v, n) : 0; }
+
 static clock_t copy(la, size_t);
 static void copy_(la, size_t, ob*);
 
