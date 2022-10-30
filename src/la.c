@@ -28,7 +28,8 @@ la la_ini(void) {
   v->panic = NULL;
   // the heap is all used up to start, so the first allocation initializes the pool
   v->fp = (fr) (v->hp = v->sp = v->pool + v->len);
-  v->ip = (mo) (v->topl = v->syms = v->xp = nil);
+  v->ip = (mo) (v->topl = v->xp = nil);
+  v->syms = 0;
   setw(v->lex, nil, LexN);
 
   ob _;

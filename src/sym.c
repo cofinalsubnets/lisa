@@ -6,7 +6,7 @@
 static Inline sym ini_sym(void *_, ob nom, size_t code) {
   sym y = _;
   y->disp = disp, y->mtbl = mtbl_sym, y->nom = nom;
-  y->code = code, y->l = y->r = nil;
+  y->code = code, y->l = y->r = 0;
   return y; }
 
 // FIXME this is bad
@@ -22,7 +22,7 @@ static Inline sym ini_sym(void *_, ob nom, size_t code) {
 // FIXME the caller must ensure Avail >= Width(sym)
 // (because GC here would void the tree)
 static ob sskc(la v, ob *y, ob x) {
-  if (!nilp(*y)) {
+  if (*y) {
     sym z = (sym) *y;
     str a = (str) z->nom, b = (str) x;
     size_t n = a->len < b->len ? a->len : b->len;
@@ -33,20 +33,19 @@ static ob sskc(la v, ob *y, ob x) {
     hash(v, putnum(hash(v, x)))); }
 
 ob intern(la v, ob x) {
-  bool _; return
-    Avail >= Width(sym) ||
-    (with(x, _ = please(v, Width(sym))), _) ?
-      sskc(v, &v->syms, x) :
-      0; }
+  if (Avail < Width(sym)) {
+    bool _;
+    with(x, _ = please(v, Width(sym)));
+    if (!_) return 0; }
+  return sskc(v, &v->syms, x); }
 
 Vm(sym_u) {
   Have(Width(sym));
   if (fp->argc && strp(fp->argv[0]))
     return ApC(ret, sskc(v, &v->syms, fp->argv[0]));
-  // sym allocated here
-  sym y = ini_sym(hp, nil, v->rand = lcprng(v->rand));
+  xp = (ob) ini_sym(hp, nil, v->rand = lcprng(v->rand));
   hp += Width(sym);
-  return ApC(ret, (ob) y); }
+  return ApC(ret, xp); }
 
 Vm(ystr_u) {
   ArityCheck(1);
@@ -59,16 +58,11 @@ ob interns(la v, const char *s) {
   return _ ? intern(v, _) : 0; }
 
 static Gc(cp_sym) {
-  sym src = (sym) x, dst;
-  ob nom = src->nom;
-  if (nilp(nom))
-    dst = bump(v, Width(sym)),
-    cpyw(dst, src, Width(sym));
-  else 
-    x = cp(v, nom, pool0, top0),
-    dst = (sym) sskc(v, &v->syms, x);
-  src->disp = (vm*) dst;
-  return (ob) dst; }
+  sym src = (sym) x,
+      dst = nilp(src->nom) ?
+        cpyw(bump(v, Width(sym)), src, Width(sym)) :
+        (sym) sskc(v, &v->syms, cp(v, src->nom, pool0, top0));
+  return (ob) (src->disp = (vm*) dst); }
 
 static size_t hash_sym(la v, ob x) { return ((sym) x)->code; }
 

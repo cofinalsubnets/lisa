@@ -47,12 +47,11 @@ Vm(hom_u) {
   Check(nump(xp));
   size_t len = getnum(xp) + 2;
   Have(len);
-  xp = (ob) hp;
+  ob *k = setw(hp, nil, len);
   hp += len;
-  setw((ob*) xp, nil, len);
-  ((ob*) xp)[len-2] = 0;
-  ((ob*) xp)[len-1] = xp;
-  return ApC(ret, (ob) ((ob*) xp + len - 2)); }
+  k[len-2] = 0;
+  k[len-1] = (ob) k;
+  return ApC(ret, (ob) (k + len - 2)); }
 
 Vm(hfin_u) {
   ArityCheck(1);
@@ -116,12 +115,10 @@ Vm(disp) { return ApC(((mtbl) GF(ip))->does, xp); }
 Vm(take) {
   ob *t, n = getnum((ob) GF(ip));
   Have(n + 2);
-  t = hp;
+  t = cpyw(hp, sp, n);
   hp += n + 2;
   t[n] = 0;
   t[n+1] = (ob) t;
-  cpyw(t, sp, n);
-  sp += n;
   return ApC(ret, (ob) t); }
 
 // closure functions
@@ -142,14 +139,13 @@ Vm(clos0) {
   ob loc = ec[1];
   fr subd = fp;
   G(ip) = clos1;
-  sp -= adic;
-  cpyw(sp, (ob*) arg + 1, adic);
+  sp = cpyw(sp - adic, (ob*) arg + 1, adic);
   ec = (ob*) GF(ip);
   fp = (fr) sp - 1;
   sp = (ob*) fp;
   fp->retp = ip;
   fp->subd = subd;
-  fp->argc = adic; // XXX
+  fp->argc = adic;
   fp->clos = ec[2];
   if (!nilp(loc)) *--sp = loc;
   return ApY(ec[3], xp); }

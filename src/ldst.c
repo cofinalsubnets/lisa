@@ -62,11 +62,11 @@ Vm(tbind) {
 
 // allocate local variable array
 Vm(locals) {
-  ob *t = hp, n = getnum((ob) GF(ip));
+  size_t n = getnum((ob) GF(ip));
   // n + 2 for the vector thread + 1 for the stack slot
   Have(n + 3);
+  ob *t = setw(hp, nil, n);
   hp += n + 3;
-  setw(t, nil, n);
   t[n] = 0;
   *--sp = t[n+1] = (ob) t;
   return ApN(2, xp); }
@@ -97,8 +97,7 @@ Vm(late) {
 static NoInline Vm(varg0) {
   size_t reqd = getnum((ob) GF(ip));
   Have1();
-  cpyw((ob*) fp - 1, fp, Width(fr) + fp->argc);
-  fp = (fr) ((ob*) fp - 1);
+  fp = cpyw((ob*) fp - 1, fp, Width(fr) + fp->argc);
   sp = (ob*) fp;
   fp->argc++;
   fp->argv[reqd] = nil;

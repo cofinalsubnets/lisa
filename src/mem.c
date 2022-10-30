@@ -137,7 +137,7 @@ static void copy_(la v, size_t len1, ob *pool1) {
      shift = top1 - top0;
 
   // reset state
-  v->syms = nil;
+  v->syms = 0;
   v->len = len1;
   v->pool = v->hp = pool1;
   v->sp = sp0 + shift;

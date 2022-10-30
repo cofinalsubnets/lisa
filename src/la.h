@@ -98,8 +98,8 @@ bool
   eql(la, ob, ob); // logical equality
 
 intptr_t lcprng(intptr_t);
-void setw(void*, intptr_t, size_t),
-     cpyw(void*, const void*, size_t);
+void *setw(void*, intptr_t, size_t),
+     *cpyw(void*, const void*, size_t);
 
 #define Inline inline __attribute__((always_inline))
 #define NoInline __attribute__((noinline))

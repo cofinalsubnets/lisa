@@ -127,8 +127,7 @@ static NoInline ob rx_num(la v, ob b, const char *s, int sign) {
 
 Vm(rx_u) {
   Have(Width(two));
-  sp -= Width(two);
-  setw(sp, nil, Width(two));
+  sp = setw(sp - Width(two), nil, Width(two));
   Pack();
   ob _ = la_rx_f(v, stdin);
   Unpack();
