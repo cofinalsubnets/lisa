@@ -10,9 +10,9 @@ Vm(ary_err) { return Pack(), nope(v, "takes %d parameters", getnum(xp)); }
 #define aubas (((ob*) fp) == v->pool + v->len)
 static NoInline void show_call(la v, mo ip, fr fp) {
   fputc('(', stderr);
-  la_tx_f(v, stderr, (ob) ip);
+  la_tx(v, stderr, (ob) ip);
   for (size_t i = 0, argc = fp->argc; i < argc;
-    fputc(' ', stderr), la_tx_f(v, stderr, fp->argv[i++]));
+    fputc(' ', stderr), la_tx(v, stderr, fp->argv[i++]));
   fputc(')', stderr); }
 
 static void verrp(la v, const char *msg, va_list xs) {

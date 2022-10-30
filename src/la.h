@@ -89,7 +89,10 @@ mo mkmo(la, size_t), // allocator
    button(mo); // get tag at end
 ob hnom(la, ob); // try to get function name FIXME don't expose
 
-#define Push(...) pushs(v, __VA_ARGS__, (ob) 0)
+ob tupl(la, ...);
+#define END ((ob) 0)
+#define Push(...) pushs(v, __VA_ARGS__, END)
+#define Tupl(...) tupl(v, __VA_ARGS__, END)
 bool
   eq_no(la, ob, ob),
   primp(ob), // is it a primitive function?
@@ -101,10 +104,12 @@ intptr_t lcprng(intptr_t);
 void *setw(void*, intptr_t, size_t),
      *cpyw(void*, const void*, size_t);
 
+
 #define Inline inline __attribute__((always_inline))
 #define NoInline __attribute__((noinline))
 void errp(la, const char*, ...); // print an error
 ob nope(la, const char*, ...) NoInline; // panic with error msg
+int femit(FILE*, size_t, char, const char*, char, const char*);
 
 #define nil putnum(0)
 #define F(_) ((mo)(_)+1)
@@ -124,7 +129,6 @@ ob nope(la, const char*, ...) NoInline; // panic with error msg
 #define Width(t) b2w(sizeof(struct t))
 
 #define T putnum(-1)
-
 
 #define getnum(_) ((ob)(_)>>1)
 #define putnum(_) (((ob)(_)<<1)|1)

@@ -35,7 +35,7 @@ static ob
   tbl_del(la, ob, ob),
   tblss(la, intptr_t, const intptr_t),
   tks(la, ob),
-  tbl_set_s(la, ob, ob, ob);
+  tbl_set_s(la, ob, ob, ob) NoInline;
 
 ob table(la v) {
   tbl t = cells(v, Width(tbl) + 3);
@@ -48,7 +48,7 @@ ob table(la v) {
 
 ob tbl_set(la v, ob t, ob k, ob x) {
   with(t, x = tbl_set_s(v, t, k, x));
-  if (!x) return 0;
+  if (!x) return x;
   if (tbl_load((tbl) t) > 1) {
     with(x, t = tbl_grow(v, t));
     if (!t) return 0; }
@@ -196,15 +196,13 @@ static ob tbl_grow(la v, ob t) {
 static ob tbl_set_s(la v, ob t, ob k, ob x) {
   size_t hc = hash(v, k);
   ob e = tbl_ent_hc(v, t, k, hc);
-  size_t i = tbl_idx(((tbl) t)->cap, hc);
   if (!nilp(e)) return VAL(e) = x;
-  with(t, with(k, with(x, e = (ob) mkmo(v, 3))));
+  size_t i = tbl_idx(((tbl)t)->cap, hc);
+  with(t, e = Tupl(k, x, ((tbl)t)->tab[i]));
   if (!e) return 0;
-  tbl y = (tbl) t;
-  KEY(e) = k, VAL(e) = x, NEXT(e) = y->tab[i];
-  y->tab[i] = e;
-  y->len++;
-  return x; }
+  ((tbl)t)->tab[i] = e;
+  ((tbl)t)->len++;
+  return VAL(e); }
 
 // get table keys
 static ob tks(la v, ob t) {

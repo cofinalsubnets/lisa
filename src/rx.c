@@ -3,10 +3,11 @@
 #include <string.h>
 #include <ctype.h>
 
-static ob
-  buf_atom(la, FILE*, char),
-  rx_num(la, ob, const char*, int),
+static str
+  rx_atom(la, FILE*, char),
   rx_str(la, FILE*);
+static ob
+  rx_num(la, ob, const char*, int);
 static int nextc(FILE*);
 
 ////
@@ -44,11 +45,11 @@ static ob rx1(la v, FILE *i) {
   switch (c) {
     case ')': case EOF: return pull(v, i, 0);
     case '(': return rx2(v, i);
-    case '"': return pull(v, i, rx_str(v, i));
+    case '"': return pull(v, i, (ob) rx_str(v, i));
     case '\'': return Push(putnum(pxq)) ? rx1(v, i) : pull(v, i, 0); }
-  ob a = buf_atom(v, i, c);
-  a = a ? rx_num(v, a, ((str)a)->text, 1) : a;
-  return pull(v, i, a); }
+  str a = rx_atom(v, i, c);
+  ob x = a ? rx_num(v, (ob) a, a->text, 1) : 0;
+  return pull(v, i, x); }
 
 static ob rx2(la v, FILE *i) {
   int c = nextc(i);
@@ -59,7 +60,7 @@ static ob rx2(la v, FILE *i) {
       ungetc(c, i),
       Push(putnum(rx2r)) ? rx1(v, i) : pull(v, i, 0); } }
 
-ob la_rx_f(la v, FILE *i) { return
+ob la_rx(la v, FILE *i) { return
   Push(putnum(pret)) ? rx1(v, i) : 0; }
 
 static str mkbuf(la v) {
@@ -78,18 +79,21 @@ static str grow_buf(la v, str s) {
   return t; }
 
 // read the contents of a string literal into a string
-static ob rx_str(la v, FILE *p) {
+static str rx_str(la v, FILE *p) {
   str o = mkbuf(v);
   for (size_t n = 0, lim = 8; o; o = grow_buf(v, o), lim *= 2)
-    for (ob x; n < lim;) switch (x = fgetc(p)) {
-      // backslash causes the next character to be read literally
-      case '\\': if ((x = fgetc(p)) != EOF) goto ok;
-      case '"': case EOF: return o->text[n++] = 0, o->len = n, (ob) o;
-      default: ok: o->text[n++] = x; }
+    for (int x; n < lim;) switch (x = fgetc(p)) {
+      // backslash causes the next character
+      // to be read literally // TODO more escape sequences
+      case '\\': if ((x = fgetc(p)) == EOF) goto fin;
+      default: o->text[n++] = x; continue;
+      case '"': case EOF: fin:
+        return o->text[n++] = 0, o->len = n, o; }
   return 0; }
 
-// read the characters of an atom into a string
-static ob buf_atom(la v, FILE *p, char c0) {
+// read the characters of an atom (number or symbol)
+// into a string
+static str rx_atom(la v, FILE *p, char c0) {
   str o = mkbuf(v);
   if (o) o->text[0] = c0;
   for (size_t n = 1, lim = 8; o; o = grow_buf(v, o), lim *= 2)
@@ -98,7 +102,7 @@ static ob buf_atom(la v, FILE *p, char c0) {
       // these characters terminate an atom
       case ' ': case '\n': case '\t': case ';': case '#':
       case '(': case ')': case '\'': case '"': ungetc(x, p);
-      case EOF: return o->text[n++] = 0, o->len = n, (ob) o; }
+      case EOF: return o->text[n++] = 0, o->len = n, o; }
   return 0; }
 
 static NoInline ob rx_numb(la v, ob b, const char *in, int sign, int rad) {
@@ -129,7 +133,7 @@ Vm(rx_u) {
   Have(Width(two));
   sp = setw(sp - Width(two), nil, Width(two));
   Pack();
-  ob _ = la_rx_f(v, stdin);
+  ob _ = la_rx(v, stdin);
   Unpack();
   if (!_) return ApC(ret, feof(stdin) ? nil : putnum(1));
   two w = ini_two(hp, _, nil);

@@ -56,7 +56,7 @@ static Gc(cp_two) {
 static int em_two(la v, FILE *o, ob x) {
   int r = 2;
   for (fputc('(', o);; fputc(' ', o), r++) {
-    r += la_tx_f(v, o, A(x));
+    r += la_tx(v, o, A(x));
     if (!twop(x = B(x))) break; }
   fputc(')', o);
   return r; }

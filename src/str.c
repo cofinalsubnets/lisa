@@ -78,20 +78,19 @@ Vm(str_u) {
   s->len = i + 1;
   return ApC(ret, (ob) s); }
 
-static Vm(do_str) { return
-  fputs(((str) ip)->text, stdout),
-  ApC(ret, (ob) ip); }
+static Vm(do_str) {
+  str s = (str) ip;
+  femit(stdout, s->len - 1, 0, s->text, 0, 0);
+  return ApC(ret, (ob) ip); }
 
 static size_t hash_str(la v, ob _) {
   return hashb(((str)_)->text, ((str)_)->len); }
 
+// FIXME handle i/o errors
 static int em_str(la v, FILE *o, ob _) {
-  int r = 2;
-  fputc('"', o);
-  for (char *t = ((str)_)->text; *t; fputc(*t++, o), r++)
-    if (*t == '"') r++, fputc('\\', o);
-  fputc('"', o);
-  return r; }
+  str s = (str) _;
+  size_t len = s->len - 1; // FIXME null-terminated
+  return femit(o, len, '"', s->text, '"', "\\\""); }
 
 static Gc(cp_str) {
   str src = (str) x, dst = bump(v, Width(str) + b2w(src->len));

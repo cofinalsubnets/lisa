@@ -13,18 +13,17 @@
 
 static void repl(la v) {
   while (!feof(stdin)) {
-    ob _ = la_rx_f(v, stdin);
+    ob _ = la_rx(v, stdin);
     if (!_ && !feof(stdin)) errp(v, "# parse error\n");
-    if (_ && (_ = la_ev_x(v, _)))
-      la_tx_f(v, stdout, _),
+    if (_ && (_ = la_ev(v, _)))
+      la_tx(v, stdout, _),
       fputc('\n', stdout); } }
 
 // takes scripts and if we want a repl, gives a thread
 static mo act(la v, const char **nfs) {
   const char *nf = *nfs;
-  mo k = nf ? act(v, nfs + 1) : mkmo(v, 1);
-  return !k ? 0 : nf ? ana_p(v, nf, (ob) k) :
-                       (G(k) = yield, k); }
+  mo k = nf ? act(v, nfs + 1) : (mo) Tupl((ob) yield);
+  return k && nf ? ana_p(v, nf, (ob) k) : k; }
 
 static mo actn(la v, const char *prelu, const char **scripts) {
   mo k = act(v, scripts);

@@ -2,14 +2,10 @@
 #include "vm.h"
 #include <stdlib.h>
 
-ob la_ev_x(la v, ob _) {
+ob la_ev(la v, ob _) {
   if (!Push(_)) return 0;
   struct mo go[] = { {call}, {(vm*) putnum(1)}, {yield} };
   return call(v, (ob) prims, go, v->hp, v->sp, v->fp); }
-
-ob la_ev_f(la v, FILE *i) {
-  ob _ = la_rx_f(v, i);
-  return _ ? la_ev_x(v, _) : 0; }
 
 void la_fin(la v) { if (v) free(v->pool), free(v); }
 void la_atpanic(la v, ob (*p)(la)) { v->panic = p; }

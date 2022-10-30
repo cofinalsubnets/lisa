@@ -70,8 +70,8 @@ static int em_sym(la v, FILE *o, ob x) {
   sym y = (sym) x;
   x = y->nom;
   if (!strp(x)) return fprintf(o, "#sym@%lx", (long) y);
-  fputs(((str) x)->text, o);
-  return ((str) x)->len-1; }
+  str s = (str) x;
+  return femit(o, s->len - 1, 0, s->text, 0, 0); }
 
 Vm(do_id) { return ApC(ret, (ob) ip); }
 

@@ -7,7 +7,7 @@
 // FIXME this is really weird
 // print a function name
 static int emhomn(la v, FILE *o, ob x) {
-  if (symp(x)) return fputc('\\', o), 1 + la_tx_f(v, o, x);
+  if (symp(x)) return fputc('\\', o), 1 + la_tx(v, o, x);
   if (!twop(x)) return fputc('\\', o), 1;
   int r = 0;
   // FIXME this is weird
@@ -16,7 +16,7 @@ static int emhomn(la v, FILE *o, ob x) {
   return r; }
 
 // s-expression writer
-int la_tx_f(la v, FILE *o, ob x) {
+int la_tx(la v, FILE *o, ob x) {
   if (nump(x)) return fprintf(o, "%ld", getnum(x));
   if (primp(x)) return fprintf(o, "\\%s", ((struct prim*)x)->nom);
   if (G(x) == disp) return ((mtbl) GF(x))->emit(v, o, x);
@@ -26,9 +26,9 @@ Vm(show_u) {
   size_t i = 0, l = fp->argc;
   if (l) {
     while (i < l - 1)
-      la_tx_f(v, stdout, fp->argv[i++]),
+      la_tx(v, stdout, fp->argv[i++]),
       fputc(' ', stdout);
-    la_tx_f(v, stdout, xp = fp->argv[i]); }
+    la_tx(v, stdout, xp = fp->argv[i]); }
   fputc('\n', stdout);
   return ApC(ret, xp); }
 
@@ -36,3 +36,12 @@ Vm(putc_u) {
   ArityCheck(1);
   fputc(getnum(fp->argv[0]), stdout);
   return ApC(ret, xp); }
+
+#include <string.h>
+int femit(FILE *o, size_t n, char ldelim, const char *text, char rdelim, const char *escs) {
+  size_t r = n;
+  if (ldelim) fputc(ldelim, o), r++;
+  for (size_t i = 0; i < n; fputc(text[i++], o))
+    if (strchr(escs, text[i])) fputc('\\', o), r++;
+  if (rdelim) fputc(rdelim, o), r++;
+  return r; }
