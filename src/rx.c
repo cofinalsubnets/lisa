@@ -5,7 +5,7 @@
 
 static ob
   buf_atom(la, FILE*, char),
-  rx_num(la, ob, const char*),
+  rx_num(la, ob, const char*, int),
   rx_str(la, FILE*);
 static int nextc(FILE*);
 
@@ -21,7 +21,7 @@ static int nextc(FILE *i) {
     case '#': case ';': for (;;) switch (fgetc(i)) {
       case '\n': case EOF: return nextc(i); } } }
 
-static ob rx2(la, FILE*), rx_(la, FILE*);
+static ob rx2(la, FILE*), rx1(la, FILE*);
 static Inline ob pull(la v, FILE *i, ob x) {
   return ((ob (*)(la, FILE*, ob))(getnum(*v->sp++)))(v, i, x); }
 
@@ -39,15 +39,15 @@ static ob pxq(la v, FILE* i, ob x) { return
   x = x ? pair(v, v->lex[Quote], x) : x,
   pull(v, i, x); }
 
-static ob rx_(la v, FILE *i) {
+static ob rx1(la v, FILE *i) {
   int c = nextc(i);
   switch (c) {
     case ')': case EOF: return pull(v, i, 0);
     case '(': return rx2(v, i);
     case '"': return pull(v, i, rx_str(v, i));
-    case '\'': return Push(putnum(pxq)) ? rx_(v, i) : pull(v, i, 0); }
+    case '\'': return Push(putnum(pxq)) ? rx1(v, i) : pull(v, i, 0); }
   ob a = buf_atom(v, i, c);
-  a = a ? rx_num(v, a, ((str)a)->text) : a;
+  a = a ? rx_num(v, a, ((str)a)->text, 1) : a;
   return pull(v, i, a); }
 
 static ob rx2(la v, FILE *i) {
@@ -57,31 +57,29 @@ static ob rx2(la v, FILE *i) {
     case EOF: return pull(v, i, 0);
     default: return
       ungetc(c, i),
-      Push(putnum(rx2r)) ? rx_(v, i) : pull(v, i, 0); } }
+      Push(putnum(rx2r)) ? rx1(v, i) : pull(v, i, 0); } }
 
 ob la_rx_f(la v, FILE *i) { return
-  Push(putnum(pret)) ? rx_(v, i) : 0; }
+  Push(putnum(pret)) ? rx1(v, i) : 0; }
 
-static str new_buf(la v) {
+static str mkbuf(la v) {
   str s = cells(v, Width(str) + 1);
-  if (s) s->len = 8, s->disp = disp, s->mtbl = mtbl_str;
-  return s; }
+  return s ? ini_str(s, 8) : s; }
 
 static str grow_buf(la v, str s) {
-  str t; size_t l = b2w(s->len);
+  str t;
+  size_t len = s->len;
   ob _ = (ob) s;
-  with(_, t = cells(v, Width(str) + 2 * l));
+  with(_, t = cells(v, Width(str) + 2 * b2w(len)));
   s = (str) _;
   if (!t) return 0;
-  t->len = 2 * l * sizeof(ob);
-  t->disp = disp;
-  t->mtbl = mtbl_str;
-  cpyw(t->text, s->text, l);
+  t = ini_str(t, 2 * len);
+  memcpy(t->text, s->text, len);
   return t; }
 
 // read the contents of a string literal into a string
 static ob rx_str(la v, FILE *p) {
-  str o = new_buf(v);
+  str o = mkbuf(v);
   for (size_t n = 0, lim = 8; o; o = grow_buf(v, o), lim *= 2)
     for (ob x; n < lim;) switch (x = fgetc(p)) {
       // backslash causes the next character to be read literally
@@ -92,7 +90,7 @@ static ob rx_str(la v, FILE *p) {
 
 // read the characters of an atom into a string
 static ob buf_atom(la v, FILE *p, char ch) {
-  str o = new_buf(v);
+  str o = mkbuf(v);
   if (o) o->text[0] = ch;
   for (size_t n = 1, lim = 8; o; o = grow_buf(v, o), lim *= 2)
     for (int x; n < lim;) switch (x = fgetc(p)) {
@@ -101,13 +99,10 @@ static ob buf_atom(la v, FILE *p, char ch) {
       case ' ': case '\n': case '\t': case ';': case '#':
       case '(': case ')': case '\'': case '"':
         ungetc(x, p);
-      case EOF: return
-        o->text[n++] = 0,
-        o->len = n,
-        (ob) o; }
+      case EOF: return o->text[n++] = 0, o->len = n, (ob) o; }
   return 0; }
 
-static NoInline ob rx_numb(la v, ob b, const char *in, int base) {
+static NoInline ob rx_numb(la v, ob b, const char *in, int sign, int base) {
   static const char *digits = "0123456789abcdefghijklmnopqrstuvwxyz";
   ob out = 0, c = tolower(*in++);
   if (!c) return intern(v, b); // fail to parse empty string
@@ -117,25 +112,18 @@ static NoInline ob rx_numb(la v, ob b, const char *in, int base) {
     if (dig >= base) return intern(v, b); // fail to parse oob digit
     out = out * base + dig;
   } while ((c = tolower(*in++)));
-  return putnum(out); }
+  return putnum(sign * out); }
 
-// numbers can be input in bases 2, 6, 8, 10, 12, 16, 36
-static char radicize(char c) {
-  static const char *radices = "b\2s\6o\10d\12z\14x\20n\44";
-  for (const char *r = radices; *r; r += 2) if (*r == c) return r[1];
-  return 0; }
-
-static NoInline ob rx_num(la v, ob b, const char *s) {
-  ob n;
+static NoInline ob rx_num(la v, ob b, const char *s, int sign) {
   switch (*s) {
-    case '+': return rx_num(v, b, s+1);
-    case '-': return
-      n = rx_num(v, b, s+1),
-      !nump(n) ? n : putnum(-getnum(n));
-    case '0': {
-      char r = radicize(tolower(s[1]));
-      if (r) return rx_numb(v, b, s+2, r); } }
-  return rx_numb(v, b, s, 10); }
+    case '+': return rx_num(v, b, s+1, sign);
+    case '-': return rx_num(v, b, s+1, -sign);
+    case '0': { // with radix // FIXME change this syntax to 10001011{b,s,o,d,z,x,n}
+      // numbers can be input in bases 2, 6, 8, 10, 12, 16, 36
+      const char *r = "b\2s\6o\10d\12z\14x\20n\44";
+      for (char c = tolower(s[1]); *r; r += 2)
+        if (*r == c) return rx_numb(v, b, s+2, sign, r[1]); } }
+  return rx_numb(v, b, s, sign, 10); }
 
 Vm(rx_u) {
   Have(Width(two));
@@ -145,5 +133,6 @@ Vm(rx_u) {
   ob _ = la_rx_f(v, stdin);
   Unpack();
   if (!_) return ApC(ret, feof(stdin) ? nil : putnum(1));
-  two w = ini_two(sp, _, nil);
+  two w = ini_two(hp, _, nil);
+  hp += Width(two);
   return ApC(ret, (ob) w); }

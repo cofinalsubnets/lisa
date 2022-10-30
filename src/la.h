@@ -98,7 +98,7 @@ bool
   eql(la, ob, ob); // logical equality
 
 intptr_t lcprng(intptr_t);
-void setw(void*, uintptr_t, size_t),
+void setw(void*, intptr_t, size_t),
      cpyw(void*, const void*, size_t);
 
 #define Inline inline __attribute__((always_inline))
@@ -161,12 +161,16 @@ static Inline void *bump(la v, size_t n) {
   v->hp += n;
   return x; }
 
-// FIXME put this in two.c if possible?
+// FIXME isolate these if possible?
 vm disp;
 static Inline two ini_two(void *_, ob a, ob b) {
   two w = _;
   w->disp = disp, w->mtbl = mtbl_two, w->a = a, w->b = b;
   return w; }
+static Inline str ini_str(void *_, size_t len) {
+  str s = _;
+  s->disp = disp, s->mtbl = mtbl_str, s->len = len;
+  return s; }
 
 _Static_assert(-1 == -1 >> 1, "signed >>");
 _Static_assert(sizeof(void*) == sizeof(size_t), "size_t matches pointer size");

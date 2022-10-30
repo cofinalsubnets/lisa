@@ -2,11 +2,6 @@
 #include "vm.h"
 #include <string.h>
 
-static Inline str ini_str(void *_, size_t len) {
-  str s = _;
-  s->disp = disp, s->mtbl = mtbl_str, s->len = len;
-  return s; }
-
 ob string(la v, const char* c) {
   size_t bs = 1 + strlen(c);
   str o = cells(v, Width(str) + b2w(bs));

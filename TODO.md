@@ -6,7 +6,6 @@ this is the only portable way to handle stack overflows.
 - gc (use cheney's algorithm)
 - eql (recursive on pairs; use off semispace)
 - tx (recursive on pairs; use off semispace)
-- rx\_num (sign argument)
 - hash (recursive on pairs; use off semispace)
 
 ## benchmarks
