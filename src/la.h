@@ -59,7 +59,7 @@ struct la {
   size_t len;
   ob *pool;
   keep safe;
-  clock_t t0;
+  union { clock_t t0; ob *cp; };
 
   // system data
   ob topl, syms, lex[LexN];
@@ -103,7 +103,6 @@ bool
 intptr_t lcprng(intptr_t);
 void *setw(void*, intptr_t, size_t),
      *cpyw(void*, const void*, size_t);
-
 
 #define Inline inline __attribute__((always_inline))
 #define NoInline __attribute__((noinline))
@@ -152,8 +151,8 @@ static Inline bool twop(ob _) { return homp(_) && GF(_) == (vm*) mtbl_two; }
 static Inline bool symp(ob _) { return homp(_) && GF(_) == (vm*) mtbl_sym; }
 
 static Inline size_t b2w(size_t b) {
-  size_t quot = b / sizeof(ob), rem = b % sizeof(ob);
-  return rem ? quot + 1 : quot; }
+  size_t q = b / sizeof(ob), r = b % sizeof(ob);
+  return r ? q + 1 : q; }
 
 // this can give a false positive if x is a fixnum
 static Inline bool livep(la v, ob x) {

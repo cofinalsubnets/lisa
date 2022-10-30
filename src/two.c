@@ -18,9 +18,8 @@ Vm(cdr) { return ApN(1, B(xp)); }
 
 Vm(cons) {
   Have(Width(two));
-  two w = ini_two(hp, xp, *sp++);
+  xp = (ob) ini_two(hp, xp, *sp++);
   hp += Width(two);
-  xp = (ob) w;
   return ApN(1, xp); }
 
 Vm(car_u) {
@@ -38,9 +37,9 @@ Vm(cdr_u) {
 Vm(cons_u) {
   ArityCheck(2);
   Have(Width(two));
-  two w = ini_two(hp, fp->argv[0], fp->argv[1]);
+  xp = (ob) ini_two(hp, fp->argv[0], fp->argv[1]);
   hp += Width(two);
-  return ApC(ret, (ob) w); }
+  return ApC(ret, xp); }
 
 static Vm(do_two) {
   return ApC(ret, fp->argc ? B(ip) : A(ip)); }
@@ -62,7 +61,7 @@ static int em_two(la v, FILE *o, ob x) {
   return r; }
 
 static size_t hash_two(la v, ob x) {
-  return ror(hash(v, A(x)) & hash(v, B(x)), 32); }
+  return ror(hash(v, A(x)) * hash(v, B(x)), 32); }
 
 static bool eq_two(la v, ob x, ob y) {
   return twop(y) && eql(v, A(x), A(y)) && eql(v, B(x), B(y)); }

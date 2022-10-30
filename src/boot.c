@@ -8,15 +8,19 @@
 // normally only gets used during initialization to bootstrap the
 // self-hosted compiler.
 
-static Inline mo pull(la v, ob *e, size_t m) {
-  return ((mo (*)(la, ob*, size_t)) getnum(*v->sp++))(v, e, m); }
+static Inline mo pull(la v, ob *e, size_t m) { return
+  ((mo (*)(la, ob*, size_t)) getnum(*v->sp++))(v, e, m); }
 
 // apply instruction pullbacks
-static Inline mo pb1(vm *i, mo k) { return G(--k) = i, k; }
-static Inline mo pb2(vm *i, ob x, mo k) { return pb1(i, pb1((vm*) x, k)); }
+static Inline mo pb1(vm *i, mo k) {
+  G(--k) = i;
+  return k; }
+static Inline mo pb2(vm *i, ob x, mo k) {
+  return pb1(i, pb1((vm*) x, k)); }
 
 // " compilation environments "
-typedef struct env { ob arg, loc, clo, par, name, asig, s1, s2; } *env;
+typedef struct env {
+  ob arg, loc, clo, par, name, asig, s1, s2; } *env;
 #define arg(x)  ((env)(x))->arg // argument variables : a list
 #define loc(x)  ((env)(x))->loc // local variables : a list
 #define clo(x)  ((env)(x))->clo // closure variables : a list
@@ -54,7 +58,7 @@ static mo
 // supplemental list functions
 //
 // index of item in list (-1 if absent)
-static intptr_t lidx(ob l, ob x) {
+static NoInline intptr_t lidx(ob l, ob x) {
   for (intptr_t i = 0; twop(l); l = B(l), i++)
     if (x == A(l)) return i;
   return -1; }
@@ -88,7 +92,7 @@ static Inline ob new_scope(la v, ob *e, ob a, ob n) {
   intptr_t s = 0;
   with(n, a = asign(v, a, 0, &s));
   return !a ? 0 :
-    Tupl(a, nil, nil, e ? *e : nil, n, N(s), nil, nil); }
+    Tupl(a, nil, nil, e ? *e : nil, n, putnum(s), nil, nil); }
 
 static char scan_def(la v, ob *e, ob x) {
   char r;
@@ -122,11 +126,11 @@ static Inline ob comp_body(la v, ob*e, ob x) {
       !(x = (ob) pull(v, e, 4)))
     return 0;
   x = !(i = llen(loc(*e))) ? x :
-   (ob) pb2(locals, N(i), (mo) x);
+   (ob) pb2(locals, putnum(i), (mo) x);
   x = (i = getnum(asig(*e))) > 0 ?
-        (ob) pb2(arity, N(i), (mo) x) :
+        (ob) pb2(arity, putnum(i), (mo) x) :
       i < 0 ?
-        (ob) pb2(varg, N(-i-1), (mo) x) :
+        (ob) pb2(varg, putnum(-i-1), (mo) x) :
       x;
   GF(button((mo) x)) = (vm*) x;
   return twop(clo(*e)) ? pair(v, clo(*e), x) : x; }
@@ -172,11 +176,11 @@ Co(co_fn, ob x) {
 
 Co(r_co_def_bind) {
   ob _ = *v->sp++;
-  if (e) return imx(v, e, m, loc_, N(lidx(loc(*e), _)));
+  if (e) return imx(v, e, m, loc_, putnum(lidx(loc(*e), _)));
   _ = pair(v, v->topl, _);
   return _ ? imx(v, e, m, tbind, _) : 0; }
 
-static bool co_def_r(la v, ob*e, ob x) {
+static bool co_def_r(la v, ob *e, ob x) {
   bool _;
   return !twop(x) ||
     ((x = rw_let_fn(v, x)) &&
@@ -270,11 +274,11 @@ static NoInline ob ls_lex(la v, ob e, ob y) {
   ob q; return
     nilp(e) ?
       (q = tbl_get(v, v->topl, y)) ?
-        pair(v, N(Here), q) :
-        pair(v, N(Wait), v->topl) :
-    lidx(loc(e), y) >= 0 ? pair(v, N(Loc), e) :
-    lidx(arg(e), y) >= 0 ? pair(v, N(Arg), e) :
-    lidx(clo(e), y) >= 0 ? pair(v, N(Clo), e) :
+        pair(v, putnum(Here), q) :
+        pair(v, putnum(Wait), v->topl) :
+    lidx(loc(e), y) >= 0 ? pair(v, putnum(Loc), e) :
+    lidx(arg(e), y) >= 0 ? pair(v, putnum(Arg), e) :
+    lidx(clo(e), y) >= 0 ? pair(v, putnum(Clo), e) :
     ls_lex(v, par(e), y); }
 
 Co(co_sym, ob x) {
@@ -282,24 +286,24 @@ Co(co_sym, ob x) {
   with(x, q = ls_lex(v, e ? *e : nil, x));
   if (!q) return 0;
   y = A(q);
-  if (y == N(Here)) return co_imm(v, e, m, B(q));
-  if (y == N(Wait)) return
+  if (y == putnum(Here)) return co_imm(v, e, m, B(q));
+  if (y == putnum(Wait)) return
     (x = pair(v, B(q), x)) &&
     (with(x, y = (ob) pull(v, e, m+2)), y) ?
       pb2(late, x, (mo) y) : 0;
 
   if (B(q) == *e) return
-    y == N(Loc) ?
-      imx(v, e, m, loc, N(lidx(loc(*e), x))) :
-    y == N(Arg) ?
-      imx(v, e, m, arg, N(lidx(arg(*e), x))) :
-    imx(v, e, m, clo, N(lidx(clo(*e), x)));
+    y == putnum(Loc) ?
+      imx(v, e, m, loc, putnum(lidx(loc(*e), x))) :
+    y == putnum(Arg) ?
+      imx(v, e, m, arg, putnum(lidx(arg(*e), x))) :
+    imx(v, e, m, clo, putnum(lidx(clo(*e), x)));
 
   y = llen(clo(*e));
   with(x, q = snoc(v, clo(*e), x));
   if (!q) return 0;
   clo(*e) = q;
-  return imx(v, e, m, clo, N(y)); }
+  return imx(v, e, m, clo, putnum(y)); }
 
 Co(r_co_x) {
   ob x = *v->sp++;
@@ -345,7 +349,7 @@ Co(co_two, ob x) {
   return co_ap(v, e, m, a, B(x)); }
 
 Co(r_pb1) {
-  vm *i = (void*) getnum(*v->sp++);
+  vm *i = (vm*) getnum(*v->sp++);
   mo k = pull(v, e, m + 1);
   return k ? pb1(i, k): 0; }
 
@@ -376,7 +380,7 @@ Vm(ev_u) {
   xp = tbl_get(v, v->topl, v->lex[Eval]);
   if (xp && homp(xp) && G(xp) != ev_u) return ApY((mo) xp, nil);
   mo y;
-  CallOut(y = ana(v, fp->argv[0], N(ret)));
+  CallOut(y = ana(v, fp->argv[0], putnum(ret)));
   return y ? ApY(y, xp) : ApC(oom_err, xp); }
 
 // apply expression pullbacks

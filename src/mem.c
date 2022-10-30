@@ -3,9 +3,6 @@
 void *cells(la v, size_t n) {
   return Avail >= n || please(v, n) ? bump(v, n) : 0; }
 
-static clock_t copy(la, size_t);
-static void copy_(la, size_t, ob*);
-
 // please : u1 la size_t
 //
 // try to return with at least req words of available memory.
@@ -31,6 +28,7 @@ static void copy_(la, size_t, ob*);
 // time in garbage collection should be under about 6%, at the
 // cost of more memory use under pressure.
 
+static clock_t copy(la, size_t);
 bool please(la v, size_t req) {
   size_t len = v->len, vit = copy(v, len);
   if (!vit) return 0;
@@ -86,6 +84,7 @@ bool please(la v, size_t req) {
 // t values come from clock(). if t0 < t1 < t2
 // then u will be >= 1. however, sometimes
 // t1 == t2. in that case u = 1.
+static void copy_(la, size_t, ob*);
 static clock_t copy(la v, size_t len1) {
   clock_t t1 = clock(), t0 = v->t0, t2;
 
@@ -126,9 +125,7 @@ Gc(cp) {
   return cp_hom(v, x, pool0, top0); }
 
 
-#include "vm.h"
 static void copy_(la v, size_t len1, ob *pool1) {
-
   ob len0 = v->len,
      *sp0 = v->sp,
      *pool0 = v->pool,
@@ -143,16 +140,17 @@ static void copy_(la v, size_t len1, ob *pool1) {
   v->sp = sp0 + shift;
   v->fp = (fr) ((ob*) v->fp + shift);
 
-  // copy memory
   v->xp = cp(v, v->xp, pool0, top0);
   v->ip = (mo) cp(v, (ob) v->ip, pool0, top0);
-  v->topl = cp(v, v->topl, pool0, top0);
 
+  // copy globals
+  v->topl = cp(v, v->topl, pool0, top0);
   for (size_t i = LexN; i--;)
     v->lex[i] = cp(v, v->lex[i], pool0, top0);
   for (keep r = v->safe; r; r = r->et)
     *r->it = cp(v, *r->it, pool0, top0);
 
+  // copy the stack
   ob *sp = v->sp;
   fr fp = v->fp;
   for (;;) {
@@ -160,15 +158,16 @@ static void copy_(la v, size_t len1, ob *pool1) {
     if (sp0 == top0) break;
     fr fp0 = (fr) sp0;
     fp->argc = fp0->argc;
-    fp->subd = (fr) (((ob*) fp0->subd) + shift);
+    fp->subd = (fr) ((ob*) fp0->subd + shift);
     fp->clos = cp(v, fp0->clos, pool0, top0);
     fp->retp = (mo) cp(v, (ob) fp0->retp, pool0, top0);
-    sp = (ob*) (fp + 1);
-    sp0 = (ob*) (fp0 + 1);
+    sp = fp->argv;
+    sp0 = fp0->argv;
     fp = fp->subd; } }
 
 // Run a GC cycle from inside the VM
 // XXX calling convention: size of request (bare size_t) in v->xp
+#include "vm.h"
 NoInline Vm(gc) {
   size_t req = v->xp;
   CallOut(req = please(v, req));
