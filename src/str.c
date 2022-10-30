@@ -99,7 +99,9 @@ static Gc(cp_str) {
   return (ob) (src->disp = (vm*) dst); }
 
 static bool eq_str(la v, ob x, ob y) {
-  return strp(y) && 0 == strcmp(((str) x)->text, ((str) y)->text); }
+  return strp(y) &&
+    ((str)x)->len == ((str)y)->len &&
+    0 == strncmp(((str) x)->text, ((str) y)->text, ((str)x)->len); }
 
 const struct mtbl s_mtbl_str = {
   .does = do_str,

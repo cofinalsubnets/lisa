@@ -89,28 +89,28 @@ static ob rx_str(la v, FILE *p) {
   return 0; }
 
 // read the characters of an atom into a string
-static ob buf_atom(la v, FILE *p, char ch) {
+static ob buf_atom(la v, FILE *p, char c0) {
   str o = mkbuf(v);
-  if (o) o->text[0] = ch;
+  if (o) o->text[0] = c0;
   for (size_t n = 1, lim = 8; o; o = grow_buf(v, o), lim *= 2)
     for (int x; n < lim;) switch (x = fgetc(p)) {
       default: o->text[n++] = x; continue;
       // these characters terminate an atom
       case ' ': case '\n': case '\t': case ';': case '#':
-      case '(': case ')': case '\'': case '"':
-        ungetc(x, p);
+      case '(': case ')': case '\'': case '"': ungetc(x, p);
       case EOF: return o->text[n++] = 0, o->len = n, (ob) o; }
   return 0; }
 
-static NoInline ob rx_numb(la v, ob b, const char *in, int sign, int base) {
-  static const char *digits = "0123456789abcdefghijklmnopqrstuvwxyz";
-  ob out = 0, c = tolower(*in++);
+static NoInline ob rx_numb(la v, ob b, const char *in, int sign, int rad) {
+  static const char *ds = "0123456789abcdefghijklmnopqrstuvwxyz";
+  intptr_t out = 0;
+  int c = tolower(*in++);
   if (!c) return intern(v, b); // fail to parse empty string
   do {
-    int dig = 0;
-    for (const char *ds = digits; *ds && *ds != c; ds++, dig++);
-    if (dig >= base) return intern(v, b); // fail to parse oob digit
-    out = out * base + dig;
+    int d = 0;
+    while (ds[d] && ds[d] != c) d++;
+    if (d >= rad) return intern(v, b); // fail to parse oob digit
+    out = out * rad + d;
   } while ((c = tolower(*in++)));
   return putnum(sign * out); }
 

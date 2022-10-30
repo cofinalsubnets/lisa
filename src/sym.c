@@ -24,8 +24,11 @@ static Inline sym ini_sym(void *_, ob nom, size_t code) {
 static ob sskc(la v, ob *y, ob x) {
   if (!nilp(*y)) {
     sym z = (sym) *y;
-    int i = strcmp(((str) z->nom)->text, ((str) x)->text);
-    return i == 0 ? *y : sskc(v, i < 0 ? &z->r : &z->l, x); }
+    str a = (str) z->nom, b = (str) x;
+    size_t n = a->len < b->len ? a->len : b->len;
+    int i = strncmp(a->text, b->text, n);
+    return i == 0 ? (ob) z :
+      sskc(v, i < 0 ? &z->r : &z->l, x); }
   return *y = (ob) ini_sym(bump(v, Width(sym)), x,
     hash(v, putnum(hash(v, x)))); }
 
