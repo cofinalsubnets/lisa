@@ -33,7 +33,7 @@ typedef struct env {
 
 #define N putnum
 
-static bool scan(la, ob*, ob);
+static bool scan(la, ob*, ob) NoInline;
 
 static mo
   ana(la, ob, ob),
@@ -110,7 +110,7 @@ static bool scan(la v, ob* e, ob x) {
     !twop(x) || A(x) == v->lex[Lamb] || A(x) == v->lex[Quote] ? 1 :
     A(x) == v->lex[Def] ? scan_def(v, e, B(x)) != -1 :
     (with(x, _ = scan(v, e, A(x))),
-      _ && scan(v, e, B(x))); }
+     _ && scan(v, e, B(x))); }
 
 static ob linitp(la v, ob x, ob *d) {
   ob y;
@@ -393,12 +393,12 @@ static mo ana(la v, ob x, ob k) {
 static ob rxq(la v, FILE *i) {
   ob x = la_rx(v, i);
   x = x ? pair(v, x, nil) : x;
-  return x ? pair(v, v->lex[Quote], x) : 0; }
+  return x ? pair(v, v->lex[Quote], x) : x; }
 
 static ob ana_fd(la v, FILE *in, ob k) {
   ob x;
   with(k, x = rxq(v, in));
-  if (!x) return feof(in) ? k : x;
+  if (!x) return feof(in) ? k : x; // FIXME distinguish eof from oom
   with(x, k = ana_fd(v, in, k));
   if (!k) return k;
   with(k, x = pair(v, x, nil),

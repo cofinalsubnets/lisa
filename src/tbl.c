@@ -38,19 +38,17 @@ static ob
 
 ob table(la v) {
   tbl t = cells(v, Width(tbl) + 3);
-  if (!t) return 0;
-  t = ini_tbl(t, 0, 0, (ob*) (t+1));
-  t->tab[0] = nil;
-  t->tab[1] = 0;
-  t->tab[2] = (ob) t->tab;
+  if (t) t = ini_tbl(t, 0, 0, (ob*) (t+1)),
+         t->tab[0] = nil,
+         t->tab[1] = 0,
+         t->tab[2] = (ob) t->tab;
   return (ob) t; }
 
 ob tbl_set(la v, ob t, ob k, ob x) {
   with(t, x = tbl_set_s(v, t, k, x));
-  if (!x) return x;
-  if (tbl_load((tbl) t) > 1) {
-    with(x, t = tbl_grow(v, t));
-    if (!t) return 0; }
+  if (x && tbl_load((tbl) t) > 1)
+    with(x, t = tbl_grow(v, t)),
+    x = t ? x : t;
   return x; }
 
 ob tbl_get(la v, ob t, ob k) { return
@@ -198,7 +196,7 @@ static ob tbl_set_s(la v, ob t, ob k, ob x) {
   if (!nilp(e)) return VAL(e) = x;
   size_t i = tbl_idx(((tbl)t)->cap, hc);
   with(t, e = Tupl(k, x, ((tbl)t)->tab[i]));
-  if (!e) return 0;
+  if (!e) return e;
   ((tbl)t)->tab[i] = e;
   ((tbl)t)->len++;
   return VAL(e); }
@@ -224,7 +222,7 @@ static ob tblss(la v, intptr_t i, const intptr_t l) {
   ob r = nil;
   for (;i <= l - 2; i += 2)
     if (!(r = tbl_set(v, v->xp, v->fp->argv[i], v->fp->argv[i+1])))
-      return 0;
+      break;
   return r; }
 
 static Vm(do_tbl) {
