@@ -1,6 +1,5 @@
-#include "la.h"
-
-// freestanding libc substitutes
+#include <stdint.h>
+#include <stddef.h>
 
 intptr_t lcprng(intptr_t s) {
   const int64_t steele_vigna_2021 = 0xaf251af3b0f025b5;

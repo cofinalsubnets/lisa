@@ -1,5 +1,4 @@
 #include "la.h"
-#include "vm.h"
 #include <stdlib.h>
 
 ob la_ev(la v, ob _) {

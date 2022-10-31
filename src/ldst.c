@@ -1,5 +1,4 @@
 #include "la.h"
-#include "vm.h"
 
 ////
 /// Load Instructions
@@ -9,28 +8,20 @@
 Vm(one) { return ApN(1, putnum(1)); }
 Vm(zero) { return ApN(1, putnum(0)); }
 // immediate value from thread
-Vm(imm) { return
-  xp = (ob) GF(ip),
-  ApN(2, xp); }
+Vm(imm) { return ApN(2, (ob) GF(ip)); }
 
 // function arguments
-Vm(arg) { return
-  xp = fp->argv[getnum(GF(ip))],
-  ApN(2, xp); }
+Vm(arg) { return ApN(2, fp->argv[getnum(GF(ip))]); }
 Vm(arg0) { return ApN(1, fp->argv[0]); }
 Vm(arg1) { return ApN(1, fp->argv[1]); }
 
 // local variables
-Vm(loc) { return
-  xp = Locs[getnum(GF(ip))],
-  ApN(2, xp); }
+Vm(loc) { return ApN(2, Locs[getnum(GF(ip))]); }
 Vm(loc0) { return ApN(1, Locs[0]); }
 Vm(loc1) { return ApN(1, Locs[1]); }
 
 // closure variables
-Vm(clo) { return
-  xp = ((ob*) fp->clos)[getnum(GF(ip))],
-  ApN(2, xp); }
+Vm(clo) { return ApN(2, ((ob*) fp->clos)[getnum(GF(ip))]); }
 Vm(clo0) { return ApN(1, ((ob*) fp->clos)[0]); }
 Vm(clo1) { return ApN(1, ((ob*) fp->clos)[1]); }
 
@@ -39,8 +30,7 @@ Vm(clo1) { return ApN(1, ((ob*) fp->clos)[1]); }
 // // stack push
 Vm(push) {
   Have1();
-  *--sp = xp;
-  return ApN(1, xp); }
+  return ApN(1, *--sp = xp); }
 
 // dup top of stack
 Vm(dupl) {

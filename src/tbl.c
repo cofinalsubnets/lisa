@@ -1,5 +1,4 @@
 #include "la.h"
-#include "vm.h"
 
 // hash tables
 static Inline tbl ini_tbl(void *_, size_t len, size_t cap, ob *tab) {

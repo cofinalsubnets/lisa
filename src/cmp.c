@@ -1,5 +1,4 @@
 #include "la.h"
-#include "vm.h"
 
 bool eq_no(la v, ob x, ob y) { return false; }
 

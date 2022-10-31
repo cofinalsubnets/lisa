@@ -1,8 +1,16 @@
 #include "la.h"
-#include "vm.h"
+#include <string.h>
+// FIXME handle stdio errors
+
+int femit(FILE *o, size_t n, char ldelim, const char *text, char rdelim, const char *escs) {
+  size_t r = n;
+  if (ldelim) fputc(ldelim, o), r++;
+  for (size_t i = 0; i < n; fputc(text[i++], o))
+    if (escs && strchr(escs, text[i])) fputc('\\', o), r++;
+  if (rdelim) fputc(rdelim, o), r++;
+  return r; }
 
 // s-expression emitter
-// FIXME handle stdio errors
 
 // FIXME this is really weird
 // print a function name
@@ -36,12 +44,3 @@ Vm(putc_u) {
   ArityCheck(1);
   fputc(getnum(fp->argv[0]), stdout);
   return ApC(ret, xp); }
-
-#include <string.h>
-int femit(FILE *o, size_t n, char ldelim, const char *text, char rdelim, const char *escs) {
-  size_t r = n;
-  if (ldelim) fputc(ldelim, o), r++;
-  for (size_t i = 0; i < n; fputc(text[i++], o))
-    if (strchr(escs, text[i])) fputc('\\', o), r++;
-  if (rdelim) fputc(rdelim, o), r++;
-  return r; }

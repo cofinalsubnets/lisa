@@ -1,5 +1,4 @@
 #include "la.h"
-#include "vm.h"
 
 // pairs and lists
 ob pair(la v, ob a, ob b) {

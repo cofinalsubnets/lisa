@@ -1,9 +1,8 @@
 #include "la.h"
-#include "vm.h"
 #include <string.h>
 
 ob string(la v, const char* c) {
-  size_t bs = 1 + strlen(c);
+  size_t bs = 1 + strlen(c); // XXX null terminated
   str o = cells(v, Width(str) + b2w(bs));
   if (!o) return 0;
   o = ini_str(o, bs);
@@ -15,7 +14,7 @@ Vm(slen_u) {
   ArityCheck(1);
   xp = fp->argv[0];
   Check(strp(xp));
-  return ApC(ret, putnum(((str) xp)->len-1)); }
+  return ApC(ret, putnum(((str) xp)->len-1)); } // XXX null terminated
 
 Vm(sget_u) {
   ArityCheck(2);
@@ -31,16 +30,16 @@ Vm(scat_u) {
   while (i < l) {
     ob x = fp->argv[i++];
     Check(strp(x));
-    sum += ((str) x)->len - 1; }
-  size_t words = Width(str) + b2w(sum+1);
+    sum += ((str) x)->len - 1; } // XXX null terminated
+  size_t words = Width(str) + b2w(sum+1); // XXX
   Have(words);
-  str d = ini_str(hp, sum + 1);
+  str d = ini_str(hp, sum + 1); // XXX
   hp += words;
-  d->text[sum] = 0;
+  d->text[sum] = 0; // XXX
   for (str x; i--;
     x = ((str) fp->argv[i]),
-    sum -= x->len - 1,
-    memcpy(d->text+sum, x->text, x->len - 1));
+    sum -= x->len - 1, // XXX
+    memcpy(d->text+sum, x->text, x->len - 1)); // XXX
   return ApC(ret, (ob) d); }
 
 #define min(a,b)(a<b?a:b)
@@ -53,43 +52,46 @@ Vm(ssub_u) {
   str src = (str) fp->argv[0];
   intptr_t lb = getnum(fp->argv[1]), ub = getnum(fp->argv[2]);
   lb = max(lb, 0);
-  ub = min(ub, src->len-1);
+  ub = min(ub, src->len-1); // XXX
   ub = max(ub, lb);
-  size_t words = Width(str) + b2w(ub - lb + 1);
+  size_t words = Width(str) + b2w(ub - lb + 1); // XXX
   Have(words);
-  str dst = ini_str(hp, ub - lb + 1);
+  str dst = ini_str(hp, ub - lb + 1); // XXX
   hp += words;
-  dst->text[ub - lb] = 0;
+  dst->text[ub - lb] = 0; // XXX
   memcpy(dst->text, src->text + lb, ub - lb);
   return ApC(ret, (ob) dst); }
 
 Vm(str_u) {
   size_t i = 0,
-    bytes = fp->argc + 1,
+    bytes = fp->argc + 1, // XXX
     words = Width(str) + b2w(bytes);
   Have(words);
   str s = (str) hp;
   hp += words;
-  for (; i < bytes-1; s->text[i++] = xp)
+  for (; i < bytes-1; s->text[i++] = xp) // XXX
     if (!(xp = getnum(fp->argv[i]))) break;
-  s->text[i] = 0;
+  s->text[i] = 0; // XXX
   s->disp = disp;
   s->mtbl = mtbl_str; // FIXME
-  s->len = i + 1;
+  s->len = i + 1; // XXX
   return ApC(ret, (ob) s); }
 
 static Vm(do_str) {
   str s = (str) ip;
-  femit(stdout, s->len - 1, 0, s->text, 0, 0);
+  femit(stdout, s->len - 1, 0, s->text, 0, 0); // XXX
   return ApC(ret, (ob) ip); }
 
 static size_t hash_str(la v, ob _) {
-  return hashb(((str)_)->text, ((str)_)->len); }
+  const char *bs = ((str)_)->text;
+  size_t h = 1, n = ((str)_)->len;
+  while (n--) h = (h ^ (mix * *bs++)) * mix;
+  return h; }
 
 // FIXME handle i/o errors
 static int em_str(la v, FILE *o, ob _) {
   str s = (str) _;
-  size_t len = s->len - 1; // FIXME null-terminated
+  size_t len = s->len - 1; // XXX null-terminated
   return femit(o, len, '"', s->text, '"', "\\\""); }
 
 static Gc(cp_str) {

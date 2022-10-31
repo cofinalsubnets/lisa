@@ -1,5 +1,4 @@
 #include "la.h"
-#include "vm.h"
 
 // FIXME this is a totally naive, unproven hashing method.
 //
@@ -19,11 +18,6 @@
 
 // just a big random number!
 const uint64_t mix = 2708237354241864315;
-
-size_t hashb(const char *at, size_t n) {
-  size_t h = 1;
-  while (n--) h ^= mix * *at++, h *= mix;
-  return h; }
 
 size_t hash(la v, ob x) {
   if (nump(x)) return ror(mix * x, 16);

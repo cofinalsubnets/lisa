@@ -1,5 +1,4 @@
 #include "la.h"
-#include "vm.h"
 
 // FIXME remove macros
 #define mm_u(_c,_v,_z,op) {\

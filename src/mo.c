@@ -1,5 +1,4 @@
 #include "la.h"
-#include "vm.h"
 
 // function functions
 //

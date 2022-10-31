@@ -1,5 +1,4 @@
 #include "la.h"
-#include "vm.h"
 
 ////
 ///  the thread compiler
@@ -140,7 +139,7 @@ static Inline ob comp_body(la v, ob*e, ob x) {
 // (in the former case the car is the list of free variables
 // and the cdr is a hom that assumes the missing variables
 // are available in the closure).
-static ob co_tl(la v, ob* e, ob n, ob l) {
+static ob co_fn_ltu(la v, ob* e, ob n, ob l) {
   ob y = nil;
   with(n, with(y, with(l,
     l = (l = twop(l) ? l : pair(v, l, nil)) &&
@@ -158,8 +157,8 @@ static Inline ob co_fn_clo(la v, ob *e, ob arg, ob seq) {
   for (; arg && twop(arg); arg = B(arg))
     if (!Push(N(r_co_x), A(arg), N(r_pb1), N(push))) arg = 0;
 
-  arg = arg ? (ob) pull(v, e, 0) : arg;
-  arg = arg ? pair(v, seq, arg) : arg;
+  if (arg) arg = (ob) pull(v, e, 0);
+  if (arg) arg = pair(v, seq, arg);
   return um, um, arg; }
 
 Co(co_fn, ob x) {
@@ -168,7 +167,7 @@ Co(co_fn, ob x) {
   with(nom, with(x, k = (ob) pull(v, e, m+2)));
   if (!k) return 0;
   mm(&k);
-  if (twop(x = co_tl(v, e, nom, B(x))))
+  if (twop(x = co_fn_ltu(v, e, nom, B(x))))
     j = e && twop(loc(*e)) ? encll : encln,
     x = co_fn_clo(v, e, A(x), B(x));
   um;

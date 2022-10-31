@@ -167,7 +167,6 @@ static void copy_(la v, size_t len1, ob *pool1) {
 
 // Run a GC cycle from inside the VM
 // XXX calling convention: size of request (bare size_t) in v->xp
-#include "vm.h"
 NoInline Vm(gc) {
   size_t req = v->xp;
   CallOut(req = please(v, req));

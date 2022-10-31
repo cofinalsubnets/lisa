@@ -1,5 +1,4 @@
 #include "la.h"
-#include "vm.h"
 
 ////
 /// Branch Instructions
@@ -7,14 +6,12 @@
 // calling and returning
 Vm(call) {
   Have(Width(fr));
-  size_t adic = getnum(GF(ip));
   fr subd = fp;
-  fp = (fr) sp - 1;
-  sp = (ob*) fp;
+  sp = (ob*) (fp = (fr) sp - 1);
+  fp->argc = getnum(GF(ip));
   fp->retp = FF(ip);
   fp->subd = subd;
   fp->clos = nil;
-  fp->argc = adic; // XXX
   return ApY(xp, nil); }
 
 Vm(ap_u) {
@@ -28,17 +25,16 @@ Vm(ap_u) {
   mo retp = fp->retp;
   sp = fp->argv + fp->argc - adic;
   for (size_t j = 0; j < adic; sp[j++] = A(xp), xp = B(xp));
-  fp = (fr) sp - 1;
-  sp = (ob*) fp;
+  sp = (ob*) (fp = (fr) sp - 1);
   fp->retp = retp;
-  fp->argc = adic; // XXX
+  fp->argc = adic;
   fp->subd = subd;
   fp->clos = nil;
   return ApY(ip, nil); }
 
 // return from a function
 Vm(ret) { return
-  ip = (mo) fp->retp,
+  ip = fp->retp,
   sp = fp->argv + fp->argc,
   fp = fp->subd,
   ApN(0, xp); }
@@ -50,16 +46,16 @@ Vm(ret) { return
 static NoInline Vm(recne) {
   // save return address
   v->xp = (ob) fp->subd;
-  v->ip = (mo) fp->retp;
+  v->ip = fp->retp;
   // reset fp
   fp = (fr) (fp->argv + fp->argc - xp) - 1;
   // copy the args high to low
   for (size_t i = xp; i--; fp->argv[i] = sp[i]);
   sp = (ob*) fp;
   // populate fp
-  fp->retp =  v->ip;
+  fp->retp = v->ip;
   fp->subd = (fr) v->xp;
-  fp->argc = xp; // XXX
+  fp->argc = xp;
   fp->clos = nil;
   return ApY(ip, nil); }
 

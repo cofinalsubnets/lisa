@@ -1,5 +1,4 @@
 #include "la.h"
-#include "vm.h"
 
 #ifndef PREF
 #define PREF

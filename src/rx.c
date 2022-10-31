@@ -1,5 +1,4 @@
 #include "la.h"
-#include "vm.h"
 #include <string.h>
 #include <ctype.h>
 
