@@ -157,7 +157,7 @@ static ob tbl_del(la v, ob t, ob key) {
      e = y->tab[b],
      prev[] = {0,0,e};
   for (ob l = (ob) &prev; l != nil && NEXT(l) != nil; l = NEXT(l))
-    if (KEY(NEXT(l)) == key) {
+    if (eql(v, KEY(NEXT(l)), key)) {
       val = VAL(NEXT(l));
       NEXT(l) = NEXT(NEXT(l));
       y->len--;
@@ -245,11 +245,12 @@ static Gc(cp_tbl) {
   return (ob) ini_tbl(dst, src->len, src->cap,
     (ob*) cp(v, (ob) src->tab, pool0, top0)); }
 
-static int em_tbl(la v, FILE *o, ob x) {
-  tbl t = (tbl) x;
+static int em_tbl(la v, FILE *o, ob _) {
+  tbl t = (tbl) _;
   return fprintf(o, "#tbl:%ld/%ld", t->len, 1ul << t->cap); }
 
-static size_t hash_tbl(la v, ob _) { return ror(mix * 9, 48); }
+static size_t hash_tbl(la v, ob _) {
+  return ror(mix * 9, 3 * sizeof(size_t) / 4); }
 
 const struct mtbl s_mtbl_tbl = {
   .does = do_tbl,

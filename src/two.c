@@ -60,7 +60,7 @@ static int em_two(la v, FILE *o, ob x) {
   return r; }
 
 static size_t hash_two(la v, ob x) {
-  return ror(hash(v, A(x)) * hash(v, B(x)), 32); }
+  return ror(hash(v, A(x)) * hash(v, B(x)), 4 * sizeof(size_t)); }
 
 static bool eq_two(la v, ob x, ob y) {
   return twop(y) && eql(v, A(x), A(y)) && eql(v, B(x), B(y)); }

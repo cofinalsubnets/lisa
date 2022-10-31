@@ -20,7 +20,7 @@
 const uint64_t mix = 2708237354241864315;
 
 size_t hash(la v, ob x) {
-  if (nump(x)) return ror(mix * x, 16);
+  if (nump(x)) return ror(mix * x, sizeof(size_t) * 2);
   if (!livep(v, x)) return mix ^ (x * mix);
   if (G(x) == disp) return ((mtbl) GF(x))->hash(v, x);
   return mix ^ hash(v, hnom(v, x)); }
