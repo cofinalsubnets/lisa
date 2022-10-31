@@ -11,19 +11,25 @@ Vm(zero) { return ApN(1, putnum(0)); }
 Vm(imm) { return ApN(2, (ob) GF(ip)); }
 
 // function arguments
-Vm(arg) { return ApN(2, fp->argv[getnum(GF(ip))]); }
+Vm(argn) { return ApN(2, fp->argv[getnum(GF(ip))]); }
 Vm(arg0) { return ApN(1, fp->argv[0]); }
 Vm(arg1) { return ApN(1, fp->argv[1]); }
+Vm(arg2) { return ApN(1, fp->argv[2]); }
+Vm(arg3) { return ApN(1, fp->argv[3]); }
 
 // local variables
-Vm(loc) { return ApN(2, Locs[getnum(GF(ip))]); }
+Vm(locn) { return ApN(2, Locs[getnum(GF(ip))]); }
 Vm(loc0) { return ApN(1, Locs[0]); }
 Vm(loc1) { return ApN(1, Locs[1]); }
+Vm(loc2) { return ApN(1, Locs[2]); }
+Vm(loc3) { return ApN(1, Locs[3]); }
 
 // closure variables
-Vm(clo) { return ApN(2, ((ob*) fp->clos)[getnum(GF(ip))]); }
+Vm(clon) { return ApN(2, ((ob*) fp->clos)[getnum(GF(ip))]); }
 Vm(clo0) { return ApN(1, ((ob*) fp->clos)[0]); }
 Vm(clo1) { return ApN(1, ((ob*) fp->clos)[1]); }
+Vm(clo2) { return ApN(1, ((ob*) fp->clos)[2]); }
+Vm(clo3) { return ApN(1, ((ob*) fp->clos)[3]); }
 
 ////
 /// Store Instructions
@@ -40,18 +46,18 @@ Vm(dupl) {
   return ApN(1, xp); }
 
 // set a local variable
-Vm(loc_) { return
+Vm(defloc) { return
   Locs[getnum(GF(ip))] = xp,
   ApN(2, xp); }
 
 // set a module variable
-Vm(tbind) {
+Vm(deftop) {
   ob a = (ob) GF(ip);
   CallOut(v->xp = tbl_set(v, A(a), B(a), xp));
   return xp ? ApN(2, xp) : ApC(oom_err, xp); }
 
 // allocate local variable array
-Vm(locals) {
+Vm(setloc) {
   size_t n = getnum((ob) GF(ip));
   // n + 2 for the vector thread + 1 for the stack slot
   Have(n + 3);

@@ -186,22 +186,33 @@ static Inline size_t ror(size_t x, size_t n) {
 // these are vm functions used by C but not lisp.
 #define cfns(_)\
   _(gc) _(dom_err) _(oom_err) _(ary_err)\
-  _(clos) _(clos0) _(clos1) _(do_id) _(yield)
+  _(setclo) _(genclo0) _(genclo1) _(do_id) _(yield)
 cfns(ninl)
 #undef cfns
 
 // used by the compiler but not exposed as primitives
 #define i_internals(_)\
- _(tget) _(tset) _(thas) _(tlen) _(arity) _(idZ) _(idH)\
- _(id2) _(idT) _(imm) _(arg) _(clo) _(loc) _(take) _(locals)\
- _(loc_) _(encl1) _(encl0) _(ret) _(jump) _(branch) _(barnch)\
- _(call) _(rec) _(late) _(sar) _(sal) _(band) _(bor)\
- _(bxor) _(tbind) _(push) _(add) _(sub) _(mul) _(dqv) _(mod)\
- _(neg) _(lt) _(lteq) _(eq) _(gteq) _(gt) _(twopp) _(numpp)\
- _(nilpp) _(strpp) _(tblpp) _(sympp) _(hompp) _(car) _(cdr)\
- _(cons) _(one) _(zero) _(arg0) _(arg1) _(loc0) _(loc1) _(disp)\
- _(clo0) _(clo1) _(brlt) _(brlteq) _(breq) _(brgteq) _(brlt2)\
- _(brlteq2) _(brgt2) _(brgt) _(brne) _(dupl) _(emi) _(emx) _(varg)
+ _(call) _(ret) _(rec) _(jump) _(varg) _(disp)\
+ _(arity) _(idZ) _(idH) _(id2) _(idT)\
+ _(imm) _(zero) _(one)\
+ _(argn) _(arg0) _(arg1) _(arg2) _(arg3)\
+ _(clon) _(clo0) _(clo1) _(clo2) _(clo3)\
+ _(locn) _(loc0) _(loc1) _(loc2) _(loc3)\
+ _(deftop) _(late)\
+ _(setloc) _(defloc)\
+ _(take) _(encl1) _(encl0)\
+ _(twopp) _(numpp) _(nilpp) _(strpp)\
+ _(tblpp) _(sympp) _(hompp)\
+ _(add) _(sub) _(mul) _(dqv) _(mod) _(neg)\
+ _(sar) _(sal) _(band) _(bor) _(bxor)\
+ _(lt) _(lteq) _(eq) _(gteq) _(gt)\
+ _(tget) _(tset) _(thas) _(tlen)\
+ _(cons) _(car) _(cdr)\
+ _(emi) _(emx)\
+ _(branch) _(barnch) _(breq) _(brne)\
+ _(brlt) _(brlteq) _(brgteq) _(brlt2)\
+ _(brlteq2) _(brgt2) _(brgt) _(brne)\
+ _(push) _(dupl)\
 
 i_internals(ninl)
 

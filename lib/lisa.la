@@ -133,7 +133,8 @@
      (loop (BB x)))) xs))(g p) (seek p 1))
 
   ; for specialized indexed instructions
-  (argn a b) (f1 peekx 0 a 1 b)
+  (argn xs .) (ap f1 (X peekx ((: (loop n xs)
+    (? xs (X n (X (A xs) (loop (+ n 1) (B xs)))))) 0 xs)))
 
   ; for specialized branch instructions ;
   ; takes an argument for each branch case
@@ -145,9 +146,9 @@
    i-call (\ i h (? (= i-ret (peeki (seek h 1)))
     (emi i-rec (emx (peekx h) (seek h 1)))
     (emi i h)))
-   i-arg (argn i-arg0 i-arg1)
-   i-loc (argn i-loc0 i-loc1)
-   i-clo (argn i-clo0 i-clo1)
+   i-argn (argn i-arg0 i-arg1 i-arg2 i-arg3)
+   i-locn (argn i-loc0 i-loc1 i-loc2 i-loc3)
+   i-clon (argn i-clo0 i-clo1 i-clo2 i-clo3)
    i-lt (br2 i-brlt i-brlt2)
    i-lteq (br2 i-brlteq i-brlteq2)
    i-gt (br2 i-brgt i-brgt2)
@@ -317,7 +318,7 @@
  ; prototype to create an "instance".
  (ltu e nom l) (:
   (loc k) (: loc (tget f 'loc)
-   (? (~ loc) k (emi i-locals (emx (len loc) k))))
+   (? (~ loc) k (emi i-setloc (emx (len loc) k))))
   (ar k) (: i (tget f 'sig) (?
    (> i 0) (emf i-arity (emx i k))
    (< i 0) (emi i-varg (emx (- (- i) 1) k))
@@ -590,8 +591,8 @@
    ((lamb x k) e m) (:
     (nom e k) ; try to pick a name for this function
      (: i (peeki k) (?
-      (= i i-tbind) (A (peekx (seek k 1))) ; maybe we're about to set a global?
-      (= i i-loc_) (at (tget e 'loc) (peekx (seek k 1))))) ; or a local
+      (= i i-deftop) (A (peekx (seek k 1))) ; maybe we're about to set a global?
+      (= i i-defloc) (at (tget e 'loc) (peekx (seek k 1))))) ; or a local
 
     (clo-thd e x k) (:
      (loop x k) (? (~ x) k
@@ -618,8 +619,8 @@
     (loop e x k) (? (~ x) k (:
      l (loop e (BB x) k)
      m (? (~ (|| (toplp e) (memq (tget e'loc) (A x)))) l
-          (toplp e) (xc i-tbind (xd (X _ns (A x)) l))
-          (xc i-loc_ (xd (idx (tget e'loc) (A x)) l)))
+          (toplp e) (xc i-deftop (xd (X _ns (A x)) l))
+          (xc i-defloc (xd (idx (tget e'loc) (A x)) l)))
      (? (= 'here (A (: v (look e (A x)))))
       (Im (B v) m) (eval (AB x) m))))
 
@@ -640,11 +641,11 @@
     (= s 'here) ((Im (B r) k) e m)
     (= s 'wait) (late (B r))
     (= e (B r)) (
-     (xc (? (= s 'arg) i-arg (= s 'loc) i-loc (= s 'clo) i-clo)
+     (xc (? (= s 'arg) i-argn (= s 'loc) i-locn (= s 'clo) i-clon)
       (xd (idx (tget e s) x) k)) e m)
     (, (: l (len (tget e'clo)))
        (tset e 'clo (snoc (tget e'clo) x))
-       ((xc i-clo (xd l k)) e m))))
+       ((xc i-clon (xd l k)) e m))))
 
   ((? (twop x) list (symp x) symb Im) x k))
 

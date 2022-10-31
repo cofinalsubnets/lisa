@@ -34,7 +34,7 @@ mo button(mo k) { while (G(k)) k = F(k); return k; }
 // try to get the name of a function
 ob hnom(la v, ob x) {
   vm *k = G(x);
-  if (k == clos || k == clos0 || k == clos1)
+  if (k == setclo || k == genclo0 || k == genclo1)
     return hnom(v, (ob) G(FF(x)));
   x = ((ob*) button((mo) x))[-1];
   return livep(v, x) ? x : nil; }
@@ -131,13 +131,13 @@ Vm(take) {
 // it overwrites itself with a special jump
 // instruction that sets the closure and enters
 // the function.
-Vm(clos0) {
+Vm(genclo0) {
   ob *ec = (ob*) GF(ip), arg = ec[0];
   size_t adic = nilp(arg) ? 0 : getnum(G(arg));
   Have(Width(fr) + adic + 1);
   ob loc = ec[1];
   fr subd = fp;
-  G(ip) = clos1;
+  G(ip) = genclo1;
   sp = cpyw(sp - adic, (ob*) arg + 1, adic);
   ec = (ob*) GF(ip);
   fp = (fr) sp - 1;
@@ -150,13 +150,13 @@ Vm(clos0) {
   return ApY(ec[3], xp); }
 
 // finalize function instance closure
-Vm(clos1) { return
-  G(ip) = clos,
+Vm(genclo1) { return
+  G(ip) = setclo,
   GF(ip) = (vm*) xp,
   ApY(ip, xp); }
 
 // set the closure for this frame
-Vm(clos) { return
+Vm(setclo) { return
   fp->clos = (ob) GF(ip),
   ApY(G(FF(ip)), xp); }
 
@@ -193,7 +193,7 @@ static Vm(enclose) {
   t[4] = 0;
   t[5] = (ob) t;
 
-  at[0] = (ob) clos0;
+  at[0] = (ob) genclo0;
   at[1] = (ob) t;
   at[2] = A(x);
   at[3] = 0;

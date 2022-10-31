@@ -125,7 +125,7 @@ static Inline ob comp_body(la v, ob*e, ob x) {
       !(x = (ob) pull(v, e, 4)))
     return 0;
   x = !(i = llen(loc(*e))) ? x :
-   (ob) pb2(locals, putnum(i), (mo) x);
+   (ob) pb2(setloc, putnum(i), (mo) x);
   x = (i = getnum(asig(*e))) > 0 ?
         (ob) pb2(arity, putnum(i), (mo) x) :
       i < 0 ?
@@ -175,9 +175,9 @@ Co(co_fn, ob x) {
 
 Co(r_co_def_bind) {
   ob _ = *v->sp++;
-  if (e) return imx(v, e, m, loc_, putnum(lidx(loc(*e), _)));
+  if (e) return imx(v, e, m, defloc, putnum(lidx(loc(*e), _)));
   _ = pair(v, v->topl, _);
-  return _ ? imx(v, e, m, tbind, _) : 0; }
+  return _ ? imx(v, e, m, deftop, _) : 0; }
 
 static bool co_def_r(la v, ob *e, ob x) {
   bool _;
@@ -291,16 +291,16 @@ Co(co_sym, ob x) {
 
   if (B(q) == *e) return
     y == putnum(Loc) ?
-      imx(v, e, m, loc, putnum(lidx(loc(*e), x))) :
+      imx(v, e, m, locn, putnum(lidx(loc(*e), x))) :
     y == putnum(Arg) ?
-      imx(v, e, m, arg, putnum(lidx(arg(*e), x))) :
-    imx(v, e, m, clo, putnum(lidx(clo(*e), x)));
+      imx(v, e, m, argn, putnum(lidx(arg(*e), x))) :
+    imx(v, e, m, clon, putnum(lidx(clo(*e), x)));
 
   y = llen(clo(*e));
   with(x, q = snoc(v, clo(*e), x));
   if (!q) return 0;
   clo(*e) = q;
-  return imx(v, e, m, clo, putnum(y)); }
+  return imx(v, e, m, clon, putnum(y)); }
 
 Co(r_co_x) {
   ob x = *v->sp++;
