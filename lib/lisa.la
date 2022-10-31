@@ -602,7 +602,7 @@
     l ((-> 'hom k) e (+ m 2))
     y (ltu e (nom e l) x)
     (? (homp-strict y) (emf i-imm (emx y l))
-     (emi (? (tget e 'loc) i-encll i-encln)
+     (emi (? (tget e 'loc) i-encl1 i-encl0)
       (emx (X (B y) (clo-thd e (A y) k)) l))))
 
    (seq x k) (? x (eval (A x) (seq (B x) k)) k)

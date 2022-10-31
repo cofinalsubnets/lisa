@@ -163,7 +163,7 @@ Vm(clos) { return
 // the next few functions create and store
 // lexical environments.
 // FIXME magic numbers
-static Vm(encl) {
+static Vm(enclose) {
   size_t m = fp->argc, n = m + (m ? 14 : 11);
   Have(n);
   ob x = (ob) GF(ip),
@@ -181,11 +181,14 @@ static Vm(encl) {
     while (n--) ((ob*) arg)[n+1] = fp->argv[n]; }
 
   ob *t = (ob*) block, // compiler thread closure array
-     *at = t + 6; // compiler thread
+     *at = t + 6, // compiler thread
+     // TODO get closure out of stack frame; configure via xp
+     loc = nilp(xp) ? xp : (ob) Locs,
+     clo = fp->clos;
 
   t[0] = arg;
-  t[1] = xp; // Locs or nil
-  t[2] = fp->clos;
+  t[1] = loc;
+  t[2] = clo;
   t[3] = B(x);
   t[4] = 0;
   t[5] = (ob) t;
@@ -200,5 +203,5 @@ static Vm(encl) {
 
 // FIXME these pass the locals array to encl in xp
 // this is a confusing optimization
-Vm(encll) { return ApC(encl, (ob) Locs); }
-Vm(encln) { return ApC(encl, nil); }
+Vm(encl1) { return ApC(enclose, putnum(1)); }
+Vm(encl0) { return ApC(enclose, nil); }

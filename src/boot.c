@@ -139,7 +139,7 @@ static Inline ob comp_body(la v, ob*e, ob x) {
 // (in the former case the car is the list of free variables
 // and the cdr is a hom that assumes the missing variables
 // are available in the closure).
-static ob co_fn_ltu(la v, ob* e, ob n, ob l) {
+static Inline ob co_fn_ltu(la v, ob* e, ob n, ob l) {
   ob y = nil;
   with(n, with(y, with(l,
     l = (l = twop(l) ? l : pair(v, l, nil)) &&
@@ -168,7 +168,7 @@ Co(co_fn, ob x) {
   if (!k) return 0;
   mm(&k);
   if (twop(x = co_fn_ltu(v, e, nom, B(x))))
-    j = e && twop(loc(*e)) ? encll : encln,
+    j = e && twop(loc(*e)) ? encl1 : encl0,
     x = co_fn_clo(v, e, A(x), B(x));
   um;
   return !x ? 0 : pb2(j, x, (mo) k); }
@@ -220,8 +220,7 @@ Co(co_if_pre) {
 Co(co_if_pre_con) {
   mo k, x = pull(v, e, m + 2);
   if (!x) return 0;
-  k = (mo) A(s2(*e));
-  return G(k) == ret ?
+  return G(k = (mo) A(s2(*e))) == ret ?
     pb1(ret, x) :
     pb2(jump, (ob) k, x); }
 
@@ -269,16 +268,15 @@ Co(r_co_ap_call) {
 
 enum where { Here, Loc, Arg, Clo, Wait };
 
-static NoInline ob ls_lex(la v, ob e, ob y) {
-  ob q; return
-    nilp(e) ?
-      (q = tbl_get(v, v->topl, y)) ?
-        pair(v, putnum(Here), q) :
-        pair(v, putnum(Wait), v->topl) :
-    lidx(loc(e), y) >= 0 ? pair(v, putnum(Loc), e) :
-    lidx(arg(e), y) >= 0 ? pair(v, putnum(Arg), e) :
-    lidx(clo(e), y) >= 0 ? pair(v, putnum(Clo), e) :
-    ls_lex(v, par(e), y); }
+static NoInline ob ls_lex(la v, ob e, ob y) { return
+  nilp(e) ?
+    (y = tbl_get(v, v->topl, y)) ?
+      pair(v, putnum(Here), y) :
+      pair(v, putnum(Wait), v->topl) :
+  lidx(loc(e), y) >= 0 ? pair(v, putnum(Loc), e) :
+  lidx(arg(e), y) >= 0 ? pair(v, putnum(Arg), e) :
+  lidx(clo(e), y) >= 0 ? pair(v, putnum(Clo), e) :
+  ls_lex(v, par(e), y); }
 
 Co(co_sym, ob x) {
   ob y, q;
