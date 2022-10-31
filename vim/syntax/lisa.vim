@@ -26,6 +26,7 @@ syn region LisaString start=+"+ skip=+\\\\\|\\"+ end=+"+
 
 syn cluster LisaListCluster contains=@LisaBaseListCluster,LisaString
 
+" FIXME change number syntax
 syn match LisaNumber "\(+\|-\)*\(0d\|0D\)\?\(\.\d\+\|\d\+\(\.\d*\)\=\)"
 syn match LisaNumber "\(+\|-\)*\(0b\|0B\)\(\.[01]\+\|[01]\+\(\.[01]*\)\=\)"
 syn match LisaNumber "\(+\|-\)*\(0o\|0O\)\(\.\o\+\|\o\+\(\.\o*\)\=\)"

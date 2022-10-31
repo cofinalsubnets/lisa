@@ -40,18 +40,20 @@ ob hnom(la v, ob x) {
   return livep(v, x) ? x : nil; }
 
 // instructions for the internal compiler
+//
+// initialize a function
 Vm(hom_u) {
   ArityCheck(1);
-  xp = fp->argv[0];
-  Check(nump(xp));
-  size_t len = getnum(xp) + 2;
+  Check(nump(fp->argv[0]));
+  size_t len = getnum(fp->argv[0]);
   Have(len);
   ob *k = setw(hp, nil, len);
-  hp += len;
-  k[len-2] = 0;
-  k[len-1] = (ob) k;
-  return ApC(ret, (ob) (k + len - 2)); }
+  hp += len + 2;
+  k[len] = 0;
+  k[len+1] = (ob) k;
+  return ApC(ret, (ob) (k + len)); }
 
+// trim a function after writing out code
 Vm(hfin_u) {
   ArityCheck(1);
   xp = fp->argv[0];
@@ -59,46 +61,50 @@ Vm(hfin_u) {
   GF(button((mo) xp)) = (vm*) xp;
   return ApC(ret, xp); }
 
-Vm(emx) {
-  mo k = (mo) *sp++ - 1;
-  G(k) = (vm*) xp;
-  return ApN(1, (ob) k); }
+// emit code
+Vm(emi_u) {
+  ArityCheck(2);
+  Check(nump(fp->argv[0]));
+  Check(homp(fp->argv[1]));
+  mo k = (mo) fp->argv[1] - 1;
+  G(k) = (vm*) getnum(fp->argv[0]);
+  return ApC(ret, (ob) k); }
 
+// frameless version
 Vm(emi) {
   mo k = (mo) *sp++ - 1;
   G(k) = (vm*) getnum(xp);
   return ApN(1, (ob) k); }
 
+// emit data
 Vm(emx_u) {
   ArityCheck(2);
-  xp = fp->argv[1];
-  Check(homp(xp));
-  xp = (ob) ((ob*) xp - 1);
-  ((ob*) xp)[0] = fp->argv[0];
-  return ApC(ret, xp); }
+  Check(homp(fp->argv[1]));
+  mo k = (mo) fp->argv[1] - 1;
+  G(k) = (vm*) fp->argv[0];
+  return ApC(ret, (ob) k); }
 
-Vm(emi_u) {
-  ArityCheck(2);
-  ob n = fp->argv[0];
-  xp = fp->argv[1];
-  Check(nump(n));
-  Check(homp(xp));
-  xp = (ob) ((ob*) xp - 1);
-  ((ob*) xp)[0] = getnum(n);
-  return ApC(ret, xp); }
+// frameless
+Vm(emx) {
+  mo k = (mo) *sp++ - 1;
+  G(k) = (vm*) xp;
+  return ApN(1, (ob) k); }
 
+// read an instruction from a thread (as a fixnum)
 Vm(peeki_u) {
   ArityCheck(1);
   xp = fp->argv[0];
   Check(homp(xp));
   return ApC(ret, putnum(G(xp))); }
 
+// read data from a thread (be sure it's really data!)
 Vm(peekx_u) {
   ArityCheck(1);
   xp = fp->argv[0];
   Check(homp(xp));
   return ApC(ret, (ob) G(xp)); }
 
+// thread pointer arithmetic -- not bounds checked!
 Vm(seek_u) {
   ArityCheck(2);
   Check(homp(fp->argv[0]));
@@ -108,9 +114,13 @@ Vm(seek_u) {
   return ApC(ret, (ob) (ip + xp)); }
 
 // dispatch a data thread
-Vm(disp) { return ApC(((mtbl) GF(ip))->does, xp); }
+// TODO maybe we could do this with closures instead?
+Vm(disp) {
+  return ApC(((mtbl) GF(ip))->does, xp); }
 
-// this is used to create closures.
+// closure functions
+//
+// pop some things off the stack into an array.
 Vm(take) {
   ob *t, n = getnum((ob) GF(ip));
   Have(n + 2);
@@ -119,9 +129,6 @@ Vm(take) {
   t[n] = 0;
   t[n+1] = (ob) t;
   return ApC(ret, (ob) t); }
-
-// closure functions
-//
 
 // this function is run the first time a user
 // function with a closure is called. its
