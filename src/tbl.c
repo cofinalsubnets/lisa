@@ -81,7 +81,7 @@ Vm(tlen) { return ApN(1, putnum(((tbl) xp)->len)); }
 
 Vm(tkeys) { return
   CallOut(v->xp = tks(v, xp)),
-  xp ? ApN(1, xp) : ApC(oom_err, nil); }
+  xp ? ApN(1, xp) : ApC(xoom, nil); }
 
 Vm(thas_u) {
   ArityCheck(2);
@@ -95,19 +95,19 @@ Vm(tset_u) {
   xp = fp->argv[0];
   Check(tblp(xp));
   CallOut(v->xp = tblss(v, 1, fp->argc));
-  return ApC(xp ? ret : oom_err, xp); }
+  return ApC(xp ? ret : xoom, xp); }
 
 Vm(tbl_u) {
   ob _ = fp->argc;
   CallOut(_ = (v->xp = table(v)) && tblss(v, 0, _));
-  return ApC(_ ? ret : oom_err, xp); }
+  return ApC(_ ? ret : xoom, xp); }
 
 Vm(tkeys_u) {
   ArityCheck(1);
   xp = fp->argv[0];
   Check(tblp(xp));
   CallOut(v->xp = tks(v, xp));
-  return ApC(xp ? ret : oom_err, xp); }
+  return ApC(xp ? ret : xoom, xp); }
 
 Vm(tlen_u) {
   ArityCheck(1);
@@ -118,7 +118,7 @@ Vm(tlen_u) {
 Vm(tset) {
   ob x = *sp++, y = *sp++;
   CallOut(v->xp = tbl_set(v, xp, x, y));
-  return xp ? ApN(1, xp) : ApC(oom_err, xp); }
+  return xp ? ApN(1, xp) : ApC(xoom, xp); }
 
 // shrinking a table never allocates memory, so it's safe
 // to do at any time.
@@ -235,7 +235,7 @@ static Vm(do_tbl) {
     default: return
       xp = (ob) ip,
       CallOut(v->xp = tblss(v, 1, a)),
-      ApC(xp ? ret : oom_err, xp); } }
+      ApC(xp ? ret : xoom, xp); } }
 
 static Gc(cp_tbl) {
   tbl src = (tbl) x, dst = bump(v, Width(tbl));

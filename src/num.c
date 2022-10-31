@@ -24,18 +24,18 @@ Vm(sal_u) {
   mm_u(fp->argc-1, fp->argv+1, getnum(fp->argv[0]), <<); }
 
 Vm(dqv) { return xp == putnum(0) ?
-  ApC(dom_err, xp) :
+  ApC(xdom, xp) :
   ApN(1, putnum(getnum(*sp++) / getnum(xp))); }
 
 Vm(mod) { return xp == putnum(0) ?
-  ApC(dom_err, xp) :
+  ApC(xdom, xp) :
   ApN(1, putnum(getnum(*sp++) % getnum(xp))); }
 
 #define mm_void(_c, _v, _z, op) {\
   ob x, *xs = _v, *l = xs + _c;\
   for (xp = _z; xs < l; xp = xp op getnum(x)) {\
     Check(nump(x = *xs++));\
-    if (x == putnum(0)) return ApC(dom_err, x);}\
+    if (x == putnum(0)) return ApC(xdom, x);}\
   return ApC(ret, putnum(xp));}
 
 Vm(div_u) {

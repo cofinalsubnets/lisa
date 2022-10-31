@@ -28,6 +28,7 @@ it natively.
 - hash literals
 - quasiquotes
 - sprintf
+- function inlining
 
 ## better hashing
 right now hashing performance on functions and esp. hash

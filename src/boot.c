@@ -236,7 +236,7 @@ Co(co_if_post_con) {
 Co(co_if_pre_ant) {
   mo x = pull(v, e, m+2);
   if (!x) return 0;
-  x = pb2(branch, A(s1(*e)), x);
+  x = pb2(br1, A(s1(*e)), x);
   s1(*e) = B(s1(*e));
   return x; }
 
@@ -378,7 +378,7 @@ Vm(ev_u) {
   if (xp && homp(xp) && G(xp) != ev_u) return ApY((mo) xp, nil);
   mo y;
   CallOut(y = ana(v, fp->argv[0], putnum(ret)));
-  return y ? ApY(y, xp) : ApC(oom_err, xp); }
+  return y ? ApY(y, xp) : ApC(xoom, xp); }
 
 // apply expression pullbacks
 static mo ana(la v, ob x, ob k) {

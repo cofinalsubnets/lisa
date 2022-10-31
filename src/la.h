@@ -6,15 +6,15 @@
 
 typedef la_ob ob;
 typedef struct mo *mo; // procedures
-typedef struct fr *fr; // stack frame
+typedef struct sf *fr, *sf; // stack frame
 #define Vm(n, ...) ob n(la v, ob xp, mo ip, ob *hp, ob *sp, fr fp)
 typedef Vm(vm);
 #define Gc(n) ob n(la v, ob x, ob *pool0, ob *top0)
 Gc(cp);
 
 struct mo { vm *go; };
-struct fr {
-  ob clos;
+struct sf {
+  ob clos; // FIXME remove from stack frame
   mo retp;
   fr subd;
   size_t argc;
@@ -185,8 +185,9 @@ static Inline size_t ror(size_t x, size_t n) {
 
 // these are vm functions used by C but not lisp.
 #define cfns(_)\
-  _(gc) _(dom_err) _(oom_err) _(ary_err)\
-  _(setclo) _(genclo0) _(genclo1) _(do_id) _(yield)
+  _(gc) _(xdom) _(xoom) _(xary)\
+  _(setclo) _(genclo0) _(genclo1)\
+  _(do_id) _(yield)
 cfns(ninl)
 #undef cfns
 
@@ -209,32 +210,45 @@ cfns(ninl)
  _(tget) _(tset) _(thas) _(tlen)\
  _(cons) _(car) _(cdr)\
  _(emi) _(emx)\
- _(branch) _(barnch) _(breq) _(brne)\
- _(brlt) _(brlteq) _(brgteq) _(brlt2)\
- _(brlteq2) _(brgt2) _(brgt) _(brne)\
+ _(br1) _(br0) _(bre) _(brn)\
+ _(brl) _(brle) _(brge) _(brl2)\
+ _(brle2) _(brg2) _(brg)\
  _(push) _(dupl)\
 
 i_internals(ninl)
 
 // primitive functions
-// ev must be the first item in this list!
-#define i_primitives(_) _(ev_u, "ev")\
- _(rx_u, "rx") _(nilp_u, "nilp") _(rnd_u, "rand")\
- _(sym_u, "sym") _(sar_u, ">>") _(sal_u, "<<")\
+// FIXME due to a hack ev must be the first item in this list
+#define i_primitives(_)\
+ _(ev_u, "ev") _(ap_u, "ap")\
+  \
+ _(nump_u, "nump") _(rnd_u, "rand")\
+ _(add_u, "+") _(sub_u, "-") _(mul_u, "*")\
+ _(div_u, "/") _(mod_u, "%")\
+ _(sar_u, ">>") _(sal_u, "<<")\
  _(band_u, "&") _(bnot_u, "!") _(bor_u, "|") _(bxor_u, "^")\
- _(add_u, "+") _(hom_u, "hom") _(sub_u, "-") _(mul_u, "*")\
- _(div_u, "/") _(mod_u, "%") _(lt_u, "<") _(lteq_u, "<=")\
- _(eq_u, "=") _(gteq_u, ">=") _(gt_u, ">") _(car_u, "A")\
- _(cdr_u, "B") _(cons_u, "X") _(sget_u, "sget") _(str_u, "str")\
- _(slen_u, "slen") _(ssub_u, "ssub")   _(scat_u, "scat")\
- _(tlen_u, "tlen") _(tbl_u, "tbl") _(tget_u, "tget")\
- _(thas_u, "thas") _(tset_u, "tset") _(tdel_u, "tdel")\
- _(tkeys_u, "tkeys") _(seek_u, "seek") _(dom_err, "fail")\
- _(putc_u, "putc") _(ystr_u, "ystr") _(emx_u, "emx")\
- _(emi_u, "emi") _(show_u, ".") _(ap_u, "ap")\
- _(peeki_u, "peeki") _(hfin_u, "hfin") _(peekx_u, "peekx")\
- _(twop_u, "twop") _(nump_u, "nump") _(homp_u, "homp")\
- _(tblp_u, "tblp") _(symp_u, "symp") _(strp_u, "strp")\
+  \
+ _(twop_u, "twop") _(cons_u, "X") _(car_u, "A") _(cdr_u, "B")\
+  \
+ _(hom_u, "hom") _(homp_u, "homp")\
+ _(emi_u, "emi") _(emx_u, "emx")\
+ _(peeki_u, "peeki") _(peekx_u, "peekx")\
+ _(seek_u, "seek") _(hfin_u, "hfin")\
+  \
+ _(tbl_u, "tbl") _(tblp_u, "tblp") _(tlen_u, "tlen")\
+ _(tget_u, "tget") _(thas_u, "thas") _(tset_u, "tset")\
+ _(tdel_u, "tdel") _(tkeys_u, "tkeys")\
+  \
+ _(str_u, "str") _(strp_u, "strp") _(slen_u, "slen")\
+ _(ssub_u, "ssub") _(scat_u, "scat") _(sget_u, "sget")\
+  \
+ _(sym_u, "sym") _(symp_u, "symp") _(ystr_u, "ystr")\
+  \
+ _(rx_u, "rx") _(show_u, ".") _(putc_u, "putc")\
+ _(eq_u, "=") _(lt_u, "<") _(lteq_u, "<=")\
+ _(gteq_u, ">=") _(gt_u, ">") _(nilp_u, "nilp")\
+  \
+ _(xdom, "fail")
 
 i_primitives(ninl)
 #undef ninl
@@ -277,7 +291,7 @@ i_primitives(ninl)
 #define ApC(f, x) (f)(v, (x), ip, hp, sp, fp)
 #define ApY(f, x) (ip = (mo) (f), ApC(G(ip), (x)))
 
-#define ArityCheck(n) if (n > fp->argc) return ApC(ary_err, putnum(n))
-#define Check(_) if (!(_)) return ApC(dom_err, xp)
+#define ArityCheck(n) if (n > fp->argc) return ApC(xary, putnum(n))
+#define Check(_) if (!(_)) return ApC(xdom, xp)
 #define Have1() if (sp == hp) return (v->xp = 1, ApC(gc, xp))
 #define Have(n) if (sp - hp < n) return (v->xp = n, ApC(gc, xp))

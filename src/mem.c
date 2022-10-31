@@ -170,4 +170,4 @@ static void copy_(la v, size_t len1, ob *pool1) {
 NoInline Vm(gc) {
   size_t req = v->xp;
   CallOut(req = please(v, req));
-  return req ? ApN(0, xp) : ApC(oom_err, xp); }
+  return req ? ApN(0, xp) : ApC(xoom, xp); }

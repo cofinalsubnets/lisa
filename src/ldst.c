@@ -54,7 +54,7 @@ Vm(defloc) { return
 Vm(deftop) {
   ob a = (ob) GF(ip);
   CallOut(v->xp = tbl_set(v, A(a), B(a), xp));
-  return xp ? ApN(2, xp) : ApC(oom_err, xp); }
+  return xp ? ApN(2, xp) : ApC(xoom, xp); }
 
 // allocate local variable array
 Vm(setloc) {
@@ -93,7 +93,7 @@ Vm(late) {
 static NoInline Vm(varg0) {
   size_t reqd = getnum((ob) GF(ip));
   Have1();
-  fp = cpyw((ob*) fp - 1, fp, Width(fr) + fp->argc);
+  fp = cpyw((ob*) fp - 1, fp, Width(sf) + fp->argc);
   sp = (ob*) fp;
   fp->argc++;
   fp->argv[reqd] = nil;

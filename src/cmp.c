@@ -43,10 +43,11 @@ cmp(LT, lt) cmp(LE, lteq) cmp(GE, gteq) cmp(GT, gt) cmp(EQ, eq)
 Tp(num) Tp(hom) Tp(two) Tp(sym) Tp(str) Tp(tbl) Tp(nil)
 
 // type/arity checking
-Vm(idZ) { return nump(xp) ? ApN(1, xp) : ApC(dom_err, xp); }
-Vm(idH) { return homp(xp) ? ApN(1, xp) : ApC(dom_err, xp); }
-Vm(idT) { return tblp(xp) ? ApN(1, xp) : ApC(dom_err, xp); }
-Vm(id2) { return twop(xp) ? ApN(1, xp) : ApC(dom_err, xp); }
+Vm(idZ) { return nump(xp) ? ApN(1, xp) : ApC(xdom, xp); }
+Vm(idH) { return homp(xp) ? ApN(1, xp) : ApC(xdom, xp); }
+Vm(idT) { return tblp(xp) ? ApN(1, xp) : ApC(xdom, xp); }
+Vm(id2) { return twop(xp) ? ApN(1, xp) : ApC(xdom, xp); }
 Vm(arity) {
   ob reqd = getnum(GF(ip));
-  return fp->argc >= reqd ? ApN(2, xp) : ApC(ary_err, (ob) GF(ip)); }
+  ArityCheck(reqd);
+  return ApN(2, xp); }

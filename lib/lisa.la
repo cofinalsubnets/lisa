@@ -138,7 +138,7 @@
 
   ; for specialized branch instructions ;
   ; takes an argument for each branch case
-  (br2 b c) (f1 peeki i-branch b i-barnch c)
+  (br2 b c) (f1 peeki i-br1 b i-br0 c)
 
   (tbl
    ; this along with "return forwarding" in branches is how
@@ -149,12 +149,12 @@
    i-argn (argn i-arg0 i-arg1 i-arg2 i-arg3)
    i-locn (argn i-loc0 i-loc1 i-loc2 i-loc3)
    i-clon (argn i-clo0 i-clo1 i-clo2 i-clo3)
-   i-lt (br2 i-brlt i-brlt2)
-   i-lteq (br2 i-brlteq i-brlteq2)
-   i-gt (br2 i-brgt i-brgt2)
-   i-gteq (br2 i-brgteq i-brlt)
-   i-eq (br2 i-breq i-brne)
-   i-nilpp (f1 peeki i-branch i-barnch i-barnch i-branch)
+   i-lt (br2 i-brl i-brl2)
+   i-lteq (br2 i-brle i-brle2)
+   i-gt (br2 i-brg i-brg2)
+   i-gteq (br2 i-brge i-brl)
+   i-eq (br2 i-bre i-brn)
+   i-nilpp (f1 peeki i-br1 i-br0 i-br0 i-br1)
    i-imm (f1 peekx 0 i-zero 1 i-one)
    ))
 
@@ -173,7 +173,7 @@
    (eval (A x) (:
     (fold k x y)
      (eval x (xc i (? (~ y) (push2 k)
-      (xc i-barnch (peek2 (xc i-push
+      (xc i-br0 (peek2 (xc i-push
        (fold k (A y) (B y))))))))
     (xc i-push (pop2 (fold k (AB x) (BB x)))))))
 
@@ -257,7 +257,7 @@
     (eval (A x) (xc i-push (:
      (fold k x y) (:
       l (eval x (xc i-eq (? (~ y) k
-         (xc i-barnch (peek2 (fold k (A y) (B y)))))))
+         (xc i-br0 (peek2 (fold k (A y) (B y)))))))
       (? y (xc i-dupl l) l))
      (pop2 (fold (push2 k) (AB x) (BB x))))))))
 
@@ -268,7 +268,7 @@
    symp (nary i-sympp () ())
    strp (nary i-strpp () ())
    tblp (nary i-tblpp () ())
-   fail (nary (peeki fail) ())))
+   ))
 
    ) (: ; new let expn makes sure ^^^ exist & don't make a closure vvv
 
@@ -584,7 +584,7 @@
        (emf i-jump ; otherwise jump somewhere ...
         (emx (? (= i i-jump) (peekx (seek ex 1)) ex) thd))))
      (? (~ (B x)) (eval (A x) fin)
-      (eval (A x) (pop1 (xc i-branch (peek1
+      (eval (A x) (pop1 (xc i-br1 (peek1
        (loop (BB x) (push1 (eval (AB x) fin)))))))))
     (pop2 (loop x (push2 k))))
 

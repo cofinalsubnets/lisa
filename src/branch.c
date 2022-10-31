@@ -5,7 +5,7 @@
 //
 // calling and returning
 Vm(call) {
-  Have(Width(fr));
+  Have(Width(sf));
   fr subd = fp;
   sp = (ob*) (fp = (fr) sp - 1);
   fp->argc = getnum(GF(ip));
@@ -78,19 +78,19 @@ Vm(jump) { return ApY(GF(ip), xp); }
 #define Br(nom, test, a, x, b, y) Vm(nom) {\
   return ApY((test) ? (ob) a(ip) : (ob) b(ip), x); }
 // combined test/branch instructions
-Br(branch, xp != nil, GF, xp, FF, xp)
-Br(barnch, xp != nil, FF, xp, GF, xp)
+Br(br1, xp != nil, GF, xp, FF, xp)
+Br(br0, xp != nil, FF, xp, GF, xp)
 
-Br(breq, eql(v, xp, *sp++), GF, T, FF, nil)
-Br(brne, eql(v, xp, *sp++), FF, T, GF, nil)
+Br(bre, eql(v, xp, *sp++), GF, T, FF, nil)
+Br(brn, eql(v, xp, *sp++), FF, T, GF, nil)
 
-Br(brlt,    *sp++ <  xp, GF, xp, FF, nil)
-Br(brlt2,   *sp++ <  xp, FF, xp, GF, nil)
-Br(brlteq,  *sp++ <= xp, GF, xp, FF, nil)
-Br(brlteq2, *sp++ <= xp, FF, xp, GF, nil)
-Br(brgt,    *sp++ >  xp, GF, xp, FF, nil)
-Br(brgt2,   *sp++ >  xp, FF, xp, GF, nil)
-Br(brgteq,  *sp++ >= xp, GF, xp, FF, nil)
+Br(brl,    *sp++ <  xp, GF, xp, FF, nil)
+Br(brl2,   *sp++ <  xp, FF, xp, GF, nil)
+Br(brle,  *sp++ <= xp, GF, xp, FF, nil)
+Br(brle2, *sp++ <= xp, FF, xp, GF, nil)
+Br(brg,    *sp++ >  xp, GF, xp, FF, nil)
+Br(brg2,   *sp++ >  xp, FF, xp, GF, nil)
+Br(brge,  *sp++ >= xp, GF, xp, FF, nil)
 // brgteq2 is brlt
 
 // return to C

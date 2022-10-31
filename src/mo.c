@@ -134,14 +134,13 @@ Vm(take) {
 Vm(genclo0) {
   ob *ec = (ob*) GF(ip), arg = ec[0];
   size_t adic = nilp(arg) ? 0 : getnum(G(arg));
-  Have(Width(fr) + adic + 1);
+  Have(Width(sf) + adic + 1);
   ob loc = ec[1];
   fr subd = fp;
   G(ip) = genclo1;
   sp = cpyw(sp - adic, (ob*) arg + 1, adic);
   ec = (ob*) GF(ip);
-  fp = (fr) sp - 1;
-  sp = (ob*) fp;
+  sp = (ob*) (fp = (fr) sp - 1);
   fp->retp = ip;
   fp->subd = subd;
   fp->argc = adic;
