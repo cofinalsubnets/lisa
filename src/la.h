@@ -29,10 +29,16 @@ typedef const struct mtbl {
   bool (*equi)(la, ob, ob); } *mtbl;
 
 // pairs
-typedef struct two { vm *disp; mtbl mtbl; ob a, b; } *two;
+typedef struct two {
+  vm *disp;
+  mtbl mtbl;
+  ob a, b; } *two;
 
 // strings
-typedef struct str { vm *disp; mtbl mtbl; size_t len; char text[]; } *str;
+typedef struct str {
+  vm *disp; mtbl mtbl;
+  size_t len;
+  char text[]; } *str;
 
 // symbols
 // FIXME this is a silly way to store internal symbols
@@ -40,11 +46,15 @@ typedef struct str { vm *disp; mtbl mtbl; size_t len; char text[]; } *str;
 // - anonymous symbols waste 2 words
 typedef struct sym {
   vm *disp; mtbl mtbl;
-  ob nom, code;
+  str nom;
+  size_t code;
   struct sym *l, *r; } *sym;
 
 // hash tables
-typedef struct tbl { vm *disp; mtbl mtbl; ob *tab; size_t len, cap; } *tbl;
+typedef struct tbl {
+  vm *disp; mtbl mtbl;
+  size_t len, cap;
+  ob *tab; } *tbl;
 
 // grammar symbols
 enum lex { Def, Cond, Lamb, Quote, Seq, Splat, Eval, LexN };
@@ -88,7 +98,6 @@ ob table(la),
 // strings & symbols
 sym symof(la, str);
 str strof(la, const char*);
-bool symofp(sym, const char*);
 
 // functions
 mo mkmo(la, size_t), // allocator
