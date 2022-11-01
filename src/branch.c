@@ -43,7 +43,7 @@ Vm(ret) { return
 //
 
 // if the adicity is different we need to do more.
-static NoInline Vm(recne) {
+static NoInline Vm(recn) {
   // save return address
   v->xp = (ob) fp->subd;
   v->ip = fp->retp;
@@ -63,7 +63,7 @@ Vm(rec) {
   ob _ = getnum(GF(ip));
   ip = (mo) xp;
   xp = _;
-  if (fp->argc != xp) return ApC(recne, xp);
+  if (fp->argc != xp) return ApC(recn, xp);
   // fast case where the calls have the same number of args
   for (; xp--; fp->argv[xp] = sp[xp]);
   sp = (ob*) fp;

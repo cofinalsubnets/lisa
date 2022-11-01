@@ -1,5 +1,4 @@
 #include "la.h"
-#include <stdarg.h>
 
 // errors
 Vm(xdom) { return Pack(), nope(v, "is undefined"); }
@@ -14,6 +13,7 @@ static NoInline void show_call(la v, mo ip, fr fp) {
     fputc(' ', stderr), la_tx(v, stderr, fp->argv[i++]));
   fputc(')', stderr); }
 
+#include <stdarg.h>
 static void verrp(la v, const char *msg, va_list xs) {
   mo ip = v->ip;
   fr fp = v->fp;
@@ -41,7 +41,6 @@ NoInline ob nope(la v, const char *msg, ...) {
   if (msg) {
     va_list xs;
     va_start(xs, msg), verrp(v, msg, xs), va_end(xs); }
-  if (v->panic) return v->panic(v);
   v->fp = (fr) (v->sp = v->pool + v->len);
   v->ip = (mo) (v->xp = nil);
   return 0; }

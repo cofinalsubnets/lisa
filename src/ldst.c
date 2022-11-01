@@ -25,11 +25,11 @@ Vm(loc2) { return ApN(1, Locs[2]); }
 Vm(loc3) { return ApN(1, Locs[3]); }
 
 // closure variables
-Vm(clon) { return ApN(2, ((ob*) fp->clos)[getnum(GF(ip))]); }
-Vm(clo0) { return ApN(1, ((ob*) fp->clos)[0]); }
-Vm(clo1) { return ApN(1, ((ob*) fp->clos)[1]); }
-Vm(clo2) { return ApN(1, ((ob*) fp->clos)[2]); }
-Vm(clo3) { return ApN(1, ((ob*) fp->clos)[3]); }
+Vm(clon) { return ApN(2, Clos[getnum(GF(ip))]); }
+Vm(clo0) { return ApN(1, Clos[0]); }
+Vm(clo1) { return ApN(1, Clos[1]); }
+Vm(clo2) { return ApN(1, Clos[2]); }
+Vm(clo3) { return ApN(1, Clos[3]); }
 
 ////
 /// Store Instructions
@@ -71,6 +71,7 @@ static NoInline Vm(nom_err) {
   return Pack(), nope(v,
     "referenced free variable `%s'",
     nilp(xp) ? 0 : ((str) xp)->text); }
+
 // late binding
 // TODO dynamic type checking here
 Vm(late) {
@@ -112,6 +113,6 @@ Vm(varg) {
   hp += Width(two) * vdic;
   for (size_t i = vdic; i--;
     ini_two(t + i, fp->argv[reqd + i], (ob) (t + i + 1)));
-  t[vdic-1].b = nil,
+  t[vdic-1].b = nil;
   fp->argv[reqd] = (ob) t;
   return ApN(2, xp); }

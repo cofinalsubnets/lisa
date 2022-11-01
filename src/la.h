@@ -38,7 +38,10 @@ typedef struct str { vm *disp; mtbl mtbl; size_t len; char text[]; } *str;
 // FIXME this is a silly way to store internal symbols
 // - it's slower than a hash table
 // - anonymous symbols waste 2 words
-typedef struct sym { vm *disp; mtbl mtbl; ob nom, code, l, r; } *sym;
+typedef struct sym {
+  vm *disp; mtbl mtbl;
+  ob nom, code;
+  struct sym *l, *r; } *sym;
 
 // hash tables
 typedef struct tbl { vm *disp; mtbl mtbl; ob *tab; size_t len, cap; } *tbl;
@@ -62,15 +65,19 @@ struct la {
   union { clock_t t0; ob *cp; };
 
   // system data
-  ob topl, syms, lex[LexN];
-  intptr_t rand;
-  ob (*panic)(struct la*); };
+  ob topl; // global scope
+  sym syms; // symbol table
+  ob lex[LexN]; // lexicon
+  intptr_t rand; };
 
 void *cells(la, size_t);
 
 // pairs
 ob pair(la, ob, ob);
 size_t llen(ob);
+
+ob ns_get(la, ob),
+   ns_set(la, ob, ob);
 
 // hash tables
 size_t hash(la, ob);
@@ -79,9 +86,9 @@ ob table(la),
    tbl_get(la, ob, ob);
 
 // strings & symbols
-ob string(la, const char*),
-   intern(la, ob),
-   interns(la, const char*);
+sym symof(la, str);
+str strof(la, const char*);
+bool symofp(sym, const char*);
 
 // functions
 mo mkmo(la, size_t), // allocator
@@ -281,6 +288,7 @@ i_primitives(ninl)
 
 // FIXME confusing premature optimization
 #define Locs ((ob**)fp)[-1]
+#define Clos ((ob*)fp->clos)
 // the pointer to the local variables array isn't in the frame struct. it
 // isn't present for all functions, but if it is it's in the word of memory
 // immediately preceding the frame pointer. if a function has

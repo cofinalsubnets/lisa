@@ -1,64 +1,68 @@
-## remove recursion from C
-either replace recursive routines with nonrecursive
-versions, or move the recursion onto the managed stack.
-this is the only portable way to handle stack overflows.
+# TODO
 
-- gc (use cheney's algorithm)
-- eql (recursive on pairs; use off semispace)
-- tx (recursive on pairs; use off semispace)
-- hash (recursive on pairs; use off semispace)
+## missing user features
+- floating point
+- bignums
+- namespaces / module system
+- shell/os/general scripting functions; "backticks" like bash/perl/ruby
+- sprintf
+- quasiquotes
+- hash/array literals
+- richer string syntax (delimiters, escapes, interpolation)
+- dynamic arrays
+- continuations
+- exception-like error handling (or at least protect eval somehow)
+- file/network i/o (with async)
+- explicit locale/encoding support
+- C API
 
-## stop using null-terminated strings
-we already store the length so this is mostly a matter of
-switching up C library functions.
+## build options
+- as dynamic/static library
+- without malloc/stdio/libc
+
+## test on more platforms
+- 32-bit x86/ARM/RISC-V
+- ESP32
 
 ## benchmarks
-this is in the git history somewhere, but it's a ruby
-script. we should add enough scripting functionality to do
+this is in git somewhere, but it's a ruby script.
+we should add enough scripting functionality to do
 it natively.
 
-## missing functionality
-- dynamic arrays
-- continuations 
-- error handling
-- finalizers
-- shell functions
-- file & network i/o
-- more string escape sequences
-- hash literals
-- quasiquotes
-- sprintf
+## compiler improvements
+- static type inference & checking
 - function inlining
 
-## better hashing
-right now hashing performance on functions and esp. hash
-tables is very poor. also the hashing algorithm is totally
-ad hoc and untested.
+## GC improvements
+### finalizers
+pretty simple (in git somewhere); we need this to
+clean up i/o streams & enable memory management
+of user data.
 
-## use hash table for internal symbols
-instead of the current binary tree.
-
-## design C API & build as a dynamic library
-and link with main executable. this also means choosing a
-client API.
-
-## static type inference / checking
-use k2 code for this.
-
-## semispace GC
+### semispace GC
 this is the "traditional" way to do copying GC. it will
-minimize calls to the block allocator and ensure we can
-always recover from OOM.
+minimize calls to the block allocator, ensure we can
+always recover from OOM, and give us a free block of
+memory we can use for heap-bounded non-allocating
+recursive operations so they can't overflow the stack.
 
-## embedded compile options
-at a minimum this means adding an option for statically
-allocated memory blocks.
+### cheney's algorithm
+should be simple now that tagged pointers are out.
+split up copy function into evac/walk & trampoline so
+as not to use C stack.
 
-## configurable memory scaling
-it would make sense to do this after adding gc stats and
-benchmarks. fibonacci numbers would give a gentler memory
-curve than powers of 2.
-
-## collect GC statistics
+### collect GC statistics
 number of cycles, average/extreme latency, average memory
 usage ...
+
+### generational GC
+this might not be worth it in the end. we need benchmarks
+to tell!
+
+## other runtime improvements
+- parse from strings (not FILE\*s)
+- stop using null-terminated strings
+- closure pointer on stack (instead of in frame)
+- improve hashing of mutable data
+- use a hash table for internal symbols
+- remove recursion from eq, tx, hash (use off semispace)

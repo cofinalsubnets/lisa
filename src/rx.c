@@ -6,7 +6,7 @@ static str
   rx_atom(la, FILE*, char),
   rx_str(la, FILE*);
 static ob
-  rx_num(la, ob, const char*, int);
+  rx_num(la, str, const char*, int);
 static int nextc(FILE*);
 
 ////
@@ -47,7 +47,7 @@ static ob rx1(la v, FILE *i) {
     case '"': return pull(v, i, (ob) rx_str(v, i));
     case '\'': return Push(putnum(pxq)) ? rx1(v, i) : pull(v, i, 0); }
   str a = rx_atom(v, i, c);
-  ob x = a ? rx_num(v, (ob) a, a->text, 1) : 0;
+  ob x = a ? rx_num(v, a, a->text, 1) : 0;
   return pull(v, i, x); }
 
 static ob rx2(la v, FILE *i) {
@@ -104,20 +104,20 @@ static str rx_atom(la v, FILE *p, char c0) {
       case EOF: return o->text[n++] = 0, o->len = n, o; }
   return 0; }
 
-static NoInline ob rx_numb(la v, ob b, const char *in, int sign, int rad) {
+static NoInline ob rx_numb(la v, str b, const char *in, int sign, int rad) {
   static const char *ds = "0123456789abcdefghijklmnopqrstuvwxyz";
   intptr_t out = 0;
   int c = tolower(*in++);
-  if (!c) return intern(v, b); // fail to parse empty string
+  if (!c) return (ob) symof(v, b); // fail to parse empty string
   do {
     int d = 0;
     while (ds[d] && ds[d] != c) d++;
-    if (d >= rad) return intern(v, b); // fail to parse oob digit
+    if (d >= rad) return (ob) symof(v, b); // fail to parse oob digit
     out = out * rad + d;
   } while ((c = tolower(*in++)));
   return putnum(sign * out); }
 
-static NoInline ob rx_num(la v, ob b, const char *s, int sign) {
+static NoInline ob rx_num(la v, str b, const char *s, int sign) {
   switch (*s) {
     case '+': return rx_num(v, b, s+1, sign);
     case '-': return rx_num(v, b, s+1, -sign);

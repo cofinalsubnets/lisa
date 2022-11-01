@@ -1,13 +1,12 @@
 #include "la.h"
 #include <string.h>
 
-ob string(la v, const char* c) {
+str strof(la v, const char* c) {
   size_t bs = 1 + strlen(c); // XXX null terminated
   str o = cells(v, Width(str) + b2w(bs));
   if (!o) return 0;
-  o = ini_str(o, bs);
   memcpy(o->text, c, bs);
-  return (ob) o; }
+  return ini_str(o, bs); }
 
 // string instructions
 Vm(slen_u) {
@@ -69,13 +68,10 @@ Vm(str_u) {
   Have(words);
   str s = (str) hp;
   hp += words;
-  for (; i < bytes-1; s->text[i++] = xp) // XXX
+  for (; i < bytes-1; s->text[i++] = xp)
     if (!(xp = getnum(fp->argv[i]))) break;
   s->text[i] = 0; // XXX
-  s->disp = disp;
-  s->mtbl = mtbl_str; // FIXME
-  s->len = i + 1; // XXX
-  return ApC(ret, (ob) s); }
+  return ApC(ret, (ob) ini_str(s, i+1)); }
 
 static Vm(do_str) {
   str s = (str) ip;
