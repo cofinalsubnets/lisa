@@ -6,4 +6,4 @@ ob ns_get(la v, ob y) {
 ob ns_set(la v, ob y, ob x) {
   return tbl_set(v, v->topl, y, x); }
 
-ob ns_tbl(la v) { return v->topl; }
+ob ns_tbl(la v) { return (ob) v->topl; }

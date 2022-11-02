@@ -41,19 +41,21 @@ static ob
 static void
   tbl_shrink(la, tbl) NoInline;
 
-ob table(la v) {
+tbl table(la v) {
   tbl t = cells(v, Width(tbl) + 3);
   if (t) t = ini_tbl(t, 0, 0, (ob*) (t+1)),
          t->tab[0] = nil,
          t->tab[1] = 0,
          t->tab[2] = (ob) t->tab;
-  return (ob) t; }
+  return t; }
 
-ob tbl_set(la v, ob t, ob k, ob x) {
-  with(t, x = tbl_set_s(v, (tbl) t, k, x));
-  if (x && tbl_load((tbl) t) > 1)
-    with(x, t = (ob) tbl_grow(v, (tbl) t)),
-    x = t ? x : t;
+ob tbl_set(la v, tbl t, ob k, ob x) {
+  ob _ = (ob) t;
+  with(_, x = tbl_set_s(v, t, k, x));
+  t = (tbl) _;
+  if (x && tbl_load(t) > 1)
+    with(x, t = tbl_grow(v, t)),
+    x = t ? x : 0;
   return x; }
 
 ob tbl_get(la v, tbl t, ob k) { return
@@ -106,15 +108,16 @@ Vm(tset_u) {
 
 Vm(tbl_u) {
   ob _ = fp->argc;
-  CallOut(_ = (v->xp = table(v)) && tblss(v, 0, _));
+  CallOut(_ = (v->xp = (ob) table(v)) && tblss(v, 0, _));
   return _ ? ApC(ret, xp) : ApC(xoom, nil); }
 
 Vm(tkeys_u) {
   ArityCheck(1);
   xp = fp->argv[0];
   Check(tblp(xp));
-  CallOut(v->xp = tks(v));
-  return xp ? ApC(ret, xp) : ApC(xoom, nil); }
+  ob x;
+  CallOut(x = tks(v));
+  return x ? ApC(ret, x) : ApC(xoom, xp); }
 
 Vm(tlen_u) {
   ArityCheck(1);
@@ -124,8 +127,8 @@ Vm(tlen_u) {
 
 Vm(tset) {
   ob x = *sp++, y = *sp++;
-  CallOut(v->xp = tbl_set(v, xp, x, y));
-  return xp ? ApN(1, xp) : ApC(xoom, xp); }
+  CallOut(x = tbl_set(v, (tbl) xp, x, y));
+  return x ? ApN(1, x) : ApC(xoom, xp); }
 
 // FIXME so bad :(
 static ob tbl_del(la v, tbl y, ob key) {
@@ -168,15 +171,16 @@ static NoInline tbl tbl_grow(la v, tbl t) {
       NEXT(e) = tab1[i],
       tab1[i] = e);
 
-  t->cap = cap1;
-  t->tab = tab1;
-  return t; }
+  return
+    t->cap = cap1,
+    t->tab = tab1,
+    t; }
 
 static ob tbl_set_s(la v, tbl t, ob k, ob x) {
   size_t hc = hash(v, k);
   ob e = tbl_ent_hc(v, t, k, hc);
   if (!nilp(e)) return VAL(e) = x;
-  size_t i = tbl_idx(((tbl)t)->cap, hc);
+  size_t i = tbl_idx(t->cap, hc);
   ob _ = (ob) t;
   with(_, e = Tupl(k, x, ((tbl)t)->tab[i]));
   if (!e) return e;
@@ -206,7 +210,7 @@ static NoInline ob tks(la v) {
 static ob tblss(la v, intptr_t i, intptr_t l) {
   ob r = nil;
   for (;i <= l - 2; i += 2)
-    if (!(r = tbl_set(v, v->xp, v->fp->argv[i], v->fp->argv[i+1])))
+    if (!(r = tbl_set(v, (tbl) v->xp, v->fp->argv[i], v->fp->argv[i+1])))
       break;
   return r; }
 
@@ -259,8 +263,8 @@ static long em_tbl(la v, FILE *o, ob _) {
   tbl t = (tbl) _;
   return fprintf(o, "#tbl:%ld/%ld", t->len, 1ul << t->cap); }
 
-static size_t hash_tbl(la v, ob _) {
-  return ror(mix * 9, 3 * sizeof(size_t) / 4); }
+static intptr_t hash_tbl(la v, ob _) {
+  return ror(mix * 9, 3 * sizeof(intptr_t) / 4); }
 
 const struct mtbl mtbl_tbl = {
   .does = do_tbl,

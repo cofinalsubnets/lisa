@@ -64,8 +64,8 @@ static long em_two(la v, FILE *o, ob x) {
   if (fputc(')', o) == EOF) return -1;
   return r; }
 
-static size_t hash_two(la v, ob x) {
-  return ror(hash(v, A(x)) * hash(v, B(x)), 4 * sizeof(size_t)); }
+static intptr_t hash_two(la v, ob x) {
+  return ror(hash(v, A(x)) * hash(v, B(x)), 4 * sizeof(intptr_t)); }
 
 static bool eq_two(la v, ob x, ob y) {
   return twop(y) && eql(v, A(x), A(y)) && eql(v, B(x), B(y)); }

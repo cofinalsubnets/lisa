@@ -3,8 +3,8 @@
 #include <string.h>
 
 ob la_ev(la v, ob _) {
+  static struct mo go[] = { {call}, {(vm*) putnum(1)}, {yield} };
   if (!Push(_)) return 0;
-  struct mo go[] = { {call}, {(vm*) putnum(1)}, {yield}, {NULL} };
   return call(v, (ob) prims, go, v->hp, v->sp, v->fp); }
 
 la la_ini(void) {
@@ -41,14 +41,14 @@ static bool defprims(la v) {
                     *lim = p + LEN(prims);
   while (p < lim) {
     ob z = symofs(v, p->nom);
-    if (!z || !tbl_set(v, (ob) v->topl, z, (ob) p++)) return false; }
+    if (!z || !tbl_set(v, v->topl, z, (ob) p++)) return false; }
   return true; }
 
 // store an instruction address under a variable in the
 // toplevel namespace // FIXME use a different namespace
 static NoInline ob inst(la v, const char *a, vm *b) {
   ob z = symofs(v, a);
-  return z ? tbl_set(v, (ob) v->topl, z, putnum(b)) : 0; }
+  return z ? tbl_set(v, v->topl, z, putnum(b)) : 0; }
 
 bool la_open(la v) {
   v->rand = v->t0 = clock();
@@ -76,9 +76,9 @@ bool la_open(la v) {
     (v->lex[Splat] = symofs(v, ".")) &&
 
     // make the global namespace
-    (v->topl = (tbl) table(v)) &&
+    (v->topl = table(v)) &&
     (_ = symofs(v, "_ns")) &&
-    tbl_set(v, (ob) v->topl, _, (ob) v->topl)
+    tbl_set(v, v->topl, _, (ob) v->topl)
     // register instruction addresses at toplevel so the
     // compiler can use them.
 #define reg_intl(a) && inst(v, "i-"#a, a)

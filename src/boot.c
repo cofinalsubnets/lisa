@@ -90,8 +90,8 @@ static NoInline ob asign(la v, ob a, intptr_t i, ob *m) {
 static Inline ob new_scope(la v, ob *e, ob a, ob n) {
   intptr_t s = 0;
   with(n, a = asign(v, a, 0, &s));
-  return !a ? 0 :
-    Tupl(a, nil, nil, e ? *e : nil, n, putnum(s), nil, nil); }
+  return !a ? 0 : Tupl(
+    a, nil, nil, e ? *e : nil, n, putnum(s), nil, nil); }
 
 static char scan_def(la v, ob *e, ob x) {
   char r;

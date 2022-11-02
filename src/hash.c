@@ -17,10 +17,10 @@
 // TODO replace with something better, verify & benchmark
 
 // just a big random number!
-const uint64_t mix = 2708237354241864315;
+const int64_t mix = 2708237354241864315;
 
-size_t hash(la v, ob x) {
-  if (nump(x)) return ror(mix * x, sizeof(size_t) * 2);
+intptr_t hash(la v, ob x) {
+  if (nump(x)) return ror(mix * x, sizeof(intptr_t) * 2);
   if (!livep(v, x)) return mix ^ (x * mix);
   if (G(x) == disp) return ((mtbl) GF(x))->hash(v, x);
   return mix ^ hash(v, hnom(v, x)); }

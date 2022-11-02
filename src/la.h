@@ -24,7 +24,7 @@ struct sf {
 typedef const struct mtbl {
   vm *does;
   bool (*equi)(la, ob, ob);
-  size_t (*hash)(la, ob);
+  intptr_t (*hash)(la, ob);
   long (*emit)(la, FILE*, ob);
   ob (*evac)(la, ob, ob*, ob*);
   void (*walk)(la, ob, ob*, ob*);
@@ -48,7 +48,7 @@ typedef struct str {
 typedef struct sym {
   vm *disp; mtbl mtbl;
   str nom;
-  size_t code;
+  intptr_t code;
   struct sym *l, *r; } *sym;
 
 // hash tables
@@ -93,9 +93,9 @@ ob ns_tbl(la),
    ns_set(la, ob, ob);
 
 // hash tables
-size_t hash(la, ob);
-ob table(la),
-   tbl_set(la, ob, ob, ob),
+intptr_t hash(la, ob);
+tbl table(la);
+ob tbl_set(la, tbl, ob, ob),
    tbl_get(la, tbl, ob);
 
 // strings & symbols
@@ -153,7 +153,7 @@ ob nope(la, const char*, ...) NoInline; // panic with error msg
 #define putnum(_) (((ob)(_)<<1)|1)
 
 struct prim { vm *go; const char *nom; };
-extern const uint64_t mix;
+extern const int64_t mix;
 extern const struct prim prims[];
 extern const struct mtbl mtbl_two, mtbl_str, mtbl_tbl, mtbl_sym;
 

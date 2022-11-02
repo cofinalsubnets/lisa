@@ -25,7 +25,7 @@ test_lots:
 CPPFLAGS ?=\
 	-DPREF=\"$(DESTDIR)/$(PREFIX)\" -DLANG=\"$(lang)\" -DSUFF=\"$(suff)\"
 CFLAGS ?=\
-	-std=c11 -g -O2 -flto -Wall\
+	-std=c11 -g -O2 -flto -Wall -Werror\
  	-Wstrict-prototypes -Wno-shift-negative-value\
 	-fno-stack-protector
 # set locale for sorting

@@ -64,7 +64,7 @@ static Gc(cp_sym) {
         cpyw(bump(v, Width(sym)), src, Width(sym));
   return (ob) (src->disp = (vm*) dst); }
 
-static size_t hash_sym(la v, ob x) { return ((sym) x)->code; }
+static intptr_t hash_sym(la v, ob x) { return ((sym) x)->code; }
 
 static long em_sym(la v, FILE *o, ob x) {
   str s = ((sym)x)->nom;

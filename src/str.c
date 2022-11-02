@@ -78,9 +78,9 @@ static Vm(do_str) {
   fputstr(stdout, s);
   return ApC(ret, (ob) ip); }
 
-static size_t hash_str(la v, ob _) {
+static intptr_t hash_str(la v, ob _) {
   const char *bs = ((str)_)->text;
-  size_t h = 1, n = ((str)_)->len;
+  intptr_t h = 1, n = ((str)_)->len;
   while (n--) h = (h ^ (mix * *bs++)) * mix;
   return h; }
 
