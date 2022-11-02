@@ -1,11 +1,12 @@
 #include "la.h"
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 ob la_ev(la v, ob _) {
   static struct mo go[] = { {call}, {(vm*) putnum(1)}, {yield} };
-  if (!Push(_)) return 0;
-  return call(v, (ob) prims, go, v->hp, v->sp, v->fp); }
+  return !Push(_) ? 0 :
+    call(v, (ob) prims, go, v->hp, v->sp, v->fp); }
 
 la la_ini(void) {
   la v = malloc(sizeof(struct la));
@@ -51,7 +52,7 @@ static NoInline ob inst(la v, const char *a, vm *b) {
 
 bool la_open(la v) {
   v->rand = v->t0 = clock();
-  v->len = 1 << 10; // initial memory size
+  v->len = 0x400;
   v->pool = NULL;
   v->safe = NULL;
   // the heap is all used up to start, so the first allocation initializes the pool

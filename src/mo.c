@@ -116,8 +116,7 @@ Vm(seek_u) {
 
 // dispatch a data thread
 // TODO maybe we could do this with closures instead?
-Vm(disp) {
-  return ApC(((mtbl) GF(ip))->does, xp); }
+Vm(disp) { return ApC(((mtbl) GF(ip))->does, xp); }
 
 // closure functions
 //
@@ -208,7 +207,7 @@ static Vm(enclose) {
 
   return ApN(2, (ob) at); }
 
-// FIXME these pass the locals array to encl in xp
-// this is a confusing optimization
+// these pass the locals array to encl in xp
+// TODO do the same thing with the closure ptr
 Vm(encl1) { return ApC(enclose, putnum(1)); }
 Vm(encl0) { return ApC(enclose, nil); }

@@ -44,13 +44,15 @@ Vm(scat_u) {
 #define min(a,b)(a<b?a:b)
 #define max(a,b)(a>b?a:b)
 Vm(ssub_u) {
-  ArityCheck(3);
+  ArityCheck(2);
   Check(strp(fp->argv[0]));
   Check(nump(fp->argv[1]));
-  Check(nump(fp->argv[2]));
   str src = (str) fp->argv[0];
-  intptr_t lb = getnum(fp->argv[1]), ub = getnum(fp->argv[2]);
+  intptr_t lb = getnum(fp->argv[1]), ub = INTPTR_MAX;
   lb = max(lb, 0);
+  if (fp->argc > 2) {
+    Check(nump(fp->argv[2]));
+    ub = getnum(fp->argv[2]); }
   ub = min(ub, src->len-1); // XXX
   ub = max(ub, lb);
   size_t words = Width(str) + b2w(ub - lb + 1); // XXX

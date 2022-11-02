@@ -82,7 +82,7 @@
    'ABA (\ x (L A (L B (L A x)))) 'ABB (\ x (L A (L B (L B x))))
    'BAA (\ x (L B (L A (L A x)))) 'BAB (\ x (L B (L A (L B x))))
    'BBA (\ x (L B (L B (L A x)))) 'BBB (\ x (L B (L B (L B x))))
-   'char (\ x (sget x 0))
+   'char (\ x (schr x 0))
    '&& (\ x . (? x ((: (& x) (? (B x) (L ? (A x) (& (B x))) (A x))) x) 1))
    '|| (\ x . ((: (| x) (? x (: q (sym) (L ': q (A x) (L ? q q (| (B x))))))) x))
    '>>= (\ x . (? (> (len x) 1) (X (last x) (init x))
@@ -107,7 +107,7 @@
     L X A B Q + - * / % & | ^ << >> I K flip inc dec co
     = ~ <= >= < > cu const snoc init last memq at idx len
     twop nilp symp nump tblp strp homp
-    && || scat slen sget ssub str)
+    && || scat slen schr ssub str)
 
    ; these enable extra partial evaluation for functions
    ; with certain algebraic properties. the nullary case for
@@ -677,12 +677,12 @@
  (chars s)
   (: (loop s n)
       (? (< n (slen s))
-       (X (sget s n) (loop s (+ n 1))))
+       (X (schr s n) (loop s (+ n 1))))
    (loop s 0))
  (puts s)
   (: (loop s n)
    (? (< n (slen s))
-    (, (putc (sget s n))
+    (, (putc (schr s n))
        (loop s (+ n 1))))
    (loop s 0))
   (endl) (putc 10)

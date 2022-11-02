@@ -1,4 +1,5 @@
 #include "la.h"
+#include <time.h>
 
 // please : u1 la size_t
 //

@@ -1,6 +1,5 @@
 #include "lisa.h"
 #include <stdlib.h>
-#include <time.h>
 
 // thanks !!
 
@@ -69,17 +68,16 @@ struct la {
   sf fp;
   ob xp, *hp, *sp;
 
+  tbl topl; // global scope
+  sym syms; // symbol table
+  ob lex[LexN]; // lexicon
+  intptr_t rand;
+
   // gc state
   size_t len;
   ob *pool;
   keep safe;
-  union { clock_t t0; ob *cp; };
-
-  // system data
-  tbl topl; // global scope
-  sym syms; // symbol table
-  ob lex[LexN]; // lexicon
-  intptr_t rand; };
+  union { uintptr_t t0; ob *cp; }; };
 
 void *bump(la, size_t),
      *cells(la, size_t);
@@ -237,11 +235,15 @@ i_internals(ninl)
  _(tdel_u, "tdel") _(tkeys_u, "tkeys")\
   \
  _(str_u, "str") _(strp_u, "strp") _(slen_u, "slen")\
- _(ssub_u, "ssub") _(scat_u, "scat") _(sget_u, "sget")\
+ _(ssub_u, "ssub") _(scat_u, "scat")\
+ _(sget_u, "schr")\
   \
  _(sym_u, "sym") _(symp_u, "symp") _(ystr_u, "ystr")\
   \
  _(rx_u, "rx") _(show_u, ".") _(putc_u, "putc")\
+  \
+ _(gettime, "time")\
+  \
  _(eq_u, "=") _(lt_u, "<") _(lteq_u, "<=")\
  _(gteq_u, ">=") _(gt_u, ">") _(nilp_u, "nilp")\
   \

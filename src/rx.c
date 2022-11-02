@@ -66,7 +66,7 @@ static str mkbuf(la v) {
   str s = cells(v, Width(str) + 1);
   return s ? ini_str(s, sizeof(ob)) : s; }
 
-static str grow_buf(la v, str s) {
+static str buf_grow(la v, str s) {
   str t;
   size_t len = s->len;
   with(s, t = cells(v, Width(str) + 2 * b2w(len)));
@@ -78,7 +78,7 @@ static str grow_buf(la v, str s) {
 // read the contents of a string literal into a string
 static str rx_str(la v, FILE *p) {
   str o = mkbuf(v);
-  for (size_t n = 0, lim = sizeof(ob); o; o = grow_buf(v, o), lim *= 2)
+  for (size_t n = 0, lim = sizeof(ob); o; o = buf_grow(v, o), lim *= 2)
     for (int x; n < lim;) switch (x = fgetc(p)) {
       // backslash causes the next character
       // to be read literally // TODO more escape sequences
@@ -93,7 +93,7 @@ static str rx_str(la v, FILE *p) {
 static str rx_atom(la v, FILE *p, char c0) {
   str o = mkbuf(v);
   if (o) o->text[0] = c0;
-  for (size_t n = 1, lim = sizeof(ob); o; o = grow_buf(v, o), lim *= 2)
+  for (size_t n = 1, lim = sizeof(ob); o; o = buf_grow(v, o), lim *= 2)
     for (int x; n < lim;) switch (x = fgetc(p)) {
       default: o->text[n++] = x; continue;
       // these characters terminate an atom

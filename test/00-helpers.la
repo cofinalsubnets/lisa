@@ -2,7 +2,7 @@
 (:
  (puts s) (>>= s 0 (slen s) (:
   (loop s i n)
-   (? (< i n) (, (putc (sget s i)) (loop s (+ i 1) n)))))
+   (? (< i n) (, (putc (schr s i)) (loop s (+ i 1) n)))))
 
  (term-esc string) (puts (ap str (X 27 (chars string))))
  (green) (term-esc "[32m")
