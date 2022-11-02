@@ -7,7 +7,7 @@
 typedef la_ob ob;
 typedef struct mo *mo; // procedures
 typedef struct sf *fr, *sf; // stack frame
-#define Vm(n, ...) ob n(la v, ob xp, mo ip, ob *hp, ob *sp, fr fp)
+#define Vm(n, ...) ob n(la v, ob xp, mo ip, ob *hp, ob *sp, sf fp)
 typedef Vm(vm);
 #define Gc(n) ob n(la v, ob x, ob *pool0, ob *top0)
 Gc(cp);
@@ -16,7 +16,7 @@ struct mo { vm *go; };
 struct sf {
   ob clos; // FIXME remove from stack frame
   mo retp;
-  fr subd;
+  sf subd;
   size_t argc;
   ob argv[]; };
 
@@ -32,8 +32,7 @@ typedef const struct mtbl {
 
 // pairs
 typedef struct two {
-  vm *disp;
-  mtbl mtbl;
+  vm *disp; mtbl mtbl;
   ob a, b; } *two;
 
 // strings
@@ -67,7 +66,7 @@ typedef struct keep { ob *it; struct keep *et; } *keep;
 struct la {
   // vm state
   mo ip;
-  fr fp;
+  sf fp;
   ob xp, *hp, *sp;
 
   // gc state
@@ -77,25 +76,27 @@ struct la {
   union { clock_t t0; ob *cp; };
 
   // system data
-  ob topl; // global scope
+  tbl topl; // global scope
   sym syms; // symbol table
   ob lex[LexN]; // lexicon
   intptr_t rand; };
 
-void *cells(la, size_t);
+void *bump(la, size_t),
+     *cells(la, size_t);
 
 // pairs
 ob pair(la, ob, ob);
 size_t llen(ob);
 
-ob ns_get(la, ob),
+ob ns_tbl(la),
+   ns_get(la, ob),
    ns_set(la, ob, ob);
 
 // hash tables
 size_t hash(la, ob);
 ob table(la),
    tbl_set(la, ob, ob, ob),
-   tbl_get(la, ob, ob);
+   tbl_get(la, tbl, ob);
 
 // strings & symbols
 sym symof(la, str);
@@ -171,23 +172,6 @@ static Inline size_t b2w(size_t b) {
 // this can give a false positive if x is a fixnum
 static Inline bool livep(la v, ob x) {
   return (ob*) x >= v->pool && (ob*) x < v->pool + v->len; }
-
-// unchecked allocator -- make sure there's enough memory!
-static Inline void *bump(la v, size_t n) {
-  void *x = v->hp;
-  v->hp += n;
-  return x; }
-
-// FIXME isolate these if possible?
-vm disp;
-static Inline two ini_two(void *_, ob a, ob b) {
-  two w = _;
-  w->disp = disp, w->mtbl = &mtbl_two, w->a = a, w->b = b;
-  return w; }
-static Inline str ini_str(void *_, size_t len) {
-  str s = _;
-  s->disp = disp, s->mtbl = &mtbl_str, s->len = len;
-  return s; }
 
 _Static_assert(-1 == -1 >> 1, "signed >>");
 _Static_assert(sizeof(void*) == sizeof(size_t), "size_t matches pointer size");
@@ -310,3 +294,14 @@ i_primitives(ninl)
 #define Check(_) if (!(_)) return ApC(xdom, xp)
 #define Have1() if (sp == hp) return (v->xp = 1, ApC(gc, xp))
 #define Have(n) if (sp - hp < n) return (v->xp = n, ApC(gc, xp))
+
+// FIXME isolate these if possible?
+static Inline two ini_two(void *_, ob a, ob b) {
+  two w = _;
+  w->disp = disp, w->mtbl = &mtbl_two, w->a = a, w->b = b;
+  return w; }
+static Inline str ini_str(void *_, size_t len) {
+  str s = _;
+  s->disp = disp, s->mtbl = &mtbl_str, s->len = len;
+  return s; }
+

@@ -41,14 +41,14 @@ static bool defprims(la v) {
                     *lim = p + LEN(prims);
   while (p < lim) {
     ob z = symofs(v, p->nom);
-    if (!z || !tbl_set(v, v->topl, z, (ob) p++)) return false; }
+    if (!z || !tbl_set(v, (ob) v->topl, z, (ob) p++)) return false; }
   return true; }
 
 // store an instruction address under a variable in the
 // toplevel namespace // FIXME use a different namespace
 static NoInline ob inst(la v, const char *a, vm *b) {
   ob z = symofs(v, a);
-  return z ? tbl_set(v, v->topl, z, putnum(b)) : 0; }
+  return z ? tbl_set(v, (ob) v->topl, z, putnum(b)) : 0; }
 
 bool la_open(la v) {
   v->rand = v->t0 = clock();
@@ -56,8 +56,11 @@ bool la_open(la v) {
   v->pool = NULL;
   v->safe = NULL;
   // the heap is all used up to start, so the first allocation initializes the pool
-  v->fp = (fr) (v->hp = v->sp = v->pool + v->len);
-  v->ip = (mo) (v->topl = v->xp = nil);
+  v->hp = v->sp = v->pool + v->len;
+  v->fp = (sf) v->sp;
+  v->topl = (tbl) nil;
+  v->ip = (mo) nil;
+  v->xp = nil;
   v->syms = 0;
   setw(v->lex, nil, LexN);
 
@@ -73,9 +76,9 @@ bool la_open(la v) {
     (v->lex[Splat] = symofs(v, ".")) &&
 
     // make the global namespace
-    (v->topl = table(v)) &&
+    (v->topl = (tbl) table(v)) &&
     (_ = symofs(v, "_ns")) &&
-    tbl_set(v, v->topl, _, v->topl)
+    tbl_set(v, (ob) v->topl, _, (ob) v->topl)
     // register instruction addresses at toplevel so the
     // compiler can use them.
 #define reg_intl(a) && inst(v, "i-"#a, a)

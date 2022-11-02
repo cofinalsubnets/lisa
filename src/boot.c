@@ -176,7 +176,7 @@ Co(co_fn, ob x) {
 Co(r_co_def_bind) {
   ob _ = *v->sp++;
   if (e) return imx(v, e, m, defloc, putnum(lidx(loc(*e), _)));
-  _ = pair(v, v->topl, _);
+  _ = pair(v, ns_tbl(v), _);
   return _ ? imx(v, e, m, deftop, _) : 0; }
 
 static bool co_def_r(la v, ob *e, ob x) {
@@ -270,9 +270,9 @@ enum where { Here, Loc, Arg, Clo, Wait };
 
 static NoInline ob ls_lex(la v, ob e, ob y) { return
   nilp(e) ?
-    (y = tbl_get(v, v->topl, y)) ?
+    (y = ns_get(v, y)) ?
       pair(v, putnum(Here), y) :
-      pair(v, putnum(Wait), v->topl) :
+      pair(v, putnum(Wait), ns_tbl(v)) :
   lidx(loc(e), y) >= 0 ? pair(v, putnum(Loc), e) :
   lidx(arg(e), y) >= 0 ? pair(v, putnum(Arg), e) :
   lidx(clo(e), y) >= 0 ? pair(v, putnum(Clo), e) :
@@ -374,7 +374,7 @@ Vm(ev_u) {
   // ev calls compiled pre-bootstrap will use the
   // bootstrapped compiler, which is what we want?
   // seems kind of strange to need this ...
-  xp = tbl_get(v, v->topl, v->lex[Eval]);
+  xp = ns_get(v, v->lex[Eval]);
   if (xp && homp(xp) && G(xp) != ev_u) return ApY((mo) xp, nil);
   mo y;
   CallOut(y = ana(v, fp->argv[0], putnum(ret)));

@@ -1,5 +1,11 @@
 #include "la.h"
 
+// unchecked allocator -- make sure there's enough memory!
+void *bump(la v, size_t n) {
+  void *x = v->hp;
+  v->hp += n;
+  return x; }
+
 void *cells(la v, size_t n) {
   return Avail >= n || please(v, n) ? bump(v, n) : 0; }
 
@@ -145,7 +151,7 @@ static void copy_(la v, size_t len1, ob *pool1) {
   v->ip = (mo) cp(v, (ob) v->ip, pool0, top0);
 
   // copy globals
-  v->topl = cp(v, v->topl, pool0, top0);
+  v->topl = (tbl) cp(v, (ob) v->topl, pool0, top0);
   for (size_t i = LexN; i--;)
     v->lex[i] = cp(v, v->lex[i], pool0, top0);
   for (keep r = v->safe; r; r = r->et)

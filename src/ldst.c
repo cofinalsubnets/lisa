@@ -80,7 +80,7 @@ static NoInline Vm(nom_err) {
 Vm(late) {
   ob w = (ob) GF(ip), d = A(w);
   xp = B(w);
-  w = tbl_get(v, d, xp);
+  w = tbl_get(v, (tbl) d, xp);
   if (!w) return ApC(nom_err, xp);
   xp = w;
   // omit the arity check if possible
