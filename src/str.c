@@ -75,7 +75,7 @@ Vm(str_u) {
 
 static Vm(do_str) {
   str s = (str) ip;
-  femit(stdout, s->len - 1, 0, s->text, 0, 0); // XXX
+  fputstr(stdout, s);
   return ApC(ret, (ob) ip); }
 
 static size_t hash_str(la v, ob _) {
@@ -84,11 +84,28 @@ static size_t hash_str(la v, ob _) {
   while (n--) h = (h ^ (mix * *bs++)) * mix;
   return h; }
 
-// FIXME handle i/o errors
+static bool escapep(char c) {
+  return c == '\\' || c == '"'; }
+
 static int em_str(la v, FILE *o, ob _) {
   str s = (str) _;
-  size_t len = s->len - 1; // XXX null-terminated
-  return femit(o, len, '"', s->text, '"', "\\\""); }
+  size_t len = s->len - 1; // XXX null
+  const char *text = s->text;
+  long r = len + 2;
+  if (fputc('"', o) == EOF) return -1;
+  while (len--) {
+    char c = *text++;
+    if (escapep(c)) {
+      if (fputc('\\', o) == EOF) return -1;
+      r++; }
+    if (fputc(c, o) == EOF) return -1; }
+  if (fputc('"', o) == EOF) return -1;
+  return r; }
+
+long fputstr(FILE *o, str s) {
+  long i = 0, r = s->len - 1; // XXX null
+  while (i < r) if (fputc(s->text[i++], o) == EOF) return -1;
+  return r; }
 
 static Gc(cp_str) {
   str src = (str) x, dst = bump(v, Width(str) + b2w(src->len));

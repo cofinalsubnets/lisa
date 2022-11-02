@@ -24,7 +24,7 @@ static Inline sym ini_sym(void *_, str nom, size_t code) {
 // (because GC here would void the tree)
 static sym sskc(la v, sym *y, str b) {
   if (*y) {
-    sym z = (sym) *y;
+    sym z = *y;
     str a = z->nom;
     size_t n = a->len < b->len ? a->len : b->len;
     int i = strncmp(a->text, b->text, n);
@@ -68,8 +68,7 @@ static size_t hash_sym(la v, ob x) { return ((sym) x)->code; }
 
 static int em_sym(la v, FILE *o, ob x) {
   str s = ((sym)x)->nom;
-  return !s ? fprintf(o, "#sym") :
-    femit(o, s->len - 1, 0, s->text, 0, 0); }
+  return !s ? fprintf(o, "#sym") : fputstr(o, s); }
 
 Vm(do_id) { return ApC(ret, (ob) ip); }
 

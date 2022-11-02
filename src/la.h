@@ -99,6 +99,8 @@ ob table(la),
 sym symof(la, str);
 str strof(la, const char*);
 
+long fputstr(FILE*, str);
+
 // functions
 mo mkmo(la, size_t), // allocator
    ana_p(la, const char*, ob),
@@ -124,7 +126,6 @@ void *setw(void*, intptr_t, size_t),
 #define NoInline __attribute__((noinline))
 void errp(la, const char*, ...); // print an error
 ob nope(la, const char*, ...) NoInline; // panic with error msg
-int femit(FILE*, size_t, char, const char*, char, const char*);
 
 #define nil putnum(0)
 #define F(_) ((mo)(_)+1)
