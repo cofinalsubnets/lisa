@@ -19,10 +19,10 @@ Vm(sget_u) {
   ArityCheck(2);
   Check(strp(fp->argv[0]));
   Check(nump(fp->argv[1]));
-  return ApC(ret,
-    getnum(fp->argv[1]) < ((str) fp->argv[0])->len-1 ?
-      putnum(((str) fp->argv[0])->text[getnum(fp->argv[1])]) :
-      nil); }
+  str s = (str) fp->argv[0];
+  intptr_t i = getnum(fp->argv[1]);
+  xp = i < 0 || i >= s->len ? nil : putnum(s->text[i]);
+  return ApC(ret, xp); }
 
 Vm(scat_u) {
   size_t sum = 0, i = 0, l = fp->argc;

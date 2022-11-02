@@ -1,6 +1,7 @@
 (test strings
  (= "xx" (scat "xx" "") (scat "x" "x") (scat "" "xx"))
  (= 4 (slen "slen"))
+ (= 0 (sget "asdf" 9) (sget "asdf" 4) (sget "asdf" -3))
  (= "ystr" (ystr 'ystr))
  (= 'sym (sym "sym"))
  (nilp (ystr (sym)))
