@@ -1,85 +1,95 @@
-nom=lisa
-lang=$(nom)
-suff=la
-srcdir=src
-builddir=build
-testdir=test
-
-bin_rel=$(builddir)/$(nom)
-bin_debug=$(builddir)/$(nom).bin
-
-lib=lib/$(nom).$(suff)
-
-testcmd=$(bin_debug) -_ $(lib) $(testdir)/*.$(suff)
-
-test: $(bin_debug)
-	/usr/bin/env TIMEFORMAT="in %Rs" bash -c "time $(testcmd)"
-
-# run the tests a lot of times to try and catch nondeterministic bugs
-lots=2048
-test_lots:
-	for n in {1..$(lots)}; do make -s test || exit 1; done
-
-# build
-# tested with gcc & clang
-CPPFLAGS ?=\
-	-DPREF=\"$(DESTDIR)/$(PREFIX)\" -DLANG=\"$(lang)\" -DSUFF=\"$(suff)\"
-CFLAGS ?=\
-	-std=c11 -g -O2 -flto -Wall -Werror\
- 	-Wstrict-prototypes -Wno-shift-negative-value\
-	-fno-stack-protector
-# set locale for sorting
+# for consistent sorting
 LC_COLLATE=C
-src_h=$(sort $(wildcard $(srcdir)/*.h))
-src_c=$(sort $(wildcard $(srcdir)/*.c))
-$(builddir)/%.o: $(srcdir)/%.c $(src_h) Makefile
-	$(CC) -c -o $@ $(CFLAGS) $(CPPFLAGS) $<
-$(bin_debug): $(addprefix $(builddir)/,$(notdir $(src_c:.c=.o)))
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
-$(bin_rel): $(bin_debug)
-	strip -o $@ $^
+
+nom=lisa
+suff=la
+
+build_dir=build
+test_dir=test
+doc_dir=doc
+lib_dir=lib
+
+bin_release=$(build_dir)/$(nom)
+bin_debug=$(build_dir)/$(nom).bin
+
+boot=$(lib_dir)/$(nom).$(suff)
+lib=$(boot)
 
 # installation
 DESTDIR ?= $(HOME)
 PREFIX ?= .local
+dest_dir=$(DESTDIR)/$(PREFIX)
 
-manpage=doc/$(lang).1
-dest=$(DESTDIR)/$(PREFIX)
-install: install_bin install_doc install_lib
+testcmd=$(bin_debug) -_ $(boot) $(test_dir)/*.$(suff)
+
+test: $(bin_debug)
+	/usr/bin/env TIMEFORMAT="in %Rs" bash -c "time $(testcmd)"
+
+# run the tests a lot of times to try and catch nondeterministic bugs :(
+test-lots:
+	for n in {1..2048}; do make -s test || exit 1; done
+
+# build
+# tested with gcc & clang
+CPPFLAGS ?= -DDESTDIR=\"$(dest_dir)\"
+CFLAGS ?=\
+	-std=c11 -g -O2 -flto -Wall -Werror\
+ 	-Wstrict-prototypes -Wno-shift-negative-value\
+	-fno-stack-protector
+
+src_h=$(wildcard src/*.h)
+src_c=$(wildcard src/*.c)
+obj=$(addprefix $(build_dir)/,$(notdir $(src_c:.c=.o)))
+
+$(build_dir)/%.o: src/%.c $(src_h) Makefile
+	$(CC) -c -o $@ $(CFLAGS) $(CPPFLAGS) $<
+
+$(bin_debug): $(obj)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
+
+$(bin_release): $(bin_debug)
+	strip -o $@ $^
+
+install_files=\
+	$(dest_dir)/bin/$(nom)\
+	$(addprefix $(dest_dir)/lib/$(nom)/,$(notdir $(lib)))\
+	$(dest_dir)/share/man/man1/$(nom).1
+
+install: $(install_files)
 uninstall:
-	rm -f $(dest)/bin/$(notdir $(bin_rel))
-	rm -f $(dest)/lib/$(nom)/$(notdir $(lib))
-	rm -f $(dest)/share/man/man1/$(notdir $(manpage))
+	rm -f $(install_files)
 
-install_bin: $(bin_rel)
-	install -D $^ $(dest)/bin/$(notdir $(bin_rel))
-install_lib: $(lib)
-	install -D $^ $(dest)/lib/$(nom)/$(notdir $(lib))
-install_doc: $(manpage)
-	install -D $(manpage) $(dest)/share/man/man1/$(notdir $(manpage))
-
+$(dest_dir)/bin/%: $(build_dir)/%
+	install -D $^ $@
+$(dest_dir)/share/man/man1/%: $(doc_dir)/%
+	install -D $^ $@
+$(dest_dir)/lib/$(nom)/%: $(lib_dir)/%
+	install -D $^ $@
 
 # vim stuff
+vim_dir=vim
 VIMPREFIX ?= $(HOME)/.vim
-vim_srcdir=vim
 vim_files=$(addprefix $(VIMPREFIX)/,syntax/$(nom).vim ftdetect/$(nom).vim)
 install-vim: $(vim_files)
 uninstall-vim:
 	rm -f $(vim_files)
-$(VIMPREFIX)/%: $(vim_srcdir)/%
+$(VIMPREFIX)/%: $(vim_dir)/%
 	install -D $^ $@
 
 # other tasks
 #
 clean:
 	rm -f `git check-ignore * */*`
+
 repl: $(bin_debug)
 	which rlwrap && rlwrap $(testcmd) -i || $(testcmd) -i
-# profile on linux with perf
+
+# profiling on linux with perf
 perf: perf.data
 	perf report
 perf.data: $(bin_debug) $(lib)
 	perf record $(testcmd)
+
 # valgrind detects some memory errors
 valg: $(bin_debug)
 	valgrind --error-exitcode=1 $(testcmd)
@@ -87,7 +97,10 @@ valg: $(bin_debug)
 sloc:
 	cloc --force-lang=Lisp,$(suff) *
 # size of binaries
-bits: $(bin_rel) $(bin_debug)
+bits: $(bin_release) $(bin_debug)
 	du -h $^
 
-.PHONY: test repl install install-vim uninstall uninstall-vim sloc bits valg perf clean test_lots
+.PHONY: test test-lots repl clean\
+	install uninstall\
+ 	install-vim uninstall-vim\
+ 	sloc bits valg perf

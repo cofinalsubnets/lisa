@@ -29,14 +29,14 @@ static ob pret(la v, FILE *i, ob x) { return x; }
 
 static ob pxx(la v, FILE *i, ob x) {
   ob y = *v->sp++;
-  return pull(v, i, x ? pair(v, y, x) : x); }
+  return pull(v, i, x ? (ob) pair(v, y, x) : x); }
 
 static ob rx2r(la v, FILE *i, ob x) {
   return !x || !Push(putnum(pxx), x) ? pull(v, i, 0) : rx2(v, i); }
 
 static ob pxq(la v, FILE* i, ob x) { return
-  x = x ? pair(v, x, nil) : x,
-  x = x ? pair(v, v->lex[Quote], x) : x,
+  x = x ? (ob) pair(v, x, nil) : x,
+  x = x ? (ob) pair(v, v->lex[Quote], x) : x,
   pull(v, i, x); }
 
 static ob rx1(la v, FILE *i) {

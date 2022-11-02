@@ -27,7 +27,6 @@ bool primp(ob x) {
   struct prim *_ = (struct prim*) x;
   return _ >= prims && _ < prims + LEN(prims); }
 
-
 static bool defprims(la);
 static ob inst(la, const char*, vm*) NoInline;
 

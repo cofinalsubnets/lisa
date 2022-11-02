@@ -1,5 +1,13 @@
 #include "la.h"
 
+// math stuff
+
+intptr_t lcprng(intptr_t s) {
+  // this specific constant came from a paper i read
+  const int64_t steele_vigna_2021 = 0xaf251af3b0f025b5;
+  return (s * steele_vigna_2021 + 1) >> 8; }
+
+// VM functions
 // FIXME remove macros
 #define mm_u(_c,_v,_z,op) {\
   ob x, *xs = _v, *l = xs + _c;\

@@ -85,7 +85,7 @@ void *bump(la, size_t),
      *cells(la, size_t);
 
 // pairs
-ob pair(la, ob, ob);
+two pair(la, ob, ob);
 size_t llen(ob);
 
 ob ns_tbl(la),
@@ -111,9 +111,8 @@ mo mkmo(la, size_t), // allocator
 ob hnom(la, mo); // try to get function name FIXME don't expose
 
 ob tupl(la, ...);
-#define END ((ob) 0)
-#define Push(...) pushs(v, __VA_ARGS__, END)
-#define Tupl(...) tupl(v, __VA_ARGS__, END)
+#define Push(...) pushs(v, __VA_ARGS__, (ob)0)
+#define Tupl(...) tupl(v, __VA_ARGS__, (ob)0)
 bool
   eq_no(la, ob, ob),
   primp(ob), // is it a primitive function?

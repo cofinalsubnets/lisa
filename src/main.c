@@ -1,13 +1,7 @@
 #include "la.h"
 
-#ifndef PREF
-#define PREF
-#endif
-#ifndef LANG
-#define LANG
-#endif
-#ifndef SUFF
-#define SUFF
+#ifndef DESTDIR
+#define DESTDIR
 #endif
 
 static void repl(la v) {
@@ -38,13 +32,13 @@ static NoInline int la_main(bool shell, const char *prelu, const char **scripts)
   v->ip = actn(v, prelu, scripts);
   bool _ = v->ip && la_go(v);
   if (_ && shell) repl(v);
-  la_fin(v);
-  return _ ? EXIT_SUCCESS : EXIT_FAILURE; }
+  return la_fin(v),
+    _ ? EXIT_SUCCESS : EXIT_FAILURE; }
 
 #include <getopt.h>
 int main(int ac, char **av) {
   static const char
-    *prelu = PREF "/lib/" LANG "/" LANG "." SUFF,
+    *prelu = DESTDIR "/lib/lisa/lisa.la",
     *usage =
       "usage: %s [options and scripts]\n"
       "with no arguments, interact\n"

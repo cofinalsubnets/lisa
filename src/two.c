@@ -1,10 +1,10 @@
 #include "la.h"
 
 // pairs and lists
-ob pair(la v, ob a, ob b) {
+two pair(la v, ob a, ob b) {
   two w;
   with(a, with(b, w = cells(v, Width(two))));
-  return w ? (ob) ini_two(w, a, b) : 0; }
+  return w ? ini_two(w, a, b) : 0; }
 
 // length of list
 size_t llen(ob l) {
