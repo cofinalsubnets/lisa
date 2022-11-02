@@ -65,7 +65,7 @@ static size_t hash_two(la v, ob x) {
 static bool eq_two(la v, ob x, ob y) {
   return twop(y) && eql(v, A(x), A(y)) && eql(v, B(x), B(y)); }
 
-const struct mtbl s_mtbl_two = {
+const struct mtbl mtbl_two = {
   .does = do_two,
   .emit = em_two,
   .copy = cp_two,

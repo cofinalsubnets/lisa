@@ -4,7 +4,7 @@
 //symbols
 static Inline sym ini_sym(void *_, str nom, size_t code) {
   sym y = _;
-  y->disp = disp, y->mtbl = mtbl_sym;
+  y->disp = disp, y->mtbl = &mtbl_sym;
   y->nom = nom;
   y->code = code;
   y->l = y->r = 0;
@@ -68,12 +68,12 @@ static size_t hash_sym(la v, ob x) { return ((sym) x)->code; }
 
 static int em_sym(la v, FILE *o, ob x) {
   str s = ((sym)x)->nom;
-  return !s ? fprintf(o, "#sym@%lx", x) :
+  return !s ? fprintf(o, "#sym") :
     femit(o, s->len - 1, 0, s->text, 0, 0); }
 
 Vm(do_id) { return ApC(ret, (ob) ip); }
 
-const struct mtbl s_mtbl_sym = {
+const struct mtbl mtbl_sym = {
   .does = do_id,
   .emit = em_sym,
   .copy = cp_sym,

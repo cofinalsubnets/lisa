@@ -68,9 +68,12 @@ Vm(setloc) {
   return ApN(2, xp); }
 
 static NoInline Vm(nom_err) {
-  return Pack(), nope(v,
-    "referenced free variable `%s'",
-    nilp(xp) ? 0 : ((str) xp)->text); }
+  Pack();
+  const char *n = "#sym";
+  size_t l = 4;
+  str s = ((sym) xp)->nom;
+  if (s) n = s->text, l = s->len;
+  return nope(v, "free variable : %.*s", l, n); }
 
 // late binding
 // TODO dynamic type checking here
@@ -78,7 +81,7 @@ Vm(late) {
   ob w = (ob) GF(ip), d = A(w);
   xp = B(w);
   w = tbl_get(v, d, xp);
-  if (!w) return ApC(nom_err, ((sym)xp)->nom);
+  if (!w) return ApC(nom_err, xp);
   xp = w;
   // omit the arity check if possible
   vm *n = G(FF(ip));

@@ -151,20 +151,15 @@ int femit(FILE*, size_t, char, const char*, char, const char*);
 struct prim { vm *go; const char *nom; };
 extern const uint64_t mix;
 extern const struct prim prims[];
-extern const struct mtbl s_mtbl_two, s_mtbl_str, s_mtbl_tbl, s_mtbl_sym;
-
-#define mtbl_str (&s_mtbl_str)
-#define mtbl_two (&s_mtbl_two)
-#define mtbl_sym (&s_mtbl_sym)
-#define mtbl_tbl (&s_mtbl_tbl)
+extern const struct mtbl mtbl_two, mtbl_str, mtbl_tbl, mtbl_sym;
 
 static Inline bool nilp(ob _) { return _ == nil; }
 static Inline bool nump(ob _) { return _ & 1; }
 static Inline bool homp(ob _) { return !nump(_); }
-static Inline bool tblp(ob _) { return homp(_) && GF(_) == (vm*) mtbl_tbl; }
-static Inline bool strp(ob _) { return homp(_) && GF(_) == (vm*) mtbl_str; }
-static Inline bool twop(ob _) { return homp(_) && GF(_) == (vm*) mtbl_two; }
-static Inline bool symp(ob _) { return homp(_) && GF(_) == (vm*) mtbl_sym; }
+static Inline bool tblp(ob _) { return homp(_) && GF(_) == (vm*) &mtbl_tbl; }
+static Inline bool strp(ob _) { return homp(_) && GF(_) == (vm*) &mtbl_str; }
+static Inline bool twop(ob _) { return homp(_) && GF(_) == (vm*) &mtbl_two; }
+static Inline bool symp(ob _) { return homp(_) && GF(_) == (vm*) &mtbl_sym; }
 
 static Inline size_t b2w(size_t b) {
   size_t q = b / sizeof(ob), r = b % sizeof(ob);
@@ -184,11 +179,11 @@ static Inline void *bump(la v, size_t n) {
 vm disp;
 static Inline two ini_two(void *_, ob a, ob b) {
   two w = _;
-  w->disp = disp, w->mtbl = mtbl_two, w->a = a, w->b = b;
+  w->disp = disp, w->mtbl = &mtbl_two, w->a = a, w->b = b;
   return w; }
 static Inline str ini_str(void *_, size_t len) {
   str s = _;
-  s->disp = disp, s->mtbl = mtbl_str, s->len = len;
+  s->disp = disp, s->mtbl = &mtbl_str, s->len = len;
   return s; }
 
 _Static_assert(-1 == -1 >> 1, "signed >>");

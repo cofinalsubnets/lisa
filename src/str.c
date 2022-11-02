@@ -100,7 +100,7 @@ static bool eq_str(la v, ob x, ob y) {
     ((str)x)->len == ((str)y)->len &&
     0 == strncmp(((str) x)->text, ((str) y)->text, ((str)x)->len); }
 
-const struct mtbl s_mtbl_str = {
+const struct mtbl mtbl_str = {
   .does = do_str,
   .emit = em_str,
   .copy = cp_str,

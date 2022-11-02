@@ -3,7 +3,7 @@
 // hash tables
 static Inline tbl ini_tbl(void *_, size_t len, size_t cap, ob *tab) {
   tbl t = _;
-  t->disp = disp, t->mtbl = mtbl_tbl;
+  t->disp = disp, t->mtbl = &mtbl_tbl;
   t->len = len, t->cap = cap, t->tab = tab;
   return t; }
 // some of the worst code is here :(
@@ -250,7 +250,7 @@ static int em_tbl(la v, FILE *o, ob _) {
 static size_t hash_tbl(la v, ob _) {
   return ror(mix * 9, 3 * sizeof(size_t) / 4); }
 
-const struct mtbl s_mtbl_tbl = {
+const struct mtbl mtbl_tbl = {
   .does = do_tbl,
   .emit = em_tbl,
   .copy = cp_tbl,
