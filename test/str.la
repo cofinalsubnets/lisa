@@ -7,6 +7,8 @@
  (nilp (ystr (sym)))
  (= "hollow world" (scat "hol" "low " "wor" "ld"))
  (= "bidden" (ssub "forbidden planet" 3 9))
+ (= "all of it" (ssub "all of it" -9 100))
+ (= "" (ssub "asdf" 1 0))
  (= "" (str))
  (= () (chars "") (char ""))
  (= 97 (char "a"))
