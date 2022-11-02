@@ -243,7 +243,7 @@ static Gc(cp_tbl) {
   return (ob) ini_tbl(dst, src->len, src->cap,
     (ob*) cp(v, (ob) src->tab, pool0, top0)); }
 
-static int em_tbl(la v, FILE *o, ob _) {
+static long em_tbl(la v, FILE *o, ob _) {
   tbl t = (tbl) _;
   return fprintf(o, "#tbl:%ld/%ld", t->len, 1ul << t->cap); }
 
@@ -253,6 +253,6 @@ static size_t hash_tbl(la v, ob _) {
 const struct mtbl mtbl_tbl = {
   .does = do_tbl,
   .emit = em_tbl,
-  .copy = cp_tbl,
+  .evac = cp_tbl,
   .hash = hash_tbl,
   .equi = eq_no, };

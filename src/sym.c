@@ -66,7 +66,7 @@ static Gc(cp_sym) {
 
 static size_t hash_sym(la v, ob x) { return ((sym) x)->code; }
 
-static int em_sym(la v, FILE *o, ob x) {
+static long em_sym(la v, FILE *o, ob x) {
   str s = ((sym)x)->nom;
   return !s ? fprintf(o, "#sym") : fputstr(o, s); }
 
@@ -75,6 +75,6 @@ Vm(do_id) { return ApC(ret, (ob) ip); }
 const struct mtbl mtbl_sym = {
   .does = do_id,
   .emit = em_sym,
-  .copy = cp_sym,
+  .evac = cp_sym,
   .hash = hash_sym,
   .equi = eq_no, };

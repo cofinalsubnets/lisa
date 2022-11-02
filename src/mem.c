@@ -121,7 +121,8 @@ Gc(cp) {
   if (nump(x) || !stale(x)) return x;
   ob y = (ob) G(x);
   if (!nump(y) && livep(v, y)) return y;
-  if ((vm*) y == disp) return ((mtbl) GF(x))->copy(v, x, pool0, top0);
+  if ((vm*) y == disp) return
+    ((mtbl) GF(x))->evac(v, x, pool0, top0);
   return cp_hom(v, x, pool0, top0); }
 
 

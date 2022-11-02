@@ -18,6 +18,6 @@ la_ob
   la_ev(la, la_ob),
   la_rx(la, FILE*);
 
-int la_tx(la, FILE*, la_ob);
+long la_tx(la, FILE*, la_ob);
 
 #endif

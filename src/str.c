@@ -87,7 +87,7 @@ static size_t hash_str(la v, ob _) {
 static bool escapep(char c) {
   return c == '\\' || c == '"'; }
 
-static int em_str(la v, FILE *o, ob _) {
+static long em_str(la v, FILE *o, ob _) {
   str s = (str) _;
   size_t len = s->len - 1; // XXX null
   const char *text = s->text;
@@ -120,6 +120,6 @@ static bool eq_str(la v, ob x, ob y) {
 const struct mtbl mtbl_str = {
   .does = do_str,
   .emit = em_str,
-  .copy = cp_str,
+  .evac = cp_str,
   .hash = hash_str,
   .equi = eq_str, };

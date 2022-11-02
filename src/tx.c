@@ -15,7 +15,7 @@ static int emhomn(la v, FILE *o, ob x) {
   return r; }
 
 // s-expression writer
-int la_tx(la v, FILE *o, ob x) {
+long la_tx(la v, FILE *o, ob x) {
   if (nump(x)) return fprintf(o, "%ld", getnum(x));
   if (primp(x)) return fprintf(o, "\\%s", ((struct prim*)x)->nom);
   if (G(x) == disp) return ((mtbl) GF(x))->emit(v, o, x);

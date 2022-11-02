@@ -51,12 +51,17 @@ static Gc(cp_two) {
     cp(v, src->a, pool0, top0),
     cp(v, src->b, pool0, top0)); }
 
-static int em_two(la v, FILE *o, ob x) {
-  int r = 2;
-  for (fputc('(', o);; fputc(' ', o), r++) {
-    r += la_tx(v, o, A(x));
-    if (!twop(x = B(x))) break; }
-  fputc(')', o);
+static long em_two(la v, FILE *o, ob x) {
+  long r = 2;
+  if (fputc('(', o) == EOF) return -1;
+  for (;;) {
+    long i = la_tx(v, o, A(x));
+    if (i < 0) return i;
+    else r += i;
+    if (!twop(x = B(x))) break;
+    else if (fputc(' ', o) == EOF) return -1;
+    else r++; }
+  if (fputc(')', o) == EOF) return -1;
   return r; }
 
 static size_t hash_two(la v, ob x) {
@@ -68,6 +73,6 @@ static bool eq_two(la v, ob x, ob y) {
 const struct mtbl mtbl_two = {
   .does = do_two,
   .emit = em_two,
-  .copy = cp_two,
+  .evac = cp_two,
   .hash = hash_two,
   .equi = eq_two, };

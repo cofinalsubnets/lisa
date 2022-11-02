@@ -23,10 +23,12 @@ struct sf {
 // static method table for built-in types
 typedef const struct mtbl {
   vm *does;
-  int (*emit)(la, FILE*, ob);
-  ob (*copy)(la, ob, ob*, ob*);
+  bool (*equi)(la, ob, ob);
   size_t (*hash)(la, ob);
-  bool (*equi)(la, ob, ob); } *mtbl;
+  long (*emit)(la, FILE*, ob);
+  ob (*evac)(la, ob, ob*, ob*);
+  void (*walk)(la, ob, ob*, ob*);
+} *mtbl;
 
 // pairs
 typedef struct two {
