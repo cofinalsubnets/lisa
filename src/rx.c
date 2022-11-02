@@ -69,9 +69,7 @@ static str mkbuf(la v) {
 static str grow_buf(la v, str s) {
   str t;
   size_t len = s->len;
-  ob _ = (ob) s;
-  with(_, t = cells(v, Width(str) + 2 * b2w(len)));
-  s = (str) _;
+  with(s, t = cells(v, Width(str) + 2 * b2w(len)));
   if (!t) return 0;
   t = ini_str(t, 2 * len);
   memcpy(t->text, s->text, len);

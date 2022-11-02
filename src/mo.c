@@ -32,12 +32,13 @@ mo mkmo(la v, size_t n) {
 mo button(mo k) { while (G(k)) k = F(k); return k; }
 
 // try to get the name of a function
-ob hnom(la v, ob x) {
+ob hnom(la v, mo x) {
+  if (!livep(v, (ob) x)) return nil;
   vm *k = G(x);
   if (k == setclo || k == genclo0 || k == genclo1)
-    return hnom(v, (ob) G(FF(x)));
-  x = ((ob*) button((mo) x))[-1];
-  return livep(v, x) ? x : nil; }
+    return hnom(v, (mo) G(FF(x)));
+  ob n = ((ob*) button(x))[-1];
+  return livep(v, n) ? n : nil; }
 
 // instructions for the internal compiler
 //

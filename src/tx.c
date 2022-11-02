@@ -19,7 +19,7 @@ long la_tx(la v, FILE *o, ob x) {
   if (nump(x)) return fprintf(o, "%ld", getnum(x));
   if (primp(x)) return fprintf(o, "\\%s", ((struct prim*)x)->nom);
   if (G(x) == disp) return ((mtbl) GF(x))->emit(v, o, x);
-  return emhomn(v, o, hnom(v, x)); }
+  return emhomn(v, o, hnom(v, (mo) x)); }
 
 Vm(show_u) {
   size_t i = 0, l = fp->argc;

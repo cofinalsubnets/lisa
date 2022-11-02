@@ -155,7 +155,7 @@ static void copy_(la v, size_t len1, ob *pool1) {
   for (size_t i = LexN; i--;)
     v->lex[i] = cp(v, v->lex[i], pool0, top0);
   for (keep r = v->safe; r; r = r->et)
-    *r->it = cp(v, *r->it, pool0, top0);
+    *r->it = (void**) cp(v, (ob) *r->it, pool0, top0);
 
   // copy the stack
   ob *sp = v->sp;

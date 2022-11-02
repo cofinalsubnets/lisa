@@ -61,7 +61,7 @@ typedef struct tbl {
 enum lex { Def, Cond, Lamb, Quote, Seq, Splat, Eval, LexN };
 
 // linked list for gc protection
-typedef struct keep { ob *it; struct keep *et; } *keep;
+typedef struct keep { void **it; struct keep *et; } *keep;
 
 struct la {
   // vm state
@@ -108,7 +108,7 @@ long fputstr(FILE*, str);
 mo mkmo(la, size_t), // allocator
    ana_p(la, const char*, ob),
    button(mo); // get tag at end
-ob hnom(la, ob); // try to get function name FIXME don't expose
+ob hnom(la, mo); // try to get function name FIXME don't expose
 
 ob tupl(la, ...);
 #define END ((ob) 0)
@@ -142,7 +142,7 @@ ob nope(la, const char*, ...) NoInline; // panic with error msg
 #define BA(o) B(A(o))
 #define BB(o) B(B(o))
 #define Avail (v->sp - v->hp)
-#define mm(r) ((v->safe = &((struct keep){(r), v->safe})))
+#define mm(r) ((v->safe = &((struct keep){(void**)(r), v->safe})))
 #define um (v->safe = v->safe->et)
 #define with(y,...) (mm(&(y)), (__VA_ARGS__), um)
 #define Width(t) b2w(sizeof(struct t))

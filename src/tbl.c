@@ -50,9 +50,7 @@ tbl table(la v) {
   return t; }
 
 ob tbl_set(la v, tbl t, ob k, ob x) {
-  ob _ = (ob) t;
-  with(_, x = tbl_set_s(v, t, k, x));
-  t = (tbl) _;
+  with(t, x = tbl_set_s(v, t, k, x));
   if (x && tbl_load(t) > 1)
     with(x, t = tbl_grow(v, t)),
     x = t ? x : 0;
@@ -155,10 +153,8 @@ static NoInline tbl tbl_grow(la v, tbl t) {
          cap1 = cap0 + 1,
          len = 1l << cap1;
 
-  ob _ = (ob) t;
-  with(_, tab1 = cells(v, len + 2));
+  with(t, tab1 = cells(v, len + 2));
   if (!tab1) return 0;
-  t = (tbl) _;
   tab1[len] = 0, tab1[len+1] = (ob) tab1;
   setw(tab1, nil, len);
   tab0 = ((tbl) t)->tab;
@@ -181,10 +177,8 @@ static ob tbl_set_s(la v, tbl t, ob k, ob x) {
   ob e = tbl_ent_hc(v, t, k, hc);
   if (!nilp(e)) return VAL(e) = x;
   size_t i = tbl_idx(t->cap, hc);
-  ob _ = (ob) t;
-  with(_, e = Tupl(k, x, ((tbl)t)->tab[i]));
+  with(t, e = Tupl(k, x, ((tbl)t)->tab[i]));
   if (!e) return e;
-  t = (tbl) _;
   t->tab[i] = e;
   t->len++;
   return VAL(e); }
@@ -242,7 +236,7 @@ static NoInline void tbl_shrink(la v, tbl t) {
     e = f; }
 
 static Vm(do_tbl) {
-  size_t a = fp->argc;
+  ob a = fp->argc;
   switch (a) {
     case 0: return ApC(ret, putnum(((tbl) ip)->len));
     case 1: return
@@ -250,8 +244,8 @@ static Vm(do_tbl) {
       ApC(ret, xp ? xp : nil);
     default: return
       xp = (ob) ip,
-      CallOut(v->xp = tblss(v, 1, a)),
-      ApC(xp ? ret : xoom, xp); } }
+      CallOut(a = tblss(v, 1, a)),
+      a ? ApC(ret, a) : ApC(xoom, nil); } }
 
 static Gc(cp_tbl) {
   tbl src = (tbl) x, dst = bump(v, Width(tbl));
@@ -260,8 +254,8 @@ static Gc(cp_tbl) {
     (ob*) cp(v, (ob) src->tab, pool0, top0)); }
 
 static long em_tbl(la v, FILE *o, ob _) {
-  tbl t = (tbl) _;
-  return fprintf(o, "#tbl:%ld/%ld", t->len, 1ul << t->cap); }
+  return fprintf(o, "#tbl:%ld/%ld",
+    ((tbl)_)->len, 1ul << ((tbl)_)->cap); }
 
 static intptr_t hash_tbl(la v, ob _) {
   return ror(mix * 9, 3 * sizeof(intptr_t) / 4); }
