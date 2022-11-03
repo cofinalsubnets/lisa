@@ -1,6 +1,8 @@
 #include "la.h"
 #include <string.h>
 
+// FIXME remove null terminators
+
 str strof(la v, const char* c) {
   size_t bs = 1 + strlen(c); // XXX null terminated
   str o = cells(v, Width(str) + b2w(bs));
@@ -80,7 +82,8 @@ static Vm(do_str) {
   fputstr(stdout, s);
   return ApC(ret, (ob) ip); }
 
-static intptr_t hash_str(la v, ob _) {
+// FIXME make faster
+static intptr_t hx_str(la v, ob _) {
   const char *bs = ((str)_)->text;
   intptr_t h = 1, n = ((str)_)->len;
   while (n--) h = (h ^ (mix * *bs++)) * mix;
@@ -110,13 +113,14 @@ static Gc(cp_str) {
   return (ob) (src->disp = (vm*) dst); }
 
 static bool eq_str(la v, ob x, ob y) {
-  return strp(y) &&
-    ((str)x)->len == ((str)y)->len &&
-    0 == strncmp(((str) x)->text, ((str) y)->text, ((str)x)->len); }
+  if (!strp(y)) return false;
+  str a = (str) x, b = (str) y;
+  return a->len == b->len &&
+    !strncmp(a->text, b->text, a->len); }
 
 const struct mtbl mtbl_str = {
   .does = do_str,
   .emit = em_str,
   .evac = cp_str,
-  .hash = hash_str,
+  .hash = hx_str,
   .equi = eq_str, };

@@ -6,12 +6,13 @@
 // calling and returning
 Vm(call) {
   Have(Width(sf));
-  fr subd = fp;
-  sp = (ob*) (fp = (fr) sp - 1);
+  sf subd = fp;
+  fp = (sf) sp - 1;
+  sp = (ob*) fp;
   fp->argc = getnum(GF(ip));
   fp->retp = FF(ip);
   fp->subd = subd;
-  fp->clos = nil;
+  fp->clos = (ob*) nil;
   return ApY(xp, nil); }
 
 Vm(ap_u) {
@@ -25,11 +26,12 @@ Vm(ap_u) {
   mo retp = fp->retp;
   sp = fp->argv + fp->argc - adic;
   for (size_t j = 0; j < adic; sp[j++] = A(xp), xp = B(xp));
-  sp = (ob*) (fp = (fr) sp - 1);
+  fp = (sf) sp - 1;
+  sp = (ob*) fp;
   fp->retp = retp;
   fp->argc = adic;
   fp->subd = subd;
-  fp->clos = nil;
+  fp->clos = (ob*) nil;
   return ApY(ip, nil); }
 
 // return from a function
@@ -48,15 +50,15 @@ static NoInline Vm(recn) {
   v->xp = (ob) fp->subd;
   v->ip = fp->retp;
   // reset fp
-  fp = (fr) (fp->argv + fp->argc - xp) - 1;
+  fp = (sf) (fp->argv + fp->argc - xp) - 1;
   // copy the args high to low
   for (size_t i = xp; i--; fp->argv[i] = sp[i]);
   sp = (ob*) fp;
   // populate fp
   fp->retp = v->ip;
-  fp->subd = (fr) v->xp;
+  fp->subd = (sf) v->xp;
   fp->argc = xp;
-  fp->clos = nil;
+  fp->clos = (ob*) nil;
   return ApY(ip, nil); }
 
 Vm(rec) {

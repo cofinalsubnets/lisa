@@ -125,7 +125,7 @@ static void copy_(la v, size_t len1, ob *pool1) {
     fr fp0 = (fr) sp0;
     fp->argc = fp0->argc;
     fp->subd = (fr) ((ob*) fp0->subd + shift);
-    fp->clos = cp(v, fp0->clos, pool0, top0);
+    fp->clos = (ob*) cp(v, (ob) fp0->clos, pool0, top0);
     fp->retp = (mo) cp(v, (ob) fp0->retp, pool0, top0);
     sp = fp->argv;
     sp0 = fp0->argv;

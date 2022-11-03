@@ -6,18 +6,19 @@
 #include <stdbool.h>
 
 typedef struct la *la;
-typedef intptr_t la_ob;
+typedef intptr_t la_val;
 
-la la_ini(void);
+// initialize / deinitialize a runtime instance
 bool la_open(la);
-void
-  la_fin(la),
-  la_close(la);
+void la_close(la);
+// as above but manage the instance with malloc / free
+la la_ini(void);
+void la_fin(la);
 
-la_ob
-  la_ev(la, la_ob),
-  la_rx(la, FILE*);
+la_val
+  la_ev(la, la_val), // eval a value
+  la_rx(la, FILE*); // read a value
 
-long la_tx(la, FILE*, la_ob);
+long la_tx(la, FILE*, la_val); // write a value
 
 #endif

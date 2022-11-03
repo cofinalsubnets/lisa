@@ -6,7 +6,7 @@
 
 // thanks !!
 
-typedef la_ob ob;
+typedef la_val ob;
 typedef struct mo *mo; // procedures
 typedef struct sf *fr, *sf; // stack frame
 #define Vm(n, ...) ob n(la v, ob xp, mo ip, ob *hp, ob *sp, sf fp)
@@ -14,19 +14,19 @@ typedef Vm(vm);
 
 // struct needed for type indirection
 // around vm function pointer arrays
-struct mo { vm *go; };
+struct mo { vm *ap; };
 // every dynamically allocated thread ends
 // with a tag pointing back to its head
 typedef struct tag {
   void *null; // always null
   struct mo
-    *self, // pointer to thread head
+    *self, // pointer to head of thread
     end[]; // first address after thread
 } *tag;
 
 // stack frame
 struct sf {
-  ob clos; // closure pointer FIXME
+  ob *clos; // closure pointer FIXME
   // keep this on the stack outside the
   // frame so we don't waste space for
   // functions w/o closures.
@@ -162,7 +162,7 @@ ob nope(la, const char*, ...) NoInline;
 
 #define nil putnum(0)
 #define F(_) ((mo)(_)+1)
-#define G(_) ((mo)(_))->go
+#define G(_) ((mo)(_))->ap
 #define FF(x) F(F(x))
 #define GF(x) G(F(x))
 #define A(o) ((two)(o))->a
@@ -182,7 +182,7 @@ ob nope(la, const char*, ...) NoInline;
 #define getnum(_) ((ob)(_)>>1)
 #define putnum(_) (((ob)(_)<<1)|1)
 
-struct prim { vm *go; const char *nom; };
+struct prim { vm *ap; const char *nom; };
 extern const int64_t mix;
 extern const struct prim prims[];
 extern const struct mtbl mtbl_two, mtbl_str, mtbl_tbl, mtbl_sym;
@@ -311,9 +311,6 @@ i_primitives(ninl)
 #define Unpack() (fp=v->fp,hp=v->hp,sp=v->sp,ip=v->ip,xp=v->xp)
 #define CallOut(...) (Pack(), __VA_ARGS__, Unpack())
 
-// FIXME confusing premature optimization
-#define Locs ((ob**)fp)[-1]
-#define Clos ((ob*)fp->clos)
 // the pointer to the local variables array isn't in the frame struct. it
 // isn't present for all functions, but if it is it's in the word of memory
 // immediately preceding the frame pointer. if a function has
@@ -326,8 +323,9 @@ i_primitives(ninl)
 
 #define ArityCheck(n) if (n > fp->argc) return ApC(xary, putnum(n))
 #define Check(_) if (!(_)) return ApC(xdom, xp)
-#define Have1() if (sp == hp) return (v->xp = 1, ApC(gc, xp))
 #define Have(n) if (sp - hp < n) return (v->xp = n, ApC(gc, xp))
+// sp is at least hp so this is a safe check for 1 word
+#define Have1() if (sp == hp) return (v->xp = 1, ApC(gc, xp))
 
 // FIXME isolate these if possible?
 static Inline two ini_two(void *_, ob a, ob b) {

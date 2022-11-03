@@ -50,7 +50,7 @@ static NoInline ob inst(la v, const char *a, vm *b) {
   ob z = symofs(v, a);
   return z ? tbl_set(v, v->topl, z, putnum(b)) : 0; }
 
-bool la_open(la v) {
+NoInline bool la_open(la v) {
   v->rand = v->t0 = clock();
   v->len = 0x400;
   v->pool = NULL;

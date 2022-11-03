@@ -146,7 +146,7 @@ Vm(genclo0) {
   fp->retp = ip;
   fp->subd = subd;
   fp->argc = adic;
-  fp->clos = ec[2];
+  fp->clos = (ob*) ec[2];
   if (!nilp(loc)) *--sp = loc;
   return ApY(ec[3], xp); }
 
@@ -158,7 +158,7 @@ Vm(genclo1) { return
 
 // set the closure for this frame
 Vm(setclo) { return
-  fp->clos = (ob) GF(ip),
+  fp->clos = (ob*) GF(ip),
   ApY(G(FF(ip)), xp); }
 
 // the next few functions create and store
@@ -184,8 +184,8 @@ static Vm(enclose) {
   ob *t = (ob*) block, // compiler thread closure array
      *at = t + 6, // compiler thread
      // TODO get closure out of stack frame; configure via xp
-     loc = nilp(xp) ? xp : (ob) Locs,
-     clo = fp->clos;
+     loc = nilp(xp) ? xp : ((ob*)fp)[-1],
+     clo = (ob) fp->clos;
 
   t[0] = arg;
   t[1] = loc;

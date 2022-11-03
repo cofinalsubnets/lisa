@@ -17,19 +17,24 @@ Vm(arg1) { return ApN(1, fp->argv[1]); }
 Vm(arg2) { return ApN(1, fp->argv[2]); }
 Vm(arg3) { return ApN(1, fp->argv[3]); }
 
+// the first two stack slots under the current frame
+// may hold extra call data.
+#define Slot1 ((ob**)fp)[-1]
+#define Slot2 ((ob**)fp)[-2]
+
 // local variables
-Vm(locn) { return ApN(2, Locs[getnum(GF(ip))]); }
-Vm(loc0) { return ApN(1, Locs[0]); }
-Vm(loc1) { return ApN(1, Locs[1]); }
-Vm(loc2) { return ApN(1, Locs[2]); }
-Vm(loc3) { return ApN(1, Locs[3]); }
+Vm(locn) { return ApN(2, Slot1[getnum(GF(ip))]); }
+Vm(loc0) { return ApN(1, Slot1[0]); }
+Vm(loc1) { return ApN(1, Slot1[1]); }
+Vm(loc2) { return ApN(1, Slot1[2]); }
+Vm(loc3) { return ApN(1, Slot1[3]); }
 
 // closure variables
-Vm(clon) { return ApN(2, Clos[getnum(GF(ip))]); }
-Vm(clo0) { return ApN(1, Clos[0]); }
-Vm(clo1) { return ApN(1, Clos[1]); }
-Vm(clo2) { return ApN(1, Clos[2]); }
-Vm(clo3) { return ApN(1, Clos[3]); }
+Vm(clon) { return ApN(2, fp->clos[getnum(GF(ip))]); }
+Vm(clo0) { return ApN(1, fp->clos[0]); }
+Vm(clo1) { return ApN(1, fp->clos[1]); }
+Vm(clo2) { return ApN(1, fp->clos[2]); }
+Vm(clo3) { return ApN(1, fp->clos[3]); }
 
 ////
 /// Store Instructions
@@ -47,7 +52,7 @@ Vm(dupl) {
 
 // set a local variable
 Vm(defloc) { return
-  Locs[getnum(GF(ip))] = xp,
+  Slot1[getnum(GF(ip))] = xp,
   ApN(2, xp); }
 
 // set a module variable
