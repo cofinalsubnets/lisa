@@ -177,9 +177,9 @@ static Vm(enclose) {
     arg = (ob) block,
     block += arg_len;
 
-  ob *env = (ob*) ini_mo(block, 4); // compiler thread closure array
+  ob *env = (ob*) ini_mo(block, 4); // holds the closure environment & constructor
   block += env_len;
-  ob *thd = (ob*) ini_mo(block, 3), // compiler thread
+  ob *thd = (ob*) ini_mo(block, 3), // the thread that actually gets returned
      // TODO get closure out of stack frame; configure via xp
      loc = nilp(xp) ? xp : ((ob*)fp)[-1],
      clo = (ob) fp->clos;

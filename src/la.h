@@ -1,6 +1,5 @@
 #include "lisa.h"
 #include <stdlib.h>
-#include <assert.h>
 
 #define Inline inline __attribute__((always_inline))
 #define NoInline __attribute__((noinline))
