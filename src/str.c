@@ -34,9 +34,9 @@ Vm(scat_u) {
     sum += ((str) x)->len - 1; } // XXX
   size_t
     len = sum + 1, // XXX
-    words = Width(str) + b2w(len); // XXX
+    words = Width(str) + b2w(len);
   Have(words);
-  str d = ini_str(hp, len); // XXX
+  str d = ini_str(hp, len);
   hp += words;
   d->text[sum] = 0; // XXX
   for (str x; i--;
@@ -61,9 +61,9 @@ Vm(ssub_u) {
   ub = max(ub, lb);
   size_t
     len = ub - lb + 1, // XXX
-    words = Width(str) + b2w(len); // XXX
+    words = Width(str) + b2w(len);
   Have(words);
-  str dst = ini_str(hp, len); // XXX
+  str dst = ini_str(hp, len);
   hp += words;
   dst->text[ub - lb] = 0; // XXX
   memcpy(dst->text, src->text + lb, ub - lb);

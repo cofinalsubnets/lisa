@@ -90,8 +90,10 @@ static str rx_str(la v, FILE *p) {
       // to be read literally // TODO more escape sequences
       case '\\': if ((x = fgetc(p)) == EOF) goto fin;
       default: o->text[n++] = x; continue;
-      case '"': case EOF: fin:
-        return o->text[n++] = 0, o->len = n, o; }
+      case '"': case EOF: fin: return
+        o->text[n++] = 0, // XXX
+        o->len = n,
+        o; }
   return 0; }
 
 // read the characters of an atom (number or symbol)
@@ -104,35 +106,38 @@ static str rx_atom_chars(la v, FILE *p) {
       // these characters terminate an atom
       case ' ': case '\n': case '\t': case ';': case '#':
       case '(': case ')': case '\'': case '"': ungetc(x, p);
-      case EOF: return o->text[n++] = 0, o->len = n, o; }
+      case EOF: return
+        o->text[n++] = 0, // XXX
+        o->len = n,
+        o; }
   return 0; }
 
-static NoInline ob rx_atom_n(la v, str b, const char *in, int sign, int rad) {
-  static const char *ds = "0123456789abcdefghijklmnopqrstuvwxyz";
+static NoInline ob rx_atom_n(la v, str b, size_t inset, int sign, int rad) {
+  static const char *digits = "0123456789abcdefghijklmnopqrstuvwxyz";
+  size_t len = b->len - 1; // XXX
+  if (inset >= len) fail: return (ob) symof(v, b);
   intptr_t out = 0;
-  int c = tolower(*in++);
-  if (!c) return (ob) symof(v, b); // fail to parse empty string
   do {
-    int d = 0;
-    while (ds[d] && ds[d] != c) d++;
-    if (d >= rad) return (ob) symof(v, b); // fail to parse oob digit
-    out = out * rad + d;
-  } while ((c = tolower(*in++)));
+    int dig = 0, c = tolower(b->text[inset++]);
+    while (digits[dig] && digits[dig] != c) dig++;
+    if (dig >= rad) goto fail;
+    out = out * rad + dig;
+  } while (inset < len);
   return putnum(sign * out); }
 
 static NoInline ob rx_atom(la v, str b) {
-  const char *s = b->text;
+  size_t i = 0;
   int sign = 1;
 loop:
-  switch (*s) {
-    case '+': s += 1; goto loop;
-    case '-': s += 1, sign *= -1; goto loop;
+  switch (b->text[i]) {
+    case '+': i += 1; goto loop;
+    case '-': i += 1, sign *= -1; goto loop;
     case '0': { // with radix // FIXME change this syntax to 10001011{b,s,o,d,z,x,n}
       // numbers can be input in bases 2, 6, 8, 10, 12, 16, 36
       const char *r = "b\2s\6o\10d\12z\14x\20n\44";
-      for (char c = tolower(s[1]); *r; r += 2)
-        if (*r == c) return rx_atom_n(v, b, s+2, sign, r[1]); } }
-  return rx_atom_n(v, b, s, sign, 10); }
+      for (char c = tolower(b->text[i+1]); *r; r += 2)
+        if (*r == c) return rx_atom_n(v, b, i+2, sign, r[1]); } }
+  return rx_atom_n(v, b, i, sign, 10); }
 
 Vm(rx_u) {
   Have(Width(two));
