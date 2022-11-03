@@ -1,6 +1,9 @@
 #include "la.h"
 #include <time.h>
 
+static clock_t copy(la, size_t);
+static void copy_(la, size_t, ob*);
+
 // FIXME the garbage collector works pretty well but it could be better:
 //
 // - it uses stack recursion so a process that constructs infinite
@@ -12,9 +15,6 @@
 //   most of the time, and if malloc is efficient then the overhead from
 //   calling it every cycle should be negligible, but it would still be
 //   better only to call out when we need to grow or shrink the pool.
-
-static clock_t copy(la, size_t);
-static void copy_(la, size_t, ob*);
 
 ////
 /// garbage collector
@@ -59,14 +59,14 @@ bool please(la v, size_t req) {
 static clock_t copy(la v, size_t len1) {
   clock_t t1 = clock(), t0 = v->t0, t2;
 
-  ob *pool1 = calloc(len1, sizeof(ob));
+  ob *pool0 = v->pool,
+     *pool1 = calloc(len1, sizeof(ob));
   if (!pool1) return 0;
 
-  ob *pool0 = v->pool;
   copy_(v, len1, pool1);
   free(pool0);
 
-  v->t0 = t2 = clock();
+  t2 = v->t0 = clock();
   t1 = t2 - t1;
   return t1 ? (t2 - t0) / t1 : 1; }
 

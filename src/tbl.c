@@ -105,9 +105,9 @@ Vm(tset_u) {
   return x ? ApC(ret, x) : ApC(xoom, nil); }
 
 Vm(tbl_u) {
-  ob _ = fp->argc;
-  CallOut(_ = (v->xp = (ob) table(v)) && tblss(v, 0, _));
-  return _ ? ApC(ret, xp) : ApC(xoom, nil); }
+  ob x = fp->argc;
+  CallOut(x = (v->xp = (ob) table(v)) && tblss(v, 0, x));
+  return x ? ApC(ret, xp) : ApC(xoom, nil); }
 
 Vm(tkeys_u) {
   ArityCheck(1);
@@ -254,8 +254,8 @@ static Gc(cp_tbl) {
     (ob*) cp(v, (ob) src->tab, pool0, top0)); }
 
 static long tx_tbl(la v, FILE *o, ob _) {
-  return fprintf(o, "#tbl:%ld/%ld",
-    ((tbl)_)->len, 1ul << ((tbl)_)->cap); }
+  tbl t = (tbl) _;
+  return fprintf(o, "#tbl:%ld/%ld", t->len, 1ul << t->cap); }
 
 static intptr_t hx_tbl(la v, ob _) {
   return ror(mix * 9, 3 * sizeof(intptr_t) / 4); }

@@ -30,7 +30,6 @@ static Inline mo pb2(vm *i, ob x, mo k) {
 static bool scan(la, env*, ob) NoInline;
 
 static mo
-  ana(la, ob, ob),
   r_pb1(la, env*, size_t),
   r_pb2(la, env*, size_t),
   r_co_ini(la, env*, size_t),
@@ -360,6 +359,11 @@ Co(r_co_ini) {
          G(k += m) = (vm*) (e ? (*e)->name : nil);
   return k; }
 
+// apply expression pullbacks
+static mo ana(la v, ob x) {
+  bool ok = Push(N(r_co_x), x, N(r_pb1), N(ret), N(r_co_ini));
+  return ok ? pull(v, 0, 0) : 0; }
+
 // bootstrap eval interpreter function
 Vm(ev_u) {
   ArityCheck(1);
@@ -369,41 +373,9 @@ Vm(ev_u) {
   // bootstrapped compiler, which is what we want?
   // seems kind of strange to need this ...
   xp = ns_get(v, v->lex[Eval]);
-  if (xp && homp(xp) && G(xp) != ev_u) return ApY((mo) xp, nil);
+  if (xp && homp(xp) && G(xp) != ev_u)
+    return ApY((mo) xp, nil);
   mo y;
-  CallOut(y = ana(v, fp->argv[0], putnum(ret)));
+  CallOut(y = ana(v, fp->argv[0]));
   return y ? ApY(y, xp) : ApC(xoom, xp); }
 
-// apply expression pullbacks
-static mo ana(la v, ob x, ob k) {
-  // k can be a continuation or an instruction pointer
-  bool ok = nump(k) ?
-    Push(N(r_co_x), x, N(r_pb1), k, N(r_co_ini)) :
-    Push(N(r_co_x), x, N(r_pb2), N(jump), k, N(r_co_ini));
-  return ok ? pull(v, 0, 0) : 0; }
-
-static ob rxq(la v, FILE *i) {
-  ob x = la_rx(v, i);
-  x = x ? (ob) pair(v, x, nil) : x;
-  return x ? (ob) pair(v, v->lex[Quote], x) : x; }
-
-static ob ana_fd(la v, FILE *in, ob k) {
-  ob x;
-  with(k, x = rxq(v, in));
-  if (!x) return feof(in) ? k : x; // FIXME distinguish eof from oom
-  with(x, k = ana_fd(v, in, k));
-  if (!k) return k;
-  with(k, x = (ob) pair(v, x, nil),
-          x = x ? (ob) pair(v, v->lex[Eval], x) : x);
-  return x ? (ob) ana(v, x, k) : x; }
-
-#include <string.h>
-#include <errno.h>
-mo ana_p(la v, const char *path, ob k) {
-  FILE *in = fopen(path, "r");
-  if (!in) {
-    errp(v, "# %s : %s", path, strerror(errno));
-    return NULL; }
-  k = ana_fd(v, in, k);
-  fclose(in);
-  return (mo) k; }

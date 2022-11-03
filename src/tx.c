@@ -16,8 +16,8 @@ Vm(show_u) {
       la_tx(v, stdout, fp->argv[i++]),
       fputc(' ', stdout);
     la_tx(v, stdout, xp = fp->argv[i]); }
-  fputc('\n', stdout);
-  return ApC(ret, xp); }
+  return fputc('\n', stdout),
+    ApC(ret, xp); }
 
 Vm(putc_u) {
   ArityCheck(1);

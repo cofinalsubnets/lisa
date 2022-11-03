@@ -41,7 +41,8 @@ Vm(clo3) { return ApN(1, fp->clos[3]); }
 // // stack push
 Vm(push) {
   Have1();
-  return ApN(1, *--sp = xp); }
+  *--sp = xp;
+  return ApN(1, xp); }
 
 // dup top of stack
 Vm(dupl) {
@@ -64,10 +65,10 @@ Vm(deftop) {
 // allocate local variable array
 Vm(setloc) {
   size_t n = getnum((ob) GF(ip));
-  // n + 2 for the vector thread + 1 for the stack slot
-  Have(n + 3);
+  // + 1 for the stack slot
+  Have(n + Width(tag) + 1);
   ob *t = setw(hp, nil, n);
-  hp += n + 3;
+  hp += n + Width(tag) + 1;
   t[n] = 0;
   *--sp = t[n+1] = (ob) t;
   return ApN(2, xp); }
@@ -91,9 +92,9 @@ Vm(late) {
   // omit the arity check if possible
   vm *n = G(FF(ip));
   if ((n == call || n == rec) && // xp will be a hom
-      ((ob*) xp)[0] == (ob) arity &&
-      ((ob*) ip)[3] >= ((ob*) xp)[1])
-    xp = (ob) ((ob*) xp + 2);
+      G(xp) == arity &&
+      GF(FF(ip)) >= GF(xp))
+    xp = (ob) FF(ip);
   G(ip) = imm;
   GF(ip) = (vm*) xp;
   return ApN(2, xp); }

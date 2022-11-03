@@ -6,6 +6,7 @@
 void *bump(la v, size_t n) {
   void *x = v->hp;
   v->hp += n;
+  assert(v->hp < v->pool + v->len);
   return x; }
 
 void *cells(la v, size_t n) {

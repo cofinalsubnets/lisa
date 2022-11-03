@@ -22,8 +22,8 @@ static int nextc(FILE *i) {
       case '\n': case EOF: return nextc(i); } } }
 
 static ob rx2(la, FILE*), rx1(la, FILE*);
-static Inline ob pull(la v, FILE *i, ob x) {
-  return ((ob (*)(la, FILE*, ob))(getnum(*v->sp++)))(v, i, x); }
+static Inline ob pull(la v, FILE *i, ob x) { return
+  ((ob (*)(la, FILE*, ob))(getnum(*v->sp++)))(v, i, x); }
 
 static ob pret(la v, FILE *i, ob x) { return x; }
 

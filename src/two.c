@@ -1,10 +1,15 @@
 #include "la.h"
 
 // pairs and lists
+static NoInline two pair_gc(la v, ob a, ob b) {
+  bool ok;
+  with(a, with(b, ok = please(v, Width(two))));
+  return ok ? pair(v, a, b) : 0; }
+
 two pair(la v, ob a, ob b) {
-  two w;
-  with(a, with(b, w = cells(v, Width(two))));
-  return w ? ini_two(w, a, b) : 0; }
+  return Avail >= Width(two) ?
+    ini_two(bump(v, Width(two)), a, b) :
+    pair_gc(v, a, b); }
 
 // length of list
 size_t llen(ob l) {
@@ -40,12 +45,12 @@ Vm(cons_u) {
   hp += Width(two);
   return ApC(ret, xp); }
 
-static Vm(do_two) {
+static Vm(ap_two) {
   return ApC(ret, fp->argc ? B(ip) : A(ip)); }
 
 static Gc(cp_two) {
-  two src = (two) x, dst;
-  dst = bump(v, Width(two));
+  two src = (two) x,
+      dst = bump(v, Width(two));
   src->disp = (vm*) dst;
   return (ob) ini_two(dst,
     cp(v, src->a, pool0, top0),
@@ -64,15 +69,15 @@ static long em_two(la v, FILE *o, ob x) {
   if (fputc(')', o) == EOF) return -1;
   return r; }
 
-static intptr_t hash_two(la v, ob x) {
+static intptr_t hx_two(la v, ob x) {
   return ror(hash(v, A(x)) * hash(v, B(x)), 4 * sizeof(intptr_t)); }
 
 static bool eq_two(la v, ob x, ob y) {
   return twop(y) && eql(v, A(x), A(y)) && eql(v, B(x), B(y)); }
 
 const struct mtbl mtbl_two = {
-  .does = do_two,
+  .does = ap_two,
   .emit = em_two,
   .evac = cp_two,
-  .hash = hash_two,
+  .hash = hx_two,
   .equi = eq_two, };

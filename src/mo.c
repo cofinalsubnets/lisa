@@ -44,7 +44,7 @@ Vm(hom_u) {
   size_t len = getnum(fp->argv[0]);
   Have(len);
   ob *k = setw(hp, nil, len);
-  hp += len + 2;
+  hp += len + Width(tag);
   k[len] = 0;
   k[len+1] = (ob) k;
   return ApC(ret, (ob) (k + len)); }
@@ -118,9 +118,9 @@ Vm(disp) { return ApC(((mtbl) GF(ip))->does, xp); }
 // pop some things off the stack into an array.
 Vm(take) {
   ob *t, n = getnum((ob) GF(ip));
-  Have(n + 2);
+  Have(n + Width(tag));
   t = cpyw(hp, sp, n);
-  hp += n + 2;
+  hp += n + Width(tag);
   t[n] = 0;
   t[n+1] = (ob) t;
   return ApC(ret, (ob) t); }
@@ -138,11 +138,12 @@ Vm(genclo0) {
   size_t adic = nilp(arg) ? 0 : getnum(G(arg));
   Have(Width(sf) + adic + 1);
   ob loc = ec[1];
-  fr subd = fp;
+  sf subd = fp;
   G(ip) = genclo1;
   sp = cpyw(sp - adic, (ob*) arg + 1, adic);
-  ec = (ob*) GF(ip);
-  sp = (ob*) (fp = (fr) sp - 1);
+  ec = (ob*) GF(ip); // XXX p sure this is not needed?
+  fp = (sf) sp - 1;
+  sp = (ob*) fp;
   fp->retp = ip;
   fp->subd = subd;
   fp->argc = adic;

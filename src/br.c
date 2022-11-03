@@ -96,4 +96,8 @@ Br(brge,  *sp++ >= xp, GF, xp, FF, nil)
 // brgteq2 is brlt
 
 // return to C
-Vm(yield) { return Pack(), xp; }
+Vm(yield) {
+  Pack();
+  assert(v->fp == (sf) v->sp);
+  assert(v->sp == v->pool + v->len);
+  return xp; }

@@ -12,16 +12,6 @@ static void repl(la v) {
       la_tx(v, stdout, _),
       fputc('\n', stdout); } }
 
-// takes scripts and if we want a repl, gives a thread
-static mo act(la v, const char **nfs) {
-  const char *nf = *nfs;
-  mo k = nf ? act(v, nfs + 1) : (mo) Tupl((ob) yield);
-  return k && nf ? ana_p(v, nf, (ob) k) : k; }
-
-static mo actn(la v, const char *prelu, const char **scripts) {
-  mo k = act(v, scripts);
-  return k && prelu ? ana_p(v, prelu, (ob) k) : k; }
-
 #include <string.h>
 #include <errno.h>
 bool la_script(la v, const char *path) {
@@ -35,10 +25,6 @@ bool la_script(la v, const char *path) {
     ok = x ? la_ev(v, x) : feof(in));
   if (!ok) errp(v, "%s : %s", path, "error");
   return fclose(in), ok; }
-
-static NoInline ob la_go(la v) {
-  ob xp, *hp, *sp; fr fp; mo ip;
-  return Unpack(), ApN(0, xp); }
 
 static NoInline int la_main(bool shell, const char *prelu, const char **scripts) {
   la v = la_ini();

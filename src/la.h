@@ -1,5 +1,6 @@
 #include "lisa.h"
 #include <stdlib.h>
+#include <assert.h>
 
 #define Inline inline __attribute__((always_inline))
 #define NoInline __attribute__((noinline))
@@ -132,8 +133,7 @@ long
 
 // functions
 tag button(mo); // get tag at end
-mo mkmo(la, size_t), // allocate a thread
-   ana_p(la, const char*, ob); // load a script FIXME hide
+mo mkmo(la, size_t); // allocate a thread
 
 #define Push(...) pushs(v, __VA_ARGS__, (ob)0)
 #define Tupl(...) tupl(v, __VA_ARGS__, (ob)0)
