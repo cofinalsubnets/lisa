@@ -6,7 +6,7 @@
 
 // thanks !!
 
-typedef la_val ob;
+typedef la_ob ob;
 typedef struct mo *mo; // procedures
 typedef struct sf *fr, *sf; // stack frame
 #define Vm(n, ...) ob n(la v, ob xp, mo ip, ob *hp, ob *sp, sf fp)

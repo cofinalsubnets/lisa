@@ -6,7 +6,7 @@
 #include <stdbool.h>
 
 typedef struct la *la;
-typedef intptr_t la_val;
+typedef intptr_t la_ob;
 
 // initialize / deinitialize a runtime instance
 bool la_open(la);
@@ -15,10 +15,12 @@ void la_close(la);
 la la_ini(void);
 void la_fin(la);
 
-la_val
-  la_ev(la, la_val), // eval a value
+bool la_script(la, const char*);
+
+la_ob
+  la_ev(la, la_ob), // eval a value
   la_rx(la, FILE*); // read a value
 
-long la_tx(la, FILE*, la_val); // write a value
+long la_tx(la, FILE*, la_ob); // write a value
 
 #endif

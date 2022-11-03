@@ -77,15 +77,16 @@ Vm(str_u) {
   s->text[i] = 0; // XXX
   return ApC(ret, (ob) ini_str(s, i+1)); }
 
-static Vm(do_str) {
+static Vm(ap_str) {
   str s = (str) ip;
   fputstr(stdout, s);
   return ApC(ret, (ob) ip); }
 
 // FIXME make faster
 static intptr_t hx_str(la v, ob _) {
-  const char *bs = ((str)_)->text;
-  intptr_t h = 1, n = ((str)_)->len;
+  str s = (str) _;
+  const char *bs = s->text;
+  intptr_t h = 1, n = s->len;
   while (n--) h = (h ^ (mix * *bs++)) * mix;
   return h; }
 
@@ -119,7 +120,7 @@ static bool eq_str(la v, ob x, ob y) {
     !strncmp(a->text, b->text, a->len); }
 
 const struct mtbl mtbl_str = {
-  .does = do_str,
+  .does = ap_str,
   .emit = em_str,
   .evac = cp_str,
   .hash = hx_str,

@@ -22,18 +22,31 @@ static mo actn(la v, const char *prelu, const char **scripts) {
   mo k = act(v, scripts);
   return k && prelu ? ana_p(v, prelu, (ob) k) : k; }
 
+#include <string.h>
+#include <errno.h>
+bool la_script(la v, const char *path) {
+  FILE *in = fopen(path, "r");
+  if (!in) return
+    errp(v, "%s : %s", path, strerror(errno)),
+    false;
+  bool ok = true;
+  for (ob x; ok && !feof(in);
+    x = la_rx(v, in),
+    ok = x ? la_ev(v, x) : feof(in));
+  if (!ok) errp(v, "%s : %s", path, "error");
+  return fclose(in), ok; }
+
 static NoInline ob la_go(la v) {
   ob xp, *hp, *sp; fr fp; mo ip;
   return Unpack(), ApN(0, xp); }
 
 static NoInline int la_main(bool shell, const char *prelu, const char **scripts) {
   la v = la_ini();
-  if (!v) return EXIT_FAILURE;
-  v->ip = actn(v, prelu, scripts);
-  bool _ = v->ip && la_go(v);
-  if (_ && shell) repl(v);
+  bool ok = v && (!prelu || la_script(v, prelu));
+  while (ok && *scripts) ok = la_script(v, *scripts++);
+  if (ok && shell) repl(v);
   return la_fin(v),
-    _ ? EXIT_SUCCESS : EXIT_FAILURE; }
+    ok ? EXIT_SUCCESS : EXIT_FAILURE; }
 
 #include <getopt.h>
 int main(int ac, char **av) {
