@@ -135,12 +135,10 @@ long
 tag button(mo); // get tag at end
 mo mkmo(la, size_t); // allocate a thread
 
+bool  pushs(la, ...); // push args onto stack
+ob tupl(la, ...); // collect args into tuple (data thread)
 #define Push(...) pushs(v, __VA_ARGS__, (ob)0)
 #define Tupl(...) tupl(v, __VA_ARGS__, (ob)0)
-// push args onto stack
-bool  pushs(la, ...);
-// collect args into tuple (data thread)
-ob tupl(la, ...);
 
 bool
   eq_not(la, ob, ob), // always returns false

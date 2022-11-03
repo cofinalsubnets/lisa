@@ -3,7 +3,7 @@
 #include <ctype.h>
 
 static str
-  rx_atom(la, FILE*, char),
+  rx_atom(la, FILE*),
   rx_str(la, FILE*);
 static ob
   rx_num(la, str, const char*, int);
@@ -21,46 +21,52 @@ static int nextc(FILE *i) {
     case '#': case ';': for (;;) switch (fgetc(i)) {
       case '\n': case EOF: return nextc(i); } } }
 
-static ob rx2(la, FILE*), rx1(la, FILE*);
+static ob rx(la, FILE*), rx_two(la, FILE*);
 static Inline ob pull(la v, FILE *i, ob x) { return
   ((ob (*)(la, FILE*, ob))(getnum(*v->sp++)))(v, i, x); }
 
 static ob pret(la v, FILE *i, ob x) { return x; }
 
-static ob pxx(la v, FILE *i, ob x) {
+static ob rx_two_cons(la v, FILE *i, ob x) {
   ob y = *v->sp++;
   return pull(v, i, x ? (ob) pair(v, y, x) : x); }
 
-static ob rx2r(la v, FILE *i, ob x) {
-  return !x || !Push(putnum(pxx), x) ? pull(v, i, 0) : rx2(v, i); }
+static ob rx_two_cont(la v, FILE *i, ob x) {
+  return !x || !Push(putnum(rx_two_cons), x) ?
+    pull(v, i, 0) :
+    rx_two(v, i); }
 
-static ob pxq(la v, FILE* i, ob x) { return
+static ob rx_q(la v, FILE* i, ob x) { return
   x = x ? (ob) pair(v, x, nil) : x,
   x = x ? (ob) pair(v, v->lex[Quote], x) : x,
   pull(v, i, x); }
 
-static ob rx1(la v, FILE *i) {
+static ob rx(la v, FILE *i) {
   int c = nextc(i);
   switch (c) {
     case ')': case EOF: return pull(v, i, 0);
-    case '(': return rx2(v, i);
+    case '(': return rx_two(v, i);
     case '"': return pull(v, i, (ob) rx_str(v, i));
-    case '\'': return Push(putnum(pxq)) ? rx1(v, i) : pull(v, i, 0); }
-  str a = rx_atom(v, i, c);
+    case '\'': return
+      Push(putnum(rx_q)) ? rx(v, i) : pull(v, i, 0); }
+  ungetc(c, i);
+  str a = rx_atom(v, i);
   ob x = a ? rx_num(v, a, a->text, 1) : 0;
   return pull(v, i, x); }
 
-static ob rx2(la v, FILE *i) {
+static ob rx_two(la v, FILE *i) {
   int c = nextc(i);
   switch (c) {
     case ')': return pull(v, i, nil);
     case EOF: return pull(v, i, 0);
     default: return
       ungetc(c, i),
-      Push(putnum(rx2r)) ? rx1(v, i) : pull(v, i, 0); } }
+      Push(putnum(rx_two_cont)) ?
+        rx(v, i) :
+        pull(v, i, 0); } }
 
 ob la_rx(la v, FILE *i) { return
-  Push(putnum(pret)) ? rx1(v, i) : 0; }
+  Push(putnum(pret)) ? rx(v, i) : 0; }
 
 static str mkbuf(la v) {
   str s = cells(v, Width(str) + 1);
@@ -90,10 +96,9 @@ static str rx_str(la v, FILE *p) {
 
 // read the characters of an atom (number or symbol)
 // into a string
-static str rx_atom(la v, FILE *p, char c0) {
+static str rx_atom(la v, FILE *p) {
   str o = mkbuf(v);
-  if (o) o->text[0] = c0;
-  for (size_t n = 1, lim = sizeof(ob); o; o = buf_grow(v, o), lim *= 2)
+  for (size_t n = 0, lim = sizeof(ob); o; o = buf_grow(v, o), lim *= 2)
     for (int x; n < lim;) switch (x = fgetc(p)) {
       default: o->text[n++] = x; continue;
       // these characters terminate an atom
