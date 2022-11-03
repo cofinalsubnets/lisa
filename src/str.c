@@ -31,10 +31,12 @@ Vm(scat_u) {
   while (i < l) {
     ob x = fp->argv[i++];
     Check(strp(x));
-    sum += ((str) x)->len - 1; } // XXX null terminated
-  size_t words = Width(str) + b2w(sum+1); // XXX
+    sum += ((str) x)->len - 1; } // XXX
+  size_t
+    len = sum + 1, // XXX
+    words = Width(str) + b2w(len); // XXX
   Have(words);
-  str d = ini_str(hp, sum + 1); // XXX
+  str d = ini_str(hp, len); // XXX
   hp += words;
   d->text[sum] = 0; // XXX
   for (str x; i--;
@@ -57,9 +59,11 @@ Vm(ssub_u) {
     ub = getnum(fp->argv[2]); }
   ub = min(ub, src->len-1); // XXX
   ub = max(ub, lb);
-  size_t words = Width(str) + b2w(ub - lb + 1); // XXX
+  size_t
+    len = ub - lb + 1, // XXX
+    words = Width(str) + b2w(len); // XXX
   Have(words);
-  str dst = ini_str(hp, ub - lb + 1); // XXX
+  str dst = ini_str(hp, len); // XXX
   hp += words;
   dst->text[ub - lb] = 0; // XXX
   memcpy(dst->text, src->text + lb, ub - lb);
@@ -67,14 +71,14 @@ Vm(ssub_u) {
 
 Vm(str_u) {
   size_t
-    chars = fp->argc,
-    words = Width(str) + b2w(chars + 1); // XXX
+    len = fp->argc + 1, // XXX
+    words = Width(str) + b2w(len);
   Have(words);
-  str s = ini_str(hp, chars + 1);
-  s->text[chars] = 0; // XXX
+  str s = ini_str(hp, len);
   hp += words;
-  while (chars--)
-    s->text[chars] = getnum(fp->argv[chars]);
+  s->text[--len] = 0; // XXX
+  while (len--)
+    s->text[len] = getnum(fp->argv[len]);
   return ApC(ret, (ob) s); }
 
 static Vm(ap_str) {
@@ -93,7 +97,7 @@ static intptr_t hx_str(la v, ob _) {
 static bool escapep(char c) {
   return c == '\\' || c == '"'; }
 
-static long em_str(la v, FILE *o, ob _) {
+static long tx_str(la v, FILE *o, ob _) {
   str s = (str) _;
   size_t len = s->len - 1; // XXX null
   const char *text = s->text;
@@ -121,7 +125,7 @@ static bool eq_str(la v, ob x, ob y) {
 
 const struct mtbl mtbl_str = {
   .does = ap_str,
-  .emit = em_str,
+  .emit = tx_str,
   .evac = cp_str,
   .hash = hx_str,
   .equi = eq_str, };

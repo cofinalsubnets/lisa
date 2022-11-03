@@ -77,7 +77,7 @@ static str buf_grow(la v, str s) {
   size_t len = s->len;
   with(s, t = cells(v, Width(str) + 2 * b2w(len)));
   if (!t) return 0;
-  t = ini_str(t, 2 * len);
+  ini_str(t, 2 * len);
   memcpy(t->text, s->text, len);
   return t; }
 
