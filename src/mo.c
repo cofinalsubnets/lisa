@@ -25,10 +25,7 @@
 // allocate a thread
 mo mkmo(la v, size_t n) {
   mo k = cells(v, n + Width(tag));
-  if (k) {
-    tag t = (tag) (k + n);
-    t->null = 0, t->self = k; }
-  return k; }
+  return k ? ini_mo(k, n) : k; }
 
 // get the tag at the end of a function
 tag button(mo k) {
@@ -43,10 +40,8 @@ Vm(hom_u) {
   Check(nump(fp->argv[0]));
   size_t len = getnum(fp->argv[0]);
   Have(len);
-  ob *k = setw(hp, nil, len);
+  mo k = setw(ini_mo(hp, len), nil, len);
   hp += len + Width(tag);
-  k[len] = 0;
-  k[len+1] = (ob) k;
   return ApC(ret, (ob) (k + len)); }
 
 // trim a function after writing out code
@@ -117,13 +112,11 @@ Vm(disp) { return ApC(((mtbl) GF(ip))->does, xp); }
 //
 // pop some things off the stack into an array.
 Vm(take) {
-  ob *t, n = getnum((ob) GF(ip));
+  ob n = getnum((ob) GF(ip));
   Have(n + Width(tag));
-  t = cpyw(hp, sp, n);
+  mo k = ini_mo(cpyw(hp, sp, n), n);
   hp += n + Width(tag);
-  t[n] = 0;
-  t[n+1] = (ob) t;
-  return ApC(ret, (ob) t); }
+  return ApC(ret, (ob) k); }
 
 // this function is run the first time a user
 // function with a closure is called. its
@@ -164,44 +157,43 @@ Vm(setclo) { return
 
 // the next few functions create and store
 // lexical environments.
-// FIXME magic numbers
 static Vm(enclose) {
-  size_t m = fp->argc, n = m + (m ? 14 : 11);
+  size_t
+    adic = fp->argc,
+    arg_len = adic ? adic + 1 + Width(tag) : 0,
+    env_len = 4 + Width(tag),
+    thd_len = 3 + Width(tag),
+    n = arg_len + env_len + thd_len;
   Have(n);
-  ob x = (ob) GF(ip),
+  ob codeXcons = (ob) GF(ip), // pair of the compiled thread & closure constructor
      arg = nil,
      *block = hp;
   hp += n;
-  if (m) {
-    n -= 11;
-    arg = (ob) block;
-    block += n;
-    block[-2] = 0;
-    block[-1] = arg;
-    n -= 3;
-    ((ob*) arg)[0] = putnum(n);
-    while (n--) ((ob*) arg)[n+1] = fp->argv[n]; }
 
-  ob *t = (ob*) block, // compiler thread closure array
-     *at = t + 6, // compiler thread
+  if (adic)
+    ini_mo(block, adic + 1),
+    block[0] = putnum(adic),
+    cpyw(block + 1, fp->argv, adic),
+    arg = (ob) block,
+    block += arg_len;
+
+  ob *env = (ob*) ini_mo(block, 4); // compiler thread closure array
+  block += env_len;
+  ob *thd = (ob*) ini_mo(block, 3), // compiler thread
      // TODO get closure out of stack frame; configure via xp
      loc = nilp(xp) ? xp : ((ob*)fp)[-1],
      clo = (ob) fp->clos;
 
-  t[0] = arg;
-  t[1] = loc;
-  t[2] = clo;
-  t[3] = B(x);
-  t[4] = 0;
-  t[5] = (ob) t;
+  env[0] = arg;
+  env[1] = loc;
+  env[2] = clo;
+  env[3] = B(codeXcons);
 
-  at[0] = (ob) genclo0;
-  at[1] = (ob) t;
-  at[2] = A(x);
-  at[3] = 0;
-  at[4] = (ob) at;
+  thd[0] = (ob) genclo0;
+  thd[1] = (ob) env;
+  thd[2] = A(codeXcons);
 
-  return ApN(2, (ob) at); }
+  return ApN(2, (ob) thd); }
 
 // these pass the locals array to encl in xp
 // TODO do the same thing with the closure ptr

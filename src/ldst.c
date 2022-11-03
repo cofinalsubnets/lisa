@@ -67,10 +67,9 @@ Vm(setloc) {
   size_t n = getnum((ob) GF(ip));
   // + 1 for the stack slot
   Have(n + Width(tag) + 1);
-  ob *t = setw(hp, nil, n);
-  hp += n + Width(tag) + 1;
-  t[n] = 0;
-  *--sp = t[n+1] = (ob) t;
+  mo t = setw(ini_mo(hp, n), nil, n);
+  hp += n + Width(tag);
+  *--sp = (ob) t;
   return ApN(2, xp); }
 
 static NoInline Vm(nom_err) {

@@ -335,3 +335,9 @@ static Inline str ini_str(void *_, size_t len) {
   s->disp = disp, s->mtbl = &mtbl_str, s->len = len;
   return s; }
 
+static Inline mo ini_mo(void *_, size_t len) {
+  mo k = _;
+  tag t = (tag) (k + len);
+  t->null = NULL, t->self = k;
+  return k; }
+

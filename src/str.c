@@ -38,7 +38,7 @@ Vm(scat_u) {
   hp += words;
   d->text[sum] = 0; // XXX
   for (str x; i--;
-    x = ((str) fp->argv[i]),
+    x = (str) fp->argv[i],
     sum -= x->len - 1, // XXX
     memcpy(d->text+sum, x->text, x->len - 1)); // XXX
   return ApC(ret, (ob) d); }
@@ -66,16 +66,16 @@ Vm(ssub_u) {
   return ApC(ret, (ob) dst); }
 
 Vm(str_u) {
-  size_t i = 0,
-    bytes = fp->argc + 1, // XXX
-    words = Width(str) + b2w(bytes);
+  size_t
+    chars = fp->argc,
+    words = Width(str) + b2w(chars + 1); // XXX
   Have(words);
-  str s = (str) hp;
+  str s = ini_str(hp, chars + 1);
+  s->text[chars] = 0; // XXX
   hp += words;
-  for (; i < bytes-1; s->text[i++] = xp)
-    if (!(xp = getnum(fp->argv[i]))) break;
-  s->text[i] = 0; // XXX
-  return ApC(ret, (ob) ini_str(s, i+1)); }
+  while (chars--)
+    s->text[chars] = getnum(fp->argv[chars]);
+  return ApC(ret, (ob) s); }
 
 static Vm(ap_str) {
   str s = (str) ip;

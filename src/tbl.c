@@ -153,11 +153,10 @@ static NoInline tbl tbl_grow(la v, tbl t) {
          cap1 = cap0 + 1,
          len = 1l << cap1;
 
-  with(t, tab1 = cells(v, len + 2));
+  with(t, tab1 = (ob*) mkmo(v, len));
   if (!tab1) return 0;
-  tab1[len] = 0, tab1[len+1] = (ob) tab1;
   setw(tab1, nil, len);
-  tab0 = ((tbl) t)->tab;
+  tab0 = t->tab;
 
   for (size_t i, cap = 1 << cap0; cap--;)
     for (ob e, es = tab0[cap]; !nilp(es);
@@ -167,17 +166,16 @@ static NoInline tbl tbl_grow(la v, tbl t) {
       NEXT(e) = tab1[i],
       tab1[i] = e);
 
-  return
-    t->cap = cap1,
-    t->tab = tab1,
-    t; }
+  t->cap = cap1;
+  t->tab = tab1;
+  return t; }
 
 static ob tbl_set_s(la v, tbl t, ob k, ob x) {
   size_t hc = hash(v, k);
   ob e = tbl_ent_hc(v, t, k, hc);
   if (!nilp(e)) return VAL(e) = x;
   size_t i = tbl_idx(t->cap, hc);
-  with(t, e = Tupl(k, x, ((tbl)t)->tab[i]));
+  with(t, e = Tupl(k, x, t->tab[i]));
   if (!e) return e;
   t->tab[i] = e;
   t->len++;
@@ -203,9 +201,12 @@ static NoInline ob tks(la v) {
 // FIXME gross!
 static ob tblss(la v, intptr_t i, intptr_t l) {
   ob r = nil;
-  for (;i <= l - 2; i += 2)
-    if (!(r = tbl_set(v, (tbl) v->xp, v->fp->argv[i], v->fp->argv[i+1])))
-      break;
+  while (r && i <= l - 2)
+    r = tbl_set(v,
+      (tbl) v->xp,
+      v->fp->argv[i],
+      v->fp->argv[i+1]),
+    i += 2;
   return r; }
 
 // shrinking a table never allocates memory, so it's safe

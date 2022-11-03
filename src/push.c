@@ -18,7 +18,9 @@ bool pushs(la v, ...) {
 
 static ob *tuplr(la v, size_t i, va_list xs) {
   ob *k, x = va_arg(xs, ob);
-  if (!x) return (k = (ob*) mkmo(v, i)) ? k + i : k;
+  if (!x) return
+    k = (ob*) mkmo(v, i),
+    k ? k + i : k;
   with(x, k = tuplr(v, i+1, xs));
   return !k ? k : (*--k = x, k); }
 
