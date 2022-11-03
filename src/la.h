@@ -1,6 +1,9 @@
 #include "lisa.h"
 #include <stdlib.h>
 
+#define Inline inline __attribute__((always_inline))
+#define NoInline __attribute__((noinline))
+
 // thanks !!
 
 typedef la_ob ob;
@@ -8,15 +11,28 @@ typedef struct mo *mo; // procedures
 typedef struct sf *fr, *sf; // stack frame
 #define Vm(n, ...) ob n(la v, ob xp, mo ip, ob *hp, ob *sp, sf fp)
 typedef Vm(vm);
-#define Gc(n) ob n(la v, ob x, ob *pool0, ob *top0)
-Gc(cp);
 
+// struct needed for type indirection
+// around vm function pointer arrays
 struct mo { vm *go; };
+// every dynamically allocated thread ends
+// with a tag pointing back to its head
+typedef struct tag {
+  void *null; // always null
+  struct mo
+    *self, // pointer to thread head
+    end[]; // first address after thread
+} *tag;
+
+// stack frame
 struct sf {
-  ob clos; // FIXME remove from stack frame
-  mo retp;
-  sf subd;
-  size_t argc;
+  ob clos; // closure pointer FIXME
+  // keep this on the stack outside the
+  // frame so we don't waste space for
+  // functions w/o closures.
+  mo retp; // thread return address
+  sf subd; // stack frame of caller
+  size_t argc; // argument count
   ob argv[]; };
 
 // static method table for built-in types
@@ -79,8 +95,12 @@ struct la {
   keep safe;
   union { uintptr_t t0; ob *cp; }; };
 
-void *bump(la, size_t),
-     *cells(la, size_t);
+bool please(la, size_t); // ask GC for available memory
+void *bump(la, size_t), // allocate memory unchecked
+     *cells(la, size_t); // allocate memory checked
+#define Gc(n) ob n(la v, ob x, ob *pool0, ob *top0)
+Gc(cp); // copy something; used by type-specific copying functions
+
 
 // pairs
 two pair(la, ob, ob);
@@ -91,41 +111,54 @@ ob ns_tbl(la),
    ns_set(la, ob, ob);
 
 // hash tables
-intptr_t hash(la, ob);
+intptr_t
+  hash(la, ob),
+  hx_mo(la, mo);
 tbl table(la);
 ob tbl_set(la, tbl, ob, ob),
    tbl_get(la, tbl, ob);
 
-// strings & symbols
+// string & symbol constructors
 sym symof(la, str);
 str strof(la, const char*);
 
-long fputstr(FILE*, str);
+// output functions:
+// like la_tx, they return the number
+// of bytes written or a negative number
+// on error.
+long
+  fputstr(FILE*, str),  // like fputs
+  tx_mo(la, FILE*, mo); // show a function
 
 // functions
-mo mkmo(la, size_t), // allocator
-   ana_p(la, const char*, ob),
-   button(mo); // get tag at end
-ob hnom(la, mo); // try to get function name FIXME don't expose
+tag button(mo); // get tag at end
+mo mkmo(la, size_t), // allocate a thread
+   ana_p(la, const char*, ob); // load a script FIXME hide
 
-ob tupl(la, ...);
 #define Push(...) pushs(v, __VA_ARGS__, (ob)0)
 #define Tupl(...) tupl(v, __VA_ARGS__, (ob)0)
-bool
-  eq_no(la, ob, ob),
-  primp(ob), // is it a primitive function?
-  pushs(la, ...), // push onto stack
-  please(la, size_t), // gc interface
-  eql(la, ob, ob); // logical equality
+// push args onto stack
+bool  pushs(la, ...);
+// collect args into tuple (data thread)
+ob tupl(la, ...);
 
+bool
+  eq_not(la, ob, ob), // always returns false
+  primp(mo), // is it a primitive function? FIXME hide this
+  eql(la, ob, ob); // object equality
+
+// linear congruential pseudorandom number generator
 intptr_t lcprng(intptr_t);
+
+// word-sized memset/memcpy analogs
 void *setw(void*, intptr_t, size_t),
      *cpyw(void*, const void*, size_t);
 
-#define Inline inline __attribute__((always_inline))
-#define NoInline __attribute__((noinline))
-void errp(la, const char*, ...); // print an error
-ob nope(la, const char*, ...) NoInline; // panic with error msg
+// error functions
+// print an error with backtrace
+void errp(la, const char*, ...) NoInline;
+// panic with message
+ob nope(la, const char*, ...) NoInline;
 
 #define nil putnum(0)
 #define F(_) ((mo)(_)+1)
@@ -182,7 +215,7 @@ static Inline size_t ror(size_t x, size_t n) {
 #define cfns(_)\
   _(gc) _(xdom) _(xoom) _(xary)\
   _(setclo) _(genclo0) _(genclo1)\
-  _(do_id) _(yield)
+  _(ap_nop) _(yield)
 cfns(ninl)
 #undef cfns
 
@@ -238,7 +271,7 @@ i_internals(ninl)
  _(ssub_u, "ssub") _(scat_u, "scat")\
  _(sget_u, "schr")\
   \
- _(sym_u, "sym") _(symp_u, "symp") _(ystr_u, "ystr")\
+ _(sym_u, "sym") _(symp_u, "symp") _(ynom_u, "ynom")\
   \
  _(rx_u, "rx") _(show_u, ".") _(putc_u, "putc")\
   \

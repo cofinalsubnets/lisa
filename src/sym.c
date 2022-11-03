@@ -36,21 +36,19 @@ static sym sskc(la v, sym *y, str b) {
 sym symof(la v, str s) {
   if (Avail < Width(sym)) {
     bool _;
-    ob x = (ob) s;
-    with(x, _ = please(v, Width(sym)));
-    if (!_) return 0;
-    s = (str) x; }
-  return sskc(v, &v->syms, s); }
+    with(s, _ = please(v, Width(sym)));
+    if (!_) return 0; }
+  return s ? sskc(v, &v->syms, s) :
+    ini_sym(bump(v, Width(sym)), s,
+      v->rand = lcprng(v->rand)); }
 
 Vm(sym_u) {
-  Have(Width(sym));
-  if (fp->argc && strp(fp->argv[0]))
-    return ApC(ret, (ob) sskc(v, &v->syms, (str) fp->argv[0]));
-  xp = (ob) ini_sym(hp, 0, v->rand = lcprng(v->rand));
-  hp += Width(sym);
-  return ApC(ret, xp); }
+  str i = fp->argc && strp(fp->argv[0]) ? (str) fp->argv[0] : 0;
+  sym y;
+  CallOut(y = symof(v, i));
+  return ApC(ret, y ? (ob) y : nil); }
 
-Vm(ystr_u) {
+Vm(ynom_u) {
   ArityCheck(1);
   xp = fp->argv[0];
   Check(symp(xp));
@@ -64,17 +62,17 @@ static Gc(cp_sym) {
         cpyw(bump(v, Width(sym)), src, Width(sym));
   return (ob) (src->disp = (vm*) dst); }
 
-static intptr_t hash_sym(la v, ob x) { return ((sym) x)->code; }
+static intptr_t hx_sym(la v, ob _) { return ((sym) _)->code; }
 
-static long em_sym(la v, FILE *o, ob x) {
-  str s = ((sym)x)->nom;
-  return !s ? fprintf(o, "#sym") : fputstr(o, s); }
+static long tx_sym(la v, FILE *o, ob _) {
+  str s = ((sym) _)->nom;
+  return s ? fputstr(o, s) : fprintf(o, "#sym"); }
 
-Vm(do_id) { return ApC(ret, (ob) ip); }
+Vm(ap_nop) { return ApC(ret, (ob) ip); }
 
 const struct mtbl mtbl_sym = {
-  .does = do_id,
-  .emit = em_sym,
+  .does = ap_nop,
+  .emit = tx_sym,
   .evac = cp_sym,
-  .hash = hash_sym,
-  .equi = eq_no, };
+  .hash = hx_sym,
+  .equi = eq_not, };

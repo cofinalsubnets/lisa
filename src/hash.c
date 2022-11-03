@@ -21,6 +21,5 @@ const int64_t mix = 2708237354241864315;
 
 intptr_t hash(la v, ob x) {
   if (nump(x)) return ror(mix * x, sizeof(intptr_t) * 2);
-  if (!livep(v, x)) return mix ^ (x * mix);
   if (G(x) == disp) return ((mtbl) GF(x))->hash(v, x);
-  return mix ^ hash(v, hnom(v, (mo) x)); }
+  return hx_mo(v, (mo) x); }

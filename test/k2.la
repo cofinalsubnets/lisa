@@ -11,7 +11,7 @@
  (dict-get d k) (? (: x (dict-has d k)) (A x))
  (dict-set d k v) (X (X k (A d)) (X v (B d)))
 
- (anon? x) (&& (symp x) (nilp (ystr x)))
+ (anon? x) (&& (symp x) (nilp (ynom x)))
  (var? x) (&& (twop x) (anon? (B x)))
  (var x) (X x (sym))
 

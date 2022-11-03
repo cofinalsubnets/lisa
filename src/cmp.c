@@ -1,14 +1,11 @@
 #include "la.h"
 
-bool eq_no(la v, ob x, ob y) { return false; }
+bool eq_not(la v, ob x, ob y) { return false; }
 
-// break it up into two functions to give the compiler
-// a hint about how to inline, maybe
-static bool eql_(la v, ob a, ob b) {
-  return !nump(a|b) && G(a) == disp &&
-    ((mtbl) GF(a))->equi(v, a, b); }
 bool eql(la v, ob a, ob b) {
-  return a == b || eql_(v, a, b); }
+  return a == b || (!nump(a|b) && G(a) == disp &&
+    ((mtbl) GF(a))->equi(v, a, b)); }
+    
 
 // comparison operators
 // XXX FIXME returning xp is wrong now that 0 = nil

@@ -24,7 +24,7 @@ void la_close(la v) {
 const struct prim prims[] = { i_primitives(prim_ent) };
 
 #define LEN(ary) (sizeof(ary)/sizeof(*ary))
-bool primp(ob x) {
+bool primp(mo x) {
   struct prim *_ = (struct prim*) x;
   return _ >= prims && _ < prims + LEN(prims); }
 

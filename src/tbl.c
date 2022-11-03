@@ -235,7 +235,7 @@ static NoInline void tbl_shrink(la v, tbl t) {
     t->tab[i] = e,
     e = f; }
 
-static Vm(do_tbl) {
+static Vm(ap_tbl) {
   ob a = fp->argc;
   switch (a) {
     case 0: return ApC(ret, putnum(((tbl) ip)->len));
@@ -253,16 +253,16 @@ static Gc(cp_tbl) {
   return (ob) ini_tbl(dst, src->len, src->cap,
     (ob*) cp(v, (ob) src->tab, pool0, top0)); }
 
-static long em_tbl(la v, FILE *o, ob _) {
+static long tx_tbl(la v, FILE *o, ob _) {
   return fprintf(o, "#tbl:%ld/%ld",
     ((tbl)_)->len, 1ul << ((tbl)_)->cap); }
 
-static intptr_t hash_tbl(la v, ob _) {
+static intptr_t hx_tbl(la v, ob _) {
   return ror(mix * 9, 3 * sizeof(intptr_t) / 4); }
 
 const struct mtbl mtbl_tbl = {
-  .does = do_tbl,
-  .emit = em_tbl,
+  .does = ap_tbl,
+  .emit = tx_tbl,
   .evac = cp_tbl,
-  .hash = hash_tbl,
-  .equi = eq_no, };
+  .hash = hx_tbl,
+  .equi = eq_not, };

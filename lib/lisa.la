@@ -664,7 +664,7 @@
 
 ; " drop privileges "
 (: dels (cu (flip each) (cu tdel _ns))
-   insns (filter (tkeys _ns) (\ k (= "i-" (ssub (ystr k) 0 2))))
+   insns (filter (tkeys _ns) (\ k (= "i-" (ssub (ynom k) 0 2))))
    locs '(boot egg emi macros emx hom seek peeki peekx hfin _ns)
   (each (L insns locs) dels))
 ;ev

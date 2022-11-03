@@ -1,7 +1,7 @@
 (.)
 (:
  (name n) (?
-  (symp n) (name (ystr n))
+  (symp n) (name (ynom n))
   (strp n) (, (red-text (scat "  " n)) (.)))
  (show x) (, (puts "    ") (. x))
 

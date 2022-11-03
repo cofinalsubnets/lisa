@@ -56,3 +56,41 @@ int main(int ac, char **av) {
       av += optind;
       prelu = shell || optind != ac ? prelu : NULL;
       return la_main(shell, prelu, (const char**) av); } }
+
+      /*
+#include <stdarg.h>
+#include <string.h>
+static str str_c_cat_r(la v, size_t l, va_list xs) {
+  char *cs = va_arg(xs, char*);
+  if (!cs) {
+    str s = cells(v, Width(str) + b2w(l));
+    if (s) ini_str(s, l+1), s->text[l] = 0; // XXX
+    return s ; }
+  size_t i = strlen(cs);
+  str s = str_c_cat_r(v, l+i, xs);
+  if (s) memcpy(s->text + l, cs, i);
+  return s; }
+
+static str str_c_cat(la v, ...) {
+  va_list xs;
+  va_start(xs, v);
+  str s = str_c_cat_r(v, 0, xs);
+  va_end(xs);
+  return s; }
+
+static FILE *seek_lib(la v, const char *nom) {
+  str s;
+  FILE *i;
+  char *home = getenv("HOME");
+  if (home) {
+    s = str_c_cat(v, home, "/.local", "/lib/lisa/", nom, ".la", NULL);
+    if (s && (i = fopen(s->text, "r"))) return i; }
+  s = str_c_cat(v, "/usr", "/local", "/lib/lisa/", nom, ".la", NULL);
+  if (s && (i = fopen(s->text, "r"))) return i;
+  s = str_c_cat(v, "/usr", "/lib/lisa/", nom, ".la", NULL);
+  if (s && (i = fopen(s->text, "r"))) return i;
+  s = str_c_cat(v, "/lib/lisa/", nom, ".la", NULL);
+  if (s && (i = fopen(s->text, "r"))) return i;
+
+  return NULL; }
+  */

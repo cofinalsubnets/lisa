@@ -104,11 +104,6 @@ static long em_str(la v, FILE *o, ob _) {
   if (fputc('"', o) == EOF) return -1;
   return r; }
 
-long fputstr(FILE *o, str s) {
-  long i = 0, r = s->len - 1; // XXX null
-  while (i < r) if (fputc(s->text[i++], o) == EOF) return -1;
-  return r; }
-
 static Gc(cp_str) {
   str src = (str) x, dst = bump(v, Width(str) + b2w(src->len));
   memcpy(dst, src, sizeof(struct str) + src->len);

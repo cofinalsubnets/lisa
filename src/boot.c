@@ -125,7 +125,7 @@ static Inline ob comp_body(la v, env *e, ob x) {
       i < 0 ?
         (ob) pb2(varg, putnum(-i-1), (mo) x) :
       x;
-  GF(button((mo) x)) = (vm*) x;
+  button((mo) x)->self = (mo) x;
   return twop((*e)->clo) ? (ob) pair(v, (*e)->clo, x) : x; }
 
 // takes a lambda expr, returns either a pair or or a
