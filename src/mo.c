@@ -202,7 +202,7 @@ Vm(encl0) { return ApC(enclose, nil); }
 
 // FIXME this is really weird
 // print a function name
-static long tx_mo_n(la v, FILE *o, ob x) {
+static NoInline long tx_mo_n(la v, FILE *o, ob x) {
   if (symp(x)) {
     if (fputc('\\', o) == EOF) return -1;
     long r = la_tx(v, o, x);

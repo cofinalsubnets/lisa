@@ -42,11 +42,9 @@ static void
   tbl_shrink(la, tbl) NoInline;
 
 tbl table(la v) {
-  tbl t = cells(v, Width(tbl) + 3);
-  if (t) t = ini_tbl(t, 0, 0, (ob*) (t+1)),
-         t->tab[0] = nil,
-         t->tab[1] = 0,
-         t->tab[2] = (ob) t->tab;
+  tbl t = cells(v, Width(tbl) + 1 + Width(tag));
+  if (t) ini_tbl(t, 0, 0, (ob*) ini_mo(t+1, 1)),
+         t->tab[0] = nil;
   return t; }
 
 ob tbl_set(la v, tbl t, ob k, ob x) {
@@ -151,7 +149,7 @@ static NoInline tbl tbl_grow(la v, tbl t) {
   ob *tab0, *tab1;
   size_t cap0 = t->cap,
          cap1 = cap0 + 1,
-         len = 1l << cap1;
+         len = 1ul << cap1;
 
   with(t, tab1 = (ob*) mkmo(v, len));
   if (!tab1) return 0;
@@ -225,8 +223,7 @@ static NoInline void tbl_shrink(la v, tbl t) {
   // shrink bucket array
   while (t->cap && tbl_load(t) < 1) t->cap--;
   i = 1ul << t->cap;
-  t->tab[i] = 0;
-  t->tab[i+1] = (ob) t->tab;
+  ini_mo(t->tab, i);
 
   // reinsert
   while (e != nil)

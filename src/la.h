@@ -103,7 +103,7 @@ Gc(cp); // copy something; used by type-specific copying functions
 
 
 // pairs
-two pair(la, ob, ob);
+two pair(la, ob, ob) NoInline;
 size_t llen(ob);
 
 ob ns_tbl(la),

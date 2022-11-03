@@ -86,7 +86,7 @@ static Inline ob new_scope(la v, env *e, ob a, ob n) {
   return !a ? 0 : Tupl(
     a, nil, nil, n, putnum(s), nil, nil, e ? (ob) *e : nil); }
 
-static char scan_def(la v, env *e, ob x) {
+static NoInline char scan_def(la v, env *e, ob x) {
   char r;
   if (!twop(x)) return 1; // this is an even case so export all the definitions to the local scope
   if (!twop(B(x))) return 0; // this is an odd case so ignore these, they'll be imported after the rewrite
@@ -98,14 +98,14 @@ static char scan_def(la v, env *e, ob x) {
        !scan(v, e, AB(x)) ? -1 : 1);
   return r; }
 
-static bool scan(la v, env *e, ob x) {
+static NoInline bool scan(la v, env *e, ob x) {
   bool _; return
     !twop(x) || A(x) == v->lex[Lamb] || A(x) == v->lex[Quote] ? 1 :
     A(x) == v->lex[Def] ? scan_def(v, e, B(x)) != -1 :
     (with(x, _ = scan(v, e, A(x))),
      _ && scan(v, e, B(x))); }
 
-static ob linitp(la v, ob x, ob *d) {
+static NoInline ob linitp(la v, ob x, ob *d) {
   ob y;
   if (!twop(B(x))) return *d = x, nil;
   with(x, y = linitp(v, B(x), d));
@@ -132,7 +132,7 @@ static Inline ob comp_body(la v, env *e, ob x) {
 // (in the former case the car is the list of free variables
 // and the cdr is a hom that assumes the missing variables
 // are available in the closure).
-static Inline ob co_fn_ltu(la v, env *e, ob n, ob l) {
+static NoInline ob co_fn_ltu(la v, env *e, ob n, ob l) {
   ob y = nil;
   with(n, with(y, with(l,
     l = (l = twop(l) ? l : (ob) pair(v, l, nil)) &&
@@ -142,16 +142,17 @@ static Inline ob co_fn_ltu(la v, env *e, ob n, ob l) {
       comp_body(v, (env*) &n, A(y)) : 0)));
   return l; }
 
-static Inline ob co_fn_clo(la v, env *e, ob arg, ob seq) {
+static NoInline ob co_fn_clo(la v, env *e, ob arg, ob seq) {
   size_t i = llen(arg);
   mm(&arg), mm(&seq);
-  if (!Push(N(r_pb2), N(take), N(i), N(r_co_ini))) arg = 0;
 
-  for (; arg && twop(arg); arg = B(arg))
-    if (!Push(N(r_co_x), A(arg), N(r_pb1), N(push))) arg = 0;
+  arg = Push(N(r_pb2), N(take), N(i), N(r_co_ini)) ? arg : 0;
 
-  if (arg) arg = (ob) pull(v, e, 0);
-  if (arg) arg = (ob) pair(v, seq, arg);
+  while (arg && twop(arg)) arg =
+    Push(N(r_co_x), A(arg), N(r_pb1), N(push)) ? B(arg) : 0;
+
+  arg = arg ? (ob) pull(v, e, 0) : arg;
+  arg = arg ? (ob) pair(v, seq, arg) : arg;
   return um, um, arg; }
 
 Co(co_fn, ob x) {
@@ -160,11 +161,12 @@ Co(co_fn, ob x) {
   with(nom, with(x, k = (ob) pull(v, e, m+2)));
   if (!k) return 0;
   mm(&k);
-  if (twop(x = co_fn_ltu(v, e, nom, B(x))))
+  x = co_fn_ltu(v, e, nom, B(x));
+  if (x && twop(x))
     j = e && twop((*e)->loc) ? encl1 : encl0,
     x = co_fn_clo(v, e, A(x), B(x));
   um;
-  return !x ? 0 : pb2(j, x, (mo) k); }
+  return x ? pb2(j, x, (mo) k) : 0; }
 
 Co(r_co_def_bind) {
   ob _ = *v->sp++;
@@ -172,7 +174,7 @@ Co(r_co_def_bind) {
   _ = (ob) pair(v, ns_tbl(v), _);
   return _ ? imx(v, e, m, deftop, _) : 0; }
 
-static bool co_def_r(la v, env *e, ob x) {
+static NoInline bool co_def_r(la v, env *e, ob x) {
   bool _;
   return !twop(x) ||
     ((x = rw_let_fn(v, x)) &&
@@ -180,7 +182,7 @@ static bool co_def_r(la v, env *e, ob x) {
      Push(N(r_co_x), AB(x), N(r_co_def_bind), A(x))); }
 
 // syntactic sugar for define
-static bool co_def_sugar(la v, two x) {
+static NoInline bool co_def_sugar(la v, two x) {
   ob _ = nil;
   with(_, x = (two) linitp(v, (ob) x, &_));
   return x &&
@@ -193,7 +195,9 @@ static bool co_def_sugar(la v, two x) {
 
 Co(co_def, ob x) {
   if (!twop(B(x))) return co_imm(v, e, m, nil);
-  x = llen(B(x)) % 2 ? co_def_sugar(v, (two) x) : co_def_r(v, e, B(x));
+  x = llen(B(x)) % 2 ?
+    co_def_sugar(v, (two) x) :
+    co_def_r(v, e, B(x));
   return x ? pull(v, e, m) : 0; }
 
 // the following functions are "post" or "pre"
