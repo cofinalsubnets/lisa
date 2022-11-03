@@ -76,9 +76,9 @@ static str buf_grow(la v, str s) {
   str t;
   size_t len = s->len;
   with(s, t = cells(v, Width(str) + 2 * b2w(len)));
-  if (!t) return 0;
-  ini_str(t, 2 * len);
-  memcpy(t->text, s->text, len);
+  if (t)
+    ini_str(t, 2 * len),
+    memcpy(t->text, s->text, len);
   return t; }
 
 // read the contents of a string literal into a string
@@ -91,7 +91,9 @@ static str rx_str(la v, FILE *p) {
       case '\\': if ((x = fgetc(p)) == EOF) goto fin;
       default: o->text[n++] = x; continue;
       case '"': case EOF: fin: return
-        o->text[n++] = 0, // XXX
+#ifdef NULL_TERMINATED
+        o->text[n++] = 0,
+#endif
         o->len = n,
         o; }
   return 0; }
@@ -107,7 +109,9 @@ static str rx_atom_chars(la v, FILE *p) {
       case ' ': case '\n': case '\t': case ';': case '#':
       case '(': case ')': case '\'': case '"': ungetc(x, p);
       case EOF: return
-        o->text[n++] = 0, // XXX
+#ifdef NULL_TERMINATED
+        o->text[n++] = 0,
+#endif
         o->len = n,
         o; }
   return 0; }
