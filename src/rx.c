@@ -3,10 +3,10 @@
 #include <ctype.h>
 
 static str
-  rx_atom(la, FILE*),
+  rx_atom_chars(la, FILE*),
   rx_str(la, FILE*);
 static ob
-  rx_num(la, str, const char*, int);
+  rx_atom(la, str);
 static int nextc(FILE*);
 
 ////
@@ -50,8 +50,8 @@ static ob rx(la v, FILE *i) {
     case '\'': return
       Push(putnum(rx_q)) ? rx(v, i) : pull(v, i, 0); }
   ungetc(c, i);
-  str a = rx_atom(v, i);
-  ob x = a ? rx_num(v, a, a->text, 1) : 0;
+  str a = rx_atom_chars(v, i);
+  ob x = a ? rx_atom(v, a) : 0;
   return pull(v, i, x); }
 
 static ob rx_two(la v, FILE *i) {
@@ -96,7 +96,7 @@ static str rx_str(la v, FILE *p) {
 
 // read the characters of an atom (number or symbol)
 // into a string
-static str rx_atom(la v, FILE *p) {
+static str rx_atom_chars(la v, FILE *p) {
   str o = mkbuf(v);
   for (size_t n = 0, lim = sizeof(ob); o; o = buf_grow(v, o), lim *= 2)
     for (int x; n < lim;) switch (x = fgetc(p)) {
@@ -107,7 +107,7 @@ static str rx_atom(la v, FILE *p) {
       case EOF: return o->text[n++] = 0, o->len = n, o; }
   return 0; }
 
-static NoInline ob rx_numb(la v, str b, const char *in, int sign, int rad) {
+static NoInline ob rx_atom_n(la v, str b, const char *in, int sign, int rad) {
   static const char *ds = "0123456789abcdefghijklmnopqrstuvwxyz";
   intptr_t out = 0;
   int c = tolower(*in++);
@@ -120,16 +120,19 @@ static NoInline ob rx_numb(la v, str b, const char *in, int sign, int rad) {
   } while ((c = tolower(*in++)));
   return putnum(sign * out); }
 
-static NoInline ob rx_num(la v, str b, const char *s, int sign) {
+static NoInline ob rx_atom(la v, str b) {
+  const char *s = b->text;
+  int sign = 1;
+loop:
   switch (*s) {
-    case '+': return rx_num(v, b, s+1, sign);
-    case '-': return rx_num(v, b, s+1, -sign);
+    case '+': s += 1; goto loop;
+    case '-': s += 1, sign *= -1; goto loop;
     case '0': { // with radix // FIXME change this syntax to 10001011{b,s,o,d,z,x,n}
       // numbers can be input in bases 2, 6, 8, 10, 12, 16, 36
       const char *r = "b\2s\6o\10d\12z\14x\20n\44";
       for (char c = tolower(s[1]); *r; r += 2)
-        if (*r == c) return rx_numb(v, b, s+2, sign, r[1]); } }
-  return rx_numb(v, b, s, sign, 10); }
+        if (*r == c) return rx_atom_n(v, b, s+2, sign, r[1]); } }
+  return rx_atom_n(v, b, s, sign, 10); }
 
 Vm(rx_u) {
   Have(Width(two));
