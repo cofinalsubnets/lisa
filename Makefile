@@ -10,7 +10,7 @@ doc_dir=doc
 lib_dir=lib
 
 bin_release=$(build_dir)/$(nom)
-bin_debug=$(build_dir)/$(nom).bin
+bin_debug=$(build_dir)/$(nom).dbg
 
 boot=$(lib_dir)/$(nom).$(suff)
 lib=$(boot)
@@ -32,7 +32,7 @@ test-lots:
 # build
 # tested with gcc & clang
 CFLAGS ?=\
-	-std=c11 -g -O2 -flto -Wall -Werror\
+	-std=c11 -g -O2 -flto -fpic -Wall -Werror\
  	-Wstrict-prototypes -Wno-shift-negative-value\
 	-fno-stack-protector -fno-align-functions
 
@@ -47,7 +47,7 @@ $(bin_debug): $(obj)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
 $(bin_release): $(bin_debug)
-	strip -o $@ $^
+	strip --strip-unneeded -o $@ $^
 
 install_files=\
 	$(dest_dir)/bin/$(nom)\
