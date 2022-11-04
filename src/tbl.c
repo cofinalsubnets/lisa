@@ -3,10 +3,6 @@
 // hash tables
 // some of the worst code is here :(
 
-typedef struct ent {
-  ob key, val;
-  struct ent *next; } *ent;
-
 #define KEY(e) ((ob*)(e))[0]
 #define VAL(e) ((ob*)(e))[1]
 #define NEXT(e) ((ob*)(e))[2]

@@ -8,7 +8,7 @@
 static bool
   defprims(la),
   inst(la, const char*, vm*) NoInline;
-static ob
+static sym
   symofs(la, const char*) NoInline;
 
 ob la_ev(la v, ob _) {
@@ -60,17 +60,17 @@ NoInline bool la_open(la v) {
   ob _;
   bool ok =
     // global symbols // FIXME stop using these if possible
-    (v->lex[Eval] = symofs(v, "ev")) &&
-    (v->lex[Def] = symofs(v, ":")) &&
-    (v->lex[Cond] = symofs(v, "?")) &&
-    (v->lex[Lamb] = symofs(v, "\\")) &&
-    (v->lex[Quote] = symofs(v, "`")) &&
-    (v->lex[Seq] = symofs(v, ",")) &&
-    (v->lex[Splat] = symofs(v, ".")) &&
+    (v->lex[Eval] = (ob) symofs(v, "ev")) &&
+    (v->lex[Def] = (ob) symofs(v, ":")) &&
+    (v->lex[Cond] = (ob) symofs(v, "?")) &&
+    (v->lex[Lamb] = (ob) symofs(v, "\\")) &&
+    (v->lex[Quote] = (ob) symofs(v, "`")) &&
+    (v->lex[Seq] = (ob) symofs(v, ",")) &&
+    (v->lex[Splat] = (ob) symofs(v, ".")) &&
 
     // make the global namespace
     (v->topl = mktbl(v)) &&
-    (_ = symofs(v, "_ns")) &&
+    (_ = (ob) symofs(v, "_ns")) &&
     tblset(v, v->topl, _, (ob) v->topl)
     // register instruction addresses at toplevel so the
     // compiler can use them.
@@ -81,9 +81,16 @@ NoInline bool la_open(la v) {
   if (!ok) la_close(v);
   return ok; }
 
-static NoInline ob symofs(la v, const char *s) {
+static str strof(la v, const char* c) {
+  size_t bs = strlen(c);
+  str o = cells(v, Width(str) + b2w(bs));
+  if (o) memcpy(o->text, c, bs),
+         ini_str(o, bs);
+  return o; }
+
+static NoInline sym symofs(la v, const char *s) {
   str _ = strof(v, s);
-  return _ ? (ob) symof(v, _) : 0; }
+  return _ ? symof(v, _) : 0; }
 
 // static table of primitive functions
 #define prim_ent(go, nom) { go, nom },
@@ -98,15 +105,15 @@ static bool defprims(la v) {
   const struct prim *p = prims,
                     *lim = p + LEN(prims);
   while (p < lim) {
-    ob z = symofs(v, p->nom);
-    if (!z || !tblset(v, v->topl, z, (ob) p++)) return false; }
+    sym z = symofs(v, p->nom);
+    if (!z || !tblset(v, v->topl, (ob) z, (ob) p++)) return false; }
   return true; }
 
 // store an instruction address under a variable in the
 // toplevel namespace // FIXME use a different namespace
 static NoInline bool inst(la v, const char *a, vm *b) {
-  ob z = symofs(v, a);
-  return z && tblset(v, v->topl, z, putnum(b)); }
+  sym z = symofs(v, a);
+  return z && tblset(v, v->topl, (ob) z, putnum(b)); }
 
 static NoInline str str_c_cat_r(la v, size_t l, va_list xs) {
   char *cs = va_arg(xs, char*);

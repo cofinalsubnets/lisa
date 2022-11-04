@@ -38,7 +38,7 @@ typedef const struct mtbl {
   intptr_t (*hash)(la, ob);
   long (*emit)(la, FILE*, ob);
   ob (*evac)(la, ob, ob*, ob*);
-  void (*walk)(la, ob, ob*, ob*);
+//  void (*walk)(la, ob, ob*, ob*);
 } *mtbl;
 
 // pairs
@@ -120,7 +120,6 @@ tbl tblset(la, tbl, ob, ob);
 
 // string & symbol constructors
 sym symof(la, str);
-str strof(la, const char*);
 
 // output functions:
 // like la_tx, they return the number
