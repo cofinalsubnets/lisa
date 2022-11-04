@@ -31,9 +31,8 @@ test-lots:
 
 # build
 # tested with gcc & clang
-CPPFLAGS ?= -DDESTDIR=\"$(dest_dir)\"
 CFLAGS ?=\
-	-std=gnu17 -g -O2 -flto -Wall\
+	-std=c11 -g -O2 -flto -Wall -Werror\
  	-Wstrict-prototypes -Wno-shift-negative-value\
 	-fno-stack-protector -fno-align-functions
 

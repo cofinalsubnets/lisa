@@ -1,8 +1,8 @@
 #include "la.h"
-#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <errno.h>
+#include <stdarg.h>
 
 // initialization helpers
 static bool defprims(la);
@@ -15,15 +15,19 @@ ob la_ev(la v, ob _) {
   return !pushs(v, _, NULL) ? 0 :
     call(v, (ob) prims, go, v->hp, v->sp, v->fp); }
 
+static NoInline bool la_ev_f(la v, FILE *in) {
+  bool ok = true;
+  for (ob x; ok && !feof(in);
+    x = la_rx(v, in),
+    ok = x ? la_ev(v, x) : feof(in));
+  return ok; }
+
 NoInline bool la_script(la v, const char *path) {
   FILE *in = fopen(path, "r");
   if (!in) return
     errp(v, "%s : %s", path, strerror(errno)),
     false;
-  bool ok = true;
-  for (ob x; ok && !feof(in);
-    x = la_rx(v, in),
-    ok = x ? la_ev(v, x) : feof(in));
+  bool ok = la_ev_f(v, in);
   if (!ok) errp(v, "%s : %s", path, "error");
   return fclose(in), ok; }
 
@@ -102,3 +106,42 @@ static NoInline ob inst(la v, const char *a, vm *b) {
   ob z = symofs(v, a);
   return z ? tblset(v, v->topl, z, putnum(b)) : 0; }
 
+static NoInline str str_c_cat_r(la v, size_t l, va_list xs) {
+  char *cs = va_arg(xs, char*);
+  if (!cs) {
+    str s = cells(v, Width(str) + b2w(l) + 1);
+    if (s) ini_str(s, l), s->text[l] = 0;
+    return s ; }
+  size_t i = strlen(cs);
+  str s = str_c_cat_r(v, l+i, xs);
+  if (s) memcpy(s->text + l, cs, i);
+  return s; }
+
+static str str_c_cat(la v, ...) {
+  va_list xs;
+  va_start(xs, v);
+  str s = str_c_cat_r(v, 0, xs);
+  va_end(xs);
+  return s; }
+
+static FILE *seek_lib(la v, const char *nom) {
+  str s;
+  FILE *i;
+  char *home = getenv("HOME");
+  if (home) {
+    s = str_c_cat(v, home, "/.local/lib/lisa/", nom, ".la", NULL);
+    if (s && (i = fopen(s->text, "r"))) return i; }
+  s = str_c_cat(v, "/usr/local/lib/lisa/", nom, ".la", NULL);
+  if (s && (i = fopen(s->text, "r"))) return i;
+  s = str_c_cat(v, "/usr/lib/lisa/", nom, ".la", NULL);
+  if (s && (i = fopen(s->text, "r"))) return i;
+  s = str_c_cat(v, "/lib/lisa/", nom, ".la", NULL);
+  if (s && (i = fopen(s->text, "r"))) return i;
+  return NULL; }
+
+bool la_lib(la v, const char *nom) {
+  FILE *p = seek_lib(v, nom);
+  if (!p) return false;
+  bool ok = la_ev_f(v, p);
+  if (!ok) errp(v, "%s : %s", nom, "error loading lib");
+  return fclose(p), ok; }

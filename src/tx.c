@@ -15,13 +15,15 @@ Vm(tx_f) {
     while (i < l - 1)
       la_tx(v, stdout, fp->argv[i++]),
       fputc(' ', stdout);
-    la_tx(v, stdout, xp = fp->argv[i]); }
-  return fputc('\n', stdout), ApC(ret, xp); }
+    xp = fp->argv[i];
+    la_tx(v, stdout, xp); }
+  fputc('\n', stdout);
+  return ApC(ret, xp); }
 
 Vm(txc_f) {
   ArityCheck(1);
-  fputc(getnum(fp->argv[0]), stdout);
-  return ApC(ret, xp); }
+  return ApC(ret,
+    putnum(fputc(getnum(fp->argv[0]), stdout))); }
 
 long fputstr(FILE *o, str s) {
   long i = 0, r = s->len;

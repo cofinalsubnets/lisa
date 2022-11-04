@@ -270,8 +270,6 @@ i_internals(ninl)
   \
  _(rx_f, "rx") _(tx_f, ".") _(txc_f, "putc")\
   \
- _(gettime, "time")\
-  \
  _(eq_f, "=") _(lt_f, "<") _(lteq_f, "<=")\
  _(gteq_f, ">=") _(gt_f, ">") _(nilp_f, "nilp")\
   \
@@ -340,4 +338,4 @@ static Inline mo ini_mo(void *_, size_t len) {
 
 #define Gc(n) ob n(la v, ob x, ob *pool0, ob *top0)
 // restrict qualifiers seem to make the code worse ...
-#define Vm(n, ...) ob n(la v, ob xp, mo ip, ob *hp, ob *sp, sf fp)
+#define Vm(n) ob n(la v, ob xp, mo ip, ob *hp, ob *sp, sf fp)
