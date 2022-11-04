@@ -42,7 +42,6 @@ static mo
   co_seq(la, env*, size_t, ob) NoInline,
   co_sym(la, env*, size_t, ob) NoInline,
   co_two(la, env*, size_t, ob) NoInline,
-  co_imm(la, env*, size_t, ob) NoInline,
   imx(la, env*, size_t, vm*, ob) NoInline;
 
 #define Co(nom,...) static mo nom(la v, env *e, size_t m, ##__VA_ARGS__)
@@ -63,13 +62,11 @@ static NoInline two snoc(la v, ob l, ob x) {
 
 static NoInline ob rw_let_fn(la v, ob x) {
   mm(&x);
-  for (two w; twop(A(x));)
-    if (!(w = snoc(v, BA(x), AB(x)))  ||
-        !(w = pair(v, v->lex[Lamb], (ob) w)) ||
-        !(w = pair(v, (ob) w, BB(x))) ||
-        !(x = (ob) pair(v, AA(x), (ob) w))) {
-      x = 0;
-      break; }
+  for (two w; x && twop(A(x)); x =
+    (w = snoc(v, BA(x), AB(x))) &&
+    (w = pair(v, v->lex[Lamb], (ob) w)) &&
+    (w = pair(v, (ob) w, BB(x))) ?
+      (ob) pair(v, AA(x), (ob) w) : 0);
   return um, x; }
 
 static NoInline ob asign(la v, ob a, intptr_t i, ob *m) {
@@ -124,7 +121,7 @@ static Inline ob comp_body(la v, env *e, ob x) {
       i < 0 ?
         (ob) pb2(varg, putnum(-i-1), (mo) x) :
       x;
-  button((mo) x)->self = (mo) x;
+  motag((mo) x)->head = (mo) x;
   return twop((*e)->clo) ? (ob) pair(v, (*e)->clo, x) : x; }
 
 // takes a lambda expr, returns either a pair or or a
@@ -132,7 +129,7 @@ static Inline ob comp_body(la v, env *e, ob x) {
 // (in the former case the car is the list of free variables
 // and the cdr is a hom that assumes the missing variables
 // are available in the closure).
-static NoInline ob co_fn_ltu(la v, env *e, ob n, ob l) {
+static Inline ob co_fn_ltu(la v, env *e, ob n, ob l) {
   ob y = nil;
   with(n, with(y, with(l,
     l = (l = twop(l) ? l : (ob) pair(v, l, nil)) &&
@@ -142,7 +139,7 @@ static NoInline ob co_fn_ltu(la v, env *e, ob n, ob l) {
       comp_body(v, (env*) &n, A(y)) : 0)));
   return l; }
 
-static NoInline ob co_fn_clo(la v, env *e, ob arg, ob seq) {
+static Inline ob co_fn_clo(la v, env *e, ob arg, ob seq) {
   size_t i = llen(arg);
   mm(&arg), mm(&seq);
 
@@ -171,10 +168,10 @@ Co(co_fn, ob x) {
 Co(r_co_def_bind) {
   ob _ = *v->sp++;
   if (e) return imx(v, e, m, defloc, putnum(lidx((*e)->loc, _)));
-  _ = (ob) pair(v, ns_tbl(v), _);
+  _ = (ob) pair(v, nstbl(v), _);
   return _ ? imx(v, e, m, deftop, _) : 0; }
 
-static NoInline bool co_def_r(la v, env *e, ob x) {
+static bool co_def_r(la v, env *e, ob x) {
   bool _;
   return !twop(x) ||
     ((x = rw_let_fn(v, x)) &&
@@ -182,7 +179,7 @@ static NoInline bool co_def_r(la v, env *e, ob x) {
      Push(N(r_co_x), AB(x), N(r_co_def_bind), A(x))); }
 
 // syntactic sugar for define
-static NoInline bool co_def_sugar(la v, two x) {
+static Inline bool co_def_sugar(la v, two x) {
   ob _ = nil;
   with(_, x = (two) linitp(v, (ob) x, &_));
   return x &&
@@ -194,7 +191,7 @@ static NoInline bool co_def_sugar(la v, two x) {
     Push(N(r_co_x), (ob) x); }
 
 Co(co_def, ob x) {
-  if (!twop(B(x))) return co_imm(v, e, m, nil);
+  if (!twop(B(x))) return imx(v, e, m, imm, nil);
   x = llen(B(x)) % 2 ?
     co_def_sugar(v, (two) x) :
     co_def_r(v, e, B(x));
@@ -267,9 +264,9 @@ enum where { Here, Loc, Arg, Clo, Wait };
 
 static NoInline ob ls_lex(la v, env e, ob y) { return
   nilp((ob) e) ?
-    (y = ns_get(v, y)) ?
+    (y = nsget(v, y)) ?
       (ob) pair(v, putnum(Here), y) :
-      (ob) pair(v, putnum(Wait), ns_tbl(v)) :
+      (ob) pair(v, putnum(Wait), nstbl(v)) :
   lidx(e->loc, y) >= 0 ? (ob) pair(v, putnum(Loc), (ob) e) :
   lidx(e->arg, y) >= 0 ? (ob) pair(v, putnum(Arg), (ob) e) :
   lidx(e->clo, y) >= 0 ? (ob) pair(v, putnum(Clo), (ob) e) :
@@ -280,7 +277,7 @@ Co(co_sym, ob x) {
   with(x, q = ls_lex(v, e ? *e : (env) nil, x));
   if (!q) return 0;
   y = A(q);
-  if (y == putnum(Here)) return co_imm(v, e, m, B(q));
+  if (y == putnum(Here)) return imx(v, e, m, imm, B(q));
   if (y == putnum(Wait)) return
     (x = (ob) pair(v, B(q), x)) &&
     (with(x, y = (ob) pull(v, e, m+2)), y) ?
@@ -303,12 +300,12 @@ Co(r_co_x) {
   ob x = *v->sp++;
   return symp(x) ? co_sym(v, e, m, x) :
          twop(x) ? co_two(v, e, m, x) :
-         co_imm(v, e, m, x); }
+         imx(v, e, m, imm, x); }
 
 Co(co_ap, ob f, ob args) {
   mm(&args);
   if (!Push(N(r_co_x), f,
-            N(r_pb1), N(idH),
+            N(r_pb1), N(idmo),
             N(r_co_ap_call), N(llen(args))))
     return um, NULL;
   for (; twop(args); args = B(args))
@@ -316,14 +313,11 @@ Co(co_ap, ob f, ob args) {
       return um, NULL;
   return um, pull(v, e, m); }
 
-static bool seq_mo_loop(la v, env *e, ob x) {
+static NoInline bool seq_mo_loop(la v, env *e, ob x) {
   if (!twop(x)) return true;
   bool _;
   with(x, _ = seq_mo_loop(v, e, B(x)));
   return _ && Push(N(r_co_x), A(x)); }
-
-Co(co_imm, ob x) { return
-  Push(N(imm), x) ? r_pb2(v, e, m) : 0; }
 
 Co(co_seq, ob x) { return
   x = twop(x) ? x : (ob) pair(v, x, nil),
@@ -335,7 +329,7 @@ Co(co_two, ob x) {
   if (symp(a)) {
     if (a == v->lex[Quote]) return
       x = B(x),
-      co_imm(v, e, m, twop(x) ? A(x) : x);
+      imx(v, e, m, imm, twop(x) ? A(x) : x);
     if (a == v->lex[Cond]) return co_if(v, e, m, B(x));
     if (a == v->lex[Lamb]) return co_fn(v, e, m, x);
     if (a == v->lex[Def]) return co_def(v, e, m, x);
@@ -369,15 +363,15 @@ static mo ana(la v, ob x) {
   return ok ? pull(v, 0, 0) : 0; }
 
 // bootstrap eval interpreter function
-Vm(ev_u) {
+Vm(ev_f) {
   ArityCheck(1);
   // check to see if ev has been overridden in the
   // toplevel namespace and if so call that. this way
   // ev calls compiled pre-bootstrap will use the
   // bootstrapped compiler, which is what we want?
   // seems kind of strange to need this ...
-  xp = ns_get(v, v->lex[Eval]);
-  if (xp && homp(xp) && G(xp) != ev_u)
+  xp = nsget(v, v->lex[Eval]);
+  if (xp && homp(xp) && G(xp) != ev_f)
     return ApY((mo) xp, nil);
   mo y;
   CallOut(y = ana(v, fp->argv[0]));

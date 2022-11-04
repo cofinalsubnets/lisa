@@ -26,8 +26,8 @@ static sym sskc(la v, sym *y, str b) {
   if (*y) {
     sym z = *y;
     str a = z->nom;
-    size_t n = a->len < b->len ? a->len : b->len;
-    int i = strncmp(a->text, b->text, n);
+    int i = strncmp(a->text, b->text,
+      a->len < b->len ? a->len : b->len);
     if (i == 0) {
       if (a->len == b->len) return z;
       i = a->len < b->len ? -1 : 1; }
@@ -44,37 +44,37 @@ sym symof(la v, str s) {
     ini_sym(bump(v, Width(sym)), s,
       v->rand = lcprng(v->rand)); }
 
-Vm(sym_u) {
+Vm(sym_f) {
   str i = fp->argc && strp(fp->argv[0]) ? (str) fp->argv[0] : 0;
   sym y;
   CallOut(y = symof(v, i));
   return ApC(ret, y ? (ob) y : nil); }
 
-Vm(ynom_u) {
+Vm(ynom_f) {
   ArityCheck(1);
   xp = fp->argv[0];
   Check(symp(xp));
   str s = ((sym) xp)->nom;
   return ApC(ret, s ? (ob) s : nil); }
 
-static Gc(cp_sym) {
+static Gc(cpsym) {
   sym src = (sym) x,
       dst = src->nom ?
         sskc(v, &v->syms, (str) cp(v, (ob) src->nom, pool0, top0)) :
         cpyw(bump(v, Width(sym)), src, Width(sym));
   return (ob) (src->disp = (vm*) dst); }
 
-static intptr_t hx_sym(la v, ob _) { return ((sym) _)->code; }
+static intptr_t hxsym(la v, ob _) { return ((sym) _)->code; }
 
-static long tx_sym(la v, FILE *o, ob _) {
+static long txsym(la v, FILE *o, ob _) {
   str s = ((sym) _)->nom;
   return s ? fputstr(o, s) : fprintf(o, "#sym"); }
 
-Vm(ap_nop) { return ApC(ret, (ob) ip); }
+Vm(apnop) { return ApC(ret, (ob) ip); }
 
 const struct mtbl mtbl_sym = {
-  .does = ap_nop,
-  .emit = tx_sym,
-  .evac = cp_sym,
-  .hash = hx_sym,
-  .equi = eq_not, };
+  .does = apnop,
+  .emit = txsym,
+  .evac = cpsym,
+  .hash = hxsym,
+  .equi = uneq, };

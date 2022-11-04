@@ -1,7 +1,7 @@
 #include "la.h"
 
 // errors
-Vm(xdom) { return Pack(), nope(v, "is undefined"); }
+Vm(xdom) { return Pack(), nope(v, "has no value"); }
 Vm(xoom) { return Pack(), nope(v, "oom with %d words", v->len); }
 Vm(xary) { return Pack(), nope(v, "takes %d parameters", getnum(xp)); }
 

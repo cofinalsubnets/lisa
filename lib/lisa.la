@@ -129,7 +129,7 @@
    ((\ a q
     ((: (loop x) (?
      (~ x)       (emi i p)
-     (= a (A x)) (emi (AB x) q)
+     (= a (A x)) (emif (AB x) q)
      (loop (BB x)))) xs))(g p) (seek p 1))
 
   ; for specialized indexed instructions
@@ -154,8 +154,8 @@
    i-gt (br2 i-brg i-brg2)
    i-gteq (br2 i-brge i-brl)
    i-eq (br2 i-bre i-brn)
-   i-nilpp (f1 peeki i-br1 i-br0 i-br0 i-br1)
-   i-imm (f1 peekx 0 i-zero 1 i-one)
+   i-nilp_ (f1 peeki i-br1 i-br0 i-br0 i-br1)
+   i-imm (f1 peekx 0 i-imm0 1 i-imm1 2 i-imm2 -1 i-immn1)
    ))
 
  ; special function compiler table
@@ -181,7 +181,7 @@
    (eval (A x) (>- 'num (2f i k (B x))))) (mono f (f) x))
 
   (nary i tR xs .) (: arity (len xs) (\ x k (?
-   (< (len x) arity) (, (. 'nary) (fail "wrong arity"))
+   (< (len x) arity) (nope'wrong'arity(len x)'of arity)
    (: (fo k z) (co (eval (AA z) (>- (BA z) k)) (B z))
       (co k z) (? z (fo (xc i-push k) z) k)
       l (xc i (-> tR k))
@@ -213,7 +213,7 @@
     (~ (B x)) (eval (A x) (>- 'num k))
     (: b (mono * 1 (B x))
        c (? (nump (A x)) (mono / (A x) b) (X (A x) b)))
-     (eval (A c) (>- 'num (2f i-dqv k (B c))))
+     (eval (A c) (>- 'num (2f i-quot k (B c))))
     (Im 1 k)))
 
    & (abel & i-band)
@@ -261,13 +261,13 @@
       (? y (xc i-dupl l) l))
      (pop2 (fold (push2 k) (AB x) (BB x))))))))
 
-   nilp (nary i-nilpp () ())
-   twop (nary i-twopp () ())
-   homp (nary i-hompp () ())
-   nump (nary i-numpp () ())
-   symp (nary i-sympp () ())
-   strp (nary i-strpp () ())
-   tblp (nary i-tblpp () ())
+   nilp (nary i-nilp_ () ())
+   twop (nary i-twop_ () ())
+   homp (nary i-homp_ () ())
+   nump (nary i-nump_ () ())
+   symp (nary i-symp_ () ())
+   strp (nary i-strp_ () ())
+   tblp (nary i-tblp_ () ())
    ))
 
    ) (: ; new let expn makes sure ^^^ exist & don't make a closure vvv
@@ -320,7 +320,7 @@
   (loc k) (: loc (tget f 'loc)
    (? (~ loc) k (emi i-setloc (emx (len loc) k))))
   (ar k) (: i (tget f 'sig) (?
-   (> i 0) (emf i-arity (emx i k))
+   (> i 0) (emif i-arity (emx i k))
    (< i 0) (emi i-varg (emx (- (- i) 1) k))
    k))
 
@@ -450,7 +450,7 @@
     (~ (? (homp z) (= i-arity (peeki z)))) x
     (? (>= (len (B x)) (peekx (seek z 1)))
      (X (seek z 2) (B x)) ; we're good, skip the check
-     (, (. 'check-arity) (fail))))) ; oops wrong arity, good thing we caught it at compile time !
+     (, (. 'check-arity) (nope))))) ; oops wrong arity, good thing we caught it at compile time !
 
    (defn e x) (:
     (nom s) (? (twop s) (nom (A s)) s)
@@ -530,10 +530,10 @@
  ; generates code to produce the value of the expression
  ; produced by the first moiety.
 
- ((xc i k) e m) (emf i (k e (+ m 1)))
+ ((xc i k) e m) (emif i (k e (+ m 1)))
  ((xd x k) e m) (emx x (k e (+ m 1)))
 
- (emf i h) ((? (: q (tget fuse i)) q emi) i h)
+ (emif i h) ((? (: q (tget fuse i)) q emi) i h)
 
  (Im x k) (:
   (type-sym x) (?
@@ -557,20 +557,20 @@
  (ev-t x t k) (eval x (>- t k))
  ; these functions are for type checking
  (>- t k) (? (~ t) k
-  (xc (? (= t 'two) i-id2 (= t 'num) i-idZ
-         (= t 'hom) i-idH (= t 'tbl) i-idT
-         (, (. '>-) (fail))) k))
+  (xc (? (= t 'two) i-idtwo (= t 'num) i-idno
+         (= t 'hom) i-idmo (= t 'tbl) i-idtbl
+         (, (. '>-) (nope))) k))
 
  (-> t k) (:
   (produces t h)
    (? (~ (: q (consumes h))) h
       (= t q) (produces t (seek h 1))
-      (, (. 'type 'error t q) (fail))) ; type error
+      (nope'type'error': t'for q))
   (co k (? t (cu produces t) id)))
 
  (consumes h) (: i (peeki h) (?
-  (= i i-idH) 'hom (= i i-idZ) 'num
-  (= i i-id2) 'two (= i i-idT) 'tbl))
+  (= i i-idmo) 'hom (= i i-idno) 'num
+  (= i i-idtwo) 'two (= i i-idtbl) 'tbl))
 
  (eval x k) (:
   (list x k) (:
@@ -581,7 +581,7 @@
       ex (A (tget e's2))
       i (peeki ex)
       (? (= i i-ret) (emi i thd) ; forward return instructions
-       (emf i-jump ; otherwise jump somewhere ...
+       (emif i-jump ; otherwise jump somewhere ...
         (emx (? (= i i-jump) (peekx (seek ex 1)) ex) thd))))
      (? (~ (B x)) (eval (A x) fin)
       (eval (A x) (pop1 (xc i-br1 (peek1
@@ -602,7 +602,7 @@
 
     l ((-> 'hom k) e (+ m 2))
     y (ltu e (nom e l) x)
-    (? (homp-strict y) (emf i-imm (emx y l))
+    (? (homp-strict y) (emif i-imm (emx y l))
      (emi (? (tget e 'loc) i-encl1 i-encl0)
       (emx (X (B y) (clo-thd e (A y) k)) l))))
 
@@ -635,7 +635,7 @@
     (app z (B x) k))))
 
   ((symb x k) e m) (:
-   (late d) (emf i-late (emx (X d x) (k e (+ m 2))))
+   (late d) (emif i-late (emx (X d x) (k e (+ m 2))))
 
    s (A (: r (look e x))) (?
     (= s 'here) ((Im (B r) k) e m)

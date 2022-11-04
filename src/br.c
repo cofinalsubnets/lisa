@@ -15,7 +15,7 @@ Vm(call) {
   fp->clos = (ob*) nil;
   return ApY(xp, nil); }
 
-Vm(ap_u) {
+Vm(ap_f) {
   ArityCheck(2);
   Check(homp(fp->argv[0]));
   size_t adic = llen(fp->argv[1]);

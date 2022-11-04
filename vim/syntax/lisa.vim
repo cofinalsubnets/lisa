@@ -16,10 +16,10 @@ syn region LisaAtom start=+'"+ skip=+\\"+ end=+"+
 syn region LisaAtomList contained matchgroup=Special start="(" matchgroup=Special end=")" contains=@LisaAtomCluster,LisaString
 
 syn iskeyword @,!,37-38,42-47,:,60-63,\,`,|,~,^
-syn keyword LisaFunc < <= = > >= + - ~ * / % ? ` : \\ , . A B X L Q && \|\| \| & ^ << >>
+syn keyword LisaFunc < <= = > >= + - ~ ! * / % ? ` : \\ , . A B X L Q && \|\| \| & ^ << >>
 syn keyword LisaFunc ::: >>= case
 syn keyword LisaFunc twop nump symp tblp strp nilp homp ev ap
-syn keyword LisaFunc str slen schr scat ssub ystr sym fail
+syn keyword LisaFunc str slen schr scat ssub ystr sym nope
 syn keyword LisaFunc tbl tget tset tlen thas tkeys tdel
 
 syn region LisaString start=+"+ skip=+\\\\\|\\"+ end=+"+

@@ -35,7 +35,7 @@ CPPFLAGS ?= -DDESTDIR=\"$(dest_dir)\"
 CFLAGS ?=\
 	-std=gnu17 -g -O2 -flto -Wall\
  	-Wstrict-prototypes -Wno-shift-negative-value\
-	-fno-stack-protector
+	-fno-stack-protector -fno-align-functions
 
 src_h=$(wildcard src/*.h)
 src_c=$(wildcard src/*.c)

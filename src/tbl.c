@@ -36,36 +36,36 @@ static ob
   tbl_del(la, tbl, ob),
   tblss(la, intptr_t, intptr_t),
   tks(la) NoInline,
-  tbl_set_s(la, tbl, ob, ob) NoInline;
+  tblset_s(la, tbl, ob, ob) NoInline;
 
 static void
   tbl_shrink(la, tbl) NoInline;
 
-tbl table(la v) {
+tbl mktbl(la v) {
   tbl t = cells(v, Width(tbl) + 1 + Width(tag));
   if (t) ini_tbl(t, 0, 0, (ob*) ini_mo(t+1, 1)),
          t->tab[0] = nil;
   return t; }
 
-ob tbl_set(la v, tbl t, ob k, ob x) {
-  with(t, x = tbl_set_s(v, t, k, x));
+ob tblset(la v, tbl t, ob k, ob x) {
+  with(t, x = tblset_s(v, t, k, x));
   if (x && tbl_load(t) > 1)
     with(x, t = tbl_grow(v, t)),
     x = t ? x : 0;
   return x; }
 
-ob tbl_get(la v, tbl t, ob k) { return
+ob tblget(la v, tbl t, ob k) { return
   k = tbl_ent(v, t, k),
   nilp(k) ? 0 : VAL(k); }
 
-Vm(tget_u) {
+Vm(tget_f) {
   ArityCheck(2);
   xp = fp->argv[0];
   Check(tblp(xp));
-  xp = tbl_get(v, (tbl) xp, fp->argv[1]);
+  xp = tblget(v, (tbl) xp, fp->argv[1]);
   return ApC(ret, xp ? xp : nil); }
 
-Vm(tdel_u) {
+Vm(tdel_f) {
   ArityCheck(2);
   ob x = fp->argv[0];
   Check(tblp(x));
@@ -73,11 +73,11 @@ Vm(tdel_u) {
   return ApC(ret, x); }
 
 Vm(tget) { return
-  xp = tbl_get(v, (tbl) xp, *sp++),
+  xp = tblget(v, (tbl) xp, *sp++),
   ApN(1, xp ? xp : nil); }
 
 Vm(thas) { return
-  xp = tbl_get(v, (tbl) xp, *sp++),
+  xp = tblget(v, (tbl) xp, *sp++),
   ApN(1, xp ? T : nil); }
 
 Vm(tlen) { return ApN(1, putnum(((tbl) xp)->len)); }
@@ -87,14 +87,14 @@ Vm(tkeys) {
   CallOut(x = tks(v));
   return x ? ApN(1, x) : ApC(xoom, nil); }
 
-Vm(thas_u) {
+Vm(thas_f) {
   ArityCheck(2);
   xp = fp->argv[0];
   Check(tblp(xp));
-  xp = tbl_get(v, (tbl) xp, fp->argv[1]);
+  xp = tblget(v, (tbl) xp, fp->argv[1]);
   return ApC(ret, xp ? T : nil); }
 
-Vm(tset_u) {
+Vm(tset_f) {
   ArityCheck(1);
   xp = fp->argv[0];
   Check(tblp(xp));
@@ -102,12 +102,12 @@ Vm(tset_u) {
   CallOut(x = tblss(v, 1, fp->argc));
   return x ? ApC(ret, x) : ApC(xoom, nil); }
 
-Vm(tbl_u) {
+Vm(tbl_f) {
   ob x = fp->argc;
-  CallOut(x = (v->xp = (ob) table(v)) && tblss(v, 0, x));
+  CallOut(x = (v->xp = (ob) mktbl(v)) && tblss(v, 0, x));
   return x ? ApC(ret, xp) : ApC(xoom, nil); }
 
-Vm(tkeys_u) {
+Vm(tkeys_f) {
   ArityCheck(1);
   xp = fp->argv[0];
   Check(tblp(xp));
@@ -115,7 +115,7 @@ Vm(tkeys_u) {
   CallOut(x = tks(v));
   return x ? ApC(ret, x) : ApC(xoom, xp); }
 
-Vm(tlen_u) {
+Vm(tlen_f) {
   ArityCheck(1);
   xp = fp->argv[0];
   Check(tblp(xp));
@@ -123,7 +123,7 @@ Vm(tlen_u) {
 
 Vm(tset) {
   ob x = *sp++, y = *sp++;
-  CallOut(x = tbl_set(v, (tbl) xp, x, y));
+  CallOut(x = tblset(v, (tbl) xp, x, y));
   return x ? ApN(1, x) : ApC(xoom, xp); }
 
 // FIXME so bad :(
@@ -168,7 +168,7 @@ static NoInline tbl tbl_grow(la v, tbl t) {
   t->tab = tab1;
   return t; }
 
-static ob tbl_set_s(la v, tbl t, ob k, ob x) {
+static ob tblset_s(la v, tbl t, ob k, ob x) {
   size_t hc = hash(v, k);
   ob e = tbl_ent_hc(v, t, k, hc);
   if (!nilp(e)) return VAL(e) = x;
@@ -200,7 +200,7 @@ static NoInline ob tks(la v) {
 static ob tblss(la v, intptr_t i, intptr_t l) {
   ob r = nil;
   while (r && i <= l - 2)
-    r = tbl_set(v,
+    r = tblset(v,
       (tbl) v->xp,
       v->fp->argv[i],
       v->fp->argv[i+1]),
@@ -238,7 +238,7 @@ static Vm(ap_tbl) {
   switch (a) {
     case 0: return ApC(ret, putnum(((tbl) ip)->len));
     case 1: return
-      xp = tbl_get(v, (tbl) ip, fp->argv[0]),
+      xp = tblget(v, (tbl) ip, fp->argv[0]),
       ApC(ret, xp ? xp : nil);
     default: return
       xp = (ob) ip,
@@ -263,4 +263,4 @@ const struct mtbl mtbl_tbl = {
   .emit = tx_tbl,
   .evac = cp_tbl,
   .hash = hx_tbl,
-  .equi = eq_not, };
+  .equi = uneq, };

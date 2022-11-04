@@ -4,11 +4,12 @@
 /// Load Instructions
 //
 
-// constants
-Vm(one) { return ApN(1, putnum(1)); }
-Vm(zero) { return ApN(1, putnum(0)); }
-// immediate value from thread
+// immediate values
 Vm(imm) { return ApN(2, (ob) GF(ip)); }
+Vm(imm0) { return ApN(1, putnum(0)); }
+Vm(imm1) { return ApN(1, putnum(1)); }
+Vm(imm2) { return ApN(1, putnum(2)); }
+Vm(immn1) { return ApN(1, putnum(-1)); }
 
 // function arguments
 Vm(argn) { return ApN(2, fp->argv[getnum(GF(ip))]); }
@@ -59,7 +60,7 @@ Vm(defloc) { return
 // set a module variable
 Vm(deftop) {
   ob a = (ob) GF(ip);
-  CallOut(a = tbl_set(v, (tbl) A(a), B(a), xp));
+  CallOut(a = tblset(v, (tbl) A(a), B(a), xp));
   return a ? ApN(2, a) : ApC(xoom, xp); }
 
 // allocate local variable array
@@ -85,7 +86,7 @@ static NoInline Vm(nom_err) {
 Vm(late) {
   ob w = (ob) GF(ip), d = A(w);
   xp = B(w);
-  w = tbl_get(v, (tbl) d, xp);
+  w = tblget(v, (tbl) d, xp);
   if (!w) return ApC(nom_err, xp);
   xp = w;
   // omit the arity check if possible

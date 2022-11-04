@@ -7,9 +7,9 @@
 long la_tx(la v, FILE *o, ob x) {
   if (nump(x)) return fprintf(o, "%ld", getnum(x));
   if (G(x) == disp) return ((mtbl) GF(x))->emit(v, o, x);
-  return tx_mo(v, o, (mo) x); }
+  return txmo(v, o, (mo) x); }
 
-Vm(show_u) {
+Vm(show_f) {
   size_t i = 0, l = fp->argc;
   if (l) {
     while (i < l - 1)
@@ -19,7 +19,7 @@ Vm(show_u) {
   return fputc('\n', stdout),
     ApC(ret, xp); }
 
-Vm(putc_u) {
+Vm(putc_f) {
   ArityCheck(1);
   fputc(getnum(fp->argv[0]), stdout);
   return ApC(ret, xp); }

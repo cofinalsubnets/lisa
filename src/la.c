@@ -41,14 +41,14 @@ static bool defprims(la v) {
                     *lim = p + LEN(prims);
   while (p < lim) {
     ob z = symofs(v, p->nom);
-    if (!z || !tbl_set(v, v->topl, z, (ob) p++)) return false; }
+    if (!z || !tblset(v, v->topl, z, (ob) p++)) return false; }
   return true; }
 
 // store an instruction address under a variable in the
 // toplevel namespace // FIXME use a different namespace
 static NoInline ob inst(la v, const char *a, vm *b) {
   ob z = symofs(v, a);
-  return z ? tbl_set(v, v->topl, z, putnum(b)) : 0; }
+  return z ? tblset(v, v->topl, z, putnum(b)) : 0; }
 
 NoInline bool la_open(la v) {
   v->rand = v->t0 = clock();
@@ -76,9 +76,9 @@ NoInline bool la_open(la v) {
     (v->lex[Splat] = symofs(v, ".")) &&
 
     // make the global namespace
-    (v->topl = table(v)) &&
+    (v->topl = mktbl(v)) &&
     (_ = symofs(v, "_ns")) &&
-    tbl_set(v, v->topl, _, (ob) v->topl)
+    tblset(v, v->topl, _, (ob) v->topl)
     // register instruction addresses at toplevel so the
     // compiler can use them.
 #define reg_intl(a) && inst(v, "i-"#a, a)

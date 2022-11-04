@@ -25,7 +25,7 @@ static ob rx(la, FILE*), rx_two(la, FILE*);
 static Inline ob pull(la v, FILE *i, ob x) { return
   ((ob (*)(la, FILE*, ob))(getnum(*v->sp++)))(v, i, x); }
 
-static ob pret(la v, FILE *i, ob x) { return x; }
+static ob rx_ret(la v, FILE *i, ob x) { return x; }
 
 static ob rx_two_cons(la v, FILE *i, ob x) {
   ob y = *v->sp++;
@@ -41,7 +41,7 @@ static ob rx_q(la v, FILE* i, ob x) { return
   x = x ? (ob) pair(v, v->lex[Quote], x) : x,
   pull(v, i, x); }
 
-static ob rx(la v, FILE *i) {
+static NoInline ob rx(la v, FILE *i) {
   int c = nextc(i);
   switch (c) {
     case ')': case EOF: return pull(v, i, 0);
@@ -54,7 +54,7 @@ static ob rx(la v, FILE *i) {
   ob x = a ? rx_atom(v, a) : 0;
   return pull(v, i, x); }
 
-static ob rx_two(la v, FILE *i) {
+static NoInline ob rx_two(la v, FILE *i) {
   int c = nextc(i);
   switch (c) {
     case ')': return pull(v, i, nil);
@@ -66,7 +66,7 @@ static ob rx_two(la v, FILE *i) {
         pull(v, i, 0); } }
 
 ob la_rx(la v, FILE *i) { return
-  Push(putnum(pret)) ? rx(v, i) : 0; }
+  Push(putnum(rx_ret)) ? rx(v, i) : 0; }
 
 static str mkbuf(la v) {
   str s = cells(v, Width(str) + 1);
@@ -133,7 +133,7 @@ loop:
         if (*r == c) return rx_atom_n(v, b, i+2, sign, r[1]); } }
   return rx_atom_n(v, b, i, sign, 10); }
 
-Vm(rx_u) {
+Vm(rx_f) {
   Have(Width(two));
   sp = setw(sp - Width(two), nil, Width(two));
   Pack();

@@ -36,5 +36,5 @@
                 4
                 "
     get-digits (px-cat ws (px-cat (px-sep-by digits ws) ws))
-  (= (get-digits input fail L) '("" "12" "3" "4")))
+  (= (get-digits input (\) L) '("" "12" "3" "4")))
 )

@@ -28,14 +28,14 @@ mo mkmo(la v, size_t n) {
   return k ? ini_mo(k, n) : k; }
 
 // get the tag at the end of a function
-tag button(mo k) {
+tag motag(mo k) {
   while (G(k)) k = F(k);
   return (tag) k; }
 
 // instructions for the internal compiler
 //
 // initialize a function
-Vm(hom_u) {
+Vm(hom_f) {
   ArityCheck(1);
   Check(nump(fp->argv[0]));
   size_t len = getnum(fp->argv[0]);
@@ -45,15 +45,15 @@ Vm(hom_u) {
   return ApC(ret, (ob) (k + len)); }
 
 // trim a function after writing out code
-Vm(hfin_u) {
+Vm(hfin_f) {
   ArityCheck(1);
   xp = fp->argv[0];
   Check(homp(xp) && G(xp) != disp);
-  button((mo) xp)->self = (mo) xp;
+  motag((mo) xp)->head = (mo) xp;
   return ApC(ret, xp); }
 
 // emit code
-Vm(emi_u) {
+Vm(emi_f) {
   ArityCheck(2);
   Check(nump(fp->argv[0]));
   Check(homp(fp->argv[1]));
@@ -68,7 +68,7 @@ Vm(emi) {
   return ApN(1, (ob) k); }
 
 // emit data
-Vm(emx_u) {
+Vm(emx_f) {
   ArityCheck(2);
   Check(homp(fp->argv[1]));
   mo k = (mo) fp->argv[1] - 1;
@@ -82,21 +82,21 @@ Vm(emx) {
   return ApN(1, (ob) k); }
 
 // read an instruction from a thread (as a fixnum)
-Vm(peeki_u) {
+Vm(peeki_f) {
   ArityCheck(1);
   xp = fp->argv[0];
   Check(homp(xp));
   return ApC(ret, putnum(G(xp))); }
 
 // read data from a thread (be sure it's really data!)
-Vm(peekx_u) {
+Vm(peekx_f) {
   ArityCheck(1);
   xp = fp->argv[0];
   Check(homp(xp));
   return ApC(ret, (ob) G(xp)); }
 
 // thread pointer arithmetic -- not bounds checked!
-Vm(seek_u) {
+Vm(seek_f) {
   ArityCheck(2);
   Check(homp(fp->argv[0]));
   Check(nump(fp->argv[1]));
@@ -202,7 +202,7 @@ Vm(encl0) { return ApC(enclose, nil); }
 
 // FIXME this is really weird
 // print a function name
-static NoInline long tx_mo_n(la v, FILE *o, ob x) {
+static NoInline long txmon(la v, FILE *o, ob x) {
   if (symp(x)) {
     if (fputc('\\', o) == EOF) return -1;
     long r = la_tx(v, o, x);
@@ -212,11 +212,11 @@ static NoInline long tx_mo_n(la v, FILE *o, ob x) {
   long r = 0, a;
   // FIXME this is weird
   if (symp(A(x)) || twop(A(x))) {
-    a = tx_mo_n(v, o, A(x));
+    a = txmon(v, o, A(x));
     if (a < 0) return a;
     r += a; }
   if (symp(B(x)) || twop(B(x))) {
-    a = tx_mo_n(v, o, B(x));
+    a = txmon(v, o, B(x));
     if (a < 0) return a;
     r += a; }
   return r; }
@@ -227,14 +227,14 @@ static ob hnom(la v, mo x) {
   vm *k = G(x);
   if (k == setclo || k == genclo0 || k == genclo1)
     return hnom(v, (mo) G(FF(x)));
-  ob n = ((ob*) button(x))[-1];
+  ob n = ((ob*) motag(x))[-1];
   return livep(v, n) ? n : nil; }
 
-long tx_mo(la v, FILE *o, mo x) {
+long txmo(la v, FILE *o, mo x) {
   if (primp((mo) x)) return
     fprintf(o, "\\%s", ((struct prim*)x)->nom);
-  return tx_mo_n(v, o, hnom(v, (mo) x)); }
+  return txmon(v, o, hnom(v, (mo) x)); }
 
-intptr_t hx_mo(la v, mo x) {
+intptr_t hxmo(la v, mo x) {
   if (!livep(v, (ob) x)) return mix ^ ((ob) x * mix);
   return mix ^ hash(v, hnom(v, x)); }

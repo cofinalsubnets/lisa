@@ -26,29 +26,29 @@ Vm(cons) {
   hp += Width(two);
   return ApN(1, xp); }
 
-Vm(car_u) {
+Vm(car_f) {
   ArityCheck(1);
   xp = fp->argv[0];
   Check(twop(xp));
   return ApC(ret, A(xp)); }
 
-Vm(cdr_u) {
+Vm(cdr_f) {
   ArityCheck(1);
   xp = fp->argv[0];
   Check(twop(xp));
   return ApC(ret, B(xp)); }
 
-Vm(cons_u) {
+Vm(cons_f) {
   ArityCheck(2);
   Have(Width(two));
   xp = (ob) ini_two(hp, fp->argv[0], fp->argv[1]);
   hp += Width(two);
   return ApC(ret, xp); }
 
-static Vm(ap_two) {
+static Vm(aptwo) {
   return ApC(ret, fp->argc ? B(ip) : A(ip)); }
 
-static Gc(cp_two) {
+static Gc(cptwo) {
   two src = (two) x,
       dst = bump(v, Width(two));
   src->disp = (vm*) dst;
@@ -56,7 +56,7 @@ static Gc(cp_two) {
     cp(v, src->a, pool0, top0),
     cp(v, src->b, pool0, top0)); }
 
-static long em_two(la v, FILE *o, ob x) {
+static long txtwo(la v, FILE *o, ob x) {
   long r = 2;
   if (fputc('(', o) == EOF) return -1;
   for (;;) {
@@ -69,15 +69,18 @@ static long em_two(la v, FILE *o, ob x) {
   if (fputc(')', o) == EOF) return -1;
   return r; }
 
-static intptr_t hx_two(la v, ob x) {
-  return ror(hash(v, A(x)) * hash(v, B(x)), 4 * sizeof(intptr_t)); }
+static intptr_t hxtwo(la v, ob x) {
+  intptr_t hc = hash(v, A(x)) * hash(v, B(x));
+  return ror(hc, 4 * sizeof(intptr_t)); }
 
-static bool eq_two(la v, ob x, ob y) {
-  return twop(y) && eql(v, A(x), A(y)) && eql(v, B(x), B(y)); }
+static bool eqtwo(la v, ob x, ob y) {
+  return twop(y) &&
+    eql(v, A(x), A(y)) &&
+    eql(v, B(x), B(y)); }
 
 const struct mtbl mtbl_two = {
-  .does = ap_two,
-  .emit = em_two,
-  .evac = cp_two,
-  .hash = hx_two,
-  .equi = eq_two, };
+  .does = aptwo,
+  .emit = txtwo,
+  .evac = cptwo,
+  .hash = hxtwo,
+  .equi = eqtwo, };

@@ -8,75 +8,100 @@ intptr_t lcprng(intptr_t s) {
   return (s * steele_vigna_2021 + 1) >> 8; }
 
 // VM functions
-// FIXME remove macros
-#define mm_u(_c,_v,_z,op) {\
-  ob x, *xs = _v, *l = xs + _c;\
-  for (xp = _z; xs < l; xp = xp op getnum(x))\
-    Check(nump(x = *xs++));\
-  return ApC(ret, putnum(xp)); }
 
-Vm(sub_u) {
-  if (!(xp = fp->argc)) return ApC(ret, putnum(0));
-  Check(nump(*fp->argv));
-  if (xp == 1) return ApC(ret, putnum(-getnum(*fp->argv)));
-  mm_u(xp-1, fp->argv+1, getnum(*fp->argv), -); }
+// frameless
+Vm(add) { return ApN(1, xp + *sp++ - 1); }
+Vm(sub) { return ApN(1, *sp++ - xp + 1); }
+Vm(mul) { return ApN(1, putnum(getnum(*sp++) * getnum(xp))); }
+Vm(neg) { return ApN(1, ~xp+3); }
 
-Vm(sar_u) {
-  if (fp->argc == 0) return ApC(ret, putnum(0));
-  Check(nump(fp->argv[0]));
-  mm_u(fp->argc-1, fp->argv+1, getnum(fp->argv[0]), >>); }
-
-Vm(sal_u) {
-  if (fp->argc == 0) return ApC(ret, putnum(0));
-  Check(nump(fp->argv[0]));
-  mm_u(fp->argc-1, fp->argv+1, getnum(fp->argv[0]), <<); }
-
-Vm(dqv) { return xp == putnum(0) ?
+Vm(quot) { return xp == putnum(0) ?
   ApC(xdom, xp) :
   ApN(1, putnum(getnum(*sp++) / getnum(xp))); }
 
-Vm(mod) { return xp == putnum(0) ?
+Vm(rem) { return xp == putnum(0) ?
   ApC(xdom, xp) :
   ApN(1, putnum(getnum(*sp++) % getnum(xp))); }
 
-#define mm_void(_c, _v, _z, op) {\
-  ob x, *xs = _v, *l = xs + _c;\
-  for (xp = _z; xs < l; xp = xp op getnum(x)) {\
-    Check(nump(x = *xs++));\
-    if (x == putnum(0)) return ApC(xdom, x);}\
-  return ApC(ret, putnum(xp));}
 
-Vm(div_u) {
-  if (!(xp = fp->argc)) return ApC(ret, T);
-  Check(nump(fp->argv[0]));
-  mm_void(xp-1, fp->argv+1, getnum(fp->argv[0]), /); }
-
-Vm(mod_u) {
-  if (!(xp = fp->argc)) return ApC(ret, T);
-  Check(nump(fp->argv[0]));
-  mm_void(xp-1, fp->argv+1, getnum(fp->argv[0]), %); }
-
-Vm(rnd_u) { return ApC(ret, putnum(v->rand = lcprng(v->rand))); }
-
-Vm(neg) { return ApN(1, putnum(-getnum(xp))); }
-
-Vm(bnot_u) {
-  ArityCheck(1);
-  return ApC(ret, ~*fp->argv|1); }
-
-Vm(add_u) { mm_u(fp->argc, fp->argv, 0, +); }
-Vm(bor_u) { mm_u(fp->argc, fp->argv, 0, |); }
-Vm(bxor_u) { mm_u(fp->argc, fp->argv, 0, ^); }
-Vm(mul_u) { mm_u(fp->argc, fp->argv, 1, *); }
-Vm(band_u) { mm_u(fp->argc, fp->argv, -1, &); }
-
-Vm(add) { return ApN(1, xp + *sp++ - 1); }
-Vm(sub) { return ApN(1, *sp++ - xp + 1); }
-
+Vm(sar) { return ApN(1, putnum(getnum(*sp++) >> getnum(xp))); }
+Vm(sal) { return ApN(1, putnum(getnum(*sp++) << getnum(xp))); }
 Vm(bor) { return ApN(1, xp | *sp++); }
 Vm(band) { return ApN(1, xp & *sp++); }
 Vm(bxor) { return ApN(1, (xp ^ *sp++) | 1); }
+Vm(bnot) { return ApN(1, ~xp | 1); }
 
-Vm(mul) { return ApN(1, putnum(getnum(*sp++) * getnum(xp))); }
-Vm(sar) { return ApN(1, putnum(getnum(*sp++) >> getnum(xp))); }
-Vm(sal) { return ApN(1, putnum(getnum(*sp++) << getnum(xp))); }
+
+
+// framed
+Vm(add_f) {
+  xp = 0;
+  for (size_t i = 0; i < fp->argc; xp += getnum(fp->argv[i++]));
+  return ApC(ret, putnum(xp)); }
+Vm(mul_f) {
+  xp = 1;
+  for (size_t i = 0; i < fp->argc; xp *= getnum(fp->argv[i++]));
+  return ApC(ret, putnum(xp)); }
+Vm(bor_f) {
+  xp = 0;
+  for (size_t i = 0; i < fp->argc; xp |= getnum(fp->argv[i++]));
+  return ApC(ret, putnum(xp)); }
+Vm(bxor_f) {
+  xp = 0;
+  for (size_t i = 0; i < fp->argc; xp ^= getnum(fp->argv[i++]));
+  return ApC(ret, putnum(xp)); }
+Vm(band_f) {
+  xp = -1;
+  for (size_t i = 0; i < fp->argc; xp &= getnum(fp->argv[i++]));
+  return ApC(ret, putnum(xp)); }
+
+Vm(sub_f) {
+  if (fp->argc == 0) return ApC(ret, xp);
+  if (fp->argc == 1) return ApC(ret, putnum(-getnum(fp->argv[0])));
+  xp = getnum(fp->argv[0]);
+  size_t i = 1;
+  do xp -= getnum(fp->argv[i++]); while (i < fp->argc);
+  return ApC(ret, putnum(xp)); }
+
+Vm(sar_f) {
+  if (fp->argc == 0) return ApC(ret, xp);
+  if (fp->argc == 1) return ApC(ret, putnum(getnum(fp->argv[0])>>1));
+  xp = getnum(fp->argv[0]);
+  size_t i = 1;
+  do xp >>= getnum(fp->argv[i++]); while (i < fp->argc);
+  return ApC(ret, putnum(xp)); }
+
+Vm(sal_f) {
+  if (fp->argc == 0) return ApC(ret, xp);
+  if (fp->argc == 1) return ApC(ret, putnum(getnum(fp->argv[0])<<1));
+  xp = getnum(fp->argv[0]);
+  size_t i = 1;
+  do xp <<= getnum(fp->argv[i++]); while (i < fp->argc);
+  return ApC(ret, putnum(xp)); }
+
+Vm(quot_f) {
+  if (fp->argc == 0) return ApC(ret, putnum(1));
+  xp = getnum(fp->argv[0]);
+  for (size_t i = 1; i < fp->argc; i++) {
+    intptr_t n = getnum(fp->argv[i]);
+    Check(n);
+    xp /= n; }
+  return ApC(ret, putnum(xp)); }
+
+Vm(rem_f) {
+  if (fp->argc == 0) return ApC(ret, putnum(1));
+  xp = getnum(fp->argv[0]);
+  for (size_t i = 1; i < fp->argc; i++) {
+    intptr_t n = getnum(fp->argv[i]);
+    Check(n);
+    xp %= n; }
+  return ApC(ret, putnum(xp)); }
+
+Vm(rand_f) {
+  v->rand = lcprng(v->rand);
+  return ApC(ret, putnum(v->rand)); }
+
+
+Vm(bnot_f) {
+  xp = fp->argc ? *fp->argv : 0;
+  return ApC(ret, ~xp|1); }

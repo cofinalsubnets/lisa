@@ -20,7 +20,7 @@ struct mo { vm *ap; };
 typedef struct tag {
   void *null; // always null
   struct mo
-    *self, // pointer to head of thread
+    *head, // pointer to head of thread
     end[]; // first address after thread
 } *tag;
 
@@ -78,6 +78,9 @@ enum lex { Def, Cond, Lamb, Quote, Seq, Splat, Eval, LexN };
 // linked list for gc protection
 typedef struct keep { void **it; struct keep *et; } *keep;
 
+struct gc_stats {
+  size_t cycles, ups, downs, avgtime, avgsize; };
+
 struct la {
   // vm state
   mo ip;
@@ -106,17 +109,17 @@ Gc(cp); // copy something; used by type-specific copying functions
 two pair(la, ob, ob) NoInline;
 size_t llen(ob);
 
-ob ns_tbl(la),
-   ns_get(la, ob),
-   ns_set(la, ob, ob);
+ob nstbl(la),
+   nsget(la, ob),
+   nsset(la, ob, ob);
 
 // hash tables
 intptr_t
   hash(la, ob),
-  hx_mo(la, mo);
-tbl table(la);
-ob tbl_set(la, tbl, ob, ob),
-   tbl_get(la, tbl, ob);
+  hxmo(la, mo);
+tbl mktbl(la);
+ob tblset(la, tbl, ob, ob),
+   tblget(la, tbl, ob);
 
 // string & symbol constructors
 sym symof(la, str);
@@ -127,20 +130,20 @@ str strof(la, const char*);
 // of bytes written or a negative number
 // on error.
 long
-  fputstr(FILE*, str),  // like fputs
-  tx_mo(la, FILE*, mo); // show a function
+  fputstr(FILE*, str) NoInline,  // like fputs
+  txmo(la, FILE*, mo); // show a function
 
 // functions
-tag button(mo); // get tag at end
 mo mkmo(la, size_t); // allocate a thread
+tag motag(mo); // get tag at end
 
-bool  pushs(la, ...); // push args onto stack
+bool pushs(la, ...); // push args onto stack
 ob tupl(la, ...); // collect args into tuple (data thread)
 #define Push(...) pushs(v, __VA_ARGS__, (ob)0)
 #define Tupl(...) tupl(v, __VA_ARGS__, (ob)0)
 
 bool
-  eq_not(la, ob, ob), // always returns false
+  uneq(la, ob, ob), // always returns false
   primp(mo), // is it a primitive function? FIXME hide this
   eql(la, ob, ob); // object equality
 
@@ -212,24 +215,24 @@ static Inline size_t ror(size_t x, size_t n) {
 #define cfns(_)\
   _(gc) _(xdom) _(xoom) _(xary)\
   _(setclo) _(genclo0) _(genclo1)\
-  _(ap_nop) _(yield)
+  _(apnop) _(yield)
 cfns(ninl)
 #undef cfns
 
 // used by the compiler but not exposed as primitives
 #define i_internals(_)\
  _(call) _(ret) _(rec) _(jump) _(varg) _(disp)\
- _(arity) _(idZ) _(idH) _(id2) _(idT)\
- _(imm) _(zero) _(one)\
+ _(arity) _(idno) _(idmo) _(idtwo) _(idtbl)\
+ _(imm) _(immn1) _(imm0) _(imm1) _(imm2)\
  _(argn) _(arg0) _(arg1) _(arg2) _(arg3)\
  _(clon) _(clo0) _(clo1) _(clo2) _(clo3)\
  _(locn) _(loc0) _(loc1) _(loc2) _(loc3)\
  _(deftop) _(late)\
  _(setloc) _(defloc)\
  _(take) _(encl1) _(encl0)\
- _(twopp) _(numpp) _(nilpp) _(strpp)\
- _(tblpp) _(sympp) _(hompp)\
- _(add) _(sub) _(mul) _(dqv) _(mod) _(neg)\
+ _(twop_) _(nump_) _(nilp_) _(strp_)\
+ _(tblp_) _(symp_) _(homp_)\
+ _(add) _(sub) _(mul) _(quot) _(rem) _(neg)\
  _(sar) _(sal) _(band) _(bor) _(bxor)\
  _(lt) _(lteq) _(eq) _(gteq) _(gt)\
  _(tget) _(tset) _(thas) _(tlen)\
@@ -245,39 +248,39 @@ i_internals(ninl)
 // primitive functions
 // FIXME due to a hack ev must be the first item in this list
 #define i_primitives(_)\
- _(ev_u, "ev") _(ap_u, "ap")\
+ _(ev_f, "ev") _(ap_f, "ap")\
   \
- _(nump_u, "nump") _(rnd_u, "rand")\
- _(add_u, "+") _(sub_u, "-") _(mul_u, "*")\
- _(div_u, "/") _(mod_u, "%")\
- _(sar_u, ">>") _(sal_u, "<<")\
- _(band_u, "&") _(bnot_u, "!") _(bor_u, "|") _(bxor_u, "^")\
+ _(nump_f, "nump") _(rand_f, "rand")\
+ _(add_f, "+") _(sub_f, "-") _(mul_f, "*")\
+ _(quot_f, "/") _(rem_f, "%")\
+ _(sar_f, ">>") _(sal_f, "<<")\
+ _(band_f, "&") _(bnot_f, "!") _(bor_f, "|") _(bxor_f, "^")\
   \
- _(twop_u, "twop") _(cons_u, "X") _(car_u, "A") _(cdr_u, "B")\
+ _(twop_f, "twop") _(cons_f, "X") _(car_f, "A") _(cdr_f, "B")\
   \
- _(hom_u, "hom") _(homp_u, "homp")\
- _(emi_u, "emi") _(emx_u, "emx")\
- _(peeki_u, "peeki") _(peekx_u, "peekx")\
- _(seek_u, "seek") _(hfin_u, "hfin")\
+ _(hom_f, "hom") _(homp_f, "homp")\
+ _(emi_f, "emi") _(emx_f, "emx")\
+ _(peeki_f, "peeki") _(peekx_f, "peekx")\
+ _(seek_f, "seek") _(hfin_f, "hfin")\
   \
- _(tbl_u, "tbl") _(tblp_u, "tblp") _(tlen_u, "tlen")\
- _(tget_u, "tget") _(thas_u, "thas") _(tset_u, "tset")\
- _(tdel_u, "tdel") _(tkeys_u, "tkeys")\
+ _(tbl_f, "tbl") _(tblp_f, "tblp") _(tlen_f, "tlen")\
+ _(tget_f, "tget") _(thas_f, "thas") _(tset_f, "tset")\
+ _(tdel_f, "tdel") _(tkeys_f, "tkeys")\
   \
- _(str_u, "str") _(strp_u, "strp") _(slen_u, "slen")\
- _(ssub_u, "ssub") _(scat_u, "scat")\
- _(sget_u, "schr")\
+ _(str_f, "str") _(strp_f, "strp") _(slen_f, "slen")\
+ _(ssub_f, "ssub") _(scat_f, "scat")\
+ _(sget_f, "schr")\
   \
- _(sym_u, "sym") _(symp_u, "symp") _(ynom_u, "ynom")\
+ _(sym_f, "sym") _(symp_f, "symp") _(ynom_f, "ynom")\
   \
- _(rx_u, "rx") _(show_u, ".") _(putc_u, "putc")\
+ _(rx_f, "rx") _(show_f, ".") _(putc_f, "putc")\
   \
  _(gettime, "time")\
   \
- _(eq_u, "=") _(lt_u, "<") _(lteq_u, "<=")\
- _(gteq_u, ">=") _(gt_u, ">") _(nilp_u, "nilp")\
+ _(eq_f, "=") _(lt_f, "<") _(lteq_f, "<=")\
+ _(gteq_f, ">=") _(gt_f, ">") _(nilp_f, "nilp")\
   \
- _(xdom, "fail")
+ _(xdom, "nope")
 
 i_primitives(ninl)
 #undef ninl
@@ -337,5 +340,5 @@ static Inline str ini_str(void *_, size_t len) {
 static Inline mo ini_mo(void *_, size_t len) {
   mo k = _;
   tag t = (tag) (k + len);
-  t->null = NULL, t->self = k;
+  t->null = NULL, t->head = k;
   return k; }

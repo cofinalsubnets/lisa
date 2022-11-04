@@ -71,8 +71,8 @@ static clock_t copy(la v, size_t len1) {
   return t1 ? (t2 - t0) / t1 : 1; }
 
 static NoInline ob cp_mo(la v, mo src, ob *pool0, ob *top0) {
-  tag fin = button(src);
-  mo ini = fin->self,
+  tag fin = motag(src);
+  mo ini = fin->head,
      dst = bump(v, fin->end - ini),
      d = dst;
 

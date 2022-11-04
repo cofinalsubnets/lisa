@@ -2,7 +2,7 @@
 #include <stdarg.h>
 
 // push things onto the stack
-static bool pushsr(la v, size_t i, va_list xs) {
+static NoInline bool pushsr(la v, size_t i, va_list xs) {
   ob x = va_arg(xs, ob);
   if (!x) return Avail >= i || please(v, i);
   bool _;
@@ -16,7 +16,7 @@ bool pushs(la v, ...) {
   va_end(xs);
   return _; }
 
-static ob *tuplr(la v, size_t i, va_list xs) {
+static NoInline ob *tuplr(la v, size_t i, va_list xs) {
   ob *k, x = va_arg(xs, ob);
   if (!x) return
     k = (ob*) mkmo(v, i),
