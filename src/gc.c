@@ -104,7 +104,7 @@ static void copy_(la v, size_t len1, ob *pool1) {
   v->len = len1;
   v->hp = v->pool = pool1;
   v->sp = sp0 + shift;
-  v->fp = (fr) ((ob*) v->fp + shift);
+  v->fp = (sf) ((ob*) v->fp + shift);
 
   v->xp = cp(v, v->xp, pool0, top0);
   v->ip = (mo) cp(v, (ob) v->ip, pool0, top0);
@@ -118,13 +118,13 @@ static void copy_(la v, size_t len1, ob *pool1) {
 
   // copy the stack
   ob *sp = v->sp;
-  fr fp = v->fp;
+  sf fp = v->fp;
   for (;;) {
     while (sp < (ob*) fp) *sp++ = cp(v, *sp0++, pool0, top0);
     if (sp0 == top0) break;
-    fr fp0 = (fr) sp0;
+    sf fp0 = (sf) sp0;
     fp->argc = fp0->argc;
-    fp->subd = (fr) ((ob*) fp0->subd + shift);
+    fp->subd = (sf) ((ob*) fp0->subd + shift);
     fp->clos = (ob*) cp(v, (ob) fp0->clos, pool0, top0);
     fp->retp = (mo) cp(v, (ob) fp0->retp, pool0, top0);
     sp = fp->argv;

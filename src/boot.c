@@ -20,8 +20,7 @@ static Inline mo pull(la v, env *e, size_t m) { return
 
 // apply instruction pullbacks
 static Inline mo pb1(vm *i, mo k) {
-  G(--k) = i;
-  return k; }
+  return G(--k) = i, k; }
 static Inline mo pb2(vm *i, ob x, mo k) {
   return pb1(i, pb1((vm*) x, k)); }
 
@@ -73,15 +72,23 @@ static NoInline ob asign(la v, ob a, intptr_t i, ob *m) {
   ob x;
   if (!twop(a)) return *m = i, a;
   if (twop(B(a)) && AB(a) == v->lex[Splat])
-    return *m = -i-1, (ob) pair(v, A(a), nil);
-  with(a, x = asign(v, B(a), i+1, m));
+    return *m = -i - 1, (ob) pair(v, A(a), nil);
+  with(a, x = asign(v, B(a), i + 1, m));
   return x ? (ob) pair(v, A(a), x) : 0; }
 
-static Inline ob new_scope(la v, env *e, ob a, ob n) {
-  intptr_t s = 0;
-  with(n, a = asign(v, a, 0, &s));
-  return !a ? 0 : Tupl(
-    a, nil, nil, n, putnum(s), nil, nil, e ? (ob) *e : nil); }
+static Inline ob new_scope(la v, env *e, ob arg, ob nom) {
+  intptr_t asig = 0;
+  with(nom, arg = asign(v, arg, 0, &asig));
+  return !arg ? 0 : tupl(v,
+    arg, // positional arguments
+    nil, // local variables
+    nil, // closure variables
+    nom, // function name
+    N(asig), // arity signature
+    nil, // address stack 1
+    nil, // address stack 2
+    e ? (ob) *e : nil, // parent scope
+    NULL); }
 
 static NoInline char scan_def(la v, env *e, ob x) {
   char r;
@@ -96,11 +103,15 @@ static NoInline char scan_def(la v, env *e, ob x) {
   return r; }
 
 static NoInline bool scan(la v, env *e, ob x) {
-  bool _; return
-    !twop(x) || A(x) == v->lex[Lamb] || A(x) == v->lex[Quote] ? 1 :
-    A(x) == v->lex[Def] ? scan_def(v, e, B(x)) != -1 :
-    (with(x, _ = scan(v, e, A(x))),
-     _ && scan(v, e, B(x))); }
+  if (!twop(x) ||
+      A(x) == v->lex[Lamb] ||
+      A(x) == v->lex[Quote])
+    return true;
+  if (A(x) == v->lex[Def])
+    return scan_def(v, e, B(x)) != -1;
+  bool _;
+  with(x, _ = scan(v, e, A(x)));
+  return _ && scan(v, e, B(x)); }
 
 static NoInline ob linitp(la v, ob x, ob *d) {
   ob y;
@@ -110,7 +121,11 @@ static NoInline ob linitp(la v, ob x, ob *d) {
 
 static Inline ob comp_body(la v, env *e, ob x) {
   intptr_t i;
-  if (!Push(N(r_co_x), x, N(r_pb1), N(ret), N(r_co_ini)) ||
+  if (!pushs(v,
+        N(r_co_x), x,
+        N(r_pb1), N(ret),
+        N(r_co_ini),
+        NULL) ||
       !scan(v, e, v->sp[1]) ||
       !(x = (ob) pull(v, e, 4)))
     return 0;
@@ -122,7 +137,8 @@ static Inline ob comp_body(la v, env *e, ob x) {
         (ob) pb2(varg, putnum(-i-1), (mo) x) :
       x;
   motag((mo) x)->head = (mo) x;
-  return twop((*e)->clo) ? (ob) pair(v, (*e)->clo, x) : x; }
+  return !twop((*e)->clo) ? x :
+    (ob) pair(v, (*e)->clo, x); }
 
 // takes a lambda expr, returns either a pair or or a
 // hom depending on if the function has free variables or not
@@ -143,10 +159,16 @@ static Inline ob co_fn_clo(la v, env *e, ob arg, ob seq) {
   size_t i = llen(arg);
   mm(&arg), mm(&seq);
 
-  arg = Push(N(r_pb2), N(take), N(i), N(r_co_ini)) ? arg : 0;
+  arg = pushs(v,
+    N(r_pb2), N(take), N(i),
+    N(r_co_ini),
+    NULL) ? arg : 0;
 
   while (arg && twop(arg)) arg =
-    Push(N(r_co_x), A(arg), N(r_pb1), N(push)) ? B(arg) : 0;
+    pushs(v,
+      N(r_co_x), A(arg),
+      N(r_pb1), N(push),
+      NULL) ? B(arg) : 0;
 
   arg = arg ? (ob) pull(v, e, 0) : arg;
   arg = arg ? (ob) pair(v, seq, arg) : arg;
@@ -172,11 +194,14 @@ Co(r_co_def_bind) {
   return _ ? imx(v, e, m, deftop, _) : 0; }
 
 static bool co_def_r(la v, env *e, ob x) {
+  if (!twop(x)) return true;
   bool _;
-  return !twop(x) ||
-    ((x = rw_let_fn(v, x)) &&
-     (with(x, _ = co_def_r(v, e, BB(x))), _) &&
-     Push(N(r_co_x), AB(x), N(r_co_def_bind), A(x))); }
+  return (x = rw_let_fn(v, x)) &&
+   (with(x, _ = co_def_r(v, e, BB(x))), _) &&
+   pushs(v,
+     N(r_co_x), AB(x),
+     N(r_co_def_bind), A(x),
+     NULL); }
 
 // syntactic sugar for define
 static Inline bool co_def_sugar(la v, two x) {
@@ -188,7 +213,7 @@ static Inline bool co_def_sugar(la v, two x) {
     (x = pair(v, (ob) x, nil)) &&
     (x = pair(v, v->lex[Lamb], (ob) x)) &&
     (x = pair(v, (ob) x, nil)) &&
-    Push(N(r_co_x), (ob) x); }
+    pushs(v, N(r_co_x), (ob) x, NULL); }
 
 Co(co_def, ob x) {
   if (!twop(B(x))) return imx(v, e, m, imm, nil);
@@ -237,22 +262,22 @@ Co(co_if_pre_ant) {
 static bool co_if_loop(la v, env *e, ob x) {
   bool _;
   x = twop(x) ? x : (ob) pair(v, nil, nil);
-  if (!x) return 0;
+  if (!x) return false;
   if (!twop(B(x))) return
-    Push(N(r_co_x), A(x), N(co_if_pre_con));
+    pushs(v, N(r_co_x), A(x), N(co_if_pre_con), NULL);
   with(x,
-    _ = Push(N(co_if_post_con), N(r_co_x),
-             AB(x), N(co_if_pre_con)),
+    _ = pushs(v, N(co_if_post_con), N(r_co_x),
+             AB(x), N(co_if_pre_con), NULL),
     _ = _ ? co_if_loop(v, e, BB(x)) : _);
-  return _ ? Push(N(r_co_x), A(x), N(co_if_pre_ant)) : 0; }
+  return _ ? pushs(v, N(r_co_x), A(x), N(co_if_pre_ant), NULL) : 0; }
 
 Co(co_if, ob x) {
   bool _;
-  mo pf;
-  with(x, _ = Push(N(co_if_pre)));
-  _ = _ ? co_if_loop(v, e, x) : _;
-  if (!_ || !(pf = pull(v, e, m))) return 0;
-  (*e)->s2 = B((*e)->s2);
+  with(x, _ = pushs(v, N(co_if_pre), NULL));
+  _ = _ && co_if_loop(v, e, x);
+  if (!_) return 0;
+  mo pf = pull(v, e, m);
+  if (pf) (*e)->s2 = B((*e)->s2);
   return pf; }
 
 Co(r_co_ap_call) {
@@ -304,12 +329,14 @@ Co(r_co_x) {
 
 Co(co_ap, ob f, ob args) {
   mm(&args);
-  if (!Push(N(r_co_x), f,
-            N(r_pb1), N(idmo),
-            N(r_co_ap_call), N(llen(args))))
+  if (!pushs(v,
+        N(r_co_x), f,
+        N(r_pb1), N(idmo),
+        N(r_co_ap_call), N(llen(args)),
+        NULL))
     return um, NULL;
   for (; twop(args); args = B(args))
-    if (!Push(N(r_co_x), A(args), N(r_pb1), N(push)))
+    if (!pushs(v, N(r_co_x), A(args), N(r_pb1), N(push), NULL))
       return um, NULL;
   return um, pull(v, e, m); }
 
@@ -317,19 +344,18 @@ static NoInline bool seq_mo_loop(la v, env *e, ob x) {
   if (!twop(x)) return true;
   bool _;
   with(x, _ = seq_mo_loop(v, e, B(x)));
-  return _ && Push(N(r_co_x), A(x)); }
+  return _ && pushs(v, N(r_co_x), A(x), NULL); }
 
 Co(co_seq, ob x) { return
   x = twop(x) ? x : (ob) pair(v, x, nil),
-  x = x ? seq_mo_loop(v, e, x) : x,
+  x = x && seq_mo_loop(v, e, x),
   x ? pull(v, e, m) : 0; }
 
 Co(co_two, ob x) {
   ob a = A(x);
   if (symp(a)) {
     if (a == v->lex[Quote]) return
-      x = B(x),
-      imx(v, e, m, imm, twop(x) ? A(x) : x);
+      imx(v, e, m, imm, twop(B(x)) ? AB(x) : B(x));
     if (a == v->lex[Cond]) return co_if(v, e, m, B(x));
     if (a == v->lex[Lamb]) return co_fn(v, e, m, x);
     if (a == v->lex[Def]) return co_def(v, e, m, x);
@@ -343,7 +369,7 @@ Co(r_pb1) {
 
 static NoInline mo imx(la v, env *e, size_t m, vm *i, ob x) {
   mo k;
-  with(x, k = pull(v, e, m+2));
+  with(x, k = pull(v, e, m + 2));
   return k ? pb2(i, x, k) : 0; }
 
 Co(r_pb2) {
@@ -357,9 +383,12 @@ Co(r_co_ini) {
          G(k += m) = (vm*) (e ? (*e)->name : nil);
   return k; }
 
-// apply expression pullbacks
-static mo ana(la v, ob x) {
-  bool ok = Push(N(r_co_x), x, N(r_pb1), N(ret), N(r_co_ini));
+static Inline mo ana(la v, ob x) {
+  bool ok = pushs(v,
+    N(r_co_x), x,
+    N(r_pb1), N(ret),
+    N(r_co_ini),
+    NULL);
   return ok ? pull(v, 0, 0) : 0; }
 
 // bootstrap eval interpreter function

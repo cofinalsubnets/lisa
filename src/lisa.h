@@ -8,12 +8,9 @@
 typedef struct la *la;
 typedef intptr_t la_ob;
 
-// initialize / deinitialize a runtime instance
-bool la_open(la);
-void la_close(la);
-// as above but manage the instance with malloc / free
 la la_ini(void);
-void la_fin(la);
+bool la_open(la);
+void la_close(la), la_fin(la);
 
 bool la_script(la, const char*);
 

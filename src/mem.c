@@ -15,7 +15,7 @@ void *setw(void *x, intptr_t i, size_t l) {
   while (l--) ((intptr_t*) x)[l] = i;
   return x; }
 
-void *cpyw(void *x, const void *y, size_t l) {
+void *cpyw(void *restrict x, const void *restrict y, size_t l) {
   for (size_t i = 0; i < l; i++)
     ((void**)x)[i] = ((void**)y)[i];
   return x; }

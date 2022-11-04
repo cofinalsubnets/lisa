@@ -173,7 +173,7 @@ static ob tblset_s(la v, tbl t, ob k, ob x) {
   ob e = tbl_ent_hc(v, t, k, hc);
   if (!nilp(e)) return VAL(e) = x;
   size_t i = tbl_idx(t->cap, hc);
-  with(t, e = Tupl(k, x, t->tab[i]));
+  with(t, e = tupl(v, k, x, t->tab[i], NULL));
   if (!e) return e;
   t->tab[i] = e;
   t->len++;

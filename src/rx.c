@@ -3,70 +3,82 @@
 #include <ctype.h>
 
 static str
-  rx_atom_chars(la, FILE*),
-  rx_str(la, FILE*);
+  rxatomstr(la, FILE*),
+  rxstr(la, FILE*);
 static ob
-  rx_atom(la, str);
-static int nextc(FILE*);
+  rxatom(la, str),
+  rxret(la, FILE*, ob),
+  rx(la, FILE*),
+  rxtwo(la, FILE*);
+
+ob la_rx(la v, FILE *i) { return
+  pushs(v, putnum(rxret), NULL) ? rx(v, i) : 0; }
+
+Vm(rx_f) {
+  Have(Width(two));
+  sp = setw(sp - Width(two), nil, Width(two));
+  Pack();
+  ob _ = la_rx(v, stdin);
+  Unpack();
+  if (!_) return ApC(ret, feof(stdin) ? nil : putnum(1));
+  two w = ini_two(hp, _, nil);
+  hp += Width(two);
+  return ApC(ret, (ob) w); }
 
 ////
 /// " the parser "
 //
 
 // get the next token character from the stream
-static int nextc(FILE *i) {
+static int rxchar(FILE *i) {
   for (int c;;) switch ((c = fgetc(i))) {
     default: return c;
     case ' ': case '\t': case '\n': continue;
     case '#': case ';': for (;;) switch (fgetc(i)) {
-      case '\n': case EOF: return nextc(i); } } }
+      case '\n': case EOF: return rxchar(i); } } }
 
-static ob rx(la, FILE*), rx_two(la, FILE*);
 static Inline ob pull(la v, FILE *i, ob x) { return
   ((ob (*)(la, FILE*, ob))(getnum(*v->sp++)))(v, i, x); }
 
-static ob rx_ret(la v, FILE *i, ob x) { return x; }
+static ob rxret(la v, FILE *i, ob x) { return x; }
 
-static ob rx_two_cons(la v, FILE *i, ob x) {
+static ob rxtwo_cons(la v, FILE *i, ob x) {
   ob y = *v->sp++;
   return pull(v, i, x ? (ob) pair(v, y, x) : x); }
 
-static ob rx_two_cont(la v, FILE *i, ob x) {
-  return !x || !Push(putnum(rx_two_cons), x) ?
+static ob rxtwo_cont(la v, FILE *i, ob x) {
+  return !x || !pushs(v, putnum(rxtwo_cons), x, NULL) ?
     pull(v, i, 0) :
-    rx_two(v, i); }
+    rxtwo(v, i); }
 
-static ob rx_q(la v, FILE* i, ob x) { return
+static ob rxq(la v, FILE* i, ob x) { return
   x = x ? (ob) pair(v, x, nil) : x,
   x = x ? (ob) pair(v, v->lex[Quote], x) : x,
   pull(v, i, x); }
 
 static NoInline ob rx(la v, FILE *i) {
-  int c = nextc(i);
+  int c = rxchar(i);
   switch (c) {
     case ')': case EOF: return pull(v, i, 0);
-    case '(': return rx_two(v, i);
-    case '"': return pull(v, i, (ob) rx_str(v, i));
+    case '(': return rxtwo(v, i);
+    case '"': return pull(v, i, (ob) rxstr(v, i));
     case '\'': return
-      Push(putnum(rx_q)) ? rx(v, i) : pull(v, i, 0); }
+      pushs(v, putnum(rxq), NULL) ? rx(v, i) : pull(v, i, 0); }
   ungetc(c, i);
-  str a = rx_atom_chars(v, i);
-  ob x = a ? rx_atom(v, a) : 0;
+  str a = rxatomstr(v, i);
+  ob x = a ? rxatom(v, a) : 0;
   return pull(v, i, x); }
 
-static NoInline ob rx_two(la v, FILE *i) {
-  int c = nextc(i);
+static NoInline ob rxtwo(la v, FILE *i) {
+  int c = rxchar(i);
   switch (c) {
     case ')': return pull(v, i, nil);
     case EOF: return pull(v, i, 0);
     default: return
       ungetc(c, i),
-      Push(putnum(rx_two_cont)) ?
+      pushs(v, putnum(rxtwo_cont), NULL) ?
         rx(v, i) :
         pull(v, i, 0); } }
-
-ob la_rx(la v, FILE *i) { return
-  Push(putnum(rx_ret)) ? rx(v, i) : 0; }
 
 static str mkbuf(la v) {
   str s = cells(v, Width(str) + 1);
@@ -82,7 +94,7 @@ static str buf_grow(la v, str s) {
   return t; }
 
 // read the contents of a string literal into a string
-static str rx_str(la v, FILE *p) {
+static str rxstr(la v, FILE *p) {
   str o = mkbuf(v);
   for (size_t n = 0, lim = sizeof(ob); o; o = buf_grow(v, o), lim *= 2)
     for (int x; n < lim;) switch (x = fgetc(p)) {
@@ -95,7 +107,7 @@ static str rx_str(la v, FILE *p) {
 
 // read the characters of an atom (number or symbol)
 // into a string
-static str rx_atom_chars(la v, FILE *p) {
+static str rxatomstr(la v, FILE *p) {
   str o = mkbuf(v);
   for (size_t n = 0, lim = sizeof(ob); o; o = buf_grow(v, o), lim *= 2)
     for (int x; n < lim;) switch (x = fgetc(p)) {
@@ -106,7 +118,7 @@ static str rx_atom_chars(la v, FILE *p) {
       case EOF: return o->len = n, o; }
   return 0; }
 
-static NoInline ob rx_atom_n(la v, str b, size_t inset, int sign, int rad) {
+static NoInline ob rxatom_n(la v, str b, size_t inset, int sign, int rad) {
   static const char *digits = "0123456789abcdefghijklmnopqrstuvwxyz";
   size_t len = b->len;
   if (inset >= len) fail: return (ob) symof(v, b);
@@ -119,27 +131,16 @@ static NoInline ob rx_atom_n(la v, str b, size_t inset, int sign, int rad) {
   } while (inset < len);
   return putnum(sign * out); }
 
-static NoInline ob rx_atom(la v, str b) {
+static NoInline ob rxatom(la v, str b) {
   size_t i = 0;
   int sign = 1;
 loop:
   switch (b->text[i]) {
     case '+': i += 1; goto loop;
     case '-': i += 1, sign *= -1; goto loop;
-    case '0': { // with radix // FIXME change this syntax to 10001011{b,s,o,d,z,x,n}
+    case '0': { // with radix
       // numbers can be input in bases 2, 6, 8, 10, 12, 16, 36
       const char *r = "b\2s\6o\10d\12z\14x\20n\44";
       for (char c = tolower(b->text[i+1]); *r; r += 2)
-        if (*r == c) return rx_atom_n(v, b, i+2, sign, r[1]); } }
-  return rx_atom_n(v, b, i, sign, 10); }
-
-Vm(rx_f) {
-  Have(Width(two));
-  sp = setw(sp - Width(two), nil, Width(two));
-  Pack();
-  ob _ = la_rx(v, stdin);
-  Unpack();
-  if (!_) return ApC(ret, feof(stdin) ? nil : putnum(1));
-  two w = ini_two(hp, _, nil);
-  hp += Width(two);
-  return ApC(ret, (ob) w); }
+        if (*r == c) return rxatom_n(v, b, i+2, sign, r[1]); } }
+  return rxatom_n(v, b, i, sign, 10); }

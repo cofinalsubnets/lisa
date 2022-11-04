@@ -22,7 +22,7 @@ Vm(ap_f) {
   Have(adic);
   ip = (mo) fp->argv[0];
   xp = fp->argv[1];
-  fr subd = fp->subd;
+  sf subd = fp->subd;
   mo retp = fp->retp;
   sp = fp->argv + fp->argc - adic;
   for (size_t j = 0; j < adic; sp[j++] = A(xp), xp = B(xp));

@@ -37,7 +37,6 @@ tag motag(mo k) {
 // initialize a function
 Vm(hom_f) {
   ArityCheck(1);
-  Check(nump(fp->argv[0]));
   size_t len = getnum(fp->argv[0]);
   Have(len);
   mo k = setw(ini_mo(hp, len), nil, len);
@@ -99,7 +98,6 @@ Vm(peekx_f) {
 Vm(seek_f) {
   ArityCheck(2);
   Check(homp(fp->argv[0]));
-  Check(nump(fp->argv[1]));
   ip = (mo) fp->argv[0];
   xp = getnum(fp->argv[1]);
   return ApC(ret, (ob) (ip + xp)); }
@@ -134,7 +132,6 @@ Vm(genclo0) {
   sf subd = fp;
   G(ip) = genclo1;
   sp = cpyw(sp - adic, (ob*) arg + 1, adic);
-  ec = (ob*) GF(ip); // XXX p sure this is not needed?
   fp = (sf) sp - 1;
   sp = (ob*) fp;
   fp->retp = ip;

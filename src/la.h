@@ -1,16 +1,12 @@
 #include "lisa.h"
 #include <stdlib.h>
 
-#define Inline inline __attribute__((always_inline))
-#define NoInline __attribute__((noinline))
-
 // thanks !!
 
 typedef la_ob ob;
 typedef struct mo *mo; // procedures
-typedef struct sf *fr, *sf; // stack frame
-#define Vm(n, ...) ob n(la v, ob xp, mo ip, ob *hp, ob *sp, sf fp)
-typedef Vm(vm);
+typedef struct sf *sf; // stack frame
+typedef ob vm(la, ob, mo, ob*, ob*, sf); // interpreter function type
 
 // struct needed for type indirection
 // around vm function pointer arrays
@@ -101,9 +97,10 @@ struct la {
 bool please(la, size_t); // ask GC for available memory
 void *bump(la, size_t), // allocate memory unchecked
      *cells(la, size_t); // allocate memory checked
-#define Gc(n) ob n(la v, ob x, ob *pool0, ob *top0)
-Gc(cp); // copy something; used by type-specific copying functions
+ob cp(la, ob, ob*, ob*); // copy something; used by type-specific copying functions
 
+#define Inline inline __attribute__((always_inline))
+#define NoInline __attribute__((noinline))
 
 // pairs
 two pair(la, ob, ob) NoInline;
@@ -139,8 +136,6 @@ tag motag(mo); // get tag at end
 
 bool pushs(la, ...); // push args onto stack
 ob tupl(la, ...); // collect args into tuple (data thread)
-#define Push(...) pushs(v, __VA_ARGS__, (ob)0)
-#define Tupl(...) tupl(v, __VA_ARGS__, (ob)0)
 
 bool
   uneq(la, ob, ob), // always returns false
@@ -273,7 +268,7 @@ i_internals(ninl)
   \
  _(sym_f, "sym") _(symp_f, "symp") _(ynom_f, "ynom")\
   \
- _(rx_f, "rx") _(show_f, ".") _(putc_f, "putc")\
+ _(rx_f, "rx") _(tx_f, ".") _(txc_f, "putc")\
   \
  _(gettime, "time")\
   \
@@ -327,11 +322,11 @@ i_primitives(ninl)
 // sp is at least hp so this is a safe check for 1 word
 #define Have1() if (sp == hp) return (v->xp = 1, ApC(gc, xp))
 
-// FIXME isolate these if possible?
 static Inline two ini_two(void *_, ob a, ob b) {
   two w = _;
   w->disp = disp, w->mtbl = &mtbl_two, w->a = a, w->b = b;
   return w; }
+
 static Inline str ini_str(void *_, size_t len) {
   str s = _;
   s->disp = disp, s->mtbl = &mtbl_str, s->len = len;
@@ -342,3 +337,7 @@ static Inline mo ini_mo(void *_, size_t len) {
   tag t = (tag) (k + len);
   t->null = NULL, t->head = k;
   return k; }
+
+#define Gc(n) ob n(la v, ob x, ob *pool0, ob *top0)
+// restrict qualifiers seem to make the code worse ...
+#define Vm(n, ...) ob n(la v, ob xp, mo ip, ob *hp, ob *sp, sf fp)
