@@ -107,16 +107,16 @@ two pair(la, ob, ob) NoInline;
 size_t llen(ob);
 
 ob nstbl(la),
-   nsget(la, ob),
-   nsset(la, ob, ob);
+   nsget(la, ob);
+bool nsset(la, ob, ob);
 
 // hash tables
 intptr_t
   hash(la, ob),
   hxmo(la, mo);
 tbl mktbl(la);
-ob tblset(la, tbl, ob, ob),
-   tblget(la, tbl, ob);
+ob tblget(la, tbl, ob);
+tbl tblset(la, tbl, ob, ob);
 
 // string & symbol constructors
 sym symof(la, str);

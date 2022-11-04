@@ -3,6 +3,10 @@
 // hash tables
 // some of the worst code is here :(
 
+typedef struct ent {
+  ob key, val;
+  struct ent *next; } *ent;
+
 #define KEY(e) ((ob*)(e))[0]
 #define VAL(e) ((ob*)(e))[1]
 #define NEXT(e) ((ob*)(e))[2]
@@ -31,12 +35,13 @@ static ob tbl_ent(la v, tbl t, ob k) {
   return tbl_ent_hc(v, t, k, hash(v, k)); }
 
 static tbl
-  tbl_grow(la, tbl) NoInline;
+  tbl_grow(la, tbl) NoInline,
+  tblset_s(la, tbl, ob, ob) NoInline;
 static ob
   tbl_del(la, tbl, ob),
-  tblss(la, intptr_t, intptr_t),
-  tks(la) NoInline,
-  tblset_s(la, tbl, ob, ob) NoInline;
+  tks(la) NoInline;
+static bool
+  tblss(la, intptr_t, intptr_t);
 
 static void
   tbl_shrink(la, tbl) NoInline;
@@ -47,16 +52,14 @@ tbl mktbl(la v) {
          t->tab[0] = nil;
   return t; }
 
-ob tblset(la v, tbl t, ob k, ob x) {
-  with(t, x = tblset_s(v, t, k, x));
-  if (x && tbl_load(t) > 1)
-    with(x, t = tbl_grow(v, t)),
-    x = t ? x : 0;
-  return x; }
+tbl tblset(la v, tbl t, ob k, ob x) {
+  t = tblset_s(v, t, k, x);
+  t = t && tbl_load(t) > 1 ? tbl_grow(v, t) : t;
+  return t; }
 
-ob tblget(la v, tbl t, ob k) { return
-  k = tbl_ent(v, t, k),
-  nilp(k) ? 0 : VAL(k); }
+ob tblget(la v, tbl t, ob k) {
+  k = tbl_ent(v, t, k);
+  return nilp(k) ? 0 : VAL(k); }
 
 Vm(tget_f) {
   ArityCheck(2);
@@ -72,13 +75,13 @@ Vm(tdel_f) {
   CallOut(x = tbl_del(v, (tbl) x, fp->argv[1]));
   return ApC(ret, x); }
 
-Vm(tget) { return
-  xp = tblget(v, (tbl) xp, *sp++),
-  ApN(1, xp ? xp : nil); }
+Vm(tget) {
+  xp = tblget(v, (tbl) xp, *sp++);
+  return ApN(1, xp ? xp : nil); }
 
-Vm(thas) { return
-  xp = tblget(v, (tbl) xp, *sp++),
-  ApN(1, xp ? T : nil); }
+Vm(thas) {
+  xp = tblget(v, (tbl) xp, *sp++);
+  return ApN(1, xp ? T : nil); }
 
 Vm(tlen) { return ApN(1, putnum(((tbl) xp)->len)); }
 
@@ -95,12 +98,12 @@ Vm(thas_f) {
   return ApC(ret, xp ? T : nil); }
 
 Vm(tset_f) {
-  ArityCheck(1);
+  if (!fp->argc) return ApC(ret, xp);
   xp = fp->argv[0];
   Check(tblp(xp));
-  ob x;
-  CallOut(x = tblss(v, 1, fp->argc));
-  return x ? ApC(ret, x) : ApC(xoom, nil); }
+  bool _;
+  CallOut(_ = tblss(v, 1, fp->argc));
+  return _ ? ApC(ret, fp->argv[fp->argc-1]) : ApC(xoom, nil); }
 
 Vm(tbl_f) {
   ob x = fp->argc;
@@ -122,9 +125,9 @@ Vm(tlen_f) {
   return ApC(ret, putnum(((tbl) xp)->len)); }
 
 Vm(tset) {
-  ob x = *sp++, y = *sp++;
-  CallOut(x = tblset(v, (tbl) xp, x, y));
-  return x ? ApN(1, x) : ApC(xoom, xp); }
+  ob x = *sp++;
+  CallOut(x = (ob) tblset(v, (tbl) xp, x, *sp));
+  return x ? ApN(1, *sp++) : ApC(xoom, xp); }
 
 // FIXME so bad :(
 static ob tbl_del(la v, tbl y, ob key) {
@@ -168,16 +171,16 @@ static NoInline tbl tbl_grow(la v, tbl t) {
   t->tab = tab1;
   return t; }
 
-static ob tblset_s(la v, tbl t, ob k, ob x) {
+static tbl tblset_s(la v, tbl t, ob k, ob x) {
   size_t hc = hash(v, k);
   ob e = tbl_ent_hc(v, t, k, hc);
-  if (!nilp(e)) return VAL(e) = x;
+  if (!nilp(e)) return VAL(e) = x, t;
   size_t i = tbl_idx(t->cap, hc);
   with(t, e = tupl(v, k, x, t->tab[i], NULL));
-  if (!e) return e;
+  if (!e) return 0;
   t->tab[i] = e;
   t->len++;
-  return VAL(e); }
+  return t; }
 
 // get table keys
 // XXX calling convention: table in v->xp
@@ -197,15 +200,15 @@ static NoInline ob tks(la v) {
 // do a bunch of table assignments.
 // XXX calling convention: table in v->xp
 // FIXME gross!
-static ob tblss(la v, intptr_t i, intptr_t l) {
-  ob r = nil;
-  while (r && i <= l - 2)
-    r = tblset(v,
+static bool tblss(la v, intptr_t i, intptr_t l) {
+  bool _ = true;
+  while (_ && i <= l - 2)
+    _ = tblset(v,
       (tbl) v->xp,
       v->fp->argv[i],
       v->fp->argv[i+1]),
     i += 2;
-  return r; }
+  return _; }
 
 // shrinking a table never allocates memory, so it's safe
 // to do at any time.
@@ -240,10 +243,11 @@ static Vm(ap_tbl) {
     case 1: return
       xp = tblget(v, (tbl) ip, fp->argv[0]),
       ApC(ret, xp ? xp : nil);
-    default: return
-      xp = (ob) ip,
-      CallOut(a = tblss(v, 1, a)),
-      a ? ApC(ret, a) : ApC(xoom, nil); } }
+    default:
+      xp = (ob) ip;
+      bool _;
+      CallOut(_ = tblss(v, 1, a));
+      return _ ? ApC(ret, fp->argv[a-1]) : ApC(xoom, nil); } }
 
 static Gc(cp_tbl) {
   tbl src = (tbl) x, dst = bump(v, Width(tbl));

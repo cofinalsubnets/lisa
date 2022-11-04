@@ -5,9 +5,10 @@
 #include <stdarg.h>
 
 // initialization helpers
-static bool defprims(la);
+static bool
+  defprims(la),
+  inst(la, const char*, vm*) NoInline;
 static ob
-  inst(la, const char*, vm*) NoInline,
   symofs(la, const char*) NoInline;
 
 ob la_ev(la v, ob _) {
@@ -46,6 +47,7 @@ NoInline bool la_open(la v) {
   v->len = 1 << 10;
   v->pool = NULL;
   v->safe = NULL;
+
   // the heap is all used up to start, so the first allocation initializes the pool
   v->hp = v->sp = v->pool + v->len;
   v->fp = (sf) v->sp;
@@ -102,9 +104,9 @@ static bool defprims(la v) {
 
 // store an instruction address under a variable in the
 // toplevel namespace // FIXME use a different namespace
-static NoInline ob inst(la v, const char *a, vm *b) {
+static NoInline bool inst(la v, const char *a, vm *b) {
   ob z = symofs(v, a);
-  return z ? tblset(v, v->topl, z, putnum(b)) : 0; }
+  return z && tblset(v, v->topl, z, putnum(b)); }
 
 static NoInline str str_c_cat_r(la v, size_t l, va_list xs) {
   char *cs = va_arg(xs, char*);

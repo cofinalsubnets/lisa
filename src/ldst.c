@@ -59,9 +59,9 @@ Vm(defloc) { return
 
 // set a module variable
 Vm(deftop) {
-  ob a = (ob) GF(ip);
-  CallOut(a = tblset(v, (tbl) A(a), B(a), xp));
-  return a ? ApN(2, a) : ApC(xoom, xp); }
+  bool _;
+  CallOut(_ = tblset(v, (tbl) A(GF(ip)), B(GF(ip)), xp));
+  return _ ? ApN(2, xp) : ApC(xoom, xp); }
 
 // allocate local variable array
 Vm(setloc) {
