@@ -61,7 +61,6 @@ to tell!
 
 ## other runtime improvements
 - parse from strings (not FILE\*s)
-- stop using null-terminated strings
 - closure pointer on stack (instead of in frame)
 - improve hashing of mutable data
 - use a hash table for internal symbols

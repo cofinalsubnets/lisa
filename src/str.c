@@ -4,22 +4,18 @@
 // FIXME remove null terminators
 
 str strof(la v, const char* c) {
-  size_t bs = strlen(c)
-#ifdef NULL_TERMINATED
-    + 1
-#endif
-    ;
+  size_t bs = strlen(c);
   str o = cells(v, Width(str) + b2w(bs));
-  if (!o) return 0;
-  memcpy(o->text, c, bs);
-  return ini_str(o, bs); }
+  if (o) memcpy(o->text, c, bs),
+         ini_str(o, bs);
+  return o; }
 
 // string instructions
 Vm(slen_u) {
   ArityCheck(1);
   xp = fp->argv[0];
   Check(strp(xp));
-  return ApC(ret, putnum(STR_LEN((str)xp))); }
+  return ApC(ret, putnum(((str)xp)->len)); }
 
 Vm(sget_u) {
   ArityCheck(2);
@@ -35,21 +31,15 @@ Vm(scat_u) {
   while (i < l) {
     ob x = fp->argv[i++];
     Check(strp(x));
-    sum += STR_LEN((str)x); }
-  size_t
-    len = sum
-#ifdef NULL_TERMINATED
-    + 1
-#endif
-    ,
-    words = Width(str) + b2w(len);
+    sum += ((str)x)->len; }
+  size_t words = Width(str) + b2w(sum);
   Have(words);
-  str d = ini_str(hp, len);
+  str d = ini_str(hp, sum);
   hp += words;
   for (str x; i--;
     x = (str) fp->argv[i],
-    sum -= STR_LEN(x),
-    memcpy(d->text+sum, x->text, STR_LEN(x)));
+    sum -= x->len,
+    memcpy(d->text+sum, x->text, x->len));
   return ApC(ret, (ob) d); }
 
 #define min(a,b)(a<b?a:b)
@@ -64,33 +54,22 @@ Vm(ssub_u) {
   if (fp->argc > 2) {
     Check(nump(fp->argv[2]));
     ub = getnum(fp->argv[2]); }
-  ub = min(ub, STR_LEN(src));
+  ub = min(ub, src->len);
   ub = max(ub, lb);
-  size_t
-    len = ub - lb
-#ifdef NULL_TERMINATED
-    + 1
-#endif
-    ,
-    words = Width(str) + b2w(len);
+  size_t len = ub - lb,
+         words = Width(str) + b2w(len);
   Have(words);
   str dst = ini_str(hp, len);
   hp += words;
-  memcpy(dst->text, src->text + lb, ub - lb);
+  memcpy(dst->text, src->text + lb, len);
   return ApC(ret, (ob) dst); }
 
 Vm(str_u) {
-  size_t
-    len = fp->argc
-#ifdef NULL_TERMINATED
-    + 1
-#endif
-    ,
-    words = Width(str) + b2w(len);
+  size_t len = fp->argc,
+         words = Width(str) + b2w(len);
   Have(words);
   str s = ini_str(hp, len);
   hp += words;
-  len = fp->argc;
   while (len--)
     s->text[len] = getnum(fp->argv[len]);
   return ApC(ret, (ob) s); }
@@ -113,7 +92,7 @@ static bool escapep(char c) {
 
 static long tx_str(la v, FILE *o, ob _) {
   str s = (str) _;
-  size_t len = STR_LEN(s);
+  size_t len = s->len;
   const char *text = s->text;
   long r = len + 2;
   if (fputc('"', o) == EOF) return -1;
@@ -127,7 +106,8 @@ static long tx_str(la v, FILE *o, ob _) {
   return r; }
 
 static Gc(cp_str) {
-  str src = (str) x, dst = bump(v, Width(str) + b2w(src->len));
+  str src = (str) x,
+      dst = bump(v, Width(str) + b2w(src->len));
   memcpy(dst, src, sizeof(struct str) + src->len);
   return (ob) (src->disp = (vm*) dst); }
 

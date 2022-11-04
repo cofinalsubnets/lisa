@@ -90,12 +90,7 @@ static str rx_str(la v, FILE *p) {
       // to be read literally // TODO more escape sequences
       case '\\': if ((x = fgetc(p)) == EOF) goto fin;
       default: o->text[n++] = x; continue;
-      case '"': case EOF: fin: return
-#ifdef NULL_TERMINATED
-        o->text[n++] = 0,
-#endif
-        o->len = n,
-        o; }
+      case '"': case EOF: fin: return o->len = n, o; }
   return 0; }
 
 // read the characters of an atom (number or symbol)
@@ -108,17 +103,12 @@ static str rx_atom_chars(la v, FILE *p) {
       // these characters terminate an atom
       case ' ': case '\n': case '\t': case ';': case '#':
       case '(': case ')': case '\'': case '"': ungetc(x, p);
-      case EOF: return
-#ifdef NULL_TERMINATED
-        o->text[n++] = 0,
-#endif
-        o->len = n,
-        o; }
+      case EOF: return o->len = n, o; }
   return 0; }
 
 static NoInline ob rx_atom_n(la v, str b, size_t inset, int sign, int rad) {
   static const char *digits = "0123456789abcdefghijklmnopqrstuvwxyz";
-  size_t len = b->len - 1; // XXX
+  size_t len = b->len;
   if (inset >= len) fail: return (ob) symof(v, b);
   intptr_t out = 0;
   do {

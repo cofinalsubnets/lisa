@@ -28,8 +28,10 @@ static sym sskc(la v, sym *y, str b) {
     str a = z->nom;
     size_t n = a->len < b->len ? a->len : b->len;
     int i = strncmp(a->text, b->text, n);
-    return i == 0 ? z :
-      sskc(v, i < 0 ? &z->l : &z->r, b); }
+    if (i == 0) {
+      if (a->len == b->len) return z;
+      i = a->len < b->len ? -1 : 1; }
+    return sskc(v, i < 0 ? &z->l : &z->r, b); }
   return *y = ini_sym(bump(v, Width(sym)), b,
     hash(v, putnum(hash(v, (ob) b)))); }
 

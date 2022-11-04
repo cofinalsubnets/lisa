@@ -324,13 +324,6 @@ i_primitives(ninl)
 // sp is at least hp so this is a safe check for 1 word
 #define Have1() if (sp == hp) return (v->xp = 1, ApC(gc, xp))
 
-// FIXME stop using null-terminated strings!
-#define NULL_TERMINATED
-#ifdef NULL_TERMINATED
-#define STR_LEN(s) ((s)->len-1)
-#else
-#define STR_LEN(s) ((s)->len)
-#endif
 // FIXME isolate these if possible?
 static Inline two ini_two(void *_, ob a, ob b) {
   two w = _;
@@ -339,9 +332,6 @@ static Inline two ini_two(void *_, ob a, ob b) {
 static Inline str ini_str(void *_, size_t len) {
   str s = _;
   s->disp = disp, s->mtbl = &mtbl_str, s->len = len;
-#ifdef NULL_TERMINATED
-  s->text[len-1] = 0;
-#endif
   return s; }
 
 static Inline mo ini_mo(void *_, size_t len) {

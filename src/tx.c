@@ -25,7 +25,6 @@ Vm(putc_u) {
   return ApC(ret, xp); }
 
 long fputstr(FILE *o, str s) {
-  long i = 0, r = s->len - 1; // XXX null
+  long i = 0, r = s->len;
   while (i < r) if (fputc(s->text[i++], o) == EOF) return -1;
   return r; }
-
