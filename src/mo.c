@@ -197,41 +197,11 @@ static Vm(enclose) {
 Vm(encl1) { return ApC(enclose, putnum(1)); }
 Vm(encl0) { return ApC(enclose, nil); }
 
-// FIXME this is really weird
-// print a function name
-static NoInline long txmon(la v, FILE *o, ob x) {
-  if (symp(x)) {
-    if (fputc('\\', o) == EOF) return -1;
-    long r = la_tx(v, o, x);
-    return r < 0 ? r : r + 1; }
-  if (!twop(x))
-    return fputc('\\', o) == EOF ? -1 : 1;
-  long r = 0, a;
-  // FIXME this is weird
-  if (symp(A(x)) || twop(A(x))) {
-    a = txmon(v, o, A(x));
-    if (a < 0) return a;
-    r += a; }
-  if (symp(B(x)) || twop(B(x))) {
-    a = txmon(v, o, B(x));
-    if (a < 0) return a;
-    r += a; }
-  return r; }
-
 // try to get the name of a function
-static ob hnom(la v, mo x) {
+ob hnom(la v, mo x) {
   if (!livep(v, (ob) x)) return nil;
   vm *k = G(x);
   if (k == setclo || k == genclo0 || k == genclo1)
     return hnom(v, (mo) G(FF(x)));
   ob n = ((ob*) motag(x))[-1];
   return livep(v, n) ? n : nil; }
-
-long txmo(la v, FILE *o, mo x) {
-  if (primp((mo) x)) return
-    fprintf(o, "\\%s", ((struct prim*)x)->nom);
-  return txmon(v, o, hnom(v, (mo) x)); }
-
-intptr_t hxmo(la v, mo x) {
-  if (!livep(v, (ob) x)) return mix ^ ((ob) x * mix);
-  return mix ^ hash(v, hnom(v, x)); }

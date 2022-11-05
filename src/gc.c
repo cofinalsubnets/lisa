@@ -57,7 +57,7 @@ bool please(la v, size_t req) {
 //   |                          `------'
 //   t0                  gc time (this cycle)
 static clock_t copy(la v, size_t len1) {
-  clock_t t1 = clock(), t0 = v->t0, t2;
+  clock_t t1 = clock(), t0 = v->run.t0, t2;
 
   ob *pool0 = v->pool,
      *pool1 = calloc(len1, sizeof(ob));
@@ -66,7 +66,7 @@ static clock_t copy(la v, size_t len1) {
   copy_(v, len1, pool1);
   free(pool0);
 
-  t2 = v->t0 = clock();
+  t2 = v->run.t0 = clock();
   t1 = t2 - t1;
   return t1 ? (t2 - t0) / t1 : 1; }
 
@@ -112,7 +112,7 @@ static void copy_(la v, size_t len1, ob *pool1) {
   // copy globals
   v->topl = (tbl) cp(v, (ob) v->topl, pool0, top0);
   for (size_t i = LexN; i--;)
-    v->lex[i] = cp(v, v->lex[i], pool0, top0);
+    v->lex[i] = (sym) cp(v, (ob) v->lex[i], pool0, top0);
   for (keep r = v->safe; r; r = r->et)
     *r->it = (void**) cp(v, (ob) *r->it, pool0, top0);
 

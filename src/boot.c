@@ -63,7 +63,7 @@ static NoInline ob rw_let_fn(la v, ob x) {
   mm(&x);
   for (two w; x && twop(A(x)); x =
     (w = snoc(v, BA(x), AB(x))) &&
-    (w = pair(v, v->lex[Lamb], (ob) w)) &&
+    (w = pair(v, (ob) v->lex[Lamb], (ob) w)) &&
     (w = pair(v, (ob) w, BB(x))) ?
       (ob) pair(v, AA(x), (ob) w) : 0);
   return um, x; }
@@ -71,7 +71,7 @@ static NoInline ob rw_let_fn(la v, ob x) {
 static NoInline ob asign(la v, ob a, intptr_t i, ob *m) {
   ob x;
   if (!twop(a)) return *m = i, a;
-  if (twop(B(a)) && AB(a) == v->lex[Splat])
+  if (twop(B(a)) && AB(a) == (ob) v->lex[Splat])
     return *m = -i - 1, (ob) pair(v, A(a), nil);
   with(a, x = asign(v, B(a), i + 1, m));
   return x ? (ob) pair(v, A(a), x) : 0; }
@@ -104,10 +104,10 @@ static NoInline char scan_def(la v, env *e, ob x) {
 
 static NoInline bool scan(la v, env *e, ob x) {
   if (!twop(x) ||
-      A(x) == v->lex[Lamb] ||
-      A(x) == v->lex[Quote])
+      A(x) == (ob) v->lex[Lamb] ||
+      A(x) == (ob) v->lex[Quote])
     return true;
-  if (A(x) == v->lex[Def])
+  if (A(x) == (ob) v->lex[Def])
     return scan_def(v, e, B(x)) != -1;
   bool _;
   with(x, _ = scan(v, e, A(x)));
@@ -209,9 +209,9 @@ static Inline bool co_def_sugar(la v, two x) {
   with(_, x = (two) linitp(v, (ob) x, &_));
   return x &&
     (x = pair(v, (ob) x, _)) &&
-    (x = pair(v, v->lex[Seq], (ob) x)) &&
+    (x = pair(v, (ob) v->lex[Seq], (ob) x)) &&
     (x = pair(v, (ob) x, nil)) &&
-    (x = pair(v, v->lex[Lamb], (ob) x)) &&
+    (x = pair(v, (ob) v->lex[Lamb], (ob) x)) &&
     (x = pair(v, (ob) x, nil)) &&
     pushs(v, N(r_co_x), (ob) x, NULL); }
 
@@ -354,12 +354,13 @@ Co(co_seq, ob x) { return
 Co(co_two, ob x) {
   ob a = A(x);
   if (symp(a)) {
-    if (a == v->lex[Quote]) return
+    sym y = (sym) a;
+    if (y == v->lex[Quote]) return
       imx(v, e, m, imm, twop(B(x)) ? AB(x) : B(x));
-    if (a == v->lex[Cond]) return co_if(v, e, m, B(x));
-    if (a == v->lex[Lamb]) return co_fn(v, e, m, x);
-    if (a == v->lex[Def]) return co_def(v, e, m, x);
-    if (a == v->lex[Seq]) return co_seq(v, e, m, B(x)); }
+    if (y == v->lex[Cond]) return co_if(v, e, m, B(x));
+    if (y == v->lex[Lamb]) return co_fn(v, e, m, x);
+    if (y == v->lex[Def]) return co_def(v, e, m, x);
+    if (y == v->lex[Seq]) return co_seq(v, e, m, B(x)); }
   return co_ap(v, e, m, a, B(x)); }
 
 Co(r_pb1) {
@@ -394,14 +395,6 @@ static Inline mo ana(la v, ob x) {
 // bootstrap eval interpreter function
 Vm(ev_f) {
   ArityCheck(1);
-  // check to see if ev has been overridden in the
-  // toplevel namespace and if so call that. this way
-  // ev calls compiled pre-bootstrap will use the
-  // bootstrapped compiler, which is what we want?
-  // seems kind of strange to need this ...
-  xp = nsget(v, v->lex[Eval]);
-  if (xp && homp(xp) && G(xp) != ev_f)
-    return ApY((mo) xp, nil);
   mo y;
   CallOut(y = ana(v, fp->argv[0]));
   return y ? ApY(y, xp) : ApC(xoom, xp); }

@@ -1,6 +1,13 @@
 #include "la.h"
 #include <string.h>
 
+str strof(la v, const char* c) {
+  size_t bs = strlen(c);
+  str o = cells(v, Width(str) + b2w(bs));
+  if (o) memcpy(o->text, c, bs),
+         ini_str(o, bs);
+  return o; }
+
 // string instructions
 Vm(slen_f) {
   ArityCheck(1);
@@ -99,7 +106,7 @@ static Gc(cpstr) {
   str src = (str) x,
       dst = bump(v, Width(str) + b2w(src->len));
   memcpy(dst, src, sizeof(struct str) + src->len);
-  src->disp = (vm*) dst;
+  src->head.disp = (vm*) dst;
   return (ob) dst; }
 
 static bool eqstr(la v, ob x, ob y) {

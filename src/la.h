@@ -1,5 +1,6 @@
 #include "lisa.h"
 #include <stdlib.h>
+#include <time.h>
 
 // thanks !!
 
@@ -11,14 +12,31 @@ typedef ob vm(la, ob, mo, ob*, ob*, sf); // interpreter function type
 // struct needed for type indirection
 // around vm function pointer arrays
 struct mo { vm *ap; };
+
 // every dynamically allocated thread ends
-// with a tag pointing back to its head
+// with a footer holding a pointer to its head
 typedef struct tag {
   void *null; // always null
   struct mo
     *head, // pointer to head of thread
     end[]; // first address after thread
 } *tag;
+
+// static method table for built-in types
+typedef const struct mtbl {
+  vm *does;
+  bool (*equi)(la, ob, ob);
+  intptr_t (*hash)(la, ob);
+  long (*emit)(la, FILE*, ob);
+  ob (*evac)(la, ob, ob*, ob*);
+//  void (*walk)(la, ob, ob*, ob*);
+} *mtbl;
+
+typedef struct header {
+  vm *disp; // pointer to disp function
+  mtbl mtbl;
+} *header;
+
 
 // stack frame
 struct sf {
@@ -31,24 +49,15 @@ struct sf {
   size_t argc; // argument count
   ob argv[]; };
 
-// static method table for built-in types
-typedef const struct mtbl {
-  vm *does;
-  bool (*equi)(la, ob, ob);
-  intptr_t (*hash)(la, ob);
-  long (*emit)(la, FILE*, ob);
-  ob (*evac)(la, ob, ob*, ob*);
-//  void (*walk)(la, ob, ob*, ob*);
-} *mtbl;
 
 // pairs
 typedef struct two {
-  vm *disp; mtbl mtbl;
+  struct header head;
   ob a, b; } *two;
 
 // strings
 typedef struct str {
-  vm *disp; mtbl mtbl;
+  struct header head;
   size_t len;
   char text[]; } *str;
 
@@ -57,14 +66,14 @@ typedef struct str {
 // - it's slower than a hash table
 // - anonymous symbols waste 2 words
 typedef struct sym {
-  vm *disp; mtbl mtbl;
+  struct header head;
   str nom;
   intptr_t code;
   struct sym *l, *r; } *sym;
 
 // hash tables
 typedef struct tbl {
-  vm *disp; mtbl mtbl;
+  struct header head;
   size_t len, cap;
   ob *tab; } *tbl;
 
@@ -81,15 +90,22 @@ struct la {
   ob xp, *hp, *sp;
 
   tbl topl; // global scope
-  sym syms; // symbol table
-  ob lex[LexN]; // lexicon
+  sym syms, // symbol table
+      lex[LexN]; // lexicon
   intptr_t rand;
 
   // gc state
   size_t len;
   ob *pool;
   keep safe;
-  union { uintptr_t t0; ob *cp; }; };
+  union {
+    clock_t t0;
+    ob *cp; // TODO copy pointer for cheney's algorithm
+  } run;
+};
+
+// FIXME remove or hide
+ob hnom(la, mo);
 
 bool please(la, size_t); // ask GC for available memory
 void *bump(la, size_t), // allocate memory unchecked
@@ -109,22 +125,21 @@ bool nsset(la, ob, ob);
 
 // hash tables
 intptr_t
-  hash(la, ob),
-  hxmo(la, mo);
+  hash(la, ob);
 tbl mktbl(la),
     tblset(la, tbl, ob, ob);
 ob tblget(la, tbl, ob);
 
 // string & symbol constructors
 sym symof(la, str);
+str strof(la, const char*);
 
 // output functions:
 // like la_tx, they return the number
 // of bytes written or a negative number
 // on error.
 long
-  fputstr(FILE*, str) NoInline,  // like fputs
-  txmo(la, FILE*, mo); // show a function
+  fputstr(FILE*, str) NoInline;  // like fputs
 
 // functions
 mo mkmo(la, size_t); // allocate a thread
@@ -318,12 +333,17 @@ i_primitives(ninl)
 
 static Inline two ini_two(void *_, ob a, ob b) {
   two w = _;
-  w->disp = disp, w->mtbl = &mtbl_two, w->a = a, w->b = b;
+  w->head.disp = disp;
+  w->head.mtbl = &mtbl_two;
+  w->a = a;
+  w->b = b;
   return w; }
 
 static Inline str ini_str(void *_, size_t len) {
   str s = _;
-  s->disp = disp, s->mtbl = &mtbl_str, s->len = len;
+  s->head.disp = disp;
+  s->head.mtbl = &mtbl_str;
+  s->len = len;
   return s; }
 
 static Inline mo ini_mo(void *_, size_t len) {

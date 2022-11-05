@@ -53,7 +53,7 @@ static ob rxtwo_cont(la v, FILE *i, ob x) {
 
 static ob rxq(la v, FILE* i, ob x) { return
   x = x ? (ob) pair(v, x, nil) : x,
-  x = x ? (ob) pair(v, v->lex[Quote], x) : x,
+  x = x ? (ob) pair(v, (ob) v->lex[Quote], x) : x,
   pull(v, i, x); }
 
 static NoInline ob rx(la v, FILE *i) {

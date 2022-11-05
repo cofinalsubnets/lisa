@@ -51,7 +51,7 @@ static Vm(aptwo) {
 static Gc(cptwo) {
   two src = (two) x,
       dst = bump(v, Width(two));
-  src->disp = (vm*) dst;
+  src->head.disp = (vm*) dst;
   return (ob) ini_two(dst,
     cp(v, src->a, pool0, top0),
     cp(v, src->b, pool0, top0)); }

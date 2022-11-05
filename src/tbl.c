@@ -9,8 +9,11 @@
 
 static Inline tbl ini_tbl(void *_, size_t len, size_t cap, ob *tab) {
   tbl t = _;
-  t->disp = disp, t->mtbl = &mtbl_tbl;
-  t->len = len, t->cap = cap, t->tab = tab;
+  t->head.disp = disp;
+  t->head.mtbl = &mtbl_tbl;
+  t->len = len;
+  t->cap = cap;
+  t->tab = tab;
   return t; }
 
 static Inline size_t tbl_idx(size_t cap, size_t co) {
@@ -247,7 +250,7 @@ static Vm(aptbl) {
 
 static Gc(cptbl) {
   tbl src = (tbl) x, dst = bump(v, Width(tbl));
-  src->disp = (vm*) dst;
+  src->head.disp = (vm*) dst;
   return (ob) ini_tbl(dst, src->len, src->cap,
     (ob*) cp(v, (ob) src->tab, pool0, top0)); }
 

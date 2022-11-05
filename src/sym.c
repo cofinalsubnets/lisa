@@ -4,7 +4,8 @@
 //symbols
 static Inline sym ini_sym(void *_, str nom, size_t code) {
   sym y = _;
-  y->disp = disp, y->mtbl = &mtbl_sym;
+  y->head.disp = disp;
+  y->head.mtbl = &mtbl_sym;
   y->nom = nom;
   y->code = code;
   y->l = y->r = 0;
@@ -62,9 +63,11 @@ static Gc(cpsym) {
       dst = src->nom ?
         sskc(v, &v->syms, (str) cp(v, (ob) src->nom, pool0, top0)) :
         cpyw(bump(v, Width(sym)), src, Width(sym));
-  return (ob) (src->disp = (vm*) dst); }
+  src->head.disp = (vm*) dst;
+  return (ob) dst; }
 
-static intptr_t hxsym(la v, ob _) { return ((sym) _)->code; }
+static intptr_t hxsym(la v, ob _) {
+  return ((sym) _)->code; }
 
 static long txsym(la v, FILE *o, ob _) {
   str s = ((sym) _)->nom;
