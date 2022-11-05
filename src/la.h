@@ -74,9 +74,6 @@ enum lex { Def, Cond, Lamb, Quote, Seq, Splat, Eval, LexN };
 // linked list for gc protection
 typedef struct keep { void **it; struct keep *et; } *keep;
 
-struct gc_stats {
-  size_t cycles, ups, downs, avgtime, avgsize; };
-
 struct la {
   // vm state
   mo ip;
@@ -114,9 +111,9 @@ bool nsset(la, ob, ob);
 intptr_t
   hash(la, ob),
   hxmo(la, mo);
-tbl mktbl(la);
+tbl mktbl(la),
+    tblset(la, tbl, ob, ob);
 ob tblget(la, tbl, ob);
-tbl tblset(la, tbl, ob, ob);
 
 // string & symbol constructors
 sym symof(la, str);
@@ -137,9 +134,9 @@ bool pushs(la, ...); // push args onto stack
 ob tupl(la, ...); // collect args into tuple (data thread)
 
 bool
-  uneq(la, ob, ob), // always returns false
   primp(mo), // is it a primitive function? FIXME hide this
-  eql(la, ob, ob); // object equality
+  eql(la, ob, ob), // object equality
+  neql(la, ob, ob); // always returns false
 
 // linear congruential pseudorandom number generator
 intptr_t lcprng(intptr_t);

@@ -77,4 +77,4 @@ const struct mtbl mtbl_sym = {
   .emit = txsym,
   .evac = cpsym,
   .hash = hxsym,
-  .equi = uneq, };
+  .equi = neql, };

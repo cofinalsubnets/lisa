@@ -115,38 +115,46 @@ static NoInline bool inst(la v, const char *a, vm *b) {
   sym z = symofs(v, a);
   return z && tblset(v, v->topl, (ob) z, putnum(b)); }
 
-static NoInline str str_c_cat_r(la v, size_t l, va_list xs) {
+static NoInline str str0catr(la v, size_t l, va_list xs) {
   char *cs = va_arg(xs, char*);
   if (!cs) {
     str s = cells(v, Width(str) + b2w(l) + 1);
     if (s) ini_str(s, l), s->text[l] = 0;
     return s ; }
   size_t i = strlen(cs);
-  str s = str_c_cat_r(v, l+i, xs);
+  str s = str0catr(v, l+i, xs);
   if (s) memcpy(s->text + l, cs, i);
   return s; }
 
-static str str_c_cat(la v, ...) {
+static str str0cat(la v, ...) {
   va_list xs;
   va_start(xs, v);
-  str s = str_c_cat_r(v, 0, xs);
+  str s = str0catr(v, 0, xs);
   va_end(xs);
   return s; }
 
-static FILE *seek_lib(la v, const char *nom) {
+#include <sys/stat.h>
+// the str returned is null-terminated.
+static str seek_lib_path(la v, const char *nom) {
   str s;
-  FILE *i;
   char *home = getenv("HOME");
+  struct stat _;
   if (home) {
-    s = str_c_cat(v, home, "/.local/lib/lisa/", nom, ".la", NULL);
-    if (s && (i = fopen(s->text, "r"))) return i; }
-  s = str_c_cat(v, "/usr/local/lib/lisa/", nom, ".la", NULL);
-  if (s && (i = fopen(s->text, "r"))) return i;
-  s = str_c_cat(v, "/usr/lib/lisa/", nom, ".la", NULL);
-  if (s && (i = fopen(s->text, "r"))) return i;
-  s = str_c_cat(v, "/lib/lisa/", nom, ".la", NULL);
-  if (s && (i = fopen(s->text, "r"))) return i;
-  return NULL; }
+    s = str0cat(v, home, "/.local/lib/lisa/", nom, ".la", NULL);
+    if (s && 0 == stat(s->text, &_)) return s; }
+  s = str0cat(v, "/lib/lisa/", nom, ".la", NULL);
+  if (s && 0 == stat(s->text, &_)) return s;
+  s = str0cat(v, "/usr/lib/lisa/", nom, ".la", NULL);
+  if (s && 0 == stat(s->text, &_)) return s;
+  s = str0cat(v, "/usr/local/lib/lisa/", nom, ".la", NULL);
+  if (s && 0 == stat(s->text, &_)) return s;
+  return 0; }
+
+static FILE *seek_lib(la v, const char *nom) {
+  str path = seek_lib_path(v, nom);
+  if (!path) return 0;
+  FILE *i = fopen(path->text, "r");
+  return i; }
 
 bool la_lib(la v, const char *nom) {
   FILE *p = seek_lib(v, nom);

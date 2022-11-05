@@ -1,6 +1,6 @@
 #include "la.h"
 
-bool uneq(la v, ob x, ob y) { return false; }
+bool neql(la v, ob x, ob y) { return false; }
 
 bool eql(la v, ob a, ob b) {
   return a == b || (!nump(a|b) && G(a) == disp &&

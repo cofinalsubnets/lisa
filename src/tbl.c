@@ -232,7 +232,7 @@ static NoInline void tbl_shrink(la v, tbl t) {
     t->tab[i] = e,
     e = f; }
 
-static Vm(ap_tbl) {
+static Vm(aptbl) {
   ob a = fp->argc;
   switch (a) {
     case 0: return ApC(ret, putnum(((tbl) ip)->len));
@@ -245,22 +245,22 @@ static Vm(ap_tbl) {
       CallOut(_ = tblss(v, 1, a));
       return _ ? ApC(ret, fp->argv[a-1]) : ApC(xoom, nil); } }
 
-static Gc(cp_tbl) {
+static Gc(cptbl) {
   tbl src = (tbl) x, dst = bump(v, Width(tbl));
   src->disp = (vm*) dst;
   return (ob) ini_tbl(dst, src->len, src->cap,
     (ob*) cp(v, (ob) src->tab, pool0, top0)); }
 
-static long tx_tbl(la v, FILE *o, ob _) {
+static long txtbl(la v, FILE *o, ob _) {
   tbl t = (tbl) _;
   return fprintf(o, "#tbl:%ld/%ld", t->len, 1ul << t->cap); }
 
-static intptr_t hx_tbl(la v, ob _) {
+static intptr_t hxtbl(la v, ob _) {
   return ror(mix * 9, 3 * sizeof(intptr_t) / 4); }
 
 const struct mtbl mtbl_tbl = {
-  .does = ap_tbl,
-  .emit = tx_tbl,
-  .evac = cp_tbl,
-  .hash = hx_tbl,
-  .equi = uneq, };
+  .does = aptbl,
+  .emit = txtbl,
+  .evac = cptbl,
+  .hash = hxtbl,
+  .equi = neql, };
