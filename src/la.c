@@ -13,23 +13,18 @@ void la_reset(la v) {
 // initialization helpers
 static bool
   defprims(la),
-  inst(la, const char*, vm*) NoInline;
-static sym
-  symofs(la, const char*) NoInline;
-
-static NoInline bool la_ev_f(la v, FILE *in) {
-  bool ok = true;
-  for (ob x; ok && !feof(in);
-    x = la_rx(v, in),
-    ok = x ? la_ev(v, x) : feof(in));
-  return ok; }
+  inst(la, const char*, vm*);
+static sym symofs(la, const char*);
 
 NoInline bool la_script(la v, const char *path) {
   FILE *in = fopen(path, "r");
   if (!in) return
     errp(v, "%s : %s", path, strerror(errno)),
     false;
-  bool ok = la_ev_f(v, in);
+  bool ok = true;
+  for (ob x; ok && !feof(in);
+    x = la_rx(v, in),
+    ok = x ? la_ev(v, x) : feof(in));
   if (!ok) errp(v, "%s : %s", path, "error");
   return fclose(in), ok; }
 
@@ -83,7 +78,6 @@ static sym symofs(la v, const char *s) {
 // static table of primitive functions
 #define prim_ent(go, nom) { go, nom },
 const struct prim prims[] = { i_primitives(prim_ent) };
-
 #define LEN(ary) (sizeof(ary)/sizeof(*ary))
 bool primp(mo x) {
   struct prim *_ = (struct prim*) x;
@@ -99,7 +93,7 @@ static bool defprims(la v) {
 
 // store an instruction address under a variable in the
 // toplevel namespace // FIXME use a different namespace
-static NoInline bool inst(la v, const char *a, vm *b) {
+static bool inst(la v, const char *a, vm *b) {
   sym z = symofs(v, a);
   return z && tblset(v, v->topl, (ob) z, putnum(b)); }
 
@@ -139,15 +133,18 @@ static str seek_lib_path(la v, const char *nom) {
   if (s && 0 == stat(s->text, &_)) return s;
   return 0; }
 
-static FILE *seek_lib(la v, const char *nom) {
-  str path = seek_lib_path(v, nom);
-  if (!path) return 0;
-  FILE *i = fopen(path->text, "r");
-  return i; }
-
 bool la_lib(la v, const char *nom) {
-  FILE *p = seek_lib(v, nom);
-  if (!p) return false;
-  bool ok = la_ev_f(v, p);
-  if (!ok) errp(v, "%s : %s", nom, "error loading lib");
-  return fclose(p), ok; }
+  str path = seek_lib_path(v, nom);
+  if (!path) return
+    errp(v, "module not found : %s", nom),
+    false;
+  FILE *in = fopen(path->text, "r");
+  if (!in) return
+    errp(v, "%s : %s", path->text, strerror(errno)),
+    false;
+  bool ok = true;
+  for (ob x; ok && !feof(in);
+    x = la_rx(v, in),
+    ok = x ? la_ev(v, x) : feof(in));
+  if (!ok) errp(v, "%s : %s", "error loading module", nom);
+  return fclose(in), ok; }
