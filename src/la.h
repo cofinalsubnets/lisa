@@ -54,13 +54,15 @@ struct sf {
 // pairs
 typedef struct two {
   struct header head;
-  ob a, b; } *two;
+  ob a, b;
+} *two;
 
 // strings
 typedef struct str {
   struct header head;
   size_t len;
-  char text[]; } *str;
+  char text[];
+} *str;
 
 // symbols
 // FIXME this is a silly way to store internal symbols
@@ -70,19 +72,25 @@ typedef struct sym {
   struct header head;
   str nom;
   intptr_t code;
-  struct sym *l, *r; } *sym;
+  struct sym *l, *r;
+} *sym;
 
 // hash tables
 typedef struct tbl {
   struct header head;
   size_t len, cap;
-  ob *tab; } *tbl;
+  ob *tab;
+} *tbl;
 
 // grammar symbols
-enum lex { Def, Cond, Lamb, Quote, Seq, Splat, Eval, LexN };
+enum lex {
+  Def, Cond, Lamb, Quote, Seq, Splat, Eval, LexN };
 
 // linked list for gc protection
-typedef struct keep { void **it; struct keep *et; } *keep;
+typedef struct keep {
+  void **addr;
+  struct keep *next;
+} *keep;
 
 struct la_carrier {
   // vm state
@@ -105,9 +113,10 @@ struct la_carrier {
   } run;
 };
 
-// FIXME remove or hide
+// FIXME remove or hide these
 ob hnom(la, mo);
 ob cp(la, ob, ob*, ob*); // copy something; used by type-specific copying functions
+bool primp(mo); // is it a primitive function?
 
 bool please(la, size_t); // ask GC for available memory
 void *bump(la, size_t), // allocate memory unchecked
@@ -116,14 +125,11 @@ void *bump(la, size_t), // allocate memory unchecked
      *setw(void*, intptr_t, size_t),
      *cpyw(void*, const void*, size_t);
 
-#define Inline inline __attribute__((always_inline))
-#define NoInline __attribute__((noinline))
-
 // pairs
-two pair(la, ob, ob) NoInline;
+two pair(la, ob, ob);
 
-ob nstbl(la),
-   nsget(la, ob);
+// namespace functions
+ob nstbl(la), nsget(la, ob);
 bool nsset(la, ob, ob);
 
 // hash tables
@@ -150,75 +156,86 @@ bool pushs(la, ...); // push args onto stack
 ob tupl(la, ...); // collect args into tuple (data thread)
 
 bool
-  primp(mo), // is it a primitive function? FIXME hide this
   eql(la, ob, ob), // object equality
   neql(la, ob, ob); // always returns false
 
 // linear congruential pseudorandom number generator
 intptr_t lcprng(intptr_t);
 
-void la_reset(la);
-
-// error functions
-// print an error with backtrace
-void errp(la, const char*, ...) NoInline;
+void
+  la_reset(la), // reset interpreter state
+  errp(la, const char*, ...); // print an error with backtrace
 
 struct prim { vm *ap; const char *nom; };
 extern const int64_t mix;
 extern const struct prim prims[];
-extern const struct mtbl mtbl_two, mtbl_str, mtbl_tbl, mtbl_sym;
+extern const struct mtbl
+  mtbl_two, mtbl_str, mtbl_tbl, mtbl_sym;
+
+#define getnum(_) ((ob)(_)>>1)
+#define putnum(_) (((ob)(_)<<1)|1)
 
 #define nil putnum(0)
+#define T putnum(-1)
+
 #define F(_) ((mo)(_)+1)
 #define G(_) ((mo)(_))->ap
 #define FF(x) F(F(x))
 #define GF(x) G(F(x))
+
 #define A(o) ((two)(o))->a
 #define B(o) ((two)(o))->b
 #define AA(o) A(A(o))
 #define AB(o) A(B(o))
 #define BA(o) B(A(o))
 #define BB(o) B(B(o))
+
 #define Avail (v->sp - v->hp)
-#define mm(r) ((v->safe = &((struct keep){(void**)(r), v->safe})))
-#define um (v->safe = v->safe->et)
+#define mm(r) \
+  ((v->safe = &((struct keep){(void**)(r), v->safe})))
+#define um (v->safe = v->safe->next)
 #define with(y,...) (mm(&(y)), (__VA_ARGS__), um)
-#define Width(t) b2w(sizeof(struct t))
 
-#define T putnum(-1)
-
-#define getnum(_) ((ob)(_)>>1)
-#define putnum(_) (((ob)(_)<<1)|1)
+#define Inline inline __attribute__((always_inline))
+#define NoInline __attribute__((noinline))
 
 static Inline bool nilp(ob _) { return _ == nil; }
 static Inline bool nump(ob _) { return _ & 1; }
 static Inline bool homp(ob _) { return !nump(_); }
-static Inline bool tblp(ob _) { return homp(_) && GF(_) == (vm*) &mtbl_tbl; }
-static Inline bool strp(ob _) { return homp(_) && GF(_) == (vm*) &mtbl_str; }
-static Inline bool twop(ob _) { return homp(_) && GF(_) == (vm*) &mtbl_two; }
-static Inline bool symp(ob _) { return homp(_) && GF(_) == (vm*) &mtbl_sym; }
+static Inline bool tblp(ob _) {
+  return homp(_) && GF(_) == (vm*) &mtbl_tbl; }
+static Inline bool strp(ob _) {
+  return homp(_) && GF(_) == (vm*) &mtbl_str; }
+static Inline bool twop(ob _) {
+  return homp(_) && GF(_) == (vm*) &mtbl_two; }
+static Inline bool symp(ob _) {
+  return homp(_) && GF(_) == (vm*) &mtbl_sym; }
 
 static Inline size_t b2w(size_t b) {
   size_t q = b / sizeof(ob), r = b % sizeof(ob);
   return r ? q + 1 : q; }
 
+#define Width(t) b2w(sizeof(struct t))
+
 // this can give a false positive if x is a fixnum
 static Inline bool livep(la v, ob x) {
-  return (ob*) x >= v->pool && (ob*) x < v->pool + v->len; }
+  return (ob*) x >= v->pool &&
+    (ob*) x < v->pool + v->len; }
 
 _Static_assert(-1 == -1 >> 1, "signed >>");
-_Static_assert(sizeof(void*) == sizeof(size_t), "size_t matches pointer size");
+_Static_assert(sizeof(void*) == sizeof(size_t),
+  "size_t matches pointer size");
 
 static Inline size_t ror(size_t x, size_t n) {
   return (x<<((8*sizeof(size_t))-n))|(x>>n); }
 
-#define ninl(x, ...) vm x NoInline;
 
 // these are vm functions used by C but not lisp.
 #define cfns(_)\
   _(gc) _(xdom) _(xoom) _(xnom) _(xary)\
   _(setclo) _(genclo0) _(genclo1)\
   _(apnop) _(yield)
+#define ninl(x, ...) vm x NoInline;
 cfns(ninl)
 #undef cfns
 
@@ -332,8 +349,7 @@ static Inline two ini_two(void *_, ob a, ob b) {
   two w = _;
   w->head.disp = disp;
   w->head.mtbl = &mtbl_two;
-  w->a = a;
-  w->b = b;
+  w->a = a, w->b = b;
   return w; }
 
 static Inline str ini_str(void *_, size_t len) {
@@ -350,5 +366,4 @@ static Inline mo ini_mo(void *_, size_t len) {
   return k; }
 
 #define Gc(n) ob n(la v, ob x, ob *pool0, ob *top0)
-// restrict qualifiers seem to make the code worse ...
 #define Vm(n) ob n(la v, ob xp, mo ip, ob *hp, ob *sp, sf fp)

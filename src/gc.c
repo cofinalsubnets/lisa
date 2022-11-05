@@ -113,8 +113,8 @@ static void copy_(la v, size_t len1, ob *pool1) {
   v->topl = (tbl) cp(v, (ob) v->topl, pool0, top0);
   for (size_t i = LexN; i--;)
     v->lex[i] = (sym) cp(v, (ob) v->lex[i], pool0, top0);
-  for (keep r = v->safe; r; r = r->et)
-    *r->it = (void**) cp(v, (ob) *r->it, pool0, top0);
+  for (keep r = v->safe; r; r = r->next)
+    *r->addr = (void*) cp(v, (ob) *r->addr, pool0, top0);
 
   // copy the stack
   ob *sp = v->sp;
