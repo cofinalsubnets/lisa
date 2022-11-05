@@ -73,21 +73,13 @@ Vm(setloc) {
   *--sp = (ob) t;
   return ApN(2, xp); }
 
-static NoInline Vm(nom_err) {
-  Pack();
-  const char *n = "#sym";
-  size_t l = 4;
-  str s = ((sym) xp)->nom;
-  if (s) n = s->text, l = s->len;
-  return nope(v, "free variable : %.*s", l, n); }
-
 // late binding
 // TODO dynamic type checking here
 Vm(late) {
   ob w = (ob) GF(ip), d = A(w);
   xp = B(w);
   w = tblget(v, (tbl) d, xp);
-  if (!w) return ApC(nom_err, xp);
+  if (!w) return ApC(xnom, xp);
   xp = w;
   // omit the arity check if possible
   vm *n = G(FF(ip));

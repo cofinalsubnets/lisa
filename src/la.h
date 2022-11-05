@@ -4,7 +4,8 @@
 
 // thanks !!
 
-typedef la_ob ob;
+typedef la_point ob;
+typedef la_carrier la;
 typedef struct mo *mo; // procedures
 typedef struct sf *sf; // stack frame
 typedef ob vm(la, ob, mo, ob*, ob*, sf); // interpreter function type
@@ -83,7 +84,7 @@ enum lex { Def, Cond, Lamb, Quote, Seq, Splat, Eval, LexN };
 // linked list for gc protection
 typedef struct keep { void **it; struct keep *et; } *keep;
 
-struct la {
+struct la_carrier {
   // vm state
   mo ip;
   sf fp;
@@ -106,26 +107,27 @@ struct la {
 
 // FIXME remove or hide
 ob hnom(la, mo);
+ob cp(la, ob, ob*, ob*); // copy something; used by type-specific copying functions
 
 bool please(la, size_t); // ask GC for available memory
 void *bump(la, size_t), // allocate memory unchecked
-     *cells(la, size_t); // allocate memory checked
-ob cp(la, ob, ob*, ob*); // copy something; used by type-specific copying functions
+     *cells(la, size_t), // allocate memory checked
+     // word-size mem{set,cpy}
+     *setw(void*, intptr_t, size_t),
+     *cpyw(void*, const void*, size_t);
 
 #define Inline inline __attribute__((always_inline))
 #define NoInline __attribute__((noinline))
 
 // pairs
 two pair(la, ob, ob) NoInline;
-size_t llen(ob);
 
 ob nstbl(la),
    nsget(la, ob);
 bool nsset(la, ob, ob);
 
 // hash tables
-intptr_t
-  hash(la, ob);
+intptr_t hash(la, ob);
 tbl mktbl(la),
     tblset(la, tbl, ob, ob);
 ob tblget(la, tbl, ob);
@@ -138,8 +140,7 @@ str strof(la, const char*);
 // like la_tx, they return the number
 // of bytes written or a negative number
 // on error.
-long
-  fputstr(FILE*, str) NoInline;  // like fputs
+long fputstr(FILE*, str);  // like fputs
 
 // functions
 mo mkmo(la, size_t); // allocate a thread
@@ -156,15 +157,16 @@ bool
 // linear congruential pseudorandom number generator
 intptr_t lcprng(intptr_t);
 
-// word-sized memset/memcpy analogs
-void *setw(void*, intptr_t, size_t),
-     *cpyw(void*, const void*, size_t);
+void la_reset(la);
 
 // error functions
 // print an error with backtrace
 void errp(la, const char*, ...) NoInline;
-// panic with message
-ob nope(la, const char*, ...) NoInline;
+
+struct prim { vm *ap; const char *nom; };
+extern const int64_t mix;
+extern const struct prim prims[];
+extern const struct mtbl mtbl_two, mtbl_str, mtbl_tbl, mtbl_sym;
 
 #define nil putnum(0)
 #define F(_) ((mo)(_)+1)
@@ -187,11 +189,6 @@ ob nope(la, const char*, ...) NoInline;
 
 #define getnum(_) ((ob)(_)>>1)
 #define putnum(_) (((ob)(_)<<1)|1)
-
-struct prim { vm *ap; const char *nom; };
-extern const int64_t mix;
-extern const struct prim prims[];
-extern const struct mtbl mtbl_two, mtbl_str, mtbl_tbl, mtbl_sym;
 
 static Inline bool nilp(ob _) { return _ == nil; }
 static Inline bool nump(ob _) { return _ & 1; }
@@ -219,7 +216,7 @@ static Inline size_t ror(size_t x, size_t n) {
 
 // these are vm functions used by C but not lisp.
 #define cfns(_)\
-  _(gc) _(xdom) _(xoom) _(xary)\
+  _(gc) _(xdom) _(xoom) _(xnom) _(xary)\
   _(setclo) _(genclo0) _(genclo1)\
   _(apnop) _(yield)
 cfns(ninl)

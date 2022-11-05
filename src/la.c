@@ -4,18 +4,18 @@
 #include <errno.h>
 #include <stdarg.h>
 
+void la_reset(la v) {
+  v->sp = v->pool + v->len;
+  v->fp = (sf) v->sp;
+  v->ip = 0;
+  v->xp = 0; }
+
 // initialization helpers
 static bool
   defprims(la),
   inst(la, const char*, vm*) NoInline;
 static sym
   symofs(la, const char*) NoInline;
-
-ob la_ev(la v, ob _) {
-  if (!pushs(v, _, NULL)) return 0;
-  ob ev = tblget(v, v->topl, (ob) v->lex[Eval]);
-  struct mo go[] = { {call}, {(vm*) putnum(1)}, {yield} };
-  return call(v, ev, go, v->hp, v->sp, v->fp); }
 
 static NoInline bool la_ev_f(la v, FILE *in) {
   bool ok = true;
@@ -33,30 +33,24 @@ NoInline bool la_script(la v, const char *path) {
   if (!ok) errp(v, "%s : %s", path, "error");
   return fclose(in), ok; }
 
-la la_ini(void) {
-  la v = malloc(sizeof(struct la));
-  if (v && !la_open(v)) return la_fin(v), NULL;
-  return v; }
-
-void la_fin(la v) { la_close(v), free(v); }
-
 void la_close(la v) {
   if (v) free(v->pool), v->pool = NULL; }
 
-NoInline bool la_open(la v) {
-  v->rand = v->run.t0 = clock();
-  v->len = 1 << 10;
-  v->pool = NULL;
-  v->safe = NULL;
+bool la_open(la v) {
+  const size_t len = 1 << 10; // must be a power of 2
 
-  // the heap is all used up to start, so the first allocation initializes the pool
-  v->hp = v->sp = v->pool + v->len;
+  ob *pool = calloc(len, sizeof(ob));
+  if (!pool) return false;
+
+  memset(v, 0, sizeof(struct la_carrier));
+
+  v->len = len;
+  v->hp = v->pool = pool;
+  v->hp = pool;
+  v->sp = pool + len;
   v->fp = (sf) v->sp;
-  v->topl = (tbl) nil;
-  v->ip = (mo) nil;
-  v->xp = nil;
-  v->syms = 0;
-  setw(v->lex, nil, LexN);
+
+  v->rand = v->run.t0 = clock();
 
   ob _;
   bool ok =
@@ -129,6 +123,7 @@ static str str0cat(la v, ...) {
 
 #include <sys/stat.h>
 // the str returned is null-terminated.
+// FIXME distunguish OOM from file not found
 static str seek_lib_path(la v, const char *nom) {
   str s;
   char *home = getenv("HOME");

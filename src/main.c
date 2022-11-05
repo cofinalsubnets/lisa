@@ -24,7 +24,7 @@ int main(int ac, char **av) {
   if (ac == optind && !shell) return EXIT_SUCCESS;
 
   // init
-  struct la V;
+  struct la_carrier V;
   bool ok = la_open(&V);
 
   if (ok && boot) {

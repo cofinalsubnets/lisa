@@ -11,12 +11,6 @@ two pair(la v, ob a, ob b) {
     ini_two(bump(v, Width(two)), a, b) :
     pair_gc(v, a, b); }
 
-// length of list
-size_t llen(ob l) {
-  size_t i = 0;
-  while (twop(l)) l = B(l), i++;
-  return i; }
-
 Vm(car) { return ApN(1, A(xp)); }
 Vm(cdr) { return ApN(1, B(xp)); }
 

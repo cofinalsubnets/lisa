@@ -1,5 +1,20 @@
 #include "la.h"
 
+ob la_ev(la v, ob _) {
+  if (!pushs(v, _, NULL)) return 0;
+  ob ev = tblget(v, v->topl, (ob) v->lex[Eval]);
+  struct mo go[] = { {call}, {(vm*) putnum(1)}, {yield} };
+  return call(v, ev, go, v->hp, v->sp, v->fp); }
+
+
+// bootstrap eval interpreter function
+static mo ana(la, ob);
+Vm(ev_f) {
+  ArityCheck(1);
+  mo y;
+  CallOut(y = ana(v, fp->argv[0]));
+  return y ? ApY(y, xp) : ApC(xoom, xp); }
+
 ////
 ///  the thread compiler
 //
@@ -48,10 +63,17 @@ static mo
 // supplemental list functions
 //
 // index of item in list (-1 if absent)
-static NoInline intptr_t lidx(ob l, ob x) {
+static intptr_t lidx(ob l, ob x) {
   for (intptr_t i = 0; twop(l); l = B(l), i++)
     if (x == A(l)) return i;
   return -1; }
+
+// length of list
+static size_t llen(ob l) {
+  size_t i = 0;
+  while (twop(l)) l = B(l), i++;
+  return i; }
+
 
 // append to tail
 static NoInline two snoc(la v, ob l, ob x) {
@@ -391,10 +413,3 @@ static Inline mo ana(la v, ob x) {
     N(r_co_ini),
     NULL);
   return ok ? pull(v, 0, 0) : 0; }
-
-// bootstrap eval interpreter function
-Vm(ev_f) {
-  ArityCheck(1);
-  mo y;
-  CallOut(y = ana(v, fp->argv[0]));
-  return y ? ApY(y, xp) : ApC(xoom, xp); }

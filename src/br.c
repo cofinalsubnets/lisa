@@ -18,7 +18,9 @@ Vm(call) {
 Vm(ap_f) {
   ArityCheck(2);
   Check(homp(fp->argv[0]));
-  size_t adic = llen(fp->argv[1]);
+  xp = fp->argv[1];
+  size_t adic = 0;
+  while (twop(xp)) xp = B(xp), adic++;
   Have(adic);
   ip = (mo) fp->argv[0];
   xp = fp->argv[1];
