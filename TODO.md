@@ -63,5 +63,6 @@ to tell!
 - parse from strings (not FILE\*s)
 - closure pointer on stack (instead of in frame)
 - improve hashing of mutable data
-- use a hash table for internal symbols
+- use hash table for internal symbols
 - remove recursion from eq, tx, hash (use off semispace)
+- reverse stack/heap for left-to-right argument evaluation
