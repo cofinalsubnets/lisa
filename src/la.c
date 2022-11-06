@@ -1,20 +1,17 @@
 #include "la.h"
 #include <string.h>
-#include <time.h>
-#include <errno.h>
-#include <stdarg.h>
-
-void la_reset(la v) {
-  v->sp = v->pool + v->len;
-  v->fp = (sf) v->sp;
-  v->ip = 0;
-  v->xp = 0; }
 
 // initialization helpers
 static bool
   defprims(la),
   inst(la, const char*, vm*);
 static sym symofs(la, const char*);
+
+void la_reset(la v) {
+  v->sp = v->pool + v->len;
+  v->fp = (sf) v->sp;
+  v->ip = 0;
+  v->xp = 0; }
 
 void la_close(la v) {
   if (v) free(v->pool), v->pool = NULL; }
@@ -68,12 +65,10 @@ static sym symofs(la v, const char *s) {
 const struct prim prims[] = { i_primitives(prim_ent) };
 #define LEN(ary) (sizeof(ary)/sizeof(*ary))
 bool primp(mo x) {
-  struct prim *_ = (struct prim*) x;
-  return _ >= prims && _ < prims + LEN(prims); }
+  return x >= (mo) prims && x < (mo) (prims + LEN(prims)); }
 
 static bool defprims(la v) {
-  const struct prim *p = prims,
-                    *lim = p + LEN(prims);
+  const struct prim *p = prims, *lim = p + LEN(prims);
   while (p < lim) {
     sym z = symofs(v, p->nom);
     if (!z || !tblset(v, v->topl, (ob) z, (ob) p++)) return false; }
@@ -84,55 +79,3 @@ static bool defprims(la v) {
 static bool inst(la v, const char *a, vm *b) {
   sym z = symofs(v, a);
   return z && tblset(v, v->topl, (ob) z, (ob) b); }
-
-static NoInline str str0catr(la v, size_t l, va_list xs) {
-  char *cs = va_arg(xs, char*);
-  if (!cs) {
-    str s = cells(v, Width(str) + b2w(l+1));
-    if (s) ini_str(s, l+1), s->text[l] = 0;
-    return s ; }
-  size_t i = strlen(cs);
-  str s = str0catr(v, l+i, xs);
-  if (s) memcpy(s->text + l, cs, i);
-  return s; }
-
-static str str0cat(la v, ...) {
-  va_list xs;
-  va_start(xs, v);
-  str s = str0catr(v, 0, xs);
-  va_end(xs);
-  return s; }
-
-#include <sys/stat.h>
-// the str returned is null-terminated.
-// FIXME distunguish OOM from file not found
-static str seek_lib_path(la v, const char *nom) {
-  str s;
-  char *home = getenv("HOME");
-  struct stat _;
-  if (home) {
-    s = str0cat(v, home, "/.local/lib/lisa/", nom, ".la", NULL);
-    if (s && 0 == stat(s->text, &_)) return s; }
-  s = str0cat(v, "/lib/lisa/", nom, ".la", NULL);
-  if (s && 0 == stat(s->text, &_)) return s;
-  s = str0cat(v, "/usr/lib/lisa/", nom, ".la", NULL);
-  if (s && 0 == stat(s->text, &_)) return s;
-  s = str0cat(v, "/usr/local/lib/lisa/", nom, ".la", NULL);
-  if (s && 0 == stat(s->text, &_)) return s;
-  return 0; }
-
-bool la_lib(la v, const char *nom) {
-  str path = seek_lib_path(v, nom);
-  if (!path) return
-    errp(v, "module not found : %s", nom),
-    false;
-  FILE *in = fopen(path->text, "r");
-  if (!in) return
-    errp(v, "%s : %s", path->text, strerror(errno)),
-    false;
-  bool ok = true;
-  for (ob x; ok && !feof(in);
-    x = la_rx(v, in),
-    ok = x ? la_ev(v, x) : feof(in));
-  if (!ok) errp(v, "%s : %s", "error loading module", nom);
-  return fclose(in), ok; }

@@ -56,14 +56,14 @@ bool please(la v, size_t req) {
 //   -----------------------------------
 //   |                          `------'
 //   t0                  gc time (this cycle)
-static clock_t copy(la v, size_t len1) {
+static clock_t copy(la v, size_t len) {
   clock_t t1 = clock(), t0 = v->run.t0, t2;
 
   ob *pool0 = v->pool,
-     *pool1 = calloc(len1, sizeof(ob));
+     *pool1 = calloc(len, sizeof(ob));
   if (!pool1) return 0;
 
-  copy_(v, len1, pool1);
+  copy_(v, len, pool1);
   free(pool0);
 
   t2 = v->run.t0 = clock();

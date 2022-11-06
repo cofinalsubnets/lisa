@@ -66,14 +66,13 @@ static Gc(cpsym) {
   src->head.disp = (vm*) dst;
   return (ob) dst; }
 
-static intptr_t hxsym(la v, ob _) {
-  return ((sym) _)->code; }
+static intptr_t hxsym(la v, ob _) { return ((sym) _)->code; }
 
 static long txsym(la v, FILE *o, ob _) {
   str s = ((sym) _)->nom;
   return s ? fputstr(o, s) : fprintf(o, "#sym"); }
 
-Vm(apnop) { return ApC(ret, (ob) ip); }
+static Vm(apnop) { return ApC(ret, (ob) ip); }
 
 const struct mtbl mtbl_sym = {
   .does = apnop,

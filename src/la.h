@@ -242,10 +242,7 @@ static Inline size_t ror(size_t x, size_t n) {
 
 
 // these are vm functions used by C but not lisp.
-#define cfns(_)\
-  _(gc) _(xdom) _(xoom) _(xnom) _(xary)\
-  _(setclo) _(genclo0) _(genclo1)\
-  _(apnop) _(yield)
+#define cfns(_) _(gc) _(xdom) _(xoom) _(xnom) _(xary)
 #define ninl(x, ...) vm x NoInline;
 cfns(ninl)
 #undef cfns

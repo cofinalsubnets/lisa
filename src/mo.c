@@ -94,6 +94,17 @@ Vm(take) {
   hp += n + Width(tag);
   return ApC(ret, (ob) k); }
 
+// set the closure for this frame
+static Vm(setclo) { return
+  fp->clos = (ob*) GF(ip),
+  ApY(G(FF(ip)), xp); }
+
+// finalize function instance closure
+static Vm(genclo1) { return
+  G(ip) = setclo,
+  GF(ip) = (vm*) xp,
+  ApY(ip, xp); }
+
 // this function is run the first time a user
 // function with a closure is called. its
 // purpose is to reconstruct the enclosing
@@ -102,7 +113,7 @@ Vm(take) {
 // it overwrites itself with a special jump
 // instruction that sets the closure and enters
 // the function.
-Vm(genclo0) {
+static Vm(genclo0) {
   ob *ec = (ob*) GF(ip), arg = ec[0];
   size_t adic = nilp(arg) ? 0 : getnum(G(arg));
   Have(Width(sf) + adic + 1);
@@ -118,17 +129,6 @@ Vm(genclo0) {
   fp->clos = (ob*) ec[2];
   if (!nilp(loc)) *--sp = loc;
   return ApY(ec[3], xp); }
-
-// finalize function instance closure
-Vm(genclo1) { return
-  G(ip) = setclo,
-  GF(ip) = (vm*) xp,
-  ApY(ip, xp); }
-
-// set the closure for this frame
-Vm(setclo) { return
-  fp->clos = (ob*) GF(ip),
-  ApY(G(FF(ip)), xp); }
 
 // the next few functions create and store
 // lexical environments.

@@ -96,6 +96,3 @@ Br(brg,    *sp++ >  xp, GF, xp, FF, nil)
 Br(brg2,   *sp++ >  xp, FF, xp, GF, nil)
 Br(brge,  *sp++ >= xp, GF, xp, FF, nil)
 // brgteq2 is brlt
-
-// return to C
-Vm(yield) { return Pack(), xp; }

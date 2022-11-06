@@ -34,16 +34,16 @@ static ob tbl_ent(la v, tbl t, ob k) {
   return tbl_ent_hc(v, t, k, hash(v, k)); }
 
 static tbl
-  tbl_grow(la, tbl) NoInline,
-  tblset_s(la, tbl, ob, ob) NoInline;
+  tbl_grow(la, tbl),
+  tblset_s(la, tbl, ob, ob);
 static ob
   tbl_del(la, tbl, ob),
-  tks(la) NoInline;
+  tks(la);
 static bool
   tblss(la, intptr_t, intptr_t);
 
 static void
-  tbl_shrink(la, tbl) NoInline;
+  tbl_shrink(la, tbl);
 
 tbl mktbl(la v) {
   tbl t = cells(v, Width(tbl) + 1 + Width(tag));
@@ -51,14 +51,13 @@ tbl mktbl(la v) {
          t->tab[0] = nil;
   return t; }
 
-tbl tblset(la v, tbl t, ob k, ob x) {
-  t = tblset_s(v, t, k, x);
-  t = t && tbl_load(t) > 1 ? tbl_grow(v, t) : t;
-  return t; }
+tbl tblset(la v, tbl t, ob k, ob x) { return
+  t = tblset_s(v, t, k, x),
+  t && tbl_load(t) > 1 ? tbl_grow(v, t) : t; }
 
-ob tblget(la v, tbl t, ob k) {
-  k = tbl_ent(v, t, k);
-  return nilp(k) ? 0 : VAL(k); }
+ob tblget(la v, tbl t, ob k) { return
+  k = tbl_ent(v, t, k),
+  nilp(k) ? 0 : VAL(k); }
 
 Vm(tget_f) {
   ArityCheck(2);
@@ -74,20 +73,15 @@ Vm(tdel_f) {
   CallOut(x = tbl_del(v, (tbl) x, fp->argv[1]));
   return ApC(ret, x); }
 
-Vm(tget) {
-  xp = tblget(v, (tbl) xp, *sp++);
-  return ApN(1, xp ? xp : nil); }
+Vm(tget) { return
+  xp = tblget(v, (tbl) xp, *sp++),
+  ApN(1, xp ? xp : nil); }
 
-Vm(thas) {
-  xp = tblget(v, (tbl) xp, *sp++);
-  return ApN(1, xp ? T : nil); }
+Vm(thas) { return
+  xp = tblget(v, (tbl) xp, *sp++),
+  ApN(1, xp ? T : nil); }
 
 Vm(tlen) { return ApN(1, putnum(((tbl) xp)->len)); }
-
-Vm(tkeys) {
-  ob x;
-  CallOut(x = tks(v));
-  return x ? ApN(1, x) : ApC(xoom, nil); }
 
 Vm(thas_f) {
   ArityCheck(2);
@@ -147,7 +141,7 @@ static ob tbl_del(la v, tbl y, ob key) {
 // tbl_grow(vm, tbl, new_size): destructively resize a hash table.
 // new_size words of memory are allocated for the new bucket array.
 // the old table entries are reused to populate the modified table.
-static NoInline tbl tbl_grow(la v, tbl t) {
+static tbl tbl_grow(la v, tbl t) {
   ob *tab0, *tab1;
   size_t cap0 = t->cap,
          cap1 = cap0 + 1,
@@ -183,7 +177,7 @@ static tbl tblset_s(la v, tbl t, ob k, ob x) {
 
 // get table keys
 // XXX calling convention: table in v->xp
-static NoInline ob tks(la v) {
+static ob tks(la v) {
   size_t len = ((tbl) v->xp)->len;
   two ks;
   ks = cells(v, Width(two) * len);
@@ -211,7 +205,7 @@ static bool tblss(la v, intptr_t i, intptr_t l) {
 
 // shrinking a table never allocates memory, so it's safe
 // to do at any time.
-static NoInline void tbl_shrink(la v, tbl t) {
+static void tbl_shrink(la v, tbl t) {
   // do nothing if we're already overloaded
   if (tbl_load(t)) return;
 

@@ -1,12 +1,15 @@
 #include "la.h"
 
-static mo ana(la, ob);
+// return to C
+static Vm(yield) { return Pack(), xp; }
 
 ob la_ev(la v, ob _) {
   if (!pushs(v, _, NULL)) return 0;
   ob ev = tblget(v, v->topl, (ob) v->lex[Eval]);
   struct mo go[] = { {call}, {(vm*) putnum(1)}, {yield} };
   return call(v, ev, go, v->hp, v->sp, v->fp); }
+
+static mo ana(la, ob);
 
 // bootstrap eval interpreter function
 Vm(ev_f) {
@@ -25,8 +28,7 @@ Vm(ev_f) {
 // " compilation environments "
 typedef struct env {
   ob arg, loc, clo, name, asig, s1, s2;
-  struct env *par;
-} *env;
+  struct env *par; } *env;
 // if a function is not variadic its arity signature is
 // n = number of required arguments; otherwise it is -n-1
 
@@ -72,7 +74,6 @@ static size_t llen(ob l) {
   while (twop(l)) l = B(l), i++;
   return i; }
 
-
 // append to tail
 static NoInline two snoc(la v, ob l, ob x) {
   if (!twop(l)) return pair(v, x, l);
@@ -110,8 +111,8 @@ static Inline ob new_scope(la v, env *e, ob arg, ob nom) {
     e ? (ob) *e : nil, // parent scope
     NULL); }
 
-static NoInline char scan_def(la v, env *e, ob x) {
-  char r;
+static NoInline int scan_def(la v, env *e, ob x) {
+  int r;
   if (!twop(x)) return 1; // this is an even case so export all the definitions to the local scope
   if (!twop(B(x))) return 0; // this is an odd case so ignore these, they'll be imported after the rewrite
   with(x,
@@ -299,11 +300,11 @@ enum where { Here, Loc, Arg, Clo, Wait };
 static NoInline ob ls_lex(la v, env e, ob y) { return
   nilp((ob) e) ?
     (y = nsget(v, y)) ?
-      (ob) pair(v, putnum(Here), y) :
-      (ob) pair(v, putnum(Wait), nstbl(v)) :
-  lidx(e->loc, y) >= 0 ? (ob) pair(v, putnum(Loc), (ob) e) :
-  lidx(e->arg, y) >= 0 ? (ob) pair(v, putnum(Arg), (ob) e) :
-  lidx(e->clo, y) >= 0 ? (ob) pair(v, putnum(Clo), (ob) e) :
+      (ob) pair(v, Here, y) :
+      (ob) pair(v, Wait, nstbl(v)) :
+  lidx(e->loc, y) >= 0 ? (ob) pair(v, Loc, (ob) e) :
+  lidx(e->arg, y) >= 0 ? (ob) pair(v, Arg, (ob) e) :
+  lidx(e->clo, y) >= 0 ? (ob) pair(v, Clo, (ob) e) :
   ls_lex(v, (env) e->par, y); }
 
 Co(co_sym, ob x) {
@@ -311,16 +312,16 @@ Co(co_sym, ob x) {
   with(x, q = ls_lex(v, e ? *e : (env) nil, x));
   if (!q) return 0;
   y = A(q);
-  if (y == putnum(Here)) return imx(v, e, m, imm, B(q));
-  if (y == putnum(Wait)) return
+  if (y == Here) return imx(v, e, m, imm, B(q));
+  if (y == Wait) return
     (x = (ob) pair(v, B(q), x)) &&
     (with(x, y = (ob) pull(v, e, m+2)), y) ?
       pb2(late, x, (mo) y) : 0;
 
   if (B(q) == (ob) *e) return
-    y == putnum(Loc) ?
+    y == Loc ?
       imx(v, e, m, locn, putnum(lidx((*e)->loc, x))) :
-    y == putnum(Arg) ?
+    y == Arg ?
       imx(v, e, m, argn, putnum(lidx((*e)->arg, x))) :
     imx(v, e, m, clon, putnum(lidx((*e)->clo, x)));
 

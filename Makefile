@@ -32,9 +32,9 @@ test-lots:
 # build
 # tested with gcc & clang
 CFLAGS ?=\
-	-std=c11 -g -O2 -flto -fpic -Wall -Werror\
+	-std=c99 -g -Os -flto -fpic -Wall -Werror\
  	-Wstrict-prototypes -Wno-shift-negative-value\
-	-fno-stack-protector -fno-align-functions
+	-fno-stack-protector
 
 src_h=$(wildcard src/*.h)
 src_c=$(wildcard src/*.c)
