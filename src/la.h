@@ -268,7 +268,7 @@ cfns(ninl)
  _(lt) _(lteq) _(eq) _(gteq) _(gt)\
  _(tget) _(tset) _(thas) _(tlen)\
  _(cons) _(car) _(cdr)\
- _(emi) _(emx)\
+ _(poke)\
  _(br1) _(br0) _(bre) _(brn)\
  _(brl) _(brle) _(brge) _(brl2)\
  _(brle2) _(brg2) _(brg)\
@@ -290,8 +290,7 @@ i_internals(ninl)
  _(twop_f, "twop") _(cons_f, "X") _(car_f, "A") _(cdr_f, "B")\
   \
  _(hom_f, "hom") _(homp_f, "homp")\
- _(emi_f, "emi") _(emx_f, "emx")\
- _(peeki_f, "peeki") _(peekx_f, "peekx")\
+ _(poke_f, "poke") _(peekx_f, "peek")\
  _(seek_f, "seek") _(hfin_f, "hfin")\
   \
  _(tbl_f, "tbl") _(tblp_f, "tblp") _(tlen_f, "tlen")\

@@ -51,23 +51,8 @@ Vm(hfin_f) {
   motag((mo) xp)->head = (mo) xp;
   return ApC(ret, xp); }
 
-// emit code
-Vm(emi_f) {
-  ArityCheck(2);
-  Check(nump(fp->argv[0]));
-  Check(homp(fp->argv[1]));
-  mo k = (mo) fp->argv[1] - 1;
-  G(k) = (vm*) getnum(fp->argv[0]);
-  return ApC(ret, (ob) k); }
-
-// frameless version
-Vm(emi) {
-  mo k = (mo) *sp++ - 1;
-  G(k) = (vm*) getnum(xp);
-  return ApN(1, (ob) k); }
-
 // emit data
-Vm(emx_f) {
+Vm(poke_f) {
   ArityCheck(2);
   Check(homp(fp->argv[1]));
   mo k = (mo) fp->argv[1] - 1;
@@ -75,17 +60,10 @@ Vm(emx_f) {
   return ApC(ret, (ob) k); }
 
 // frameless
-Vm(emx) {
+Vm(poke) {
   mo k = (mo) *sp++ - 1;
   G(k) = (vm*) xp;
   return ApN(1, (ob) k); }
-
-// read an instruction from a thread (as a fixnum)
-Vm(peeki_f) {
-  ArityCheck(1);
-  xp = fp->argv[0];
-  Check(homp(xp));
-  return ApC(ret, putnum(G(xp))); }
 
 // read data from a thread (be sure it's really data!)
 Vm(peekx_f) {

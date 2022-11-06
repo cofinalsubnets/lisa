@@ -83,7 +83,7 @@ static bool defprims(la v) {
 // toplevel namespace // FIXME use a different namespace
 static bool inst(la v, const char *a, vm *b) {
   sym z = symofs(v, a);
-  return z && tblset(v, v->topl, (ob) z, putnum(b)); }
+  return z && tblset(v, v->topl, (ob) z, (ob) b); }
 
 static NoInline str str0catr(la v, size_t l, va_list xs) {
   char *cs = va_arg(xs, char*);

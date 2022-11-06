@@ -116,7 +116,7 @@
    abelians (set && || + *) ; arguments can be combined freely
    monoids (set scat append) ; pairs of consecutive arguments can be combined in place
 
-   (homp-strict x) (? (homp x) (~ (= i-disp (peeki x))))
+   (homp-strict x) (? (homp x) (~ (= i-disp (peek x))))
 
 
  ; instruction fusion table
@@ -128,24 +128,24 @@
   ((f1 g xs .) i p)
    ((\ a q
     ((: (loop x) (?
-     (~ x)       (emi i p)
-     (= a (A x)) (emif (AB x) q)
+     (~ x)       (poke i p)
+     (= a (A x)) (pokef (AB x) q)
      (loop (BB x)))) xs))(g p) (seek p 1))
 
   ; for specialized indexed instructions
-  (argn xs .) (ap f1 (X peekx ((: (loop n xs)
+  (argn xs .) (ap f1 (X peek ((: (loop n xs)
     (? xs (X n (X (A xs) (loop (+ n 1) (B xs)))))) 0 xs)))
 
   ; for specialized branch instructions ;
   ; takes an argument for each branch case
-  (br2 b c) (f1 peeki i-br1 b i-br0 c)
+  (br2 b c) (f1 peek i-br1 b i-br0 c)
 
   (tbl
    ; this along with "return forwarding" in branches is how
    ; tail calls get optimized.
-   i-call (\ i h (? (= i-ret (peeki (seek h 1)))
-    (emi i-rec (emx (peekx h) (seek h 1)))
-    (emi i h)))
+   i-call (\ i h (? (= i-ret (peek (seek h 1)))
+    (poke i-rec (poke (peek h) (seek h 1)))
+    (poke i h)))
    i-argn (argn i-arg0 i-arg1 i-arg2 i-arg3)
    i-locn (argn i-loc0 i-loc1 i-loc2 i-loc3)
    i-clon (argn i-clo0 i-clo1 i-clo2 i-clo3)
@@ -154,8 +154,8 @@
    i-gt (br2 i-brg i-brg2)
    i-gteq (br2 i-brge i-brl)
    i-eq (br2 i-bre i-brn)
-   i-nilp_ (f1 peeki i-br1 i-br0 i-br0 i-br1)
-   i-imm (f1 peekx 0 i-imm0 1 i-imm1 2 i-imm2 -1 i-immn1)
+   i-nilp_ (f1 peek i-br1 i-br0 i-br0 i-br1)
+   i-imm (f1 peek 0 i-imm0 1 i-imm1 2 i-imm2 -1 i-immn1)
    ))
 
  ; special function compiler table
@@ -235,8 +235,7 @@
     (Im () (loop x k))))
 
 
-   emi (nary i-emi 'hom 'num 'hom)
-   emx (nary i-emx 'hom 0 'hom)
+   poke (nary i-poke 'hom 0 'hom)
 
    tget (nary i-tget 0    'tbl 0)
    tset (nary i-tset 0    'tbl 0 0)
@@ -318,10 +317,10 @@
  ; prototype to create an "instance".
  (ltu e nom l) (:
   (loc k) (: loc (tget f 'loc)
-   (? (~ loc) k (emi i-setloc (emx (len loc) k))))
+   (? (~ loc) k (poke i-setloc (poke (len loc) k))))
   (ar k) (: i (tget f 'sig) (?
-   (> i 0) (emif i-arity (emx i k))
-   (< i 0) (emi i-varg (emx (- (- i) 1) k))
+   (> i 0) (pokef i-arity (poke i k))
+   (< i 0) (poke i-varg (poke (- (- i) 1) k))
    k))
 
   n (? (B l) (B l) ~~)
@@ -447,8 +446,8 @@
 
    ; static arity check : omit the check in the called function
    (check-arity x) (: z (A x) (?
-    (~ (? (homp z) (= i-arity (peeki z)))) x
-    (? (>= (len (B x)) (peekx (seek z 1)))
+    (~ (? (homp z) (= i-arity (peek z)))) x
+    (? (>= (len (B x)) (peek (seek z 1)))
      (X (seek z 2) (B x)) ; we're good, skip the check
      (, (. 'check-arity) (nope))))) ; oops wrong arity, good thing we caught it at compile time !
 
@@ -530,10 +529,10 @@
  ; generates code to produce the value of the expression
  ; produced by the first moiety.
 
- ((xc i k) e m) (emif i (k e (+ m 1)))
- ((xd x k) e m) (emx x (k e (+ m 1)))
+ ((xc i k) e m) (pokef i (k e (+ m 1)))
+ ((xd x k) e m) (poke x (k e (+ m 1)))
 
- (emif i h) ((? (: q (tget fuse i)) q emi) i h)
+ (pokef i h) ((? (: q (tget fuse i)) q poke) i h)
 
  (Im x k) (:
   (type-sym x) (?
@@ -548,7 +547,7 @@
  ; top into the thread.
  (((pushr s) k) e m) (: q (k e m) (A (tset e s (X q (tget e s)))))
  (((popr  s) k) e m) (: q (k e m) (, (tset e s (B (tget e s))) q))
- (((peekr s) k) e m) (: q (k e (+ m 1)) (emx (A (tget e s)) q))
+ (((peekr s) k) e m) (: q (k e (+ m 1)) (poke (A (tget e s)) q))
 
  push1 (pushr 's1) push2 (pushr 's2)
  pop1  (popr  's1) pop2  (popr  's2)
@@ -568,7 +567,7 @@
       (nope'type'error': t'for q))
   (co k (? t (cu produces t) id)))
 
- (consumes h) (: i (peeki h) (?
+ (consumes h) (: i (peek h) (?
   (= i i-idmo) 'hom (= i i-idno) 'num
   (= i i-idtwo) 'two (= i i-idtbl) 'tbl))
 
@@ -579,10 +578,10 @@
      (fin e m) (:
       thd (k e (+ m 2))
       ex (A (tget e's2))
-      i (peeki ex)
-      (? (= i i-ret) (emi i thd) ; forward return instructions
-       (emif i-jump ; otherwise jump somewhere ...
-        (emx (? (= i i-jump) (peekx (seek ex 1)) ex) thd))))
+      i (peek ex)
+      (? (= i i-ret) (poke i thd) ; forward return instructions
+       (pokef i-jump ; otherwise jump somewhere ...
+        (poke (? (= i i-jump) (peek (seek ex 1)) ex) thd))))
      (? (~ (B x)) (eval (A x) fin)
       (eval (A x) (pop1 (xc i-br1 (peek1
        (loop (BB x) (push1 (eval (AB x) fin)))))))))
@@ -590,21 +589,21 @@
 
    ((lamb x k) e m) (:
     (nom e k) ; try to pick a name for this function
-     (: i (peeki k) (?
-      (= i i-deftop) (A (peekx (seek k 1))) ; maybe we're about to set a global?
-      (= i i-defloc) (at (tget e 'loc) (peekx (seek k 1))))) ; or a local
+     (: i (peek k) (?
+      (= i i-deftop) (A (peek (seek k 1))) ; maybe we're about to set a global?
+      (= i i-defloc) (at (tget e 'loc) (peek (seek k 1))))) ; or a local
 
     (clo-thd e x k) (:
      (loop x k) (? (~ x) k
       (loop (B x) (eval (A x) (xc i-push k))))
-     (k e m) (emi i-take (emx (len x) (hom (+ m 2))))
+     (k e m) (poke i-take (poke (len x) (hom (+ m 2))))
      ((loop x k) e 0))
 
     l ((-> 'hom k) e (+ m 2))
     y (ltu e (nom e l) x)
-    (? (homp-strict y) (emif i-imm (emx y l))
-     (emi (? (tget e 'loc) i-encl1 i-encl0)
-      (emx (X (B y) (clo-thd e (A y) k)) l))))
+    (? (homp-strict y) (pokef i-imm (poke y l))
+     (poke (? (tget e 'loc) i-encl1 i-encl0)
+      (poke (X (B y) (clo-thd e (A y) k)) l))))
 
    (seq x k) (? x (eval (A x) (seq (B x) k)) k)
    (app a b k) (:
@@ -635,7 +634,7 @@
     (app z (B x) k))))
 
   ((symb x k) e m) (:
-   (late d) (emif i-late (emx (X d x) (k e (+ m 2))))
+   (late d) (pokef i-late (poke (X d x) (k e (+ m 2))))
 
    s (A (: r (look e x))) (?
     (= s 'here) ((Im (B r) k) e m)
@@ -665,7 +664,7 @@
 ; " drop privileges "
 (: dels (cu (flip each) (cu tdel _ns))
    insns (filter (tkeys _ns) (\ k (= "i-" (ssub (ynom k) 0 2))))
-   locs '(boot egg emi macros emx hom seek peeki peekx hfin _ns)
+   locs '(boot egg poke macros hom seek peek hfin _ns)
   (each (L insns locs) dels))
 ;ev
 (:
