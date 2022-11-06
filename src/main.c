@@ -1,5 +1,19 @@
 #include "la.h"
 #include <getopt.h>
+#include <string.h>
+#include <errno.h>
+
+static bool la_script(la v, const char *path) {
+  FILE *in = fopen(path, "r");
+  if (!in) return
+    errp(v, "%s : %s", path, strerror(errno)),
+    false;
+  bool ok = true;
+  for (ob x; ok && !feof(in);
+    x = la_rx(v, in),
+    ok = x ? la_ev(v, x) : feof(in));
+  if (!ok) errp(v, "%s : %s", path, "error");
+  return fclose(in), ok; }
 
 int main(int ac, char **av) {
   const char

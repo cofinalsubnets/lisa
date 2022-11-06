@@ -168,8 +168,8 @@
    (? (= (f) (A (: j (fold f m x)))) (B j) j))
 
   ((ordr i) x k) (?
-   (~ x) (Im () k)
-   (~ (B x)) (Im 1 k)
+   (~ x) (Im 0 k)
+   (~ (B x)) (Im -1 k)
    (eval (A x) (:
     (fold k x y)
      (eval x (xc i (? (~ y) (push2 k)
@@ -236,12 +236,12 @@
 
 
    emi (nary i-emi 'hom 'num 'hom)
-   emx (nary i-emx 'hom () 'hom)
+   emx (nary i-emx 'hom 0 'hom)
 
-   tget (nary i-tget ()   'tbl ())
-   tset (nary i-tset ()   'tbl () ())
+   tget (nary i-tget 0    'tbl 0)
+   tset (nary i-tset 0    'tbl 0 0)
    tlen (nary i-tlen 'num 'tbl)
-   thas (nary i-thas ()   'tbl ())
+   thas (nary i-thas 0    'tbl 0)
 
    < (ordr i-lt) <= (ordr i-lteq)
    >= (ordr i-gteq) > (ordr i-gt)

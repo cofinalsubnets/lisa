@@ -16,18 +16,6 @@ static bool
   inst(la, const char*, vm*);
 static sym symofs(la, const char*);
 
-NoInline bool la_script(la v, const char *path) {
-  FILE *in = fopen(path, "r");
-  if (!in) return
-    errp(v, "%s : %s", path, strerror(errno)),
-    false;
-  bool ok = true;
-  for (ob x; ok && !feof(in);
-    x = la_rx(v, in),
-    ok = x ? la_ev(v, x) : feof(in));
-  if (!ok) errp(v, "%s : %s", path, "error");
-  return fclose(in), ok; }
-
 void la_close(la v) {
   if (v) free(v->pool), v->pool = NULL; }
 

@@ -31,15 +31,13 @@ typedef struct env {
 // n = number of required arguments; otherwise it is -n-1
 
 static Inline mo pull(la v, env *e, size_t m) { return
-  ((mo (*)(la, env*, size_t)) getnum(*v->sp++))(v, e, m); }
+  ((mo (*)(la, env*, size_t)) (*v->sp++))(v, e, m); }
 
 // apply instruction pullbacks
 static Inline mo pb1(vm *i, mo k) {
   return G(--k) = i, k; }
 static Inline mo pb2(vm *i, ob x, mo k) {
   return pb1(i, pb1((vm*) x, k)); }
-
-#define N putnum
 
 static bool scan(la, env*, ob) NoInline;
 
@@ -106,7 +104,7 @@ static Inline ob new_scope(la v, env *e, ob arg, ob nom) {
     nil, // local variables
     nil, // closure variables
     nom, // function name
-    N(asig), // arity signature
+    putnum(asig), // arity signature
     nil, // address stack 1
     nil, // address stack 2
     e ? (ob) *e : nil, // parent scope
@@ -144,9 +142,9 @@ static NoInline ob linitp(la v, ob x, ob *d) {
 static Inline ob comp_body(la v, env *e, ob x) {
   intptr_t i;
   if (!pushs(v,
-        N(r_co_x), x,
-        N(r_pb1), N(ret),
-        N(r_co_ini),
+        r_co_x, x,
+        r_pb1, ret,
+        r_co_ini,
         NULL) ||
       !scan(v, e, v->sp[1]) ||
       !(x = (ob) pull(v, e, 4)))
@@ -182,14 +180,14 @@ static Inline ob co_fn_clo(la v, env *e, ob arg, ob seq) {
   mm(&arg), mm(&seq);
 
   arg = pushs(v,
-    N(r_pb2), N(take), N(i),
-    N(r_co_ini),
+    r_pb2, take, putnum(i),
+    r_co_ini,
     NULL) ? arg : 0;
 
   while (arg && twop(arg)) arg =
     pushs(v,
-      N(r_co_x), A(arg),
-      N(r_pb1), N(push),
+      r_co_x, A(arg),
+      r_pb1, push,
       NULL) ? B(arg) : 0;
 
   arg = arg ? (ob) pull(v, e, 0) : arg;
@@ -198,7 +196,7 @@ static Inline ob co_fn_clo(la v, env *e, ob arg, ob seq) {
 
 Co(co_fn, ob x) {
   vm *j = imm;
-  ob k, nom = *v->sp == N(r_co_def_bind) ? v->sp[1] : nil;
+  ob k, nom = *v->sp == (ob) r_co_def_bind ? v->sp[1] : nil;
   with(nom, with(x, k = (ob) pull(v, e, m+2)));
   if (!k) return 0;
   mm(&k);
@@ -221,8 +219,8 @@ static bool co_def_r(la v, env *e, ob x) {
   return (x = rw_let_fn(v, x)) &&
    (with(x, _ = co_def_r(v, e, BB(x))), _) &&
    pushs(v,
-     N(r_co_x), AB(x),
-     N(r_co_def_bind), A(x),
+     r_co_x, AB(x),
+     r_co_def_bind, A(x),
      NULL); }
 
 // syntactic sugar for define
@@ -235,7 +233,7 @@ static Inline bool co_def_sugar(la v, two x) {
     (x = pair(v, (ob) x, nil)) &&
     (x = pair(v, (ob) v->lex[Lamb], (ob) x)) &&
     (x = pair(v, (ob) x, nil)) &&
-    pushs(v, N(r_co_x), (ob) x, NULL); }
+    pushs(v, r_co_x, x, NULL); }
 
 Co(co_def, ob x) {
   if (!twop(B(x))) return imx(v, e, m, imm, nil);
@@ -286,16 +284,16 @@ static bool co_if_loop(la v, env *e, ob x) {
   x = twop(x) ? x : (ob) pair(v, nil, nil);
   if (!x) return false;
   if (!twop(B(x))) return
-    pushs(v, N(r_co_x), A(x), N(co_if_pre_con), NULL);
+    pushs(v, r_co_x, A(x), co_if_pre_con, NULL);
   with(x,
-    _ = pushs(v, N(co_if_post_con), N(r_co_x),
-             AB(x), N(co_if_pre_con), NULL),
+    _ = pushs(v, co_if_post_con, r_co_x,
+             AB(x), co_if_pre_con, NULL),
     _ = _ ? co_if_loop(v, e, BB(x)) : _);
-  return _ ? pushs(v, N(r_co_x), A(x), N(co_if_pre_ant), NULL) : 0; }
+  return _ ? pushs(v, r_co_x, A(x), co_if_pre_ant, NULL) : 0; }
 
 Co(co_if, ob x) {
   bool _;
-  with(x, _ = pushs(v, N(co_if_pre), NULL));
+  with(x, _ = pushs(v, co_if_pre, NULL));
   _ = _ && co_if_loop(v, e, x);
   if (!_) return 0;
   mo pf = pull(v, e, m);
@@ -352,13 +350,13 @@ Co(r_co_x) {
 Co(co_ap, ob f, ob args) {
   mm(&args);
   if (!pushs(v,
-        N(r_co_x), f,
-        N(r_pb1), N(idmo),
-        N(r_co_ap_call), N(llen(args)),
+        r_co_x, f,
+        r_pb1, idmo,
+        r_co_ap_call, putnum(llen(args)),
         NULL))
     return um, NULL;
   for (; twop(args); args = B(args))
-    if (!pushs(v, N(r_co_x), A(args), N(r_pb1), N(push), NULL))
+    if (!pushs(v, r_co_x, A(args), r_pb1, push, NULL))
       return um, NULL;
   return um, pull(v, e, m); }
 
@@ -366,7 +364,7 @@ static NoInline bool seq_mo_loop(la v, env *e, ob x) {
   if (!twop(x)) return true;
   bool _;
   with(x, _ = seq_mo_loop(v, e, B(x)));
-  return _ && pushs(v, N(r_co_x), A(x), NULL); }
+  return _ && pushs(v, r_co_x, A(x), NULL); }
 
 Co(co_seq, ob x) { return
   x = twop(x) ? x : (ob) pair(v, x, nil),
@@ -386,7 +384,7 @@ Co(co_two, ob x) {
   return co_ap(v, e, m, a, B(x)); }
 
 Co(r_pb1) {
-  vm *i = (vm*) getnum(*v->sp++);
+  vm *i = (vm*) (*v->sp++);
   mo k = pull(v, e, m + 1);
   return k ? pb1(i, k): 0; }
 
@@ -396,7 +394,7 @@ static NoInline mo imx(la v, env *e, size_t m, vm *i, ob x) {
   return k ? pb2(i, x, k) : 0; }
 
 Co(r_pb2) {
-  vm *i = (vm*) getnum(*v->sp++);
+  vm *i = (vm*) (*v->sp++);
   ob x = *v->sp++;
   return imx(v, e, m, i, x); }
 
@@ -408,8 +406,8 @@ Co(r_co_ini) {
 
 static Inline mo ana(la v, ob x) {
   bool ok = pushs(v,
-    N(r_co_x), x,
-    N(r_pb1), N(ret),
-    N(r_co_ini),
+    r_co_x, x,
+    r_pb1, ret,
+    r_co_ini,
     NULL);
   return ok ? pull(v, 0, 0) : 0; }

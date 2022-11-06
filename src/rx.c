@@ -12,7 +12,7 @@ static ob
   rxtwo(la, FILE*);
 
 ob la_rx(la v, FILE *i) { return
-  pushs(v, putnum(rxret), NULL) ? rx(v, i) : 0; }
+  pushs(v, rxret, NULL) ? rx(v, i) : 0; }
 
 Vm(rx_f) {
   Have(Width(two));
@@ -38,7 +38,7 @@ static int rxchar(FILE *i) {
       case '\n': case EOF: return rxchar(i); } } }
 
 static Inline ob pull(la v, FILE *i, ob x) { return
-  ((ob (*)(la, FILE*, ob))(getnum(*v->sp++)))(v, i, x); }
+  ((ob (*)(la, FILE*, ob))(*v->sp++))(v, i, x); }
 
 static ob rxret(la v, FILE *i, ob x) { return x; }
 
@@ -47,7 +47,7 @@ static ob rxtwo_cons(la v, FILE *i, ob x) {
   return pull(v, i, x ? (ob) pair(v, y, x) : x); }
 
 static ob rxtwo_cont(la v, FILE *i, ob x) {
-  return !x || !pushs(v, putnum(rxtwo_cons), x, NULL) ?
+  return !x || !pushs(v, rxtwo_cons, x, NULL) ?
     pull(v, i, 0) :
     rxtwo(v, i); }
 
@@ -63,7 +63,7 @@ static NoInline ob rx(la v, FILE *i) {
     case '(': return rxtwo(v, i);
     case '"': return pull(v, i, (ob) rxstr(v, i));
     case '\'': return
-      pushs(v, putnum(rxq), NULL) ? rx(v, i) : pull(v, i, 0); }
+      pushs(v, rxq, NULL) ? rx(v, i) : pull(v, i, 0); }
   ungetc(c, i);
   str a = rxatomstr(v, i);
   ob x = a ? rxatom(v, a) : 0;
@@ -76,7 +76,7 @@ static NoInline ob rxtwo(la v, FILE *i) {
     case EOF: return pull(v, i, 0);
     default: return
       ungetc(c, i),
-      pushs(v, putnum(rxtwo_cont), NULL) ?
+      pushs(v, rxtwo_cont, NULL) ?
         rx(v, i) :
         pull(v, i, 0); } }
 

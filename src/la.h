@@ -99,7 +99,7 @@ struct la_carrier {
   ob xp, *hp, *sp;
 
   tbl topl; // global scope
-  sym syms, // symbol table
+  sym syms, // symbol table // TODO use a hash
       lex[LexN]; // lexicon
   intptr_t rand;
 
@@ -107,11 +107,20 @@ struct la_carrier {
   size_t len;
   ob *pool;
   keep safe;
+  // TODO list of finalizers
   union {
     clock_t t0;
     ob *cp; // TODO copy pointer for cheney's algorithm
   } run;
 };
+
+// FIXME develop towards public API
+bool la_lib(la_carrier, const char*);
+la_point
+  la_ev(la_carrier, la_point), // eval a value
+  la_rx(la_carrier, FILE*); // read a value
+long la_tx(la_carrier, FILE*, la_point); // write a value
+
 
 // FIXME remove or hide these
 ob hnom(la, mo);
@@ -223,8 +232,10 @@ static Inline bool livep(la v, ob x) {
     (ob*) x < v->pool + v->len; }
 
 _Static_assert(-1 == -1 >> 1, "signed >>");
-_Static_assert(sizeof(void*) == sizeof(size_t),
-  "size_t matches pointer size");
+_Static_assert(sizeof(size_t) == sizeof(void*),
+  "size_t size == data pointer size");
+_Static_assert(sizeof(vm*) == sizeof(void*),
+  "function pointer size == data pointer size");
 
 static Inline size_t ror(size_t x, size_t n) {
   return (x<<((8*sizeof(size_t))-n))|(x>>n); }
