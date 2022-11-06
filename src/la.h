@@ -303,7 +303,7 @@ i_internals(ninl)
   \
  _(sym_f, "sym") _(symp_f, "symp") _(ynom_f, "ynom")\
   \
- _(rx_f, "rx") _(tx_f, ".") _(txc_f, "putc")\
+ _(tx_f, ".") _(txc_f, "putc") _(rxc_f, "getc")\
   \
  _(eq_f, "=") _(lt_f, "<") _(lteq_f, "<=")\
  _(gteq_f, ">=") _(gt_f, ">") _(nilp_f, "nilp")\

@@ -2,6 +2,8 @@
 #include <string.h>
 #include <ctype.h>
 
+Vm(rxc_f) { return ApC(ret, putnum(fgetc(stdin))); }
+
 static str
   rxatomstr(la, FILE*),
   rxstr(la, FILE*);
@@ -13,17 +15,6 @@ static ob
 
 ob la_rx(la v, FILE *i) { return
   pushs(v, rxret, NULL) ? rx(v, i) : 0; }
-
-Vm(rx_f) {
-  Have(Width(two));
-  sp = setw(sp - Width(two), nil, Width(two));
-  Pack();
-  ob _ = la_rx(v, stdin);
-  Unpack();
-  if (!_) return ApC(ret, feof(stdin) ? nil : putnum(1));
-  two w = ini_two(hp, _, nil);
-  hp += Width(two);
-  return ApC(ret, (ob) w); }
 
 ////
 /// " the parser "

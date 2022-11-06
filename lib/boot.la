@@ -649,7 +649,7 @@
   ((? (twop x) list (symp x) symb Im) x k))
 
  (ini e m) ((xc i-ret (xd (tget e 'nom) (\ _ m (hom m)))) e m)
- (ev x) (: e (env () () ()) (((eval (weak e x) ini) e 0) x))
+ (ev x) (: e (env 0 0 0) (((eval (weak e x) ini) e 0) x))
   ;; end of compiler namespace ; now return the eval function
 ;  ev ; comment this line to define internals at toplevel
   )))

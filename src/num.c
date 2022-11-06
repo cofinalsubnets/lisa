@@ -79,9 +79,9 @@ Vm(band_f) {
   for (size_t i = 0; i < fp->argc; xp &= getnum(fp->argv[i++]));
   return ApC(ret, putnum(xp)); }
 
-Vm(bnot_f) {
-  xp = fp->argc ? *fp->argv : 0;
-  return ApC(ret, ~xp|1); }
+Vm(bnot_f) { return
+  xp = fp->argc ? *fp->argv : 0,
+  ApC(ret, ~xp|1); }
 
 Vm(sar_f) {
   if (fp->argc == 0) return ApC(ret, xp);
@@ -99,6 +99,6 @@ Vm(sal_f) {
   do xp <<= getnum(fp->argv[i++]); while (i < fp->argc);
   return ApC(ret, putnum(xp)); }
 
-Vm(rand_f) {
-  v->rand = lcprng(v->rand);
-  return ApC(ret, putnum(v->rand)); }
+Vm(rand_f) { return
+  v->rand = lcprng(v->rand),
+  ApC(ret, putnum(v->rand)); }

@@ -12,7 +12,7 @@ lib_dir=lib
 bin_release=$(build_dir)/$(nom)
 bin_debug=$(build_dir)/$(nom).dbg
 
-boot=$(lib_dir)/$(nom).$(suff)
+boot=$(lib_dir)/boot.$(suff)
 lib=$(boot)
 
 # installation

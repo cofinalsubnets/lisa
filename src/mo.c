@@ -38,7 +38,7 @@ tag motag(mo k) {
 Vm(hom_f) {
   ArityCheck(1);
   size_t len = getnum(fp->argv[0]);
-  Have(len);
+  Have(len + Width(tag));
   mo k = setw(ini_mo(hp, len), nil, len);
   hp += len + Width(tag);
   return ApC(ret, (ob) (k + len)); }

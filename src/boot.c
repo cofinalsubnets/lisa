@@ -1,14 +1,14 @@
 #include "la.h"
 
+static mo ana(la, ob);
+
 ob la_ev(la v, ob _) {
   if (!pushs(v, _, NULL)) return 0;
   ob ev = tblget(v, v->topl, (ob) v->lex[Eval]);
   struct mo go[] = { {call}, {(vm*) putnum(1)}, {yield} };
   return call(v, ev, go, v->hp, v->sp, v->fp); }
 
-
 // bootstrap eval interpreter function
-static mo ana(la, ob);
 Vm(ev_f) {
   ArityCheck(1);
   mo y;
@@ -141,11 +141,7 @@ static NoInline ob linitp(la v, ob x, ob *d) {
 
 static Inline ob comp_body(la v, env *e, ob x) {
   intptr_t i;
-  if (!pushs(v,
-        r_co_x, x,
-        r_pb1, ret,
-        r_co_ini,
-        NULL) ||
+  if (!pushs(v, r_co_x, x, r_pb1, ret, r_co_ini, NULL) ||
       !scan(v, e, v->sp[1]) ||
       !(x = (ob) pull(v, e, 4)))
     return 0;
@@ -179,16 +175,12 @@ static Inline ob co_fn_clo(la v, env *e, ob arg, ob seq) {
   size_t i = llen(arg);
   mm(&arg), mm(&seq);
 
-  arg = pushs(v,
-    r_pb2, take, putnum(i),
-    r_co_ini,
-    NULL) ? arg : 0;
+  arg = pushs(v, r_pb2, take, putnum(i), r_co_ini, NULL) ?
+    arg : 0;
 
   while (arg && twop(arg)) arg =
-    pushs(v,
-      r_co_x, A(arg),
-      r_pb1, push,
-      NULL) ? B(arg) : 0;
+    pushs(v, r_co_x, A(arg), r_pb1, push, NULL) ?
+      B(arg) : 0;
 
   arg = arg ? (ob) pull(v, e, 0) : arg;
   arg = arg ? (ob) pair(v, seq, arg) : arg;
@@ -218,10 +210,7 @@ static bool co_def_r(la v, env *e, ob x) {
   bool _;
   return (x = rw_let_fn(v, x)) &&
    (with(x, _ = co_def_r(v, e, BB(x))), _) &&
-   pushs(v,
-     r_co_x, AB(x),
-     r_co_def_bind, A(x),
-     NULL); }
+   pushs(v, r_co_x, AB(x), r_co_def_bind, A(x), NULL); }
 
 // syntactic sugar for define
 static Inline bool co_def_sugar(la v, two x) {
@@ -384,7 +373,7 @@ Co(co_two, ob x) {
   return co_ap(v, e, m, a, B(x)); }
 
 Co(r_pb1) {
-  vm *i = (vm*) (*v->sp++);
+  vm *i = (vm*) *v->sp++;
   mo k = pull(v, e, m + 1);
   return k ? pb1(i, k): 0; }
 
@@ -405,9 +394,5 @@ Co(r_co_ini) {
   return k; }
 
 static Inline mo ana(la v, ob x) {
-  bool ok = pushs(v,
-    r_co_x, x,
-    r_pb1, ret,
-    r_co_ini,
-    NULL);
+  bool ok = pushs(v, r_co_x, x, r_pb1, ret, r_co_ini, NULL);
   return ok ? pull(v, 0, 0) : 0; }
