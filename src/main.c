@@ -28,7 +28,7 @@ int main(int ac, char **av) {
   bool ok = la_open(&V) == LA_OK;
 
   if (ok && boot) {
-    ok = la_lib(&V, "boot");
+    ok = la_lib(&V, "boot") == LA_OK;
     if (!ok) errp(&V, "bootstrap failed"); }
 
   // run scripts

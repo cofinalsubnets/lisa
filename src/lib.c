@@ -3,7 +3,7 @@
 #include <errno.h>
 #include <stdarg.h>
 
-static NoInline str str0catr(la v, size_t l, va_list xs) {
+static NoInline str str0catr(la_carrier v, size_t l, va_list xs) {
   char *cs = va_arg(xs, char*);
   if (!cs) {
     str s = cells(v, Width(str) + b2w(l+1));
@@ -14,7 +14,7 @@ static NoInline str str0catr(la v, size_t l, va_list xs) {
   if (s) memcpy(s->text + l, cs, i);
   return s; }
 
-static str str0cat(la v, ...) {
+static str str0cat(la_carrier v, ...) {
   va_list xs;
   va_start(xs, v);
   str s = str0catr(v, 0, xs);
@@ -24,33 +24,38 @@ static str str0cat(la v, ...) {
 #include <sys/stat.h>
 // the str returned is null-terminated.
 // FIXME distunguish OOM from file not found
-static str seek_lib_path(la v, const char *nom) {
+static la_status seek_lib_path(la_carrier v, const char *nom) {
   str s;
   char *home = getenv("HOME");
   struct stat _;
   if (home) {
     s = str0cat(v, home, "/.local/lib/lisa/", nom, ".la", NULL);
-    if (s && 0 == stat(s->text, &_)) return s; }
+    if (!s) return LA_XOOM;
+    if (0 == stat(s->text, &_)) goto ok; }
   s = str0cat(v, "/lib/lisa/", nom, ".la", NULL);
-  if (s && 0 == stat(s->text, &_)) return s;
+  if (!s) return LA_XOOM;
+  if (0 == stat(s->text, &_)) goto ok;
   s = str0cat(v, "/usr/lib/lisa/", nom, ".la", NULL);
-  if (s && 0 == stat(s->text, &_)) return s;
+  if (!s) return LA_XOOM;
+  if (0 == stat(s->text, &_)) goto ok;
   s = str0cat(v, "/usr/local/lib/lisa/", nom, ".la", NULL);
-  if (s && 0 == stat(s->text, &_)) return s;
-  return 0; }
+  if (!s) return LA_XOOM;
+  if (0 == stat(s->text, &_)) goto ok;
+  return LA_XSYS;
+ok:
+  v->xp = (ob) s;
+  return LA_OK; }
 
-bool la_lib(la v, const char *nom) {
-  str path = seek_lib_path(v, nom);
-  if (!path) return
-    errp(v, "module not found : %s", nom),
-    false;
+la_status la_lib(la_carrier v, const char *nom) {
+  la_status s = seek_lib_path(v, nom);
+  if (s != LA_OK) return s;
+  str path = (str) v->xp;
   FILE *in = fopen(path->text, "r");
-  if (!in) return
-    errp(v, "%s : %s", path->text, strerror(errno)),
-    false;
+  if (!in) return LA_XSYS;
   bool ok = true;
   for (ob x; ok && !feof(in);
     x = la_rx(v, in),
     ok = x ? la_ev(v, x) : feof(in));
-  if (!ok) errp(v, "%s : %s", "error loading module", nom);
-  return fclose(in), ok; }
+  fclose(in);
+  if (!ok) return LA_XDOM; // FIXME
+  return LA_OK; }
