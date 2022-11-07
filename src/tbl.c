@@ -3,8 +3,13 @@
 // hash tables
 // some of the worst code is here :(
 
-#define KEY(e) ((ob*)(e))[0]
-#define VAL(e) ((ob*)(e))[1]
+typedef struct la_tbl_ent {
+  la_ob key, val;
+  struct la_tbl_ent *next;
+} *la_tbl_ent;
+
+#define KEY(e) ((la_tbl_ent)(e))->key
+#define VAL(e) ((la_tbl_ent)(e))->val
 #define NEXT(e) ((ob*)(e))[2]
 
 static Inline tbl ini_tbl(void *_, size_t len, size_t cap, ob *tab) {

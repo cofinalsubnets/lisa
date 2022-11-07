@@ -25,33 +25,32 @@ int main(int ac, char **av) {
 
   // init
   struct la_carrier V;
-  bool ok = la_open(&V) == LA_OK;
+  enum la_status s = la_open(&V);
 
-  if (ok && boot) {
-    ok = la_lib(&V, "boot") == LA_OK;
-    if (!ok) errp(&V, "bootstrap failed"); }
+  if (s == LA_OK && boot) {
+    s = la_lib(&V, "boot");
+    if (s != LA_OK) errp(&V, "bootstrap failed"); }
 
   // run scripts
-  while (ok && *av) {
+  while (s == LA_OK && *av) {
     const char *path = *av++;
     FILE *in = fopen(path, "r");
     if (!in)
       errp(&V, "%s : %s", path, strerror(errno)),
-      ok = false;
+      s = LA_XSYS;
     else {
-      la_status s;
       do s = la_ev_f(&V, in);
       while (s == LA_OK);
       fclose(in);
-      ok = s == LA_EOF;
-      if (!ok) errp(&V, "%s : %s", path, "error"); } }
+      s = s == LA_EOF ? LA_OK : s;
+      if (s != LA_OK) errp(&V, "%s : %s", path, "error"); } }
 
   // repl
-  if (ok && shell) for (;;) {
-    la_status s = la_ev_f(&V, stdin);
-    if (s == LA_EOF) break;
-    if (s == LA_OK) la_tx(&V, stdout, V.xp), fputc('\n', stdout); }
+  if (s == LA_OK && shell) for (;;) {
+    enum la_status t = la_ev_f(&V, stdin);
+    if (t == LA_EOF) break;
+    if (t == LA_OK) la_tx(&V, stdout, V.xp), fputc('\n', stdout); }
     // TODO indicate parse error
 
   la_close(&V);
-  return ok ? EXIT_SUCCESS : EXIT_FAILURE; }
+  return s; }

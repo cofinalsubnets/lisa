@@ -1,10 +1,13 @@
 #include "lisa.h"
 #include <stdlib.h>
 #include <time.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <stdio.h>
 
 // thanks !!
 
-typedef la_point ob;
+typedef intptr_t la_point, la_ob, ob;
 typedef la_carrier la;
 typedef struct mo *mo; // procedures
 typedef struct sf *sf; // stack frame
