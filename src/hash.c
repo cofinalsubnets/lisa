@@ -1,9 +1,9 @@
 #include "la.h"
 
-// FIXME this is a totally naive, unproven hashing method.
+// FIXME this is a totally ad hoc, unproven hashing method.
 //
 // its performance on hash tables and anonymous functions
-// is particularly bad: they all go to the same bucket!
+// is very bad (they all go to the same bucket!)
 //
 // strings, symbols, and numbers do better. for pairs it
 // depends on what they contain.

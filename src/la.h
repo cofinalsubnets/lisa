@@ -19,7 +19,7 @@ typedef enum la_status {
   LA_XOOM,
 } la_status;
 
-typedef intptr_t la_point, la_ob, ob;
+typedef intptr_t la_ob, ob;
 typedef la_carrier la;
 typedef struct mo *mo; // procedures
 typedef struct sf *sf; // stack frame
@@ -134,7 +134,7 @@ la_status
   la_lib(la_carrier, const char*),
   la_rx_f(la_carrier, FILE*),
   la_ev_f(la_carrier, FILE*);
-long la_tx(la_carrier, FILE*, la_point); // write a value
+long la_tx(la_carrier, FILE*, la_ob); // write a value
 
 
 // FIXME remove or hide these

@@ -1,7 +1,7 @@
 #include "la.h"
 #include <string.h>
 
-static long txmon(la, FILE*, ob);
+static long tx_mo_n(la, FILE*, ob);
 
 // s-expression writer
 long la_tx(la v, FILE *o, ob x) {
@@ -9,7 +9,7 @@ long la_tx(la v, FILE *o, ob x) {
   if (G(x) == disp) return ((mtbl) GF(x))->emit(v, o, x);
   if (primp((mo) x)) return
     fprintf(o, "\\%s", ((struct prim*)x)->nom);
-  return txmon(v, o, hnom(v, (mo) x)); }
+  return tx_mo_n(v, o, hnom(v, (mo) x)); }
 
 Vm(tx_f) {
   size_t i = 0, l = fp->argc;
@@ -34,7 +34,7 @@ long fputstr(FILE *o, str s) {
 
 // FIXME this is really weird
 // print a function name
-static NoInline long txmon(la v, FILE *o, ob x) {
+static NoInline long tx_mo_n(la v, FILE *o, ob x) {
   if (symp(x)) {
     if (fputc('\\', o) == EOF) return -1;
     long r = la_tx(v, o, x);
@@ -44,11 +44,11 @@ static NoInline long txmon(la v, FILE *o, ob x) {
   long r = 0, a;
   // FIXME this is weird
   if (symp(A(x)) || twop(A(x))) {
-    a = txmon(v, o, A(x));
+    a = tx_mo_n(v, o, A(x));
     if (a < 0) return a;
     r += a; }
   if (symp(B(x)) || twop(B(x))) {
-    a = txmon(v, o, B(x));
+    a = tx_mo_n(v, o, B(x));
     if (a < 0) return a;
     r += a; }
   return r; }
