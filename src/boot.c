@@ -1,14 +1,5 @@
 #include "la.h"
 
-// return to C
-static Vm(yield) { return Pack(), xp; }
-
-ob la_ev(la v, ob _) {
-  if (!pushs(v, _, NULL)) return 0;
-  ob ev = tblget(v, v->topl, (ob) v->lex[Eval]);
-  struct mo go[] = { {call}, {(vm*) putnum(1)}, {yield} };
-  return call(v, ev, go, v->hp, v->sp, v->fp); }
-
 static mo ana(la, ob);
 
 // bootstrap eval interpreter function

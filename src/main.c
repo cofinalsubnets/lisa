@@ -39,18 +39,19 @@ int main(int ac, char **av) {
       errp(&V, "%s : %s", path, strerror(errno)),
       ok = false;
     else {
-      for (ob x; ok && !feof(in);
-        x = la_rx(&V, in),
-        ok = x ? la_ev(&V, x) : feof(in));
-      if (!ok) errp(&V, "%s : %s", path, "error");
-      fclose(in); } }
+      la_status s;
+      do s = la_ev_f(&V, in);
+      while (s == LA_OK);
+      fclose(in);
+      ok = s == LA_EOF;
+      if (!ok) errp(&V, "%s : %s", path, "error"); } }
 
   // repl
-  if (ok && shell) while (!feof(stdin)) {
-    ob _ = la_rx(&V, stdin);
-    if (!_ && !feof(stdin)) errp(&V, "parse error");
-    if (_ && (_ = la_ev(&V, _)))
-      la_tx(&V, stdout, _), fputc('\n', stdout); }
+  if (ok && shell) for (;;) {
+    la_status s = la_ev_f(&V, stdin);
+    if (s == LA_EOF) break;
+    if (s == LA_OK) la_tx(&V, stdout, V.xp), fputc('\n', stdout); }
+    // TODO indicate parse error
 
   la_close(&V);
   return ok ? EXIT_SUCCESS : EXIT_FAILURE; }

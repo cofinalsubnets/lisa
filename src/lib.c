@@ -52,10 +52,7 @@ la_status la_lib(la_carrier v, const char *nom) {
   str path = (str) v->xp;
   FILE *in = fopen(path->text, "r");
   if (!in) return LA_XSYS;
-  bool ok = true;
-  for (ob x; ok && !feof(in);
-    x = la_rx(v, in),
-    ok = x ? la_ev(v, x) : feof(in));
+  do s = la_ev_f(v, in);
+  while (s == LA_OK);
   fclose(in);
-  if (!ok) return LA_XDOM; // FIXME
-  return LA_OK; }
+  return s == LA_EOF ? LA_OK : s; }

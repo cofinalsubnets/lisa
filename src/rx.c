@@ -13,8 +13,15 @@ static ob
   rx(la, FILE*),
   rxtwo(la, FILE*);
 
-ob la_rx(la v, FILE *i) { return
+static ob la_rx(la v, FILE *i) { return
   pushs(v, rxret, NULL) ? rx(v, i) : 0; }
+
+// FIXME doesn't distinguish between OOM and parse error
+la_status la_rx_f(la v, FILE *i) {
+  ob x = la_rx(v, i);
+  return x ? (v->xp = x, LA_OK) :
+    feof(i) ? LA_EOF :
+    LA_XSYN; }
 
 ////
 /// " the parser "

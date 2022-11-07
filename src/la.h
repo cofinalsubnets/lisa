@@ -115,10 +115,10 @@ struct la_carrier {
 };
 
 // FIXME develop towards public API
-la_status la_lib(la_carrier, const char*);
-la_point
-  la_ev(la_carrier, la_point), // eval a value
-  la_rx(la_carrier, FILE*); // read a value
+la_status
+  la_lib(la_carrier, const char*),
+  la_rx_f(la_carrier, FILE*),
+  la_ev_f(la_carrier, FILE*);
 long la_tx(la_carrier, FILE*, la_point); // write a value
 
 
