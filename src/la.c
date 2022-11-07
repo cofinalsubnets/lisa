@@ -16,11 +16,11 @@ void la_reset(la v) {
 void la_close(la v) {
   if (v) free(v->pool), v->pool = NULL; }
 
-bool la_open(la v) {
+la_status la_open(la v) {
   const size_t len = 1 << 10; // must be a power of 2
 
   ob *pool = calloc(len, sizeof(ob));
-  if (!pool) return false;
+  if (!pool) return LA_XOOM;
 
   memset(v, 0, sizeof(struct la_carrier));
 
@@ -54,7 +54,7 @@ bool la_open(la v) {
     && defprims(v);
 
   if (!ok) la_close(v);
-  return ok; }
+  return ok ? LA_OK : LA_XOOM; }
 
 static sym symofs(la v, const char *s) {
   str _ = strof(v, s);

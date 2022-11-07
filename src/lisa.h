@@ -5,19 +5,20 @@
 #include <stdio.h>
 #include <stdbool.h>
 
-enum la_status {
-  LA_OK = 0,
-  LA_DOMAIN_ERROR,
-  LA_ARITY_ERROR,
-  LA_PARSE_ERROR,
-  LA_SYSTEM_ERROR,
-  LA_OUT_OF_MEMORY,
-  LA_OUT_OF_BOUNDS, };
+typedef enum {
+  LA_EOF = -1,
+  LA_OK,
+  LA_XDOM,
+  LA_XARY,
+  LA_XSYN,
+  LA_XSYS,
+  LA_XOOM,
+} la_status;
 
 typedef struct la_carrier *la_carrier;
 typedef intptr_t la_point;
 
-bool la_open(la_carrier);
+la_status la_open(la_carrier);
 void la_close(la_carrier);
 
 #endif

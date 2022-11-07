@@ -25,7 +25,7 @@ int main(int ac, char **av) {
 
   // init
   struct la_carrier V;
-  bool ok = la_open(&V);
+  bool ok = la_open(&V) == LA_OK;
 
   if (ok && boot) {
     ok = la_lib(&V, "boot");

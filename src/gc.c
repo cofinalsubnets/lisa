@@ -1,8 +1,9 @@
 #include "la.h"
 #include <time.h>
 
-static clock_t copy(la, size_t);
-static void copy_(la, size_t, ob*);
+static clock_t
+  copy(la, size_t),
+  copy_(la, size_t, ob*);
 
 // FIXME the garbage collector works pretty well but it could be better:
 //
@@ -57,18 +58,15 @@ bool please(la v, size_t req) {
 //   |                          `------'
 //   t0                  gc time (this cycle)
 static clock_t copy(la v, size_t len) {
-  clock_t t1 = clock(), t0 = v->run.t0, t2;
 
-  ob *pool0 = v->pool,
-     *pool1 = calloc(len, sizeof(ob));
+  ob *pool1 = calloc(len, sizeof(ob));
   if (!pool1) return 0;
 
-  copy_(v, len, pool1);
+  ob *pool0 = v->pool;
+  clock_t u = copy_(v, len, pool1);
   free(pool0);
 
-  t2 = v->run.t0 = clock();
-  t1 = t2 - t1;
-  return t1 ? (t2 - t0) / t1 : 1; }
+  return u; }
 
 static NoInline ob cp_mo(la v, mo src, ob *pool0, ob *top0) {
   tag fin = motag(src);
@@ -91,7 +89,8 @@ Gc(cp) {
   return cp_mo(v, (mo) x, pool0, top0); }
 
 
-static void copy_(la v, size_t len1, ob *pool1) {
+static clock_t copy_(la v, size_t len1, ob *pool1) {
+  clock_t t1 = clock(), t0 = v->run.t0, t2;
   ob len0 = v->len,
      *sp0 = v->sp,
      *pool0 = v->pool,
@@ -129,7 +128,11 @@ static void copy_(la v, size_t len1, ob *pool1) {
     fp->retp = (mo) cp(v, (ob) fp0->retp, pool0, top0);
     sp = fp->argv;
     sp0 = fp0->argv;
-    fp = fp->subd; } }
+    fp = fp->subd; }
+
+  t2 = v->run.t0 = clock();
+  t1 = t2 - t1;
+  return t1 ? (t2 - t0) / t1 : 1; }
 
 // Run a GC cycle from inside the VM
 // XXX calling convention: size of request (bare size_t) in v->xp
