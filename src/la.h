@@ -7,11 +7,23 @@
 
 // thanks !!
 
+typedef struct la_carrier *la_carrier;
+typedef enum la_status {
+  LA_EOF = -1,
+  LA_OK,
+  LA_XDOM,
+  LA_XARY,
+  LA_XNOM,
+  LA_XSYN,
+  LA_XSYS,
+  LA_XOOM,
+} la_status;
+
 typedef intptr_t la_point, la_ob, ob;
 typedef la_carrier la;
 typedef struct mo *mo; // procedures
 typedef struct sf *sf; // stack frame
-typedef ob vm(la, ob, mo, ob*, ob*, sf); // interpreter function type
+typedef la_status vm(la, ob, mo, ob*, ob*, sf); // interpreter function type
 
 // struct needed for type indirection
 // around vm function pointer arrays
@@ -175,8 +187,8 @@ bool
 intptr_t lcprng(intptr_t);
 
 void
-  la_reset(la), // reset interpreter state
-  errp(la, const char*, ...); // print an error with backtrace
+  la_perror(la_carrier, la_status),
+  la_reset(la); // reset interpreter state
 
 struct prim { vm *ap; const char *nom; };
 extern const int64_t mix;
@@ -376,4 +388,4 @@ static Inline mo ini_mo(void *_, size_t len) {
   return k; }
 
 #define Gc(n) ob n(la v, ob x, ob *pool0, ob *top0)
-#define Vm(n) ob n(la v, ob xp, mo ip, ob *hp, ob *sp, sf fp)
+#define Vm(n) la_status n(la v, ob xp, mo ip, ob *hp, ob *sp, sf fp)

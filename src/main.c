@@ -27,29 +27,28 @@ int main(int ac, char **av) {
   struct la_carrier V;
   enum la_status s = la_open(&V);
 
-  if (s == LA_OK && boot) {
-    s = la_lib(&V, "boot");
-    if (s != LA_OK) errp(&V, "bootstrap failed"); }
+  if (s == LA_OK && boot)
+    s = la_lib(&V, "boot"),
+    la_perror(&V, s);
 
   // run scripts
   while (s == LA_OK && *av) {
     const char *path = *av++;
     FILE *in = fopen(path, "r");
-    if (!in)
-      errp(&V, "%s : %s", path, strerror(errno)),
-      s = LA_XSYS;
+    if (!in) la_perror(&V, s = LA_XSYS);
     else {
       do s = la_ev_f(&V, in);
       while (s == LA_OK);
       fclose(in);
       s = s == LA_EOF ? LA_OK : s;
-      if (s != LA_OK) errp(&V, "%s : %s", path, "error"); } }
+      la_perror(&V, s); } }
 
   // repl
   if (s == LA_OK && shell) for (;;) {
     enum la_status t = la_ev_f(&V, stdin);
     if (t == LA_EOF) break;
-    if (t == LA_OK) la_tx(&V, stdout, V.xp), fputc('\n', stdout); }
+    if (t == LA_OK) la_tx(&V, stdout, V.xp), fputc('\n', stdout);
+    else la_perror(&V, t), la_reset(&V); }
     // TODO indicate parse error
 
   la_close(&V);

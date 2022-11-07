@@ -2,7 +2,7 @@
 #include <string.h>
 
 // return to C
-static Vm(yield) { return Pack(), xp; }
+static Vm(yield) { return Pack(), LA_OK; }
 
 static ob la_ev(la v, ob _) {
   if (!pushs(v, _, NULL)) return 0;
@@ -10,12 +10,9 @@ static ob la_ev(la v, ob _) {
   struct mo go[] = { {call}, {(vm*) putnum(1)}, {yield} };
   return call(v, ev, go, v->hp, v->sp, v->fp); }
 
-la_status la_ev_f(la_carrier v, FILE *in) {
-  la_status s = la_rx_f(v, in);
-  if (s != LA_OK) return s;
-  ob x = la_ev(v, v->xp);
-  return x ? LA_OK :
-    LA_XDOM; } // FIXME
+enum la_status la_ev_f(la_carrier v, FILE *in) {
+  enum la_status s = la_rx_f(v, in);
+  return s == LA_OK ? la_ev(v, v->xp) : s; }
 
 // initialization helpers
 static bool
