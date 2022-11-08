@@ -8,7 +8,7 @@
 static NoInline str str0catr(la_carrier v, size_t l, va_list xs) {
   char *cs = va_arg(xs, char*);
   if (!cs) {
-    str s = cells(v, Width(str) + b2w(l+1));
+    str s = cells(v, b2w(sizeof(struct str)) + b2w(l+1));
     if (s) ini_str(s, l+1), s->text[l] = 0;
     return s ; }
   size_t i = strlen(cs);

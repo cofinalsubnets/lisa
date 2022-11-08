@@ -72,9 +72,9 @@ Vm(deftop) {
 Vm(setloc) {
   size_t n = getnum((ob) GF(ip));
   // + 1 for the stack slot
-  Have(n + Width(tag) + 1);
+  Have(n + b2w(sizeof(struct tag)) + 1);
   mo t = memset(ini_mo(hp, n), -1, sizeof(ob) * n);
-  hp += n + Width(tag);
+  hp += n + b2w(sizeof(struct tag));
   *--sp = (ob) t;
   return ApN(2, xp); }
 
@@ -114,9 +114,9 @@ Vm(varg) {
   // slot to hold the nil.
   if (!vdic) return ApC(varg0, xp);
   // in this case we just keep the existing slots.
-  Have(Width(two) * vdic);
+  Have(b2w(sizeof(struct two)) * vdic);
   two t = (two) hp;
-  hp += Width(two) * vdic;
+  hp += b2w(sizeof(struct two)) * vdic;
   for (size_t i = vdic; i--;
     ini_two(t + i, fp->argv[reqd + i], (ob) (t + i + 1)));
   t[vdic-1].b = nil;

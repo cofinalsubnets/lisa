@@ -13,7 +13,7 @@
 typedef struct la_carrier *la_carrier;
 typedef intptr_t la_ob, ob;
 typedef la_carrier la;
-typedef struct mo *mo; // procedures
+typedef struct mo *mo, *la_mo; // procedures
 typedef struct sf *sf; // stack frame
 typedef enum la_status vm(la, ob, mo, ob*, ob*, sf); // interpreter function type
 
@@ -73,7 +73,7 @@ struct la_carrier {
 // FIXME develop towards public API
 enum la_status
   la_lib(la_carrier, const char*),
-  la_rx_f(la_carrier, FILE*),
+  la_call(la_carrier, la_mo, size_t),
   la_ev_f(la_carrier, FILE*);
 
 void la_reset(la); // reset interpreter state
@@ -118,9 +118,6 @@ static Inline size_t b2w(size_t b) {
 static Inline bool livep(la v, ob x) {
   return (ob*) x >= v->pool &&
     (ob*) x < v->pool + v->len; }
-
-#define Width(t) sizeofw(struct t)
-#define sizeofw(t) b2w(sizeof(t))
 
 _Static_assert(-1 == -1 >> 1, "signed >>");
 _Static_assert(sizeof(size_t) == sizeof(void*),

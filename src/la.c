@@ -7,19 +7,6 @@
 #include "lexicon.h"
 #include <string.h>
 
-// return to C
-static Vm(yield) { return Pack(), LA_OK; }
-
-static ob la_ev(la v, ob _) {
-  if (!pushs(v, _, NULL)) return 0;
-  ob ev = tblget(v, v->topl, (ob) v->lex[Eval]);
-  struct mo go[] = { {call}, {(vm*) putnum(1)}, {yield} };
-  return call(v, ev, go, v->hp, v->sp, v->fp); }
-
-enum la_status la_ev_f(la_carrier v, FILE *in) {
-  enum la_status s = la_rx_f(v, in);
-  return s == LA_OK ? la_ev(v, v->xp) : s; }
-
 // initialization helpers
 static bool
   defprims(la),
@@ -35,7 +22,7 @@ void la_reset(la v) {
 void la_close(la v) {
   if (v) free(v->pool), v->pool = NULL; }
 
-la_status la_open(la v) {
+enum la_status la_open(la v) {
   const size_t len = 1 << 10; // must be a power of 2
 
   ob *pool = calloc(len, sizeof(ob));

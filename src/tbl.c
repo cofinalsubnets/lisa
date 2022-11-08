@@ -54,12 +54,11 @@ static ob
   tks(la);
 static bool
   tblss(la, intptr_t, intptr_t);
-
 static void
   tbl_shrink(la, tbl);
 
 tbl mktbl(la v) {
-  tbl t = cells(v, Width(tbl) + 1 + Width(tag));
+  tbl t = cells(v, b2w(sizeof(struct tbl)) + 1 + b2w(sizeof(struct tag)));
   if (t) ini_tbl(t, 0, 0, (ob*) ini_mo(t+1, 1)),
          t->tab[0] = putnum(-1);
   return t; }
@@ -194,7 +193,7 @@ static tbl tblset_s(la v, tbl t, ob k, ob x) {
 static ob tks(la v) {
   size_t len = ((tbl) v->xp)->len;
   two ks;
-  ks = cells(v, Width(two) * len);
+  ks = cells(v, b2w(sizeof(struct two)) * len);
   if (!ks) return 0;
   ob r = nil, *tab = ((tbl) v->xp)->tab;
   while (len) for (ob e = *tab++; !nump(e);
@@ -265,7 +264,7 @@ static intptr_t hxtbl(la v, ob _) {
 
 #include "gc.h"
 static Gc(cptbl) {
-  tbl src = (tbl) x, dst = bump(v, Width(tbl));
+  tbl src = (tbl) x, dst = bump(v, b2w(sizeof(struct tbl)));
   src->head.disp = (vm*) dst;
   return (ob) ini_tbl(dst, src->len, src->cap,
     (ob*) cp(v, (ob) src->tab, pool0, top0)); }

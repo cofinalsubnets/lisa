@@ -28,7 +28,7 @@ static Inline sym ini_sym(void *_, str nom, size_t code) {
 // the table and unpredictable memory allocation isn't safe
 // during garbage collection.
 //
-// FIXME the caller must ensure Avail >= Width(sym)
+// FIXME the caller must ensure Avail >= b2w(sizeof(struct sym))
 // (because GC here would void the tree)
 static sym sskc(la v, sym *y, str b) {
   if (*y) {
@@ -40,16 +40,16 @@ static sym sskc(la v, sym *y, str b) {
       if (a->len == b->len) return z;
       i = a->len < b->len ? -1 : 1; }
     return sskc(v, i < 0 ? &z->l : &z->r, b); }
-  return *y = ini_sym(bump(v, Width(sym)), b,
+  return *y = ini_sym(bump(v, b2w(sizeof(struct sym))), b,
     hash(v, putnum(hash(v, (ob) b)))); }
 
 sym symof(la v, str s) {
-  if (Avail < Width(sym)) {
+  if (Avail < b2w(sizeof(struct sym))) {
     bool _;
-    with(s, _ = please(v, Width(sym)));
+    with(s, _ = please(v, b2w(sizeof(struct sym))));
     if (!_) return 0; }
   return s ? sskc(v, &v->syms, s) :
-    ini_sym(bump(v, Width(sym)), s,
+    ini_sym(bump(v, b2w(sizeof(struct sym))), s,
       v->rand = lcprng(v->rand)); }
 
 #include "vm.h"
@@ -70,7 +70,7 @@ static Gc(cpsym) {
   sym src = (sym) x,
       dst = src->nom ?
         sskc(v, &v->syms, (str) cp(v, (ob) src->nom, pool0, top0)) :
-        memcpy(bump(v, Width(sym)), src, sizeof(struct sym));
+        memcpy(bump(v, b2w(sizeof(struct sym))), src, sizeof(struct sym));
   src->head.disp = (vm*) dst;
   return (ob) dst; }
 

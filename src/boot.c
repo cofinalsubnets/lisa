@@ -1,4 +1,5 @@
 #include "la.h"
+#include "boot.h"
 #include "two.h"
 #include "mo.h"
 #include "ns.h"
@@ -6,15 +7,6 @@
 #include "vm.h"
 #include "gc.h"
 #include <string.h>
-
-static mo ana(la, ob);
-
-// bootstrap eval interpreter function
-Vm(ev_f) {
-  ArityCheck(1);
-  mo y;
-  CallOut(y = ana(v, fp->argv[0]));
-  return y ? ApY(y, xp) : ApC(xoom, xp); }
 
 ////
 ///  the thread compiler
@@ -29,17 +21,6 @@ typedef struct env {
   struct env *par; } *env;
 // if a function is not variadic its arity signature is
 // n = number of required arguments; otherwise it is -n-1
-
-static Inline mo pull(la v, env *e, size_t m) { return
-  ((mo (*)(la, env*, size_t)) (*v->sp++))(v, e, m); }
-
-// apply instruction pullbacks
-static Inline mo pb1(vm *i, mo k) {
-  return G(--k) = i, k; }
-static Inline mo pb2(vm *i, ob x, mo k) {
-  return pb1(i, pb1((vm*) x, k)); }
-
-static bool scan(la, env*, ob) NoInline;
 
 static mo
   r_pb1(la, env*, size_t),
@@ -56,7 +37,23 @@ static mo
   co_two(la, env*, size_t, ob) NoInline,
   imx(la, env*, size_t, vm*, ob) NoInline;
 
+static Inline mo pull(la v, env *e, size_t m) { return
+  ((mo (*)(la, env*, size_t)) (*v->sp++))(v, e, m); }
+
+mo ana(la v, ob x) {
+  bool ok = pushs(v, r_co_x, x, r_pb1, ret, r_co_ini, NULL);
+  return ok ? pull(v, 0, 0) : 0; }
+
 #define Co(nom,...) static mo nom(la v, env *e, size_t m, ##__VA_ARGS__)
+
+static bool scan(la, env*, ob) NoInline;
+
+// apply instruction pullbacks
+static Inline mo pb1(vm *i, mo k) {
+  return G(--k) = i, k; }
+static Inline mo pb2(vm *i, ob x, mo k) {
+  return pb1(i, pb1((vm*) x, k)); }
+
 
 // supplemental list functions
 //
@@ -391,7 +388,3 @@ Co(r_co_ini) {
   if (k) memset(k, -1, m * sizeof(ob)),
          G(k += m) = (vm*) (e ? (*e)->name : nil);
   return k; }
-
-static Inline mo ana(la v, ob x) {
-  bool ok = pushs(v, r_co_x, x, r_pb1, ret, r_co_ini, NULL);
-  return ok ? pull(v, 0, 0) : 0; }

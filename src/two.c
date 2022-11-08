@@ -6,12 +6,12 @@
 // pairs and lists
 static NoInline two pair_gc(la v, ob a, ob b) {
   bool ok;
-  with(a, with(b, ok = please(v, sizeofw(struct two))));
+  with(a, with(b, ok = please(v, b2w(sizeof(struct two)))));
   return ok ? pair(v, a, b) : 0; }
 
 two pair(la v, ob a, ob b) {
-  return Avail >= sizeofw(struct two) ?
-    ini_two(bump(v, sizeofw(struct two)), a, b) :
+  return Avail >= b2w(sizeof(struct two)) ?
+    ini_two(bump(v, b2w(sizeof(struct two))), a, b) :
     pair_gc(v, a, b); }
 
 #include "vm.h"
@@ -19,9 +19,9 @@ Vm(car) { return ApN(1, A(xp)); }
 Vm(cdr) { return ApN(1, B(xp)); }
 
 Vm(cons) {
-  Have(sizeofw(struct two));
+  Have(b2w(sizeof(struct two)));
   xp = (ob) ini_two(hp, xp, *sp++);
-  hp += sizeofw(struct two);
+  hp += b2w(sizeof(struct two));
   return ApN(1, xp); }
 
 Vm(car_f) {
@@ -38,9 +38,9 @@ Vm(cdr_f) {
 
 Vm(cons_f) {
   ArityCheck(2);
-  Have(sizeofw(struct two));
+  Have(b2w(sizeof(struct two)));
   xp = (ob) ini_two(hp, fp->argv[0], fp->argv[1]);
-  hp += sizeofw(struct two);
+  hp += b2w(sizeof(struct two));
   return ApC(ret, xp); }
 
 static Vm(aptwo) {
@@ -48,7 +48,7 @@ static Vm(aptwo) {
 
 static Gc(cptwo) {
   two src = (two) x,
-      dst = bump(v, sizeofw(struct two));
+      dst = bump(v, b2w(sizeof(struct two)));
   src->head.disp = (vm*) dst;
   return (ob) ini_two(dst,
     cp(v, src->a, pool0, top0),

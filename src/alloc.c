@@ -13,9 +13,6 @@ void *bump(la v, size_t n) {
 void *cells(la v, size_t n) {
   return Avail >= n || please(v, n) ? bump(v, n) : 0; }
 
-ob *alloc_pool(la_carrier v, size_t n) {
-  return calloc(n, sizeof(ob)); }
-
 #include "mo.h"
 #include <stdarg.h>
 

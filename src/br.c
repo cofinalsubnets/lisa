@@ -9,7 +9,7 @@
 //
 // calling and returning
 Vm(call) {
-  Have(Width(sf));
+  Have(b2w(sizeof(struct sf)));
   sf subd = fp;
   fp = (sf) sp - 1;
   sp = (ob*) fp;

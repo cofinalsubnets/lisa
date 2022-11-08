@@ -28,7 +28,7 @@
 
 // allocate a thread
 mo mkmo(la v, size_t n) {
-  mo k = cells(v, n + Width(tag));
+  mo k = cells(v, n + b2w(sizeof(struct tag)));
   return k ? ini_mo(k, n) : k; }
 
 // get the tag at the end of a function
@@ -42,9 +42,9 @@ tag motag(mo k) {
 Vm(hom_f) {
   ArityCheck(1);
   size_t len = getnum(fp->argv[0]);
-  Have(len + Width(tag));
+  Have(len + b2w(sizeof(struct tag)));
   mo k = memset(ini_mo(hp, len), -1, len * sizeof(ob));
-  hp += len + Width(tag);
+  hp += len + b2w(sizeof(struct tag));
   return ApC(ret, (ob) (k + len)); }
 
 // trim a function after writing out code
@@ -93,9 +93,9 @@ Vm(disp) { return ApC(((mtbl) GF(ip))->does, xp); }
 // pop some things off the stack into an array.
 Vm(take) {
   ob n = getnum((ob) GF(ip));
-  Have(n + Width(tag));
+  Have(n + b2w(sizeof(struct tag)));
   mo k = ini_mo(memcpy(hp, sp, n * sizeof(ob)), n);
-  hp += n + Width(tag);
+  hp += n + b2w(sizeof(struct tag));
   return ApC(ret, (ob) k); }
 
 // set the closure for this frame
@@ -120,7 +120,7 @@ static Vm(genclo1) { return
 static Vm(genclo0) {
   ob *ec = (ob*) GF(ip), arg = ec[0];
   size_t adic = nilp(arg) ? 0 : getnum(G(arg));
-  Have(Width(sf) + adic + 1);
+  Have(b2w(sizeof(struct sf)) + adic + 1);
   ob loc = ec[1];
   sf subd = fp;
   G(ip) = genclo1;
@@ -139,9 +139,9 @@ static Vm(genclo0) {
 static Vm(enclose) {
   size_t
     adic = fp->argc,
-    arg_len = adic ? adic + 1 + Width(tag) : 0,
-    env_len = 4 + Width(tag),
-    thd_len = 3 + Width(tag),
+    arg_len = adic ? adic + 1 + b2w(sizeof(struct tag)) : 0,
+    env_len = 4 + b2w(sizeof(struct tag)),
+    thd_len = 3 + b2w(sizeof(struct tag)),
     n = arg_len + env_len + thd_len;
   Have(n);
   ob codeXcons = (ob) GF(ip), // pair of the compiled thread & closure constructor

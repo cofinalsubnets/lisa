@@ -5,7 +5,7 @@
 
 str strof(la v, const char* c) {
   size_t bs = strlen(c);
-  str o = cells(v, Width(str) + b2w(bs));
+  str o = cells(v, b2w(sizeof(struct str)) + b2w(bs));
   if (o) memcpy(o->text, c, bs),
          ini_str(o, bs);
   return o; }
@@ -32,7 +32,7 @@ Vm(scat_f) {
     ob x = fp->argv[i++];
     Check(strp(x));
     sum += ((str)x)->len; }
-  size_t words = Width(str) + b2w(sum);
+  size_t words = b2w(sizeof(struct str)) + b2w(sum);
   Have(words);
   str d = ini_str(hp, sum);
   hp += words;
@@ -55,7 +55,7 @@ Vm(ssub_f) {
   ub = min(ub, src->len);
   ub = max(ub, lb);
   size_t len = ub - lb,
-         words = Width(str) + b2w(len);
+         words = b2w(sizeof(struct str)) + b2w(len);
   Have(words);
   str dst = ini_str(hp, len);
   hp += words;
@@ -64,7 +64,7 @@ Vm(ssub_f) {
 
 Vm(str_f) {
   size_t len = fp->argc,
-         words = Width(str) + b2w(len);
+         words = b2w(sizeof(struct str)) + b2w(len);
   Have(words);
   str s = ini_str(hp, len);
   hp += words;
@@ -109,7 +109,7 @@ static long txstr(la v, FILE *o, ob _) {
 #include "gc.h"
 static Gc(cpstr) {
   str src = (str) x,
-      dst = bump(v, Width(str) + b2w(src->len));
+      dst = bump(v, b2w(sizeof(struct str)) + b2w(src->len));
   memcpy(dst, src, sizeof(struct str) + src->len);
   src->head.disp = (vm*) dst;
   return (ob) dst; }
