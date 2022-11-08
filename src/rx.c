@@ -1,9 +1,12 @@
 #include "la.h"
 #include "two.h"
+#include "alloc.h"
+#include "str.h"
+#include "sym.h"
+#include "gc.h"
+#include "lexicon.h"
 #include <string.h>
 #include <ctype.h>
-
-Vm(rxc_f) { return ApC(ret, putnum(fgetc(stdin))); }
 
 static str
   rx_atom_str(la, FILE*),
@@ -32,9 +35,12 @@ la_status la_rx_f(la v, FILE *i) {
 static int rx_char(FILE *i) {
   for (int c;;) switch ((c = fgetc(i))) {
     default: return c;
-    case ' ': case '\t': case '\n': continue;
-    case '#': case ';': for (;;) switch (fgetc(i)) {
-      case '\n': case EOF: return rx_char(i); } } }
+    case LA_CH_SPACE: case LA_CH_TAB: case LA_CH_ENDL:
+      continue;
+    case LA_CH_HASH: case LA_CH_SEMICOLON:
+      for (;;) switch (fgetc(i)) {
+        case LA_CH_ENDL:
+        case EOF: return rx_char(i); } } }
 
 static Inline ob pull(la v, FILE *i, ob x) { return
   ((ob (*)(la, FILE*, ob))(*v->sp++))(v, i, x); }
@@ -58,10 +64,11 @@ static ob rx_q(la v, FILE* i, ob x) { return
 static NoInline ob rx(la v, FILE *i) {
   int c = rx_char(i);
   switch (c) {
-    case ')': case EOF: return pull(v, i, 0);
-    case '(': return rx_two(v, i);
-    case '"': return pull(v, i, (ob) rx_str(v, i));
-    case '\'': return
+    case LA_CH_RPAREN: case EOF:
+      return pull(v, i, 0);
+    case LA_CH_LPAREN: return rx_two(v, i);
+    case LA_CH_2QUOTE: return pull(v, i, (ob) rx_str(v, i));
+    case LA_CH_1QUOTE: return
       pushs(v, rx_q, NULL) ? rx(v, i) : pull(v, i, 0); }
   ungetc(c, i);
   str a = rx_atom_str(v, i);
@@ -71,7 +78,7 @@ static NoInline ob rx(la v, FILE *i) {
 static NoInline ob rx_two(la v, FILE *i) {
   int c = rx_char(i);
   switch (c) {
-    case ')': return pull(v, i, nil);
+    case LA_CH_RPAREN: return pull(v, i, nil);
     case EOF: return pull(v, i, 0);
     default: return
       ungetc(c, i),
@@ -80,13 +87,13 @@ static NoInline ob rx_two(la v, FILE *i) {
         pull(v, i, 0); } }
 
 static str mkbuf(la v) {
-  str s = cells(v, Width(str) + 1);
+  str s = cells(v, sizeofw(struct str) + 1);
   return s ? ini_str(s, sizeof(ob)) : s; }
 
 static str buf_grow(la v, str s) {
   str t;
   size_t len = s->len;
-  with(s, t = cells(v, Width(str) + 2 * b2w(len)));
+  with(s, t = cells(v, sizeofw(struct str) + 2 * b2w(len)));
   if (t) ini_str(t, 2 * len), memcpy(t->text, s->text, len);
   return t; }
 
@@ -97,9 +104,9 @@ static str rx_str(la v, FILE *p) {
     for (int x; n < lim;) switch (x = fgetc(p)) {
       // backslash causes the next character
       // to be read literally // TODO more escape sequences
-      case '\\': if ((x = fgetc(p)) == EOF) goto fin;
+      case LA_CH_STRESC: if ((x = fgetc(p)) == EOF) goto fin;
       default: o->text[n++] = x; continue;
-      case '"': case EOF: fin: return o->len = n, o; }
+      case LA_CH_2QUOTE: case EOF: fin: return o->len = n, o; }
   return 0; }
 
 // read the characters of an atom (number or symbol)
@@ -110,8 +117,11 @@ static str rx_atom_str(la v, FILE *p) {
     for (int x; n < lim;) switch (x = fgetc(p)) {
       default: o->text[n++] = x; continue;
       // these characters terminate an atom
-      case ' ': case '\n': case '\t': case ';': case '#':
-      case '(': case ')': case '\'': case '"': ungetc(x, p);
+      case LA_CH_SPACE: case LA_CH_ENDL: case LA_CH_TAB:
+      case LA_CH_SEMICOLON: case LA_CH_HASH:
+      case LA_CH_LPAREN: case LA_CH_RPAREN:
+      case LA_CH_1QUOTE: case LA_CH_2QUOTE:
+        ungetc(x, p);
       case EOF: return o->len = n, o; }
   return 0; }
 
@@ -133,11 +143,14 @@ static NoInline ob rx_atom(la v, str b) {
   int sign = 1;
 loop:
   switch (b->text[i]) {
-    case '+': i += 1; goto loop;
-    case '-': i += 1, sign *= -1; goto loop;
-    case '0': { // with radix
+    case LA_CH_PLUS: i += 1; goto loop;
+    case LA_CH_MINUS: i += 1, sign *= -1; goto loop;
+    case LA_CH_NUM0: { // with radix
       // numbers can be input in bases 2, 6, 8, 10, 12, 16, 36
       const char *r = "b\2s\6o\10d\12z\14x\20n\44";
       for (char c = tolower(b->text[i+1]); *r; r += 2)
         if (*r == c) return rx_atom_n(v, b, i+2, sign, r[1]); } }
   return rx_atom_n(v, b, i, sign, 10); }
+
+#include "vm.h"
+Vm(rxc_f) { return ApC(ret, putnum(fgetc(stdin))); }

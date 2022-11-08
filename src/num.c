@@ -1,4 +1,5 @@
 #include "la.h"
+#include "num.h"
 
 // math stuff
 
@@ -8,6 +9,7 @@ intptr_t lcprng(intptr_t s) {
   return (s * steele_vigna_2021 + 1) >> 8; }
 
 // VM functions
+#include "vm.h"
 
 // frameless
 Vm(add) { return ApN(1, xp + *sp++ - 1); }

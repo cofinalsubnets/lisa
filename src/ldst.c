@@ -1,4 +1,8 @@
 #include "la.h"
+#include "two.h"
+#include "mo.h"
+#include "tbl.h"
+#include "vm.h"
 #include <string.h>
 
 ////

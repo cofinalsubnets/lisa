@@ -1,4 +1,22 @@
 #include "la.h"
+#include "gc.h"
+#include "alloc.h"
+
+// general memory allocation / access functions
+
+// unchecked allocator -- make sure there's enough memory!
+void *bump(la v, size_t n) {
+  void *x = v->hp;
+  v->hp += n;
+  return x; }
+
+void *cells(la v, size_t n) {
+  return Avail >= n || please(v, n) ? bump(v, n) : 0; }
+
+ob *alloc_pool(la_carrier v, size_t n) {
+  return calloc(n, sizeof(ob)); }
+
+#include "mo.h"
 #include <stdarg.h>
 
 // push things onto the stack

@@ -1,5 +1,9 @@
 #include "la.h"
 #include "tx.h"
+#include "err.h"
+#include "vm.h"
+#include "str.h"
+#include "sym.h"
 
 // errors
 Vm(xary) { return Pack(), LA_XARY; }

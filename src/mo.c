@@ -1,4 +1,7 @@
 #include "la.h"
+#include "alloc.h"
+#include "mo.h"
+#include "two.h"
 #include <string.h>
 
 // function functions
@@ -34,7 +37,7 @@ tag motag(mo k) {
   return (tag) k; }
 
 // instructions for the internal compiler
-//
+#include "vm.h"
 // initialize a function
 Vm(hom_f) {
   ArityCheck(1);

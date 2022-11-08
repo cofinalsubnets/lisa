@@ -1,4 +1,6 @@
 #include "la.h"
+#include "alloc.h"
+#include "str.h"
 #include <string.h>
 #include <errno.h>
 #include <stdarg.h>

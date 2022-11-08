@@ -1,5 +1,10 @@
 #include "la.h"
 #include "two.h"
+#include "mo.h"
+#include "ns.h"
+#include "alloc.h"
+#include "vm.h"
+#include "gc.h"
 #include <string.h>
 
 static mo ana(la, ob);

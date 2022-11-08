@@ -1,4 +1,8 @@
 #include "la.h"
+#include "gc.h"
+#include "alloc.h"
+#include "mo.h"
+#include "vm.h"
 #include <time.h>
 
 static clock_t copy(la, size_t);

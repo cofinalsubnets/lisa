@@ -1,4 +1,6 @@
 #include "la.h"
+#include "mo.h"
+#include "hash.h"
 
 // FIXME this is a totally ad hoc, unproven hashing method.
 //

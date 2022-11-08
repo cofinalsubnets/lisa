@@ -1,4 +1,11 @@
 #include "la.h"
+#include "alloc.h"
+#include "two.h"
+#include "mo.h"
+#include "tbl.h"
+#include "hash.h"
+#include "cmp.h"
+#include "gc.h"
 #include <string.h>
 
 // hash tables
@@ -65,6 +72,7 @@ ob tblget(la v, tbl t, ob k) { return
   k = tbl_ent(v, t, k),
   nump(k) ? 0 : VAL(k); }
 
+#include "vm.h"
 Vm(tget_f) {
   ArityCheck(2);
   xp = fp->argv[0];
@@ -248,18 +256,19 @@ static Vm(aptbl) {
       CallOut(_ = tblss(v, 1, a));
       return _ ? ApC(ret, fp->argv[a-1]) : ApC(xoom, nil); } }
 
-static Gc(cptbl) {
-  tbl src = (tbl) x, dst = bump(v, Width(tbl));
-  src->head.disp = (vm*) dst;
-  return (ob) ini_tbl(dst, src->len, src->cap,
-    (ob*) cp(v, (ob) src->tab, pool0, top0)); }
-
 static long txtbl(la v, FILE *o, ob _) {
   tbl t = (tbl) _;
   return fprintf(o, "#tbl:%ld/%ld", t->len, 1ul << t->cap); }
 
 static intptr_t hxtbl(la v, ob _) {
   return ror(mix * 9, 3 * sizeof(intptr_t) / 4); }
+
+#include "gc.h"
+static Gc(cptbl) {
+  tbl src = (tbl) x, dst = bump(v, Width(tbl));
+  src->head.disp = (vm*) dst;
+  return (ob) ini_tbl(dst, src->len, src->cap,
+    (ob*) cp(v, (ob) src->tab, pool0, top0)); }
 
 const struct mtbl mtbl_tbl = {
   .does = aptbl,

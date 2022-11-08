@@ -1,4 +1,10 @@
 #include "la.h"
+#include "str.h"
+#include "sym.h"
+#include "tbl.h"
+#include "alloc.h"
+#include "vm.h"
+#include "lexicon.h"
 #include <string.h>
 
 // return to C
@@ -48,13 +54,13 @@ la_status la_open(la v) {
   ob _;
   bool ok =
     // global symbols // FIXME stop using these if possible
-    (v->lex[Eval] = symofs(v, "ev")) &&
-    (v->lex[Def] = symofs(v, ":")) &&
-    (v->lex[Cond] = symofs(v, "?")) &&
-    (v->lex[Lamb] = symofs(v, "\\")) &&
-    (v->lex[Quote] = symofs(v, "`")) &&
-    (v->lex[Seq] = symofs(v, ",")) &&
-    (v->lex[Splat] = symofs(v, ".")) &&
+    (v->lex[Eval] = symofs(v, LA_LEX_EVAL)) &&
+    (v->lex[Def] = symofs(v, LA_LEX_DEFINE)) &&
+    (v->lex[Cond] = symofs(v, LA_LEX_COND)) &&
+    (v->lex[Lamb] = symofs(v, LA_LEX_LAMBDA)) &&
+    (v->lex[Quote] = symofs(v, LA_LEX_QUOTE)) &&
+    (v->lex[Seq] = symofs(v, LA_LEX_BEGIN)) &&
+    (v->lex[Splat] = symofs(v, LA_LEX_VARARG)) &&
 
     // make the global namespace
     (v->topl = mktbl(v)) &&

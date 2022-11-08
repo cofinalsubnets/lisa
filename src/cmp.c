@@ -1,4 +1,5 @@
 #include "la.h"
+#include "vm.h"
 
 bool neql(la v, ob x, ob y) { return false; }
 

@@ -1,4 +1,5 @@
 #include "la.h"
+#include "tbl.h"
 
 ob nsget(la v, ob y) {
   return tblget(v, v->topl, y); }

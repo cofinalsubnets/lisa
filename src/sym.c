@@ -1,4 +1,11 @@
 #include "la.h"
+#include "alloc.h"
+#include "gc.h"
+#include "sym.h"
+#include "hash.h"
+#include "cmp.h"
+#include "num.h"
+#include "str.h"
 #include <string.h>
 
 //symbols
@@ -45,6 +52,7 @@ sym symof(la v, str s) {
     ini_sym(bump(v, Width(sym)), s,
       v->rand = lcprng(v->rand)); }
 
+#include "vm.h"
 Vm(sym_f) {
   str i = fp->argc && strp(fp->argv[0]) ? (str) fp->argv[0] : 0;
   sym y;
@@ -68,6 +76,7 @@ static Gc(cpsym) {
 
 static intptr_t hxsym(la v, ob _) { return ((sym) _)->code; }
 
+#include "tx.h"
 static long txsym(la v, FILE *o, ob _) {
   str s = ((sym) _)->nom;
   return s ? fputstr(o, s) : fprintf(o, "#sym"); }

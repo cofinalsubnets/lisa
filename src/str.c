@@ -1,4 +1,6 @@
 #include "la.h"
+#include "alloc.h"
+#include "str.h"
 #include <string.h>
 
 str strof(la v, const char* c) {
@@ -9,6 +11,7 @@ str strof(la v, const char* c) {
   return o; }
 
 // string instructions
+#include "vm.h"
 Vm(slen_f) {
   ArityCheck(1);
   xp = fp->argv[0];
@@ -68,6 +71,7 @@ Vm(str_f) {
   while (len--) s->text[len] = getnum(fp->argv[len]);
   return ApC(ret, (ob) s); }
 
+#include "tx.h"
 static Vm(apstr) {
   str s = (str) ip;
   fputstr(stdout, s);
@@ -102,6 +106,7 @@ static long txstr(la v, FILE *o, ob _) {
   if (fputc('"', o) == EOF) return -1;
   return r; }
 
+#include "gc.h"
 static Gc(cpstr) {
   str src = (str) x,
       dst = bump(v, Width(str) + b2w(src->len));

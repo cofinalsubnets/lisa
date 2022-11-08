@@ -1,25 +1,27 @@
 #include "la.h"
-#include "tx.h"
 #include "two.h"
+#include "gc.h"
+#include "alloc.h"
 
 // pairs and lists
 static NoInline two pair_gc(la v, ob a, ob b) {
   bool ok;
-  with(a, with(b, ok = please(v, Width(two))));
+  with(a, with(b, ok = please(v, sizeofw(struct two))));
   return ok ? pair(v, a, b) : 0; }
 
 two pair(la v, ob a, ob b) {
-  return Avail >= Width(two) ?
-    ini_two(bump(v, Width(two)), a, b) :
+  return Avail >= sizeofw(struct two) ?
+    ini_two(bump(v, sizeofw(struct two)), a, b) :
     pair_gc(v, a, b); }
 
+#include "vm.h"
 Vm(car) { return ApN(1, A(xp)); }
 Vm(cdr) { return ApN(1, B(xp)); }
 
 Vm(cons) {
-  Have(Width(two));
+  Have(sizeofw(struct two));
   xp = (ob) ini_two(hp, xp, *sp++);
-  hp += Width(two);
+  hp += sizeofw(struct two);
   return ApN(1, xp); }
 
 Vm(car_f) {
@@ -36,9 +38,9 @@ Vm(cdr_f) {
 
 Vm(cons_f) {
   ArityCheck(2);
-  Have(Width(two));
+  Have(sizeofw(struct two));
   xp = (ob) ini_two(hp, fp->argv[0], fp->argv[1]);
-  hp += Width(two);
+  hp += sizeofw(struct two);
   return ApC(ret, xp); }
 
 static Vm(aptwo) {
@@ -46,29 +48,33 @@ static Vm(aptwo) {
 
 static Gc(cptwo) {
   two src = (two) x,
-      dst = bump(v, Width(two));
+      dst = bump(v, sizeofw(struct two));
   src->head.disp = (vm*) dst;
   return (ob) ini_two(dst,
     cp(v, src->a, pool0, top0),
     cp(v, src->b, pool0, top0)); }
 
+#include "tx.h"
+#include "lexicon.h"
 static long txtwo(la v, FILE *o, ob x) {
   long r = 2;
-  if (fputc('(', o) == EOF) return -1;
+  if (fputc(LA_CH_LPAREN, o) == EOF) return -1;
   for (;;) {
     long i = la_tx(v, o, A(x));
     if (i < 0) return i;
     else r += i;
     if (!twop(x = B(x))) break;
-    else if (fputc(' ', o) == EOF) return -1;
+    else if (fputc(LA_CH_SPACE, o) == EOF) return -1;
     else r++; }
-  if (fputc(')', o) == EOF) return -1;
+  if (fputc(LA_CH_RPAREN, o) == EOF) return -1;
   return r; }
 
+#include "hash.h"
 static intptr_t hxtwo(la v, ob x) {
   intptr_t hc = hash(v, A(x)) * hash(v, B(x));
   return ror(hc, 4 * sizeof(intptr_t)); }
 
+#include "cmp.h"
 static bool eqtwo(la v, ob x, ob y) {
   return twop(y) &&
     eql(v, A(x), A(y)) &&
