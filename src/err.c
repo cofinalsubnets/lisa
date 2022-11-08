@@ -48,6 +48,8 @@ static NoInline void errp(la v, const char *msg, ...) {
 
 void la_perror(la_carrier v, la_status s) {
   switch (s) {
+    // not error codes, so print nothing.
+    case LA_OK: case LA_EOF: return;
     case LA_XDOM: errp(v, "has no value"); break;
     case LA_XOOM: errp(v, "oom at %d words", v->len); break;
     case LA_XSYN: errp(v, "syntax error"); break; // TODO source info
@@ -62,6 +64,4 @@ void la_perror(la_carrier v, la_status s) {
       errp(v, "free variable : %.*s", l, n); 
       break; }
     case LA_XSYS:
-      errp(v, "system error : %s", strerror(errno));
-    // not error codes, so print nothing.
-    case LA_OK: case LA_EOF: } }
+      errp(v, "system error : %s", strerror(errno)); } }

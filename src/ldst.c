@@ -86,7 +86,7 @@ Vm(late) {
   vm *n = G(FF(ip));
   if ((n == call || n == rec) && // xp will be a hom
       G(xp) == arity &&
-      GF(FF(ip)) >= GF(xp))
+      (ob) GF(FF(ip)) >= (ob) GF(xp))
     xp = (ob) FF(ip);
   G(ip) = imm;
   GF(ip) = (vm*) xp;
