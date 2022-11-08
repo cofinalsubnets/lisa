@@ -1,4 +1,6 @@
 #include "la.h"
+#include "two.h"
+#include <string.h>
 
 static mo ana(la, ob);
 
@@ -381,7 +383,7 @@ Co(r_pb2) {
 
 Co(r_co_ini) {
   mo k = mkmo(v, m + 1);
-  if (k) setw(k, nil, m),
+  if (k) memset(k, -1, m * sizeof(ob)),
          G(k += m) = (vm*) (e ? (*e)->name : nil);
   return k; }
 

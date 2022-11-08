@@ -6,8 +6,6 @@
 #include <stdio.h>
 
 // thanks !!
-
-typedef struct la_carrier *la_carrier;
 typedef enum la_status {
   LA_EOF = -1,
   LA_OK,
@@ -19,6 +17,7 @@ typedef enum la_status {
   LA_XOOM,
 } la_status;
 
+typedef struct la_carrier *la_carrier;
 typedef intptr_t la_ob, ob;
 typedef la_carrier la;
 typedef struct mo *mo; // procedures
@@ -134,7 +133,6 @@ la_status
   la_lib(la_carrier, const char*),
   la_rx_f(la_carrier, FILE*),
   la_ev_f(la_carrier, FILE*);
-long la_tx(la_carrier, FILE*, la_ob); // write a value
 
 
 // FIXME remove or hide these
@@ -144,13 +142,7 @@ bool primp(mo); // is it a primitive function?
 
 bool please(la, size_t); // ask GC for available memory
 void *bump(la, size_t), // allocate memory unchecked
-     *cells(la, size_t), // allocate memory checked
-     // word-size mem{set,cpy}
-     *setw(void*, intptr_t, size_t),
-     *cpyw(void*, const void*, size_t);
-
-// pairs
-two pair(la, ob, ob);
+     *cells(la, size_t); // allocate memory checked
 
 // namespace functions
 ob nstbl(la), nsget(la, ob);
@@ -187,7 +179,7 @@ bool
 intptr_t lcprng(intptr_t);
 
 void
-  la_perror(la_carrier, la_status),
+  la_perror(la_carrier, enum la_status),
   la_reset(la); // reset interpreter state
 
 struct prim { vm *ap; const char *nom; };

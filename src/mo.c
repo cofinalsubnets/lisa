@@ -1,4 +1,5 @@
 #include "la.h"
+#include <string.h>
 
 // function functions
 //
@@ -39,7 +40,7 @@ Vm(hom_f) {
   ArityCheck(1);
   size_t len = getnum(fp->argv[0]);
   Have(len + Width(tag));
-  mo k = setw(ini_mo(hp, len), nil, len);
+  mo k = memset(ini_mo(hp, len), -1, len * sizeof(ob));
   hp += len + Width(tag);
   return ApC(ret, (ob) (k + len)); }
 
@@ -90,7 +91,7 @@ Vm(disp) { return ApC(((mtbl) GF(ip))->does, xp); }
 Vm(take) {
   ob n = getnum((ob) GF(ip));
   Have(n + Width(tag));
-  mo k = ini_mo(cpyw(hp, sp, n), n);
+  mo k = ini_mo(memcpy(hp, sp, n * sizeof(ob)), n);
   hp += n + Width(tag);
   return ApC(ret, (ob) k); }
 
@@ -120,7 +121,7 @@ static Vm(genclo0) {
   ob loc = ec[1];
   sf subd = fp;
   G(ip) = genclo1;
-  sp = cpyw(sp - adic, (ob*) arg + 1, adic);
+  sp = memcpy(sp - adic, (ob*) arg + 1, sizeof(ob) * adic);
   fp = (sf) sp - 1;
   sp = (ob*) fp;
   fp->retp = ip;
@@ -148,7 +149,7 @@ static Vm(enclose) {
   if (adic)
     ini_mo(block, adic + 1),
     block[0] = putnum(adic),
-    cpyw(block + 1, fp->argv, adic),
+    memcpy(block + 1, fp->argv, adic * sizeof(ob)),
     arg = (ob) block,
     block += arg_len;
 

@@ -1,4 +1,5 @@
 #include "la.h"
+#include "tx.h"
 #include <string.h>
 
 static long tx_mo_n(la, FILE*, ob);

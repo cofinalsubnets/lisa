@@ -1,4 +1,5 @@
 #include "la.h"
+#include <string.h>
 
 // hash tables
 // some of the worst code is here :(
@@ -32,7 +33,7 @@ static Inline ob tbl_bkt_hc(la v, tbl t, size_t hc) {
 
 static ob tbl_ent_hc(la v, tbl t, ob k, size_t hc) {
   ob e = tbl_bkt_hc(v, t, hc);
-  while (!nilp(e) && !eql(v, KEY(e), k)) e = NEXT(e);
+  while (!nump(e) && !eql(v, KEY(e), k)) e = NEXT(e);
   return e; }
 
 static ob tbl_ent(la v, tbl t, ob k) {
@@ -53,7 +54,7 @@ static void
 tbl mktbl(la v) {
   tbl t = cells(v, Width(tbl) + 1 + Width(tag));
   if (t) ini_tbl(t, 0, 0, (ob*) ini_mo(t+1, 1)),
-         t->tab[0] = nil;
+         t->tab[0] = putnum(-1);
   return t; }
 
 tbl tblset(la v, tbl t, ob k, ob x) { return
@@ -62,7 +63,7 @@ tbl tblset(la v, tbl t, ob k, ob x) { return
 
 ob tblget(la v, tbl t, ob k) { return
   k = tbl_ent(v, t, k),
-  nilp(k) ? 0 : VAL(k); }
+  nump(k) ? 0 : VAL(k); }
 
 Vm(tget_f) {
   ArityCheck(2);
@@ -133,7 +134,7 @@ static ob tbl_del(la v, tbl y, ob key) {
   ob val = nil,
      e = y->tab[b],
      prev[] = {0,0,e};
-  for (ob l = (ob) &prev; l != nil && NEXT(l) != nil; l = NEXT(l))
+  for (ob l = (ob) &prev; !nump(l) && !nump(NEXT(l)); l = NEXT(l))
     if (eql(v, KEY(NEXT(l)), key)) {
       val = VAL(NEXT(l));
       NEXT(l) = NEXT(NEXT(l));
@@ -154,11 +155,11 @@ static tbl tbl_grow(la v, tbl t) {
 
   with(t, tab1 = (ob*) mkmo(v, len));
   if (!tab1) return 0;
-  setw(tab1, nil, len);
+  memset(tab1, -1, len * sizeof(ob));
   tab0 = t->tab;
 
   for (size_t i, cap = 1 << cap0; cap--;)
-    for (ob e, es = tab0[cap]; !nilp(es);
+    for (ob e, es = tab0[cap]; !nump(es);
       e = es,
       es = NEXT(es),
       i = tbl_idx(cap1, hash(v, KEY(e))),
@@ -172,7 +173,7 @@ static tbl tbl_grow(la v, tbl t) {
 static tbl tblset_s(la v, tbl t, ob k, ob x) {
   size_t hc = hash(v, k);
   ob e = tbl_ent_hc(v, t, k, hc);
-  if (!nilp(e)) return VAL(e) = x, t;
+  if (!nump(e)) return VAL(e) = x, t;
   size_t i = tbl_idx(t->cap, hc);
   with(t, e = tupl(v, k, x, t->tab[i], NULL));
   if (!e) return 0;
@@ -188,7 +189,7 @@ static ob tks(la v) {
   ks = cells(v, Width(two) * len);
   if (!ks) return 0;
   ob r = nil, *tab = ((tbl) v->xp)->tab;
-  while (len) for (ob e = *tab++; !nilp(e);
+  while (len) for (ob e = *tab++; !nump(e);
     ini_two(ks, KEY(e), r),
     r = (ob) ks++,
     e = NEXT(e),
@@ -218,7 +219,7 @@ static void tbl_shrink(la v, tbl t) {
   size_t i = 1ul << t->cap;
 
   // collect all entries
-  while (i--) for (f = t->tab[i], t->tab[i] = nil; !nilp(f);
+  while (i--) for (f = t->tab[i], t->tab[i] = putnum(-1); !nump(f);
     g = NEXT(f), NEXT(f) = e, e = f, f = g);
 
   // shrink bucket array
@@ -227,7 +228,7 @@ static void tbl_shrink(la v, tbl t) {
   ini_mo(t->tab, i);
 
   // reinsert
-  while (e != nil)
+  while (!nilp(e))
     i = tbl_idx(t->cap, hash(v, KEY(e))),
     f = NEXT(e),
     NEXT(e) = t->tab[i],

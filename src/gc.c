@@ -1,9 +1,8 @@
 #include "la.h"
 #include <time.h>
 
-static clock_t
-  copy(la, size_t),
-  copy_(la, size_t, ob*);
+static clock_t copy(la, size_t);
+static void do_copy(la, size_t, ob*);
 
 // FIXME the garbage collector works pretty well but it could be better:
 //
@@ -17,6 +16,8 @@ static clock_t
 //   calling it every cycle should be negligible, but it would still be
 //   better only to call out when we need to grow or shrink the pool.
 
+#define VIT_FLOOR 32
+#define VIT_CEIL 128
 ////
 /// garbage collector
 //
@@ -31,9 +32,9 @@ bool please(la v, size_t req) {
   if (!vit) return 0;
   size_t tar = len, all = len - (Avail - req);
   // adjust size up if we're too small or slow.
-  while (all > tar || vit < 32) tar <<= 1, vit <<= 1;
+  while (all > tar || vit < VIT_FLOOR) tar <<= 1, vit <<= 1;
   // adjust size down if we're big and fast enough.
-  while (all < tar>>1 && vit >= 128) tar >>= 1, vit >>= 1;
+  while (all < tar>>1 && vit >= VIT_CEIL) tar >>= 1, vit >>= 1;
   // if we don't need to resize, return success.
   return tar == len
     // otherwise adjust the size and copy again.
@@ -58,38 +59,19 @@ bool please(la v, size_t req) {
 //   |                          `------'
 //   t0                  gc time (this cycle)
 static clock_t copy(la v, size_t len) {
+  clock_t t1 = clock(), t0 = v->run.t0, t2;
   ob *pool1 = calloc(len, sizeof(ob));
   if (!pool1) return 0;
 
   ob *pool0 = v->pool;
-  clock_t u = copy_(v, len, pool1);
+  do_copy(v, len, pool1);
   free(pool0);
 
-  return u; }
+  t2 = v->run.t0 = clock();
+  t1 = t2 - t1;
+  return t1 ? (t2 - t0) / t1 : VIT_CEIL; }
 
-static NoInline ob cp_mo(la v, mo src, ob *pool0, ob *top0) {
-  tag fin = motag(src);
-  mo ini = fin->head,
-     dst = bump(v, fin->end - ini),
-     d = dst;
-
-  for (mo s = ini; (G(d) = G(s)); G(s++) = (vm*) d++);
-  for (GF(d) = (vm*) dst; d-- > dst;
-    G(d) = (vm*) cp(v, (ob) G(d), pool0, top0));
-  return (ob) (src - ini + dst); }
-
-#define stale(o) ((ob*)(o) >= pool0 && (ob*) o < top0)
-Gc(cp) {
-  if (nump(x) || !stale(x)) return x;
-  ob y = (ob) G(x);
-  if (!nump(y) && livep(v, y)) return y;
-  if ((vm*) y == disp) return
-    ((mtbl) GF(x))->evac(v, x, pool0, top0);
-  return cp_mo(v, (mo) x, pool0, top0); }
-
-
-static clock_t copy_(la v, size_t len1, ob *pool1) {
-  clock_t t1 = clock(), t0 = v->run.t0, t2;
+static void do_copy(la v, size_t len1, ob *pool1) {
   ob len0 = v->len,
      *sp0 = v->sp,
      *pool0 = v->pool,
@@ -127,11 +109,29 @@ static clock_t copy_(la v, size_t len1, ob *pool1) {
     fp->retp = (mo) cp(v, (ob) fp0->retp, pool0, top0);
     sp = fp->argv;
     sp0 = fp0->argv;
-    fp = fp->subd; }
+    fp = fp->subd; } }
 
-  t2 = v->run.t0 = clock();
-  t1 = t2 - t1;
-  return t1 ? (t2 - t0) / t1 : 1; }
+static NoInline ob cp_mo(la v, mo src, ob *pool0, ob *top0) {
+  tag fin = motag(src);
+  mo ini = fin->head,
+     dst = bump(v, fin->end - ini),
+     d = dst;
+
+  for (mo s = ini; (G(d) = G(s)); G(s++) = (vm*) d++);
+  for (GF(d) = (vm*) dst; d-- > dst;
+    G(d) = (vm*) cp(v, (ob) G(d), pool0, top0));
+  return (ob) (src - ini + dst); }
+
+#define stale(o) ((ob*)(o) >= pool0 && (ob*) o < top0)
+Gc(cp) {
+  if (nump(x) || !stale(x)) return x;
+  ob y = (ob) G(x);
+  if (!nump(y) && livep(v, y)) return y;
+  if ((vm*) y == disp) return
+    ((mtbl) GF(x))->evac(v, x, pool0, top0);
+  return cp_mo(v, (mo) x, pool0, top0); }
+
+
 
 // Run a GC cycle from inside the VM
 // XXX calling convention: size of request (bare size_t) in v->xp

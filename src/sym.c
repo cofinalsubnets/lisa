@@ -62,7 +62,7 @@ static Gc(cpsym) {
   sym src = (sym) x,
       dst = src->nom ?
         sskc(v, &v->syms, (str) cp(v, (ob) src->nom, pool0, top0)) :
-        cpyw(bump(v, Width(sym)), src, Width(sym));
+        memcpy(bump(v, Width(sym)), src, sizeof(struct sym));
   src->head.disp = (vm*) dst;
   return (ob) dst; }
 

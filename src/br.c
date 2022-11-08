@@ -1,4 +1,5 @@
 #include "la.h"
+#include <string.h>
 
 ////
 /// Branch Instructions
@@ -54,7 +55,7 @@ static NoInline Vm(recn) {
   // reset fp
   fp = (sf) (fp->argv + fp->argc - xp) - 1;
   // copy the args high to low
-  for (size_t i = xp; i--; fp->argv[i] = sp[i]);
+  memmove(fp->argv, sp, sizeof(ob) * xp);
   sp = (ob*) fp;
   // populate fp
   fp->retp = v->ip;

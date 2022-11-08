@@ -1,4 +1,6 @@
 #include "la.h"
+#include "tx.h"
+#include "two.h"
 
 // pairs and lists
 static NoInline two pair_gc(la v, ob a, ob b) {

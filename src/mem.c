@@ -10,12 +10,3 @@ void *bump(la v, size_t n) {
 
 void *cells(la v, size_t n) {
   return Avail >= n || please(v, n) ? bump(v, n) : 0; }
-
-void *setw(void *x, intptr_t i, size_t l) {
-  while (l--) ((intptr_t*) x)[l] = i;
-  return x; }
-
-void *cpyw(void *restrict x, const void *restrict y, size_t l) {
-  for (size_t i = 0; i < l; i++)
-    ((void**)x)[i] = ((void**)y)[i];
-  return x; }

@@ -1,4 +1,5 @@
 #include "la.h"
+#include "two.h"
 #include <string.h>
 #include <ctype.h>
 

@@ -1,4 +1,5 @@
 #include "la.h"
+#include "tx.h"
 #include <getopt.h>
 #include <string.h>
 #include <errno.h>

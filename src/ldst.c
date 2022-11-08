@@ -1,4 +1,5 @@
 #include "la.h"
+#include <string.h>
 
 ////
 /// Load Instructions
@@ -68,7 +69,7 @@ Vm(setloc) {
   size_t n = getnum((ob) GF(ip));
   // + 1 for the stack slot
   Have(n + Width(tag) + 1);
-  mo t = setw(ini_mo(hp, n), nil, n);
+  mo t = memset(ini_mo(hp, n), -1, sizeof(ob) * n);
   hp += n + Width(tag);
   *--sp = (ob) t;
   return ApN(2, xp); }
@@ -95,7 +96,7 @@ Vm(late) {
 static NoInline Vm(varg0) {
   size_t reqd = getnum((ob) GF(ip));
   Have1();
-  fp = cpyw((ob*) fp - 1, fp, Width(sf) + fp->argc);
+  fp = memcpy((ob*) fp - 1, fp, sizeof(struct sf) + sizeof(ob) * fp->argc);
   sp = (ob*) fp;
   fp->argc++;
   fp->argv[reqd] = nil;
