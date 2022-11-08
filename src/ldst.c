@@ -29,11 +29,11 @@ Vm(arg3) { return ApN(1, fp->argv[3]); }
 #define Slot2 ((ob**)fp)[-2]
 
 // local variables
-Vm(locn) { return ApN(2, Slot1[getnum(GF(ip))]); }
-Vm(loc0) { return ApN(1, Slot1[0]); }
-Vm(loc1) { return ApN(1, Slot1[1]); }
-Vm(loc2) { return ApN(1, Slot1[2]); }
-Vm(loc3) { return ApN(1, Slot1[3]); }
+Vm(sl1n) { return ApN(2, Slot1[getnum(GF(ip))]); }
+Vm(sl10) { return ApN(1, Slot1[0]); }
+Vm(sl11) { return ApN(1, Slot1[1]); }
+Vm(sl12) { return ApN(1, Slot1[2]); }
+Vm(sl13) { return ApN(1, Slot1[3]); }
 
 // closure variables
 Vm(clon) { return ApN(2, fp->clos[getnum(GF(ip))]); }
@@ -58,7 +58,7 @@ Vm(dupl) {
   return ApN(1, xp); }
 
 // set a local variable
-Vm(defloc) { return
+Vm(defsl1) { return
   Slot1[getnum(GF(ip))] = xp,
   ApN(2, xp); }
 

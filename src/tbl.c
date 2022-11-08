@@ -48,10 +48,10 @@ static ob tbl_ent(la v, tbl t, ob k) {
 
 static tbl
   tbl_grow(la, tbl),
-  tblset_s(la, tbl, ob, ob);
+  tbl_set_s(la, tbl, ob, ob);
 static ob
   tbl_del(la, tbl, ob),
-  tks(la);
+  tbl_keys(la);
 static bool
   tblss(la, intptr_t, intptr_t);
 static void
@@ -64,7 +64,7 @@ tbl mktbl(la v) {
   return t; }
 
 tbl tblset(la v, tbl t, ob k, ob x) { return
-  t = tblset_s(v, t, k, x),
+  t = tbl_set_s(v, t, k, x),
   t && tbl_load(t) > 1 ? tbl_grow(v, t) : t; }
 
 ob tblget(la v, tbl t, ob k) { return
@@ -121,7 +121,7 @@ Vm(tkeys_f) {
   xp = fp->argv[0];
   Check(tblp(xp));
   ob x;
-  CallOut(x = tks(v));
+  CallOut(x = tbl_keys(v));
   return x ? ApC(ret, x) : ApC(xoom, xp); }
 
 Vm(tlen_f) {
@@ -177,7 +177,7 @@ static tbl tbl_grow(la v, tbl t) {
   t->tab = tab1;
   return t; }
 
-static tbl tblset_s(la v, tbl t, ob k, ob x) {
+static tbl tbl_set_s(la v, tbl t, ob k, ob x) {
   size_t hc = hash(v, k);
   ob e = tbl_ent_hc(v, t, k, hc);
   if (!nump(e)) return VAL(e) = x, t;
@@ -190,7 +190,7 @@ static tbl tblset_s(la v, tbl t, ob k, ob x) {
 
 // get table keys
 // XXX calling convention: table in v->xp
-static ob tks(la v) {
+static ob tbl_keys(la v) {
   size_t len = ((tbl) v->xp)->len;
   two ks;
   ks = cells(v, b2w(sizeof(struct two)) * len);

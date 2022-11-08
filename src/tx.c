@@ -12,7 +12,7 @@ long la_tx(la v, FILE *o, ob x) {
   if (nump(x)) return fprintf(o, "%ld", getnum(x));
   if (G(x) == disp) return ((mtbl) GF(x))->emit(v, o, x);
   if (primp((mo) x)) return
-    fprintf(o, LA_LEX_LAMBDA "%s", ((struct prim*)x)->nom);
+    fprintf(o, LA_LEX_LAMBDA "%s", ((struct la_prim*)x)->nom);
   return tx_mo_n(v, o, hnom(v, (mo) x)); }
 
 long fputstr(FILE *o, str s) {

@@ -68,13 +68,13 @@ static sym symofs(la v, const char *s) {
 
 // static table of primitive functions
 #define prim_ent(go, nom) { go, nom },
-const struct prim prims[] = { i_primitives(prim_ent) };
+const struct la_prim prims[] = { i_primitives(prim_ent) };
 #define LEN(ary) (sizeof(ary)/sizeof(*ary))
 bool primp(mo x) {
   return x >= (mo) prims && x < (mo) (prims + LEN(prims)); }
 
 static bool defprims(la v) {
-  const struct prim *p = prims, *lim = p + LEN(prims);
+  const struct la_prim *p = prims, *lim = p + LEN(prims);
   while (p < lim) {
     sym z = symofs(v, p->nom);
     if (!z || !tblset(v, v->topl, (ob) z, (ob) p++)) return false; }

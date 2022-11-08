@@ -5,19 +5,19 @@
 // with a footer holding a pointer to its head
 typedef struct tag {
   void *null; // always null
-  struct mo
+  struct la_fn
     *head, // pointer to head of thread
     end[]; // first address after thread
-} *tag;
+} *tag, *la_fn_tag;
 
-mo mkmo(la, size_t); // allocate a thread
-tag motag(mo); // get tag at end
-ob hnom(la, mo);
+la_fn mkmo(la_carrier, size_t); // allocate a thread
+la_fn_tag motag(la_fn); // get tag at end
+la_ob hnom(la_carrier, la_fn);
 
-bool primp(mo); // is it a primitive function?
-static Inline mo ini_mo(void *_, size_t len) {
-  mo k = _;
-  tag t = (tag) (k + len);
+bool primp(la_fn); // is it a primitive function?
+static Inline la_fn ini_mo(void *_, size_t len) {
+  la_fn k = _;
+  la_fn_tag t = (la_fn_tag) (k + len);
   t->null = NULL, t->head = k;
   return k; }
 

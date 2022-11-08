@@ -147,7 +147,7 @@
     (poke i-rec (poke (peek h) (seek h 1)))
     (poke i h)))
    i-argn (argn i-arg0 i-arg1 i-arg2 i-arg3)
-   i-locn (argn i-loc0 i-loc1 i-loc2 i-loc3)
+   i-sl1n (argn i-sl10 i-sl11 i-sl12 i-sl13)
    i-clon (argn i-clo0 i-clo1 i-clo2 i-clo3)
    i-lt (br2 i-brl i-brl2)
    i-lteq (br2 i-brle i-brle2)
@@ -519,8 +519,8 @@
    (~ (thas (: defs (tget e'def)) x)) x
    (: dd (wv e (tdel defs x))
     (? (~ (qtd (tset defs x dd))) x (,
-     (tdel (tget e'def) x)
-     (tset (tget e'val) x (unq dd))
+     (tdel (tget e 'def) x)
+     (tset (tget e 'val) x (unq dd))
      dd)))))
 
  (? (twop x) (list e x) (symp x) (symb e x) x))
@@ -536,9 +536,9 @@
 
  (Im x k) (:
   (type-sym x) (?
-   (nump x) 'num
-   (twop x) 'two (symp x) 'sym (strp x) 'str (tblp x) 'tbl
-   (homp x) 'hom)
+   (nump x) 'num (twop x) 'two
+   (symp x) 'sym (strp x) 'str
+   (tblp x) 'tbl (homp x) 'hom)
   (xc i-imm (xd x (-> (type-sym x) k))))
 
  ; these make functions that do certain side effects
@@ -591,7 +591,7 @@
     (nom e k) ; try to pick a name for this function
      (: i (peek k) (?
       (= i i-deftop) (A (peek (seek k 1))) ; maybe we're about to set a global?
-      (= i i-defloc) (at (tget e 'loc) (peek (seek k 1))))) ; or a local
+      (= i i-defsl1) (at (tget e 'loc) (peek (seek k 1))))) ; or a local
 
     (clo-thd e x k) (:
      (loop x k) (? (~ x) k
@@ -619,7 +619,7 @@
      l (loop e (BB x) k)
      m (? (~ (|| (toplp e) (memq (tget e'loc) (A x)))) l
           (toplp e) (xc i-deftop (xd (X _ns (A x)) l))
-          (xc i-defloc (xd (idx (tget e'loc) (A x)) l)))
+          (xc i-defsl1 (xd (idx (tget e'loc) (A x)) l)))
      (? (= 'here (A (: v (look e (A x)))))
       (Im (B v) m) (eval (AB x) m))))
 
@@ -640,7 +640,7 @@
     (= s 'here) ((Im (B r) k) e m)
     (= s 'wait) (late (B r))
     (= e (B r)) (
-     (xc (? (= s 'arg) i-argn (= s 'loc) i-locn (= s 'clo) i-clon)
+     (xc (? (= s 'arg) i-argn (= s 'loc) i-sl1n (= s 'clo) i-clon)
       (xd (idx (tget e s) x) k)) e m)
     (, (: l (len (tget e'clo)))
        (tset e 'clo (snoc (tget e'clo) x))

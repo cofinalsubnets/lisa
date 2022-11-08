@@ -2,24 +2,21 @@
 #define _la_la_h
 
 #include "lisa.h"
-#include "status.h"
 #include <stdlib.h>
 #include <time.h>
-#include <stdint.h>
 #include <stdbool.h>
 #include <stdio.h>
 
 // thanks !!
-typedef struct la_carrier *la_carrier;
-typedef intptr_t la_ob, ob;
+typedef la_ob ob;
 typedef la_carrier la;
-typedef struct mo *mo, *la_mo; // procedures
+typedef la_fn mo, la_mo; // procedures
 typedef struct sf *sf; // stack frame
-typedef enum la_status vm(la, ob, mo, ob*, ob*, sf); // interpreter function type
+typedef la_status vm(la, ob, mo, ob*, ob*, sf); // interpreter function type
 
 // struct needed for type indirection
 // around vm function pointer arrays
-struct mo { vm *ap; };
+struct la_fn { vm *ap; };
 
 // static method table for built-in types
 typedef const struct mtbl {
@@ -71,16 +68,15 @@ struct la_carrier {
 };
 
 // FIXME develop towards public API
-enum la_status
+la_status
   la_lib(la_carrier, const char*),
   la_call(la_carrier, la_mo, size_t),
   la_ev_f(la_carrier, FILE*);
 
-void la_reset(la); // reset interpreter state
+void la_reset(la_carrier); // reset interpreter state
 
-struct prim { vm *ap; const char *nom; };
-extern const int64_t mix;
-extern const struct prim prims[];
+struct la_prim { vm *ap; const char *nom; };
+extern const struct la_prim prims[];
 extern const struct mtbl
   mtbl_two, mtbl_str, mtbl_tbl, mtbl_sym;
 

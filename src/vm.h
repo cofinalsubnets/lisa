@@ -25,9 +25,9 @@ cfns(ninl)
  _(imm) _(immn1) _(imm0) _(imm1) _(imm2)\
  _(argn) _(arg0) _(arg1) _(arg2) _(arg3)\
  _(clon) _(clo0) _(clo1) _(clo2) _(clo3)\
- _(locn) _(loc0) _(loc1) _(loc2) _(loc3)\
+ _(sl1n) _(sl10) _(sl11) _(sl12) _(sl13)\
  _(deftop) _(late)\
- _(setloc) _(defloc)\
+ _(setloc) _(defsl1)\
  _(take) _(encl1) _(encl0)\
  _(twop_) _(nump_) _(nilp_) _(strp_)\
  _(tblp_) _(symp_) _(homp_)\

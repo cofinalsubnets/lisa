@@ -197,7 +197,7 @@ Co(co_fn, ob x) {
 
 Co(r_co_def_bind) {
   ob _ = *v->sp++;
-  if (e) return imx(v, e, m, defloc, putnum(lidx((*e)->loc, _)));
+  if (e) return imx(v, e, m, defsl1, putnum(lidx((*e)->loc, _)));
   _ = (ob) pair(v, nstbl(v), _);
   return _ ? imx(v, e, m, deftop, _) : 0; }
 
@@ -315,7 +315,7 @@ Co(co_sym, ob x) {
 
   if (B(q) == (ob) *e) return
     y == Loc ?
-      imx(v, e, m, locn, putnum(lidx((*e)->loc, x))) :
+      imx(v, e, m, sl1n, putnum(lidx((*e)->loc, x))) :
     y == Arg ?
       imx(v, e, m, argn, putnum(lidx((*e)->arg, x))) :
     imx(v, e, m, clon, putnum(lidx((*e)->clo, x)));

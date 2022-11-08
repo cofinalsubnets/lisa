@@ -15,7 +15,7 @@ Vm(ev_f) {
 // return to C
 static Vm(yield) { return Pack(), LA_OK; }
 enum la_status la_call(la_carrier v, la_mo f, size_t n) {
-  struct mo go[] = { {call}, {(vm*) putnum(n)}, {yield} };
+  struct la_fn go[] = { {call}, {(vm*) putnum(n)}, {yield} };
   return call(v, (ob) f, go, v->hp, v->sp, v->fp); }
 
 enum la_status la_ev_f(la_carrier v, FILE *in) {

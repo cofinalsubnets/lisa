@@ -77,6 +77,7 @@ static Vm(apstr) {
   fputstr(stdout, s);
   return ApC(ret, (ob) ip); }
 
+#include "hash.h"
 static intptr_t hxstr(la v, ob _) {
   str s = (str) _;
   intptr_t h = 1;

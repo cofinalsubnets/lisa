@@ -13,12 +13,12 @@ static str
   rx_str(la, FILE*);
 static ob
   rx_atom(la, str),
-  rxret(la, FILE*, ob),
+  rx_ret(la, FILE*, ob),
   rx(la, FILE*),
   rx_two(la, FILE*);
 
 static ob la_rx(la v, FILE *i) { return
-  pushs(v, rxret, NULL) ? rx(v, i) : 0; }
+  pushs(v, rx_ret, NULL) ? rx(v, i) : 0; }
 
 // FIXME doesn't distinguish between OOM and parse error
 enum la_status la_rx_f(la v, FILE *i) {
@@ -45,7 +45,7 @@ static int rx_char(FILE *i) {
 static Inline ob pull(la v, FILE *i, ob x) { return
   ((ob (*)(la, FILE*, ob))(*v->sp++))(v, i, x); }
 
-static ob rxret(la v, FILE *i, ob x) { return x; }
+static ob rx_ret(la v, FILE *i, ob x) { return x; }
 
 static ob rx_two_cons(la v, FILE *i, ob x) {
   ob y = *v->sp++;
