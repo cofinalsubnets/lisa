@@ -51,7 +51,6 @@ int main(int ac, char **av) {
     if (t == LA_EOF) break;
     if (t == LA_OK) la_tx(&V, stdout, V.xp), fputc('\n', stdout);
     else la_perror(&V, t), la_reset(&V); }
-    // TODO indicate parse error
 
   la_close(&V);
   return s; }

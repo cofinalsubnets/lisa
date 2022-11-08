@@ -53,16 +53,16 @@ Vm(ret) { return
 // if the adicity is different we need to do more.
 static NoInline Vm(recn) {
   // save return address
-  v->xp = (ob) fp->subd;
-  v->ip = fp->retp;
+  sf subd = fp->subd;
+  mo retp = fp->retp;
   // reset fp
   fp = (sf) (fp->argv + fp->argc - xp) - 1;
   // copy the args high to low
   memmove(fp->argv, sp, sizeof(ob) * xp);
   sp = (ob*) fp;
   // populate fp
-  fp->retp = v->ip;
-  fp->subd = (sf) v->xp;
+  fp->retp = retp;
+  fp->subd = subd;
   fp->argc = xp;
   fp->clos = (ob*) nil;
   return ApY(ip, nil); }
@@ -73,7 +73,7 @@ Vm(rec) {
   xp = _;
   if (fp->argc != xp) return ApC(recn, xp);
   // fast case where the calls have the same number of args
-  for (; xp--; fp->argv[xp] = sp[xp]);
+  while (xp--) fp->argv[xp] = sp[xp];
   sp = (ob*) fp;
   return ApY(ip, nil); }
 

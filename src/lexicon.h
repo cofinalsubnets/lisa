@@ -19,7 +19,6 @@
 #define LA_CH_SEMICOLON ';'
 #define LA_CH_HASH '#'
 #define LA_CH_STRESC '\\'
-
 #define LA_CH_PLUS '+'
 #define LA_CH_MINUS '-'
 #define LA_CH_NUM0 '0'

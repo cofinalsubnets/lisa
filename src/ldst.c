@@ -107,9 +107,9 @@ static NoInline Vm(varg0) {
   return ApN(2, xp); }
 
 Vm(varg) {
-  size_t reqd = getnum((ob) GF(ip)),
-         vdic = fp->argc - reqd;
+  size_t reqd = getnum((ob) GF(ip));
   ArityCheck(reqd);
+  size_t vdic = fp->argc - reqd;
   // in this case we need to add another argument
   // slot to hold the nil.
   if (!vdic) return ApC(varg0, xp);
