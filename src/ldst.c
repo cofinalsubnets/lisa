@@ -96,7 +96,7 @@ Vm(late) {
 static NoInline Vm(varg0) {
   size_t reqd = getnum((ob) GF(ip));
   Have1();
-  fp = memcpy((ob*) fp - 1, fp, sizeof(struct sf) + sizeof(ob) * fp->argc);
+  fp = memmove((ob*) fp - 1, fp, sizeof(struct sf) + sizeof(ob) * fp->argc);
   sp = (ob*) fp;
   fp->argc++;
   fp->argv[reqd] = nil;
