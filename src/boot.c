@@ -197,9 +197,10 @@ Co(co_fn, ob x) {
 
 Co(r_co_def_bind) {
   ob _ = *v->sp++;
-  if (e) return imx(v, e, m, defsl1, putnum(lidx((*e)->loc, _)));
-  _ = (ob) pair(v, nstbl(v), _);
-  return _ ? imx(v, e, m, deftop, _) : 0; }
+  if (!e) return
+    _ = (ob) pair(v, nstbl(v), _),
+    _ ? imx(v, e, m, deftop, _) : 0;
+  return imx(v, e, m, defsl1, putnum(lidx((*e)->loc, _))); }
 
 static bool co_def_r(la v, env *e, ob x) {
   if (!twop(x)) return true;

@@ -14,11 +14,11 @@ Vm(ev_f) {
 
 // return to C
 static Vm(yield) { return Pack(), LA_OK; }
-enum la_status la_call(la_carrier v, la_mo f, size_t n) {
+la_status la_call(la_carrier v, la_fn f, size_t n) {
   struct la_fn go[] = { {call}, {(vm*) putnum(n)}, {yield} };
   return call(v, (ob) f, go, v->hp, v->sp, v->fp); }
 
-enum la_status la_ev_f(la_carrier v, FILE *in) {
+la_status la_ev_f(la_carrier v, FILE *in) {
   enum la_status s = la_rx_f(v, in);
   if (s != LA_OK) return s;
   if (!pushs(v, v->xp, NULL)) return LA_XOOM;

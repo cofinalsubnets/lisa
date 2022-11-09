@@ -15,7 +15,6 @@ Vm(xoom) { return Pack(), LA_XOOM; }
 #include <errno.h>
 #include <stdarg.h>
 
-#define aubas (((ob*) fp) == v->pool + v->len)
 static NoInline void show_call(la v, mo ip, sf fp) {
   fputc('(', stderr);
   la_tx(v, stderr, (ob) ip);
@@ -23,6 +22,7 @@ static NoInline void show_call(la v, mo ip, sf fp) {
     fputc(' ', stderr), la_tx(v, stderr, fp->argv[i++]));
   fputc(')', stderr); }
 
+#define aubas (((ob*) fp) == v->pool + v->len)
 static NoInline void errp(la v, const char *msg, ...) {
   mo ip = v->ip;
   sf fp = v->fp;

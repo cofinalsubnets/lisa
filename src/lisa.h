@@ -19,9 +19,6 @@ typedef enum la_status {
 } la_status;
 
 void la_close(la_carrier);
-la_status
-  la_open(la_carrier),
-  la_call(la_carrier, la_fn, size_t);
-
+la_status la_open(la_carrier);
 
 #endif

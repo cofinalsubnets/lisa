@@ -58,15 +58,15 @@ static Gc(cp_two) {
 #include "lexicon.h"
 static long tx_two(la v, FILE *o, ob x) {
   long r = 2;
-  if (fputc(LA_CH_LPAREN, o) == EOF) return -1;
+  if (fputc('(', o) == EOF) return -1;
   for (;;) {
     long i = la_tx(v, o, A(x));
     if (i < 0) return i;
     else r += i;
     if (!twop(x = B(x))) break;
-    else if (fputc(LA_CH_SPACE, o) == EOF) return -1;
+    else if (fputc(' ', o) == EOF) return -1;
     else r++; }
-  if (fputc(LA_CH_RPAREN, o) == EOF) return -1;
+  if (fputc(')', o) == EOF) return -1;
   return r; }
 
 #include "hash.h"

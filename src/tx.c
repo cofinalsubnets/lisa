@@ -2,7 +2,6 @@
 #include "tx.h"
 #include "mo.h"
 #include "str.h"
-#include "lexicon.h"
 #include <string.h>
 
 static long tx_mo_n(la, FILE*, ob);
@@ -12,7 +11,7 @@ long la_tx(la v, FILE *o, ob x) {
   if (nump(x)) return fprintf(o, "%ld", getnum(x));
   if (G(x) == disp) return ((mtbl) GF(x))->emit(v, o, x);
   if (primp((mo) x)) return
-    fprintf(o, LA_LEX_LAMBDA "%s", ((struct la_prim*)x)->nom);
+    fprintf(o, "\\%s", ((struct la_prim*)x)->nom);
   return tx_mo_n(v, o, hnom(v, (mo) x)); }
 
 long fputstr(FILE *o, str s) {
@@ -25,12 +24,11 @@ long fputstr(FILE *o, str s) {
 #include "two.h"
 static NoInline long tx_mo_n(la v, FILE *o, ob x) {
   if (symp(x)) {
-    if (fputs(LA_LEX_LAMBDA, o) == EOF) return -1;
+    if (fputc('\\', o) == EOF) return -1;
     long r = la_tx(v, o, x);
-    return r < 0 ? r : r + sizeof(LA_LEX_LAMBDA)-1; }
+    return r < 0 ? r : r + 1; }
   if (!twop(x))
-    return fputs(LA_LEX_LAMBDA, o) == EOF ? -1 :
-      sizeof(LA_LEX_LAMBDA)-1;
+    return fputc('\\', o) == EOF ? -1 : 1;
   long r = 0, a;
   // FIXME this is weird
   if (symp(A(x)) || twop(A(x))) {
@@ -49,10 +47,10 @@ Vm(tx_f) {
   if (l) {
     while (i < l - 1)
       la_tx(v, stdout, fp->argv[i++]),
-      fputc(LA_CH_SPACE, stdout);
+      fputc(' ', stdout);
     xp = fp->argv[i];
     la_tx(v, stdout, xp); }
-  fputc(LA_CH_ENDL, stdout);
+  fputc('\n', stdout);
   return ApC(ret, xp); }
 
 Vm(txc_f) {
