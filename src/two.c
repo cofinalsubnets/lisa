@@ -43,10 +43,10 @@ Vm(cons_f) {
   hp += b2w(sizeof(struct two));
   return ApC(ret, xp); }
 
-static Vm(aptwo) {
-  return ApC(ret, fp->argc ? B(ip) : A(ip)); }
+static Vm(ap_two) { return
+  ApC(ret, fp->argc ? B(ip) : A(ip)); }
 
-static Gc(cptwo) {
+static Gc(cp_two) {
   two src = (two) x,
       dst = bump(v, b2w(sizeof(struct two)));
   src->head.disp = (vm*) dst;
@@ -56,7 +56,7 @@ static Gc(cptwo) {
 
 #include "tx.h"
 #include "lexicon.h"
-static long txtwo(la v, FILE *o, ob x) {
+static long tx_two(la v, FILE *o, ob x) {
   long r = 2;
   if (fputc(LA_CH_LPAREN, o) == EOF) return -1;
   for (;;) {
@@ -70,19 +70,19 @@ static long txtwo(la v, FILE *o, ob x) {
   return r; }
 
 #include "hash.h"
-static intptr_t hxtwo(la v, ob x) {
+static intptr_t hx_two(la v, ob x) {
   intptr_t hc = hash(v, A(x)) * hash(v, B(x));
   return ror(hc, 4 * sizeof(intptr_t)); }
 
 #include "cmp.h"
-static bool eqtwo(la v, ob x, ob y) {
+static bool eq_two(la v, ob x, ob y) {
   return twop(y) &&
     eql(v, A(x), A(y)) &&
     eql(v, B(x), B(y)); }
 
 const struct mtbl mtbl_two = {
-  .does = aptwo,
-  .emit = txtwo,
-  .evac = cptwo,
-  .hash = hxtwo,
-  .equi = eqtwo, };
+  .does = ap_two,
+  .emit = tx_two,
+  .evac = cp_two,
+  .hash = hx_two,
+  .equi = eq_two, };

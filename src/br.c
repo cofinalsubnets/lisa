@@ -45,20 +45,20 @@ Vm(ret) { return
   ip = fp->retp,
   sp = fp->argv + fp->argc,
   fp = fp->subd,
-  ApN(0, xp); }
+  ApY(ip, xp); }
 
 // tail calls
 //
 
-// if the adicity is different we need to do more.
+// if the adicity is different we need to do a little more.
 static NoInline Vm(recn) {
   // save return address
   sf subd = fp->subd;
   mo retp = fp->retp;
   // reset fp
   fp = (sf) (fp->argv + fp->argc - xp) - 1;
-  // copy the args high to low
-  memmove(fp->argv, sp, sizeof(ob) * xp);
+  // copy the args high to low BEFORE populating fp.
+  for (size_t i = xp; i--; fp->argv[i] = sp[i]);
   sp = (ob*) fp;
   // populate fp
   fp->retp = retp;
@@ -86,17 +86,17 @@ Vm(jump) { return ApY(GF(ip), xp); }
 #define Br(nom, test, a, x, b, y) Vm(nom) {\
   return ApY((test) ? (ob) a(ip) : (ob) b(ip), x); }
 // combined test/branch instructions
-Br(br1, xp != nil, GF, xp, FF, xp)
-Br(br0, xp != nil, FF, xp, GF, xp)
+Br(br1, nilp(xp), FF, xp, GF, xp)
+Br(br0, nilp(xp), GF, xp, FF, xp)
 
 Br(bre, eql(v, xp, *sp++), GF, T, FF, nil)
 Br(brn, eql(v, xp, *sp++), FF, T, GF, nil)
 
-Br(brl,    *sp++ <  xp, GF, xp, FF, nil)
-Br(brl2,   *sp++ <  xp, FF, xp, GF, nil)
+Br(brl,   *sp++ <  xp, GF, xp, FF, nil)
+Br(brl2,  *sp++ <  xp, FF, xp, GF, nil)
 Br(brle,  *sp++ <= xp, GF, xp, FF, nil)
 Br(brle2, *sp++ <= xp, FF, xp, GF, nil)
-Br(brg,    *sp++ >  xp, GF, xp, FF, nil)
-Br(brg2,   *sp++ >  xp, FF, xp, GF, nil)
+Br(brg,   *sp++ >  xp, GF, xp, FF, nil)
+Br(brg2,  *sp++ >  xp, FF, xp, GF, nil)
 Br(brge,  *sp++ >= xp, GF, xp, FF, nil)
 // brgteq2 is brlt

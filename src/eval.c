@@ -22,5 +22,5 @@ enum la_status la_ev_f(la_carrier v, FILE *in) {
   enum la_status s = la_rx_f(v, in);
   if (s != LA_OK) return s;
   if (!pushs(v, v->xp, NULL)) return LA_XOOM;
-  mo ev = (mo) tblget(v, v->topl, (ob) v->lex[Eval]);
+  mo ev = (mo) tblget(v, v->topl, (ob) v->lex[Eval], 0);
   return la_call(v, ev, 1); }

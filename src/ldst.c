@@ -83,7 +83,7 @@ Vm(setloc) {
 Vm(late) {
   ob w = (ob) GF(ip), d = A(w);
   xp = B(w);
-  w = tblget(v, (tbl) d, xp);
+  w = tblget(v, (tbl) d, xp, 0);
   if (!w) return ApC(xnom, xp);
   xp = w;
   // omit the arity check if possible
@@ -98,21 +98,19 @@ Vm(late) {
 
 // varargs
 static NoInline Vm(varg0) {
-  size_t reqd = getnum((ob) GF(ip));
   Have1();
   fp = memmove((ob*) fp - 1, fp, sizeof(struct sf) + sizeof(ob) * fp->argc);
   sp = (ob*) fp;
-  fp->argc++;
-  fp->argv[reqd] = nil;
+  fp->argv[fp->argc++] = nil;
   return ApN(2, xp); }
 
 Vm(varg) {
   size_t reqd = getnum((ob) GF(ip));
-  ArityCheck(reqd);
+  if (reqd == fp->argc) return ApC(varg0, xp);
+  if (reqd > fp->argc) return ApC(xary, putnum(reqd));
   size_t vdic = fp->argc - reqd;
   // in this case we need to add another argument
   // slot to hold the nil.
-  if (!vdic) return ApC(varg0, xp);
   // in this case we just keep the existing slots.
   Have(b2w(sizeof(struct two)) * vdic);
   two t = (two) hp;

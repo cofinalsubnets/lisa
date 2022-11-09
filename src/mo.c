@@ -27,14 +27,14 @@
 //   align functions)
 
 // allocate a thread
-mo mkmo(la v, size_t n) {
-  mo k = cells(v, n + b2w(sizeof(struct tag)));
+la_fn mkmo(la_carrier v, size_t n) {
+  la_fn k = cells(v, n + b2w(sizeof(struct tag)));
   return k ? ini_mo(k, n) : k; }
 
 // get the tag at the end of a function
-tag motag(mo k) {
+la_fn_tag motag(la_fn k) {
   while (G(k)) k = F(k);
-  return (tag) k; }
+  return (la_fn_tag) k; }
 
 // instructions for the internal compiler
 #include "vm.h"
@@ -177,7 +177,7 @@ static Vm(enclose) {
 // these pass the locals array to encl in xp
 // TODO do the same thing with the closure ptr
 Vm(encl1) { return ApC(enclose, putnum(1)); }
-Vm(encl0) { return ApC(enclose, nil); }
+Vm(encl0) { return ApC(enclose, putnum(0)); }
 
 // try to get the name of a function
 ob hnom(la v, mo x) {

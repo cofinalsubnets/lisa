@@ -57,7 +57,7 @@ Vm(sym_f) {
   str i = fp->argc && strp(fp->argv[0]) ? (str) fp->argv[0] : 0;
   sym y;
   CallOut(y = symof(v, i));
-  return ApC(ret, y ? (ob) y : nil); }
+  return y ? ApC(ret, (ob) y) : ApC(xoom, xp); }
 
 Vm(ynom_f) {
   ArityCheck(1);
@@ -66,26 +66,26 @@ Vm(ynom_f) {
   str s = ((sym) xp)->nom;
   return ApC(ret, s ? (ob) s : nil); }
 
-static Gc(cpsym) {
+static Gc(cp_sym) {
   sym src = (sym) x,
       dst = src->nom ?
         sskc(v, &v->syms, (str) cp(v, (ob) src->nom, pool0, top0)) :
-        memcpy(bump(v, b2w(sizeof(struct sym))), src, sizeof(struct sym));
+        ini_sym(bump(v, b2w(sizeof(struct sym))), 0, src->code);
   src->head.disp = (vm*) dst;
   return (ob) dst; }
 
-static intptr_t hxsym(la v, ob _) { return ((sym) _)->code; }
+static intptr_t hx_sym(la v, ob _) { return ((sym) _)->code; }
 
 #include "tx.h"
-static long txsym(la v, FILE *o, ob _) {
+static long tx_sym(la v, FILE *o, ob _) {
   str s = ((sym) _)->nom;
   return s ? fputstr(o, s) : fprintf(o, "#sym"); }
 
-static Vm(apnop) { return ApC(ret, (ob) ip); }
+static Vm(ap_nop) { return ApC(ret, (ob) ip); }
 
 const struct mtbl mtbl_sym = {
-  .does = apnop,
-  .emit = txsym,
-  .evac = cpsym,
-  .hash = hxsym,
+  .does = ap_nop,
+  .emit = tx_sym,
+  .evac = cp_sym,
+  .hash = hx_sym,
   .equi = neql, };

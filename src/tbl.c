@@ -67,17 +67,17 @@ tbl tblset(la v, tbl t, ob k, ob x) { return
   t = tbl_set_s(v, t, k, x),
   t && tbl_load(t) > 1 ? tbl_grow(v, t) : t; }
 
-ob tblget(la v, tbl t, ob k) { return
+ob tblget(la v, tbl t, ob k, ob d) { return
   k = tbl_ent(v, t, k),
-  nump(k) ? 0 : VAL(k); }
+  nump(k) ? d : VAL(k); }
 
 #include "vm.h"
 Vm(tget_f) {
   ArityCheck(2);
   xp = fp->argv[0];
   Check(tblp(xp));
-  xp = tblget(v, (tbl) xp, fp->argv[1]);
-  return ApC(ret, xp ? xp : nil); }
+  xp = tblget(v, (tbl) xp, fp->argv[1], nil);
+  return ApC(ret, xp); }
 
 Vm(tdel_f) {
   ArityCheck(2);
@@ -87,11 +87,11 @@ Vm(tdel_f) {
   return ApC(ret, x); }
 
 Vm(tget) { return
-  xp = tblget(v, (tbl) xp, *sp++),
-  ApN(1, xp ? xp : nil); }
+  xp = tblget(v, (tbl) xp, *sp++, nil),
+  ApN(1, xp); }
 
 Vm(thas) { return
-  xp = tblget(v, (tbl) xp, *sp++),
+  xp = tblget(v, (tbl) xp, *sp++, 0),
   ApN(1, xp ? T : nil); }
 
 Vm(tlen) { return ApN(1, putnum(((tbl) xp)->len)); }
@@ -100,7 +100,7 @@ Vm(thas_f) {
   ArityCheck(2);
   xp = fp->argv[0];
   Check(tblp(xp));
-  xp = tblget(v, (tbl) xp, fp->argv[1]);
+  xp = tblget(v, (tbl) xp, fp->argv[1], 0);
   return ApC(ret, xp ? T : nil); }
 
 Vm(tset_f) {
@@ -247,8 +247,8 @@ static Vm(aptbl) {
   switch (a) {
     case 0: return ApC(ret, putnum(((tbl) ip)->len));
     case 1: return
-      xp = tblget(v, (tbl) ip, fp->argv[0]),
-      ApC(ret, xp ? xp : nil);
+      xp = tblget(v, (tbl) ip, fp->argv[0], nil),
+      ApC(ret, xp);
     default:
       xp = (ob) ip;
       bool _;
@@ -264,7 +264,8 @@ static intptr_t hxtbl(la v, ob _) {
 
 #include "gc.h"
 static Gc(cptbl) {
-  tbl src = (tbl) x, dst = bump(v, b2w(sizeof(struct tbl)));
+  tbl src = (tbl) x,
+      dst = bump(v, b2w(sizeof(struct tbl)));
   src->head.disp = (vm*) dst;
   return (ob) ini_tbl(dst, src->len, src->cap,
     (ob*) cp(v, (ob) src->tab, pool0, top0)); }

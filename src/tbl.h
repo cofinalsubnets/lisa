@@ -11,6 +11,6 @@ struct tbl {
 // hash tables
 tbl mktbl(la),
     tblset(la, tbl, ob, ob);
-ob tblget(la, tbl, ob);
+ob tblget(la, tbl, ob, ob);
 
 #endif

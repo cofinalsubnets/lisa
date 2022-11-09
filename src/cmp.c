@@ -43,5 +43,5 @@ Vm(idtbl) { return tblp(xp) ? ApN(1, xp) : ApC(xdom, xp); }
 Vm(idtwo) { return twop(xp) ? ApN(1, xp) : ApC(xdom, xp); }
 Vm(arity) {
   ob reqd = getnum(GF(ip));
-  ArityCheck(reqd);
-  return ApN(2, xp); }
+  return fp->argc >= reqd ? ApN(2, xp) :
+    ApC(xary, (ob) GF(ip)); }
