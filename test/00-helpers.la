@@ -17,13 +17,13 @@
    *test-failures* (tbl))
 (:
  (mut n f) (tset *test-failures* n
-  (f (tget *test-failures* n)))
+  (f (*test-failures* n)))
  (:::
   test (:
    (\ n ts . (:
     (Te x) (L '? x (L ', (L green-text "."))
      (L ', (L mut (Q n) (cu X x)) (L red-text "X")))
-    (X ', (map Te ts))
+    (X ', (map ts Te))
     )))))
 
 (:

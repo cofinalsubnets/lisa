@@ -10,5 +10,5 @@
   (. 'failures 'of)
   (each failures (\ k
    (, (name k)
-      (each (tget *test-failures* k) show))))
+      (each (*test-failures* k) show))))
   (nope'test'failures))))

@@ -20,7 +20,7 @@
   (init '(0 1 2 3 4))
   (last '(0 1 2 3 (0 1 2 3)))
   (memq (iota -1 4) 0))
- (: rands (map (\ (randn 0z10)) (iota 0z100))
+ (: rands (map (iota 0z100) (\ (randn 0z10)))
   (all (\ r (<= 0 r 0zb)) rands))
  (= 2 (idx (iota 3) 2) (len (iota 2)))
  (= id (id id) ((const id) const))

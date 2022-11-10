@@ -21,8 +21,8 @@
 (: m+ (cu zip (cu zip +))
    (m* a b)
     (: bT (transp b)
-     (map (\ row (map (\ col
-      (foldr (zip * row col) 0 +)) bT)) a))
+     (map a (\ row (map bT (\ col
+      (foldr (zip * row col) 0 +))))))
    m0 '((1 2 3) (4 5 6) (7 8 9))
    m1 '((1 0 0) (0 1 0) (0 0 1))
    m2 '((2 0 0) (0 2 0) (0 0 2))

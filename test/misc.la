@@ -88,7 +88,7 @@
 
  (: 0to23 (iota 24)
     (check p) (= p (c1895~ (ap c1895 p)))
-    pairs (flat-map 0to23 (\ n (map (\ m (L m n)) 0to23)))
+    pairs (flat-map 0to23 (\ n (map 0to23 (\ m (L m n)))))
   (all check pairs))))
 
 ; hyperoperation sequence

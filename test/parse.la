@@ -8,7 +8,7 @@
  ((px-cat a b) s n y) (a s n (\ s p . (b s n (\ s q . (ap y (X s (append p q)))))))
  ((px-map p f) s n y) (p s n (\ s x . (ap y (X s (ap f x)))))
  (px-dot s n y) (? (> (slen s) 0) (y (ssub s 1 -1) (ssub s 0 1)) (n s))
- (px-one t) (foldl1 (map (\ c (px-lit (str c))) (chars t)) px-alt)
+ (px-one t) (foldl1 (map (chars t) (\ c (px-lit (str c)))) px-alt)
  ((px-sep-by a sep) s n y) ((px-alt (px-cat a (px-cat sep (px-sep-by a sep))) a) s n y)
 
  ws (px-drop (px-rep (px-alt (px-lit " ") (px-lit "

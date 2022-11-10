@@ -1,6 +1,6 @@
 ; microKanren without reflection on streams
 (:::
- \\ (\ a . (X (X '\ a) (map (\ a (L var (Q a))) (init a))))
+ \\ (\ a . (X (X '\ a) (map (init a) (\ a (L var (Q a))))))
  zzz (\ x (: y (sym) (L \ y  (L \ (L x y))))))
 (:
  ; dict - immutable map type made of pairs
@@ -75,7 +75,7 @@
    (twop u) (X (walk* (A u) s) (walk* (B u) s))
    u)
   (re st) (flat-map ks (\ k
-   (? (: it (has-s (X (map A (A st)) (B st)) k)) (L k (walk* (A it) st)))))
+   (? (: it (has-s (X (map (A st) A ) (B st)) k)) (L k (walk* (A it) st)))))
   (slist (smap re (? n (stake n (g ~~)) (g ~~))))))
 
 (test k2
@@ -85,7 +85,7 @@
                 (est c 4)))))
  (= (rho 9 '(a 9)) (Run 9 '(a)
   (\\ a (: nines (vel (est a 9) (zz nines))))))
- (unord-eq (map (\ i (L 'a i)) (iota 10)) (Run 10 '(a)
+ (unord-eq (map (iota 10) (\ i (L 'a i))) (Run 10 '(a)
   (\\ a (:
    (at-least n) (vel (est a n) (zz (at-least (+ n 1))))
    (vel (\ sno) (est a 0) (at-least 1))))))
@@ -114,7 +114,7 @@
    (et (est a 1) (est b 2) (est c 3))
    (et (est a 4) (est b 5) (est c 6))
    (et (est a 7) (est b 8) (est c 9))))))
- (unord-eq (map (\ i (L 'a i)) (iota 10))
+ (unord-eq (map (iota 10) (\ i (L 'a i)))
   (Run 10 '(a) (\\ a
    (: never (vel (\ sno) (zz never))
       (at-least n) (vel (est a n) (zz (at-least (+ n 1))))
