@@ -386,6 +386,6 @@ Co(r_pb2) {
 
 Co(r_co_ini) {
   mo k = mkmo(v, m + 1);
-  if (k) memset(k, -1, m * sizeof(ob)),
+  if (k) setw(k, nil, m),
          G(k += m) = (vm*) (e ? (*e)->name : nil);
   return k; }

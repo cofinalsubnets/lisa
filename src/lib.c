@@ -8,7 +8,7 @@
 static NoInline str str0catr(la_carrier v, size_t l, va_list xs) {
   char *cs = va_arg(xs, char*);
   if (!cs) {
-    str s = cells(v, b2w(sizeof(struct str)) + b2w(l+1));
+    str s = cells(v, wsizeof(struct str) + b2w(l+1));
     if (s) ini_str(s, l+1), s->text[l] = 0;
     return s ; }
   size_t i = strlen(cs);
@@ -54,7 +54,6 @@ la_status la_lib(la_carrier v, const char *nom) {
   str path = (str) v->xp;
   FILE *in = fopen(path->text, "r");
   if (!in) return LA_XSYS;
-  do s = la_ev_f(v, in);
-  while (s == LA_OK);
+  s = la_ev_stream(v, in);
   fclose(in);
-  return s == LA_EOF ? LA_OK : s; }
+  return s; }

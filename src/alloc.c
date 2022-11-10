@@ -45,3 +45,16 @@ ob tupl(la v, ...) {
   ob *k = tuplr(v, 0, xs);
   va_end(xs);
   return (ob) k; }
+
+void *cpyw_r2l(void *dst, const void *src, size_t n) {
+  while (n--) ((intptr_t*)dst)[n] = ((intptr_t*)src)[n];
+  return dst; }
+
+void *cpyw_l2r(void *dst, const void *src, size_t n) {
+  for (size_t i = 0; i < n; i++)
+    ((intptr_t*)dst)[i] = ((intptr_t*)src)[i];
+  return dst; }
+
+void *setw(void *dst, intptr_t w, size_t n) {
+  while (n--) ((intptr_t*)dst)[n] = w;
+  return dst; }

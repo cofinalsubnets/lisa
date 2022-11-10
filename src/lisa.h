@@ -2,6 +2,7 @@
 #define _lisa_h
 #include <stdint.h>
 #include <stddef.h>
+#include <stdio.h>
 
 typedef intptr_t la_ob;
 typedef struct la_carrier *la_carrier;
@@ -18,7 +19,10 @@ typedef enum la_status {
   LA_XOOM,
 } la_status;
 
-void la_close(la_carrier);
-la_status la_open(la_carrier);
+la_status
+  la_open(la_carrier);
+void
+  la_close(la_carrier),
+  la_perror(la_carrier, la_status, FILE*);
 
 #endif

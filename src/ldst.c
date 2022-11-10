@@ -65,16 +65,16 @@ Vm(defsl1) { return
 // set a module variable
 Vm(deftop) {
   bool _;
-  CallOut(_ = tblset(v, (tbl) A(GF(ip)), B(GF(ip)), xp));
+  CallOut(_ = tbl_set(v, (tbl) A(GF(ip)), B(GF(ip)), xp));
   return _ ? ApN(2, xp) : ApC(xoom, xp); }
 
 // allocate local variable array
 Vm(setloc) {
   size_t n = getnum((ob) GF(ip));
   // + 1 for the stack slot
-  Have(n + b2w(sizeof(struct tag)) + 1);
+  Have(n + wsizeof(struct tag) + 1);
   mo t = memset(ini_mo(hp, n), -1, sizeof(ob) * n);
-  hp += n + b2w(sizeof(struct tag));
+  hp += n + wsizeof(struct tag);
   *--sp = (ob) t;
   return ApN(2, xp); }
 
@@ -83,7 +83,7 @@ Vm(setloc) {
 Vm(late) {
   ob w = (ob) GF(ip), d = A(w);
   xp = B(w);
-  w = tblget(v, (tbl) d, xp, 0);
+  w = tbl_get(v, (tbl) d, xp, 0); // FIXME call name resolve procedure
   if (!w) return ApC(xnom, xp);
   xp = w;
   // omit the arity check if possible
@@ -112,9 +112,9 @@ Vm(varg) {
   // in this case we need to add another argument
   // slot to hold the nil.
   // in this case we just keep the existing slots.
-  Have(b2w(sizeof(struct two)) * vdic);
+  Have(wsizeof(struct two) * vdic);
   two t = (two) hp;
-  hp += b2w(sizeof(struct two)) * vdic;
+  hp += wsizeof(struct two) * vdic;
   for (size_t i = vdic; i--;
     ini_two(t + i, fp->argv[reqd + i], (ob) (t + i + 1)));
   t[vdic-1].b = nil;

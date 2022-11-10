@@ -10,7 +10,7 @@ struct tbl {
 
 // hash tables
 tbl mktbl(la),
-    tblset(la, tbl, ob, ob);
-ob tblget(la, tbl, ob, ob);
+    tbl_set(la, tbl, ob, ob);
+ob tbl_get(la, tbl, ob, ob);
 
 #endif

@@ -28,7 +28,7 @@
 
 // allocate a thread
 la_fn mkmo(la_carrier v, size_t n) {
-  la_fn k = cells(v, n + b2w(sizeof(struct tag)));
+  la_fn k = cells(v, n + wsizeof(struct tag));
   return k ? ini_mo(k, n) : k; }
 
 // get the tag at the end of a function
@@ -42,9 +42,9 @@ la_fn_tag motag(la_fn k) {
 Vm(hom_f) {
   ArityCheck(1);
   size_t len = getnum(fp->argv[0]);
-  Have(len + b2w(sizeof(struct tag)));
-  mo k = memset(ini_mo(hp, len), -1, len * sizeof(ob));
-  hp += len + b2w(sizeof(struct tag));
+  Have(len + wsizeof(struct tag));
+  mo k = setw(ini_mo(hp, len), nil, len);
+  hp += len + wsizeof(struct tag);
   return ApC(ret, (ob) (k + len)); }
 
 // trim a function after writing out code
@@ -93,9 +93,9 @@ Vm(disp) { return ApC(((mtbl) GF(ip))->does, xp); }
 // pop some things off the stack into an array.
 Vm(take) {
   ob n = getnum((ob) GF(ip));
-  Have(n + b2w(sizeof(struct tag)));
-  mo k = ini_mo(memcpy(hp, sp, n * sizeof(ob)), n);
-  hp += n + b2w(sizeof(struct tag));
+  Have(n + wsizeof(struct tag));
+  mo k = ini_mo(cpyw_r2l(hp, sp, n), n);
+  hp += n + wsizeof(struct tag);
   return ApC(ret, (ob) k); }
 
 // set the closure for this frame
@@ -120,11 +120,11 @@ static Vm(genclo1) { return
 static Vm(genclo0) {
   ob *ec = (ob*) GF(ip), arg = ec[0];
   size_t adic = nilp(arg) ? 0 : getnum(G(arg));
-  Have(b2w(sizeof(struct sf)) + adic + 1);
+  Have(wsizeof(struct sf) + adic + 1);
   ob loc = ec[1];
   sf subd = fp;
   G(ip) = genclo1;
-  sp = memcpy(sp - adic, (ob*) arg + 1, sizeof(ob) * adic);
+  sp = cpyw_r2l(sp - adic, (ob*) arg + 1, adic);
   fp = (sf) sp - 1;
   sp = (ob*) fp;
   fp->retp = ip;
@@ -139,9 +139,9 @@ static Vm(genclo0) {
 static Vm(enclose) {
   size_t
     adic = fp->argc,
-    arg_len = adic ? adic + 1 + b2w(sizeof(struct tag)) : 0,
-    env_len = 4 + b2w(sizeof(struct tag)),
-    thd_len = 3 + b2w(sizeof(struct tag)),
+    arg_len = adic ? adic + 1 + wsizeof(struct tag) : 0,
+    env_len = 4 + wsizeof(struct tag),
+    thd_len = 3 + wsizeof(struct tag),
     n = arg_len + env_len + thd_len;
   Have(n);
   ob codeXcons = (ob) GF(ip), // pair of the compiled thread & closure constructor
@@ -152,7 +152,7 @@ static Vm(enclose) {
   if (adic)
     ini_mo(block, adic + 1),
     block[0] = putnum(adic),
-    memcpy(block + 1, fp->argv, adic * sizeof(ob)),
+    cpyw_r2l(block + 1, fp->argv, adic),
     arg = (ob) block,
     block += arg_len;
 

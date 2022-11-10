@@ -58,16 +58,16 @@ static void
   tbl_shrink(la, tbl);
 
 tbl mktbl(la v) {
-  tbl t = cells(v, b2w(sizeof(struct tbl)) + 1 + b2w(sizeof(struct tag)));
+  tbl t = cells(v, wsizeof(struct tbl) + 1 + wsizeof(struct tag));
   if (t) ini_tbl(t, 0, 0, (ob*) ini_mo(t+1, 1)),
          t->tab[0] = putnum(-1);
   return t; }
 
-tbl tblset(la v, tbl t, ob k, ob x) { return
+tbl tbl_set(la v, tbl t, ob k, ob x) { return
   t = tbl_set_s(v, t, k, x),
   t && tbl_load(t) > 1 ? tbl_grow(v, t) : t; }
 
-ob tblget(la v, tbl t, ob k, ob d) { return
+ob tbl_get(la v, tbl t, ob k, ob d) { return
   k = tbl_ent(v, t, k),
   nump(k) ? d : VAL(k); }
 
@@ -76,7 +76,7 @@ Vm(tget_f) {
   ArityCheck(2);
   xp = fp->argv[0];
   Check(tblp(xp));
-  xp = tblget(v, (tbl) xp, fp->argv[1], nil);
+  xp = tbl_get(v, (tbl) xp, fp->argv[1], nil);
   return ApC(ret, xp); }
 
 Vm(tdel_f) {
@@ -87,11 +87,11 @@ Vm(tdel_f) {
   return ApC(ret, x); }
 
 Vm(tget) { return
-  xp = tblget(v, (tbl) xp, *sp++, nil),
+  xp = tbl_get(v, (tbl) xp, *sp++, nil),
   ApN(1, xp); }
 
 Vm(thas) { return
-  xp = tblget(v, (tbl) xp, *sp++, 0),
+  xp = tbl_get(v, (tbl) xp, *sp++, 0),
   ApN(1, xp ? T : nil); }
 
 Vm(tlen) { return ApN(1, putnum(((tbl) xp)->len)); }
@@ -100,7 +100,7 @@ Vm(thas_f) {
   ArityCheck(2);
   xp = fp->argv[0];
   Check(tblp(xp));
-  xp = tblget(v, (tbl) xp, fp->argv[1], 0);
+  xp = tbl_get(v, (tbl) xp, fp->argv[1], 0);
   return ApC(ret, xp ? T : nil); }
 
 Vm(tset_f) {
@@ -132,7 +132,7 @@ Vm(tlen_f) {
 
 Vm(tset) {
   ob x = *sp++;
-  CallOut(x = (ob) tblset(v, (tbl) xp, x, *sp));
+  CallOut(x = (ob) tbl_set(v, (tbl) xp, x, *sp));
   return x ? ApN(1, *sp++) : ApC(xoom, xp); }
 
 // FIXME so bad :(
@@ -162,7 +162,7 @@ static tbl tbl_grow(la v, tbl t) {
 
   with(t, tab1 = (ob*) mkmo(v, len));
   if (!tab1) return 0;
-  memset(tab1, -1, len * sizeof(ob));
+  setw(tab1, -1, len);
   tab0 = t->tab;
 
   for (size_t i, cap = 1 << cap0; cap--;)
@@ -193,7 +193,7 @@ static tbl tbl_set_s(la v, tbl t, ob k, ob x) {
 static ob tbl_keys(la v) {
   size_t len = ((tbl) v->xp)->len;
   two ks;
-  ks = cells(v, b2w(sizeof(struct two)) * len);
+  ks = cells(v, wsizeof(struct two) * len);
   if (!ks) return 0;
   ob r = nil, *tab = ((tbl) v->xp)->tab;
   while (len) for (ob e = *tab++; !nump(e);
@@ -209,7 +209,7 @@ static ob tbl_keys(la v) {
 static bool tblss(la v, intptr_t i, intptr_t l) {
   bool _ = true;
   while (_ && i <= l - 2)
-    _ = tblset(v,
+    _ = tbl_set(v,
       (tbl) v->xp,
       v->fp->argv[i],
       v->fp->argv[i+1]),
@@ -247,7 +247,7 @@ static Vm(aptbl) {
   switch (a) {
     case 0: return ApC(ret, putnum(((tbl) ip)->len));
     case 1: return
-      xp = tblget(v, (tbl) ip, fp->argv[0], nil),
+      xp = tbl_get(v, (tbl) ip, fp->argv[0], nil),
       ApC(ret, xp);
     default:
       xp = (ob) ip;
@@ -265,7 +265,7 @@ static intptr_t hxtbl(la v, ob _) {
 #include "gc.h"
 static Gc(cptbl) {
   tbl src = (tbl) x,
-      dst = bump(v, b2w(sizeof(struct tbl)));
+      dst = bump(v, wsizeof(struct tbl));
   src->head.disp = (vm*) dst;
   return (ob) ini_tbl(dst, src->len, src->cap,
     (ob*) cp(v, (ob) src->tab, pool0, top0)); }

@@ -32,7 +32,7 @@ test-lots:
 # build
 # tested with gcc & clang
 CFLAGS ?=\
-	-std=c99 -g -O2 -flto -fpic -Wall -Werror\
+	-std=c99 -g -O2 -flto -fpic -Wall\
  	-Wstrict-prototypes -Wno-shift-negative-value\
 	-fno-stack-protector
 

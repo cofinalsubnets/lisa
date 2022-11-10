@@ -5,7 +5,6 @@
 #include <stdlib.h>
 #include <time.h>
 #include <stdbool.h>
-#include <stdio.h>
 
 // thanks !!
 typedef la_ob ob;
@@ -53,7 +52,7 @@ struct la_carrier {
 
   tbl topl; // global scope
   sym syms, // symbol table // TODO use a hash
-      lex[LexN]; // lexicon
+      *lex; // lexicon
   intptr_t rand;
 
   // gc state
@@ -69,16 +68,22 @@ struct la_carrier {
 
 // FIXME develop towards public API
 la_status
+  la_ev_stream(la_carrier, FILE*),
   la_lib(la_carrier, const char*),
-  la_call(la_carrier, la_mo, size_t),
   la_ev_f(la_carrier, FILE*);
 
 void la_reset(la_carrier); // reset interpreter state
 
+void
+  *cpyw_l2r(void*, const void*, size_t),
+  *cpyw_r2l(void*, const void*, size_t),
+  *setw(void*, intptr_t, size_t);
 struct la_prim { vm *ap; const char *nom; };
 extern const struct la_prim prims[];
 extern const struct mtbl
   mtbl_two, mtbl_str, mtbl_tbl, mtbl_sym;
+
+#define wsizeof(_) b2w(sizeof(_))
 
 #define getnum(_) ((ob)(_)>>1)
 #define putnum(_) (((ob)(_)<<1)|1)

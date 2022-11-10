@@ -4,7 +4,6 @@
 #include "str.h"
 #include "sym.h"
 #include "gc.h"
-#include "lexicon.h"
 #include <string.h>
 #include <ctype.h>
 
@@ -83,13 +82,13 @@ static NoInline ob rx_two(la v, FILE *i) {
         pull(v, i, 0); } }
 
 static str mkbuf(la v) {
-  str s = cells(v, b2w(sizeof(struct str)) + 1);
+  str s = cells(v, wsizeof(struct str) + 1);
   return s ? ini_str(s, sizeof(ob)) : s; }
 
 static str buf_grow(la v, str s) {
   str t;
   size_t len = s->len;
-  with(s, t = cells(v, b2w(sizeof(struct str)) + 2 * b2w(len)));
+  with(s, t = cells(v, wsizeof(struct str) + 2 * b2w(len)));
   if (t) ini_str(t, 2 * len), memcpy(t->text, s->text, len);
   return t; }
 
