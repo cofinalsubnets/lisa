@@ -14,6 +14,8 @@ struct two {
 #define BB(o) B(B(o))
 
 two pair(la, ob, ob);
+intptr_t lidx(ob, ob);
+size_t llen(ob);
 
 static Inline two ini_two(void *_, ob a, ob b) {
   two w = _;

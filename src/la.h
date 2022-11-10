@@ -44,13 +44,20 @@ enum lex { Def, Cond, Lamb, Quote, Seq, Splat, Eval, LexN };
 
 typedef struct keep *keep;
 
+struct la_globals {
+  struct { tbl top, mod; } ns;
+  struct {
+    sym define, cond, lambda, quote, begin, splat, eval;
+  } lex; };
+
 struct la_carrier {
   // vm state
   mo ip;
   sf fp;
   ob xp, *hp, *sp;
 
-  tbl topl; // global scope
+  tbl topl, // global scope
+      mod;
   sym syms, // symbol table // TODO use a hash
       *lex; // lexicon
   intptr_t rand;

@@ -57,17 +57,6 @@ static Inline mo pb2(vm *i, ob x, mo k) {
 
 // supplemental list functions
 //
-// index of item in list (-1 if absent)
-static intptr_t lidx(ob l, ob x) {
-  for (intptr_t i = 0; twop(l); l = B(l), i++)
-    if (x == A(l)) return i;
-  return -1; }
-
-// length of list
-static size_t llen(ob l) {
-  size_t i = 0;
-  while (twop(l)) l = B(l), i++;
-  return i; }
 
 // append to tail
 static NoInline two snoc(la v, ob l, ob x) {

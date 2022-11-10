@@ -5,8 +5,7 @@
 struct tbl {
   struct header head;
   size_t len, cap;
-  ob *tab;
-};
+  ob *tab; };
 
 // hash tables
 tbl mktbl(la),

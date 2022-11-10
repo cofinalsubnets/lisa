@@ -664,10 +664,17 @@
 (tset macros 'imm ev)
 
 ; " drop privileges "
-(: dels (cu (flip each) (cu tdel _ns))
-   insns (filter (tkeys _ns) (\ k (= "i-" (ssub (ynom k) 0 2))))
-   locs '(boot egg poke macros hom seek peek hfin _ns)
-  (each (L insns locs) dels))
+(:; dels (cu (flip each) (cu tdel _ns))
+;   locs '(egg poke macros hom seek peek hfin _ns)
+;   insns (filter (tkeys _ns) (\ k (= "i-" (ssub (ynom k) 0 2))))
+  (,
+    (tdel _ns 'egg)
+    (tdel _ns 'macros)
+;    (tdel _ns '_ns)
+;    (dels insns)
+;    (dels locs)
+  )
+)
 ;ev
 (:
  ((diag f) x) (f x x)

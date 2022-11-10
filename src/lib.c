@@ -1,6 +1,7 @@
 #include "la.h"
 #include "alloc.h"
 #include "str.h"
+#include "tbl.h"
 #include <string.h>
 #include <errno.h>
 #include <stdarg.h>
@@ -52,6 +53,7 @@ la_status la_lib(la_carrier v, const char *nom) {
   la_status s = seek_lib_path(v, nom);
   if (s != LA_OK) return s;
   str path = (str) v->xp;
+//  if (tbl_get(v, v->topl, (ob) path, 0)) return LA_OK; // TODO
   FILE *in = fopen(path->text, "r");
   if (!in) return LA_XSYS;
   s = la_ev_stream(v, in);

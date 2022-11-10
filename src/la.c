@@ -41,7 +41,7 @@ static sym *la_open_lexicon(la_carrier v) {
 // FIXME return a tbl
 static bool la_open_toplevel(la_carrier v) {
   ob _; return
-    (v->topl = mktbl(v)) &&
+    (v->mod = v->topl = mktbl(v)) &&
     (_ = (ob) symofs(v, "_ns")) &&
     tbl_set(v, v->topl, _, (ob) v->topl)
     // register instruction addresses at toplevel so the

@@ -3,6 +3,7 @@
 #include "mo.h"
 #include "tbl.h"
 #include "vm.h"
+#include "ns.h"
 #include <string.h>
 
 ////
@@ -83,7 +84,7 @@ Vm(setloc) {
 Vm(late) {
   ob w = (ob) GF(ip), d = A(w);
   xp = B(w);
-  w = tbl_get(v, (tbl) d, xp, 0); // FIXME call name resolve procedure
+  w = ns_seek(v, (tbl) d, xp); // FIXME call name resolve procedure
   if (!w) return ApC(xnom, xp);
   xp = w;
   // omit the arity check if possible
