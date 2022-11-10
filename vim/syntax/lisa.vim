@@ -16,7 +16,7 @@ syn region LisaAtom start=+'"+ skip=+\\"+ end=+"+
 syn region LisaAtomList contained matchgroup=Special start="(" matchgroup=Special end=")" contains=@LisaAtomCluster,LisaString
 
 syn iskeyword @,!,37-38,42-47,:,60-63,\,`,|,~,^
-syn keyword LisaFunc < <= = > >= + - ~ ! * / % ? ` : \\ , . A B X L Q && \|\| \| & ^ << >>
+syn keyword LisaFunc < <= = > >= + - ~ ! * / % ? ` : \\ , . A B AA AB BA BB X L Q && \|\| \| & ^ << >>
 syn keyword LisaFunc ::: >>= case
 syn keyword LisaFunc twop nump symp tblp strp nilp homp ev ap
 syn keyword LisaFunc str slen schr scat ssub ystr sym nope
@@ -36,7 +36,7 @@ syn match LisaNumber "\(+\|-\)*\(0x\|0X\)\(\.\x\+\|\x\+\(\.\x*\)\=\)"
 syn match LisaParenError ")"
 
 syn match LisaComment ";.*$" contains=LisaTodo
-syn match LisaTodo "\(#.*$\|XXX\)"
+syn match LisaTodo "\(#.*$\|XXX\|TODO\|FIXME\)"
 
 syn sync lines=100
 
