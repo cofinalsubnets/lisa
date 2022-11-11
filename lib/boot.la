@@ -326,7 +326,7 @@ egg1 '
   anom (? (: en (e 'nom)) (X nom en) nom)
   f (env (init n) e anom)
   n0 (last n)
-  x (weak-eval (scan f n0) n0)
+  x (scan f n0)
 
   (?
    ; if the function is nonvariadic and all it does is apply
@@ -357,97 +357,8 @@ egg1 '
  (quote x) (? (|| (symp x) (twop x)) (Q x) x)
 
  (scan e x)  (:
-  ; function symbol sugar ; handles any level of nesting
-  (desug-\ x) (? (nilp (twop (A x))) x
-   (desug-\ (X (AA x)
-    (X (X '\ (snoc (BA x) (AB x)))(BB x)))))
-
-  (desug-: e y) (? y (,
-   (? (quoted? (: x (desug-\ y) a (AB x)))
-       (tset (e 'val) (A x) (unquote a))
-      (, (tset (e 'def) (A x) a)
-         (walk e a)))
-   (desug-: e (BB x))))
-
-  (walk e x) (? (twop x) (: head (A x) (?
-   (|| (= '\ head) (= head '`)) 0
-   (= head ':) (? (= 1 (% (len x) 2)) (desug-: e (B x)))
-   (each x (\ x (walk e x))))))
-  ; this is a huge complicated procedure for "resolving
-  ; the addresses" of sets of mutually recursive inner functions
-  ; at compile time, so they can be as efficient as toplevel
-  ; definitions whenever that's possible. it constructs the
-  ; maximum set S of function variables whose definitions
-  ; have no free variables not in S. then it arranges for
-  ; references to functions in S to get resolved (with
-  ; optimizations etc) later, which lets the compiler generate
-  ; appropriate code without having a function address yet.
-  (resolve e)
-   ; only bother with any of this if there are inner defs
-   (? (: ks (tkeys (: def (e 'def)))) (:
-   ; step one: pass over each inner def for this function and
-   ; try to rewrite and evaluate it. if this succeeds, add it
-   ; to the known values. otherwise, if the definition is for
-   ; a function, collect it into a list.
-   (ev-def e kvs) (? kvs (?
-    (thas (e 'val) (: kv (A kvs) k (A kv)))
-     (ev-def e (B kvs))
-    (: qq (weak-eval e (B kv)) bb (ev-def e (B kvs)) (?
-     (quoted? (tset (e 'def) k qq))
-      (, (tset (e 'val) k (unquote qq))
-         (tdel (e 'def) k) bb)
-     (? (twop qq) (= '\ (A qq)))
-      (X (X k qq) bb)
-     bb))))
- 
-   ; step two: now we have a list of function name/definition
-   ; pairs. try and compile each one; if it succeeds, add it to
-   ; the known values. otherwise collect the name, definition,
-   ; and list of free variables into a list.
-   (co-def e kvs) (? kvs (: kv (A kvs) rr (co-def e (B kvs)) (?
-    (twop (: i (ltu e (: k (A kv)) (: v (B kv)))))
-     (X (X k (X (A i) v)) rr)
-    (, (tset (e 'val) k i)
-       (tdel (e 'def) k) rr))))
- 
-   ; step three: reject from the list all definitions that
-   ; depend on values that won't be available until runtime.
-   ; membership in the list is regarded as proof that the
-   ; function is available now, so any time a function is
-   ; rejected we start over again as it may have been
-   ; referenced by a previously accepted function.
-   (rm-dep e kvs) (rm-dep-r e kvs kvs 0)
-   (rm-dep-r e i kvs q) (:
-    (chk e i vs) (? (nilp vs) 1 (: v (A vs) (?
-     (|| (any (\ j (= (A j) v)) i) (thas (e 'val) v))
-      (chk e i (B vs)))))
-    (? (nilp kvs) q (?
-     (chk e i (AB (: kv (A kvs))))
-      (rm-dep-r e i (B kvs) (X kv q))
-     (rm-dep e (del i kv)))))
- 
-   ; step four ( the last one ) : now we have the desired
-   ; set of functions. remove them from the scope's local
-   ; variables and add them to a list of deferred values, then
-   ; recompile them. since we know each of these functions has
-   ; no free variables that aren't being deferred, this time
-   ; ltu will definitely return a function, which is stored in
-   ; the known value set.
-   (co-dfr e kvs) (?
-    (nilp kvs) (tset e'loc (tkeys (e'def)))
-    (, (tdel (e 'def) (: kv (A kvs) k (A kv)))
-       (tset e 'dfr (X k (e 'dfr)))
-       (co-dfr e (B kvs))
-       (tset (e 'val) k (ltu e k (BB kv)))))
- 
-   (co-dfr e (rm-dep e (co-def e (ev-def e
-    (map (tset e'loc ks) (\ k (X k (def k))))))))))
-
-  (, (walk e x) (resolve e) e))
-
-
- (weak-eval e x) (:
-  (wk-X e x) (:
+ (wev x) (:
+  (wk-X x) (:
 
    ; FIXME optimization
    ; static arity check : omit the check in the called function
@@ -457,7 +368,7 @@ egg1 '
      (X (seek z 2) (B x)) ; this call is ok, skip the check
      (nope'wrong'arity)))) ; oops wrong arity
 
-   (wk-: e x) (:
+   (wk-: x) (:
     (nom s) (? (twop s) (nom (A s)) s)
     (sug d) (L (L '\ (L ', (init d) (last d))))
     (loop e x) (? x (:
@@ -472,7 +383,7 @@ egg1 '
    ; we should ALWAYS be doing this, but without
    ; variable renaming we can only be sure it's
    ; safe in this case.
-   (wk-\ e l) (:
+   (wk-\ l) (:
     (letrec? l) (? (B l)
      (? (twop (: x (last l)))
       (? (= (A x) ':) (= 1 (% (len (B x)) 2)))))
@@ -491,32 +402,31 @@ egg1 '
      (L j x))
     (? l (X f (fold i (A l) (B l))) (quote i)))
 
-   (wk-? e x) (:
-    (rec e x) (?
+   (wk-? x) (:
+    (rec x) (?
      (nilp x) ~~
-     (nilp (B x)) (L (weak-eval e (A x)))
-     (nilp (quoted? (: a (weak-eval e (A x)))))
-      (X a (X (weak-eval e (A (B x))) (rec e (BB x))))
-     (unquote a) (L (weak-eval e (AB x)))
-     (rec e (BB x)))
-    ((\ e x r (? r(? (B r) (X '? r) (A r))))
-     e x (rec e x)))
+     (nilp (B x)) (L (wev (A x)))
+     (nilp (quoted? (: a (wev (A x)))))
+      (X a (X (wev (A (B x))) (rec (BB x))))
+     (unquote a) (L (wev (AB x)))
+     (rec (BB x)))
+    ((\ r (? r (? (B r) (X '? r) (A r)))) (rec x)))
 
-   (wk-, e x) (:
-    (loop e x) (? (nilp (B x)) (L (weak-eval e (A x)))
-     ((\ e x z y (? (? (symp y) 1 (quoted? y)) z (X y z)))
-      e x (loop e (B x)) (weak-eval e (A x))))
-    (? (B x) (? (B (: z (loop e (B x)))) (X ', z) (A z))))
+   (wk-, x) (:
+    (loop x) (? (nilp (B x)) (L (wev (A x)))
+     ((\ x z y (? (? (symp y) 1 (quoted? y)) z (X y z)))
+      x (loop (B x)) (wev (A x))))
+    (? (B x) (? (B (: z (loop (B x)))) (X ', z) (A z))))
 
    a (A x) (?
     (= '` a) x
-    (= '\ a) (wk-\ e x)
-    (= ': a) (wk-: e x)
-    (= '? a) (wk-? e (B x))
-    (= ', a) (wk-, e x)
+    (= '\ a) (wk-\ x)
+    (= ': a) (wk-: x)
+    (= '? a) (wk-? (B x))
+    (= ', a) (wk-, x)
     ; oh boy ...
-    (? (: mac (macros a)) (weak-eval e (ap mac (B x)))
-     (: z (map x (cu weak-eval e)) q (A z) r (B z) (?
+    (? (: mac (macros a)) (wev (ap mac (B x)))
+     (: z (map x wev) q (A z) r (B z) (?
       (abelians q) (:
        ff (part quoted? r)
        fg (ap q (map (A ff) unquote))
@@ -526,16 +436,106 @@ egg1 '
        (quote (ap q (map r unquote)))
       (check-arity z))))))
 
-  (wk-sym e x) ((\ e x l  (?
+  (wk-sym x) ((\ x l (?
    (= (A l) 'here) (quote (B l))
    (nilp (thas (: defs (e 'def)) x)) x
-   (: dd (weak-eval e (tdel defs x))
+   (: dd (wev (tdel defs x))
     (? (nilp (quoted? (tset defs x dd))) x (,
      (tdel (e 'def) x)
      (tset (e 'val) x (unquote dd))
-     dd))))) e x (look e x))
+     dd))))) x (look e x))
+  (? (twop x) (wk-X x) (symp x) (wk-sym x) x)
+  
+ )
+  ; function symbol sugar ; handles any level of nesting
+  (desug-\ x) (? (nilp (twop (A x))) x
+   (desug-\ (X (AA x)
+    (X (X '\ (snoc (BA x) (AB x)))(BB x)))))
 
- (? (twop x) (wk-X e x) (symp x) (wk-sym e x) x))
+  (desug-: y) (? y (,
+   (? (quoted? (: x (desug-\ y) a (AB x)))
+       (tset (e 'val) (A x) (unquote a))
+      (, (tset (e 'def) (A x) a)
+         (walk a)))
+   (desug-: (BB x))))
+
+  (walk x) (? (twop x) (: head (A x) (?
+   (|| (= '\ head) (= head '`)) 0
+   (= head ':) (? (= 1 (% (len x) 2)) (desug-: (B x)))
+   (each x (\ x (walk x))))))
+  ; this is a huge complicated procedure for "resolving
+  ; the addresses" of sets of mutually recursive inner functions
+  ; at compile time, so they can be as efficient as toplevel
+  ; definitions whenever that's possible. it constructs the
+  ; maximum set S of function variables whose definitions
+  ; have no free variables not in S. then it arranges for
+  ; references to functions in S to get resolved (with
+  ; optimizations etc) later, which lets the compiler generate
+  ; appropriate code without having a function address yet.
+  (resolve)
+   ; only bother with any of this if there are inner defs
+   (? (: ks (tkeys (: def (e 'def)))) (:
+   ; step one: pass over each inner def for this function and
+   ; try to rewrite and evaluate it. if this succeeds, add it
+   ; to the known values. otherwise, if the definition is for
+   ; a function, collect it into a list.
+   (ev-def kvs) (? kvs (?
+    (thas (e 'val) (: kv (A kvs) k (A kv)))
+     (ev-def (B kvs))
+    (: qq (wev (B kv)) bb (ev-def (B kvs)) (?
+     (quoted? (tset (e 'def) k qq))
+      (, (tset (e 'val) k (unquote qq))
+         (tdel (e 'def) k) bb)
+     (? (twop qq) (= '\ (A qq)))
+      (X (X k qq) bb)
+     bb))))
+ 
+   ; step two: now we have a list of function name/definition
+   ; pairs. try and compile each one; if it succeeds, add it to
+   ; the known values. otherwise collect the name, definition,
+   ; and list of free variables into a list.
+   (co-def kvs) (? kvs (: kv (A kvs) rr (co-def (B kvs)) (?
+    (twop (: i (ltu e (: k (A kv)) (: v (B kv)))))
+     (X (X k (X (A i) v)) rr)
+    (, (tset (e 'val) k i)
+       (tdel (e 'def) k) rr))))
+ 
+   ; step three: reject from the list all definitions that
+   ; depend on values that won't be available until runtime.
+   ; membership in the list is regarded as proof that the
+   ; function is available now, so any time a function is
+   ; rejected we start over again as it may have been
+   ; referenced by a previously accepted function.
+   (rm-dep kvs) (rm-dep-r kvs kvs 0)
+   (rm-dep-r i kvs q) (:
+    (chk i vs) (? (nilp vs) 1 (: v (A vs) (?
+     (|| (any (\ j (= (A j) v)) i) (thas (e 'val) v))
+      (chk i (B vs)))))
+    (? (nilp kvs) q (?
+     (chk i (AB (: kv (A kvs))))
+      (rm-dep-r i (B kvs) (X kv q))
+     (rm-dep (del i kv)))))
+ 
+   ; step four ( the last one ) : now we have the desired
+   ; set of functions. remove them from the scope's local
+   ; variables and add them to a list of deferred values, then
+   ; recompile them. since we know each of these functions has
+   ; no free variables that aren't being deferred, this time
+   ; ltu will definitely return a function, which is stored in
+   ; the known value set.
+   (co-dfr kvs) (?
+    (nilp kvs) (tset e'loc (tkeys (e'def)))
+    (, (tdel (e 'def) (: kv (A kvs) k (A kv)))
+       (tset e 'dfr (X k (e 'dfr)))
+       (co-dfr (B kvs))
+       (tset (e 'val) k (ltu e k (BB kv)))))
+ 
+   (co-dfr (rm-dep (co-def (ev-def
+    (map (tset e'loc ks) (\ k (X k (def k))))))))))
+
+  (, (walk x) (resolve) (wev x)))
+
+
 
  ; second moiety : " analyzing evaluator "
  ; generates code to produce the value of the expression
@@ -552,8 +552,8 @@ egg1 '
  ; these functions are for type checking
  (consumes t k) (? (nilp t) k
   (emc (? (= t 'two) i-idtwo (= t 'num) i-idno
-           (= t 'hom) i-idmo (= t 'tbl) i-idtbl
-           (nope 'consumes)) k))
+          (= t 'hom) i-idmo (= t 'tbl) i-idtbl
+          (nope 'consumes)) k))
 
  (produces t k) (:
   (subtype? a b) (? (= a b) -1
@@ -631,9 +631,10 @@ egg1 '
 
   l ((produces 'hom k) (+ m 2) e)
   y (ltu e (nom e l) x)
-  (? (twop y)
+  (? (twop y) (,
+;      (. (B y)'encloses(A y))
       (poke (? (e 'loc) i-encl1 i-encl0)
-       (poke (X (B y) (clo-thd e (A y) k)) l))
+       (poke (X (B y) (clo-thd e (A y) k)) l)))
      (pokef i-imm (poke y l))))
 
  (co-? x k) (:
@@ -652,7 +653,7 @@ egg1 '
 
  (ini nom) (emc i-ret (emd nom hom))
  (ev x) (: 
-  (analyze e x) (((co-ev (weak-eval (scan e x) x) (ini 0)) 0 e))
+  (analyze e x) (((co-ev (scan e x) (ini 0)) 0 e))
   (analyze (env 0 0 0) x))))
 
 ; bootstrap
