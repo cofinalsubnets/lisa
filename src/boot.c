@@ -54,7 +54,6 @@ static Inline mo pb1(vm *i, mo k) {
 static Inline mo pb2(vm *i, ob x, mo k) {
   return pb1(i, pb1((vm*) x, k)); }
 
-
 // supplemental list functions
 //
 
@@ -293,24 +292,23 @@ static NoInline ob ls_lex(la v, env e, ob y) { return
   ls_lex(v, (env) e->par, y); }
 
 Co(co_sym, ob x) {
-  ob y, q;
+  ob q;
   with(x, q = ls_lex(v, e ? *e : (env) nil, x));
   if (!q) return 0;
-  y = A(q);
-  if (y == Here) return imx(v, e, m, imm, B(q));
-  if (y == Wait) return
+  if (A(q) == Here) return imx(v, e, m, imm, B(q));
+  if (A(q) == Wait) return
     (x = (ob) pair(v, B(q), x)) &&
-    (with(x, y = (ob) pull(v, e, m+2)), y) ?
-      pb2(late, x, (mo) y) : 0;
+    (with(x, q = (ob) pull(v, e, m+2)), q) ?
+      pb2(late, x, (mo) q) : 0;
 
   if (B(q) == (ob) *e) return
-    y == Loc ?
+    A(q) == Loc ?
       imx(v, e, m, sl1n, putnum(lidx((*e)->loc, x))) :
-    y == Arg ?
+    A(q) == Arg ?
       imx(v, e, m, argn, putnum(lidx((*e)->arg, x))) :
     imx(v, e, m, clon, putnum(lidx((*e)->clo, x)));
 
-  y = llen((*e)->clo);
+  size_t y = llen((*e)->clo);
   with(x, q = (ob) snoc(v, (*e)->clo, x));
   if (!q) return 0;
   (*e)->clo = q;
@@ -343,8 +341,7 @@ static NoInline bool seq_mo_loop(la v, env *e, ob x) {
 
 Co(co_seq, ob x) { return
   x = twop(x) ? x : (ob) pair(v, x, nil),
-  x = x && seq_mo_loop(v, e, x),
-  x ? pull(v, e, m) : 0; }
+  x && seq_mo_loop(v, e, x) ? pull(v, e, m) : 0; }
 
 Co(co_two, ob x) {
   ob a = A(x);
@@ -369,7 +366,7 @@ static NoInline mo imx(la v, env *e, size_t m, vm *i, ob x) {
   return k ? pb2(i, x, k) : 0; }
 
 Co(r_pb2) {
-  vm *i = (vm*) (*v->sp++);
+  vm *i = (vm*) *v->sp++;
   ob x = *v->sp++;
   return imx(v, e, m, i, x); }
 

@@ -8,12 +8,11 @@ bool eql(la v, ob a, ob b) {
     ((mtbl) GF(a))->equi(v, a, b)); }
 
 // comparison operators
-// XXX FIXME returning xp is wrong now that 0 = nil
-Vm(lt) { return ApN(1, *sp++ < xp ? xp : nil); }
-Vm(lteq) { return ApN(1, *sp++ <= xp ? xp : nil); }
-Vm(eq) { return ApN(1, eql(v, xp, *sp++) ? T : nil); }
-Vm(gteq) { return ApN(1, *sp++ >= xp ? xp : nil); }
-Vm(gt) { return ApN(1, *sp++ > xp ? xp : nil); }
+Vm(lt) { return ApN(1, *sp++ < xp ? T : nil); }
+Vm(lteq) { return ApN(1, *sp++ <= xp ? T : nil); }
+Vm(eq) { return ApN(1, eql(v, *sp++, xp) ? T : nil); }
+Vm(gteq) { return ApN(1, *sp++ >= xp ? T : nil); }
+Vm(gt) { return ApN(1, *sp++ > xp ? T : nil); }
 
 // TODO remove macros
 #define LT(a,b) (a<b)

@@ -72,13 +72,13 @@ Vm(str_f) {
   return ApC(ret, (ob) s); }
 
 #include "tx.h"
-static Vm(apstr) {
+static Vm(ap_str) {
   str s = (str) ip;
   fputstr(stdout, s);
   return ApC(ret, (ob) ip); }
 
 #include "hash.h"
-static intptr_t hxstr(la v, ob _) {
+static intptr_t hx_str(la v, ob _) {
   str s = (str) _;
   intptr_t h = 1;
   size_t words = s->len / sizeof(ob),
@@ -92,7 +92,7 @@ static intptr_t hxstr(la v, ob _) {
 static Inline bool escapep(char c) {
   return c == '\\' || c == '"'; }
 
-static long txstr(la v, FILE *o, ob _) {
+static long tx_str(la v, FILE *o, ob _) {
   str s = (str) _;
   size_t len = s->len;
   const char *text = s->text;
@@ -108,22 +108,22 @@ static long txstr(la v, FILE *o, ob _) {
   return r; }
 
 #include "gc.h"
-static Gc(cpstr) {
+static Gc(cp_str) {
   str src = (str) x,
       dst = bump(v, wsizeof(struct str) + b2w(src->len));
   memcpy(dst, src, sizeof(struct str) + src->len);
   src->head.disp = (vm*) dst;
   return (ob) dst; }
 
-static bool eqstr(la v, ob x, ob y) {
+static bool eq_str(la v, ob x, ob y) {
   if (!strp(y)) return false;
   str a = (str) x, b = (str) y;
   return a->len == b->len &&
     !strncmp(a->text, b->text, a->len); }
 
 const struct mtbl mtbl_str = {
-  .does = apstr,
-  .emit = txstr,
-  .evac = cpstr,
-  .hash = hxstr,
-  .equi = eqstr, };
+  .does = ap_str,
+  .emit = tx_str,
+  .evac = cp_str,
+  .hash = hx_str,
+  .equi = eq_str, };

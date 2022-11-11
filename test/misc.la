@@ -34,7 +34,7 @@
  one-hundred (two ten)
 
  ; fixnum hyperoperation sequence, rooted at +
- (hy x n y) ( ? (! n) (+ x y) (! y) 1
+ (hy x n y) (? (= 0 n) (+ x y) (= 1 n) (* x y) (nilp y) 1
    (hy x (- n 1) (hy x n (- y 1)))))
 
 ; tarai function of ikuo takeuchi (1978)
@@ -92,10 +92,11 @@
   (all check pairs))))
 
 ; hyperoperation sequence
-(test hy
-  (: (pow a b) (hy a 2 b)
-     (tet a b) (hy a 3 b)
-    (= 65536 (<< 1 16) (pow 2 16) (tet 2 4))))
+
+(: (pow a b) (hy a 2 b)
+   (tet a b) (hy a 3 b)
+ (test hy
+  (= 65536 (<< 1 16) (pow 2 16) (tet 2 4))))
 
 ; nontrivial fixed points of eval named for willard van
 ; orman quine (1908-2000)

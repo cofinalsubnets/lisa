@@ -11,8 +11,8 @@
      (BA x) (B (A x)) (BB x) (B (B x))
 
      ; functional programmings
-     (I x) x id I
-     (K x) (\ x) const K
+     (id x) x I id
+     (const x) (\ x) K const
      (co xs .) (foldl1 xs (\ m f (\ x . (f (ap m x)))))
      ((flip f) x y) (f y x)
      ((cu f x .) y .) (ap f (append x y))
@@ -90,14 +90,7 @@
    '|| (\ x . ((: (| x) (? x (: q (sym) (L ': q (A x) (L ? q q (| (B x))))))) x))
    '>>= (\ x . (? (> (len x) 1) (X (last x) (init x))
                                 (: y (sym) (L \ y (X y x)))))
-   'case (\ x a . (:
-     y (sym)
-     (loop a)
-      (? a (? (nilp (B a)) (A a)
-       (L ? (L '= y (A a)) (A (B a))
-        (loop (B (B a))))))
-    (L ': y x (loop a)))))
-  )
+   ))
 
   )
 ; this is the compiler source that's eval'd by stage 1, then
@@ -107,9 +100,9 @@
 (: egg '(, (:
    ; XXX be systematic about this
    pure (set
-    L X A B Q + - * / % & | ^ << >> I K flip inc dec co
-    = ~ <= >= < > cu const snoc init last memq at idx len
-    twop nilp symp nump tblp strp homp append cat
+    L X A B Q + - * / % & | ^ << >> id const flip co
+    = ~ <= >= < > cu snoc init last memq at idx len
+    twop nilp symp nump tblp strp homp append
     && || scat slen schr ssub str)
 
    ; these enable extra partial evaluation for functions
@@ -178,26 +171,20 @@
      (: z (fold f m (B x)) (X (A z) (X y (B z))))))
    (? (= (f) (A (: j (fold f m x)))) (B j) j))
 
-  ; for ordered comparison
-  ((ordered i) e x k) (?
-   ; FIXME this is pretty bad ... also it's wrong now that nil = 0
-   ; it would be much simpler just to use the framed version for arity > 2
-   (nilp x) (imm 0 k)
-   (nilp (B x)) (imm -1 k)
-   (preval e (A x) (:
-    (fold k x y)
-     (preval e x (emc i (? (nilp y) (push2 e k)
-      (emc i-br0 (peek2 e (emc i-push
-       (fold k (A y) (B y))))))))
-    (emc i-push (pop2 e (fold k (AB x) (BB x)))))))
+  ; for comparison operators
+  ((compar f i) e x k) (?
+   (? (nilp x) 1 (nilp (B x))) (imm -1 k)
+   (nilp (BB x))
+    (co-ev e (A x) (emc i-push (co-ev e (AB x) (emc i k))))
+   (co-apply e f x k))
 
   ((abelian f i) e x k) ((\ x
-   (preval e (A x) (consumes e 'num (binop e 'num i k (B x))))) (rw-monoidal f (f) x))
+   (co-ev e (A x) (consumes e 'num (binop e 'num i k (B x))))) (rw-monoidal f (f) x))
 
   ; for operations with a defined arity
   (typed i ret-type arg-types .) (: arity (len arg-types) (\ e x k (?
    (< (len x) arity) (nope 'wrong 'arity ': (len x) 'of arity)
-   (: (fo k z) (co (preval e (AA z) (consumes e (BA z) k)) (B z))
+   (: (fo k z) (co (co-ev e (AA z) (consumes e (BA z) k)) (B z))
       (co k z) (? z (fo (emc i-push k) z) k)
       l (emc i (produces ret-type k))
       z (zip X x arg-types)
@@ -206,7 +193,7 @@
   (binop e t i k x)
    (: (loop e t i k x)
        (emc i-push
-        (preval e (A x)
+        (co-ev e (A x)
          (consumes e t
           (emc i (binop e t i k (B x))))))
     (? x (loop e t i k x) (produces t k)))
@@ -214,24 +201,24 @@
   ((bitshift f i) e x k) (:
    y (rw-monoidal + 0 (B x))
    z (? (nump (A x)) (rw-monoidal f (A x) y) (X (A x) y))
-   (preval e (A z) (consumes e 'num (binop e 'num i k (B z)))))
+   (co-ev e (A z) (consumes e 'num (binop e 'num i k (B z)))))
 
   (tbl
-   id (\ e x k (preval e (A x) k))
+   id (\ e x k (co-ev e (A x) k))
    + (abelian + i-add)
    - (\ e x k (?
     (nilp x) (imm 0 k)
     (nilp (B x)) ((typed i-neg 'num 'num) e x k)
     (: y (rw-monoidal + 0 (B x))
        z (? (nump (A x)) (rw-monoidal - (A x) y) (X (A x) y))
-     (? z (preval e (A z) (consumes e 'num (binop e 'num i-sub k (B z)))) (imm 0 k)))))
+     (? z (co-ev e (A z) (consumes e 'num (binop e 'num i-sub k (B z)))) (imm 0 k)))))
    * (abelian * i-mul)
    / (\ e x k (?
     (nilp x) (imm 1 k)
-    (nilp (B x)) (preval e (A x) (consumes e 'num k))
+    (nilp (B x)) (co-ev e (A x) (consumes e 'num k))
     (: b (rw-monoidal * 1 (B x))
        c (? (nump (A x)) (rw-monoidal / (A x) b) (X (A x) b)))
-     (preval e (A c) (consumes e 'num (binop e 'num i-quot k (B c))))
+     (co-ev e (A c) (consumes e 'num (binop e 'num i-quot k (B c))))
     (imm 1 k)))
 
    & (abelian & i-band)
@@ -247,7 +234,7 @@
     (loop e x k) (? (nilp x) k
      (loop e (B x)
       (emc i-push
-       (preval e (A x)
+       (co-ev e (A x)
         (emc i-cons
          (produces 'two k))))))
     (imm 0 (loop e x k))))
@@ -260,23 +247,9 @@
    tlen (typed i-tlen 'num 'tbl)
    thas (typed i-thas 'num 'tbl 0)
 
-   < (ordered i-lt) <= (ordered i-lteq)
-   >= (ordered i-gteq) > (ordered i-gt)
-   = (\ e x k (?
-
-    (|| (nilp x)
-     (? (: q (map (filter x quoted?) unquote))
-        (: r (A q) (any (\ v (nilp (= v r))) (B q)))))
-     (imm 0 k)
-
-    (nilp (B x)) (imm 1 k)
-
-    (preval e (A x) (emc i-push (:
-     (fold e k x y) (:
-      l (preval e x (emc i-eq (? (nilp y) k
-         (emc i-br0 (peek2 e (fold e k (A y) (B y)))))))
-      (? y (emc i-dupl l) l))
-     (pop2 e (fold e (push2 e k) (AB x) (BB x))))))))
+   < (compar < i-lt) <= (compar <= i-lteq)
+   >= (compar >= i-gteq) > (compar > i-gt)
+   = (compar = i-eq)
 
    nilp (typed i-nilp_ 'num 0)
    twop (typed i-twop_ 'num 0)
@@ -332,15 +305,15 @@
  ; constructor for the closure, which is composed with the
  ; prototype to create an "instance".
  (ltu e nom l) (:
-  (loc k) (: loc (f 'loc)
+  (loc f k) (: loc (f 'loc)
    (? (nilp loc) k (poke i-setloc (poke (len loc) k))))
   (ar k) (: i (f 'sig) (?
    (> i 0) (pokef i-arity (poke i k))
-   (< i 0) (poke i-varg (poke (- (- i) 1) k))
+   (< i 0) (pokef i-varg (poke (- (- i) 1) k))
    k))
 
   n (? (B l) (B l) ~~)
-  anom (? (: en (e'nom)) (X nom en) nom)
+  anom (? (: en (e 'nom)) (X nom en) nom)
   f (env (init n) e anom)
   n0 (last n)
   x (weak-eval (scan f n0) n0)
@@ -353,10 +326,12 @@
       (? (twop x) (? (homp-strict (A x)) (= (B x) (f 'arg)))))
     (A x)
    ; otherwise compile it
-   (? (: k (hfin (ar (loc ((preval f x (ini anom)) 4 f))))
-         clo (f 'clo)) ; free variables or no ?
-    (X clo k)
-    k)))
+   ; the 4 initial words are for the combined instruction
+   ; output of (ar) and (loc)
+   (: k (hfin (ar (loc f ((co-ev f x (ini anom)) 4 f))))
+      clo (f 'clo)
+    (? clo ; free variables or no ?
+     (X clo k) k))))
 
  ; first compiler moiety : " weak evaluator "
  ; 1. construct the local scope of the function
@@ -598,8 +573,13 @@
       (nope 'type 'error ': t 'for q))
   (? (nilp t) k (\ m (pro t (k m)))))
 
+ (co-apply e fn args k) (:
+  (loop x k) (? (nilp x) k
+   (loop (B x) (co-ev e (A x) (emc i-push k))))
+  (loop args (co-ev e fn (consumes e 'hom ; tail call optimization is handled by instruction fusion
+   (emc i-call (emd (len args) k)))))) ; here is where you would do it instead
 
- (preval e x k) (:
+ (co-ev e x k) (:
   push1 (pushr 's1)
   pop1  (popr  's1)
   peek1 (peekr 's1)
@@ -613,9 +593,9 @@
       (? (= i i-ret) (poke i thd) ; forward return instructions
        (pokef i-jump ; otherwise jump somewhere ...
         (poke (? (= i i-jump) (peek (seek ex 1)) ex) thd))))
-     (? (nilp (B x)) (preval e (A x) fin)
-      (preval e (A x) (pop1 e (emc i-br1 (peek1 e
-       (loop (BB x) (push1 e (preval e (AB x) fin)))))))))
+     (? (nilp (B x)) (co-ev e (A x) fin)
+      (co-ev e (A x) (pop1 e (emc i-br1 (peek1 e
+       (loop (BB x) (push1 e (co-ev e (AB x) fin)))))))))
     (pop2 e (loop x (push2 e k))))
 
    ((pre-\ x k) m) (:
@@ -626,7 +606,7 @@
 
     (clo-thd x k) (:
      (loop x k) (? (nilp x) k
-      (loop (B x) (preval e (A x) (emc i-push k))))
+      (loop (B x) (co-ev e (A x) (emc i-push k))))
      (k m) (poke i-take (poke (len x) (hom m)))
      ((loop x k) 2 e))
 
@@ -637,13 +617,7 @@
          (poke (X (B y) (clo-thd (A y) k)) l))
        (pokef i-imm (poke y l))))
 
-   (pre-, x k) (? x (preval e (A x) (pre-, (B x) k)) k)
-   (co-ap fn args k) (:
-    (loop x k) (? (nilp x) k
-     (loop (B x) (preval e (A x) (emc i-push k))))
-    (? (? (quoted? fn) (: q (inliners (unquote fn)))) (q e args k)
-     (loop args (preval e fn (consumes e 'hom ; tail call optimization is handled by instruction fusion
-      (emc i-call (emd (len args) k))))))) ; here is where you would do it instead
+   (pre-, x k) (? x (co-ev e (A x) (pre-, (B x) k)) k)
 
    (pre-: x k) (:
    ; the rewrite ensures the : expression is always an even form.
@@ -654,9 +628,15 @@
           (emc i-defsl1 (emd (idx (e 'loc) (A x)) l)))
      (? (= 'here (A (: v (look e (A x)))))
       (imm (B v) q)
-      (preval e (AB x) q))))
+      (co-ev e (AB x) q))))
 
     (loop x k))
+
+   (co-ap fn args k) (:
+    (loop x k) (? (nilp x) k
+     (loop (B x) (co-ev e (A x) (emc i-push k))))
+    (? (? (quoted? fn) (: q (inliners (unquote fn)))) (q e args k)
+     (co-apply e fn args k)))
 
    (: z (A x) (?
     (= z '`) (imm (? (twop (B x)) (AB x)) k)
@@ -684,7 +664,7 @@
 
  (ini nom) (emc i-ret (emd nom hom))
  (ev x) (: e (env 0 0 0) 
-   (((preval e (weak-eval (scan e x) x) (ini 0)) 0 e) x))
+   (((co-ev e (weak-eval (scan e x) x) (ini 0)) 0 e) x))
   ;; end of compiler namespace ; now return the eval function
 ;  ev ; comment this line to define internals at toplevel
   )))

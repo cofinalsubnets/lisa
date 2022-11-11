@@ -6,7 +6,6 @@
 
 // errors
 Vm(xary) { return Pack(), LA_XARY; }
-Vm(xnom) { return Pack(), LA_XNOM; }
 Vm(xdom) { return Pack(), LA_XDOM; }
 Vm(xoom) { return Pack(), LA_XOOM; }
 

@@ -162,7 +162,7 @@ static tbl tbl_grow(la v, tbl t) {
 
   with(t, tab1 = (ob*) mkmo(v, len));
   if (!tab1) return 0;
-  setw(tab1, -1, len);
+  setw(tab1, nil, len);
   tab0 = t->tab;
 
   for (size_t i, cap = 1 << cap0; cap--;)

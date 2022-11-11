@@ -13,7 +13,7 @@ struct sf {
   ob argv[]; };
 
 // these are vm functions used by C but not lisp.
-#define cfns(_) _(gc) _(xdom) _(xoom) _(xnom) _(xary)
+#define cfns(_) _(gc) _(xdom) _(xoom) _(xary)
 #define ninl(x, ...) vm x NoInline;
 cfns(ninl)
 #undef cfns
@@ -40,7 +40,7 @@ cfns(ninl)
  _(br1) _(br0) _(bre) _(brn)\
  _(brl) _(brle) _(brge) _(brl2)\
  _(brle2) _(brg2) _(brg)\
- _(push) _(dupl)\
+ _(push)
 
 i_internals(ninl)
 

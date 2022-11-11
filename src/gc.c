@@ -142,4 +142,4 @@ Gc(cp) {
 NoInline Vm(gc) {
   size_t req = v->xp;
   CallOut(req = please(v, req));
-  return req ? ApN(0, xp) : ApC(xoom, xp); }
+  return req ? ApY(ip, xp) : ApC(xoom, xp); }

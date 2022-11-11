@@ -46,16 +46,10 @@ Vm(clo3) { return ApN(1, fp->clos[3]); }
 ////
 /// Store Instructions
 // // stack push
+// ok?
 Vm(push) {
-  Have1();
+  Have(1);
   *--sp = xp;
-  return ApN(1, xp); }
-
-// dup top of stack
-Vm(dupl) {
-  Have1();
-  --sp;
-  sp[0] = sp[1];
   return ApN(1, xp); }
 
 // set a local variable
@@ -70,15 +64,17 @@ Vm(deftop) {
   return _ ? ApN(2, xp) : ApC(xoom, xp); }
 
 // allocate local variable array
+// ok?
 Vm(setloc) {
   size_t n = getnum((ob) GF(ip));
   // + 1 for the stack slot
   Have(n + wsizeof(struct tag) + 1);
-  mo t = memset(ini_mo(hp, n), -1, sizeof(ob) * n);
+  mo t = setw(ini_mo(hp, n), nil, n);
   hp += n + wsizeof(struct tag);
   *--sp = (ob) t;
   return ApN(2, xp); }
 
+static NoInline Vm(xnom) { return Pack(), LA_XNOM; }
 // late binding
 // TODO dynamic type checking here
 Vm(late) {
@@ -100,11 +96,12 @@ Vm(late) {
 // varargs
 static NoInline Vm(varg0) {
   Have1();
-  fp = memmove((ob*) fp - 1, fp, sizeof(struct sf) + sizeof(ob) * fp->argc);
+  fp = cpyw_l2r((ob*) fp - 1, fp, wsizeof(struct sf) + fp->argc);
   sp = (ob*) fp;
   fp->argv[fp->argc++] = nil;
   return ApN(2, xp); }
 
+  // ok?
 Vm(varg) {
   size_t reqd = getnum((ob) GF(ip));
   if (reqd == fp->argc) return ApC(varg0, xp);
