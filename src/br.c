@@ -28,14 +28,14 @@ Vm(ap_f) {
   ip = (mo) fp->argv[0];
   sf subd = fp->subd;
   mo retp = fp->retp;
-  sp = fp->argv + fp->argc - adic;
-  for (size_t j = 0; j < adic; sp[j++] = A(xp), xp = B(xp));
-  fp = (sf) sp - 1;
+  fp = (sf) (fp->argv + fp->argc - adic) - 1;
   sp = (ob*) fp;
   fp->retp = retp;
   fp->argc = adic;
   fp->subd = subd;
   fp->clos = (ob*) nil;
+  for (size_t j = 0; j < adic; xp = B(xp))
+    fp->argv[j++] = A(xp);
   return ApY(ip, nil); }
 
 // return from a function
@@ -56,7 +56,7 @@ static NoInline Vm(recn) {
   // reset fp
   fp = (sf) (fp->argv + fp->argc - xp) - 1;
   // copy the args high to low BEFORE populating fp.
-  for (size_t i = xp; i--; fp->argv[i] = sp[i]);
+  cpyw_r2l(fp->argv, sp, xp);
   sp = (ob*) fp;
   // populate fp
   fp->retp = retp;
@@ -81,20 +81,20 @@ Vm(jump) { return ApY(GF(ip), xp); }
 // conditional jumps
 //
 // args: test, yes addr, yes val, no addr, no val
-#define Br(nom, test, a, x, b, y) Vm(nom) {\
-  return ApY((test) ? (ob) a(ip) : (ob) b(ip), x); }
+#define Br(nom, test, a, b) Vm(nom) { return\
+  ApY((test) ? (ob) a(ip) : (ob) b(ip), xp); }
 // combined test/branch instructions
-Br(br1, nilp(xp), FF, xp, GF, xp)
-Br(br0, nilp(xp), GF, xp, FF, xp)
+Br(br1, nilp(xp), FF, GF)
+Br(br0, nilp(xp), GF, FF)
 
-Br(bre, eql(v, xp, *sp++), GF, T, FF, nil)
-Br(brn, eql(v, xp, *sp++), FF, T, GF, nil)
+Br(bre, eql(v, xp, *sp++), GF, FF)
+Br(brn, eql(v, xp, *sp++), FF, GF)
 
-Br(brl,   *sp++ <  xp, GF, xp, FF, nil)
-Br(brl2,  *sp++ <  xp, FF, xp, GF, nil)
-Br(brle,  *sp++ <= xp, GF, xp, FF, nil)
-Br(brle2, *sp++ <= xp, FF, xp, GF, nil)
-Br(brg,   *sp++ >  xp, GF, xp, FF, nil)
-Br(brg2,  *sp++ >  xp, FF, xp, GF, nil)
-Br(brge,  *sp++ >= xp, GF, xp, FF, nil)
+Br(brl,   *sp++ <  xp, GF, FF)
+Br(brl2,  *sp++ <  xp, FF, GF)
+Br(brle,  *sp++ <= xp, GF, FF)
+Br(brle2, *sp++ <= xp, FF, GF)
+Br(brg,   *sp++ >  xp, GF, FF)
+Br(brg2,  *sp++ >  xp, FF, GF)
+Br(brge,  *sp++ >= xp, GF, FF)
 // brgteq2 is brlt

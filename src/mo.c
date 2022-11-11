@@ -124,7 +124,7 @@ static Vm(genclo0) {
   ob loc = ec[1];
   sf subd = fp;
   G(ip) = genclo1;
-  sp = cpyw_r2l(sp - adic, (ob*) arg + 1, adic);
+  sp = cpyw_r2l(sp - adic, F(arg), adic);
   fp = (sf) sp - 1;
   sp = (ob*) fp;
   fp->retp = ip;
@@ -139,7 +139,7 @@ static Vm(genclo0) {
 static Vm(enclose) {
   size_t
     adic = fp->argc,
-    arg_len = adic ? adic + 1 + wsizeof(struct tag) : 0,
+    arg_len = adic ? 1 + adic + wsizeof(struct tag) : 0,
     env_len = 4 + wsizeof(struct tag),
     thd_len = 3 + wsizeof(struct tag),
     n = arg_len + env_len + thd_len;
@@ -149,7 +149,7 @@ static Vm(enclose) {
      *block = hp;
   hp += n;
 
-  if (adic)
+  if (arg_len)
     ini_mo(block, adic + 1),
     block[0] = putnum(adic),
     cpyw_r2l(block + 1, fp->argv, adic),

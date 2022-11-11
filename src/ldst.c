@@ -48,7 +48,7 @@ Vm(clo3) { return ApN(1, fp->clos[3]); }
 // // stack push
 // ok?
 Vm(push) {
-  Have(1);
+  Have1();
   *--sp = xp;
   return ApN(1, xp); }
 
