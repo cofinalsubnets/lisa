@@ -26,8 +26,8 @@ test: $(bin_debug)
 	/usr/bin/env TIMEFORMAT="in %Rs" bash -c "time $(testcmd)"
 
 # run the tests a lot of times to try and catch nondeterministic bugs :(
-test-lots:
-	for n in {1..2048}; do make -s test || exit 1; done
+test-lots: $(bin_debug)
+	for n in {1..2048}; do $(testcmd) || exit 1; done
 
 # build
 # tested with gcc & clang

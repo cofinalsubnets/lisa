@@ -11,4 +11,4 @@
   (each failures (\ k
    (, (name k)
       (each (*test-failures* k) show))))
-  (nope'test'failures))))
+  (nope (tlen *test-failures*) 'failed 'tests))))

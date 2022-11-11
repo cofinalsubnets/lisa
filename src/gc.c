@@ -39,14 +39,12 @@ bool please(la v, size_t req) {
   while (all > tar || vit < VIT_FLOOR) tar <<= 1, vit <<= 1;
   // adjust size down if we're big and fast enough.
   while (all < tar>>1 && vit > VIT_CEIL) tar >>= 1, vit >>= 1;
-//  puts(tar == len ? "keep" : tar < len ? "shrink" : "grow");
   // if we don't need to resize, return success.
   return tar == len
     // otherwise adjust the size and copy again.
     || copy(v, tar)
     // if that fails, succeed if we have enough free space.
     || all <= len; }
-
 
 // copy : clock_t la size_t
 // relocate all reachable data into a newly allocated

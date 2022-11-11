@@ -177,6 +177,7 @@ static Vm(enclose) {
 // these pass the locals array to encl in xp
 // TODO do the same thing with the closure ptr
 Vm(encl1) { return ApC(enclose, putnum(1)); }
+// if there aren't any locals we don't need to defer closure construction!
 Vm(encl0) { return ApC(enclose, putnum(0)); }
 
 // try to get the name of a function
