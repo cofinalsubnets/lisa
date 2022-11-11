@@ -43,13 +43,6 @@ some useful functions:
 ((\ - (L - (L ` -))) '(\ - (L - (L ` -))))
 ```
 
-### hyperoperation sequence
-```lisp
-; rooted at +
-(: (hy x n y) ( ? (~ n) (+ x y) (~ y) 1
- (hy x (- n 1) (hy x n (- y 1)))))
-```
-
 ### church numerals
 ```lisp
 (:

@@ -38,7 +38,8 @@ bool please(la v, size_t req) {
   // adjust size up if we're too small or slow.
   while (all > tar || vit < VIT_FLOOR) tar <<= 1, vit <<= 1;
   // adjust size down if we're big and fast enough.
-  while (all < tar>>1 && vit >= VIT_CEIL) tar >>= 1, vit >>= 1;
+  while (all < tar>>1 && vit > VIT_CEIL) tar >>= 1, vit >>= 1;
+//  puts(tar == len ? "keep" : tar < len ? "shrink" : "grow");
   // if we don't need to resize, return success.
   return tar == len
     // otherwise adjust the size and copy again.

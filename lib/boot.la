@@ -121,23 +121,23 @@
   ; a common case is to rewrite the last emitted
   ; instruction or value according to an exact table
   ; of values
-  ((f1 g xs .) i p)
+  ((f1 xs .) i p)
    ((\ a q
     ((: (loop x) (?
      (nilp x)       (poke i p)
      (= a (A x)) (pokef (AB x) q)
-     (loop (BB x)))) xs))(g p) (seek p 1))
+     (loop (BB x)))) xs)) (peek p) (seek p 1))
 
   ; for idempotent instructions
   (idem i h) (? (= i (peek h)) h (poke i h))
 
   ; for specialized indexed instructions
-  (argn xs .) (ap f1 (X peek ((: (loop n xs)
-    (? xs (X n (X (A xs) (loop (+ n 1) (B xs)))))) 0 xs)))
+  (argn xs .) (ap f1 ((: (loop n xs)
+    (? xs (X n (X (A xs) (loop (+ n 1) (B xs)))))) 0 xs))
 
   ; for specialized branch instructions ;
   ; takes an argument for each branch case
-  (br2 b c) (f1 peek i-br1 b i-br0 c)
+  (br2 b c) (f1 i-br1 b i-br0 c)
 
   (tbl
    ; this along with "return forwarding" in branches is how
@@ -153,8 +153,8 @@
    i-gt (br2 i-brg i-brg2)
    i-gteq (br2 i-brge i-brl)
    i-eq (br2 i-bre i-brn)
-   i-nilp_ (f1 peek i-br1 i-br0 i-br0 i-br1)
-   i-imm (f1 peek 0 i-imm0 1 i-imm1 2 i-imm2 -1 i-immn1)
+   i-nilp_ (f1 i-br1 i-br0 i-br0 i-br1)
+   i-imm (f1 0 i-imm0 1 i-imm1 2 i-imm2 -1 i-immn1)
    i-idmo idem
    i-idtwo idem
    i-idno idem
@@ -354,19 +354,19 @@
    (desug-\ (X (AA x)
     (X (X '\ (snoc (BA x) (AB x)))(BB x)))))
 
-  (desug-: y) (? y (,
+  (desug-: e y) (? y (,
    (? (quoted? (: x (desug-\ y) a (AB x)))
        (tset (e 'val) (A x) (unquote a))
       (, (tset (e 'def) (A x) a)
-         (walk a)))
-   (desug-: (BB x))))
+         (walk e a)))
+   (desug-: e (BB x))))
 
-  (walk x) (? (twop x) (: head (A x) (?
+  (walk e x) (? (twop x) (: head (A x) (?
    (|| (= head '\) (= head '`)) 0
-   (= head ':) (? (= 1 (% (len x) 2)) (desug-: (B x)))
-   (each x walk))))
+   (= head ':) (? (= 1 (% (len x) 2)) (desug-: e (B x)))
+   (each x (\ x (walk e x))))))
 
-  (, (walk x) (resolve e) e))
+  (, (walk e x) (resolve e) e))
 
  ; this is a huge complicated procedure for "resolving
  ; the addresses" of sets of mutually recursive inner functions
@@ -384,10 +384,10 @@
   ; try to rewrite and evaluate it. if this succeeds, add it
   ; to the known values. otherwise, if the definition is for
   ; a function, collect it into a list.
-  (ev-def kvs) (? kvs (?
+  (ev-def e kvs) (? kvs (?
    (thas (e 'val) (: kv (A kvs) k (A kv)))
-    (ev-def (B kvs))
-   (: qq (weak-eval e (B kv)) bb (ev-def (B kvs)) (?
+    (ev-def e (B kvs))
+   (: qq (weak-eval e (B kv)) bb (ev-def e (B kvs)) (?
     (quoted? (tset (e 'def) k qq))
      (, (tset (e 'val) k (unquote qq))
         (tdel (e 'def) k) bb)
@@ -399,7 +399,7 @@
   ; pairs. try and compile each one; if it succeeds, add it to
   ; the known values. otherwise collect the name, definition,
   ; and list of free variables into a list.
-  (co-def kvs) (? kvs (: kv (A kvs) rr (co-def (B kvs)) (?
+  (co-def e kvs) (? kvs (: kv (A kvs) rr (co-def e (B kvs)) (?
    (twop (: i (ltu e (: k (A kv)) (: v (B kv)))))
     (X (X k (X (A i) v)) rr)
    (, (tset (e 'val) k i)
@@ -411,15 +411,15 @@
   ; function is available now, so any time a function is
   ; rejected we start over again as it may have been
   ; referenced by a previously accepted function.
-  (rm-dep kvs) (rm-dep-r kvs kvs 0)
-  (rm-dep-r i kvs q) (:
-   (chk i vs) (? (nilp vs) 1 (: v (A vs) (?
+  (rm-dep e kvs) (rm-dep-r e kvs kvs 0)
+  (rm-dep-r e i kvs q) (:
+   (chk e i vs) (? (nilp vs) 1 (: v (A vs) (?
     (|| (any (\ j (= (A j) v)) i) (thas (e 'val) v))
-     (chk i (B vs)))))
+     (chk e i (B vs)))))
    (? (nilp kvs) q (?
-    (chk i (AB (: kv (A kvs))))
-     (rm-dep-r i (B kvs) (X kv q))
-    (rm-dep (del i kv)))))
+    (chk e i (AB (: kv (A kvs))))
+     (rm-dep-r e i (B kvs) (X kv q))
+    (rm-dep e (del i kv)))))
 
   ; step four ( the last one ) : now we have the desired
   ; set of functions. remove them from the scope's local
@@ -428,14 +428,14 @@
   ; no free variables that aren't being deferred, this time
   ; ltu will definitely return a function, which is stored in
   ; the known value set.
-  (co-dfr kvs) (?
+  (co-dfr e kvs) (?
    (nilp kvs) (tset e'loc (tkeys (e'def)))
    (, (tdel (e 'def) (: kv (A kvs) k (A kv)))
       (tset e 'dfr (X k (e 'dfr)))
-      (co-dfr (B kvs))
+      (co-dfr e (B kvs))
       (tset (e 'val) k (ltu e k (BB kv)))))
 
-  (co-dfr (rm-dep (co-def (ev-def
+  (co-dfr e (rm-dep e (co-def e (ev-def e
    (map (tset e'loc ks) (\ k (X k (def k))))))))))
 
  (weak-eval e x) (:
@@ -545,15 +545,6 @@
    (tblp x) 'tbl (homp x) 'hom)
   (emc i-imm (emd x (produces (type-sym x) k))))
 
- ; these make functions that do certain side effects
- ; with env stack structures during code generation:
- ; either manipulate the stack or embed the item at the
- ; top into the thread.
- (((pushr s) e k) m) (: q (k m) (A (tset e s (X q (e s)))))
- (((popr  s) e k) m) (: q (k m) (, (tset e s (B (e s))) q))
- (((peekr s) e k) m) (: q (k (+ m 1)) (poke (A (e s)) q))
-
- push2 (pushr 's2) pop2  (popr  's2) peek2 (peekr 's2)
 
  ; these functions are for type checking
  (consumes e t k) (? (nilp t) k
@@ -580,23 +571,29 @@
    (emc i-call (emd (len args) k)))))) ; here is where you would do it instead
 
  (co-ev e x k) (:
-  push1 (pushr 's1)
-  pop1  (popr  's1)
-  peek1 (peekr 's1)
+
   (pre-X x k) (:
    (pre-? x k) (:
+
+    ; these make functions that do certain side effects
+    ; with env stack structures during code generation:
+    ; either manipulate the stack or embed the item at the
+    ; top into the thread.
+    ((pushr s k) m) (: q (k m) (A (tset e s (X q (e s)))))
+    ((popr  s k) m) (: q (k m) (, (tset e s (B (e s))) q))
+    ((peekr s k) m) (: q (k (+ m 1)) (poke (A (e s)) q))
     (loop x k) (:
      (fin m) (:
       thd (k (+ m 2))
       ex (A (e 's2))
       i (peek ex)
       (? (= i i-ret) (poke i thd) ; forward return instructions
-       (pokef i-jump ; otherwise jump somewhere ...
+       (poke i-jump ; otherwise jump somewhere ...
         (poke (? (= i i-jump) (peek (seek ex 1)) ex) thd))))
      (? (nilp (B x)) (co-ev e (A x) fin)
-      (co-ev e (A x) (pop1 e (emc i-br1 (peek1 e
-       (loop (BB x) (push1 e (co-ev e (AB x) fin)))))))))
-    (pop2 e (loop x (push2 e k))))
+      (co-ev e (A x) (popr 's1 (emc i-br1 (peekr 's1
+       (loop (BB x) (pushr 's1 (co-ev e (AB x) fin)))))))))
+    (popr 's2 (loop x (pushr 's2 k))))
 
    ((pre-\ x k) m) (:
     (nom k) ; try to pick a name for this function
@@ -613,7 +610,7 @@
     l ((produces 'hom k) (+ m 2))
     y (ltu e (nom l) x)
     (? (twop y)
-        (pokef (? (e 'loc) i-encl1 i-encl0)
+        (poke (? (e 'loc) i-encl1 i-encl0)
          (poke (X (B y) (clo-thd (A y) k)) l))
        (pokef i-imm (poke y l))))
 
@@ -664,7 +661,7 @@
 
  (ini nom) (emc i-ret (emd nom hom))
  (ev x) (: e (env 0 0 0) 
-   (((co-ev e (weak-eval (scan e x) x) (ini 0)) 0 e) x))
+   (((co-ev e (weak-eval (scan e x) x) (ini 0)) 0) x))
   ;; end of compiler namespace ; now return the eval function
 ;  ev ; comment this line to define internals at toplevel
   )))
