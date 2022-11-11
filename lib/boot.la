@@ -184,12 +184,12 @@
    (co-apply e f x k))
 
   ((abelian f i) e x k) ((\ x
-   (co-ev e (A x) (consumes e 'num (binop e 'num i k (B x))))) (rw-monoidal f (f) x))
+   (co-ev e (A x) (consumes 'num (binop e 'num i k (B x))))) (rw-monoidal f (f) x))
 
   ; for operations with a defined arity
   (typed i ret-type arg-types .) (: arity (len arg-types) (\ e x k (?
    (< (len x) arity) (nope 'wrong 'arity ': (len x) 'of arity)
-   (: (fo k z) (co (co-ev e (AA z) (consumes e (BA z) k)) (B z))
+   (: (fo k z) (co (co-ev e (AA z) (consumes (BA z) k)) (B z))
       (co k z) (? z (fo (emc i-push k) z) k)
       l (emc i (produces ret-type k))
       z (zip X x arg-types)
@@ -199,14 +199,14 @@
    (: (loop e t i k x)
        (emc i-push
         (co-ev e (A x)
-         (consumes e t
+         (consumes t
           (emc i (binop e t i k (B x))))))
     (? x (loop e t i k x) (produces t k)))
 
   ((bitshift f i) e x k) (:
    y (rw-monoidal + 0 (B x))
    z (? (nump (A x)) (rw-monoidal f (A x) y) (X (A x) y))
-   (co-ev e (A z) (consumes e 'num (binop e 'num i k (B z)))))
+   (co-ev e (A z) (consumes 'num (binop e 'num i k (B z)))))
 
   (tbl
    id (\ e x k (co-ev e (A x) k))
@@ -216,14 +216,14 @@
     (nilp (B x)) ((typed i-neg 'num 'num) e x k)
     (: y (rw-monoidal + 0 (B x))
        z (? (nump (A x)) (rw-monoidal - (A x) y) (X (A x) y))
-     (? z (co-ev e (A z) (consumes e 'num (binop e 'num i-sub k (B z)))) (imm 0 k)))))
+     (? z (co-ev e (A z) (consumes 'num (binop e 'num i-sub k (B z)))) (imm 0 k)))))
    * (abelian * i-mul)
    / (\ e x k (?
     (nilp x) (imm 1 k)
-    (nilp (B x)) (co-ev e (A x) (consumes e 'num k))
+    (nilp (B x)) (co-ev e (A x) (consumes 'num k))
     (: b (rw-monoidal * 1 (B x))
        c (? (nump (A x)) (rw-monoidal / (A x) b) (X (A x) b)))
-     (co-ev e (A c) (consumes e 'num (binop e 'num i-quot k (B c))))
+     (co-ev e (A c) (consumes 'num (binop e 'num i-quot k (B c))))
     (imm 1 k)))
 
    & (abelian & i-band)
@@ -552,7 +552,7 @@
 
 
  ; these functions are for type checking
- (consumes e t k) (? (nilp t) k
+ (consumes t k) (? (nilp t) k
   (emc (? (= t 'two) i-idtwo (= t 'num) i-idno
            (= t 'hom) i-idmo (= t 'tbl) i-idtbl
            (nope 'consumes)) k))
@@ -572,7 +572,7 @@
  (co-apply e fn args k) (:
   (loop x k) (? (nilp x) k
    (loop (B x) (co-ev e (A x) (emc i-push k))))
-  (loop args (co-ev e fn (consumes e 'hom ; tail call optimization is handled by instruction fusion
+  (loop args (co-ev e fn (consumes 'hom ; tail call optimization is handled by instruction fusion
    (emc i-call (emd (len args) k)))))) ; here is where you would do it instead
 
  ; these make functions that do certain side effects
@@ -650,12 +650,10 @@
     (co-ap z (B x) k))))
 
   (pre-sym x k) (:
-   ; TODO subsume runtime type check
-   (late d) (emc i-late (emd (X d x) k))
 
    s (A (: r (look e x))) (?
     (= s 'here) (imm (B r) k)
-    (= s 'wait) (late (B r))
+    (= s 'wait) (emc i-late (emd (X (B r) x) k)) ; TODO subsume runtime type check
     (= e (B r))
      (emc (? (= s 'arg) i-argn (= s 'loc) i-sl1n (= s 'clo) i-clon)
       (emd (idx (e s) x) k))
