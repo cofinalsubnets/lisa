@@ -1,7 +1,7 @@
 ; microKanren without reflection on streams
 (:::
  \\ (\ a . (X (X '\ a) (map (init a) (\ a (L var (Q a))))))
- zzz (\ x (: y (sym) (L \ y  (L \ (L x y))))))
+ zzz (\ x (: y (sym) (L '\ y  (L '\ (L x y))))))
 (:
  ; dict - immutable map type made of pairs
  (dict-has d k) (:
@@ -20,7 +20,7 @@
  )
 (:::
  zz (\ x (: a (sym) b (sym) c (sym)
-  (L \ a (L \ b c (L c (L x a))))))
+  (L '\ a (L '\ b c (L c (L x a))))))
  et (\ x xs .
   (foldl xs x (\ a b
    (L (\ a b (\ s (s* (a s) b))) a b))))
@@ -28,7 +28,7 @@
   (foldl xs x (\ a b
    (L (\ a b (\ s (s+ (a s) (b s)))) a b)))))
 (:
- ((sX x s) _ _ y) (y x s) ; cons onto a stream
+ ((sX x s) n m y) (y x s) ; cons onto a stream
  (sno n) (n) ; empty stream
  (sun x) (sX x sno) ; singleton stream
 

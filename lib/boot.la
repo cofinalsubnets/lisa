@@ -1,18 +1,23 @@
-(: macros (tbl))
+(: ; some definitions that don't depend on the compiler.
+  macros (tbl) ; only accessed directly in this file
+  ; define some higher-order functions to generate threads
+  ; directly instead of using closures
+  (const x) (poke i-imm (poke x (poke i-ret (poke 'const (hom 4)))))
+)
 ; to bootstrap first we define an expression that when
 ; eval'd defines the standard environment and compiler, and
 ; redefines eval. then we eval it twice. the first time
 ; everything is compiled by the bootstrap system, the second
 ; time by the (bootstrapped) live system.
 (: prelude '(,
-  (: `'` ?'? :': ,', \'\ ~~ '(0) ~ nilp
+  (: ~~ '(0) ~ nilp
 
      (AA x) (A (A x)) (AB x) (A (B x))
      (BA x) (B (A x)) (BB x) (B (B x))
 
      ; functional programmings
-     (id x) x I id
-     (const x) (\ x) K const
+     (id x) x
+     ;(const x) (\ x)
      (co xs .) (foldl1 xs (\ m f (\ x . (f (ap m x)))))
      ((flip f) x y) (f y x)
      ((cu f x .) y .) (ap f (append x y))
@@ -35,7 +40,7 @@
 
      ; data constructors
      (L . .) .
-     (Q x) (L ` x)
+     (Q x) (L '` x)
 
      ; tables
      (set x .) (foldl x (tbl) (\ t x (, (tset t x -1) t)))
@@ -86,10 +91,10 @@
    'BAA (\ x (L B (L A (L A x)))) 'BAB (\ x (L B (L A (L B x))))
    'BBA (\ x (L B (L B (L A x)))) 'BBB (\ x (L B (L B (L B x))))
    'char (\ x (schr x 0))
-   '&& (\ x . (? x ((: (& x) (? (B x) (L ? (A x) (& (B x))) (A x))) x) 1))
-   '|| (\ x . ((: (| x) (? x (: q (sym) (L ': q (A x) (L ? q q (| (B x))))))) x))
+   '&& (\ x . (? x ((: (& x) (? (B x) (L '? (A x) (& (B x))) (A x))) x) 1))
+   '|| (\ x . ((: (| x) (? x (: q (sym) (L ': q (A x) (L '? q q (| (B x))))))) x))
    '>>= (\ x . (? (> (len x) 1) (X (last x) (init x))
-                                (: y (sym) (L \ y (X y x)))))
+                                (: y (sym) (L '\ y (X y x)))))
    ))
 
   )
@@ -110,7 +115,7 @@
    ; any grouplike function has to return its structure's
    ; identity element.
    abelians (set && || + * | &) ; arguments can be combined freely
-   monoids (set scat cat) ; pairs of consecutive arguments can be combined in place
+   monoids (set scat) ; pairs of consecutive arguments can be combined in place
 
    (homp-strict x) (? (homp x) (nilp (= i-disp (peek x))))
 
@@ -362,7 +367,7 @@
    (desug-: e (BB x))))
 
   (walk e x) (? (twop x) (: head (A x) (?
-   (|| (= head '\) (= head '`)) 0
+   (|| (= '\ head) (= head '`)) 0
    (= head ':) (? (= 1 (% (len x) 2)) (desug-: e (B x)))
    (each x (\ x (walk e x))))))
 
@@ -457,7 +462,7 @@
      ll (loop e (BB x))
      (X y (X ((e 'def) y) ll))))
     (? (B x) (? (= 0 (% (len x) 2)) (sug x)
-                (X : (loop e (B x))))))
+                (X ': (loop e (B x))))))
 
    ; FIXME optimization
    ; this is kind of a half-hearted optimization.
@@ -469,7 +474,7 @@
      (? (twop (: x (last l)))
       (? (= (A x) ':) (= 1 (% (len (B x)) 2)))))
     (letrec-rw l) (: m (last l)
-     (snoc (init l) (L , (init m) (last m))))
+     (snoc (init l) (L ', (init m) (last m))))
     (? (letrec? l) (letrec-rw l) l))
 
    (wk-monoid f i l) (:
@@ -533,8 +538,8 @@
  ; generates code to produce the value of the expression
  ; produced by the first moiety.
 
- ((emc i k) m) (pokef i (k (+ m 1)))
- ((emd x k) m) (poke x (k (+ m 1)))
+ ((emc i k) m e) (pokef i (k (+ m 1) e))
+ ((emd x k) m e) (poke x (k (+ m 1) e))
 
  (pokef i h) ((\ i h q ((? q q poke) i h)) i h (fuse i))
 
@@ -562,7 +567,7 @@
    (? (nilp (: q (con (peek h)))) h
       (subtype? t q) (pro t (seek h 1))
       (nope 'type 'error ': t 'for q))
-  (? (nilp t) k (\ m (pro t (k m)))))
+  (? (nilp t) k (\ m e (pro t (k m e)))))
 
  (co-apply e fn args k) (:
   (loop x k) (? (nilp x) k
@@ -570,21 +575,22 @@
   (loop args (co-ev e fn (consumes e 'hom ; tail call optimization is handled by instruction fusion
    (emc i-call (emd (len args) k)))))) ; here is where you would do it instead
 
+ ; these make functions that do certain side effects
+ ; with env stack structures during code generation:
+ ; either manipulate the stack or embed the item at the
+ ; top into the thread.
+ ((pushr s k) m e) (: q (k m e) (A (tset e s (X q (e s)))))
+ ((popr  s k) m e) (: q (k m e) (, (tset e s (B (e s))) q))
+ ((peekr s k) m e) (: q (k (+ m 1) e) (poke (A (e s)) q))
+
  (co-ev e x k) (:
 
   (pre-X x k) (:
    (pre-? x k) (:
 
-    ; these make functions that do certain side effects
-    ; with env stack structures during code generation:
-    ; either manipulate the stack or embed the item at the
-    ; top into the thread.
-    ((pushr s k) m) (: q (k m) (A (tset e s (X q (e s)))))
-    ((popr  s k) m) (: q (k m) (, (tset e s (B (e s))) q))
-    ((peekr s k) m) (: q (k (+ m 1)) (poke (A (e s)) q))
     (loop x k) (:
-     (fin m) (:
-      thd (k (+ m 2))
+     (fin m e) (:
+      thd (k (+ m 2) e)
       ex (A (e 's2))
       i (peek ex)
       (? (= i i-ret) (poke i thd) ; forward return instructions
@@ -595,7 +601,7 @@
        (loop (BB x) (pushr 's1 (co-ev e (AB x) fin)))))))))
     (popr 's2 (loop x (pushr 's2 k))))
 
-   ((pre-\ x k) m) (:
+   ((pre-\ x k) m e) (:
     (nom k) ; try to pick a name for this function
      (: i (peek k) (?
       (= i i-deftop) (A (peek (seek k 1))) ; maybe we're about to set a global?
@@ -607,7 +613,7 @@
      (k m) (poke i-take (poke (len x) (hom m)))
      ((loop x k) 2 e))
 
-    l ((produces 'hom k) (+ m 2))
+    l ((produces 'hom k) (+ m 2) e)
     y (ltu e (nom l) x)
     (? (twop y)
         (poke (? (e 'loc) i-encl1 i-encl0)
@@ -636,11 +642,11 @@
      (co-apply e fn args k)))
 
    (: z (A x) (?
-    (= z '`) (imm (? (twop (B x)) (AB x)) k)
-    (= z '?) (pre-? (B x) k)
-    (= z ':) (pre-: (B x) k)
-    (= z '\) (pre-\ x k)
-    (= z ',) (pre-, (B x) k)
+    (= '` z) (imm (? (twop (B x)) (AB x)) k)
+    (= '? z) (pre-? (B x) k)
+    (= ': z) (pre-: (B x) k)
+    (= '\ z) (pre-\ x k)
+    (= ', z) (pre-, (B x) k)
     (co-ap z (B x) k))))
 
   (pre-sym x k) (:
@@ -660,18 +666,15 @@
   ((? (twop x) pre-X (symp x) pre-sym imm) x k))
 
  (ini nom) (emc i-ret (emd nom hom))
- (ev x) (: e (env 0 0 0) 
-   (((co-ev e (weak-eval (scan e x) x) (ini 0)) 0) x))
-  ;; end of compiler namespace ; now return the eval function
-;  ev ; comment this line to define internals at toplevel
-  )))
+ (ev x) (: 
+  (analyze e x) ((co-ev e (weak-eval (scan e x) x) (ini 0)) 0 e)
+  ((analyze (env 0 0 0) x))))))
 ; bootstrap
 
 (ev prelude)
 (tset _ns 'ev (ev egg))
 (ev prelude)
 (tset _ns 'ev (ev egg))
-(tset macros 'imm ev)
 
 ; " drop privileges "
 (:; dels (cu (flip each) (cu tdel _ns))
@@ -688,6 +691,7 @@
 ;ev
 (:
  ((diag f) x) (f x x)
+ I id K const
 
  ; strings
  (strip-prefix p s)
