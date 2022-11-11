@@ -300,6 +300,10 @@
   (memq (e 'arg) y) (X 'arg e)
   (look (e 'par) y))
 
+ ((emc i k) m e) (pokef i (k (+ m 1) e))
+ ((emd x k) m e) (poke x (k (+ m 1) e))
+ (pokef i h) ((\ i h q ((? q q poke) i h)) i h (fuse i))
+
  ; ltu : compile a lambda expression.
  ; depending on if it encloses any variables, a lambda
  ; expression may or may not have a value at compile time. this
@@ -370,78 +374,78 @@
    (|| (= '\ head) (= head '`)) 0
    (= head ':) (? (= 1 (% (len x) 2)) (desug-: e (B x)))
    (each x (\ x (walk e x))))))
+  ; this is a huge complicated procedure for "resolving
+  ; the addresses" of sets of mutually recursive inner functions
+  ; at compile time, so they can be as efficient as toplevel
+  ; definitions whenever that's possible. it constructs the
+  ; maximum set S of function variables whose definitions
+  ; have no free variables not in S. then it arranges for
+  ; references to functions in S to get resolved (with
+  ; optimizations etc) later, which lets the compiler generate
+  ; appropriate code without having a function address yet.
+  (resolve e)
+   ; only bother with any of this if there are inner defs
+   (? (: ks (tkeys (: def (e 'def)))) (:
+   ; step one: pass over each inner def for this function and
+   ; try to rewrite and evaluate it. if this succeeds, add it
+   ; to the known values. otherwise, if the definition is for
+   ; a function, collect it into a list.
+   (ev-def e kvs) (? kvs (?
+    (thas (e 'val) (: kv (A kvs) k (A kv)))
+     (ev-def e (B kvs))
+    (: qq (weak-eval e (B kv)) bb (ev-def e (B kvs)) (?
+     (quoted? (tset (e 'def) k qq))
+      (, (tset (e 'val) k (unquote qq))
+         (tdel (e 'def) k) bb)
+     (? (twop qq) (= '\ (A qq)))
+      (X (X k qq) bb)
+     bb))))
+ 
+   ; step two: now we have a list of function name/definition
+   ; pairs. try and compile each one; if it succeeds, add it to
+   ; the known values. otherwise collect the name, definition,
+   ; and list of free variables into a list.
+   (co-def e kvs) (? kvs (: kv (A kvs) rr (co-def e (B kvs)) (?
+    (twop (: i (ltu e (: k (A kv)) (: v (B kv)))))
+     (X (X k (X (A i) v)) rr)
+    (, (tset (e 'val) k i)
+       (tdel (e 'def) k) rr))))
+ 
+   ; step three: reject from the list all definitions that
+   ; depend on values that won't be available until runtime.
+   ; membership in the list is regarded as proof that the
+   ; function is available now, so any time a function is
+   ; rejected we start over again as it may have been
+   ; referenced by a previously accepted function.
+   (rm-dep e kvs) (rm-dep-r e kvs kvs 0)
+   (rm-dep-r e i kvs q) (:
+    (chk e i vs) (? (nilp vs) 1 (: v (A vs) (?
+     (|| (any (\ j (= (A j) v)) i) (thas (e 'val) v))
+      (chk e i (B vs)))))
+    (? (nilp kvs) q (?
+     (chk e i (AB (: kv (A kvs))))
+      (rm-dep-r e i (B kvs) (X kv q))
+     (rm-dep e (del i kv)))))
+ 
+   ; step four ( the last one ) : now we have the desired
+   ; set of functions. remove them from the scope's local
+   ; variables and add them to a list of deferred values, then
+   ; recompile them. since we know each of these functions has
+   ; no free variables that aren't being deferred, this time
+   ; ltu will definitely return a function, which is stored in
+   ; the known value set.
+   (co-dfr e kvs) (?
+    (nilp kvs) (tset e'loc (tkeys (e'def)))
+    (, (tdel (e 'def) (: kv (A kvs) k (A kv)))
+       (tset e 'dfr (X k (e 'dfr)))
+       (co-dfr e (B kvs))
+       (tset (e 'val) k (ltu e k (BB kv)))))
+ 
+   (co-dfr e (rm-dep e (co-def e (ev-def e
+    (map (tset e'loc ks) (\ k (X k (def k))))))))))
 
   (, (walk e x) (resolve e) e))
 
- ; this is a huge complicated procedure for "resolving
- ; the addresses" of sets of mutually recursive inner functions
- ; at compile time, so they can be as efficient as toplevel
- ; definitions whenever that's possible. it constructs the
- ; maximum set S of function variables whose definitions
- ; have no free variables not in S. then it arranges for
- ; references to functions in S to get resolved (with
- ; optimizations etc) later, which lets the compiler generate
- ; appropriate code without having a function address yet.
- (resolve e)
-  ; only bother with any of this if there are inner defs
-  (? (: ks (tkeys (: def (e 'def)))) (:
-  ; step one: pass over each inner def for this function and
-  ; try to rewrite and evaluate it. if this succeeds, add it
-  ; to the known values. otherwise, if the definition is for
-  ; a function, collect it into a list.
-  (ev-def e kvs) (? kvs (?
-   (thas (e 'val) (: kv (A kvs) k (A kv)))
-    (ev-def e (B kvs))
-   (: qq (weak-eval e (B kv)) bb (ev-def e (B kvs)) (?
-    (quoted? (tset (e 'def) k qq))
-     (, (tset (e 'val) k (unquote qq))
-        (tdel (e 'def) k) bb)
-    (? (twop qq) (= '\ (A qq)))
-     (X (X k qq) bb)
-    bb))))
-
-  ; step two: now we have a list of function name/definition
-  ; pairs. try and compile each one; if it succeeds, add it to
-  ; the known values. otherwise collect the name, definition,
-  ; and list of free variables into a list.
-  (co-def e kvs) (? kvs (: kv (A kvs) rr (co-def e (B kvs)) (?
-   (twop (: i (ltu e (: k (A kv)) (: v (B kv)))))
-    (X (X k (X (A i) v)) rr)
-   (, (tset (e 'val) k i)
-      (tdel (e 'def) k) rr))))
-
-  ; step three: reject from the list all definitions that
-  ; depend on values that won't be available until runtime.
-  ; membership in the list is regarded as proof that the
-  ; function is available now, so any time a function is
-  ; rejected we start over again as it may have been
-  ; referenced by a previously accepted function.
-  (rm-dep e kvs) (rm-dep-r e kvs kvs 0)
-  (rm-dep-r e i kvs q) (:
-   (chk e i vs) (? (nilp vs) 1 (: v (A vs) (?
-    (|| (any (\ j (= (A j) v)) i) (thas (e 'val) v))
-     (chk e i (B vs)))))
-   (? (nilp kvs) q (?
-    (chk e i (AB (: kv (A kvs))))
-     (rm-dep-r e i (B kvs) (X kv q))
-    (rm-dep e (del i kv)))))
-
-  ; step four ( the last one ) : now we have the desired
-  ; set of functions. remove them from the scope's local
-  ; variables and add them to a list of deferred values, then
-  ; recompile them. since we know each of these functions has
-  ; no free variables that aren't being deferred, this time
-  ; ltu will definitely return a function, which is stored in
-  ; the known value set.
-  (co-dfr e kvs) (?
-   (nilp kvs) (tset e'loc (tkeys (e'def)))
-   (, (tdel (e 'def) (: kv (A kvs) k (A kv)))
-      (tset e 'dfr (X k (e 'dfr)))
-      (co-dfr e (B kvs))
-      (tset (e 'val) k (ltu e k (BB kv)))))
-
-  (co-dfr e (rm-dep e (co-def e (ev-def e
-   (map (tset e'loc ks) (\ k (X k (def k))))))))))
 
  (weak-eval e x) (:
   (wk-X e x) (:
@@ -538,11 +542,6 @@
  ; generates code to produce the value of the expression
  ; produced by the first moiety.
 
- ((emc i k) m e) (pokef i (k (+ m 1) e))
- ((emd x k) m e) (poke x (k (+ m 1) e))
-
- (pokef i h) ((\ i h q ((? q q poke) i h)) i h (fuse i))
-
  (imm x k) (:
   (type-sym x) (?
    (nump x) 'num (twop x) 'two
@@ -579,9 +578,9 @@
  ; with env stack structures during code generation:
  ; either manipulate the stack or embed the item at the
  ; top into the thread.
- ((pushr s k) m e) (: q (k m e) (A (tset e s (X q (e s)))))
- ((popr  s k) m e) (: q (k m e) (, (tset e s (B (e s))) q))
- ((peekr s k) m e) (: q (k (+ m 1) e) (poke (A (e s)) q))
+ ((pushr s k) m e) ((\ e s q (A (tset e s (X q (e s))))) e s (k m e))
+ ((popr  s k) m e) ((\ e s q (, (tset e s (B (e s))) q)) e s (k m e))
+ ((peekr s k) m e) ((\ e s q (poke (A (e s)) q)) e s (k (+ m 1) e))
 
  (co-ev e x k) (:
 
@@ -665,8 +664,8 @@
 
  (ini nom) (emc i-ret (emd nom hom))
  (ev x) (: 
-  (analyze e x) ((co-ev e (weak-eval (scan e x) x) (ini 0)) 0 e)
-  ((analyze (env 0 0 0) x))))))
+  (ana e x) (((co-ev e (weak-eval (scan e x) x) (ini 0)) 0 e))
+  (ana (env 0 0 0) x)))))
 ; bootstrap
 
 (ev prelude)
