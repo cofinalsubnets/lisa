@@ -182,9 +182,8 @@ egg0 '(:
     (co-ev (A x) (emc i-push (co-ev (AB x) (emc i k))))
    (co-apply f x k))
 
-  ((abelian f i) x k)
-   ((\ x (co-ev (A x) (consumes 'num (binop 'num i k (B x)))))
-    (rw-monoidal f (f) x))
+  ((abelian f i) x k) (: y (rw-monoidal f (f) x)
+   (co-ev (A y) (consumes 'num (binop 'num i k (B x)))))
 
   ; for operations with a defined arity
   (typed i ret-type arg-types .) (\ x k (?
@@ -601,9 +600,9 @@ egg1 '
   (co-ap z (B x) k))) x k (A x))
 
  (co-, x k) (? x (co-ev (A x) (co-, (B x) k)) k)
- (co-ap fn args k)
-  ((\ fn args k q (? q (q args k) (co-apply fn args k)))
-   fn args k (inliners (? (quoted? fn) (unquote fn) fn)))
+ (co-ap fn args k) (?
+  (: q (inliners (? (quoted? fn) (unquote fn) fn))) (q args k)
+  (co-apply fn args k))
 
  ((co-: x k) m e) (:
  ; the rewrite ensures the : expression is always an even form.
