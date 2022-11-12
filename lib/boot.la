@@ -289,19 +289,17 @@ egg1 '
  ; this function is used in several places to look for a
  ; variable's value, or failing that to find where it's bound.
  (look e y) (?
-  (thas (e 'val) y)
-   (X 'here ((e 'val) y))
+  (thas (e 'val) y) (X 'here ((e 'val) y))
   ; toplevel bindings are special. if it's already defined
   ; we usually want to bind early, but we also want to allow
   ; redefinition, so in that case bind late.
-  (toplp e) (?
-   (? (thas _ns y) (nilp (thas (e 'def) y)))
-    (X 'here (_ns y))
-   (X 'wait _ns))
-  (memq (e 'clo) y) (X 'clo e)
-  (memq (e 'dfr) y) (X 'wait (e 'val))
+  (toplp e) (? (? (thas _ns y) (nilp (thas (e 'def) y)))
+                (X 'here (_ns y))
+               (X 'wait _ns))
   (memq (e 'loc) y) (X 'loc e)
   (memq (e 'arg) y) (X 'arg e)
+  (memq (e 'clo) y) (X 'clo e)
+  (memq (e 'dfr) y) (X 'wait (e 'val))
   (look (e 'par) y))
 
  ; ltu : compile a lambda expression.
@@ -322,7 +320,7 @@ egg1 '
    k)
 
   n (? (B l) (B l) ~~)
-  anom (? (: en (e 'nom)) (X nom en) nom)
+  anom (? (e 'nom) (X nom (e 'nom)) nom)
   f (env (init n) e anom)
   n0 (last n)
   x (scan f n0)
@@ -338,7 +336,7 @@ egg1 '
    ; the 4 initial words are for the combined instruction
    ; output of (ar) and (loc)
    (: k (hfin (ar (f 'sig) (loc (f'loc) ((co-ev x (ini anom)) 4 f))))
-    (? (: clo (f 'clo)) (X clo k) k))))
+    (? (f'clo) (X (f'clo) k) k))))
 
  ; first compiler moiety : " weak evaluator "
  ; 1. construct the local scope of the function
@@ -413,7 +411,7 @@ egg1 '
 
    (wk-, x) (:
     (loop x) (? (nilp (B x)) (L (wev (A x)))
-     ((\ x z y (? (? (symp y) 1 (quoted? y)) z (X y z)))
+     ((\ x z y (? (? (symp y) -1 (quoted? y)) z (X y z)))
       x (loop (B x)) (wev (A x))))
     (? (B x) (? (B (: z (loop (B x)))) (X ', z) (A z))))
 
@@ -461,7 +459,7 @@ egg1 '
   (walk x) (? (twop x) (: head (A x) (?
    (|| (= '\ head) (= head '`)) 0
    (= head ':) (? (= 1 (% (len x) 2)) (desug-: (B x)))
-   (each x (\ x (walk x))))))
+   (each x walk))))
   ; this is a huge complicated procedure for "resolving
   ; the addresses" of sets of mutually recursive inner functions
   ; at compile time, so they can be as efficient as toplevel
@@ -591,6 +589,7 @@ egg1 '
   (, (: l (len (e 'clo)))
      (tset e 'clo (snoc (e 'clo) x))
      (emc i-clon (emd l k)))) m e)
+
  (co-X x k) ((\ x k z (?
   (= '` z) (imm (? (twop (B x)) (AB x)) k)
   (= '? z) (co-? (B x) k)
@@ -622,18 +621,16 @@ egg1 '
     (= i i-deftop) (A (peek (seek k 1))) ; maybe we're about to set a global?
     (= i i-defsl1) (at (e 'loc) (peek (seek k 1))))) ; or a local
 
-  (clo-thd e x k) (:
-   (loop x k) (? (nilp x) k
-    (loop (B x) (co-ev (A x) (emc i-push k))))
-   (k m) (poke i-take (poke (len x) (hom m)))
-   ((loop x k) 2 e))
+  (clo-thd e x) (:
+   (loop x k) (? x (loop (B x) (co-ev (A x) (emc i-push k))) k)
+   ((loop x (emc i-take (emd (len x) hom))) 0 e))
 
   l ((produces 'hom k) (+ m 2) e)
   y (ltu e (nom e l) x)
   (? (twop y) (,
 ;      (. (B y)'encloses(A y))
       (poke (? (e 'loc) i-encl1 i-encl0)
-       (poke (X (B y) (clo-thd e (A y) k)) l)))
+       (poke (X (B y) (clo-thd e (A y))) l)))
      (pokef i-imm (poke y l))))
 
  (co-? x k) (:
