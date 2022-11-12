@@ -118,13 +118,14 @@ static Vm(genclo1) { return
 // instruction that sets the closure and enters
 // the function.
 static Vm(genclo0) {
-  ob *ec = (ob*) GF(ip), arg = ec[0];
-  size_t adic = nilp(arg) ? 0 : getnum(G(arg));
+  ob *ec = (ob*) GF(ip);
+  size_t adic = 0;
+  while (ec[3 + adic]) adic++;
   Have(wsizeof(struct sf) + adic + 1);
   ob loc = ec[1];
   sf subd = fp;
   G(ip) = genclo1;
-  sp = cpyw_r2l(sp - adic, F(arg), adic);
+  sp = cpyw_r2l(sp - adic, ec + 3, adic);
   fp = (sf) sp - 1;
   sp = (ob*) fp;
   fp->retp = ip;
@@ -132,41 +133,33 @@ static Vm(genclo0) {
   fp->argc = adic;
   fp->clos = (ob*) ec[2];
   if (!nilp(loc)) *--sp = loc;
-  return ApY(ec[3], xp); }
+  return ApY(ec[0], xp); }
 
 // the next few functions create and store
 // lexical environments.
 static Vm(enclose) {
   size_t
     adic = fp->argc,
-    arg_len = adic ? 1 + adic + wsizeof(struct tag) : 0,
-    env_len = 4 + wsizeof(struct tag),
     thd_len = 3 + wsizeof(struct tag),
-    n = arg_len + env_len + thd_len;
+    env_len = 3 + adic + wsizeof(struct tag),
+    n =  env_len + thd_len;
   Have(n);
   ob codeXcons = (ob) GF(ip), // pair of the compiled thread & closure constructor
-     arg = nil,
      *block = hp;
   hp += n;
 
-  if (arg_len)
-    ini_mo(block, adic + 1),
-    block[0] = putnum(adic),
-    cpyw_r2l(block + 1, fp->argv, adic),
-    arg = (ob) block,
-    block += arg_len;
-
-  ob *env = (ob*) ini_mo(block, 4); // holds the closure environment & constructor
+  ob *env = (ob*) ini_mo(block, 3 + adic); // holds the closure environment & constructor
   block += env_len;
+  cpyw_r2l(env + 3, fp->argv, adic);
+
   ob *thd = (ob*) ini_mo(block, 3), // the thread that actually gets returned
      // TODO get closure out of stack frame; configure via xp
      loc = nilp(xp) ? xp : ((ob*)fp)[-1],
      clo = (ob) fp->clos;
 
-  env[0] = arg;
+  env[0] = B(codeXcons);
   env[1] = loc;
   env[2] = clo;
-  env[3] = B(codeXcons);
 
   thd[0] = (ob) genclo0;
   thd[1] = (ob) env;

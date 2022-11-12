@@ -424,23 +424,23 @@ egg1 '
     ; oh boy ...
     (? (: mac (macros a)) (wev (ap mac (B x)))
      (: z (map x wev) q (A z) r (B z) (?
+      (? (pure q) (all quoted? r))
+       (quote (ap q (map r unquote)))
       (abelians q) (:
        ff (part quoted? r)
        fg (ap q (map (A ff) unquote))
        (X q (? (= fg (q)) (B ff) (X fg (B ff)))))
       (monoids q) (wk-monoid q (q) r)
-      (? (pure q) (all quoted? r))
-       (quote (ap q (map r unquote)))
       (check-arity z))))))
 
-  (wk-sym x) ((\ x l (?
+  (wk-sym x) (: l (look e x) (?
    (= (A l) 'here) (quote (B l))
    (nilp (thas (: defs (e 'def)) x)) x
-   (: dd (wev (tdel defs x))
-    (? (nilp (quoted? (tset defs x dd))) x (,
-     (tdel (e 'def) x)
-     (tset (e 'val) x (unquote dd))
-     dd))))) x (look e x))
+   (: dd (wev (tdel defs x)) (?
+    (nilp (quoted? (tset defs x dd))) x
+    (, (tdel (e 'def) x)
+       (tset (e 'val) x (unquote dd))
+       dd)))))
   (? (twop x) (wk-X x) (symp x) (wk-sym x) x)
   
  )
@@ -457,7 +457,7 @@ egg1 '
    (desug-: (BB x))))
 
   (walk x) (? (twop x) (: head (A x) (?
-   (|| (= '\ head) (= head '`)) 0
+   (? (= '\ head) -1 (= head '`)) 0
    (= head ':) (? (= 1 (% (len x) 2)) (desug-: (B x)))
    (each x walk))))
   ; this is a huge complicated procedure for "resolving
@@ -545,7 +545,6 @@ egg1 '
    (tblp x) 'tbl (homp x) 'hom)
   (emc i-imm (emd x (produces (type-sym x) k))))
 
-
  ; these functions are for type checking
  (consumes t k) (? (nilp t) k
   (emc (? (= t 'two) i-idtwo (= t 'num) i-idno
@@ -558,16 +557,14 @@ egg1 '
   (con i) (?
    (= i i-idmo) 'hom (= i i-idno) 'num
    (= i i-idtwo) 'two (= i i-idtbl) 'tbl)
-  (pro t h)
-   ((\ t h q (? (nilp q) h
-                (subtype? t q) (pro t (seek h 1))
-                (nope 'type 'error ': t 'for q)))
-    t h (con (peek h)))
+  (pro t h) (: q (con (peek h)) (?
+   (nilp q) h
+   (subtype? t q) (pro t (seek h 1))
+   (nope 'type 'error ': t 'for q)))
   (? (nilp t) k (\ m e (pro t (k m e)))))
 
  (co-apply fn args k) (:
-  (loop x k) (? (nilp x) k
-   (loop (B x) (co-ev (A x) (emc i-push k))))
+  (loop x k) (? x (loop (B x) (co-ev (A x) (emc i-push k))) k)
   (loop args (co-ev fn (consumes 'hom ; tail call optimization is handled by instruction fusion
    (emc i-call (emd (len args) k)))))) ; here is where you would do it instead
 
@@ -628,7 +625,6 @@ egg1 '
   l ((produces 'hom k) (+ m 2) e)
   y (ltu e (nom e l) x)
   (? (twop y) (,
-;      (. (B y)'encloses(A y))
       (poke (? (e 'loc) i-encl1 i-encl0)
        (poke (X (B y) (clo-thd e (A y))) l)))
      (pokef i-imm (poke y l))))
