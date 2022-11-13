@@ -96,7 +96,7 @@ Vm(take) {
   Have(n + wsizeof(struct tag));
   mo k = ini_mo(cpyw_r2l(hp, sp, n), n);
   hp += n + wsizeof(struct tag);
-  return ApC(ret, (ob) k); }
+  return ApN(2, (ob) k); }
 
 // set the closure for this frame
 static Vm(setclo) { return
@@ -170,7 +170,7 @@ static Vm(enclose) {
 // these pass the locals array to encl in xp
 // TODO do the same thing with the closure ptr
 Vm(encl1) { return ApC(enclose, putnum(1)); }
-// if there aren't any locals we don't need to defer closure construction!
+// FIXME if there are no locals we don't need to defer closure construction!
 Vm(encl0) { return ApC(enclose, putnum(0)); }
 
 // try to get the name of a function

@@ -159,7 +159,7 @@ static Inline ob co_fn_clo(la v, env *e, ob arg, ob seq) {
   size_t i = llen(arg);
   mm(&arg), mm(&seq);
 
-  arg = pushs(v, r_pb2, take, putnum(i), r_co_ini, NULL) ?
+  arg = pushs(v, r_pb2, take, putnum(i), r_pb1, ret, r_co_ini, NULL) ?
     arg : 0;
 
   while (arg && twop(arg)) arg =

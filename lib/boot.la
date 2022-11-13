@@ -620,7 +620,7 @@ egg1 '
 
   (clo-thd e x) (:
    (loop x k) (? x (loop (B x) (co-ev (A x) (emc i-push k))) k)
-   ((loop x (emc i-take (emd (len x) hom))) 0 e))
+   ((loop x (emc i-take (emd (len x) (emc i-ret hom)))) 0 e))
 
   l ((produces 'hom k) (+ m 2) e)
   y (ltu e (nom e l) x)
