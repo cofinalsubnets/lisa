@@ -131,17 +131,16 @@ static NoInline ob rx_atom_n(la v, str b, size_t inset, int sign, int rad) {
   return putnum(sign * out); }
 
 static NoInline ob rx_atom(la v, str b) {
-  size_t i = 0;
+  size_t i = 0, len = b->len;
   int sign = 1;
-loop:
-  switch (b->text[i]) {
-    case '+': i += 1; goto loop;
-    case '-': i += 1, sign *= -1; goto loop;
-    case '0': { // with radix
-      // numbers can be input in bases 2, 6, 8, 10, 12, 16, 36
+  while (i < len) switch (b->text[i]) {
+    case '+': i += 1; continue;
+    case '-': i += 1, sign *= -1; continue;
+    case '0': if (i+1 < len) {
       const char *r = "b\2s\6o\10d\12z\14x\20n\44";
       for (char c = tolower(b->text[i+1]); *r; r += 2)
-        if (*r == c) return rx_atom_n(v, b, i+2, sign, r[1]); } }
+        if (*r == c) return rx_atom_n(v, b, i+2, sign, r[1]); }
+    default: goto out; } out:
   return rx_atom_n(v, b, i, sign, 10); }
 
 #include "vm.h"

@@ -125,9 +125,8 @@ static Vm(genclo0) {
   ob loc = ec[1];
   sf subd = fp;
   G(ip) = genclo1;
-  sp = cpyw_r2l(sp - adic, ec + 3, adic);
-  fp = (sf) sp - 1;
-  sp = (ob*) fp;
+  sp = (ob*) (fp = (sf) (sp - adic) - 1);
+  cpyw_r2l(fp->argv, ec + 3, adic);
   fp->retp = ip;
   fp->subd = subd;
   fp->argc = adic;
