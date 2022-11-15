@@ -119,18 +119,17 @@ static Vm(genclo1) { return
 // the function.
 static Vm(genclo0) {
   ob *ec = (ob*) GF(ip);
-  size_t adic = 0;
-  while (ec[3 + adic]) adic++;
+  size_t adic = getnum(ec[3]);
   Have(wsizeof(struct sf) + adic + 1);
-  ob loc = ec[1];
   sf subd = fp;
   G(ip) = genclo1;
   sp = (ob*) (fp = (sf) (sp - adic) - 1);
-  cpyw_r2l(fp->argv, ec + 3, adic);
+  cpyw_r2l(fp->argv, ec + 4, adic);
   fp->retp = ip;
   fp->subd = subd;
   fp->argc = adic;
   fp->clos = (ob*) ec[2];
+  ob loc = ec[1];
   if (!nilp(loc)) *--sp = loc;
   return ApY(ec[0], xp); }
 
@@ -140,16 +139,16 @@ static Vm(enclose) {
   size_t
     adic = fp->argc,
     thd_len = 3 + wsizeof(struct tag),
-    env_len = 3 + adic + wsizeof(struct tag),
+    env_len = 4 + adic + wsizeof(struct tag),
     n =  env_len + thd_len;
   Have(n);
   ob codeXcons = (ob) GF(ip), // pair of the compiled thread & closure constructor
      *block = hp;
   hp += n;
 
-  ob *env = (ob*) ini_mo(block, 3 + adic); // holds the closure environment & constructor
+  ob *env = (ob*) ini_mo(block, 4 + adic); // holds the closure environment & constructor
   block += env_len;
-  cpyw_r2l(env + 3, fp->argv, adic);
+  cpyw_r2l(env + 4, fp->argv, adic);
 
   ob *thd = (ob*) ini_mo(block, 3), // the thread that actually gets returned
      // TODO get closure out of stack frame; configure via xp
@@ -159,6 +158,7 @@ static Vm(enclose) {
   env[0] = B(codeXcons);
   env[1] = loc;
   env[2] = clo;
+  env[3] = putnum(adic);
 
   thd[0] = (ob) genclo0;
   thd[1] = (ob) env;
