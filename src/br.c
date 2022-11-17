@@ -1,8 +1,4 @@
 #include "la.h"
-#include "cmp.h"
-#include "vm.h"
-#include "two.h"
-#include <string.h>
 
 ////
 /// Branch Instructions

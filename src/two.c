@@ -1,7 +1,10 @@
 #include "la.h"
-#include "two.h"
-#include "gc.h"
-#include "alloc.h"
+
+two ini_two(void *_, ob a, ob b) {
+  two w = _;
+  w->head.disp = disp, w->head.mtbl = &mtbl_two;
+  w->a = a, w->b = b;
+  return w; }
 
 // pairs and lists
 static NoInline two pair_gc(la v, ob a, ob b) {
@@ -26,7 +29,6 @@ size_t llen(ob l) {
   while (twop(l)) l = B(l), i++;
   return i; }
 
-#include "vm.h"
 Vm(car) { return ApN(1, A(xp)); }
 Vm(cdr) { return ApN(1, B(xp)); }
 
@@ -66,12 +68,11 @@ static Gc(cp_two) {
     cp(v, src->a, pool0, top0),
     cp(v, src->b, pool0, top0)); }
 
-#include "tx.h"
-static long tx_two(la v, FILE *o, ob x) {
-  long r = 2;
+static ssize_t tx_two(la v, FILE *o, ob x) {
+  ssize_t r = 2;
   if (fputc('(', o) == EOF) return -1;
   for (;;) {
-    long i = la_tx(v, o, A(x));
+    ssize_t i = la_tx(v, o, A(x));
     if (i < 0) return i;
     else r += i;
     if (!twop(x = B(x))) break;
@@ -80,12 +81,10 @@ static long tx_two(la v, FILE *o, ob x) {
   if (fputc(')', o) == EOF) return -1;
   return r; }
 
-#include "hash.h"
 static intptr_t hx_two(la v, ob x) {
   intptr_t hc = hash(v, A(x)) * hash(v, B(x));
   return ror(hc, 4 * sizeof(intptr_t)); }
 
-#include "cmp.h"
 static bool eq_two(la v, ob x, ob y) {
   return twop(y) &&
     eql(v, A(x), A(y)) &&

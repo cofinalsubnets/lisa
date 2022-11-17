@@ -1,7 +1,11 @@
 #include "la.h"
-#include "alloc.h"
-#include "str.h"
 #include <string.h>
+
+str ini_str(void *_, size_t len) {
+  str s = _;
+  s->head.disp = disp, s->head.mtbl = &mtbl_str;
+  s->len = len;
+  return s; }
 
 str strof(la v, const char* c) {
   size_t bs = strlen(c);
@@ -11,7 +15,6 @@ str strof(la v, const char* c) {
   return o; }
 
 // string instructions
-#include "vm.h"
 Vm(slen_f) {
   ArityCheck(1);
   xp = fp->argv[0];
@@ -71,13 +74,10 @@ Vm(str_f) {
   while (len--) s->text[len] = getnum(fp->argv[len]);
   return ApC(ret, (ob) s); }
 
-#include "tx.h"
-static Vm(ap_str) {
-  str s = (str) ip;
-  fputstr(stdout, s);
-  return ApC(ret, (ob) ip); }
+static Vm(ap_str) { return
+  fputstr(stdout, (str) ip),
+  ApC(ret, (ob) ip); }
 
-#include "hash.h"
 static intptr_t hx_str(la v, ob _) {
   str s = (str) _;
   intptr_t h = 1;
@@ -109,11 +109,10 @@ static long tx_str(la v, FILE *o, ob _) {
 
 #include "gc.h"
 static Gc(cp_str) {
-  str src = (str) x,
-      dst = bump(v, wsizeof(struct str) + b2w(src->len));
-  memcpy(dst, src, sizeof(struct str) + src->len);
-  src->head.disp = (vm*) dst;
-  return (ob) dst; }
+  str src = (str) x;
+  return (ob) (src->head.disp = (vm*)
+    memcpy(bump(v, wsizeof(struct str) + b2w(src->len)),
+      src, sizeof(struct str) + src->len)); }
 
 static bool eq_str(la v, ob x, ob y) {
   if (!strp(y)) return false;

@@ -1,17 +1,12 @@
 #include "la.h"
-#include "tx.h"
-#include "vm.h"
-#include "str.h"
-#include "sym.h"
+#include <string.h>
+#include <errno.h>
+#include <stdarg.h>
 
 // errors
 Vm(xary) { return Pack(), LA_XARY; }
 Vm(xdom) { return Pack(), LA_XDOM; }
 Vm(xoom) { return Pack(), LA_XOOM; }
-
-#include <string.h>
-#include <errno.h>
-#include <stdarg.h>
 
 static NoInline void show_call(la v, FILE *o, mo ip, sf fp) {
   fputc('(', o);
@@ -20,13 +15,15 @@ static NoInline void show_call(la v, FILE *o, mo ip, sf fp) {
     fputc(' ', o), la_tx(v, o, fp->argv[i++]));
   fputc(')', o); }
 
+// this prints a backtrace.
+// TODO maybe do it upside down like python?
 #define aubas (((ob*) fp) == v->pool + v->len)
 static NoInline void errp(la v, FILE *o, const char *msg, ...) {
   mo ip = v->ip;
   sf fp = v->fp;
 
   // print error
-  fputs("# ", o);
+  fputs(";; ", o);
 
   // show the function if there is one
   if (!aubas)
@@ -42,7 +39,7 @@ static NoInline void errp(la v, FILE *o, const char *msg, ...) {
 
   // show backtrace
   while (!aubas)
-    fputs("# in ", o),
+    fputs(";; in ", o),
     show_call(v, o, ip, fp),
     fputc('\n', o),
     ip = (mo) fp->retp,

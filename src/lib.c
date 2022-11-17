@@ -1,7 +1,4 @@
 #include "la.h"
-#include "alloc.h"
-#include "str.h"
-#include "tbl.h"
 #include <string.h>
 #include <errno.h>
 #include <stdarg.h>
@@ -27,7 +24,7 @@ static str str0cat(la_carrier v, ...) {
 #include <sys/stat.h>
 // the str returned is null-terminated.
 // FIXME distunguish OOM from file not found
-static la_status seek_lib_path(la_carrier v, const char *nom) {
+static enum la_status seek_lib_path(la_carrier v, const char *nom) {
   str s;
   char *home = getenv("HOME");
   struct stat _;
@@ -49,7 +46,7 @@ ok:
   v->xp = (ob) s;
   return LA_OK; }
 
-la_status la_lib(la_carrier v, const char *nom) {
+enum la_status la_ld_lib(la_carrier v, const char *nom) {
   la_status s = seek_lib_path(v, nom);
   if (s != LA_OK) return s;
   str path = (str) v->xp;

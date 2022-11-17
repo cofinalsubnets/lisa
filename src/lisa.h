@@ -1,13 +1,7 @@
 #ifndef _lisa_h
 #define _lisa_h
-#include <stdint.h>
-#include <stddef.h>
-#include <stdio.h>
 
-typedef intptr_t la_ob;
 typedef struct la_carrier *la_carrier;
-typedef struct la_fn *la_fn;
-
 typedef enum la_status {
   LA_EOF = -1,
   LA_OK,
@@ -19,10 +13,7 @@ typedef enum la_status {
   LA_XOOM,
 } la_status;
 
-la_status
-  la_open(la_carrier);
-void
-  la_close(la_carrier),
-  la_perror(la_carrier, la_status, FILE*);
+enum la_status la_open(struct la_carrier *);
+void la_close(struct la_carrier *);
 
 #endif

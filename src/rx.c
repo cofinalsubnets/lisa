@@ -1,9 +1,4 @@
 #include "la.h"
-#include "two.h"
-#include "alloc.h"
-#include "str.h"
-#include "sym.h"
-#include "gc.h"
 #include <string.h>
 #include <ctype.h>
 
@@ -54,7 +49,7 @@ static ob rx_two_cont(la v, FILE *i, ob x) {
 
 static ob rx_q(la v, FILE* i, ob x) { return
   x = x ? (ob) pair(v, x, nil) : x,
-  x = x ? (ob) pair(v, (ob) v->lex[Quote], x) : x,
+  x = x ? (ob) pair(v, (ob) v->lex->quote, x) : x,
   pull(v, i, x); }
 
 static NoInline ob rx(la v, FILE *i) {
@@ -143,5 +138,4 @@ static NoInline ob rx_atom(la v, str b) {
     default: goto out; } out:
   return rx_atom_n(v, b, i, sign, 10); }
 
-#include "vm.h"
 Vm(rxc_f) { return ApC(ret, putnum(fgetc(stdin))); }

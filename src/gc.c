@@ -1,9 +1,4 @@
 #include "la.h"
-#include "gc.h"
-#include "alloc.h"
-#include "mo.h"
-#include "vm.h"
-#include <time.h>
 
 static clock_t copy(la, size_t);
 static void do_copy(la, size_t, ob*);
@@ -94,8 +89,7 @@ static void do_copy(la v, size_t len1, ob *pool1) {
 
   // copy globals
   v->topl = (tbl) cp(v, (ob) v->topl, pool0, top0);
-  v->mod = (tbl) cp(v, (ob) v->mod, pool0, top0);
-  v->lex = (sym*) cp(v, (ob) v->lex, pool0, top0);
+  v->lex = (void*) cp(v, (ob) v->lex, pool0, top0);
   for (keep r = v->safe; r; r = r->next)
     *r->addr = (void*) cp(v, (ob) *r->addr, pool0, top0);
 

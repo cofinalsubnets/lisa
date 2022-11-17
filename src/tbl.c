@@ -1,32 +1,38 @@
 #include "la.h"
-#include "alloc.h"
-#include "two.h"
-#include "mo.h"
-#include "tbl.h"
-#include "hash.h"
-#include "cmp.h"
-#include "gc.h"
-#include <string.h>
+
+// FIXME this is a totally ad hoc, unproven hashing method.
+//
+// its performance on hash tables and anonymous functions
+// is very bad (they all go to the same bucket!)
+//
+// strings, symbols, and numbers do better. for pairs it
+// depends on what they contain.
+//
+// copying GC complicates the use of memory addresses for
+// hashing mutable data, which is the obvious way to fix
+// the bad cases. we would either need to assign each datum
+// a unique identifier when it's created & hash using that,
+// or use the address but rehash as part of garbage collection.
+//
+// TODO replace with something better, verify & benchmark
+
+intptr_t hash(la v, ob x) {
+  if (nump(x)) return ror(mix * x, sizeof(intptr_t) * 2);
+  if (G(x) == disp) return ((mtbl) GF(x))->hash(v, x);
+  if (!livep(v, x)) return mix ^ (x * mix);
+  return mix ^ hash(v, hnom(v, (mo) x)); }
 
 // hash tables
 // some of the worst code is here :(
 
-typedef struct la_tbl_ent {
-  la_ob key, val;
-  struct la_tbl_ent *next;
-} *la_tbl_ent;
-
-#define KEY(e) ((la_tbl_ent)(e))->key
-#define VAL(e) ((la_tbl_ent)(e))->val
+#define KEY(e) ((ob*)(e))[0]
+#define VAL(e) ((ob*)(e))[1]
 #define NEXT(e) ((ob*)(e))[2]
 
 static Inline tbl ini_tbl(void *_, size_t len, size_t cap, ob *tab) {
   tbl t = _;
-  t->head.disp = disp;
-  t->head.mtbl = &mtbl_tbl;
-  t->len = len;
-  t->cap = cap;
-  t->tab = tab;
+  t->head.disp = disp, t->head.mtbl = &mtbl_tbl;
+  t->len = len, t->cap = cap, t->tab = tab;
   return t; }
 
 static Inline size_t tbl_idx(size_t cap, size_t co) {
@@ -71,7 +77,6 @@ ob tbl_get(la v, tbl t, ob k, ob d) { return
   k = tbl_ent(v, t, k),
   nump(k) ? d : VAL(k); }
 
-#include "vm.h"
 Vm(tget_f) {
   ArityCheck(2);
   xp = fp->argv[0];
@@ -242,7 +247,7 @@ static void tbl_shrink(la v, tbl t) {
     t->tab[i] = e,
     e = f; }
 
-static Vm(aptbl) {
+static Vm(ap_tbl) {
   ob a = fp->argc;
   switch (a) {
     case 0: return ApC(ret, putnum(((tbl) ip)->len));
@@ -255,15 +260,15 @@ static Vm(aptbl) {
       CallOut(_ = tblss(v, 1, a));
       return _ ? ApC(ret, fp->argv[a-1]) : ApC(xoom, nil); } }
 
-static long txtbl(la v, FILE *o, ob _) {
+static ssize_t tx_tbl(la v, FILE *o, ob _) {
   tbl t = (tbl) _;
   return fprintf(o, "#tbl:%ld/%ld", t->len, 1ul << t->cap); }
 
-static intptr_t hxtbl(la v, ob _) {
-  return ror(mix * 9, 3 * sizeof(intptr_t) / 4); }
+static intptr_t hx_tbl(la v, ob _) {
+  return ror(mix, 3 * sizeof(intptr_t) / 4); }
 
 #include "gc.h"
-static Gc(cptbl) {
+static Gc(cp_tbl) {
   tbl src = (tbl) x,
       dst = bump(v, wsizeof(struct tbl));
   src->head.disp = (vm*) dst;
@@ -271,8 +276,8 @@ static Gc(cptbl) {
     (ob*) cp(v, (ob) src->tab, pool0, top0)); }
 
 const struct mtbl mtbl_tbl = {
-  .does = aptbl,
-  .emit = txtbl,
-  .evac = cptbl,
-  .hash = hxtbl,
+  .does = ap_tbl,
+  .emit = tx_tbl,
+  .evac = cp_tbl,
+  .hash = hx_tbl,
   .equi = neql, };

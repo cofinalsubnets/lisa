@@ -1,5 +1,4 @@
 #include "la.h"
-#include "tx.h"
 #include <getopt.h>
 #include <string.h>
 #include <errno.h>
@@ -29,7 +28,7 @@ int main(int ac, char **av) {
   enum la_status s = la_open(&V);
 
   if (s == LA_OK && boot)
-    s = la_lib(&V, "boot"),
+    s = la_ld_lib(&V, "boot"),
     la_perror(&V, s, stderr);
 
   // run scripts
@@ -50,5 +49,4 @@ int main(int ac, char **av) {
     if (t == LA_OK) la_tx(&V, stdout, V.xp), fputc('\n', stdout);
     else la_perror(&V, t, stderr), la_reset(&V); }
 
-  la_close(&V);
-  return s; }
+  return la_close(&V), s; }

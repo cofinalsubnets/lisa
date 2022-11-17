@@ -1,11 +1,4 @@
 #include "la.h"
-#include "alloc.h"
-#include "gc.h"
-#include "sym.h"
-#include "hash.h"
-#include "cmp.h"
-#include "num.h"
-#include "str.h"
 #include <string.h>
 
 //symbols
@@ -52,7 +45,6 @@ sym symof(la v, str s) {
     ini_sym(bump(v, wsizeof(struct sym)), s,
       v->rand = lcprng(v->rand)); }
 
-#include "vm.h"
 Vm(sym_f) {
   str i = fp->argc && strp(fp->argv[0]) ? (str) fp->argv[0] : 0;
   sym y;
@@ -67,17 +59,14 @@ Vm(ynom_f) {
   return ApC(ret, s ? (ob) s : nil); }
 
 static Gc(cp_sym) {
-  sym src = (sym) x,
-      dst = src->nom ?
-        sskc(v, &v->syms, (str) cp(v, (ob) src->nom, pool0, top0)) :
-        ini_sym(bump(v, wsizeof(struct sym)), 0, src->code);
-  src->head.disp = (vm*) dst;
-  return (ob) dst; }
+  sym src = (sym) x;
+  return (ob) (src->head.disp = (vm*) (src->nom ?
+    sskc(v, &v->syms, (str) cp(v, (ob) src->nom, pool0, top0)) :
+    ini_sym(bump(v, wsizeof(struct sym)), 0, src->code))); }
 
 static intptr_t hx_sym(la v, ob _) { return ((sym) _)->code; }
 
-#include "tx.h"
-static long tx_sym(la v, FILE *o, ob _) {
+static ssize_t tx_sym(la v, FILE *o, ob _) {
   str s = ((sym) _)->nom;
   return s ? fputstr(o, s) : fprintf(o, "#sym"); }
 

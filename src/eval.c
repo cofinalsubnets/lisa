@@ -1,9 +1,4 @@
 #include "la.h"
-#include "boot.h"
-#include "vm.h"
-#include "alloc.h"
-#include "tbl.h"
-#include "rx.h"
 
 // bootstrap eval interpreter function
 Vm(ev_f) {
@@ -22,7 +17,7 @@ la_status la_ev_f(la_carrier v, FILE *in) {
   enum la_status s = la_rx_f(v, in);
   if (s != LA_OK) return s;
   if (!pushs(v, v->xp, NULL)) return LA_XOOM;
-  mo ev = (mo) tbl_get(v, v->topl, (ob) v->lex[Eval], 0);
+  mo ev = (mo) tbl_get(v, v->topl, (ob) v->lex->eval, 0);
   return la_call(v, ev, 1); }
 
 la_status la_ev_stream(la_carrier v, FILE *in) {

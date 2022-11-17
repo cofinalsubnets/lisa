@@ -1,11 +1,4 @@
 #include "la.h"
-#include "boot.h"
-#include "two.h"
-#include "mo.h"
-#include "ns.h"
-#include "alloc.h"
-#include "vm.h"
-#include "gc.h"
 #include <string.h>
 
 ////
@@ -67,7 +60,7 @@ static NoInline ob rw_let_fn(la v, ob x) {
   mm(&x);
   for (two w; x && twop(A(x)); x =
     (w = snoc(v, BA(x), AB(x))) &&
-    (w = pair(v, (ob) v->lex[Lamb], (ob) w)) &&
+    (w = pair(v, (ob) v->lex->lambda, (ob) w)) &&
     (w = pair(v, (ob) w, BB(x))) ?
       (ob) pair(v, AA(x), (ob) w) : 0);
   return um, x; }
@@ -75,7 +68,7 @@ static NoInline ob rw_let_fn(la v, ob x) {
 static NoInline ob asign(la v, ob a, intptr_t i, ob *m) {
   ob x;
   if (!twop(a)) return *m = i, a;
-  if (twop(B(a)) && AB(a) == (ob) v->lex[Splat])
+  if (twop(B(a)) && AB(a) == (ob) v->lex->splat)
     return *m = -i - 1, (ob) pair(v, A(a), nil);
   with(a, x = asign(v, B(a), i + 1, m));
   return x ? (ob) pair(v, A(a), x) : 0; }
@@ -108,10 +101,10 @@ static NoInline int scan_def(la v, env *e, ob x) {
 
 static NoInline bool scan(la v, env *e, ob x) {
   if (!twop(x) ||
-      A(x) == (ob) v->lex[Lamb] ||
-      A(x) == (ob) v->lex[Quote])
+      A(x) == (ob) v->lex->lambda ||
+      A(x) == (ob) v->lex->quote)
     return true;
-  if (A(x) == (ob) v->lex[Def])
+  if (A(x) == (ob) v->lex->define)
     return scan_def(v, e, B(x)) != -1;
   bool _;
   with(x, _ = scan(v, e, A(x)));
@@ -203,9 +196,9 @@ static Inline bool co_def_sugar(la v, two x) {
   with(_, x = (two) linitp(v, (ob) x, &_));
   return x &&
     (x = pair(v, (ob) x, _)) &&
-    (x = pair(v, (ob) v->lex[Seq], (ob) x)) &&
+    (x = pair(v, (ob) v->lex->begin, (ob) x)) &&
     (x = pair(v, (ob) x, nil)) &&
-    (x = pair(v, (ob) v->lex[Lamb], (ob) x)) &&
+    (x = pair(v, (ob) v->lex->lambda, (ob) x)) &&
     (x = pair(v, (ob) x, nil)) &&
     pushs(v, r_co_x, x, NULL); }
 
@@ -347,12 +340,12 @@ Co(co_two, ob x) {
   ob a = A(x);
   if (symp(a)) {
     sym y = (sym) a;
-    if (y == v->lex[Quote]) return
+    if (y == v->lex->quote) return
       imx(v, e, m, imm, twop(B(x)) ? AB(x) : B(x));
-    if (y == v->lex[Cond]) return co_if(v, e, m, B(x));
-    if (y == v->lex[Lamb]) return co_fn(v, e, m, x);
-    if (y == v->lex[Def]) return co_def(v, e, m, x);
-    if (y == v->lex[Seq]) return co_seq(v, e, m, B(x)); }
+    if (y == v->lex->cond) return co_if(v, e, m, B(x));
+    if (y == v->lex->lambda) return co_fn(v, e, m, x);
+    if (y == v->lex->define) return co_def(v, e, m, x);
+    if (y == v->lex->begin) return co_seq(v, e, m, B(x)); }
   return co_ap(v, e, m, a, B(x)); }
 
 Co(r_pb1) {

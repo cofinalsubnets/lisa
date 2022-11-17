@@ -1,6 +1,4 @@
 #include "la.h"
-#include "tbl.h"
-#include "two.h"
 
 NoInline ob ns_seek(la v, tbl ns, ob n) {
   ob x = tbl_get(v, ns, n, 0);
