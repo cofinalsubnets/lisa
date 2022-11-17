@@ -119,11 +119,15 @@ ob
 
 la_fn_tag motag(la_fn); // get tag at end
 mo
-  ana(la_carrier, ob),
-  mkmo(la_carrier, size_t); // allocate a thread
+  mkmo(la_carrier, size_t), // allocate a thread
+  ini_mo(void *, size_t);
 
-str strof(la, const char*);
 sym symof(la, str);
+
+str ini_str(void *, size_t);
+two
+  pair(la, ob, ob), // pair constructor
+  ini_two(void *, ob, ob);
 
 tbl
   mktbl(la),
@@ -134,7 +138,7 @@ bool please(la_carrier, size_t);
 
 ssize_t
   la_tx(la_carrier, FILE*, ob), // write a value
-  fputstr(FILE*, str);  // like fputs
+  fputstr(FILE*, str); // like fputs
 
 ob tupl(la, ...); // collect args into tuple (data thread)
 
@@ -142,22 +146,13 @@ bool
   pushs(la, ...), // push args onto stack; true on success
   eql(la, ob, ob), // object equality
   neql(la, ob, ob), // always returns false
-  primp(la_fn), // is it a primitive function?
-  nsset(la, ob, ob);
+  primp(mo); // is it a primitive function?
 
-two pair(la, ob, ob); // pair constructor
 size_t llen(ob); // length of list
 intptr_t
   hash(la, ob), // hash function for tables
-  lidx(ob, ob), // index of element in list
   lcprng(intptr_t); // linear congruential pseudorandom number generator
                     //
-// namespace functions
-ob
-  nstbl(la),
-  nsget(la, ob),
-  ns_seek(la, tbl, ob);
-
 void
   *cells(la_carrier, size_t),
   *bump(la_carrier, size_t),
@@ -224,10 +219,6 @@ static Inline bool livep(la v, ob x) {
 
 static Inline intptr_t ror(intptr_t x, size_t n) {
   return (x<<((8*sizeof(intptr_t))-n))|(x>>n); }
-
-two ini_two(void *, ob, ob);
-str ini_str(void *, size_t);
-mo ini_mo(void *, size_t);
 
 _Static_assert(-1 == -1 >> 1, "signed >>");
 _Static_assert(sizeof(size_t) == sizeof(void*),

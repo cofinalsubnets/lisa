@@ -1,7 +1,5 @@
 #include "la.h"
 #include <getopt.h>
-#include <string.h>
-#include <errno.h>
 
 static const char *usage =
   "usage: %s [options and scripts]\n"

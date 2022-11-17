@@ -17,12 +17,6 @@ two pair(la v, ob a, ob b) {
     ini_two(bump(v, wsizeof(struct two)), a, b) :
     pair_gc(v, a, b); }
 
-// index of item in list (-1 if absent)
-intptr_t lidx(ob l, ob x) {
-  for (intptr_t i = 0; twop(l); l = B(l), i++)
-    if (x == A(l)) return i;
-  return -1; }
-
 // length of list
 size_t llen(ob l) {
   size_t i = 0;

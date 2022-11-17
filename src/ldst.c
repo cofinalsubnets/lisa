@@ -74,7 +74,7 @@ static NoInline Vm(xnom) { return Pack(), LA_XNOM; }
 Vm(late) {
   ob w = (ob) GF(ip), d = A(w);
   xp = B(w);
-  w = ns_seek(v, (tbl) d, xp); // FIXME call name resolve procedure
+  w = tbl_get(v, (tbl) d, xp, 0); // FIXME call name resolve procedure
   if (!w) return ApC(xnom, xp);
   xp = w;
   // omit the arity check if possible

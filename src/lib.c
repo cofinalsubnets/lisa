@@ -1,6 +1,5 @@
 #include "la.h"
 #include <string.h>
-#include <errno.h>
 #include <stdarg.h>
 
 static NoInline str str0catr(la_carrier v, size_t l, va_list xs) {

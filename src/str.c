@@ -7,13 +7,6 @@ str ini_str(void *_, size_t len) {
   s->len = len;
   return s; }
 
-str strof(la v, const char* c) {
-  size_t bs = strlen(c);
-  str o = cells(v, wsizeof(struct str) + b2w(bs));
-  if (o) memcpy(o->text, c, bs),
-         ini_str(o, bs);
-  return o; }
-
 // string instructions
 Vm(slen_f) {
   ArityCheck(1);

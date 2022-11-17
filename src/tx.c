@@ -1,5 +1,4 @@
 #include "la.h"
-#include <string.h>
 
 static ssize_t tx_mo_n(la, FILE*, ob);
 

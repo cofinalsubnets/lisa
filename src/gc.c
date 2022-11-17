@@ -128,8 +128,6 @@ Gc(cp) {
     ((mtbl) GF(x))->evac(v, x, pool0, top0);
   return cp_mo(v, (mo) x, pool0, top0); }
 
-
-
 // Run a GC cycle from inside the VM
 // XXX calling convention: size of request (bare size_t) in v->xp
 NoInline Vm(gc) {
