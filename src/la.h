@@ -1,16 +1,31 @@
 #ifndef _la_la_h
 #define _la_la_h
 #include "lisa.h"
-#include <stdlib.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
+
+#ifdef __STDC_HOSTED__
+#include <stdlib.h>
+#define la_calloc calloc
+#define la_free free
 #include <stdio.h>
+typedef FILE *la_io;
+#define la_io_in stdin
+#define la_io_out stdout
+#define la_io_err stderr
+#define la_puts fputs
+#define la_putc fputc
+#define la_getc fgetc
+#define la_ungetc ungetc
 #include <time.h>
-#include <sys/types.h>
+typedef clock_t la_clock_t;
+#define la_clock clock
+#endif
 
 // thanks !!
 typedef intptr_t ob;
-typedef la_carrier la;
+typedef struct la_carrier *la;
 typedef struct la_fn *la_fn, *mo; // procedures
 
 typedef struct sf { // stack frame
@@ -30,7 +45,7 @@ struct la_fn { vm *ap; };
 typedef struct tag {
   void *null; // always null
   struct la_fn
-    *head, // pointer to head of thread
+    *head, // pointer to start of thread
     end[]; // first address after thread
 } *tag, *la_fn_tag;
 
@@ -39,7 +54,7 @@ typedef const struct mtbl {
   vm *does;
   bool (*equi)(la, ob, ob);
   intptr_t (*hash)(la, ob);
-  ssize_t (*emit)(la, FILE*, ob);
+  void (*emit)(la, la_io, ob);
   ob (*evac)(la, ob, ob*, ob*);
 //  void (*walk)(la, ob, ob*, ob*);
 } *mtbl;
@@ -97,19 +112,17 @@ struct la_carrier {
   keep safe;
   // TODO list of finalizers
   union {
-    clock_t t0;
+    la_clock_t t0;
     ob *cp; // TODO copy pointer for cheney's algorithm
   } run; };
 
 // FIXME develop towards public API
 void
   la_reset(la), // reset interpreter state
-  la_perror(la, la_status, FILE*);
+  la_perror(la, la_status);
 enum la_status
-  la_ev_stream(la, FILE*),
-  la_ld_lib(la, const char*),
-  la_ev_f(la, FILE*),
-  la_rx_f(la, FILE*);
+  la_ev_f(la, la_io),
+  la_rx_f(la, la_io);
 
 vm disp; // dispatch instruction for data threads; also used as a sentinel
 
@@ -136,11 +149,9 @@ ob tbl_get(la, tbl, ob, ob);
 
 bool please(la_carrier, size_t);
 
-ssize_t
-  la_tx(la_carrier, FILE*, ob), // write a value
-  fputstr(FILE*, str); // like fputs
-
-ob tupl(la, ...); // collect args into tuple (data thread)
+void
+  la_tx(la_carrier, la_io, ob), // write a value
+  la_putsn(const char*, size_t, la_io);
 
 bool
   pushs(la, ...), // push args onto stack; true on success

@@ -62,18 +62,13 @@ static Gc(cp_two) {
     cp(v, src->a, pool0, top0),
     cp(v, src->b, pool0, top0)); }
 
-static ssize_t tx_two(la v, FILE *o, ob x) {
-  ssize_t r = 2;
-  if (fputc('(', o) == EOF) return -1;
+static void tx_two(la v, la_io o, ob x) {
+  la_putc('(', o);
   for (;;) {
-    ssize_t i = la_tx(v, o, A(x));
-    if (i < 0) return i;
-    else r += i;
+    la_tx(v, o, A(x));
     if (!twop(x = B(x))) break;
-    else if (fputc(' ', o) == EOF) return -1;
-    else r++; }
-  if (fputc(')', o) == EOF) return -1;
-  return r; }
+    la_putc(' ', o); }
+  la_putc(')', o); }
 
 static intptr_t hx_two(la v, ob x) {
   intptr_t hc = hash(v, A(x)) * hash(v, B(x));

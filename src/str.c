@@ -67,9 +67,10 @@ Vm(str_f) {
   while (len--) s->text[len] = getnum(fp->argv[len]);
   return ApC(ret, (ob) s); }
 
-static Vm(ap_str) { return
-  fputstr(stdout, (str) ip),
-  ApC(ret, (ob) ip); }
+static Vm(ap_str) {
+  str s = (str) ip;
+  la_putsn(s->text, s->len, la_io_out);
+  return ApC(ret, (ob) ip); }
 
 static intptr_t hx_str(la v, ob _) {
   str s = (str) _;
@@ -85,22 +86,17 @@ static intptr_t hx_str(la v, ob _) {
 static Inline bool escapep(char c) {
   return c == '\\' || c == '"'; }
 
-static long tx_str(la v, FILE *o, ob _) {
+static void tx_str(la v, la_io o, ob _) {
   str s = (str) _;
   size_t len = s->len;
   const char *text = s->text;
-  long r = len + 2;
-  if (fputc('"', o) == EOF) return -1;
+  la_putc('"', o);
   while (len--) {
     char c = *text++;
-    if (escapep(c)) {
-      if (fputc('\\', o) == EOF) return -1;
-      r++; }
-    if (fputc(c, o) == EOF) return -1; }
-  if (fputc('"', o) == EOF) return -1;
-  return r; }
+    if (escapep(c)) la_putc('\\', o);
+    la_putc(c, o); }
+  la_putc('"', o); }
 
-#include "gc.h"
 static Gc(cp_str) {
   str src = (str) x;
   return (ob) (src->head.disp = (vm*)

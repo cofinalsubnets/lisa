@@ -15,17 +15,12 @@ la_status la_call(la_carrier v, la_fn f, size_t n) {
   struct la_fn go[] = { {call}, {(vm*) putnum(n)}, {yield} };
   return call(v, (ob) f, go, v->hp, v->sp, v->fp); }
 
-la_status la_ev_f(la_carrier v, FILE *in) {
+la_status la_ev_f(la_carrier v, la_io in) {
   enum la_status s = la_rx_f(v, in);
   if (s != LA_OK) return s;
   if (!pushs(v, v->xp, NULL)) return LA_XOOM;
   mo ev = (mo) tbl_get(v, v->topl, (ob) v->lex->eval, 0);
   return la_call(v, ev, 1); }
-
-la_status la_ev_stream(la_carrier v, FILE *in) {
-  la_status r;
-  do r = la_ev_f(v, in); while (r == LA_OK);
-  return r == LA_EOF ? LA_OK : r; }
 
 ////
 ///  the thread compiler
@@ -107,17 +102,17 @@ static NoInline ob asign(la v, ob a, intptr_t i, ob *m) {
 
 static Inline ob new_scope(la v, env *e, ob arg, ob nom) {
   intptr_t asig = 0;
-  with(nom, arg = asign(v, arg, 0, &asig));
-  return !arg ? 0 : tupl(v,
-    arg, // positional arguments
-    nil, // local variables
-    nil, // closure variables
-    nom, // function name
-    putnum(asig), // arity signature
-    nil, // address stack 1
-    nil, // address stack 2
-    e ? (ob) *e : nil, // parent scope
-    NULL); }
+  env f;
+  with(nom,
+    arg = asign(v, arg, 0, &asig),
+    with(arg, f = (env) mkmo(v, wsizeof(struct env))));
+  if (f)
+    f->arg = arg,
+    f->name = nom,
+    f->asig = putnum(asig),
+    f->loc = f->clo = f->s1 = f->s2 = nil,
+    f->par = e ? *e : (env) nil;
+  return (ob) f; }
 
 static NoInline int scan_def(la v, env *e, ob x) {
   int r;
@@ -184,12 +179,10 @@ static Inline ob co_fn_clo(la v, env *e, ob arg, ob seq) {
   size_t i = llen(arg);
   mm(&arg), mm(&seq);
 
-  arg = pushs(v, r_pb2, take, putnum(i), r_pb1, ret, r_co_ini, NULL) ?
-    arg : 0;
+  arg = pushs(v, r_pb2, take, putnum(i), r_pb1, ret, r_co_ini, NULL) ? arg : 0;
 
   while (arg && twop(arg)) arg =
-    pushs(v, r_co_x, A(arg), r_pb1, push, NULL) ?
-      B(arg) : 0;
+    pushs(v, r_co_x, A(arg), r_pb1, push, NULL) ? B(arg) : 0;
 
   arg = arg ? (ob) pull(v, e, 0) : arg;
   arg = arg ? (ob) pair(v, seq, arg) : arg;
@@ -205,8 +198,8 @@ Co(co_fn, ob x) {
   if (x && twop(x))
     j = e && twop((*e)->loc) ? encl1 : encl0,
     x = co_fn_clo(v, e, A(x), B(x));
-  um;
-  return x ? pb2(j, x, (mo) k) : 0; }
+  return um,
+    x ? pb2(j, x, (mo) k) : 0; }
 
 Co(r_co_def_bind) {
   ob _ = *v->sp++;

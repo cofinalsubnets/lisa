@@ -8,59 +8,59 @@ Vm(xary) { return Pack(), LA_XARY; }
 Vm(xdom) { return Pack(), LA_XDOM; }
 Vm(xoom) { return Pack(), LA_XOOM; }
 
-static NoInline void show_call(la v, FILE *o, mo ip, sf fp) {
-  fputc('(', o);
-  la_tx(v, o, (ob) ip);
+static NoInline void show_call(la v, mo ip, sf fp) {
+  la_putc('(', la_io_err);
+  la_tx(v, la_io_err, (ob) ip);
   for (size_t i = 0, argc = fp->argc; i < argc;
-    fputc(' ', o), la_tx(v, o, fp->argv[i++]));
-  fputc(')', o); }
+    la_putc(' ', la_io_err), la_tx(v, la_io_err, fp->argv[i++]));
+  la_putc(')', la_io_err); }
 
 // this prints a backtrace.
 // TODO maybe do it upside down like python?
 #define aubas (((ob*) fp) == v->pool + v->len)
-static NoInline void errp(la v, FILE *o, const char *msg, ...) {
+static NoInline void errp(la v, const char *msg, ...) {
   mo ip = v->ip;
   sf fp = v->fp;
 
   // print error
-  fputs(";; ", o);
+  la_puts(";; ", la_io_err);
 
   // show the function if there is one
   if (!aubas)
-    show_call(v, o, ip, fp),
-    fputc(' ', o),
+    show_call(v, ip, fp),
+    la_putc(' ', la_io_err),
     ip = fp->retp,
     fp = fp->subd;
 
   // show message
   va_list xs;
-  va_start(xs, msg), vfprintf(o, msg, xs), va_end(xs);
-  fputc('\n', o);
+  va_start(xs, msg), vfprintf(la_io_err, msg, xs), va_end(xs);
+  la_putc('\n', la_io_err);
 
   // show backtrace
   while (!aubas)
-    fputs(";; in ", o),
-    show_call(v, o, ip, fp),
-    fputc('\n', o),
+    la_puts(";; in ", la_io_err),
+    show_call(v, ip, fp),
+    la_putc('\n', la_io_err),
     ip = (mo) fp->retp,
     fp = fp->subd; }
 
-void la_perror(la_carrier v, la_status s, FILE *o) {
+void la_perror(la_carrier v, la_status s) {
   switch (s) {
     // not error codes, so print nothing.
     case LA_OK: case LA_EOF: return;
-    case LA_XDOM: errp(v, o, "has no value"); break;
-    case LA_XOOM: errp(v, o, "oom at %d words", v->len); break;
-    case LA_XSYN: errp(v, o, "syntax error"); break; // TODO source info
+    case LA_XDOM: errp(v, "has no value"); break;
+    case LA_XOOM: errp(v, "oom at %d words", v->len); break;
+    case LA_XSYN: errp(v, "syntax error"); break; // TODO source info
     case LA_XARY:
-      errp(v, o, "wrong arity : %d of %d", v->fp->argc, getnum(v->xp));
+      errp(v, "wrong arity : %d of %d", v->fp->argc, getnum(v->xp));
       break;
     case LA_XNOM: {
       const char *n = "#sym";
       size_t l = 4;
       str s = ((sym) v->xp)->nom;
       if (s) n = s->text, l = s->len;
-      errp(v, o, "free variable : %.*s", l, n); 
+      errp(v, "free variable : %.*s", l, n); 
       break; }
     case LA_XSYS:
-      errp(v, o, "system error : %s", strerror(errno)); } }
+      errp(v, "system error : %s", strerror(errno)); } }

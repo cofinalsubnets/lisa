@@ -3,19 +3,19 @@
 #include <ctype.h>
 
 static str
-  rx_atom_str(la, FILE*),
-  rx_str(la, FILE*);
+  rx_atom_str(la, la_io),
+  rx_str(la, la_io);
 static ob
   rx_atom(la, str),
-  rx_ret(la, FILE*, ob),
-  rx(la, FILE*),
-  rx_two(la, FILE*);
+  rx_ret(la, la_io, ob),
+  rx(la, la_io),
+  rx_two(la, la_io);
 
-static ob la_rx(la v, FILE *i) { return
+static ob la_rx(la v, la_io i) { return
   pushs(v, rx_ret, NULL) ? rx(v, i) : 0; }
 
 // FIXME doesn't distinguish between OOM and parse error
-enum la_status la_rx_f(la v, FILE *i) {
+enum la_status la_rx_f(la v, la_io i) {
   ob x = la_rx(v, i);
   return x ? (v->xp = x, LA_OK) :
     feof(i) ? LA_EOF :
@@ -26,55 +26,55 @@ enum la_status la_rx_f(la v, FILE *i) {
 //
 
 // get the next token character from the stream
-static int rx_char(FILE *i) {
-  for (int c;;) switch ((c = fgetc(i))) {
+static int rx_char(la_io i) {
+  for (int c;;) switch ((c = la_getc(i))) {
     default: return c;
     case ' ': case '\t': case '\n': continue;
-    case '#': case ';': for (;;) switch (fgetc(i)) {
+    case '#': case ';': for (;;) switch (la_getc(i)) {
       case '\n': case EOF: return rx_char(i); } } }
 
-static Inline ob pull(la v, FILE *i, ob x) { return
-  ((ob (*)(la, FILE*, ob))(*v->sp++))(v, i, x); }
+static Inline ob rx_pull(la v, la_io i, ob x) { return
+  ((ob (*)(la, la_io, ob))(*v->sp++))(v, i, x); }
 
-static ob rx_ret(la v, FILE *i, ob x) { return x; }
+static ob rx_ret(la v, la_io i, ob x) { return x; }
 
-static ob rx_two_cons(la v, FILE *i, ob x) {
+static ob rx_two_cons(la v, la_io i, ob x) {
   ob y = *v->sp++;
-  return pull(v, i, x ? (ob) pair(v, y, x) : x); }
+  return rx_pull(v, i, x ? (ob) pair(v, y, x) : x); }
 
-static ob rx_two_cont(la v, FILE *i, ob x) {
+static ob rx_two_cont(la v, la_io i, ob x) {
   return !x || !pushs(v, rx_two_cons, x, NULL) ?
-    pull(v, i, 0) :
+    rx_pull(v, i, 0) :
     rx_two(v, i); }
 
-static ob rx_q(la v, FILE* i, ob x) { return
+static ob rx_q(la v, la_io i, ob x) { return
   x = x ? (ob) pair(v, x, nil) : x,
   x = x ? (ob) pair(v, (ob) v->lex->quote, x) : x,
-  pull(v, i, x); }
+  rx_pull(v, i, x); }
 
-static NoInline ob rx(la v, FILE *i) {
+static NoInline ob rx(la v, la_io i) {
   int c = rx_char(i);
   switch (c) {
-    case ')': case EOF: return pull(v, i, 0);
+    case ')': case EOF: return rx_pull(v, i, 0);
     case '(': return rx_two(v, i);
-    case '"': return pull(v, i, (ob) rx_str(v, i));
+    case '"': return rx_pull(v, i, (ob) rx_str(v, i));
     case '\'': return
-      pushs(v, rx_q, NULL) ? rx(v, i) : pull(v, i, 0); }
-  ungetc(c, i);
+      pushs(v, rx_q, NULL) ? rx(v, i) : rx_pull(v, i, 0); }
+  la_ungetc(c, i);
   str a = rx_atom_str(v, i);
   ob x = a ? rx_atom(v, a) : 0;
-  return pull(v, i, x); }
+  return rx_pull(v, i, x); }
 
-static NoInline ob rx_two(la v, FILE *i) {
+static NoInline ob rx_two(la v, la_io i) {
   int c = rx_char(i);
   switch (c) {
-    case ')': return pull(v, i, nil);
-    case EOF: return pull(v, i, 0);
+    case ')': return rx_pull(v, i, nil);
+    case EOF: return rx_pull(v, i, 0);
     default: return
-      ungetc(c, i),
+      la_ungetc(c, i),
       pushs(v, rx_two_cont, NULL) ?
         rx(v, i) :
-        pull(v, i, 0); } }
+        rx_pull(v, i, 0); } }
 
 static str mkbuf(la v) {
   str s = cells(v, wsizeof(struct str) + 1);
@@ -88,27 +88,27 @@ static str buf_grow(la v, str s) {
   return t; }
 
 // read the contents of a string literal into a string
-static str rx_str(la v, FILE *p) {
+static str rx_str(la v, la_io p) {
   str o = mkbuf(v);
   for (size_t n = 0, lim = sizeof(ob); o; o = buf_grow(v, o), lim *= 2)
-    for (int x; n < lim;) switch (x = fgetc(p)) {
+    for (int x; n < lim;) switch (x = la_getc(p)) {
       // backslash causes the next character
       // to be read literally // TODO more escape sequences
-      case '\\': if ((x = fgetc(p)) == EOF) goto fin;
+      case '\\': if ((x = la_getc(p)) == EOF) goto fin;
       default: o->text[n++] = x; continue;
       case '"': case EOF: fin: return o->len = n, o; }
   return 0; }
 
 // read the characters of an atom (number or symbol)
 // into a string
-static str rx_atom_str(la v, FILE *p) {
+static str rx_atom_str(la v, la_io p) {
   str o = mkbuf(v);
   for (size_t n = 0, lim = sizeof(ob); o; o = buf_grow(v, o), lim *= 2)
-    for (int x; n < lim;) switch (x = fgetc(p)) {
+    for (int x; n < lim;) switch (x = la_getc(p)) {
       default: o->text[n++] = x; continue;
       // these characters terminate an atom
       case ' ': case '\n': case '\t': case ';': case '#':
-      case '(': case ')': case '\'': case '"': ungetc(x, p);
+      case '(': case ')': case '\'': case '"': la_ungetc(x, p);
       case EOF: return o->len = n, o; }
   return 0; }
 
@@ -138,4 +138,4 @@ static NoInline ob rx_atom(la v, str b) {
     default: goto out; } out:
   return rx_atom_n(v, b, i, sign, 10); }
 
-Vm(rxc_f) { return ApC(ret, putnum(fgetc(stdin))); }
+Vm(rxc_f) { return ApC(ret, putnum(la_getc(la_io_in))); }

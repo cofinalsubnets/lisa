@@ -66,9 +66,9 @@ static Gc(cp_sym) {
 
 static intptr_t hx_sym(la v, ob _) { return ((sym) _)->code; }
 
-static ssize_t tx_sym(la v, FILE *o, ob _) {
+static void tx_sym(la v, la_io o, ob _) {
   str s = ((sym) _)->nom;
-  return s ? fputstr(o, s) : fprintf(o, "#sym"); }
+  s ? la_putsn(s->text, s->len, o) : la_puts("#sym", o); }
 
 static Vm(ap_nop) { return ApC(ret, (ob) ip); }
 

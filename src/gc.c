@@ -57,15 +57,15 @@ bool please(la v, size_t req) {
 //   |                          `------'
 //   t0                  gc time (this cycle)
 static clock_t copy(la v, size_t len) {
-  clock_t t1 = clock(), t0 = v->run.t0, t2;
-  ob *pool1 = calloc(len, sizeof(ob));
+  clock_t t1 = la_clock(), t0 = v->run.t0, t2;
+  ob *pool1 = la_calloc(len, sizeof(ob));
   if (!pool1) return 0;
 
   ob *pool0 = v->pool;
   do_copy(v, len, pool1);
-  free(pool0);
+  la_free(pool0);
 
-  t2 = v->run.t0 = clock();
+  t2 = v->run.t0 = la_clock();
   t1 = t2 - t1;
   return t1 ? (t2 - t0) / t1 : VIT_CEIL; }
 

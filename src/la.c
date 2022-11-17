@@ -24,7 +24,7 @@ void la_reset(la_carrier v) {
   v->xp = nil; }
 
 void la_close(la v) {
-  if (v) free(v->pool), v->pool = NULL; }
+  if (v) la_free(v->pool), v->pool = NULL; }
 
 static bool la_open_lexicon(la_carrier v) {
   struct la_lexicon *g =
@@ -55,12 +55,12 @@ static bool la_open_toplevel(la_carrier v) {
 la_status la_open(la_carrier v) {
   memset(v, 0, sizeof(struct la_carrier));
   const size_t len = 1 << 10; // must be a power of 2
-  ob *pool = calloc(len, sizeof(ob));
+  ob *pool = la_calloc(len, sizeof(ob));
   if (!pool) return LA_XOOM;
   v->len = len;
   v->hp = v->pool = pool;
   v->fp = (sf) (v->sp = pool + len);
-  v->rand = v->run.t0 = clock();
+  v->rand = v->run.t0 = la_clock();
   return la_open_lexicon(v) && la_open_toplevel(v) ?
     LA_OK : (la_close(v), LA_XOOM); }
 

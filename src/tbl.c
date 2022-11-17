@@ -187,8 +187,9 @@ static tbl tbl_set_s(la v, tbl t, ob k, ob x) {
   ob e = tbl_ent_hc(v, t, k, hc);
   if (!nump(e)) return VAL(e) = x, t;
   size_t i = tbl_idx(t->cap, hc);
-  with(t, e = tupl(v, k, x, t->tab[i], NULL));
+  with(t, with(k, with(x, e = (ob) mkmo(v, 3))));
   if (!e) return 0;
+  KEY(e) = k, VAL(e) = x, NEXT(e) = t->tab[i];
   t->tab[i] = e;
   t->len++;
   return t; }
@@ -260,14 +261,13 @@ static Vm(ap_tbl) {
       CallOut(_ = tblss(v, 1, a));
       return _ ? ApC(ret, fp->argv[a-1]) : ApC(xoom, nil); } }
 
-static ssize_t tx_tbl(la v, FILE *o, ob _) {
+static void tx_tbl(la_carrier v, la_io o, ob _) {
   tbl t = (tbl) _;
-  return fprintf(o, "#tbl:%ld/%ld", t->len, 1ul << t->cap); }
+  fprintf(o, "#tbl:%ld/%ld", t->len, 1ul << t->cap); }
 
-static intptr_t hx_tbl(la v, ob _) {
+static intptr_t hx_tbl(la_carrier v, ob _) {
   return ror(mix, 3 * sizeof(intptr_t) / 4); }
 
-#include "gc.h"
 static Gc(cp_tbl) {
   tbl src = (tbl) x,
       dst = bump(v, wsizeof(struct tbl));
