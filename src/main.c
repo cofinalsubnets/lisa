@@ -4,11 +4,6 @@
 #include <string.h>
 #include <stdarg.h>
 
-static la_status la_ev_stream(la_carrier v, la_io in) {
-  la_status r;
-  do r = la_ev_f(v, in); while (r == LA_OK);
-  return r == LA_EOF ? LA_OK : r; }
-
 static FILE *la_ld_boot_seek_sys(la_carrier v) {
   FILE *b;
   if ((b = fopen("/usr/local/lib/lisa/boot.la", "r"))) return b;
@@ -24,10 +19,10 @@ static FILE *la_ld_boot_seek(la_carrier v) {
     return b;
   return la_ld_boot_seek_sys(v); }
 
-enum la_status la_ld_boot(la_carrier v) {
+static enum la_status la_ld_boot(la_carrier v) {
   FILE *in = la_ld_boot_seek(v);
   if (!in) return LA_XSYS;
-  la_status s = la_ev_stream(v, in);
+  la_status s = la_ev_fs(v, in);
   fclose(in);
   return s; }
 
@@ -43,7 +38,7 @@ int main(int ac, char **av) {
   bool boot = true, shell = ac == 1 && isatty(STDIN_FILENO);
   for (;;) switch (getopt(ac, av, "hi_")) {
     default: return EXIT_FAILURE;
-    case 'h': fprintf(la_io_out, usage, *av); continue;
+    case 'h': fprintf(la_stdout, usage, *av); continue;
     case 'i': shell = true; continue;
     case '_': boot = false; continue;
     case -1: av += optind; goto out; } out:
@@ -63,13 +58,13 @@ int main(int ac, char **av) {
     const char *path = *av++;
     FILE *in = fopen(path, "r");
     if (!in) s = LA_XSYS;
-    else s = la_ev_stream(&V, in), fclose(in); }
+    else s = la_ev_fs(&V, in), fclose(in); }
 
   // repl
   if (s == LA_OK && shell) for (;;) {
-    enum la_status t = la_ev_f(&V, la_io_in);
+    enum la_status t = la_ev_f(&V, la_stdin);
     if (t == LA_EOF) break;
-    if (t == LA_OK) la_tx(&V, la_io_out, V.xp), la_putc('\n', la_io_out);
+    if (t == LA_OK) la_tx(&V, la_stdout, V.xp), la_putc('\n', la_stdout);
     else la_perror(&V, t), la_reset(&V); }
 
   la_perror(&V, s);

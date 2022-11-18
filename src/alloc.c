@@ -5,12 +5,12 @@ void *cells(la v, size_t n) {
   return Avail >= n || please(v, n) ? bump(v, n) : 0; }
 
 void *cpyw_r2l(void *dst, const void *src, size_t n) {
-  while (n--) ((intptr_t*)dst)[n] = ((intptr_t*)src)[n];
+  while (n--) ((void**)dst)[n] = ((void**)src)[n];
   return dst; }
 
 void *cpyw_l2r(void *dst, const void *src, size_t n) {
   for (size_t i = 0; i < n; i++)
-    ((intptr_t*)dst)[i] = ((intptr_t*)src)[i];
+    ((void**)dst)[i] = ((void**)src)[i];
   return dst; }
 
 void *setw(void *dst, intptr_t w, size_t n) {
@@ -23,7 +23,6 @@ void *bump(la v, size_t n) {
   v->hp += n;
   return x; }
 
-// general memory allocation / access functions
 // push things onto the stack
 static NoInline bool pushsr(la v, size_t i, va_list xs) {
   ob x = va_arg(xs, ob);

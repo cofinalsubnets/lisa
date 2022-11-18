@@ -1,9 +1,3 @@
-(: ; some definitions that don't depend on the compiler.
-  macros (tbl) ; only accessed directly in this file
-  ; define some higher-order functions to generate threads
-  ; directly instead of using closures
-  (const x) (poke i-imm (poke x (poke i-ret (poke 'const (hom 4)))))
-)
 ; to bootstrap first we define an expression that when
 ; eval'd defines the standard environment and compiler, and
 ; redefines eval. then we eval it twice. the first time
@@ -17,7 +11,8 @@
 
      ; functional programmings
      (id x) x
-     ;(const x) (\ x)
+     ;(const x) (\ x) ; the "clean" definition uses a closure; more efficient to just make a thread!
+     (const x) (poke i-imm (poke x (poke i-ret (poke 'const (hom 4)))))
      (co xs .) (foldl1 xs (\ m f (\ x . (f (ap m x)))))
      ((flip f) x y) (f y x)
      ((cu f x .) y .) (ap f (append x y))
@@ -93,8 +88,7 @@
    'char (\ x (schr x 0))
    '&& (\ x . (? x ((: (& x) (? (B x) (L '? (A x) (& (B x))) (A x))) x) -1))
    '|| (\ x . (foldr x 0 (\ x m (L (L '\ 'q (L '? 'q 'q m)) x))))
-   '>>= (\ x . (? (> (len x) 1) (X (last x) (init x))
-                                (: y (sym) (L '\ y (X y x)))))
+   '>>= (\ x . (X (last x) (init x)))
    ))
 
   )
@@ -118,7 +112,6 @@ egg0 '(:
    abelians (set && || + * | &) ; arguments can be combined freely
    monoids (set scat) ; pairs of consecutive arguments can be combined in place
 
-   (homp-strict x) (? (homp x) (nilp (= i-disp (peek x))))
 
  ; instruction fusion table
  fuse (:
@@ -127,11 +120,11 @@ egg0 '(:
   ; instruction or value according to an exact table
   ; of values
   ((f1 xs .) i p)
-   ((\ a q
+   (>>= (peek p) (seek p 1) (\ a q
     ((: (loop x) (?
      (nilp x) (poke i p)
      (= a (A x)) (pokef (AB x) q)
-     (loop (BB x)))) xs)) (peek p) (seek p 1))
+     (loop (BB x)))) xs)))
 
   ; for idempotent instructions
   (idem i h) (? (= i (peek h)) h (poke i h))
@@ -266,7 +259,7 @@ egg0 '(:
 egg1 '
  ; new let expn makes sure ^^^ exist at toplevel & don't cause closures below
  (:
- (pokef i h) ((\ i h q ((? q q poke) i h)) i h (fuse i))
+ (pokef i h) (>>= i h (fuse i) (\ i h q ((? q q poke) i h)))
  ((emc i k) m e) (pokef i (k (+ m 1) e))
  ((emd x k) m e) (poke x (k (+ m 1) e))
 
@@ -290,12 +283,13 @@ egg1 '
  ; variable's value, or failing that to find where it's bound.
  (look e y) (?
   (thas (e 'val) y) (X 'here ((e 'val) y))
-  ; toplevel bindings are special. if it's already defined
-  ; we usually want to bind early, but we also want to allow
-  ; redefinition, so in that case bind late.
-  (toplp e) (? (? (thas _ns y) (nilp (thas (e 'def) y)))
-                (X 'here (_ns y))
-               (X 'wait _ns))
+  (toplp e)
+   ; toplevel bindings are special. if it's already defined
+   ; we usually want to bind early, but we also want to allow
+   ; redefinition, so in that case bind late.
+   (? (&& (thas _ns y) (nilp (thas (e 'def) y)))
+    (X 'here (_ns y))
+    (X 'wait _ns))
   (memq (e 'loc) y) (X 'loc e)
   (memq (e 'arg) y) (X 'arg e)
   (memq (e 'clo) y) (X 'clo e)
@@ -324,6 +318,7 @@ egg1 '
   f (env (init n) e anom)
   n0 (last n)
   x (scan f n0)
+  (homp-strict x) (&& (homp x) (nilp (= i-disp (peek x))))
 
   (?
    ; if the function is nonvariadic and all it does is apply
@@ -336,7 +331,7 @@ egg1 '
    ; the 4 initial words are for the combined instruction
    ; output of (ar) and (loc)
    (: k (hfin (ar (f 'sig) (loc (f'loc) ((co-ev x (ini anom)) 4 f))))
-    (? (f'clo) (X (f'clo) k) k))))
+    (? (f 'clo) (X (f 'clo) k) k))))
 
  ; first compiler moiety : " weak evaluator "
  ; 1. construct the local scope of the function
@@ -393,8 +388,7 @@ egg1 '
      y (? (quoted? x) (fold (f j (unquote x)) (A y) (B y))
         (: z (X x (fold i (A y) (B y)))
          (? (= i j) z (X j z))))
-     (quoted? x) ((\ x (? (= i x) 0 (L x)))
-              (f j (unquote x)))
+     (quoted? x) (? (= i (: y (f j (unquote x))) 0 (L y)))
      (= i j) (L x)
      (L j x))
     (? l (X f (fold i (A l) (B l))) (quote i)))
@@ -407,12 +401,12 @@ egg1 '
       (X a (X (wev (A (B x))) (rec (BB x))))
      (unquote a) (L (wev (AB x)))
      (rec (BB x)))
-    ((\ r (? r (? (B r) (X '? r) (A r)))) (rec x)))
+    (? (: r (rec x)) (? (B r) (X '? r) (A r))))
 
    (wk-, x) (:
     (loop x) (? (nilp (B x)) (L (wev (A x)))
-     ((\ x z y (? (? (symp y) -1 (quoted? y)) z (X y z)))
-      x (loop (B x)) (wev (A x))))
+     (>>= x (loop (B x)) (wev (A x)) (\ x z y
+      (? (? (symp y) -1 (quoted? y)) z (X y z)))))
     (? (B x) (? (B (: z (loop (B x)))) (X ', z) (A z))))
 
    a (A x) (?
@@ -457,8 +451,8 @@ egg1 '
    (desug-: (BB x))))
 
   (walk x) (? (twop x) (: head (A x) (?
-   (? (= '\ head) -1 (= head '`)) 0
-   (= head ':) (? (= 1 (% (len x) 2)) (desug-: (B x)))
+   (|| (= '\ head) (= head '`)) 0
+   (= head ':) (&& (= 1 (% (len x) 2)) (desug-: (B x)))
    (each x walk))))
   ; this is a huge complicated procedure for "resolving
   ; the addresses" of sets of mutually recursive inner functions
@@ -483,7 +477,7 @@ egg1 '
      (quoted? (tset (e 'def) k qq))
       (, (tset (e 'val) k (unquote qq))
          (tdel (e 'def) k) bb)
-     (? (twop qq) (= '\ (A qq)))
+     (&& (twop qq) (= '\ (A qq)))
       (X (X k qq) bb)
      bb))))
  
@@ -572,9 +566,9 @@ egg1 '
  ; with env stack structures during code generation:
  ; either manipulate the stack or embed the item at the
  ; top into the thread.
- ((pushr s k) m e) ((\ e s q (A (tset e s (X q (e s))))) e s (k m e))
- ((popr  s k) m e) ((\ e s q (, (tset e s (B (e s))) q)) e s (k m e))
- ((peekr s k) m e) ((\ r q (poke (A r) q)) (e s) (k (+ m 1) e))
+ ((pushr s k) m e) (>>= e s (k m e) (\ e s q (A (tset e s (X q (e s))))))
+ ((popr  s k) m e) (>>= e s (k m e) (\ e s q (, (tset e s (B (e s))) q)))
+ ((peekr s k) m e) (>>= (e s) (k (+ m 1) e) (\ r q (poke (A r) q)))
 
  (co-ev x k) ((? (twop x) co-X (symp x) co-sym imm) x k)
  ((co-sym x k) m e) ((?
@@ -587,13 +581,13 @@ egg1 '
      (tset e 'clo (snoc (e 'clo) x))
      (emc i-clon (emd l k)))) m e)
 
- (co-X x k) ((\ x k z (?
+ (co-X x k) (>>= x k (A x) (\ x k z (?
   (= '` z) (imm (? (twop (B x)) (AB x)) k)
   (= '? z) (co-? (B x) k)
   (= ': z) (co-: (B x) k)
   (= '\ z) (co-\ x k)
   (= ', z) (co-, (B x) k)
-  (co-ap z (B x) k))) x k (A x))
+  (co-ap z (B x) k))))
 
  (co-, x k) (? x (co-ev (A x) (co-, (B x) k)) k)
  (co-ap fn args k) (?
@@ -624,9 +618,9 @@ egg1 '
 
   l ((produces 'hom k) (+ m 2) e)
   y (ltu e (nom e l) x)
-  (? (twop y) (,
+  (? (twop y)
       (poke (? (e 'loc) i-encl1 i-encl0)
-       (poke (X (B y) (clo-thd e (A y))) l)))
+       (poke (X (B y) (clo-thd e (A y))) l))
      (pokef i-imm (poke y l))))
 
  (co-? x k) (:

@@ -1,5 +1,17 @@
 # TODO
 
+## misc runtime tasks
+- hash table for internal symbols
+- don't use so many data threads (eg. for hash cells/bucket arrays)
+- closure pointer on stack (instead of in frame)
+- semispace gc
+- cheney's algorithm
+- remove recursion from eq, tx, hash
+- parse from strings (not io handles)
+- improve hashing of mutable data (if possible)
+- reverse stack/heap for left-to-right argument evaluation
+- add GC finalizers (to release file handles etc.)
+
 ## missing user features
 - floating point
 - bignums
@@ -16,13 +28,11 @@
 - explicit locale/encoding support
 - C API
 
-## build options
+## platform stuff
 - as dynamic/static library
-- without malloc/stdio/libc
-
-## test on more platforms
-- 32-bit x86/ARM/RISC-V
-- ESP32
+- freestanding
+- test on 32-bit x86/ARM/RISC-V
+- build for ESP32
 
 ## benchmarks
 this is in git somewhere, but it's a ruby script.
@@ -56,13 +66,8 @@ number of cycles, average/extreme latency, average memory
 usage ...
 
 ### generational GC
-this might not be worth it in the end. we need benchmarks
-to tell!
-
-## other runtime improvements
-- parse from strings (not FILE\*s)
-- closure pointer on stack (instead of in frame)
-- improve hashing of mutable data
-- use hash table for internal symbols
-- remove recursion from eq, tx, hash (use off semispace)
-- reverse stack/heap for left-to-right argument evaluation
+this is probably desirable despite the extra complexity of
+having a write barrier because it will greatly improve copy
+scaling and hopefully make it feasible to use memory addresses
+for hashing by reducing the cost of rehashes each GC cycle.
+we should probably do stats/benchmarks first though!

@@ -3,7 +3,7 @@
 
 str ini_str(void *_, size_t len) {
   str s = _;
-  s->head.disp = disp, s->head.mtbl = &mtbl_str;
+  s->h.disp = disp, s->h.mtbl = &mtbl_str;
   s->len = len;
   return s; }
 
@@ -69,7 +69,7 @@ Vm(str_f) {
 
 static Vm(ap_str) {
   str s = (str) ip;
-  la_putsn(s->text, s->len, la_io_out);
+  la_putsn(s->text, s->len, la_stdout);
   return ApC(ret, (ob) ip); }
 
 static intptr_t hx_str(la v, ob _) {
@@ -99,7 +99,7 @@ static void tx_str(la v, la_io o, ob _) {
 
 static Gc(cp_str) {
   str src = (str) x;
-  return (ob) (src->head.disp = (vm*)
+  return (ob) (src->h.disp = (vm*)
     memcpy(bump(v, wsizeof(struct str) + b2w(src->len)),
       src, sizeof(struct str) + src->len)); }
 

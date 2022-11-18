@@ -26,31 +26,31 @@ void la_reset(la_carrier v) {
 void la_close(la v) {
   if (v) la_free(v->pool), v->pool = NULL; }
 
-static bool la_open_lexicon(la_carrier v) {
-  struct la_lexicon *g =
-    (void*) mkmo(v, wsizeof(struct la_lexicon));
-  if (!g) return false;
-  memset(g, -1, sizeof(struct la_lexicon));
-  v->lex = g;
-  sym _;
+static bool la_open_lexi(la_carrier v) {
   // split the assignment into two expressions
   // to ensure correct sequencing
-  return (_ = symofs(v, "ev"), g->eval = _) &&
-      (_ = symofs(v, ":"), g->define = _) &&
-      (_ = symofs(v, "?"), g->cond = _) &&
-      (_ = symofs(v, "\\"), g->lambda = _) &&
-      (_ = symofs(v, "`"), g->quote = _) &&
-      (_ = symofs(v, ","), g->begin = _) &&
-      (_ = symofs(v, "."), g->splat = _); }
+  return (v->lex.eval = symofs(v, "ev")) &&
+      (v->lex.define = symofs(v, ":")) &&
+      (v->lex.cond = symofs(v, "?")) &&
+      (v->lex.lambda = symofs(v, "\\")) &&
+      (v->lex.quote = symofs(v, "`")) &&
+      (v->lex.begin = symofs(v, ",")) &&
+      (v->lex.splat = symofs(v, ".")); }
 
-// FIXME return a tbl
-#define reg_intl(a) inst(v, "i-"#a, a) &&
-static bool la_open_toplevel(la_carrier v) {
+static bool la_open_topl_boot(la v) {
   ob _; return
-    (v->topl = mktbl(v)) &&
     (_ = (ob) symofs(v, "_ns")) &&
     tbl_set(v, v->topl, _, (ob) v->topl) &&
-    i_internals(reg_intl) defprims(v); }
+    (_ = (ob) symofs(v, "macros")) &&
+    tbl_set(v, v->topl, _, (ob) v->macros) &&
+    defprims(v); }
+
+#define reg_intl(a) && inst(v, "i-"#a, a)
+static bool la_open_topl(la_carrier v) {
+  return
+    (v->topl = mktbl(v)) i_internals(reg_intl) &&
+    (v->macros = mktbl(v)) &&
+    la_open_topl_boot(v); }
 
 la_status la_open(la_carrier v) {
   memset(v, 0, sizeof(struct la_carrier));
@@ -61,7 +61,7 @@ la_status la_open(la_carrier v) {
   v->hp = v->pool = pool;
   v->fp = (sf) (v->sp = pool + len);
   v->rand = v->run.t0 = la_clock();
-  return la_open_lexicon(v) && la_open_toplevel(v) ?
+  return la_open_lexi(v) && la_open_topl(v) ?
     LA_OK : (la_close(v), LA_XOOM); }
 
 // static table of primitive functions
@@ -69,8 +69,7 @@ la_status la_open(la_carrier v) {
 const struct la_prim prims[] = { i_primitives(prim_ent) };
 #define LEN(ary) (sizeof(ary)/sizeof(*ary))
 bool primp(mo x) {
-  return x >= (mo) prims &&
-    x < (mo) (prims + LEN(prims)); }
+  return x >= (mo) prims && x < (mo) (prims + LEN(prims)); }
 
 static bool defprims(la v) {
   const struct la_prim *p = prims, *lim = p + LEN(prims);

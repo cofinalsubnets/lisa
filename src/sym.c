@@ -4,8 +4,8 @@
 //symbols
 static Inline sym ini_sym(void *_, str nom, size_t code) {
   sym y = _;
-  y->head.disp = disp;
-  y->head.mtbl = &mtbl_sym;
+  y->h.disp = disp;
+  y->h.mtbl = &mtbl_sym;
   y->nom = nom;
   y->code = code;
   y->l = y->r = 0;
@@ -60,7 +60,7 @@ Vm(ynom_f) {
 
 static Gc(cp_sym) {
   sym src = (sym) x;
-  return (ob) (src->head.disp = (vm*) (src->nom ?
+  return (ob) (src->h.disp = (vm*) (src->nom ?
     sskc(v, &v->syms, (str) cp(v, (ob) src->nom, pool0, top0)) :
     ini_sym(bump(v, wsizeof(struct sym)), 0, src->code))); }
 

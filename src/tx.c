@@ -26,14 +26,14 @@ Vm(tx_f) {
   size_t i = 0, l = fp->argc;
   if (l) {
     while (i < l - 1)
-      la_tx(v, la_io_out, fp->argv[i++]),
-      la_putc(' ', la_io_out);
+      la_tx(v, la_stdout, fp->argv[i++]),
+      la_putc(' ', la_stdout);
     xp = fp->argv[i];
-    la_tx(v, la_io_out, xp); }
-  la_putc('\n', la_io_out);
+    la_tx(v, la_stdout, xp); }
+  la_putc('\n', la_stdout);
   return ApC(ret, xp); }
 
 Vm(txc_f) {
   ArityCheck(1);
   return ApC(ret,
-    putnum(la_putc(getnum(fp->argv[0]), la_io_out))); }
+    putnum(la_putc(getnum(fp->argv[0]), la_stdout))); }

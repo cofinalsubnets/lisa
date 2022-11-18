@@ -2,7 +2,7 @@
 
 two ini_two(void *_, ob a, ob b) {
   two w = _;
-  w->head.disp = disp, w->head.mtbl = &mtbl_two;
+  w->h.disp = disp, w->h.mtbl = &mtbl_two;
   w->a = a, w->b = b;
   return w; }
 
@@ -57,7 +57,7 @@ static Vm(ap_two) { return
 static Gc(cp_two) {
   two src = (two) x,
       dst = bump(v, wsizeof(struct two));
-  src->head.disp = (vm*) dst;
+  src->h.disp = (vm*) dst;
   return (ob) ini_two(dst,
     cp(v, src->a, pool0, top0),
     cp(v, src->b, pool0, top0)); }

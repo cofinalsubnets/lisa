@@ -2,6 +2,8 @@
 #include <string.h>
 #include <ctype.h>
 
+Vm(rxc_f) { return ApC(ret, putnum(la_getc(la_stdin))); }
+
 static str
   rx_atom_str(la, la_io),
   rx_str(la, la_io);
@@ -24,6 +26,7 @@ enum la_status la_rx_f(la v, la_io i) {
 ////
 /// " the parser "
 //
+// simple except it uses the managed stack for recursion.
 
 // get the next token character from the stream
 static int rx_char(la_io i) {
@@ -49,7 +52,7 @@ static ob rx_two_cont(la v, la_io i, ob x) {
 
 static ob rx_q(la v, la_io i, ob x) { return
   x = x ? (ob) pair(v, x, nil) : x,
-  x = x ? (ob) pair(v, (ob) v->lex->quote, x) : x,
+  x = x ? (ob) pair(v, (ob) v->lex.quote, x) : x,
   rx_pull(v, i, x); }
 
 static NoInline ob rx(la v, la_io i) {
@@ -137,5 +140,3 @@ static NoInline ob rx_atom(la v, str b) {
         if (*r == c) return rx_atom_n(v, b, i+2, sign, r[1]); }
     default: goto out; } out:
   return rx_atom_n(v, b, i, sign, 10); }
-
-Vm(rxc_f) { return ApC(ret, putnum(la_getc(la_io_in))); }

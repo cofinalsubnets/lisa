@@ -1,3 +1,4 @@
+; experimental new compiler stuff
 (:
  (dict-get d k) (? d
   (? (= k (A d)) (AB d)

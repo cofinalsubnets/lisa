@@ -29,7 +29,7 @@ la_fn ini_mo(void *_, size_t len) {
 
 // allocate a thread
 la_fn mkmo(la_carrier v, size_t n) {
-  la_fn k = cells(v, n + wsizeof(struct tag));
+  la_fn k = cells(v, n + wsizeof(struct tl));
   return k ? ini_mo(k, n) : k; }
 
 // get the tag at the end of a function
@@ -42,9 +42,9 @@ la_fn_tag motag(la_fn k) {
 Vm(hom_f) {
   ArityCheck(1);
   size_t len = getnum(fp->argv[0]);
-  Have(len + wsizeof(struct tag));
+  Have(len + wsizeof(struct tl));
   mo k = setw(ini_mo(hp, len), nil, len);
-  hp += len + wsizeof(struct tag);
+  hp += len + wsizeof(struct tl);
   return ApC(ret, (ob) (k + len)); }
 
 // trim a function after writing out code
@@ -93,15 +93,24 @@ Vm(disp) { return ApC(((mtbl) GF(ip))->does, xp); }
 // pop some things off the stack into an array.
 Vm(take) {
   ob n = getnum((ob) GF(ip));
-  Have(n + wsizeof(struct tag));
+  Have(n + wsizeof(struct tl));
   mo k = ini_mo(cpyw_r2l(hp, sp, n), n);
-  hp += n + wsizeof(struct tag);
+  hp += n + wsizeof(struct tl);
   return ApN(2, (ob) k); }
 
 // set the closure for this frame
 static Vm(setclo) { return
   fp->clos = (ob*) GF(ip),
   ApY(G(FF(ip)), xp); }
+
+Vm(ccl) {
+  Have(3 + wsizeof(struct tl));
+  mo k = ini_mo(hp, 3);
+  hp += 3 + wsizeof(struct tl);
+  G(k) = setclo;
+  GF(k) = (vm*) xp;
+  G(FF(k)) = GF(ip);
+  return ApN(2, (ob) k); }
 
 // finalize function instance closure
 static Vm(genclo1) { return
@@ -117,52 +126,51 @@ static Vm(genclo1) { return
 // it overwrites itself with a special jump
 // instruction that sets the closure and enters
 // the function.
+
+struct clo_env {
+  mo cons;
+  ob loc, *clo, argc, argv[]; };
+
 static Vm(genclo0) {
-  ob *ec = (ob*) GF(ip);
-  size_t adic = getnum(ec[3]);
+  struct clo_env *ec = (void*) GF(ip);
+  size_t adic = getnum(ec->argc);
   Have(wsizeof(struct sf) + adic + 1);
   sf subd = fp;
   G(ip) = genclo1;
   sp = (ob*) (fp = (sf) (sp - adic) - 1);
-  cpyw_r2l(fp->argv, ec + 4, adic);
+  cpyw_r2l(fp->argv, ec->argv, adic);
   fp->retp = ip;
   fp->subd = subd;
   fp->argc = adic;
-  fp->clos = (ob*) ec[2];
-  ob loc = ec[1];
+  fp->clos = (ob*) ec->clo;
+  ob loc = ec->loc;
   if (!nilp(loc)) *--sp = loc;
-  return ApY(ec[0], xp); }
+  return ApY(ec->cons, xp); }
 
 // the next few functions create and store
 // lexical environments.
 static Vm(enclose) {
   size_t
-    adic = fp->argc,
-    thd_len = 3 + wsizeof(struct tag),
-    env_len = 4 + adic + wsizeof(struct tag),
-    n =  env_len + thd_len;
-  Have(n);
-  ob codeXcons = (ob) GF(ip), // pair of the compiled thread & closure constructor
-     *block = hp;
-  hp += n;
+    thd_len = 3 + wsizeof(struct tl),
+    env_len = wsizeof(struct clo_env) + fp->argc + wsizeof(struct tl);
+  Have(env_len + thd_len);
+  ob codeXcons = (ob) GF(ip); // pair of the compiled thread & closure constructor
+  ob *block = hp;
+  hp += env_len + thd_len;
 
-  ob *env = (ob*) ini_mo(block, 4 + adic); // holds the closure environment & constructor
-  block += env_len;
-  cpyw_r2l(env + 4, fp->argv, adic);
-
-  ob *thd = (ob*) ini_mo(block, 3), // the thread that actually gets returned
+  struct clo_env *env = (void*)
+    ini_mo(block, wsizeof(struct clo_env) + fp->argc); // holds the closure environment & constructor
+  env->cons = (mo) B(codeXcons);
      // TODO get closure out of stack frame; configure via xp
-     loc = nilp(xp) ? xp : ((ob*)fp)[-1],
-     clo = (ob) fp->clos;
+  env->loc = nilp(xp) ? xp : ((ob*)fp)[-1];
+  env->clo = fp->clos;
+  env->argc = putnum(fp->argc);
+  cpyw_r2l(env->argv, fp->argv, fp->argc);
 
-  env[0] = B(codeXcons);
-  env[1] = loc;
-  env[2] = clo;
-  env[3] = putnum(adic);
-
-  thd[0] = (ob) genclo0;
-  thd[1] = (ob) env;
-  thd[2] = A(codeXcons);
+  mo thd = ini_mo(block + env_len, 3); // the thread that actually gets returned
+  G(thd) = genclo0;
+  GF(thd) = (vm*) env;
+  G(FF(thd)) = (vm*) A(codeXcons);
 
   return ApN(2, (ob) thd); }
 
@@ -176,7 +184,11 @@ Vm(encl0) { return ApC(enclose, putnum(0)); }
 ob hnom(la v, mo x) {
   if (!livep(v, (ob) x)) return nil;
   vm *k = G(x);
+  // closures get special treatment
   if (k == setclo || k == genclo0 || k == genclo1)
     return hnom(v, (mo) G(FF(x)));
   ob n = ((ob*) motag(x))[-1];
-  return livep(v, n) ? n : nil; }
+  // this is a little hairy! basically we assume that if the
+  // last thing in a thread before the tail is a data object,
+  // then that's the name.
+  return homp(n) && livep(v, n) && G(n) == disp ? n : nil; }

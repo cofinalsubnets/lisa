@@ -31,7 +31,7 @@ intptr_t hash(la v, ob x) {
 
 static Inline tbl ini_tbl(void *_, size_t len, size_t cap, ob *tab) {
   tbl t = _;
-  t->head.disp = disp, t->head.mtbl = &mtbl_tbl;
+  t->h.disp = disp, t->h.mtbl = &mtbl_tbl;
   t->len = len, t->cap = cap, t->tab = tab;
   return t; }
 
@@ -64,7 +64,7 @@ static void
   tbl_shrink(la, tbl);
 
 tbl mktbl(la v) {
-  tbl t = cells(v, wsizeof(struct tbl) + 1 + wsizeof(struct tag));
+  tbl t = cells(v, wsizeof(struct tbl) + 1 + wsizeof(struct tl));
   if (t) ini_tbl(t, 0, 0, (ob*) ini_mo(t+1, 1)),
          t->tab[0] = putnum(-1);
   return t; }
@@ -271,7 +271,7 @@ static intptr_t hx_tbl(la_carrier v, ob _) {
 static Gc(cp_tbl) {
   tbl src = (tbl) x,
       dst = bump(v, wsizeof(struct tbl));
-  src->head.disp = (vm*) dst;
+  src->h.disp = (vm*) dst;
   return (ob) ini_tbl(dst, src->len, src->cap,
     (ob*) cp(v, (ob) src->tab, pool0, top0)); }
 

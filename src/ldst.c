@@ -40,7 +40,6 @@ Vm(clo3) { return ApN(1, fp->clos[3]); }
 ////
 /// Store Instructions
 // // stack push
-// ok?
 Vm(push) {
   Have1();
   *--sp = xp;
@@ -58,13 +57,12 @@ Vm(deftop) {
   return _ ? ApN(2, xp) : ApC(xoom, xp); }
 
 // allocate local variable array
-// ok?
 Vm(setloc) {
   size_t n = getnum((ob) GF(ip));
   // + 1 for the stack slot
-  Have(n + wsizeof(struct tag) + 1);
+  Have(n + wsizeof(struct tl) + 1);
   mo t = setw(ini_mo(hp, n), nil, n);
-  hp += n + wsizeof(struct tag);
+  hp += n + wsizeof(struct tl);
   *--sp = (ob) t;
   return ApN(2, xp); }
 
@@ -95,7 +93,6 @@ static NoInline Vm(varg0) {
   fp->argv[fp->argc++] = nil;
   return ApN(2, xp); }
 
-  // ok?
 Vm(varg) {
   size_t reqd = getnum((ob) GF(ip));
   if (reqd == fp->argc) return ApC(varg0, xp);

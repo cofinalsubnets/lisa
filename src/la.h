@@ -9,24 +9,36 @@
 #include <stdlib.h>
 #define la_calloc calloc
 #define la_free free
+
 #include <stdio.h>
 typedef FILE *la_io;
-#define la_io_in stdin
-#define la_io_out stdout
-#define la_io_err stderr
+#define la_stdin stdin
+#define la_stdout stdout
+#define la_stderr stderr
 #define la_puts fputs
 #define la_putc fputc
 #define la_getc fgetc
 #define la_ungetc ungetc
+
 #include <time.h>
 typedef clock_t la_clock_t;
 #define la_clock clock
+#else
+typedef uintptr_t la_io, la_clock_t;
+la_clock_t la_clock(void);
+void
+  *la_calloc(size_t, size_t),
+  la_free(void*),
+  la_putc(int, la_io),
+  la_getc(la_io),
+  la_puts(const char*, la_io),
+  la_ungetc(int, la_io);
 #endif
 
 // thanks !!
-typedef intptr_t ob;
+typedef intptr_t ob, la_ob;
 typedef struct la_carrier *la;
-typedef struct la_fn *la_fn, *mo; // procedures
+typedef struct la_fn *la_fn, *la_mo, *fn, *mo; // procedures
 
 typedef struct sf { // stack frame
   ob *clos; // closure pointer FIXME
@@ -38,15 +50,13 @@ typedef struct sf { // stack frame
   size_t argc; // argument count
   ob argv[]; } *sf;
 
-typedef la_status vm(la, ob, mo, ob*, ob*, sf); // interpreter function type
+typedef enum la_status vm(la, ob, mo, ob*, ob*, sf); // interpreter function type
 struct la_fn { vm *ap; };
 // every dynamically allocated thread ends
 // with a footer holding a pointer to its head
-typedef struct tag {
-  void *null; // always null
-  struct la_fn
-    *head, // pointer to start of thread
-    end[]; // first address after thread
+typedef struct tl {
+  void *null; // null sentinel
+  struct la_fn *head, end[];
 } *tag, *la_fn_tag;
 
 // static method table for built-in types
@@ -59,17 +69,14 @@ typedef const struct mtbl {
 //  void (*walk)(la, ob, ob*, ob*);
 } *mtbl;
 
-typedef struct header {
-  vm *disp; // pointer to disp function
-  mtbl mtbl; } *header;
-
+struct hd { vm *disp; mtbl mtbl; };
 
 typedef struct two { // pairs
-  struct header head;
+  struct hd h;
   ob a, b; } *two;
 
 typedef struct str { // strings
-  struct header head;
+  struct hd h;
   size_t len;
   char text[]; } *str;
 
@@ -77,13 +84,13 @@ typedef struct str { // strings
 // - it's slower than a hash table
 // - anonymous symbols waste 2 words
 typedef struct sym {
-  struct header head;
+  struct hd h;
   str nom;
   intptr_t code;
   struct sym *l, *r; } *sym;
 
 typedef struct tbl { // hash tables
-  struct header head;
+  struct hd h;
   size_t len, cap;
   ob *tab; } *tbl;
 
@@ -101,9 +108,9 @@ struct la_carrier {
   sf fp;
   ob xp, *hp, *sp;
 
-  tbl topl; // global scope
+  tbl topl, macros; // global scope
   sym syms; // symbol table // TODO use a hash
-  struct la_lexicon *lex;
+  struct la_lexicon lex;
   intptr_t rand;
 
   // gc state
@@ -117,10 +124,14 @@ struct la_carrier {
   } run; };
 
 // FIXME develop towards public API
-void
-  la_reset(la), // reset interpreter state
-  la_perror(la, la_status);
+void la_reset(la), // reset interpreter state
+     la_perror(la, la_status);
 enum la_status
+  la_call(la, la_fn, size_t),
+  la_go(la),
+  la_ap(la, la_fn, ob),
+  la_ev_x(la, la_ob),
+  la_ev_fs(la, la_io),
   la_ev_f(la, la_io),
   la_rx_f(la, la_io);
 
@@ -131,20 +142,16 @@ ob
   hnom(la_carrier, la_fn); // get function name FIXME hide this
 
 la_fn_tag motag(la_fn); // get tag at end
-mo
-  mkmo(la_carrier, size_t), // allocate a thread
-  ini_mo(void *, size_t);
+mo mkmo(la_carrier, size_t), // allocate a thread
+   ini_mo(void *, size_t);
 
 sym symof(la, str);
-
 str ini_str(void *, size_t);
-two
-  pair(la, ob, ob), // pair constructor
-  ini_two(void *, ob, ob);
+two pair(la, ob, ob), // pair constructor
+    ini_two(void *, ob, ob);
 
-tbl
-  mktbl(la),
-  tbl_set(la, tbl, ob, ob);
+tbl mktbl(la),
+    tbl_set(la, tbl, ob, ob);
 ob tbl_get(la, tbl, ob, ob);
 
 bool please(la_carrier, size_t);
@@ -163,7 +170,6 @@ size_t llen(ob); // length of list
 intptr_t
   hash(la, ob), // hash function for tables
   lcprng(intptr_t); // linear congruential pseudorandom number generator
-                    //
 void
   *cells(la_carrier, size_t),
   *bump(la_carrier, size_t),
@@ -270,10 +276,10 @@ cfns(ninl)
 i_internals(ninl)
 
 // primitive functions
-// FIXME due to a hack ev must be the first item in this list
-#define i_primitives(_)\
- _(ev_f, "ev") _(ap_f, "ap")\
-  \
+// XXX ev should be the first item in this list
+#define prim_ev ((mo) prims)
+#define prim_ap ((mo) (prims+1))
+#define i_primitives(_) _(ev_f, "ev") _(ap_f, "ap")\
  _(nump_f, "nump") _(rand_f, "rand")\
  _(add_f, "+") _(sub_f, "-") _(mul_f, "*")\
  _(quot_f, "/") _(rem_f, "%")\

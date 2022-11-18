@@ -9,39 +9,39 @@ Vm(xdom) { return Pack(), LA_XDOM; }
 Vm(xoom) { return Pack(), LA_XOOM; }
 
 static NoInline void show_call(la v, mo ip, sf fp) {
-  la_putc('(', la_io_err);
-  la_tx(v, la_io_err, (ob) ip);
+  la_putc('(', la_stderr);
+  la_tx(v, la_stderr, (ob) ip);
   for (size_t i = 0, argc = fp->argc; i < argc;
-    la_putc(' ', la_io_err), la_tx(v, la_io_err, fp->argv[i++]));
-  la_putc(')', la_io_err); }
+    la_putc(' ', la_stderr), la_tx(v, la_stderr, fp->argv[i++]));
+  la_putc(')', la_stderr); }
 
 // this prints a backtrace.
-// TODO maybe do it upside down like python?
+// TODO maybe show it upside down like python?
 #define aubas (((ob*) fp) == v->pool + v->len)
 static NoInline void errp(la v, const char *msg, ...) {
   mo ip = v->ip;
   sf fp = v->fp;
 
   // print error
-  la_puts(";; ", la_io_err);
+  la_puts(";; ", la_stderr);
 
   // show the function if there is one
   if (!aubas)
     show_call(v, ip, fp),
-    la_putc(' ', la_io_err),
+    la_putc(' ', la_stderr),
     ip = fp->retp,
     fp = fp->subd;
 
   // show message
   va_list xs;
-  va_start(xs, msg), vfprintf(la_io_err, msg, xs), va_end(xs);
-  la_putc('\n', la_io_err);
+  va_start(xs, msg), vfprintf(la_stderr, msg, xs), va_end(xs);
+  la_putc('\n', la_stderr);
 
   // show backtrace
   while (!aubas)
-    la_puts(";; in ", la_io_err),
+    la_puts(";; in ", la_stderr),
     show_call(v, ip, fp),
-    la_putc('\n', la_io_err),
+    la_putc('\n', la_stderr),
     ip = (mo) fp->retp,
     fp = fp->subd; }
 
