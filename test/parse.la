@@ -1,6 +1,8 @@
 ; explicit control parser combinators
 (:
- ((px-lit l) s n y) (? (: suff (strip-prefix l s)) (y suff l) (n s))
+ (px-strip-prefix p s)
+  (? (= p (ssub s 0 (: a (slen p)))) (ssub s a (slen s)))
+ ((px-lit l) s n y) (? (: suff (px-strip-prefix l s)) (y suff l) (n s))
  ((px-drop a) s n y) (a s n (\ s  (y s )))
  ((px-alt a b) s n y) (a s (\ (b s n y)) y)
  ((px-opt a) s _ y) (a s (\ (y s)) y)

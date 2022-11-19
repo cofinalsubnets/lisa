@@ -143,8 +143,7 @@ static Vm(genclo0) {
   fp->subd = subd;
   fp->argc = adic;
   fp->clos = (ob*) ec->clo;
-  ob loc = ec->loc;
-  if (!nilp(loc)) *--sp = loc;
+  *--sp = ec->loc;
   return ApY(ec->cons, xp); }
 
 // the next few functions create and store
