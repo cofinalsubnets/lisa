@@ -1,5 +1,4 @@
 #include "la.h"
-#include <stdarg.h>
 
 void *cells(la v, size_t n) {
   return Avail >= n || please(v, n) ? bump(v, n) : 0; }
@@ -23,6 +22,7 @@ void *bump(la v, size_t n) {
   v->hp += n;
   return x; }
 
+#include <stdarg.h>
 // push things onto the stack
 static NoInline bool pushsr(la v, size_t i, va_list xs) {
   ob x = va_arg(xs, ob);

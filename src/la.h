@@ -124,8 +124,12 @@ struct la_carrier {
   } run; };
 
 // FIXME develop towards public API
-void la_reset(la), // reset interpreter state
-     la_perror(la, la_status);
+void
+  la_tx(la, la_io, ob), // write a value
+  la_reset(la), // reset interpreter state
+  la_perror(la, la_status),
+  la_putsn(const char*, size_t, la_io);
+
 enum la_status
   la_call(la, la_fn, size_t),
   la_go(la),
@@ -133,18 +137,18 @@ enum la_status
   la_ev_x(la, la_ob),
   la_ev_fs(la, la_io),
   la_ev_f(la, la_io),
-  la_rx_f(la, la_io);
+  la_rx(la, la_io);
 
 vm disp; // dispatch instruction for data threads; also used as a sentinel
 
 ob
+  tbl_get(la, tbl, ob, ob),
   cp(la, ob, ob*, ob*), // copy something; used by type-specific copying functions
   hnom(la_carrier, la_fn); // get function name FIXME hide this
 
 la_fn_tag motag(la_fn); // get tag at end
 mo mkmo(la_carrier, size_t), // allocate a thread
    ini_mo(void *, size_t);
-
 sym symof(la, str);
 str ini_str(void *, size_t);
 two pair(la, ob, ob), // pair constructor
@@ -152,15 +156,9 @@ two pair(la, ob, ob), // pair constructor
 
 tbl mktbl(la),
     tbl_set(la, tbl, ob, ob);
-ob tbl_get(la, tbl, ob, ob);
-
-bool please(la_carrier, size_t);
-
-void
-  la_tx(la_carrier, la_io, ob), // write a value
-  la_putsn(const char*, size_t, la_io);
 
 bool
+  please(la, size_t),
   pushs(la, ...), // push args onto stack; true on success
   eql(la, ob, ob), // object equality
   neql(la, ob, ob), // always returns false

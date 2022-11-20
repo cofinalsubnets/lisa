@@ -56,7 +56,8 @@ static tbl
   tbl_grow(la, tbl),
   tbl_set_s(la, tbl, ob, ob);
 static ob
-  tbl_del(la, tbl, ob),
+  tbl_del(la, tbl, ob, ob),
+  tbl_del_s(la, tbl, ob, ob),
   tbl_keys(la);
 static bool
   tblss(la, intptr_t, intptr_t);
@@ -85,11 +86,13 @@ Vm(tget_f) {
   return ApC(ret, xp); }
 
 Vm(tdel_f) {
-  ArityCheck(2);
-  ob x = fp->argv[0];
-  Check(tblp(x));
-  CallOut(x = tbl_del(v, (tbl) x, fp->argv[1]));
-  return ApC(ret, x); }
+  ArityCheck(1);
+  Check(tblp(fp->argv[0]));
+  tbl t = (tbl) fp->argv[0];
+  for (size_t i = 1, l = fp->argc; i < l; i++)
+    xp = tbl_del_s(v, t, fp->argv[i], xp);
+  tbl_shrink(v, t);
+  return ApC(ret, xp); }
 
 Vm(tget) { return
   xp = tbl_get(v, (tbl) xp, *sp++, nil),
@@ -141,10 +144,9 @@ Vm(tset) {
   return x ? ApN(1, *sp++) : ApC(xoom, xp); }
 
 // FIXME so bad :(
-static ob tbl_del(la v, tbl y, ob key) {
+static ob tbl_del_s(la v, tbl y, ob key, ob val) {
   size_t b = tbl_idx(y->cap, hash(v, key));
-  ob val = nil,
-     e = y->tab[b],
+  ob e = y->tab[b],
      prev[] = {0,0,e};
   for (ob l = (ob) &prev; !nump(l) && !nump(NEXT(l)); l = NEXT(l))
     if (eql(v, KEY(NEXT(l)), key)) {
@@ -153,7 +155,6 @@ static ob tbl_del(la v, tbl y, ob key) {
       y->len--;
       break; }
   y->tab[b] = NEXT(prev);
-  tbl_shrink(v, y);
   return val; }
 
 // tbl_grow(vm, tbl, new_size): destructively resize a hash table.

@@ -17,6 +17,10 @@
 
   has-s dict-has
   (ext-s s k v) (dict-set s k v)
+ (unord-eq a b) (&&
+  (= (len a) (len b))
+  (all b (cu memq a)))
+
  )
 (:::
  zz (\ x (: a (sym) b (sym) c (sym)

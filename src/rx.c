@@ -13,15 +13,13 @@ static ob
   rx(la, la_io),
   rx_two(la, la_io);
 
-static ob la_rx(la v, la_io i) { return
+static ob la_rx_x(la v, la_io i) { return
   pushs(v, rx_ret, NULL) ? rx(v, i) : 0; }
 
 // FIXME doesn't distinguish between OOM and parse error
-enum la_status la_rx_f(la v, la_io i) {
-  ob x = la_rx(v, i);
-  return x ? (v->xp = x, LA_OK) :
-    feof(i) ? LA_EOF :
-    LA_XSYN; }
+enum la_status la_rx(la v, la_io i) {
+  ob x = la_rx_x(v, i);
+  return x ? (v->xp = x, LA_OK) : feof(i) ? LA_EOF : LA_XSYN; }
 
 ////
 /// " the parser "

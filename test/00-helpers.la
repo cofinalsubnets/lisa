@@ -1,9 +1,5 @@
 ;(. 0 'helpers)
 (:
- (puts s) (>>= s 0 (slen s) (:
-  (loop s i n)
-   (? (< i n) (, (putc (schr s i)) (loop s (+ i 1) n)))))
-
  (term-esc string) (puts (ap str (X 27 (chars string))))
  (green) (term-esc "[32m")
  (red)   (term-esc "[31m")
@@ -26,21 +22,3 @@
     (X ', (map ts Te))
     )))))
 
-(:
- (unord-eq a b) (&&
-  (= (len a) (len b))
-  (all (cu memq a) b)))
-
-(:
-     (rev l) (foldl l () (\ a b (X b a)))
-     (find l p) (? l (? (p (A l)) (A l) (find (B l) p)))
-     (transp x) (ap zip (X L x))
-     (sample l) (at l (randn (len l)))
-     (intercal i l) (:
-      (loop i l m) (? (nilp m) l (append l (append i (intercal i m))))
-      (? l (loop i (A l) (B l))))
-     (abs x) (? (< x 0) (- x) x)
-     (even x) (? (= 0 (& x 1)))
-     (odd x) (? (= 1 (& x 1)))
-
-)

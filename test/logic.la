@@ -1,8 +1,8 @@
 (test logic
- (all id (L 1 1 1 1 1))
- (nilp (all id (L 1 1 0 1 1)))
- (any id (L 1 1 0 1 1))
- (nilp (any id (L 0 0 0 0 0)))
+ (all (L 1 1 1 1 1) id)
+ (nilp (all (L 1 1 0 1 1) id))
+ (any (L 1 1 0 1 1) id)
+ (nilp (any (L 0 0 0 0 0) id))
  (nilp (&& 1 2 0 4))
  (&& 1 2 3 4 (&&))
  (|| 0 0 1 0)
@@ -12,8 +12,8 @@
     (bools n) (? (= 0 n) '((0) (-1))
      (>>= (bools (- n 1)) (\ q
       (flat-map q (\ b (map q (\ c (append b c))))))))
-    (de-morgan a .) (= (all id a) (none nilp a))
-  (all (cu ap de-morgan) (bools 3)))
+    (de-morgan a .) (= (all a id) (none a nilp))
+  (all (bools 3) (cu ap de-morgan)))
  (: box (tbl)
     (set x) (tset box 0 x)
     (get) (box 0)

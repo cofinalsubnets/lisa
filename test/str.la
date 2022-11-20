@@ -18,4 +18,4 @@
  (: (printable-char) (+ 32 (randn (- 126 32)))
     (randw) (ap str (map (iota (+ 4 (randn 12))) printable-char))
     words (map (iota 0z100) randw)
-  (all (\ word (= word (ap str (chars word)))) words)))
+  (all words (\ word (= word (ap str (chars word)))))))

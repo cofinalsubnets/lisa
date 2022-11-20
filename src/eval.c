@@ -34,7 +34,7 @@ enum la_status la_ev_x(la v, la_ob x) {
   return la_call(v, ev, 1); }
 
 enum la_status la_ev_f(la v, la_io in) {
-  enum la_status s = la_rx_f(v, in);
+  enum la_status s = la_rx(v, in);
   return s != LA_OK ? s : la_ev_x(v, v->xp); }
 
 ////
