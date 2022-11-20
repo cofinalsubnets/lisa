@@ -7,6 +7,9 @@
      (L . .) .
      (Q x) (L '` x)
 
+     (AA x) (A (A x)) (AB x) (A (B x))
+     (BA x) (B (A x)) (BB x) (B (B x))
+
      ; functional programmings
      (id x) x
      ;(const x) (\ x) ; the "clean" definition uses a closure; more efficient to just make a thread!
@@ -84,7 +87,9 @@
 ; use any macros in here, because stage 1 doesn't know about
 ; macros.
  egg '(:
-   ; XXX be systematic about this
+   ; XXX be systematic about this!
+   ; obviously we should be able to tell a function is pure
+   ; if it's composed of pure functions/operations ...
    pure (set
     L X A B Q + - * / % & | ^ << >> id const flip co
     = ~ <= >= < > cu snoc init last memq at idx len
@@ -156,7 +161,7 @@
 
   ; for comparison operators
   ((compar f i) x k) (?
-   (? (nilp x) 1 (nilp (B x))) (imm true k)
+   (|| (nilp x) (nilp (B x))) (imm true k)
    (nilp (BB x))
     (co-ev (A x) (emc i-push (co-ev (AB x) (emc i k))))
    (co-apply f x k))
@@ -241,9 +246,8 @@
    nump (typed i-nump_ 'num 0)
    symp (typed i-symp_ 'num 0)
    strp (typed i-strp_ 'num 0)
-   tblp (typed i-tblp_ 'num 0)
-   ))
- ; new let expn makes sure ^^^ exist at toplevel & don't cause closures below
+   tblp (typed i-tblp_ 'num 0))) ; end inliners
+
  (pokef i h) (>>= i h (fuse i) (\ i h q ((? q q poke) i h)))
  ((emc i k) m e) (pokef i (k (+ m 1) e))
  ((emd x k) m e) (poke x (k (+ m 1) e))
@@ -258,11 +262,10 @@
    (? (B a) (= '. (AB a))) (X (- (+ n 1)) (L (A a)))
    (: r (ary-sig (B a) (+ n 1)) (X (A r) (X (A a) (B r)))))
   sig-arg (ary-sig arg 0)
-  (tbl 'arg (B sig-arg) 'par par 'nom nom
+  (tbl 'arg (B sig-arg) 'par par 'nom nom ;'lam (tbl)
        'def (tbl) 'val (tbl) 'sig (A sig-arg)))
 
  (toplp e) (nilp (e 'par))
-
 
  ; this function is used in several places to look for a
  ; variable's value, or failing that to find where it's bound.
@@ -281,8 +284,6 @@
   (memq (e 'dfr) y) (X 'wait (e 'val))
   (look (e 'par) y))
 
- ;(co-lam- e nom xpn) (, (tset (e 'lam) xpn (ltu e nom xpn)))
-
  ; ltu : compile a lambda expression.
  ; depending on if it encloses any variables, a lambda
  ; expression may or may not have a value at compile time. this
@@ -292,7 +293,7 @@
  ; available in the closure. the enclosing scope generates a
  ; constructor for the closure, which is composed with the
  ; prototype to create an "instance".
- (ltu out-scope nom b0) (:
+ (ltu lx-scope nom b0) (:
   ((w/locals k) m e) (>>= (k (+ m 2) e) (\ k (?
    (e 'loc) (pokef i-setloc (poke (len (e 'loc)) k))
    k)))
@@ -301,28 +302,32 @@
    (< sig 0) (pokef i-varg (poke (- (- sig) 1) k))
    k)))
 
-  args-body (? (B b0) (B b0) ~~)
+  args-body (? b0 b0 ~~)
   full-name (?
-   (nilp nom) (out-scope 'nom)
-   (out-scope 'nom) (X nom (out-scope 'nom))
+   (nilp nom) (lx-scope 'nom)
+   (lx-scope 'nom) (X nom (lx-scope 'nom))
    nom)
-  in-scope (env (init args-body) out-scope full-name)
-  body (weak-eval in-scope (last args-body))
+  fn-scope (env (init args-body) lx-scope full-name)
+  body (weak-ev fn-scope (last args-body))
 
   (?
-   (&& (>= (in-scope 'sig) 0) ; if the function is nonvariadic
+   (&& (>= (fn-scope 'sig) 0) ; if the function is nonvariadic
        (twop body) ; and the body just applies
-       (homp-strict (A body)) ; a second known function
-       (= (B body) (in-scope 'arg))) ; to its exact argument list
+       (homp (A body)) (quoted? (A body)) ; a second known function
+       (= (B body) (fn-scope 'arg))) ; to its exact argument list
     (A body) ; then it's an alias for the second function.
    ; otherwise compile it!
-   (: out (hfin
+   (, (: out (hfin
            ((w/arity (w/locals (co-ev body (ini full-name))))
-            0 in-scope))
-    (? (in-scope 'clo) ; are there closure variables?
-        (X (in-scope 'clo) out) ; if so return a pair of the vars and the thread.
+            0 fn-scope)))
+    (? (fn-scope 'clo) ; are there closure variables?
+        (X (fn-scope 'clo) out) ; if so return a pair of the vars and the thread.
        out)))) ; otherwise return the fully compiled function.
 
+ (quoted? x) (? (twop x) (= (A x) '`) (nilp (symp x)))
+ (unquote x) (? (twop x) (AB x) x)
+ (quote x) (? (|| (symp x) (twop x)) (L '` x) x)
+ (lambda? x) (&& (twop x) (= '\ (A x)))
  ; first compiler moiety : " weak evaluator "
  ; 1. construct the local scope of the function
  ; 2. desugaring, macroexpansion, and partial evaluation
@@ -334,29 +339,35 @@
  ; but pre-evaluated "as much as possible". to tell if an
  ; expression was fully evaluated, check if the image is
  ; quoted.
- (quoted? x) (? (twop x) (= (A x) '`) (nilp (symp x)))
- (unquote x) (? (twop x) (AB x) x)
- (quote x) (? (|| (symp x) (twop x)) (L '` x) x)
- (homp-strict x) (&& (homp x) (nilp (= i-disp (peek x))))
- (weak-eval e x)  (:
-  ; function symbol sugar ; handles any level of nesting
-  (desug-lambda x) (? (nilp (twop (A x))) x
-   (desug-lambda (X (AA x)
-    (X (X '\ (snoc (BA x) (AB x)))(BB x)))))
 
-  (desug-define y) (? y (,
-   (? (quoted? (: x (desug-lambda y) a (AB x)))
-       (tset (e 'val) (A x) (unquote a))
-      (, (tset (e 'def) (A x) a)
-         (walk a)))
-   (desug-define (BB x))))
+ ; partial evaluator
+ (weak-ev e x)  (:
+  ; desugars a *leading* function symbol in a dfns list.
+  (desug-fn-sym dfns) (? (nilp (twop (A dfns))) dfns
+   (desug-fn-sym (X (AA dfns)
+    (X (X '\ (snoc (BA dfns) (AB dfns)))(BB dfns)))))
 
-  (walk x) (? (twop x) (: head (A x) (?
-   (|| (= '\ head) (= head '`)) 0
-   (= head ':) (&& (= 1 (% (len x) 2)) (desug-define (B x)))
-   (each x walk))))
+  (scan-let dfns) (? dfns (>>= (desug-fn-sym dfns) (\ dfns (,
+   (scan (tset (e 'def) (A dfns) (AB dfns)))
+   (scan-let (BB dfns))))))
+
+  ; scan an expression for variable definitions.
+  (scan x) (?
+   (nilp (twop x)) 0 ; skip atoms
+   (= '` (: head (A x))) 0 ; skip quotations
+   (= '\ head) 0 ;(co-lam- e 0 x) ; skip lambdas FIXME really?
+   (= ': head) ; descend into *even* let expressions
+    (? (= 0 (% (len (B x)) 2)) (scan-let (B x)))
+   (each x scan)) ; otherwise recur on subexpressions.
 
   (wev x) (:
+   (rw-sym x) (?
+    (= (A (: l (look e x))) 'here) (quote (B l))
+    (&& (thas (: defs (e 'def)) x)
+        (quoted? (tset defs x (wev (tdel defs x)))))
+     (tset (e 'val) x (unquote (tdel defs x)))
+    x)
+
    (rw-list x) (:
     ; FIXME optimization
     ; static arity check : omit the check in the called function.
@@ -366,17 +377,17 @@
      (? (>= (len (B x)) (peek (seek z 1)))
       (X (seek z 2) (B x)) ; this call is ok, skip the check
       (, (ap z (B x)) ; oops wrong arity, call the function to get an error
-         0)))) ; avoid tail call for more informative backtrace
+         0)))) ; avoid a tail call to get a more informative backtrace
 
-    (rw-define x) (:
+    (rw-let x) (:
      (nom s) (? (twop s) (nom (A s)) s)
      (sug d) (L (L '\ (L ', (init d) (last d))))
      (loop e x) (? x (:
       y (nom (A x))
       ll (loop e (BB x))
-      (X y (X ((e 'def) y) ll))))
-     (? (B x) (? (= 0 (% (len x) 2)) (sug x)
-                 (X ': (loop e (B x))))))
+      (X (L ': y ((e 'def) y)) ll)))
+     (? (= 1 (% (len (B x)) 2)) (sug x)
+        (X ', (loop e (B x)))))
 
     (rw-lambda l) (:
      ; FIXME an oddly specific and bad optimization.
@@ -397,62 +408,55 @@
      (? (letrec? l) (rw-letrec l) l))
 
     (rw-monoid f i l) (:
+     ; XXX is this even right?
      (fold j x y) (?
       y (? (quoted? x) (fold (f j (unquote x)) (A y) (B y))
-         (: z (X x (fold i (A y) (B y)))
-          (? (= i j) z (X j z))))
-      (quoted? x) (? (= i (: y (f j (unquote x))) 0 (L y)))
+           (: z (X x (fold i (A y) (B y))) (? (= i j) z (X j z))))
+      (quoted? x) (? (= i (: y (f j (unquote x)))) 0 (L y))
       (= i j) (L x)
       (L j x))
      (? l (X f (fold i (A l) (B l))) (quote i)))
 
     (rw-cond x) (:
      (rec x) (?
-      (nilp x) ~~
-      (nilp (B x)) (L (wev (A x)))
+      (nilp x) 0
+      (nilp (B x)) (wev (A x))
       (nilp (quoted? (: a (wev (A x)))))
-       (X a (X (wev (A (B x))) (rec (BB x))))
-      (unquote a) (L (wev (AB x)))
+       (L '? a (wev (A (B x))) (rec (BB x)))
+      (unquote a) (wev (AB x))
       (rec (BB x)))
-     (? (: r (rec x)) (? (B r) (X '? r) (A r))))
+     (rec (B x)))
 
-    (rw-begin x) (:
+    (rw-begin x) (? (B x) (:
      (loop x) (? (nilp (B x)) (L (wev (A x)))
       (>>= x (loop (B x)) (wev (A x)) (\ x z y
        (? (? (symp y) true (quoted? y)) z (X y z)))))
-     (? (B x) (? (B (: z (loop (B x)))) (X ', z) (A z))))
+     (? (B (: z (loop (B x)))) (X ', z) (A z))))
 
     (?
      ; special forms
-     (= '` (: a (A x))) x
+     (= '` (: a (A x))) (? (twop (B x)) x)
      (= '\ a) (rw-lambda x)
-     (= ': a) (rw-define x)
-     (= '? a) (rw-cond (B x))
+     (= ': a) (rw-let x)
+     (= '? a) (rw-cond x)
      (= ', a) (rw-begin x)
      ; is it a macro ?
      (: macro (macros a)) (wev (ap macro (B x)))
      ; nope, it's a function call.
-     ; if it's pure & its arguments are all here then we can call it now.
-     (&& (pure (: z (map x wev) q (A z))) (all (: r (B z)) quoted?))
-      (quote (ap q (map r unquote)))
-     ; if it's an abelian operator we may be able to partially apply it
-     (abelians q) (:
-      ff (part quoted? r)
-      fg (ap q (map (A ff) unquote))
-      (X q (? (= fg (q)) (B ff) (X fg (B ff)))))
-     ; or if it's monoidal ...
-     (monoids q) (rw-monoid q (q) r)
-     ; otherwise we can at least try and check the arity.
-     (check-arity z)))
+     (: z (map x wev) q (A z) r (B z) (?
+      ; if it's pure & its arguments are all here then we can call it now.
+      (&& (pure q) (all r quoted?))
+       (quote (ap q (map r unquote)))
+      ; if it's an abelian operator we may be able to partially apply it
+      (abelians q) (:
+       ff (part quoted? r)
+       fg (ap q (map (A ff) unquote))
+       (X q (? (= fg (q)) (B ff) (X fg (B ff)))))
+      ; or if it's monoidal ...
+      (monoids q) (rw-monoid q (q) r)
+      ; otherwise we can at least try and check the arity.
+      (check-arity z)))))
 
-   (rw-sym x) (?
-    (= (A (: l (look e x))) 'here) (quote (B l))
-    (nilp (&& (thas (: defs (e 'def)) x)
-              (quoted? (tset defs x (: dfn (wev (tdel defs x)))))))
-     x
-    (, (tdel defs x)
-       (tset (e 'val) x (unquote dfn))
-       dfn))
    (? (twop x) (rw-list x) (symp x) (rw-sym x) x))
 
   ; this is a huge complicated procedure for "resolving
@@ -464,31 +468,28 @@
   ; references to functions in S to get resolved (with
   ; optimizations etc) later, which lets the compiler generate
   ; appropriate code without having a function address yet.
-  (rslv)
-   ; only bother with any of this if there are inner defs
-   (? (: noms (tkeys (e 'def))) (: def (e 'def) val (e 'val)
+  (resolve-dfns) (: def (e 'def) val (e 'val)
     ; step one: pass over each inner def for this function and
     ; try to rewrite and evaluate it. if this succeeds, add it
     ; to the known values. otherwise, if the definition is for
     ; a function, collect it into a list.
-    (rslv-ev-dfns dfns) (? dfns (?
-     (thas val (: nom (AA dfns))) (rslv-ev-dfns (B dfns))
-     (quoted? (tset def nom (: coll (rslv-ev-dfns (B dfns))
-                               body (wev (BA dfns)))))
-      (, (tset val nom (unquote body))
-         (tdel def nom) coll)
-     (&& (twop body) (= '\ (A body)))
-      (X (X nom body) coll)
-     coll))
+    (re-ev-dfns dfns) (? dfns (:
+     coll (re-ev-dfns (B dfns))
+     nom (AA dfns) defn (wev (BA dfns))
+     (? (quoted? (tset def nom defn))
+         (, (tset val nom (unquote defn))
+            (tdel def nom) coll)
+        (lambda? defn) (X (X nom defn) coll)
+        coll)))
 
     ; step two: now we have a list of function name/definition
     ; pairs. try and compile each one; if it succeeds, add it to
     ; the known values. otherwise collect the name, definition,
     ; and list of free variables into a list.
-    (rslv-co-dfns dfns) (? dfns (:
-     coll (rslv-co-dfns (B dfns))
+    (re-co-dfns dfns) (? dfns (:
+     coll (re-co-dfns (B dfns))
      co (, ;(.'resolve'ltu (e'nom))
-           (ltu e (: nom (AA dfns)) (: body (BA dfns))))
+           (ltu e (: nom (AA dfns)) (B (: body (BA dfns)))))
      (?  (twop co) ; if ltu returns a pair there are closure vars; collect the name & def
           (X (X nom (X (A co) body)) coll)
          (, (tdel def nom) ; otherwise it's a fully-compiled thread so add it to the known values.
@@ -501,17 +502,17 @@
     ; function is available now, so any time a function is
     ; rejected we start over again as it may have been
     ; referenced by a previously accepted function.
-    (rslv-rm-deps dfns) (rslv-rm-deps-r dfns dfns ())
-    (rslv-rm-deps-chk maybes vs) (?
+    (re-rm-deps dfns) (re-rm-deps-r dfns dfns ())
+    (re-rm-deps-chk maybes vs) (?
      (nilp vs) true
      (|| (thas val (: v (A vs)))
          (any maybes (\ j (= (A j) v))))
-      (rslv-rm-deps-chk maybes (B vs)))
-    (rslv-rm-deps-r maybes dfns coll) (?
+      (re-rm-deps-chk maybes (B vs)))
+    (re-rm-deps-r maybes dfns coll) (?
      (nilp dfns) coll
-     (rslv-rm-deps-chk maybes (AB (: dfn (A dfns))))
-      (rslv-rm-deps-r maybes (B dfns) (X dfn coll))
-     (rslv-rm-deps (del maybes dfn)))
+     (re-rm-deps-chk maybes (AB (: dfn (A dfns))))
+      (re-rm-deps-r maybes (B dfns) (X dfn coll))
+     (re-rm-deps (del maybes dfn)))
 
     ; step four ( the last one ) : now we have the desired
     ; set of functions. remove them from the scope's local
@@ -520,23 +521,21 @@
     ; no free variables that aren't being deferred, this time
     ; ltu will definitely return a function, which is stored in
     ; the known value set.
-    (rslv-co-dfrs dfns) (?
+    (re-co-dfrs dfns) (?
      (nilp dfns) (tset e 'loc (tkeys def)) ; we're done, set the local variable list
      (, (tdel def (: dfn (A dfns) nom (A dfn)))
         (tset e 'dfr (X nom (e 'dfr)))
-        (rslv-co-dfrs (B dfns))
-        (tset val nom (ltu e nom (BB dfn)))))
+        (re-co-dfrs (B dfns))
+        (tset val nom (ltu e nom (B (BB dfn))))))
 
-    (rslv-co-dfrs
-     (rslv-rm-deps
-      (rslv-co-dfns
-       (rslv-ev-dfns
-        (map (tset e 'loc noms)
-         (\ k (X k (def k))))))))))
+    (re-co-dfrs
+     (re-rm-deps
+      (re-co-dfns
+       (re-ev-dfns
+        (map (tset e 'loc (tkeys def))
+         (\ k (X k (def k)))))))))
 
-  (, (walk x)
-     (rslv)
-     (wev x)))
+  (, (scan x) (resolve-dfns) (wev x)))
 
 
 
@@ -562,7 +561,7 @@
  (produces t k) (:
   (subtype? a b)
    ; currently fixnums are their own thing & every
-   ; other kind of data counts as a hom.
+   ; other kind of data also counts as a hom.
    (|| (= a b) (&& (= b 'hom) (nilp (= a 'num))))
   (con i) (? (= i i-idmo) 'hom (= i i-idno) 'num
              (= i i-idtwo) 'two (= i i-idtbl) 'tbl)
@@ -572,12 +571,9 @@
    (nope'produces':'type'error': t'for q))
   (? (nilp t) k (\ m e (pro t (k m e)))))
 
- (co-apply fn args k) (:
-  (loop x k) (? x (loop (B x) (co-ev (A x) (emc i-push k))) k)
-  (loop args (co-ev fn (consumes 'hom
-   ; tail call optimization is handled by instruction fusion
-   (emc i-call ; here is where you could do it instead
-    (emd (len args) k))))))
+ (co-apply fn args k) (foldl args
+  (co-ev fn (consumes 'hom (emc i-call (emd (len args) k))))
+  (\ k x (co-ev x (emc i-push k))))
 
  ; these make functions that do certain side effects
  ; with env stack structures during code generation:
@@ -587,8 +583,11 @@
  ((popr  s k) m e) (>>= e s (k m e) (\ e s q (, (tset e s (B (e s))) q)))
  ((peekr s k) m e) (>>= (e s) (k (+ m 1) e) (\ r q (poke (A r) q)))
 
- (co-ev x k) ((? (twop x) co-X (symp x) co-sym imm) x k)
+ (co-ev x k) ((? (twop x) co-list (symp x) co-sym imm) x k)
+
  ((co-sym x k) m e) ((?
+  ; FIXME this mutates the environment by populating closure
+  ; variables ; we should have already done that by now!
   (= (: s (A (: r (look e x)))) 'here) (imm (B r) k)
   (= s 'wait) (emc i-late (emd (X (B r) x) k)) ; TODO subsume runtime type check
   (= e (B r))
@@ -599,32 +598,26 @@
      (tset e 'clo (snoc (e 'clo) x))
      (emc i-clon (emd l k)))) m e)
 
- (co-X x k) (?
-  (= '` (: z (A x)))
-   (imm (? (twop (B x)) (AB x)) k)
-  (= '? z) (co-cond (B x) k)
-  (= ': z) (co-define (B x) k)
-  (= '\ z) (co-lambda x k)
+ (co-list x k) (: z (A x) (?
+  (= '` z) (imm (AB x) k)
+  (= '? z) (co-cond (AB x) (A (BB x)) (AB (BB x)) k)
+  (= ': z) (co-let (B x) k)
+  (= '\ z) (co-lambda (B x) k)
   (= ', z) (co-begin (B x) k)
-  (co-ap z (B x) k))
+  (co-ap z (B x) k)))
 
  (co-begin x k) (? x (co-ev (A x) (co-begin (B x) k)) k)
- (co-ap fn args k) (?
-  (: q (inliners (? (quoted? fn) (unquote fn) fn))) (q args k)
-  (co-apply fn args k))
+ (co-ap fn args k) (:
+  q (inliners (? (quoted? fn) (unquote fn) fn))
+  (?  q (q args k) (co-apply fn args k)))
 
- ((co-define x k) m e) (:
- ; the rewrite ensures the : expression is always an even form.
-  (loop e x k) (? (nilp x) k (:
-   l (loop e (BB x) k)
-   q (? (nilp (|| (toplp e) (memq (e 'loc) (A x)))) l
-        (toplp e) (emc i-deftop (emd (X _ns (A x)) l))
-        (emc i-defsl1 (emd (idx (e 'loc) (A x)) l)))
-   (? (= 'here (A (: v (look e (A x)))))
-    (imm (B v) q)
-    (co-ev (AB x) q))))
-
-  ((loop e x k) m e))
+ ((co-let x k) m e) (? (nilp x) (k m e) (:
+  ; the rewrite ensures the : expression is 2-ary.
+  q (? (nilp (|| (toplp e) (memq (e 'loc) (A x)))) k
+       (toplp e) (emc i-deftop (emd (X _ns (A x)) k))
+       (emc i-defsl1 (emd (idx (e 'loc) (A x)) k)))
+  v (look e (A x))
+  ((? (= 'here (A v)) (imm (B v) q) (co-ev (AB x) q)) m e)))
 
  ((co-lambda x k) m e) (:
   (nom e k) ; try to pick a name for this function
@@ -638,33 +631,33 @@
 
   l ((produces 'hom k) (+ m 2) e)
   y (ltu e (nom e l) x)
-  (? (twop y)
+  (? (twop y) ; this means there's a closure.
       (poke (? (e 'loc) i-encl1 i-encl0)
        (poke (X (B y) (clo-thd e (A y))) l))
      (pokef i-imm (poke y l))))
 
- (co-cond x k) (:
-  (loop x k) (:
-   (fin m e) (:
-    thd (k (+ m 2) e)
-    ex (A (e 's2))
-    i (peek ex)
-    (? (= i i-ret) (poke i thd) ; forward return instructions
-     (poke i-jump ; otherwise jump somewhere ...
-      (poke (? (= i i-jump) (peek (seek ex 1)) ex) thd))))
-   (? (nilp (B x)) (co-ev (A x) fin)
-    (co-ev (A x) (popr 's1 (emc i-br1 (peekr 's1
-     (loop (BB x) (pushr 's1 (co-ev (AB x) fin)))))))))
-  (popr 's2 (loop x (pushr 's2 k))))
+ (co-cond ant con alt k) (:
+  ((fin k) m e) (:
+   thd (k (+ m 2) e)
+   ex (A (e 's2))
+   i (peek ex)
+   (? (= i i-ret) (poke i thd) ; forward return instructions
+    (poke i-jump ; otherwise jump somewhere ...
+     (poke (? (= i i-jump) (peek (seek ex 1)) ex) thd))))
+  (popr 's2
+   (co-ev ant (popr 's1
+    (emc i-br1 (peekr 's1
+     (co-ev alt (fin (pushr 's1
+      (co-ev con (fin (pushr 's2 k))))))))))))
 
  (ini nom) (,
   ;(.'ini nom)
   (emc i-ret (emd nom hom)))
- (ev x) (>>= (env 0 0 0) x (: (analyze e x)
-  (((co-ev (weak-eval e x) (ini 'ev)) 0 e) x))))
-(, ; bootstrap
-  (ev prelu) (ev egg)
-  (ev prelu) (ev egg)))
+ (ev x) (>>= x (env 0 0 0) (: (ana x e)
+  (((co-ev (weak-ev e x) (ini 'ev)) 0 e) x)))
+ ) ; end egg ; now bootstrap
+ (, (ev prelu) (ev egg)
+    ((ev 'ev) prelu) ((ev 'ev) egg)))
 
 ; " drop privileges "
 ; leave these in for now while we work on the compiler
@@ -675,8 +668,6 @@
 (:
  ((diag f) x) (f x x)
  I id K const
- (AA x) (A (A x)) (AB x) (A (B x))
- (BA x) (B (A x)) (BB x) (B (B x))
  (flat-map x f) (? (twop x)
   (append (f (A x)) (flat-map (B x) f)))
 
@@ -702,3 +693,23 @@
  (rho n xs .)
   (: (loop n x) (? (= n 1) x (append x (loop (- n 1) x)))
    (? (> n 0) (loop n xs))))
+
+; (c0-x e x k) (:
+;  ((c0-sym x k) m) (>>= (k (+ m 2)) (\ k (?
+;   (= (: s (A (: r (look e x)))) 'here) (pokef i-imm (poke (B r) k))
+;   (= s 'wait) (pokef i-late (poke (X (B r) x) k)) ; TODO subsume runtime type check
+;   (pokef (? (= s 'arg) i-argn (= s 'loc) i-sl1n (= s 'clo) i-clon)
+;    (poke (idx (e s) x) k)))))
+;  (c0-list x k) (: z (A x) (?
+;   (= '` z) (imm (? (B x) (AB x)) k)
+;   (= '? z) (c0-cond (B x) k)
+;   (= ': z) (c0-let (B x) k)
+;   (= '\ z) (c0-lambda x k)
+;   (= ', z) (c0-begin (B x) k)
+;   (c0-ap z (B x) k)))
+;  (c0-begin x k) (? x (c0-x e (A x) (c0-begin (B x) k)) k)
+;  (c0-ap fn args k) (foldl args
+;   (c0-x e fn (consumes 'hom (emc i-call (emd (len args) k))))
+;   (\ k x (c0-ev e x (emc i-push k))))
+;  ((? (twop x) c0-list (symp x) c0-sym imm) x k))
+

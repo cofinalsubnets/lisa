@@ -249,7 +249,7 @@ cfns(ninl)
 
 // used by the compiler but not exposed as primitives
 #define i_internals(_)\
- _(call) _(ret) _(rec) _(jump) _(varg) _(disp)\
+ _(call) _(ret) _(rec) _(jump) _(varg)\
  _(arity) _(idno) _(idmo) _(idtwo) _(idtbl)\
  _(imm) _(immn1) _(imm0) _(imm1) _(imm2)\
  _(argn) _(arg0) _(arg1) _(arg2) _(arg3)\

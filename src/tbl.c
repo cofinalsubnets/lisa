@@ -56,7 +56,6 @@ static tbl
   tbl_grow(la, tbl),
   tbl_set_s(la, tbl, ob, ob);
 static ob
-  tbl_del(la, tbl, ob, ob),
   tbl_del_s(la, tbl, ob, ob),
   tbl_keys(la);
 static bool
