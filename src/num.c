@@ -29,6 +29,7 @@ Vm(bxor) { return ApN(1, (xp ^ *sp++) | 1); }
 Vm(bnot) { return ApN(1, ~xp | 1); }
 
 // framed
+// FIXME do type checks
 Vm(add_f) {
   xp = 0;
   for (size_t i = 0; i < fp->argc; xp += getnum(fp->argv[i++]));

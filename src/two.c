@@ -45,10 +45,14 @@ Vm(cdr_f) {
   return ApC(ret, B(xp)); }
 
 Vm(cons_f) {
-  ArityCheck(2);
-  Have(wsizeof(struct two));
-  xp = (ob) ini_two(hp, fp->argv[0], fp->argv[1]);
-  hp += wsizeof(struct two);
+  if (fp->argc) {
+    size_t n = wsizeof(struct two) * (fp->argc - 1);
+    Have(n);
+    two w = (two) hp;
+    hp += n;
+    xp = fp->argv[fp->argc-1];
+    for (size_t i = fp->argc - 1; i--;
+      xp = (ob) ini_two(w+i, fp->argv[i], xp)); }
   return ApC(ret, xp); }
 
 static Vm(ap_two) { return
