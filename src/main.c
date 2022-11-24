@@ -1,14 +1,4 @@
 #include "la.h"
-#include <getopt.h>
-#include <unistd.h>
-#include <string.h>
-#include <stdarg.h>
-
-static FILE *la_ld_boot_seek_sys(la_carrier v) {
-  FILE *b;
-  if ((b = fopen("/usr/local/lib/lisa/boot.la", "r"))) return b;
-  if ((b = fopen("/usr/lib/lisa/boot.la", "r"))) return b;
-  return fopen("/lib/lisa/boot.la", "r"); }
 
 static FILE *la_ld_boot_seek(la_carrier v) {
   FILE *b;
@@ -17,14 +7,15 @@ static FILE *la_ld_boot_seek(la_carrier v) {
       snprintf(buf, sizeof(buf), "%s/.local/lib/lisa/boot.la", home) < sizeof(buf) &&
       (b = fopen(buf, "r")))
     return b;
-  return la_ld_boot_seek_sys(v); }
+  if ((b = fopen("/usr/local/lib/lisa/boot.la", "r"))) return b;
+  if ((b = fopen("/usr/lib/lisa/boot.la", "r"))) return b;
+  return fopen("/lib/lisa/boot.la", "r"); }
 
 static enum la_status la_ld_boot(la_carrier v) {
   FILE *in = la_ld_boot_seek(v);
   if (!in) return LA_XSYS;
-  la_status s = la_ev_fs(v, in);
-  fclose(in);
-  return s; }
+  enum la_status s = la_ev_fs(v, in);
+  return fclose(in), s; }
 
 static const char *usage =
   "usage: %s [options and scripts]\n"
@@ -34,6 +25,8 @@ static const char *usage =
   "  -i interact\n"
   "  -_ don't bootstrap\n";
 
+#include <getopt.h>
+#include <unistd.h>
 int main(int ac, char **av) {
   bool boot = true, shell = ac == 1 && isatty(STDIN_FILENO);
   for (;;) switch (getopt(ac, av, "hi_")) {
@@ -49,7 +42,6 @@ int main(int ac, char **av) {
   // init
   struct la_carrier V;
   enum la_status s = la_open(&V);
-  la_perror(&V, s);
 
   if (s == LA_OK && boot) s = la_ld_boot(&V);
 
@@ -67,5 +59,7 @@ int main(int ac, char **av) {
     if (t == LA_OK) la_tx(&V, la_stdout, V.xp), la_putc('\n', la_stdout);
     else la_perror(&V, t), la_reset(&V); }
 
-  la_perror(&V, s);
-  return la_close(&V), s; }
+  return
+    la_perror(&V, s),
+    la_close(&V),
+    s; }

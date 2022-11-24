@@ -41,11 +41,8 @@ static Inline size_t tbl_idx(size_t cap, size_t co) {
 static Inline size_t tbl_load(tbl t) {
   return t->len >> t->cap; }
 
-static Inline ob tbl_bkt_hc(la v, tbl t, size_t hc) {
-  return t->tab[tbl_idx(t->cap, hc)]; }
-
 static ob tbl_ent_hc(la v, tbl t, ob k, size_t hc) {
-  ob e = tbl_bkt_hc(v, t, hc);
+  ob e = t->tab[tbl_idx(t->cap, hc)];
   while (!nump(e) && !eql(v, KEY(e), k)) e = NEXT(e);
   return e; }
 
@@ -71,7 +68,7 @@ tbl mktbl(la v) {
 
 tbl tbl_set(la v, tbl t, ob k, ob x) { return
   t = tbl_set_s(v, t, k, x),
-  t && tbl_load(t) > 1 ? tbl_grow(v, t) : t; }
+  t ? tbl_grow(v, t) : 0; }
 
 ob tbl_get(la v, tbl t, ob k, ob d) { return
   k = tbl_ent(v, t, k),
@@ -90,7 +87,7 @@ Vm(tdel_f) {
   tbl t = (tbl) fp->argv[0];
   for (size_t i = 1, l = fp->argc; i < l; i++)
     xp = tbl_del_s(v, t, fp->argv[i], xp);
-  tbl_shrink(v, t);
+  if (!tbl_load(t)) tbl_shrink(v, t);
   return ApC(ret, xp); }
 
 Vm(tget) { return
@@ -162,8 +159,11 @@ static ob tbl_del_s(la v, tbl y, ob key, ob val) {
 static tbl tbl_grow(la v, tbl t) {
   ob *tab0, *tab1;
   size_t cap0 = t->cap,
-         cap1 = cap0 + 1,
-         len = 1ul << cap1;
+         cap1 = cap0,
+         load = tbl_load(t);
+  while (load > 1) cap1 += 1, load >>= 1;
+  if (cap0 == cap1) return t;
+  size_t len = 1ul << cap1;
 
   with(t, tab1 = (ob*) mkmo(v, len));
   if (!tab1) return 0;
@@ -225,8 +225,6 @@ static bool tblss(la v, intptr_t i, intptr_t l) {
 // shrinking a table never allocates memory, so it's safe
 // to do at any time.
 static void tbl_shrink(la v, tbl t) {
-  // do nothing if we're already overloaded
-  if (tbl_load(t)) return;
 
   ob e = nil, f, g;
   size_t i = 1ul << t->cap;
@@ -236,7 +234,7 @@ static void tbl_shrink(la v, tbl t) {
     g = NEXT(f), NEXT(f) = e, e = f, f = g);
 
   // shrink bucket array
-  while (t->cap && tbl_load(t) < 1) t->cap--;
+  while (t->cap && !tbl_load(t)) t->cap--;
   i = 1ul << t->cap;
   ini_mo(t->tab, i);
 

@@ -25,12 +25,10 @@
 (:::
  zz (\ x (: a (sym) b (sym) c (sym)
   (L '\ a (L '\ b c (L c (L x a))))))
- et (\ x xs .
-  (foldl xs x (\ a b
-   (L (\ a b (\ s (s* (a s) b))) a b))))
- vel (\ x xs .
-  (foldl xs x (\ a b
-   (L (\ a b (\ s (s+ (a s) (b s)))) a b)))))
+ et (\ x xs . (foldl x xs (\ a b
+  (L (\ a b (\ s (s* (a s) b))) a b))))
+ vel (\ x xs . (foldl x xs (\ a b
+  (L (\ a b (\ s (s+ (a s) (b s)))) a b)))))
 (:
  ((sX x s) n m y) (y x s) ; cons onto a stream
  (sno n) (n) ; empty stream

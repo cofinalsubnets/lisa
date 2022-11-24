@@ -1,9 +1,7 @@
 (: true -1 ~~ '(()) ~ nilp)
 
-(:
- prelu '(,
-  (:
-     ; data constructors
+(: prelu '(,
+  (: ; data constructors
      (L . .) .
      (Q x) (L '` x)
 
@@ -34,7 +32,7 @@
                (X (A m) a (B m)))))
 
      ; tables
-     (set x .) (foldl x (tbl) (\ t x (, (tset t x true) t)))
+     (set x .) (foldl (tbl) x (\ t x (, (tset t x true) t)))
 
      ; numbers
      (inc x) (+ x 1) (dec x) (- x 1)
@@ -43,24 +41,24 @@
      (at l n) (? (< n 1) (A l) (at (B l) (- n 1)))
      (filter x p) (foldr x () (\ x m (? (p x) (X x m) m)))
      (foldr x z f) (? (twop x) (f (A x) (foldr (B x) z f)) z)
-     (foldl x z f) (? (twop x) (foldl (B x) (f z (A x)) f) z)
-     (foldl1  x f) (foldl (B x) (A x) f)
+     (foldl z x f) (? (twop x) (foldl (f z (A x)) (B x) f) z)
+     (foldl1  x f) (foldl (A x) (B x) f)
      (foldr1  x f) (?
       (twop (B x))
        (f (A x) (foldr1 (B x) f))
       (A x))
      (zip f a .) (? (all a id)
       (X (ap f (map a A)) (ap zip (X f (map a B)))))
-     (len l) (foldl l 0 inc)
+     (len l) (foldl 0 l inc)
      (snoc l x) (? l (X (A l) (snoc (B l) x)) (L x))
      (init l) (? (B l) (X (A l) (init (B l))))
      (last l) (? (B l) (last (B l)) (A l))
      (memq x k) (? x (? (= k (A x)) x (memq (B x) k)))
      (del l k) (filter l (\ x (nilp (= x k))))
      (idx l x)
-      ((: (loop l x n)
-           (? l (? (= x (A l)) n (loop (B l) x (+ n 1)))))
-       l x 0))
+      (: (loop l x n)
+          (? l (? (= x (A l)) n (loop (B l) x (+ n 1))))
+       (loop l x 0)))
 
   (tset macros
    '::: (:
@@ -79,8 +77,7 @@
    '&& (\ x . (? x ((: (& x) (? (B x) (L '? (A x) (& (B x))) (A x))) x) true))
    '|| (\ x . (: q (sym) (foldr x 0 (\ x m (L (L '\ q (L '? q q m)) x)))))
    '>>= (\ x . (X (last x) (init x)))
-   'where: (\ x dfns . (X ': (snoc dfns x)))
-   ))
+   'where: (\ x dfns . (X ': (snoc dfns x)))))
 
 ; this is the compiler source that's eval'd by stage 1, then
 ; again by itself to produce the final eval function. you can't
@@ -121,8 +118,8 @@
   (idem i h) (? (= i (peek h)) h (poke i h))
 
   ; for specialized indexed instructions
-  (argn xs .) (ap f1 ((: (loop n xs)
-    (? xs (X n (X (A xs) (loop (+ n 1) (B xs)))))) 0 xs))
+  (argn xs .) (ap f1 (: (loop n xs)
+    (? xs (X n (X (A xs) (loop (+ n 1) (B xs))))) (loop 0 xs)))
 
   ; for specialized branch instructions ;
   ; takes an argument for each branch case
@@ -162,7 +159,7 @@
    (co-apply f x k))
 
   ((abelian f i) x k) (: y (rw-monoidal f (f) x)
-   (co-ev (A y) (consumes 'num (binop 'num i k (B y)))))
+   (binop 'num i k y))
 
   ; for operations with a defined arity
   (typed i ret-type arg-types .) (\ x k (?
@@ -174,19 +171,15 @@
     (? z (fo l z) l))))
 
   (binop t i k x)
-   (: (loop t i k x)
-       (emc i-push
-        (co-ev (A x)
-         (consumes t
-          (emc i (binop t i k (B x))))))
-    (? x (loop t i k x) (produces t k)))
+   (co-ev (A x) (foldr (B x) k (\ x k
+    (consumes t (emc i-push (co-ev x (consumes t (emc i (produces t k)))))))))
 
   ((bitshift f i) x k) (:
    y (rw-monoidal + 0 (B x))
    z (? (nump (A x)) (rw-monoidal f (A x) y) (X (A x) y))
-   (co-ev (A z) (consumes 'num (binop 'num i k (B z)))))
+   (binop 'num i k z))
 
-  (conses x k) (foldl x k (\ k x
+  (conses x k) (foldl k x (\ k x
    (emc i-push (co-ev x (emc i-cons (produces 'two k))))))
 
   (tbl
@@ -197,14 +190,14 @@
     (nilp (B x)) ((typed i-neg 'num 'num) x k)
     (: y (rw-monoidal + 0 (B x))
        z (? (nump (A x)) (rw-monoidal - (A x) y) (X (A x) y))
-     (? z (co-ev (A z) (consumes 'num (binop 'num i-sub k (B z)))) (imm 0 k)))))
+     (? z (binop 'num i-sub k z) (imm 0 k)))))
    * (abelian * i-mul)
    / (\ x k (?
     (nilp x) (imm 1 k)
     (nilp (B x)) (co-ev (A x) (consumes 'num k))
     (: b (rw-monoidal * 1 (B x))
        c (? (nump (A x)) (rw-monoidal / (A x) b) (X (A x) b)))
-     (co-ev (A c) (consumes 'num (binop 'num i-quot k (B c))))
+     (binop 'num i-quot k c)
     (imm 1 k)))
 
    & (abelian & i-band)
@@ -315,11 +308,12 @@
     (A body) ; then it's an alias for the second function.
    ; otherwise compile it!
    (, (: out (hfin
-           ((w/arity (w/locals (co-ev body co-ini)))
-            0 fn-scope)))
+       ((w/arity (w/locals (co-ev body co-ini)))
+        0 fn-scope)))
     (? (fn-scope 'clo) ; are there closure variables?
         (X (fn-scope 'clo) out) ; if so return a pair of the vars and the thread.
        out)))) ; otherwise return the fully compiled function.
+
  ; first compiler moiety : " weak evaluator "
  ; 1. construct the local scope of the function
  ; 2. desugaring, macroexpansion, and partial evaluation
@@ -349,6 +343,7 @@
    (= '` (: head (A x))) 0 ; skip quotations
    (= '\ head) 0 ;(co-lam- e 0 x) ; skip lambdas FIXME really?
    (= ': head) ; descend into *even* let expressions
+    ; (odd let expressions will be rewritten into lambdas)
     (? (= 0 (% (len (B x)) 2)) (scan-let (B x)))
    (each x scan)) ; otherwise recur on subexpressions.
 
@@ -461,72 +456,72 @@
   ; optimizations etc) later, which lets the compiler generate
   ; appropriate code without having a function address yet.
   (resolve-dfns e) (: def (e 'def) val (e 'val)
-    ; step one: pass over each inner def for this function and
-    ; try to rewrite and evaluate it. if this succeeds, add it
-    ; to the known values. otherwise, if the definition is for
-    ; a function, collect it into a list.
-    (re-ev-dfns dfns) (? dfns (:
-     coll (re-ev-dfns (B dfns))
-     nom (AA dfns) dfn (wev (BA dfns))
-     (? (quoted? (tset def nom dfn))
-         (, (tdel def nom)
-            (tset val nom (unquote dfn))
-            coll)
-        (lambda? dfn) (X (X nom dfn) coll)
-        coll)))
+   ; step one: pass over each inner def for this function and
+   ; try to rewrite and evaluate it. if this succeeds, add it
+   ; to the known values. otherwise, if the definition is for
+   ; a function, collect it into a list.
+   (re-ev-dfns dfns) (? dfns (:
+    coll (re-ev-dfns (B dfns))
+    nom (AA dfns) dfn (wev (BA dfns))
+    (? (quoted? (tset def nom dfn))
+        (, (tdel def nom)
+           (tset val nom (unquote dfn))
+           coll)
+       (lambda? dfn) (X (X nom dfn) coll)
+       coll)))
 
-    ; step two: now we have a list of function name/definition
-    ; pairs. try and compile each one; if it succeeds, add it to
-    ; the known values. otherwise collect the name, definition,
-    ; and list of free variables into a list.
-    (re-co-dfns dfns) (? dfns (:
-     coll (re-co-dfns (B dfns))
-     nom (AA dfns) dfn (BA dfns)
-     co (ltu e nom (B dfn))
-     (?  (twop co) ; if ltu returns a pair there are closure vars; collect the name & def
-          (X (X nom (X (A co) dfn)) coll)
-         (, (tdel def nom) ; otherwise it's a fully-compiled thread so add it to the known values.
-            (tset val nom co)
-            coll))))
+   ; step two: now we have a list of function name/definition
+   ; pairs. try and compile each one; if it succeeds, add it to
+   ; the known values. otherwise collect the name, definition,
+   ; and list of free variables into a list.
+   (re-co-dfns dfns) (? dfns (:
+    coll (re-co-dfns (B dfns))
+    nom (AA dfns) dfn (BA dfns)
+    co (ltu e nom (B dfn))
+    (?  (twop co) ; if ltu returns a pair there are closure vars; collect the name & def
+         (X (X nom (X (A co) dfn)) coll)
+        (, (tdel def nom) ; otherwise it's a fully-compiled thread so add it to the known values.
+           (tset val nom co)
+           coll))))
 
-    ; step three: reject from the list all definitions that
-    ; depend on values that won't be available until runtime.
-    ; membership in the list is regarded as proof that the
-    ; function is available now, so any time a function is
-    ; rejected we start over again as it may have been
-    ; referenced by a previously accepted function.
-    (re-rm-deps dfns) (re-rm-deps-r dfns dfns ())
-    (re-rm-deps-chk maybes vs) (?
-     (nilp vs) true
-     (|| (thas val (: v (A vs)))
-         (any maybes (\ j (= (A j) v))))
-      (re-rm-deps-chk maybes (B vs)))
-    (re-rm-deps-r maybes dfns coll) (?
-     (nilp dfns) coll
-     (re-rm-deps-chk maybes (AB (: dfn (A dfns))))
-      (re-rm-deps-r maybes (B dfns) (X dfn coll))
-     (re-rm-deps (del maybes dfn)))
+   ; step three: reject from the list all definitions that
+   ; depend on values that won't be available until runtime.
+   ; membership in the list is regarded as proof that the
+   ; function is available now, so any time a function is
+   ; rejected we start over again as it may have been
+   ; referenced by a previously accepted function.
+   (re-rm-deps dfns) (re-rm-deps-r dfns dfns ())
+   (re-rm-deps-chk maybes vs) (?
+    (nilp vs) true
+    (|| (thas val (: v (A vs)))
+        (any maybes (\ j (= (A j) v))))
+     (re-rm-deps-chk maybes (B vs)))
+   (re-rm-deps-r maybes dfns coll) (?
+    (nilp dfns) coll
+    (re-rm-deps-chk maybes (AB (: dfn (A dfns))))
+     (re-rm-deps-r maybes (B dfns) (X dfn coll))
+    (re-rm-deps (del maybes dfn)))
 
-    ; step four ( the last one ) : now we have the desired
-    ; set of functions. remove them from the scope's local
-    ; variables and add them to a list of deferred values, then
-    ; recompile them. since we know each of these functions has
-    ; no free variables that aren't being deferred, this time
-    ; ltu will definitely return a function, which is stored in
-    ; the known value set.
-    (re-co-dfrs dfns) (?
-     (nilp dfns) (tset e 'loc (tkeys def)) ; we're done, set the local variable list
-     (, (tdel def (: dfn (A dfns) nom (A dfn)))
-        (tset e 'dfr (X nom (e 'dfr)))
-        (re-co-dfrs (B dfns))
-        (tset val nom (ltu e nom (B (BB dfn))))))
+   ; step four ( the last one ) : now we have the desired
+   ; set of functions. remove them from the scope's local
+   ; variables and add them to a list of deferred values, then
+   ; recompile them. since we know each of these functions has
+   ; no free variables that aren't being deferred, this time
+   ; ltu will definitely return a function, which is stored in
+   ; the known value set.
+   (re-co-dfrs dfns) (?
+    (nilp dfns) (tset e 'loc (tkeys def)) ; we're done, set the local variable list
+    (, (tdel def (: dfn (A dfns) nom (A dfn)))
+       (tset e 'dfr (X nom (e 'dfr)))
+       (re-co-dfrs (B dfns))
+       (tset val nom (ltu e nom (B (BB dfn))))))
 
-    (re-co-dfrs
-     (re-rm-deps
-      (re-co-dfns
-       (re-ev-dfns
-        (map (tset e 'loc (tkeys def))
-         (\ k (X k (def k)))))))))
+   (re-co-dfrs
+    (re-rm-deps
+     (re-co-dfns
+      (re-ev-dfns
+       (map (tset e 'loc (tkeys def))
+        (\ k (X k (def k)))))))))
 
   (, (scan x) (resolve-dfns e) (wev x)))
 
@@ -564,14 +559,14 @@
    (nope'produces':'type'error': t'for q))
   (? (nilp t) k (\ m e (pro t (k m e)))))
 
-
  (co-apply fn args k) (:
   ((em-call n k) m e) (?
    (= i-ret (peek (: q (k (+ m 2) e))))
     (poke i-rec (poke n (seek q 1)))
    (poke i-call (poke n q)))
-  (foldl args
+  (foldl
    (co-ev fn (consumes 'hom (em-call (len args) k)))
+   args
    (\ k x (co-ev x (emc i-push k)))))
 
 
@@ -607,9 +602,9 @@
       (= i i-deftop) (A (peek (seek k 1))) ; maybe we're about to set a global?
       (= i i-defsl1) (at (e 'loc) (peek (seek k 1))))) ; or a local
 
-    (clo-thd e x) (:
-     (loop x k) (? x (loop (B x) (co-ev (A x) (emc i-push k))) k)
-     ((loop x (emc i-take (emd (len x) (emc i-ret hom)))) 0 e))
+    (clo-thd e x)
+     ((foldl (emc i-take (emd (len x) (emc i-ret hom))) x
+       (\ k x (co-ev x (emc i-push k)))) 0 e)
 
     l ((produces 'hom k) (+ m 2) e)
     y (ltu e (nom e l) x)
@@ -636,7 +631,7 @@
       (co-ev (A x) (popr 's1 (emc i-br1 (peekr 's1
        (loop (BB x) (pushr 's1 (co-ev (AB x) fin)))))))))
     (popr 's2 (loop x (pushr 's2 k))))
-   ((co-sym x k) m e) ((?
+   ((co-sym x k) m e) (>>= m e (?
     ; FIXME this mutates the environment by populating closure
     ; variables ; we should have already done that by now!
     (= (: s (A (: r (look e x)))) 'here) (imm (B r) k)
@@ -644,10 +639,7 @@
     (= e (B r))
      (emc (? (= s 'arg) i-argn (= s 'loc) i-sl1n (= s 'clo) i-clon)
       (emd (idx (e s) x) k))
-    (, (: l (len (e 'clo)))
-       ;(.'clo'add (e'nom) x)
-       (tset e 'clo (snoc (e 'clo) x))
-       (emc i-clon (emd l k)))) m e)
+    (emc i-clon (emd (- (len (tset e 'clo (snoc (e 'clo) x))) 1) k))))
   ((? (twop x) co-list (symp x) co-sym imm) x k))
 
 
@@ -675,12 +667,13 @@
   (append (f (A x)) (flat-map (B x) f)))
 
  (assq k x) (? x (? (= (AA x) k) (A x) (assq k (B x))))
- (rev l) (foldl l () (\ a b (X b a)))
+ (rev l) (foldl 0 l (\ a b (X b a)))
  (find l p) (? l (? (p (A l)) (A l) (find (B l) p)))
  (transp x) (ap zip (X L x))
  (sample l) (at l (randn (len l)))
  (intercal i l) (:
-  (loop i l m) (? (nilp m) l (append l (append i (intercal i m))))
+  (loop i l m)
+   (? m (append l (append i (intercal i m))) l)
   (? l (loop i (A l) (B l))))
  (even x) (? (= 0 (& x 1)))
  (odd x) (? (= 1 (& x 1)))
@@ -696,23 +689,3 @@
  (rho n xs .)
   (: (loop n x) (? (= n 1) x (append x (loop (- n 1) x)))
    (? (> n 0) (loop n xs))))
-
-; (c0-x e x k) (:
-;  ((c0-sym x k) m) (>>= (k (+ m 2)) (\ k (?
-;   (= (: s (A (: r (look e x)))) 'here) (pokef i-imm (poke (B r) k))
-;   (= s 'wait) (pokef i-late (poke (X (B r) x) k)) ; TODO subsume runtime type check
-;   (pokef (? (= s 'arg) i-argn (= s 'loc) i-sl1n (= s 'clo) i-clon)
-;    (poke (idx (e s) x) k)))))
-;  (c0-list x k) (: z (A x) (?
-;   (= '` z) (imm (? (B x) (AB x)) k)
-;   (= '? z) (c0-cond (B x) k)
-;   (= ': z) (c0-let (B x) k)
-;   (= '\ z) (c0-lambda x k)
-;   (= ', z) (c0-begin (B x) k)
-;   (c0-ap z (B x) k)))
-;  (c0-begin x k) (? x (c0-x e (A x) (c0-begin (B x) k)) k)
-;  (c0-ap fn args k) (foldl args
-;   (c0-x e fn (consumes 'hom (emc i-call (emd (len args) k))))
-;   (\ k x (c0-ev e x (emc i-push k))))
-;  ((? (twop x) c0-list (symp x) c0-sym imm) x k))
-
