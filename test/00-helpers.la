@@ -9,16 +9,16 @@
  (green-text s) (color-text green s)
  (red-text s) (color-text red s))
 
-(: *tests* (tbl)
-   *test-failures* (tbl))
+(: *test* (tbl 'failures (tbl)))
 (:
- (mut n f) (tset *test-failures* n
-  (f (*test-failures* n)))
+ (mut t k f) (tset t k (f (t k)))
  (:::
   test (:
    (\ n ts . (:
-    (Te x) (L '? x (L ', (L green-text "."))
-     (L ', (L mut (Q n) (cu X x)) (L red-text "X")))
-    (X ', (map ts Te))
-    )))))
+    (test x) (L '? x
+     (L ', (L mut *test* ''count inc)
+           (L green-text "."))
+     (L ', (L mut (*test* 'failures) (Q n) (cu X x))
+           (L red-text "X")))
+    (, (X ', (map ts test))))))))
 

@@ -90,7 +90,7 @@
    pure (set
     L X A B Q + - * / % & | ^ << >> id const flip co
     = ~ <= >= < > cu snoc init last memq at idx len
-    twop nilp symp nump tblp strp homp append
+    twop nilp symp nump tblp strp homp append cat
     && || scat slen schr ssub str)
 
    ; these enable extra partial evaluation for functions
@@ -98,7 +98,7 @@
    ; any grouplike function has to return its structure's
    ; identity element.
    abelians (set && || + * | &) ; arguments can be combined freely
-   monoids (set scat) ; pairs of consecutive arguments can be combined in place
+   monoids (set scat cat) ; pairs of consecutive arguments can be combined in place
 
 
  ; instruction fusion table
@@ -145,7 +145,7 @@
  ; each entry has type ((value) m e) k x
  inliners (:
 
-  (rw-monoidal f m x) (:
+  (inl-monoidal f m x) (:
    (fold f m x) (? (nilp x) (L m)
     (? (quoted? (A x)) (fold f (f m (unquote (A x))) (B x))
      (: z (fold f m (B x)) (X (A z) (X (A x) (B z))))))
@@ -158,7 +158,7 @@
     (co-ev (A x) (emc i-push (co-ev (AB x) (emc i k))))
    (co-apply f x k))
 
-  ((abelian f i) x k) (: y (rw-monoidal f (f) x)
+  ((abelian f i) x k) (: y (inl-monoidal f (f) x)
    (binop 'num i k y))
 
   ; for operations with a defined arity
@@ -175,8 +175,8 @@
     (consumes t (emc i-push (co-ev x (consumes t (emc i (produces t k)))))))))
 
   ((bitshift f i) x k) (:
-   y (rw-monoidal + 0 (B x))
-   z (? (nump (A x)) (rw-monoidal f (A x) y) (X (A x) y))
+   y (inl-monoidal + 0 (B x))
+   z (? (nump (A x)) (inl-monoidal f (A x) y) (X (A x) y))
    (binop 'num i k z))
 
   (conses x k) (foldl k x (\ k x
@@ -188,15 +188,15 @@
    - (\ x k (?
     (nilp x) (imm 0 k)
     (nilp (B x)) ((typed i-neg 'num 'num) x k)
-    (: y (rw-monoidal + 0 (B x))
-       z (? (nump (A x)) (rw-monoidal - (A x) y) (X (A x) y))
+    (: y (inl-monoidal + 0 (B x))
+       z (? (nump (A x)) (inl-monoidal - (A x) y) (X (A x) y))
      (? z (binop 'num i-sub k z) (imm 0 k)))))
    * (abelian * i-mul)
    / (\ x k (?
     (nilp x) (imm 1 k)
     (nilp (B x)) (co-ev (A x) (consumes 'num k))
-    (: b (rw-monoidal * 1 (B x))
-       c (? (nump (A x)) (rw-monoidal / (A x) b) (X (A x) b)))
+    (: b (inl-monoidal * 1 (B x))
+       c (? (nump (A x)) (inl-monoidal / (A x) b) (X (A x) b)))
      (binop 'num i-quot k c)
     (imm 1 k)))
 
@@ -211,7 +211,7 @@
    X (\ x k (? (nilp x) (imm 0 k)
     (co-ev (last x) (conses (init x) k))))
 
-    
+
    L (\ x k (imm 0 (conses x k)))
 
 
@@ -244,18 +244,6 @@
  (quote x) (? (|| (symp x) (twop x)) (L '` x) x)
  (lambda? x) (&& (twop x) (= '\ (A x)))
 
- ; this function creates a new lexical environment.
- ; if the second argument (the parent scope) is nil,
- ; then the expression is compiled in the global scope.
- (env arg par nom)  (:
-  (ary-sig a n) (?
-   (nilp a) (X n a)
-   (? (B a) (= '. (AB a))) (X (- (+ n 1)) (A a) 0)
-   (: r (ary-sig (B a) (+ n 1)) (X (A r) (A a) (B r))))
-  sig-arg (ary-sig arg 0)
-  (tbl 'arg (B sig-arg) 'par par 'nom nom ;'lam (tbl)
-       'def (tbl) 'val (tbl) 'sig (A sig-arg)))
-
  (toplp e) (nilp (e 'par))
 
  ; this function is used in several places to look for a
@@ -284,7 +272,23 @@
  ; available in the closure. the enclosing scope generates a
  ; constructor for the closure, which is composed with the
  ; prototype to create an "instance".
- (ltu lx-scope nom b0) (:
+ (ltu- lx nom b0) (? b0
+  (ltu lx nom (init b0) (last b0))
+  (ltu lx nom 0 0))
+ (ltu par nom args xpn) (:
+  ; this function creates a new lexical environment.
+  ; if the second argument (the parent scope) is nil,
+  ; then the expression is compiled in the global scope.
+  (env arg par nom) (:
+   (ary-sig a n) (?
+    (nilp a) (X n a)
+    (? (B a) (= '. (AB a))) (X (- (+ n 1)) (A a) 0)
+    (: r (ary-sig (B a) (+ n 1)) (X (A r) (A a) (B r))))
+   sig-arg (ary-sig arg 0)
+   (tbl 'arg (B sig-arg) 'par par 'nom nom ;'lam (tbl)
+        'def (tbl) 'val (tbl) 'sig (A sig-arg)))
+
+  (co-ini m e) (poke i-ret (poke (? (toplp e) 'ev (e 'nom)) (hom (+ m 2))))
   ((w/locals k) m e) (>>= (k (+ m 2) e) (\ k (?
    (e 'loc) (pokef i-setloc (poke (len (e 'loc)) k))
    k)))
@@ -294,25 +298,15 @@
    k)))
 
   full-name (?
-   (nilp nom) (lx-scope 'nom)
-   (lx-scope 'nom) (X nom (lx-scope 'nom))
+   (nilp par) nom
+   (nilp nom) (par 'nom)
+   (par 'nom) (X nom (par 'nom))
    nom)
-  fn-scope (env (? b0 (init b0)) lx-scope full-name)
-  body (weak-ev fn-scope (? b0 (last b0)))
-
-  (?
-   (&& (>= (fn-scope 'sig) 0) ; if the function is nonvariadic
-       (twop body) ; and the body just applies
-       (homp (A body)) (quoted? (A body)) ; a second known function
-       (= (B body) (fn-scope 'arg))) ; to its exact argument list
-    (A body) ; then it's an alias for the second function.
-   ; otherwise compile it!
-   (, (: out (hfin
-       ((w/arity (w/locals (co-ev body co-ini)))
-        0 fn-scope)))
-    (? (fn-scope 'clo) ; are there closure variables?
-        (X (fn-scope 'clo) out) ; if so return a pair of the vars and the thread.
-       out)))) ; otherwise return the fully compiled function.
+  chi (env args par full-name)
+  out (hfin ((w/arity (w/locals (co-ev (weak-ev chi xpn) co-ini))) 0 chi))
+  (? (chi 'clo) ; are there closure variables?
+      (X (chi 'clo) out) ; if so return a pair of the vars and the thread.
+     out)) ; otherwise return the fully compiled function.
 
  ; first compiler moiety : " weak evaluator "
  ; 1. construct the local scope of the function
@@ -379,7 +373,7 @@
     (rw-lambda l) (:
      ; FIXME an oddly specific and bad optimization.
      ; it rewrites a lambda expression of the form
-     ;   (\ args (: vars vals xpn)) 
+     ;   (\ args (: vars vals xpn))
      (letrec? l) (? (B l)
       (? (twop (: x (last l)))
        (? (= (A x) ':) (= 1 (% (len (B x)) 2)))))
@@ -394,15 +388,11 @@
      ; it's safe in this case. so, we do it here.
      (? (letrec? l) (rw-letrec l) l))
 
-    (rw-monoid f i l) (:
-     ; XXX is this even right?
-     (fold j x y) (?
-      y (? (quoted? x) (fold (f j (unquote x)) (A y) (B y))
-           (: z (X x (fold i (A y) (B y))) (? (= i j) z (X j z))))
-      (quoted? x) (? (= i (: y (f j (unquote x)))) 0 (L y))
-      (= i j) (L x)
-      (L j x))
-     (? l (X f (fold i (A l) (B l))) (quote i)))
+    (rw-monoid f l) (:
+     (fo acc x) (? (nilp x) (L (quote acc))
+      (? (quoted? (A x)) (fo (f acc (unquote (A x))) (B x))
+         (X (quote acc) (X (A x) (fo (f) (B x))))))
+     (X f (del (fo (f) l) (f))))
 
     (rw-cond x) (:
      (rec x) (?
@@ -440,7 +430,7 @@
        fg (ap q (map (A ff) unquote))
        (X q (? (= fg (q)) (B ff) (X fg (B ff)))))
       ; or if it's monoidal ...
-      (monoids q) (rw-monoid q (q) r)
+      (monoids q) (rw-monoid q r)
       ; otherwise we can at least try and check the arity.
       (check-arity z)))))
 
@@ -477,7 +467,7 @@
    (re-co-dfns dfns) (? dfns (:
     coll (re-co-dfns (B dfns))
     nom (AA dfns) dfn (BA dfns)
-    co (ltu e nom (B dfn))
+    co (ltu- e nom (B dfn))
     (?  (twop co) ; if ltu returns a pair there are closure vars; collect the name & def
          (X (X nom (X (A co) dfn)) coll)
         (, (tdel def nom) ; otherwise it's a fully-compiled thread so add it to the known values.
@@ -514,7 +504,7 @@
     (, (tdel def (: dfn (A dfns) nom (A dfn)))
        (tset e 'dfr (X nom (e 'dfr)))
        (re-co-dfrs (B dfns))
-       (tset val nom (ltu e nom (B (BB dfn))))))
+       (tset val nom (ltu- e nom (B (BB dfn))))))
 
    (re-co-dfrs
     (re-rm-deps
@@ -607,7 +597,7 @@
        (\ k x (co-ev x (emc i-push k)))) 0 e)
 
     l ((produces 'hom k) (+ m 2) e)
-    y (ltu e (nom e l) x)
+    y (ltu- e (nom e l) x)
     (? (twop y) ; this means there's a closure.
         (poke (? (e 'loc) i-encl1 i-encl0)
          (poke (X (B y) (clo-thd e (A y))) l))
@@ -621,12 +611,12 @@
     ((pushr s k) m e) (>>= e s (k m e) (\ e s q (A (tset e s (X q (e s))))))
     ((popr  s k) m e) (>>= e s (k m e) (\ e s q (, (tset e s (B (e s))) q)))
     ((peekr s k) m e) (>>= (e s) (k (+ m 1) e) (\ r q (poke (A r) q)))
-    (branch-to d k) (?
+    (jump-to d k) (?
      (= (: i (peek d)) i-ret) (poke i k)
      (poke i-jump (poke (? (= i i-jump) (peek (seek d 1)) d) k)))
     (loop x k) (:
      (fin m e) (: dst (k (+ m 2) e)
-      (branch-to (A (e 's2)) dst))
+      (jump-to (A (e 's2)) dst))
      (? (nilp (B x)) (co-ev (A x) fin)
       (co-ev (A x) (popr 's1 (emc i-br1 (peekr 's1
        (loop (BB x) (pushr 's1 (co-ev (AB x) fin)))))))))
@@ -642,11 +632,7 @@
     (emc i-clon (emd (- (len (tset e 'clo (snoc (e 'clo) x))) 1) k))))
   ((? (twop x) co-list (symp x) co-sym imm) x k))
 
-
-
- (co-ini m e) (poke i-ret (poke (? (toplp e) 'ev (e'nom)) (hom (+ m 2))))
- (ev x) (>>= x (env 0 0 0) (: (ana x e)
-  (((co-ev (weak-ev e x) co-ini) 0 e) x)))
+ (ev x) ((ltu 0 0 0 x) x)
  ) ; end egg ; now bootstrap
  (, (ev prelu) (ev egg)
     ((ev 'ev) prelu) ((ev 'ev) egg)))
