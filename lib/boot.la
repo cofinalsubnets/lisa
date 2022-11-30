@@ -18,6 +18,7 @@
      (map x f) (? (twop x) (X (f (A x)) (map (B x) f)) x)
      (append a b) (? (twop a) (X (A a) (append (B a) b)) b)
      (cat xs .) (foldr xs 0 append)
+     null-fn (\)
 
      ; logic
      (all l p) (? l (? (p (A l)) (all (B l) p)) true)
@@ -83,7 +84,7 @@
 ; again by itself to produce the final eval function. you can't
 ; use any macros in here, because stage 1 doesn't know about
 ; macros.
- egg '(:
+ co-data '(:
    ; XXX be systematic about this!
    ; obviously we should be able to tell a function is pure
    ; if it's composed of pure functions/operations ...
@@ -142,10 +143,10 @@
    i-idtbl idem))
 
  ; special function compiler table
- ; each entry has type ((value) m e) k x
+ ; each entry has type ((value) m e) x k
  inliners (:
 
-  (inl-monoidal f m x) (:
+  (in-mono f m x) (:
    (fold f m x) (? (nilp x) (L m)
     (? (quoted? (A x)) (fold f (f m (unquote (A x))) (B x))
      (: z (fold f m (B x)) (X (A z) (X (A x) (B z))))))
@@ -158,7 +159,7 @@
     (co-ev (A x) (emc i-push (co-ev (AB x) (emc i k))))
    (co-apply f x k))
 
-  ((abelian f i) x k) (: y (inl-monoidal f (f) x)
+  ((in-abel f i) x k) (: y (in-mono f (f) x)
    (binop 'num i k y))
 
   ; for operations with a defined arity
@@ -175,8 +176,8 @@
     (consumes t (emc i-push (co-ev x (consumes t (emc i (produces t k)))))))))
 
   ((bitshift f i) x k) (:
-   y (inl-monoidal + 0 (B x))
-   z (? (nump (A x)) (inl-monoidal f (A x) y) (X (A x) y))
+   y (in-mono + 0 (B x))
+   z (? (nump (A x)) (in-mono f (A x) y) (X (A x) y))
    (binop 'num i k z))
 
   (conses x k) (foldl k x (\ k x
@@ -184,25 +185,25 @@
 
   (tbl
    id (\ x k (co-ev (A x) k))
-   + (abelian + i-add)
+   + (in-abel + i-add)
    - (\ x k (?
     (nilp x) (imm 0 k)
     (nilp (B x)) ((typed i-neg 'num 'num) x k)
-    (: y (inl-monoidal + 0 (B x))
-       z (? (nump (A x)) (inl-monoidal - (A x) y) (X (A x) y))
+    (: y (in-mono + 0 (B x))
+       z (? (nump (A x)) (in-mono - (A x) y) (X (A x) y))
      (? z (binop 'num i-sub k z) (imm 0 k)))))
-   * (abelian * i-mul)
+   * (in-abel * i-mul)
    / (\ x k (?
     (nilp x) (imm 1 k)
     (nilp (B x)) (co-ev (A x) (consumes 'num k))
-    (: b (inl-monoidal * 1 (B x))
-       c (? (nump (A x)) (inl-monoidal / (A x) b) (X (A x) b)))
+    (: b (in-mono * 1 (B x))
+       c (? (nump (A x)) (in-mono / (A x) b) (X (A x) b)))
      (binop 'num i-quot k c)
     (imm 1 k)))
 
-   & (abelian & i-band)
-   | (abelian | i-bor)
-   ^ (abelian ^ i-bxor)
+   & (in-abel & i-band)
+   | (in-abel | i-bor)
+   ^ (in-abel ^ i-bxor)
    >> (bitshift >> i-sar)
    << (bitshift << i-sal)
 
@@ -233,7 +234,8 @@
    nump (typed i-nump_ 'num 0)
    symp (typed i-symp_ 'num 0)
    strp (typed i-strp_ 'num 0)
-   tblp (typed i-tblp_ 'num 0))) ; end inliners
+   tblp (typed i-tblp_ 'num 0)))) ; end inliners
+   co-source '(:
 
  (pokef i h) (>>= i h (fuse i) (\ i h q ((? q q poke) i h)))
  ((emc i k) m e) (pokef i (k (+ m 1) e))
@@ -243,6 +245,11 @@
  (unquote x) (? (twop x) (AB x) x)
  (quote x) (? (|| (symp x) (twop x)) (L '` x) x)
  (lambda? x) (&& (twop x) (= '\ (A x)))
+ (letrec? x) (&& (twop x) (= ': (A x)) (& 1 (% (len (B x)) 2)))
+ (rw-letrec l) (: m (last l)
+  (snoc (init l) (L ', (init m) (last m))))
+ (pure-x? x) (|| (symp x) (quoted? x) (lambda? x) (&&
+  (twop x) (pure (A x)) (all (B x) pure-x?)))
 
  (toplp e) (nilp (e 'par))
 
@@ -262,6 +269,83 @@
   (memq (e 'clo) y) (X 'clo e)
   (memq (e 'dfr) y) (X 'wait (e 'val))
   (look (e 'par) y))
+
+  (wev e x) (:
+   (rw-sym e x) (?
+    (= 'here (A (: l (look e x)))) (quote (B l))
+    ; FIXME what is this even doing? it should probably be in resolve
+    (&& (thas (e 'def) x)
+        (quoted? (tset (e 'def) x (wev e (tdel (e 'def) x)))))
+     (tset (e 'val) x (unquote (tdel (e 'def) x)))
+    x)
+
+   (rw-list e x) (:
+    ; FIXME optimization
+    ; static arity check : omit the check in the called function.
+    ; assumes the arity check, if present, is the 1st instruction.
+    (check-arity x) (: z (A x) (?
+     (nilp (&& (homp z) (= i-arity (peek z)))) x
+     (? (>= (len (B x)) (peek (seek z 1)))
+      (X (seek z 2) (B x)) ; this call is ok, skip the check
+      (, (ap z (B x)) ; oops wrong arity, call the function to get an error
+         0)))) ; avoid a tail call to get a more informative backtrace
+
+    (rw-let e x) (:
+     (nom s) (? (twop s) (nom (A s)) s)
+     (loop e x) (? x (:
+      y (nom (A x))
+      ll (loop e (BB x))
+      (X (L ': y ((e 'def) y)) ll)))
+     (? (& 1 (len (B x))) x
+        (X ', (loop e (B x)))))
+
+    (rw-mono f l) (:
+     (fo acc x) (? (nilp x) (L (quote acc))
+      (? (quoted? (A x)) (fo (f acc (unquote (A x))) (B x))
+         (X (quote acc) (X (A x) (fo (f) (B x))))))
+     (X f (del (fo (f) l) (f))))
+
+    (rw-cond e x) (:
+     (rec x) (?
+      (nilp x) 0
+      (nilp (B x)) (wev e (A x))
+      (nilp (quoted? (: a (wev e (A x)))))
+       (L '? a (wev e (A (B x))) (rec (BB x)))
+      (unquote a) (wev e (AB x))
+      (rec (BB x)))
+     (rec (B x)))
+
+    (rw-begin e x) (? (B x) (:
+     (loop e x) (? (nilp (B x)) (L (wev e (A x)))
+      (>>= (loop e (B x)) (wev e (A x)) (\ z y
+       (? (pure-x? y) z (X y z)))))
+     (X ', (loop e (B x)))))
+
+    (?
+     ; special forms
+     (= '` (: a (A x))) x
+     (= '\ a) x
+     (= ': a) (rw-let e x)
+     (= '? a) (rw-cond e x)
+     (= ', a) (rw-begin e x)
+     ; is it a macro ?
+     (: macro (macros a)) (wev e (ap macro (B x)))
+     ; nope, it's a function call.
+     (: z (map x (\ x (wev e x))) q (A z) r (B z) (?
+      ; if it's pure & its arguments are all here then we can call it now.
+      (&& (pure q) (all r quoted?))
+       (quote (ap q (map r unquote)))
+      ; if it's an abelian operator we may be able to partially apply it
+      (abelians q) (:
+       ff (part quoted? r)
+       fg (ap q (map (A ff) unquote))
+       (X q (? (= fg (q)) (B ff) (X fg (B ff)))))
+      ; or if it's monoidal ...
+      (monoids q) (rw-mono q r)
+      ; otherwise we can at least try and check the arity.
+      (check-arity z)))))
+
+   (? (twop x) (rw-list e x) (symp x) (rw-sym e x) x))
 
  ; ltu : compile a lambda expression.
  ; depending on if it encloses any variables, a lambda
@@ -320,16 +404,18 @@
  ; expression was fully evaluated, check if the image is
  ; quoted.
 
+ (desugar-dfns dfns) (?
+  (|| (nilp dfns) (nilp (B dfns))) dfns
+  (: (desug k v ds) (? (nilp (twop k)) (X k v ds)
+   (desug (A k) (X '\ (snoc (B k) v)) ds))
+   (desug (A dfns) (AB dfns) (desugar-dfns (BB dfns)))))
+
  ; partial evaluator
  (weak-ev e x)  (:
-  ; desugars a *leading* function symbol in a dfns list.
-  (desug-fn-sym dfns) (? (nilp (twop (A dfns))) dfns
-   (desug-fn-sym (X (AA dfns)
-    (X (X '\ (snoc (BA dfns) (AB dfns)))(BB dfns)))))
 
-  (scan-let dfns) (? dfns (>>= (desug-fn-sym dfns) (\ dfns (,
+  (scan-let dfns) (? dfns (,
    (scan (tset (e 'def) (A dfns) (AB dfns)))
-   (scan-let (BB dfns))))))
+   (scan-let (BB dfns))))
 
   ; scan an expression for variable definitions.
   (scan x) (?
@@ -338,103 +424,11 @@
    (= '\ head) 0 ;(co-lam- e 0 x) ; skip lambdas FIXME really?
    (= ': head) ; descend into *even* let expressions
     ; (odd let expressions will be rewritten into lambdas)
-    (? (= 0 (% (len (B x)) 2)) (scan-let (B x)))
+    (? (& 1 (len x)) (scan-let (desugar-dfns (B x))))
    (each x scan)) ; otherwise recur on subexpressions.
 
-  (wev x) (:
-   (rw-sym x) (?
-    (= 'here (A (: l (look e x)))) (quote (B l))
-    (&& (thas (: defs (e 'def)) x)
-        (quoted? (tset defs x (wev (tdel defs x)))))
-     (tset (e 'val) x (unquote (tdel defs x)))
-    x)
 
-   (rw-list x) (:
-    ; FIXME optimization
-    ; static arity check : omit the check in the called function.
-    ; assumes the arity check, if present, is the 1st instruction.
-    (check-arity x) (: z (A x) (?
-     (nilp (&& (homp z) (= i-arity (peek z)))) x
-     (? (>= (len (B x)) (peek (seek z 1)))
-      (X (seek z 2) (B x)) ; this call is ok, skip the check
-      (, (ap z (B x)) ; oops wrong arity, call the function to get an error
-         0)))) ; avoid a tail call to get a more informative backtrace
-
-    (rw-let x) (:
-     (nom s) (? (twop s) (nom (A s)) s)
-     (sug d) (L (L '\ (L ', (init d) (last d))))
-     (loop e x) (? x (:
-      y (nom (A x))
-      ll (loop e (BB x))
-      (X (L ': y ((e 'def) y)) ll)))
-     (? (= 1 (% (len (B x)) 2)) (sug x)
-        (X ', (loop e (B x)))))
-
-    (rw-lambda l) (:
-     ; FIXME an oddly specific and bad optimization.
-     ; it rewrites a lambda expression of the form
-     ;   (\ args (: vars vals xpn))
-     (letrec? l) (? (B l)
-      (? (twop (: x (last l)))
-       (? (= (A x) ':) (= 1 (% (len (B x)) 2)))))
-     ; to the form
-     ;   (\ args (, (: vars vals) xpn))
-     (rw-letrec l) (: m (last l)
-      (snoc (init l) (L ', (init m) (last m))))
-     ; which (currently) generates slightly more
-     ; efficient code. effectively we should ALWAYS
-     ; be doing this, but without variable renaming
-     ; this is the only case where we can be sure
-     ; it's safe in this case. so, we do it here.
-     (? (letrec? l) (rw-letrec l) l))
-
-    (rw-monoid f l) (:
-     (fo acc x) (? (nilp x) (L (quote acc))
-      (? (quoted? (A x)) (fo (f acc (unquote (A x))) (B x))
-         (X (quote acc) (X (A x) (fo (f) (B x))))))
-     (X f (del (fo (f) l) (f))))
-
-    (rw-cond x) (:
-     (rec x) (?
-      (nilp x) 0
-      (nilp (B x)) (wev (A x))
-      (nilp (quoted? (: a (wev (A x)))))
-       (L '? a (wev (A (B x))) (rec (BB x)))
-      (unquote a) (wev (AB x))
-      (rec (BB x)))
-     (rec (B x)))
-
-    (rw-begin x) (? (B x) (:
-     (loop x) (? (nilp (B x)) (L (wev (A x)))
-      (>>= x (loop (B x)) (wev (A x)) (\ x z y
-       (? (? (symp y) true (quoted? y)) z (X y z)))))
-     (? (B (: z (loop (B x)))) (X ', z) (A z))))
-
-    (?
-     ; special forms
-     (= '` (: a (A x))) x
-     (= '\ a) (rw-lambda x)
-     (= ': a) (rw-let x)
-     (= '? a) (rw-cond x)
-     (= ', a) (rw-begin x)
-     ; is it a macro ?
-     (: macro (macros a)) (wev (ap macro (B x)))
-     ; nope, it's a function call.
-     (: z (map x wev) q (A z) r (B z) (?
-      ; if it's pure & its arguments are all here then we can call it now.
-      (&& (pure q) (all r quoted?))
-       (quote (ap q (map r unquote)))
-      ; if it's an abelian operator we may be able to partially apply it
-      (abelians q) (:
-       ff (part quoted? r)
-       fg (ap q (map (A ff) unquote))
-       (X q (? (= fg (q)) (B ff) (X fg (B ff)))))
-      ; or if it's monoidal ...
-      (monoids q) (rw-monoid q r)
-      ; otherwise we can at least try and check the arity.
-      (check-arity z)))))
-
-   (? (twop x) (rw-list x) (symp x) (rw-sym x) x))
+  (, (scan x) (resolve-dfns e) (wev e x)))
 
   ; this is a huge complicated procedure for "resolving
   ; the addresses" of sets of mutually recursive inner functions
@@ -452,7 +446,7 @@
    ; a function, collect it into a list.
    (re-ev-dfns dfns) (? dfns (:
     coll (re-ev-dfns (B dfns))
-    nom (AA dfns) dfn (wev (BA dfns))
+    nom (AA dfns) dfn (wev e (BA dfns))
     (? (quoted? (tset def nom dfn))
         (, (tdel def nom)
            (tset val nom (unquote dfn))
@@ -513,8 +507,6 @@
        (map (tset e 'loc (tkeys def))
         (\ k (X k (def k)))))))))
 
-  (, (scan x) (resolve-dfns e) (wev x)))
-
 
 
  ; second moiety : " analyzing evaluator "
@@ -560,33 +552,55 @@
    (\ k x (co-ev x (emc i-push k)))))
 
 
+
  (co-ev x k) (:
    (co-list x k) (: z (A x) (?
     (= '` z) (imm (? (B x) (AB x)) k)
     (= '? z) (co-cond (B x) k)
-    (= ': z) (co-let (B x) k)
+    (= ': z) ((? (& (len (B x)) 1) co-let1 co-let0) (B x) k)
     (= '\ z) (co-lambda (B x) k)
     (= ', z) (co-begin (B x) k)
     (co-ap z (B x) k)))
 
-   (co-begin x k) (? x (co-ev (A x) (co-begin (B x) k)) k)
+   ; TODO elide pure expressions in medial position
+   (co-begin x k) (? x (foldr x k co-ev) (imm 0 k))
    (co-ap fn args k) (:
     q (inliners (? (quoted? fn) (unquote fn) fn))
     (?  q (q args k) (co-apply fn args k)))
 
-   ((co-let x k) m e) (:
-    ; FIXME the rewrite ensures the : expression is always an even form.
-    (loop x k) (? (nilp x) k (:
-     l (loop (BB x) k)
-     q (? (nilp (|| (toplp e) (memq (e 'loc) (A x)))) l
-          (toplp e) (emc i-deftop (emd (X _ns (A x)) l))
-          (emc i-defsl1 (emd (idx (e 'loc) (A x)) l)))
-     (? (= 'here (A (: v (look e (A x)))))
-      (imm (B v) q)
-      (co-ev (AB x) q))))
-    ((loop x k) m e))
+   (co-let1 x k) (>>= (init x) (last x) k (\ dfns xpn k (?
+    (nilp dfns) (co-ev xpn k)
+    (co-ev (L (L '\ (L ', (X ': dfns) xpn))) k))))
 
-   ((co-lambda x k) m e) (:
+   ((co-let0 x k) m e) (:
+    (nom s) (? (twop s) (nom (A s)) s)
+    (loop x k) (? (nilp x) k (:
+     cont (loop (BB x) k)
+     bind (? (nilp (|| (toplp e) (memq (e 'loc) (A x)))) cont
+             (toplp e) (emc i-deftop (emd (X _ns (A x)) cont))
+             (emc i-defsl1 (emd (idx (e 'loc) (A x)) cont)))
+     (? (= 'here (A (: v (look e (A x)))))
+      (imm (B v) bind)
+      (co-ev ((e'def) (A x)) bind))))
+    (? (nilp x) (imm 0 k)
+      ((loop x k) m e)))
+
+   (co-lambda x k) (?
+    (nilp x) (imm null-fn k)
+     ; FIXME an oddly specific and bad optimization.
+     ; it rewrites a lambda expression of the form
+     ;   (\ args (: vars vals xpn))
+     ; to the form
+     ;   (\ args (, (: vars vals) xpn))
+     ; which (currently) generates slightly more
+     ; efficient code. effectively we should ALWAYS
+     ; be doing this, but without variable renaming
+     ; this is the only case where we can be sure
+     ; it's safe in this case. so, we do it here.
+    (letrec? (: args (init x) xpn (last x)))
+     (co-lambda (rw-letrec x) k)
+    (:
+
     (nom e k) ; try to pick a name for this function
      (: i (peek k) (?
       (= i i-deftop) (A (peek (seek k 1))) ; maybe we're about to set a global?
@@ -595,13 +609,13 @@
     (clo-thd e x)
      ((foldl (emc i-take (emd (len x) (emc i-ret hom))) x
        (\ k x (co-ev x (emc i-push k)))) 0 e)
-
-    l ((produces 'hom k) (+ m 2) e)
-    y (ltu- e (nom e l) x)
-    (? (twop y) ; this means there's a closure.
-        (poke (? (e 'loc) i-encl1 i-encl0)
-         (poke (X (B y) (clo-thd e (A y))) l))
-       (pokef i-imm (poke y l))))
+     (\ m e (:
+      l ((produces 'hom k) (+ m 2) e)
+      y (ltu e (nom e l) args xpn)
+      (? (twop y) ; this means there's a closure.
+          (poke (? (e 'loc) i-encl1 i-encl0)
+           (poke (X (B y) (clo-thd e (A y))) l))
+         (pokef i-imm (poke y l)))))))
 
    (co-cond x k) (:
     ; these make functions that do certain side effects
@@ -621,21 +635,24 @@
       (co-ev (A x) (popr 's1 (emc i-br1 (peekr 's1
        (loop (BB x) (pushr 's1 (co-ev (AB x) fin)))))))))
     (popr 's2 (loop x (pushr 's2 k))))
-   ((co-sym x k) m e) (>>= m e (?
+   ((co-sym x k) m e) (>>= (k (+ m 2) e) (\ k (?
     ; FIXME this mutates the environment by populating closure
     ; variables ; we should have already done that by now!
-    (= (: s (A (: r (look e x)))) 'here) (imm (B r) k)
-    (= s 'wait) (emc i-late (emd (X (B r) x) k)) ; TODO subsume runtime type check
+    (= (: s (A (: r (look e x)))) 'here)
+     (pokef i-imm (poke (B r) k))
+    (= s 'wait)
+     (pokef i-late (poke (X (B r) x) k)) ; TODO subsume runtime type check
     (= e (B r))
-     (emc (? (= s 'arg) i-argn (= s 'loc) i-sl1n (= s 'clo) i-clon)
-      (emd (idx (e s) x) k))
-    (emc i-clon (emd (- (len (tset e 'clo (snoc (e 'clo) x))) 1) k))))
+     (pokef (? (= s 'arg) i-argn (= s 'loc) i-sl1n (= s 'clo) i-clon)
+      (poke (idx (e s) x) k))
+    (pokef i-clon (poke (- (len (tset e 'clo (snoc (e 'clo) x))) 1) k)))))
+
   ((? (twop x) co-list (symp x) co-sym imm) x k))
 
  (ev x) ((ltu 0 0 0 x) x)
  ) ; end egg ; now bootstrap
- (, (ev prelu) (ev egg)
-    ((ev 'ev) prelu) ((ev 'ev) egg)))
+ (, (ev prelu) (ev co-data) (ev co-source)
+    ((ev 'ev) prelu) ((ev 'ev) co-data) ((ev 'ev) co-source)))
 
 ; " drop privileges "
 ; leave these in for now while we work on the compiler
