@@ -25,28 +25,24 @@ intptr_t hash(la v, ob x) {
 // hash tables
 // some of the worst code is here :(
 
-#define KEY(e) ((ob*)(e))[0]
-#define VAL(e) ((ob*)(e))[1]
-#define NEXT(e) ((ob*)(e))[2]
-
-static Inline tbl ini_tbl(void *_, size_t len, size_t cap, ob *tab) {
+static Inline tbl ini_tbl(void *_, size_t len, size_t cap, tbl_e *tab) {
   tbl t = _;
   t->h.disp = disp, t->h.mtbl = &mtbl_tbl;
   t->len = len, t->cap = cap, t->tab = tab;
   return t; }
 
 static Inline size_t tbl_idx(size_t cap, size_t co) {
-  return co & ((1 << cap) - 1); }
+  return co & (cap - 1); }
 
 static Inline size_t tbl_load(tbl t) {
-  return t->len >> t->cap; }
+  return t->len / t->cap; }
 
-static ob tbl_ent_hc(la v, tbl t, ob k, size_t hc) {
-  ob e = t->tab[tbl_idx(t->cap, hc)];
-  while (!nump(e) && !eql(v, KEY(e), k)) e = NEXT(e);
+static tbl_e tbl_ent_hc(la v, tbl t, ob k, size_t hc) {
+  tbl_e e = t->tab[tbl_idx(t->cap, hc)];
+  while (e && !eql(v, e->key, k)) e = e->next;
   return e; }
 
-static ob tbl_ent(la v, tbl t, ob k) {
+static tbl_e tbl_ent(la v, tbl t, ob k) {
   return tbl_ent_hc(v, t, k, hash(v, k)); }
 
 static tbl
@@ -61,18 +57,17 @@ static void
   tbl_shrink(la, tbl);
 
 tbl mktbl(la v) {
-  tbl t = cells(v, wsizeof(struct tbl) + 1 + wsizeof(struct tl));
-  if (t) ini_tbl(t, 0, 0, (ob*) ini_mo(t+1, 1)),
-         t->tab[0] = putnum(-1);
+  tbl t = cells(v, wsizeof(struct tbl) + 1);
+  if (t) ini_tbl(t, 0, 1, (tbl_e*) (t + 1)), t->tab[0] = 0;
   return t; }
 
 tbl tbl_set(la v, tbl t, ob k, ob x) { return
   t = tbl_set_s(v, t, k, x),
   t ? tbl_grow(v, t) : 0; }
 
-ob tbl_get(la v, tbl t, ob k, ob d) { return
-  k = tbl_ent(v, t, k),
-  nump(k) ? d : VAL(k); }
+ob tbl_get(la v, tbl t, ob k, ob d) {
+  tbl_e e = tbl_ent(v, t, k);
+  return e ? e->val : d; }
 
 Vm(tget_f) {
   ArityCheck(2);
@@ -142,40 +137,40 @@ Vm(tset) {
 // FIXME so bad :(
 static ob tbl_del_s(la v, tbl y, ob key, ob val) {
   size_t b = tbl_idx(y->cap, hash(v, key));
-  ob e = y->tab[b],
-     prev[] = {0,0,e};
-  for (ob l = (ob) &prev; !nump(l) && !nump(NEXT(l)); l = NEXT(l))
-    if (eql(v, KEY(NEXT(l)), key)) {
-      val = VAL(NEXT(l));
-      NEXT(l) = NEXT(NEXT(l));
+  struct tbl_e
+   *e = y->tab[b],
+   prev = {0,0,e};
+  for (tbl_e l = &prev; l && l->next; l = l->next)
+    if (eql(v, l->next->key, key)) {
+      val = l->next->val;
+      l->next = l->next->next;
       y->len--;
       break; }
-  y->tab[b] = NEXT(prev);
+  y->tab[b] = prev.next;
   return val; }
 
 // tbl_grow(vm, tbl, new_size): destructively resize a hash table.
 // new_size words of memory are allocated for the new bucket array.
 // the old table entries are reused to populate the modified table.
 static tbl tbl_grow(la v, tbl t) {
-  ob *tab0, *tab1;
+  tbl_e *tab0, *tab1;
   size_t cap0 = t->cap,
          cap1 = cap0,
          load = tbl_load(t);
-  while (load > 1) cap1 += 1, load >>= 1;
+  while (load > 1) cap1 <<= 1, load >>= 1;
   if (cap0 == cap1) return t;
-  size_t len = 1ul << cap1;
 
-  with(t, tab1 = (ob*) mkmo(v, len));
+  with(t, tab1 = (tbl_e*) cells(v, cap1));
   if (!tab1) return 0;
-  setw(tab1, nil, len);
+  setw(tab1, 0, cap1);
   tab0 = t->tab;
 
-  for (size_t i, cap = 1 << cap0; cap--;)
-    for (ob e, es = tab0[cap]; !nump(es);
+  for (size_t i; cap0--;)
+    for (tbl_e e, es = tab0[cap0]; es;
       e = es,
-      es = NEXT(es),
-      i = tbl_idx(cap1, hash(v, KEY(e))),
-      NEXT(e) = tab1[i],
+      es = es->next,
+      i = tbl_idx(cap1, hash(v, e->key)),
+      e->next = tab1[i],
       tab1[i] = e);
 
   t->cap = cap1;
@@ -184,12 +179,12 @@ static tbl tbl_grow(la v, tbl t) {
 
 static tbl tbl_set_s(la v, tbl t, ob k, ob x) {
   size_t hc = hash(v, k);
-  ob e = tbl_ent_hc(v, t, k, hc);
-  if (!nump(e)) return VAL(e) = x, t;
+  tbl_e e = tbl_ent_hc(v, t, k, hc);
+  if (e) return e->val = x, t;
   size_t i = tbl_idx(t->cap, hc);
-  with(t, with(k, with(x, e = (ob) mkmo(v, 3))));
+  with(t, with(k, with(x, e = cells(v, wsizeof(struct tbl_e)))));
   if (!e) return 0;
-  KEY(e) = k, VAL(e) = x, NEXT(e) = t->tab[i];
+  e->key = k, e->val = x, e->next = t->tab[i];
   t->tab[i] = e;
   t->len++;
   return t; }
@@ -201,11 +196,12 @@ static ob tbl_keys(la v) {
   two ks;
   ks = cells(v, wsizeof(struct two) * len);
   if (!ks) return 0;
-  ob r = nil, *tab = ((tbl) v->xp)->tab;
-  while (len) for (ob e = *tab++; !nump(e);
-    ini_two(ks, KEY(e), r),
+  ob r = nil;
+  tbl_e *tab = ((tbl) v->xp)->tab;
+  while (len) for (tbl_e e = *tab++; e;
+    ini_two(ks, e->key, r),
     r = (ob) ks++,
-    e = NEXT(e),
+    e = e->next,
     len--);
   return r; }
 
@@ -226,23 +222,21 @@ static bool tblss(la v, intptr_t i, intptr_t l) {
 // to do at any time.
 static void tbl_shrink(la v, tbl t) {
 
-  ob e = nil, f, g;
-  size_t i = 1ul << t->cap;
+  tbl_e e = NULL, f, g;
+  size_t i = t->cap;
 
   // collect all entries
-  while (i--) for (f = t->tab[i], t->tab[i] = putnum(-1); !nump(f);
-    g = NEXT(f), NEXT(f) = e, e = f, f = g);
+  while (i--) for (f = t->tab[i], t->tab[i] = 0; f;
+    g = f->next, f->next = e, e = f, f = g);
 
   // shrink bucket array
-  while (t->cap && !tbl_load(t)) t->cap--;
-  i = 1ul << t->cap;
-  ini_mo(t->tab, i);
+  while (t->cap > 1 && !tbl_load(t)) t->cap >>= 1;
 
   // reinsert
-  while (!nilp(e))
-    i = tbl_idx(t->cap, hash(v, KEY(e))),
-    f = NEXT(e),
-    NEXT(e) = t->tab[i],
+  while (e)
+    i = tbl_idx(t->cap, hash(v, e->key)),
+    f = e->next,
+    e->next = t->tab[i],
     t->tab[i] = e,
     e = f; }
 
@@ -261,17 +255,28 @@ static Vm(ap_tbl) {
 
 static void tx_tbl(la_carrier v, la_io o, ob _) {
   tbl t = (tbl) _;
-  fprintf(o, "#tbl:%ld/%ld", t->len, 1ul << t->cap); }
+  fprintf(o, "#tbl:%ld/%ld", t->len, t->cap); }
 
 static intptr_t hx_tbl(la_carrier v, ob _) {
   return ror(mix, 3 * sizeof(intptr_t) / 4); }
 
+static tbl_e cp_tbl_e(la v, tbl_e src, ob *pool0, ob *top0) {
+  if (!src) return src;
+  tbl_e dst = bump(v, wsizeof(struct tbl_e));
+  dst->next = cp_tbl_e(v, src->next, pool0, top0);
+  dst->val = cp(v, src->val, pool0, top0);
+  dst->key = cp(v, src->key, pool0, top0);
+  return dst; }
+
 static Gc(cp_tbl) {
-  tbl src = (tbl) x,
-      dst = bump(v, wsizeof(struct tbl));
+  tbl src = (tbl) x;
+  size_t i = src->cap;
+  tbl dst = bump(v, wsizeof(struct tbl) + i);
   src->h.disp = (vm*) dst;
-  return (ob) ini_tbl(dst, src->len, src->cap,
-    (ob*) cp(v, (ob) src->tab, pool0, top0)); }
+  ini_tbl(dst, src->len, i, (tbl_e*) (dst+1));
+  while (i--) dst->tab[i] =
+    cp_tbl_e(v, src->tab[i], pool0, top0);
+  return (ob) dst; }
 
 const struct mtbl mtbl_tbl = {
   .does = ap_tbl,

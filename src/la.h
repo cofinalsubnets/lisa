@@ -89,10 +89,14 @@ typedef struct sym {
   intptr_t code;
   struct sym *l, *r; } *sym;
 
+typedef struct tbl_e {
+  ob key, val;
+  struct tbl_e *next; } *tbl_e;
+
 typedef struct tbl { // hash tables
   struct hd h;
   size_t len, cap;
-  ob *tab; } *tbl;
+  tbl_e *tab; } *tbl;
 
 // linked list for gc protection
 typedef struct keep {
