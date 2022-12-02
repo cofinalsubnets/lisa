@@ -87,10 +87,7 @@ Br(bre, eql(v, xp, *sp++), GF, FF)
 Br(brn, eql(v, xp, *sp++), FF, GF)
 
 Br(brl,   *sp++ <  xp, GF, FF)
-Br(brl2,  *sp++ <  xp, FF, GF)
 Br(brle,  *sp++ <= xp, GF, FF)
-Br(brle2, *sp++ <= xp, FF, GF)
 Br(brg,   *sp++ >  xp, GF, FF)
-Br(brg2,  *sp++ >  xp, FF, GF)
 Br(brge,  *sp++ >= xp, GF, FF)
 // brgteq2 is brlt

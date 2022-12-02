@@ -67,7 +67,7 @@ Vm(poke_f) {
       xp = (ob) k; } }
   return ApC(ret, xp); }
 
-Vm(peekx_f) {
+Vm(peek_f) {
   if (fp->argc && homp(fp->argv[0]))
     xp = (ob) G(fp->argv[0]);
   return ApC(ret, xp); }
@@ -96,15 +96,6 @@ Vm(take) {
 static Vm(setclo) { return
   fp->clos = (ob*) GF(ip),
   ApY(G(FF(ip)), xp); }
-
-Vm(ccl) {
-  Have(3 + wsizeof(struct tl));
-  mo k = ini_mo(hp, 3);
-  hp += 3 + wsizeof(struct tl);
-  G(k) = setclo;
-  GF(k) = (vm*) xp;
-  G(FF(k)) = GF(ip);
-  return ApN(2, (ob) k); }
 
 // finalize function instance closure
 static Vm(genclo1) { return
