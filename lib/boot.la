@@ -11,7 +11,7 @@
      ; functional programmings
      (id x) x
      ;(const x) (\ x) ; the "clean" definition uses a closure; more efficient to just make a thread!
-     (const x) (poke i-imm (poke x (poke i-ret (poke 'const (hom 4)))))
+     (const x) (poke i-imm x i-ret 'const (hom 4))
      (co xs .) (foldl1 xs (\ m f (\ x . (f (ap m x)))))
      ((flip f) x y) (f y x)
      ((cu f x .) y .) (ap f (append x y))
@@ -216,8 +216,6 @@
    L (\ x k (imm 0 (conses x k)))
 
 
-   poke (typed i-poke 'hom 0 'hom)
-
    tget (typed i-tget 0    'tbl 0)
    tset (typed i-tset 0    'tbl 0 0)
    tlen (typed i-tlen 'num 'tbl)
@@ -372,7 +370,7 @@
    (tbl 'arg (B sig-arg) 'par par 'nom nom ;'lam (tbl)
         'def (tbl) 'val (tbl) 'sig (A sig-arg)))
 
-  (co-ini m e) (poke i-ret (poke (? (toplp e) 'ev (e 'nom)) (hom (+ m 2))))
+  (co-ini m e) (poke i-ret (? (toplp e) 'ev (e 'nom)) (hom (+ m 2)))
   ((w/locals k) m e) (>>= (k (+ m 2) e) (\ k (?
    (e 'loc) (pokef i-setloc (poke (len (e 'loc)) k))
    k)))
@@ -544,8 +542,8 @@
  (co-apply fn args k) (:
   ((em-call n k) m e) (?
    (= i-ret (peek (: q (k (+ m 2) e))))
-    (poke i-rec (poke n (seek q 1)))
-   (poke i-call (poke n q)))
+    (poke i-rec n (seek q 1))
+   (poke i-call n q))
   (foldl
    (co-ev fn (consumes 'hom (em-call (len args) k)))
    args
@@ -614,7 +612,7 @@
       y (ltu e (nom e l) args xpn)
       (? (twop y) ; this means there's a closure.
           (poke (? (e 'loc) i-encl1 i-encl0)
-           (poke (X (B y) (clo-thd e (A y))) l))
+           (X (B y) (clo-thd e (A y))) l)
          (pokef i-imm (poke y l)))))))
 
    (co-cond x k) (:
@@ -627,7 +625,7 @@
     ((peekr s k) m e) (>>= (e s) (k (+ m 1) e) (\ r q (poke (A r) q)))
     (jump-to d k) (?
      (= (: i (peek d)) i-ret) (poke i k)
-     (poke i-jump (poke (? (= i i-jump) (peek (seek d 1)) d) k)))
+     (poke i-jump (? (= i i-jump) (peek (seek d 1)) d) k))
     (loop x k) (:
      (fin m e) (: dst (k (+ m 2) e)
       (jump-to (A (e 's2)) dst))

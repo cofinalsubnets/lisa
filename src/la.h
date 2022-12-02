@@ -269,7 +269,6 @@ cfns(ninl)
  _(lt) _(lteq) _(eq) _(gteq) _(gt)\
  _(tget) _(tset) _(thas) _(tlen)\
  _(cons) _(car) _(cdr)\
- _(poke)\
  _(br1) _(br0) _(bre) _(brn)\
  _(brl) _(brle) _(brge) _(brl2)\
  _(brle2) _(brg2) _(brg)\

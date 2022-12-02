@@ -40,49 +40,43 @@ la_fn_tag motag(la_fn k) {
 // instructions for the internal compiler
 // initialize a function
 Vm(hom_f) {
-  ArityCheck(1);
-  size_t len = getnum(fp->argv[0]);
-  Have(len + wsizeof(struct tl));
-  mo k = setw(ini_mo(hp, len), nil, len);
-  hp += len + wsizeof(struct tl);
-  return ApC(ret, (ob) (k + len)); }
+  if (fp->argc && nump(fp->argv[0])) {
+    size_t len = getnum(fp->argv[0]);
+    Have(len + wsizeof(struct tl));
+    mo k = setw(ini_mo(hp, len), nil, len);
+    hp += len + wsizeof(struct tl);
+    xp = (ob) (k + len); }
+  return ApC(ret, xp); }
 
 // trim a function after writing out code
 Vm(hfin_f) {
-  ArityCheck(1);
-  xp = fp->argv[0];
-  Check(homp(xp) && G(xp) != disp);
-  motag((mo) xp)->head = (mo) xp;
+  if (fp->argc) {
+    ob x = fp->argv[0];
+    if (homp(x) && G(x) != disp)
+      motag((mo) x)->head = (mo) x,
+      xp = x; }
   return ApC(ret, xp); }
 
 // emit data
 Vm(poke_f) {
-  ArityCheck(2);
-  Check(homp(fp->argv[1]));
-  mo k = (mo) fp->argv[1] - 1;
-  G(k) = (vm*) fp->argv[0];
-  return ApC(ret, (ob) k); }
+  if (fp->argc) {
+    size_t i = fp->argc - 1;
+    if (homp(fp->argv[i])) {
+      mo k = (mo) fp->argv[i];
+      while (i--) G(--k) = (vm*) fp->argv[i];
+      xp = (ob) k; } }
+  return ApC(ret, xp); }
 
-// frameless
-Vm(poke) {
-  mo k = (mo) *sp++ - 1;
-  G(k) = (vm*) xp;
-  return ApN(1, (ob) k); }
-
-// read data from a thread (be sure it's really data!)
 Vm(peekx_f) {
-  ArityCheck(1);
-  xp = fp->argv[0];
-  Check(homp(xp));
-  return ApC(ret, (ob) G(xp)); }
+  if (fp->argc && homp(fp->argv[0]))
+    xp = (ob) G(fp->argv[0]);
+  return ApC(ret, xp); }
 
 // thread pointer arithmetic -- not bounds checked!
 Vm(seek_f) {
-  ArityCheck(2);
-  Check(homp(fp->argv[0]));
-  ip = (mo) fp->argv[0];
-  xp = getnum(fp->argv[1]);
-  return ApC(ret, (ob) (ip + xp)); }
+  if (fp->argc >= 2 && homp(fp->argv[0]) && nump(fp->argv[1]))
+    xp = (ob) ((mo) fp->argv[0] + getnum(fp->argv[1]));
+  return ApC(ret, xp); }
 
 // dispatch a data thread
 // TODO maybe we could do this with closures instead?
