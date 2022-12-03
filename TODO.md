@@ -2,8 +2,6 @@
 
 ## misc runtime tasks
 - hash table for internal symbols
-- don't use data threads for hash entries/buckets
-- don't use so many data threads (eg. for hash cells/bucket arrays)
 - closure pointer on stack (instead of in frame)
 - semispace gc
 - cheney's algorithm

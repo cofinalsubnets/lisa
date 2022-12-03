@@ -33,16 +33,16 @@ Vm(cons) {
   return ApN(1, xp); }
 
 Vm(car_f) {
-  ArityCheck(1);
-  xp = fp->argv[0];
-  Check(twop(xp));
-  return ApC(ret, A(xp)); }
+  if (fp->argc) {
+    xp = fp->argv[0];
+    xp = twop(xp) ? A(xp) : xp; }
+  return ApC(ret, xp); }
 
 Vm(cdr_f) {
-  ArityCheck(1);
-  xp = fp->argv[0];
-  Check(twop(xp));
-  return ApC(ret, B(xp)); }
+  if (fp->argc) {
+    xp = fp->argv[0];
+    xp = twop(xp) ? B(xp) : nil; }
+  return ApC(ret, xp); }
 
 Vm(cons_f) {
   if (fp->argc) {

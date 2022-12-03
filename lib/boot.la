@@ -212,7 +212,6 @@
    X (\ x k (? (nilp x) (imm 0 k)
     (co-ev (last x) (conses (init x) k))))
 
-
    L (\ x k (imm 0 (conses x k)))
 
 

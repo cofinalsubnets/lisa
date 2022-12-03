@@ -310,7 +310,7 @@ Co(r_co_ap_call) {
   mo k = co_pull(v, e, m + 2);
   return k ? pb2(G(k) == ret ? rec : call, ary, k) : 0; }
 
-enum where { Here, Loc, Arg, Clo, Wait };
+enum where { Arg, Loc, Clo, Here, Wait };
 
 static NoInline ob ls_lex(la v, env e, ob y) { return
   nilp((ob) e) ?
@@ -332,18 +332,15 @@ Co(co_sym, ob x) {
     (with(x, q = (ob) co_pull(v, e, m+2)), q) ?
       pb2(late, x, (mo) q) : 0;
 
-  if (B(q) == (ob) *e) return
-    A(q) == Loc ?
-      co_i_x(v, e, m, sl1n, putnum(lidx((*e)->loc, x))) :
-    A(q) == Arg ?
-      co_i_x(v, e, m, argn, putnum(lidx((*e)->arg, x))) :
-    co_i_x(v, e, m, clon, putnum(lidx((*e)->clo, x)));
+  if (B(q) == (ob) *e) {
+    ob idx = putnum(lidx(((ob*)(*e))[A(q)], x));
+    vm *i = A(q) == Arg ? argn : A(q) == Loc ? sl1n : clon;
+    return co_i_x(v, e, m, i, idx); }
 
   size_t y = llen((*e)->clo);
-  with(x, q = (ob) snoc(v, (*e)->clo, x));
-  if (!q) return 0;
-  (*e)->clo = q;
-  return co_i_x(v, e, m, clon, putnum(y)); }
+  if (!(q = (ob) snoc(v, (*e)->clo, x))) return 0;
+  return (*e)->clo = q,
+    co_i_x(v, e, m, clon, putnum(y)); }
 
 Co(co_x, ob x) { return
   symp(x) ? co_sym(v, e, m, x) :
