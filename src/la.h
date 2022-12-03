@@ -80,13 +80,12 @@ typedef struct str { // strings
   size_t len;
   char text[]; } *str;
 
-// FIXME this is a silly way to store internal symbols
-// - it's slower than a hash table
-// - anonymous symbols waste 2 words
 typedef struct sym {
   struct hd h;
   str nom;
   intptr_t code;
+  // symbols are interned into a binary search tree.
+  // anonymous symbols (nom == 0) don't have branches.
   struct sym *l, *r; } *sym;
 
 typedef struct tbl_e {

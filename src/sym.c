@@ -2,7 +2,16 @@
 #include <string.h>
 
 //symbols
-static Inline sym ini_sym(void *_, str nom, size_t code) {
+//
+static sym ini_anon(void *_, size_t code) {
+  sym y = _;
+  y->h.disp = disp;
+  y->h.mtbl = &mtbl_sym;
+  y->nom = 0;
+  y->code = code;
+  return y; }
+
+static sym ini_sym(void *_, str nom, size_t code) {
   sym y = _;
   y->h.disp = disp;
   y->h.mtbl = &mtbl_sym;
@@ -11,19 +20,17 @@ static Inline sym ini_sym(void *_, str nom, size_t code) {
   y->l = y->r = 0;
   return y; }
 
-// FIXME this is bad
+// FIXME this should probably change at some point.
 // symbols are interned into a binary search tree. we make no
 // attempt to keep it balanced but it gets rebuilt in somewhat
-// unpredictable order every gc cycle so hopefully that should
-// help keep it from getting too bad. a hash table is probably
-// the way to go but rebuilding that is more difficult. the
-// existing code is unsuitable because it dynamically resizes
-// the table and unpredictable memory allocation isn't safe
-// during garbage collection.
+// unpredictable order every gc cycle which seems to keep it
+// from getting too bad. this is much more performant than a
+// list & uses less memory than a hash table, but maybe we
+// should use a table anyway.
 //
 // FIXME the caller must ensure Avail >= wsizeof(struct sym)
 // (because GC here would void the tree)
-static sym sskc(la v, sym *y, str b) {
+static sym intern(la v, sym *y, str b) {
   if (*y) {
     sym z = *y;
     str a = z->nom;
@@ -32,7 +39,7 @@ static sym sskc(la v, sym *y, str b) {
     if (i == 0) {
       if (a->len == b->len) return z;
       i = a->len < b->len ? -1 : 1; }
-    return sskc(v, i < 0 ? &z->l : &z->r, b); }
+    return intern(v, i < 0 ? &z->l : &z->r, b); }
   return *y = ini_sym(bump(v, wsizeof(struct sym)), b,
     hash(v, putnum(hash(v, (ob) b)))); }
 
@@ -41,9 +48,8 @@ sym symof(la v, str s) {
     bool _;
     with(s, _ = please(v, wsizeof(struct sym)));
     if (!_) return 0; }
-  return s ? sskc(v, &v->syms, s) :
-    ini_sym(bump(v, wsizeof(struct sym)), s,
-      v->rand = lcprng(v->rand)); }
+  return s ? intern(v, &v->syms, s) :
+    ini_anon(bump(v, wsizeof(struct sym) - 2), v->rand = lcprng(v->rand)); }
 
 Vm(sym_f) {
   str i = fp->argc && strp(fp->argv[0]) ? (str) fp->argv[0] : 0;
@@ -61,8 +67,8 @@ Vm(ynom_f) {
 static Gc(cp_sym) {
   sym src = (sym) x;
   return (ob) (src->h.disp = (vm*) (src->nom ?
-    sskc(v, &v->syms, (str) cp(v, (ob) src->nom, pool0, top0)) :
-    ini_sym(bump(v, wsizeof(struct sym)), 0, src->code))); }
+    intern(v, &v->syms, (str) cp(v, (ob) src->nom, pool0, top0)) :
+    ini_anon(bump(v, wsizeof(struct sym) - 2), src->code))); }
 
 static intptr_t hx_sym(la v, ob _) { return ((sym) _)->code; }
 
