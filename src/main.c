@@ -3,10 +3,10 @@
 static FILE *la_ld_boot_seek(la_carrier v) {
   FILE *b;
   char *home, buf[256];
-  if ((home = getenv("HOME")) &&
-      snprintf(buf, sizeof(buf), "%s/.local/lib/lisa/boot.la", home) < sizeof(buf) &&
-      (b = fopen(buf, "r")))
-    return b;
+  if ((home = getenv("HOME"))) {
+   if (snprintf(buf, sizeof(buf), "%s/.local/lib/lisa/boot.la", home) < sizeof(buf) &&
+       (b = fopen(buf, "r")))
+     return b; }
   if ((b = fopen("/usr/local/lib/lisa/boot.la", "r"))) return b;
   if ((b = fopen("/usr/lib/lisa/boot.la", "r"))) return b;
   return fopen("/lib/lisa/boot.la", "r"); }
@@ -18,9 +18,9 @@ static enum la_status la_ld_boot(la_carrier v) {
   return fclose(in), s; }
 
 static const char *usage =
-  "usage: %s [options and scripts]\n"
+  "usage: %s [options] [scripts]\n"
   "with no arguments, interact\n"
-  "option:\n"
+  "options:\n"
   "  -h show this message\n"
   "  -i interact\n"
   "  -_ don't bootstrap\n";
@@ -59,7 +59,4 @@ int main(int ac, char **av) {
     if (t == LA_OK) la_tx(&V, la_stdout, V.xp), la_putc('\n', la_stdout);
     else la_perror(&V, t), la_reset(&V); }
 
-  return
-    la_perror(&V, s),
-    la_close(&V),
-    s; }
+  return la_perror(&V, s), la_close(&V), s; }

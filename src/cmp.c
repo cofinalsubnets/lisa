@@ -40,6 +40,8 @@ Vm(idmo) { return homp(xp) ? ApN(1, xp) : ApC(xdom, xp); }
 Vm(idtbl) { return tblp(xp) ? ApN(1, xp) : ApC(xdom, xp); }
 Vm(idtwo) { return twop(xp) ? ApN(1, xp) : ApC(xdom, xp); }
 Vm(arity) {
-  ob reqd = getnum(GF(ip));
-  return fp->argc >= reqd ? ApN(2, xp) :
-    ApC(xary, (ob) GF(ip)); }
+  return fp->argc >= getnum(GF(ip)) ? ApN(2, xp) : ApC(xary, (ob) GF(ip)); }
+Vm(ary1) { return fp->argc >= 1 ? ApN(1, xp) : ApC(xary, putnum(1)); }
+Vm(ary2) { return fp->argc >= 2 ? ApN(1, xp) : ApC(xary, putnum(2)); }
+Vm(ary3) { return fp->argc >= 3 ? ApN(1, xp) : ApC(xary, putnum(3)); }
+Vm(ary4) { return fp->argc >= 4 ? ApN(1, xp) : ApC(xary, putnum(4)); }

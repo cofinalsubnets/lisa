@@ -55,7 +55,7 @@ struct la_fn { vm *ap; };
 // every dynamically allocated thread ends
 // with a footer holding a pointer to its head
 typedef struct tl {
-  void *null; // null sentinel
+  void *null; // it's always 0
   struct la_fn *head, end[];
 } *tag, *la_fn_tag;
 
@@ -71,9 +71,7 @@ typedef const struct mtbl {
 
 struct hd { vm *disp; mtbl mtbl; };
 
-typedef struct two { // pairs
-  struct hd h;
-  ob a, b; } *two;
+typedef struct two { struct hd h; ob a, b; } *two;
 
 typedef struct str { // strings
   struct hd h;
@@ -98,9 +96,7 @@ typedef struct tbl { // hash tables
   tbl_e *tab; } *tbl;
 
 // linked list for gc protection
-typedef struct keep {
-  void **addr;
-  struct keep *next; } *keep;
+typedef struct keep { void **addr; struct keep *next; } *keep;
 
 struct la_lexicon {
   sym define, cond, lambda, quote, begin, splat, eval; };
@@ -157,8 +153,7 @@ str ini_str(void *, size_t);
 two pair(la, ob, ob), // pair constructor
     ini_two(void *, ob, ob);
 
-tbl mktbl(la),
-    tbl_set(la, tbl, ob, ob);
+tbl mktbl(la), tbl_set(la, tbl, ob, ob);
 
 bool
   please(la, size_t),
@@ -174,14 +169,13 @@ intptr_t
 void
   *cells(la_carrier, size_t),
   *bump(la_carrier, size_t),
-  *setw(void *, intptr_t, size_t),
-  *cpyw_l2r(void *, const void *, size_t),
-  *cpyw_r2l(void *, const void *, size_t);
+  *setw(void*, intptr_t, size_t),
+  *cpyw_l2r(void*, const void*, size_t),
+  *cpyw_r2l(void*, const void*, size_t);
 
 struct la_prim { vm *ap; const char *nom; };
 extern const struct la_prim prims[];
-extern const struct mtbl
-  mtbl_two, mtbl_str, mtbl_tbl, mtbl_sym;
+extern const struct mtbl mtbl_two, mtbl_str, mtbl_tbl, mtbl_sym;
 
 // just a big random number!
 #define mix ((int64_t)2708237354241864315)
@@ -253,11 +247,16 @@ cfns(ninl)
 // used by the compiler but not exposed as primitives
 #define i_internals(_)\
  _(call) _(ret) _(rec) _(jump) _(varg)\
- _(arity) _(idno) _(idmo) _(idtwo) _(idtbl)\
- _(imm) _(immn1) _(imm0) _(imm1) _(imm2)\
+ _(arity) _(ary1) _(ary2) _(ary3) _(ary4)\
+ _(idno) _(idmo) _(idtwo) _(idtbl)\
+ _(imm) _(immn1) _(imm0) _(imm1)\
+ _(immn1p) _(imm0p) _(imm1p)\
  _(argn) _(arg0) _(arg1) _(arg2) _(arg3)\
+ _(arg0p) _(arg1p) _(arg2p) _(arg3p)\
  _(clon) _(clo0) _(clo1) _(clo2) _(clo3)\
+ _(clo0p) _(clo1p) _(clo2p) _(clo3p)\
  _(sl1n) _(sl10) _(sl11) _(sl12) _(sl13)\
+ _(sl10p) _(sl11p) _(sl12p) _(sl13p)\
  _(deftop) _(late)\
  _(setloc) _(defsl1)\
  _(take) _(encl1) _(encl0)\

@@ -126,6 +126,11 @@
   ; takes an argument for each branch case
   (br2 b c) (f1 i-br1 b i-br0 c)
 
+  ((pushi i) j p) (?
+   (= i-push (peek p)) (pokef i (seek p 1))
+   (poke j p))
+
+
   (tbl
    i-argn (argn i-arg0 i-arg1 i-arg2 i-arg3)
    i-sl1n (argn i-sl10 i-sl11 i-sl12 i-sl13)
@@ -136,7 +141,23 @@
    i-gteq (br2 i-brge i-brl)
    i-eq (br2 i-bre i-brn)
    i-nilp_ (f1 i-br1 i-br0 i-br0 i-br1)
-   i-imm (f1 0 i-imm0 1 i-imm1 2 i-imm2 -1 i-immn1)
+   i-imm (f1 0 i-imm0 1 i-imm1 -1 i-immn1)
+   i-arity (f1 1 i-ary1 2 i-ary2 3 i-ary3 4 i-ary4)
+   i-imm1 (pushi i-imm1p)
+   i-immn1 (pushi i-immn1p)
+   i-imm0 (pushi i-imm0p)
+   i-arg0 (pushi i-arg0p)
+   i-arg1 (pushi i-arg1p)
+   i-arg2 (pushi i-arg2p)
+   i-arg3 (pushi i-arg3p)
+   i-clo0 (pushi i-clo0p)
+   i-clo1 (pushi i-clo1p)
+   i-clo2 (pushi i-clo2p)
+   i-clo3 (pushi i-clo3p)
+   i-sl10 (pushi i-sl10p)
+   i-sl11 (pushi i-sl11p)
+   i-sl12 (pushi i-sl12p)
+   i-sl13 (pushi i-sl13p)
    i-idmo idem
    i-idtwo idem
    i-idno idem

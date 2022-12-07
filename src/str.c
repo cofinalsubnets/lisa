@@ -23,8 +23,8 @@ Vm(sget_f) {
   return ApC(ret, xp); }
 
 Vm(scat_f) {
-  size_t sum = 0, i = 0, l = fp->argc;
-  while (i < l) {
+  size_t sum = 0, i = 0;
+  for (size_t l = fp->argc; i < l;) {
     ob x = fp->argv[i++];
     Check(strp(x));
     sum += ((str)x)->len; }

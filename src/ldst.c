@@ -8,8 +8,11 @@
 Vm(imm) { return ApN(2, (ob) GF(ip)); }
 Vm(imm0) { return ApN(1, putnum(0)); }
 Vm(imm1) { return ApN(1, putnum(1)); }
-Vm(imm2) { return ApN(1, putnum(2)); }
 Vm(immn1) { return ApN(1, putnum(-1)); }
+
+Vm(imm0p) { return ApC(push, putnum(0)); }
+Vm(imm1p) { return ApC(push, putnum(1)); }
+Vm(immn1p) { return ApC(push, putnum(-1)); }
 
 // function arguments
 Vm(argn) { return ApN(2, fp->argv[getnum(GF(ip))]); }
@@ -17,6 +20,10 @@ Vm(arg0) { return ApN(1, fp->argv[0]); }
 Vm(arg1) { return ApN(1, fp->argv[1]); }
 Vm(arg2) { return ApN(1, fp->argv[2]); }
 Vm(arg3) { return ApN(1, fp->argv[3]); }
+Vm(arg0p) { return ApC(push, fp->argv[0]); }
+Vm(arg1p) { return ApC(push, fp->argv[1]); }
+Vm(arg2p) { return ApC(push, fp->argv[2]); }
+Vm(arg3p) { return ApC(push, fp->argv[3]); }
 
 // the first two stack slots under the current frame
 // may hold extra call data.
@@ -29,6 +36,10 @@ Vm(sl10) { return ApN(1, Slot1[0]); }
 Vm(sl11) { return ApN(1, Slot1[1]); }
 Vm(sl12) { return ApN(1, Slot1[2]); }
 Vm(sl13) { return ApN(1, Slot1[3]); }
+Vm(sl10p) { return ApC(push, Slot1[0]); }
+Vm(sl11p) { return ApC(push, Slot1[1]); }
+Vm(sl12p) { return ApC(push, Slot1[2]); }
+Vm(sl13p) { return ApC(push, Slot1[3]); }
 
 // closure variables
 Vm(clon) { return ApN(2, fp->clos[getnum(GF(ip))]); }
@@ -36,6 +47,10 @@ Vm(clo0) { return ApN(1, fp->clos[0]); }
 Vm(clo1) { return ApN(1, fp->clos[1]); }
 Vm(clo2) { return ApN(1, fp->clos[2]); }
 Vm(clo3) { return ApN(1, fp->clos[3]); }
+Vm(clo0p) { return ApC(push, fp->clos[0]); }
+Vm(clo1p) { return ApC(push, fp->clos[1]); }
+Vm(clo2p) { return ApC(push, fp->clos[2]); }
+Vm(clo3p) { return ApC(push, fp->clos[3]); }
 
 ////
 /// Store Instructions

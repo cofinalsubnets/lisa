@@ -4,16 +4,44 @@
 /// Branch Instructions
 //
 // calling and returning
+//
+// return from a function
+Vm(ret) { return
+  ip = fp->retp,
+  sp = fp->argv + fp->argc,
+  fp = fp->subd,
+  ApY(ip, xp); }
+
+// normal function call
 Vm(call) {
   Have(wsizeof(struct sf));
   sf subd = fp;
-  fp = (sf) sp - 1;
-  sp = (ob*) fp;
+  sp = (ob*) (fp = (sf) sp - 1);
   fp->argc = getnum(GF(ip));
   fp->retp = FF(ip);
   fp->subd = subd;
   fp->clos = (ob*) nil;
   return ApY(xp, nil); }
+
+// tail calls
+//
+
+Vm(rec) {
+  size_t adic = getnum(GF(ip));
+  // save return address
+  sf subd = fp->subd;
+  mo retp = fp->retp;
+  // reset fp
+  fp = (sf) (fp->argv + fp->argc - adic) - 1;
+  // copy the args high to low BEFORE repopulating fp.
+  cpyw_r2l(fp->argv, sp, adic);
+  sp = (ob*) fp;
+  // populate fp
+  fp->retp = retp;
+  fp->subd = subd;
+  fp->argc = adic;
+  fp->clos = (ob*) nil;
+  return ApY((mo) xp, nil); }
 
 Vm(ap_f) {
   ArityCheck(2);
@@ -24,51 +52,12 @@ Vm(ap_f) {
   ip = (mo) fp->argv[0];
   sf subd = fp->subd;
   mo retp = fp->retp;
-  fp = (sf) (fp->argv + fp->argc - adic) - 1;
-  sp = (ob*) fp;
+  sp = (ob*) (fp = (sf) (fp->argv + fp->argc - adic) - 1);
   fp->retp = retp;
   fp->argc = adic;
   fp->subd = subd;
   fp->clos = (ob*) nil;
-  for (size_t j = 0; j < adic; xp = B(xp))
-    fp->argv[j++] = A(xp);
-  return ApY(ip, nil); }
-
-// return from a function
-Vm(ret) { return
-  ip = fp->retp,
-  sp = fp->argv + fp->argc,
-  fp = fp->subd,
-  ApY(ip, xp); }
-
-// tail calls
-//
-
-// if the adicity is different we need to do a little more.
-static NoInline Vm(recn) {
-  // save return address
-  sf subd = fp->subd;
-  mo retp = fp->retp;
-  // reset fp
-  fp = (sf) (fp->argv + fp->argc - xp) - 1;
-  // copy the args high to low BEFORE populating fp.
-  cpyw_r2l(fp->argv, sp, xp);
-  sp = (ob*) fp;
-  // populate fp
-  fp->retp = retp;
-  fp->subd = subd;
-  fp->argc = xp;
-  fp->clos = (ob*) nil;
-  return ApY(ip, nil); }
-
-Vm(rec) {
-  ob _ = getnum(GF(ip));
-  ip = (mo) xp;
-  xp = _;
-  if (fp->argc != xp) return ApC(recn, xp);
-  // fast case where the calls have the same number of args
-  while (xp--) fp->argv[xp] = sp[xp];
-  sp = (ob*) fp;
+  for (ob *i = fp->argv; adic--; xp = B(xp)) *i++ = A(xp);
   return ApY(ip, nil); }
 
 // unconditional jump

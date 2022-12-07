@@ -4,8 +4,7 @@
 static str strof(la v, const char* c) {
   size_t bs = strlen(c);
   str o = cells(v, wsizeof(struct str) + b2w(bs));
-  if (o) memcpy(o->text, c, bs),
-         ini_str(o, bs);
+  if (o) memcpy(o->text, c, bs), ini_str(o, bs);
   return o; }
 
 // initialization helpers
@@ -13,9 +12,7 @@ static sym symofs(la v, const char *s) {
   str _ = strof(v, s);
   return _ ? symof(v, _) : 0; }
 
-static bool
-  defprims(la),
-  inst(la, const char*, vm*);
+static bool defprims(la), inst(la, const char*, vm*);
 
 void la_reset(la_carrier v) {
   v->sp = v->pool + v->len;
@@ -23,19 +20,16 @@ void la_reset(la_carrier v) {
   v->ip = 0;
   v->xp = nil; }
 
-void la_close(la v) {
-  if (v) la_free(v->pool), v->pool = NULL; }
+void la_close(la v) { if (v) la_free(v->pool), v->pool = NULL; }
 
-static bool la_open_lexi(la_carrier v) {
-  // split the assignment into two expressions
-  // to ensure correct sequencing
-  return (v->lex.eval = symofs(v, "ev")) &&
-      (v->lex.define = symofs(v, ":")) &&
-      (v->lex.cond = symofs(v, "?")) &&
-      (v->lex.lambda = symofs(v, "\\")) &&
-      (v->lex.quote = symofs(v, "`")) &&
-      (v->lex.begin = symofs(v, ",")) &&
-      (v->lex.splat = symofs(v, ".")); }
+static bool la_open_lexi(la_carrier v) { return
+  (v->lex.eval = symofs(v, "ev")) &&
+  (v->lex.define = symofs(v, ":")) &&
+  (v->lex.cond = symofs(v, "?")) &&
+  (v->lex.lambda = symofs(v, "\\")) &&
+  (v->lex.quote = symofs(v, "`")) &&
+  (v->lex.begin = symofs(v, ",")) &&
+  (v->lex.splat = symofs(v, ".")); }
 
 static bool la_open_topl_boot(la v) {
   ob _; return
@@ -46,30 +40,29 @@ static bool la_open_topl_boot(la v) {
     defprims(v); }
 
 #define reg_intl(a) && inst(v, "i-"#a, a)
-static bool la_open_topl(la_carrier v) {
-  return
-    (v->topl = mktbl(v)) i_internals(reg_intl) &&
-    (v->macros = mktbl(v)) &&
-    la_open_topl_boot(v); }
+static bool la_open_topl(la_carrier v) { return
+  (v->topl = mktbl(v)) i_internals(reg_intl) &&
+  (v->macros = mktbl(v)) &&
+  la_open_topl_boot(v); }
 
 la_status la_open(la_carrier v) {
   memset(v, 0, sizeof(struct la_carrier));
   const size_t len = 1 << 10; // must be a power of 2
   ob *pool = la_calloc(len, sizeof(ob));
-  if (!pool) return LA_XOOM;
-  v->len = len;
-  v->hp = v->pool = pool;
-  v->fp = (sf) (v->sp = pool + len);
-  v->rand = v->run.t0 = la_clock();
-  return la_open_lexi(v) && la_open_topl(v) ?
-    LA_OK : (la_close(v), LA_XOOM); }
+  return !pool ? LA_XOOM : (
+    v->len = len,
+    v->hp = v->pool = pool,
+    v->fp = (sf) (v->sp = pool + len),
+    v->rand = v->run.t0 = la_clock(),
+    la_open_lexi(v) && la_open_topl(v) ?
+      LA_OK : (la_close(v), LA_XOOM)); }
 
 // static table of primitive functions
 #define prim_ent(go, nom) { go, nom },
 const struct la_prim prims[] = { i_primitives(prim_ent) };
 #define LEN(ary) (sizeof(ary)/sizeof(*ary))
-bool primp(mo x) {
-  return x >= (mo) prims && x < (mo) (prims + LEN(prims)); }
+bool primp(mo x) { return
+  x >= (mo) prims && x < (mo) (prims + LEN(prims)); }
 
 static bool defprims(la v) {
   const struct la_prim *p = prims, *lim = p + LEN(prims);

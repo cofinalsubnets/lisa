@@ -58,11 +58,10 @@ Vm(sym_f) {
   return y ? ApC(ret, (ob) y) : ApC(xoom, xp); }
 
 Vm(ynom_f) {
-  ArityCheck(1);
-  xp = fp->argv[0];
-  Check(symp(xp));
-  str s = ((sym) xp)->nom;
-  return ApC(ret, s ? (ob) s : nil); }
+  if (fp->argc && symp(fp->argv[0])) {
+    xp = (ob) ((sym) fp->argv[0])->nom;
+    xp = xp ? xp : nil; }
+  return ApC(ret, xp); }
 
 static Gc(cp_sym) {
   sym src = (sym) x;

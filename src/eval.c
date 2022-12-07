@@ -4,9 +4,8 @@ static mo ana(la, ob);
 
 // bootstrap eval interpreter function
 Vm(ev_f) {
-  ArityCheck(1);
-  mo y;
-  CallOut(y = ana(v, fp->argv[0]));
+  if (!fp->argc) return ApC(ret, xp);
+  mo y; CallOut(y = ana(v, fp->argv[0]));
   return y ? ApY(y, xp) : ApC(xoom, xp); }
 
 enum la_status la_go(la v) {
@@ -80,9 +79,8 @@ static mo ana(la v, ob x) {
 static bool scan(la, env*, ob) NoInline;
 
 // apply instruction pullbacks
-static Inline mo pb1(vm *i, mo k) { return G(--k) = i, k; }
-static Inline mo pb2(vm *i, ob x, mo k) {
-  return pb1(i, pb1((vm*) x, k)); }
+static Inline mo pb1(vm *i, mo k) { return k--, G(k) = i, k; }
+static Inline mo pb2(vm *i, ob x, mo k) { return pb1(i, pb1((vm*) x, k)); }
 
 // supplemental list functions
 //
@@ -181,14 +179,14 @@ static Inline ob comp_body(la v, env *e, ob x) {
 // and the cdr is a hom that assumes the missing variables
 // are available in the closure).
 static ob co_fn_ltu(la v, env *e, ob n, ob l) {
-  ob y = nil;
-  with(n, with(y, with(l,
-    l = (l = twop(l) ? l : (ob) pair(v, l, nil)) &&
-        (l = linitp(v, l, &y)) &&
-        (n = (ob) pair(v, n, e ? (*e)->name : nil)) &&
-        (n = new_scope(v, e, l, n)) ?
-      comp_body(v, (env*) &n, A(y)) : 0)));
-  return l; }
+  ob y = nil; return
+    with(n, with(y, with(l,
+      l = (l = twop(l) ? l : (ob) pair(v, l, nil)) &&
+          (l = linitp(v, l, &y)) &&
+          (n = (ob) pair(v, n, e ? (*e)->name : nil)) &&
+          (n = new_scope(v, e, l, n)) ?
+        comp_body(v, (env*) &n, A(y)) : 0))),
+    l; }
 
 static ob co_fn_clo(la v, env *e, ob vars, ob code) {
   size_t i = llen(vars);
@@ -210,10 +208,8 @@ Co(co_fn, ob x) {
   ob nom = *v->sp == (ob) r_co_def_bind ? v->sp[1] : nil;
   mo k; with(nom, with(x, k = co_pull(v, e, m+2)));
   if (!k) return 0;
-  with(k, x = co_fn_ltu(v, e, nom, B(x)));
-  return !x ? 0 :
-    G(x) == disp ? co_fn_enclose(v, e, m, x, k) :
-    pb2(imm, x, k); }
+  with(k, x = co_fn_ltu(v, e, nom, x));
+  return !x ? 0 : G(x) == disp ? co_fn_enclose(v, e, m, x, k) : pb2(imm, x, k); }
 
 Co(r_co_def_bind) {
   ob _ = *v->sp++;
@@ -242,7 +238,7 @@ static Inline bool co_def_sugar(la v, two x) {
 
 Co(co_def, ob x) {
   if (!twop(B(x))) return co_i_x(v, e, m, imm, nil);
-  x = llen(B(x)) % 2 ?
+  x = llen(B(x)) & 1 ?
     co_def_sugar(v, (two) x) :
     co_def_r(v, e, B(x));
   return x ? co_pull(v, e, m) : 0; }
@@ -263,10 +259,8 @@ Co(co_if_pre) {
 // the top of stack 2
 Co(co_if_pre_con) {
   mo k, x = co_pull(v, e, m + 2);
-  if (!x) return 0;
-  return G(k = (mo) A((*e)->s2)) == ret ?
-    pb1(ret, x) :
-    pb2(jump, (ob) k, x); }
+  return !x ? 0 : G(k = (mo) A((*e)->s2)) == ret ?
+    pb1(ret, x) : pb2(jump, (ob) k, x); }
 
 // after generating a branch store its address
 // in stack 1
@@ -312,7 +306,7 @@ Co(r_co_ap_call) {
 
 enum where { Arg, Loc, Clo, Here, Wait };
 
-static NoInline ob ls_lex(la v, env e, ob y) { return
+static NoInline ob co_sym_look(la v, env e, ob y) { return
   nilp((ob) e) ?
     (y = tbl_get(v, v->topl, y, 0)) ?
       (ob) pair(v, Here, y) :
@@ -320,11 +314,11 @@ static NoInline ob ls_lex(la v, env e, ob y) { return
   lidx(e->loc, y) >= 0 ? (ob) pair(v, Loc, (ob) e) :
   lidx(e->arg, y) >= 0 ? (ob) pair(v, Arg, (ob) e) :
   lidx(e->clo, y) >= 0 ? (ob) pair(v, Clo, (ob) e) :
-  ls_lex(v, (env) e->par, y); }
+  co_sym_look(v, (env) e->par, y); }
 
 Co(co_sym, ob x) {
   ob q;
-  with(x, q = ls_lex(v, e ? *e : (env) nil, x));
+  with(x, q = co_sym_look(v, e ? *e : (env) nil, x));
   if (!q) return 0;
   if (A(q) == Here) return co_i_x(v, e, m, imm, B(q));
   if (A(q) == Wait) return
@@ -347,8 +341,7 @@ Co(co_x, ob x) { return
   twop(x) ? co_two(v, e, m, x) :
   co_i_x(v, e, m, imm, x); }
 
-Co(r_co_x) {
-  return co_x(v, e, m, *v->sp++); }
+Co(r_co_x) { return co_x(v, e, m, *v->sp++); }
 
 Co(co_ap, ob f, ob args) {
   mm(&args);
@@ -365,9 +358,9 @@ Co(co_ap, ob f, ob args) {
 
 static NoInline bool seq_mo_loop(la v, env *e, ob x) {
   if (!twop(x)) return true;
-  bool _;
-  with(x, _ = seq_mo_loop(v, e, B(x)));
-  return _ && pushs(v, r_co_x, A(x), NULL); }
+  bool _; return
+    with(x, _ = seq_mo_loop(v, e, B(x))),
+    _ && pushs(v, r_co_x, A(x), NULL); }
 
 Co(co_seq, ob x) { return
   x = twop(x) ? x : (ob) pair(v, x, nil),
@@ -379,8 +372,8 @@ Co(co_mac, ob mac, ob x) {
   mo ip = v->ip;
   with(xp, with(ip, s = la_ap(v, (mo) mac, x)));
   x = v->xp, v->xp = xp, v->ip = ip;
-  if (s != LA_OK) return la_perror(v, s), NULL;
-  return co_x(v, e, m, x); }
+  la_perror(v, s);
+  return s == LA_OK ? co_x(v, e, m, x) : NULL; }
 
 Co(co_two, ob x) {
   ob a = A(x);
@@ -389,11 +382,10 @@ Co(co_two, ob x) {
     if (y == v->lex.quote) return
       co_i_x(v, e, m, imm, twop(B(x)) ? AB(x) : B(x));
     if (y == v->lex.cond) return co_if(v, e, m, B(x));
-    if (y == v->lex.lambda) return co_fn(v, e, m, x);
+    if (y == v->lex.lambda) return co_fn(v, e, m, B(x));
     if (y == v->lex.define) return co_def(v, e, m, x);
     if (y == v->lex.begin) return co_seq(v, e, m, B(x)); }
-  if ((a = tbl_get(v, v->macros, a, 0)))
-    return co_mac(v, e, m, a, B(x));
+  if ((a = tbl_get(v, v->macros, a, 0))) return co_mac(v, e, m, a, B(x));
   return co_ap(v, e, m, A(x), B(x)); }
 
 Co(r_pb1) {
@@ -402,8 +394,7 @@ Co(r_pb1) {
   return k ? pb1(i, k): 0; }
 
 static mo co_i_x(la v, env *e, size_t m, vm *i, ob x) {
-  mo k;
-  with(x, k = co_pull(v, e, m + 2));
+  mo k; with(x, k = co_pull(v, e, m + 2));
   return k ? pb2(i, x, k) : 0; }
 
 Co(r_pb2) {
