@@ -13,6 +13,7 @@ enum la_status la_go(la v) {
   return Unpack(), ApY(ip, xp); }
 
 enum la_status la_ap(la v, mo f, ob x) {
+  struct la_fn prim_ap[] = {{ap_f}, {0}};
   return !pushs(v, f, x, NULL) ? LA_XOOM :
     la_call(v, prim_ap, 2); }
 
@@ -29,6 +30,7 @@ enum la_status la_call(la v, mo f, size_t n) {
 
 enum la_status la_ev_x(la v, la_ob x) {
   if (!pushs(v, x, NULL)) return LA_XOOM;
+  struct la_fn prim_ev[] = {{ev_f}, {0}};
   mo ev = (mo) tbl_get(v, v->topl, (ob) v->lex.eval, (ob) prim_ev);
   return la_call(v, ev, 1); }
 
@@ -192,7 +194,7 @@ static ob co_fn_clo(la v, env *e, ob vars, ob code) {
   size_t i = llen(vars);
   mm(&vars), mm(&code);
 
-  vars = pushs(v, r_pb2, take, putnum(i), r_pb1, ret, r_co_ini, NULL) ? vars : 0;
+  vars = pushs(v, r_pb2, take, putnum(i), r_co_ini, NULL) ? vars : 0;
   while (vars && i--) vars =
     pushs(v, r_co_x, A(vars), r_pb1, push, NULL) ? B(vars) : 0;
   vars = vars ? (ob) co_pull(v, e, 0) : vars;

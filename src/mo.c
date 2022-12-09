@@ -90,7 +90,7 @@ Vm(take) {
   Have(n + wsizeof(struct tl));
   mo k = ini_mo(cpyw_r2l(hp, sp, n), n);
   hp += n + wsizeof(struct tl);
-  return ApN(2, (ob) k); }
+  return ApC(ret, (ob) k); }
 
 // set the closure for this frame
 static Vm(setclo) { return

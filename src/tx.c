@@ -6,8 +6,6 @@ static void tx_mo_n(la, la_io, ob);
 void la_tx(la v, la_io o, ob x) {
   if (nump(x)) fprintf(o, "%ld", getnum(x));
   else if (G(x) == disp) ((mtbl) GF(x))->emit(v, o, x);
-  else if (primp((mo) x))
-    fprintf(o, "\\%s", ((struct la_prim*)x)->nom);
   else tx_mo_n(v, o, hnom(v, (mo) x)); }
 
 void la_putsn(const char *s, size_t n, la_io o) {

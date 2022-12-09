@@ -57,19 +57,18 @@ la_status la_open(la_carrier v) {
     la_open_lexi(v) && la_open_topl(v) ?
       LA_OK : (la_close(v), LA_XOOM)); }
 
-// static table of primitive functions
-#define prim_ent(go, nom) { go, nom },
-const struct la_prim prims[] = { i_primitives(prim_ent) };
-#define LEN(ary) (sizeof(ary)/sizeof(*ary))
-bool primp(mo x) { return
-  x >= (mo) prims && x < (mo) (prims + LEN(prims)); }
+static NoInline bool defprim(la v, vm *i, const char *n) {
+  sym y = symofs(v, n);
+  if (!y) return false;
+  mo k; with(y, k = mkmo(v, 2));
+  if (!k) return false;
+  k[0].ap = i;
+  k[1].ap = (vm*) y;
+  return tbl_set(v, v->topl, (ob) y, (ob) k); }
 
 static bool defprims(la v) {
-  const struct la_prim *p = prims, *lim = p + LEN(prims);
-  while (p < lim) {
-    sym z = symofs(v, p->nom);
-    if (!z || !tbl_set(v, v->topl, (ob) z, (ob) p++)) return false; }
-  return true; }
+#define dp(go, nom) && defprim(v, go, nom)
+  return true i_primitives(dp); }
 
 // store an instruction address under a variable in the
 // toplevel namespace // FIXME use a different namespace

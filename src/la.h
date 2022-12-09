@@ -102,25 +102,24 @@ struct la_lexicon {
   sym define, cond, lambda, quote, begin, splat, eval; };
 
 struct la_carrier {
-  // vm state
+  // registers -- in CPU registers when VM is running
   mo ip;
   sf fp;
   ob xp, *hp, *sp;
 
+  // global variables & state
   tbl topl, macros; // global scope
   sym syms; // symbol table // TODO use a hash
   struct la_lexicon lex;
   intptr_t rand;
 
-  // gc state
+  // memory manager state
   size_t len;
   ob *pool;
   keep safe;
   // TODO list of finalizers
-  union {
-    la_clock_t t0;
-    ob *cp; // TODO copy pointer for cheney's algorithm
-  } run; };
+  union { la_clock_t t0; ob *cp; } run; // TODO copy pointer for cheney's algorithm
+};
 
 // FIXME develop towards public API
 void
@@ -159,8 +158,7 @@ bool
   please(la, size_t),
   pushs(la, ...), // push args onto stack; true on success
   eql(la, ob, ob), // object equality
-  neql(la, ob, ob), // always returns false
-  primp(mo); // is it a primitive function?
+  neql(la, ob, ob); // always returns false
 
 size_t llen(ob); // length of list
 intptr_t
@@ -173,8 +171,6 @@ void
   *cpyw_l2r(void*, const void*, size_t),
   *cpyw_r2l(void*, const void*, size_t);
 
-struct la_prim { vm *ap; const char *nom; };
-extern const struct la_prim prims[];
 extern const struct mtbl mtbl_two, mtbl_str, mtbl_tbl, mtbl_sym;
 
 // just a big random number!
@@ -274,9 +270,6 @@ cfns(ninl)
 i_internals(ninl)
 
 // primitive functions
-// XXX ev should be the first item in this list
-#define prim_ev ((mo) prims)
-#define prim_ap ((mo) (prims+1))
 #define i_primitives(_) _(ev_f, "ev") _(ap_f, "ap")\
  _(hom_f, "hom") _(homp_f, "homp")\
  _(poke_f, "poke") _(peek_f, "peek")\
