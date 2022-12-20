@@ -119,8 +119,10 @@
   (idem i h) (? (= i (peek h)) h (poke i h))
 
   ; for specialized indexed instructions
-  (argn xs .) (ap f1 (: (loop n xs)
-    (? xs (X n (X (A xs) (loop (+ n 1) (B xs))))) (loop 0 xs)))
+  (argn xs .) (ap f1
+   (: (loop n xs)
+       (? xs (X n (X (A xs) (loop (+ n 1) (B xs)))))
+    (loop 0 xs)))
 
   ; for specialized branch instructions ;
   ; takes an argument for each branch case
@@ -171,7 +173,8 @@
    (fold f m x) (? (nilp x) (L m)
     (? (quoted? (A x)) (fold f (f m (unquote (A x))) (B x))
      (: z (fold f m (B x)) (X (A z) (X (A x) (B z))))))
-   (? (= (f) (A (: j (fold f m x)))) (B j) j))
+   (: j (fold f m x)
+    (? (= (f) (A j)) (B j) j)))
 
   ; for comparison operators
   ((compar f i) x k) (?
@@ -218,9 +221,8 @@
     (nilp x) (imm 1 k)
     (nilp (B x)) (co-ev (A x) (consumes 'num k))
     (: b (in-mono * 1 (B x))
-       c (? (nump (A x)) (in-mono / (A x) b) (X (A x) b)))
-     (binop 'num i-quot k c)
-    (imm 1 k)))
+       c (? (nump (A x)) (in-mono / (A x) b) (X (A x) b))
+     (? c (binop 'num i-quot k c) (imm 1 k)))))
 
    & (in-abel & i-band)
    | (in-abel | i-bor)
@@ -289,13 +291,13 @@
   (look (e 'par) y))
 
   (wev e x) (:
-   (rw-sym e x) (?
-    (= 'here (A (: l (look e x)))) (quote (B l))
+   (rw-sym e x) (: l (look e x) (?
+    (= 'here (A l)) (quote (B l))
     ; FIXME what is this even doing? it should probably be in resolve
     (&& (thas (e 'def) x)
         (quoted? (tset (e 'def) x (wev e (tdel (e 'def) x)))))
      (tset (e 'val) x (unquote (tdel (e 'def) x)))
-    x)
+    x))
 
    (rw-list e x) (:
     ; FIXME optimization
@@ -327,10 +329,11 @@
      (rec x) (?
       (nilp x) 0
       (nilp (B x)) (wev e (A x))
-      (nilp (quoted? (: a (wev e (A x)))))
-       (L '? a (wev e (A (B x))) (rec (BB x)))
-      (unquote a) (wev e (AB x))
-      (rec (BB x)))
+      (: a (wev e (A x)) (?
+       (nilp (quoted? a))
+        (L '? a (wev e (A (B x))) (rec (BB x)))
+       (unquote a) (wev e (AB x))
+       (rec (BB x)))))
      (rec (B x)))
 
     (rw-begin e x) (? (B x) (:
@@ -339,29 +342,32 @@
        (? (pure-x? y) z (X y z)))))
      (X ', (loop e (B x)))))
 
-    (?
+    a (A x) (?
      ; special forms
-     (= '` (: a (A x))) x
+     (= '` a) x
      (= '\ a) x
      (= ': a) (rw-let e x)
      (= '? a) (rw-cond e x)
      (= ', a) (rw-begin e x)
      ; is it a macro ?
-     (: macro (macros a)) (wev e (ap macro (B x)))
+     (macros a) (wev e (ap (macros a) (B x)))
      ; nope, it's a function call.
-     (: z (map x (\ x (wev e x))) q (A z) r (B z) (?
-      ; if it's pure & its arguments are all here then we can call it now.
-      (&& (pure q) (all r quoted?))
-       (quote (ap q (map r unquote)))
+     (: z (map x (\ x (wev e x)))
+        q (A z)
+        r (B z)
+      (?
+       ; if it's pure & its arguments are all here then we can call it now.
+       (&& (pure q) (all r quoted?))
+        (quote (ap q (map r unquote)))
       ; if it's an abelian operator we may be able to partially apply it
-      (abelians q) (:
-       ff (part quoted? r)
-       fg (ap q (map (A ff) unquote))
-       (X q (? (= fg (q)) (B ff) (X fg (B ff)))))
-      ; or if it's monoidal ...
-      (monoids q) (rw-mono q r)
-      ; otherwise we can at least try and check the arity.
-      (check-arity z)))))
+       (abelians q) (:
+        ff (part quoted? r)
+        fg (ap q (map (A ff) unquote))
+        (X q (? (= fg (q)) (B ff) (X fg (B ff)))))
+       ; or if it's monoidal ...
+       (monoids q) (rw-mono q r)
+       ; otherwise we can at least try and check the arity.
+       (check-arity z)))))
 
    (? (twop x) (rw-list e x) (symp x) (rw-sym e x) x))
 
@@ -385,7 +391,8 @@
    (ary-sig a n) (?
     (nilp a) (X n a)
     (? (B a) (= '. (AB a))) (X (- (+ n 1)) (A a) 0)
-    (: r (ary-sig (B a) (+ n 1)) (X (A r) (A a) (B r))))
+    (: r (ary-sig (B a) (+ n 1))
+     (X (A r) (A a) (B r))))
    sig-arg (ary-sig arg 0)
    (tbl 'arg (B sig-arg) 'par par 'nom nom ;'lam (tbl)
         'def (tbl) 'val (tbl) 'sig (A sig-arg)))
@@ -424,8 +431,9 @@
 
  (desugar-dfns dfns) (?
   (|| (nilp dfns) (nilp (B dfns))) dfns
-  (: (desug k v ds) (? (nilp (twop k)) (X k v ds)
-   (desug (A k) (X '\ (snoc (B k) v)) ds))
+  (: (desug k v ds)
+      (? (nilp (twop k)) (X k v ds)
+       (desug (A k) (X '\ (snoc (B k) v)) ds))
    (desug (A dfns) (AB dfns) (desugar-dfns (BB dfns)))))
 
  ; partial evaluator
@@ -436,14 +444,14 @@
    (scan-let (BB dfns))))
 
   ; scan an expression for variable definitions.
-  (scan x) (?
-   (nilp (twop x)) 0 ; skip atoms
-   (= '` (: head (A x))) 0 ; skip quotations
-   (= '\ head) 0 ;(co-lam- e 0 x) ; skip lambdas FIXME really?
-   (= ': head) ; descend into *even* let expressions
-    ; (odd let expressions will be rewritten into lambdas)
-    (? (& 1 (len x)) (scan-let (desugar-dfns (B x))))
-   (each x scan)) ; otherwise recur on subexpressions.
+  (scan x) (? (twop x) ; skip atoms
+   (: head (A x) (?
+    (= '` head) 0 ; skip quotations
+    (= '\ head) 0 ;(co-lam- e 0 x) ; skip lambdas FIXME really?
+    (= ': head) ; descend into *even* let expressions
+     ; (odd let expressions will be rewritten into lambdas)
+     (? (& 1 (len x)) (scan-let (desugar-dfns (B x))))
+    (each x scan)))) ; otherwise recur on subexpressions.
 
 
   (, (scan x) (resolve-dfns e) (wev e x)))
@@ -500,9 +508,10 @@
      (re-rm-deps-chk maybes (B vs)))
    (re-rm-deps-r maybes dfns coll) (?
     (nilp dfns) coll
-    (re-rm-deps-chk maybes (AB (: dfn (A dfns))))
-     (re-rm-deps-r maybes (B dfns) (X dfn coll))
-    (re-rm-deps (del maybes dfn)))
+    (: dfn (A dfns) (?
+     (re-rm-deps-chk maybes (AB dfn))
+      (re-rm-deps-r maybes (B dfns) (X dfn coll))
+     (re-rm-deps (del maybes dfn)))))
 
    ; step four ( the last one ) : now we have the desired
    ; set of functions. remove them from the scope's local
@@ -513,10 +522,12 @@
    ; the known value set.
    (re-co-dfrs dfns) (?
     (nilp dfns) (tset e 'loc (tkeys def)) ; we're done, set the local variable list
-    (, (tdel def (: dfn (A dfns) nom (A dfn)))
-       (tset e 'dfr (X nom (e 'dfr)))
-       (re-co-dfrs (B dfns))
-       (tset val nom (ltu- e nom (B (BB dfn))))))
+    (: dfn (A dfns)
+       nom (A dfn)
+     (, (tdel def nom)
+        (tset e 'dfr (X nom (e 'dfr)))
+        (re-co-dfrs (B dfns))
+        (tset val nom (ltu- e nom (B (BB dfn)))))))
 
    (re-co-dfrs
     (re-rm-deps
@@ -553,17 +564,17 @@
    (|| (= a b) (&& (= b 'hom) (nilp (= a 'num))))
   (con i) (? (= i i-idmo) 'hom (= i i-idno) 'num
              (= i i-idtwo) 'two (= i i-idtbl) 'tbl)
-  (pro t h) (?
-   (nilp (: q (con (peek h)))) h
+  (pro t h) (: q (con (peek h)) (?
+   (nilp q) h
    (subtype? t q) (pro t (seek h 1))
-   (nope'produces':'type'error': t'for q))
+   (nope'produces':'type'error': t'for q)))
   (? (nilp t) k (\ m e (pro t (k m e)))))
 
  (co-apply fn args k) (:
-  ((em-call n k) m e) (?
-   (= i-ret (peek (: q (k (+ m 2) e))))
+  ((em-call n k) m e) (: q (k (+ m 2) e) (?
+   (= i-ret (peek q))
     (poke i-rec n (seek q 1))
-   (poke i-call n q))
+   (poke i-call n q)))
   (foldl
    (co-ev fn (consumes 'hom (em-call (len args) k)))
    args
@@ -584,7 +595,7 @@
    (co-begin x k) (? x (foldr x k co-ev) (imm 0 k))
    (co-ap fn args k) (:
     q (inliners (? (quoted? fn) (unquote fn) fn))
-    (?  q (q args k) (co-apply fn args k)))
+    (? q (q args k) (co-apply fn args k)))
 
    (co-let1 x k) (>>= (init x) (last x) k (\ dfns xpn k (?
     (nilp dfns) (co-ev xpn k)
@@ -597,7 +608,8 @@
      bind (? (nilp (|| (toplp e) (memq (e 'loc) (A x)))) cont
              (toplp e) (emc i-deftop (emd (X _ns (A x)) cont))
              (emc i-defsl1 (emd (idx (e 'loc) (A x)) cont)))
-     (? (= 'here (A (: v (look e (A x)))))
+     v (look e (A x))
+     (? (= 'here (A v))
       (imm (B v) bind)
       (co-ev ((e'def) (A x)) bind))))
     (? (nilp x) (imm 0 k)
@@ -643,9 +655,9 @@
     ((pushr s k) m e) (>>= e s (k m e) (\ e s q (A (tset e s (X q (e s))))))
     ((popr  s k) m e) (>>= e s (k m e) (\ e s q (, (tset e s (B (e s))) q)))
     ((peekr s k) m e) (>>= (e s) (k (+ m 1) e) (\ r q (poke (A r) q)))
-    (jump-to d k) (?
-     (= (: i (peek d)) i-ret) (poke i k)
-     (poke i-jump (? (= i i-jump) (peek (seek d 1)) d) k))
+    (jump-to d k) (: i (peek d) (?
+     (= i i-ret) (poke i k)
+     (poke i-jump (? (= i i-jump) (peek (seek d 1)) d) k)))
     (loop x k) (:
      (fin m e) (: dst (k (+ m 2) e)
       (jump-to (A (e 's2)) dst))
@@ -653,17 +665,19 @@
       (co-ev (A x) (popr 's1 (emc i-br1 (peekr 's1
        (loop (BB x) (pushr 's1 (co-ev (AB x) fin)))))))))
     (popr 's2 (loop x (pushr 's2 k))))
-   ((co-sym x k) m e) (>>= (k (+ m 2) e) (\ k (?
+   ((co-sym x k) m e) (>>= (k (+ m 2) e) (\ k (:
     ; FIXME this mutates the environment by populating closure
     ; variables ; we should have already done that by now!
-    (= (: s (A (: r (look e x)))) 'here)
-     (pokef i-imm (poke (B r) k))
-    (= s 'wait)
-     (pokef i-late (poke (X (B r) x) k)) ; TODO subsume runtime type check
-    (= e (B r))
-     (pokef (? (= s 'arg) i-argn (= s 'loc) i-sl1n (= s 'clo) i-clon)
-      (poke (idx (e s) x) k))
-    (pokef i-clon (poke (- (len (tset e 'clo (snoc (e 'clo) x))) 1) k)))))
+    r (look e x)
+    s (A r) (?
+     (= s 'here)
+      (pokef i-imm (poke (B r) k))
+     (= s 'wait)
+      (pokef i-late (poke (X (B r) x) k)) ; TODO subsume runtime type check
+     (= e (B r))
+      (pokef (? (= s 'arg) i-argn (= s 'loc) i-sl1n (= s 'clo) i-clon)
+       (poke (idx (e s) x) k))
+     (pokef i-clon (poke (- (len (tset e 'clo (snoc (e 'clo) x))) 1) k))))))
 
   ((? (twop x) co-list (symp x) co-sym imm) x k))
 

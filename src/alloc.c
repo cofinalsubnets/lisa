@@ -1,27 +1,4 @@
 #include "la.h"
-
-void *cells(la v, size_t n) {
-  return Avail >= n || please(v, n) ? bump(v, n) : 0; }
-
-void *cpyw_r2l(void *dst, const void *src, size_t n) {
-  while (n--) ((void**)dst)[n] = ((void**)src)[n];
-  return dst; }
-
-void *cpyw_l2r(void *dst, const void *src, size_t n) {
-  for (size_t i = 0; i < n; i++)
-    ((void**)dst)[i] = ((void**)src)[i];
-  return dst; }
-
-void *setw(void *dst, intptr_t w, size_t n) {
-  while (n--) ((intptr_t*)dst)[n] = w;
-  return dst; }
-
-// unchecked allocator -- make sure there's enough memory!
-void *bump(la v, size_t n) {
-  void *x = v->hp;
-  v->hp += n;
-  return x; }
-
 #include <stdarg.h>
 // push things onto the stack
 static NoInline bool pushsr(la v, size_t i, va_list xs) {

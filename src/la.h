@@ -1,11 +1,10 @@
-#ifndef _la_la_h
-#define _la_la_h
 #include "lisa.h"
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
 
 #ifdef __STDC_HOSTED__
+
 #include <stdlib.h>
 #define la_calloc calloc
 #define la_free free
@@ -23,7 +22,9 @@ typedef FILE *la_io;
 #include <time.h>
 typedef clock_t la_clock_t;
 #define la_clock clock
+
 #else
+
 typedef uintptr_t la_io, la_clock_t;
 la_clock_t la_clock(void);
 void
@@ -33,6 +34,7 @@ void
   la_getc(la_io),
   la_puts(const char*, la_io),
   la_ungetc(int, la_io);
+
 #endif
 
 // thanks !!
@@ -164,12 +166,6 @@ size_t llen(ob); // length of list
 intptr_t
   hash(la, ob), // hash function for tables
   lcprng(intptr_t); // linear congruential pseudorandom number generator
-void
-  *cells(la_carrier, size_t),
-  *bump(la_carrier, size_t),
-  *setw(void*, intptr_t, size_t),
-  *cpyw_l2r(void*, const void*, size_t),
-  *cpyw_r2l(void*, const void*, size_t);
 
 extern const struct mtbl mtbl_two, mtbl_str, mtbl_tbl, mtbl_sym;
 
@@ -346,4 +342,24 @@ i_primitives(ninl)
 
 #define Vm(n) enum la_status n(la v, ob xp, mo ip, ob *hp, ob *sp, sf fp)
 #define Gc(n) ob n(la v, ob x, ob *pool0, ob *top0)
-#endif
+
+// unchecked allocator -- make sure there's enough memory!
+static Inline void *bump(la v, size_t n) {
+  void *x = v->hp;
+  return v->hp += n, x; }
+
+static Inline void *cells(la v, size_t n) {
+  return Avail >= n || please(v, n) ? bump(v, n) : 0; }
+
+static Inline void *cpyw_r2l(void *dst, const void *src, size_t n) {
+  while (n--) ((void**)dst)[n] = ((void**)src)[n];
+  return dst; }
+
+static Inline void *cpyw_l2r(void *dst, const void *src, size_t n) {
+  for (size_t i = 0; i < n; i++)
+    ((void**)dst)[i] = ((void**)src)[i];
+  return dst; }
+
+static Inline void *setw(void *dst, intptr_t w, size_t n) {
+  while (n--) ((intptr_t*)dst)[n] = w;
+  return dst; }

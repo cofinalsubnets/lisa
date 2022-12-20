@@ -12,7 +12,7 @@ static NoInline two pair_gc(la v, ob a, ob b) {
   with(a, with(b, ok = please(v, wsizeof(struct two))));
   return ok ? pair(v, a, b) : 0; }
 
-two pair(la v, ob a, ob b) {
+NoInline two pair(la v, ob a, ob b) {
   return Avail >= wsizeof(struct two) ?
     ini_two(bump(v, wsizeof(struct two)), a, b) :
     pair_gc(v, a, b); }

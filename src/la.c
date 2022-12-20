@@ -45,7 +45,7 @@ static bool la_open_topl(la_carrier v) { return
   (v->macros = mktbl(v)) &&
   la_open_topl_boot(v); }
 
-la_status la_open(la_carrier v) {
+enum la_status la_open(la_carrier v) {
   memset(v, 0, sizeof(struct la_carrier));
   const size_t len = 1 << 10; // must be a power of 2
   ob *pool = la_calloc(len, sizeof(ob));
