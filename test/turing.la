@@ -13,9 +13,9 @@
    (t0 t) (? (nilp t) t (nilp (A t)) (t0 (B t)) (t1 t))
    (t1 t) (? (nilp t) t (all t nilp) 0 (X (A t) (t1 (B t))))
    (t0 t))
-  (? (: res (step prog st l h r))
+  (: res (step prog st l h r) (? res
    (ap turing (X prog res))
-   (trim (append (rev l) (X h r))))))
+   (trim (append (rev l) (X h r)))))))
 
 (test "turing machines"
   (= '(2 2 2 2 1)

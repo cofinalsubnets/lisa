@@ -7,9 +7,10 @@
 
  (color-text col s) (, (col) (puts s) (reset))
  (green-text s) (color-text green s)
- (red-text s) (color-text red s))
+ (red-text s) (color-text red s)
 
-(: *test* (tbl 'failures (tbl)))
+ *test* (tbl 'failures (tbl)))
+
 (:
  (mut t k f) (tset t k (f (t k)))
  (:::

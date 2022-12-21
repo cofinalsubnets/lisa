@@ -62,7 +62,10 @@
 
  ; unify
  ((est u v) s) (:
-  (walk u s) (?  (&& (var? u) (: t (has-s s u))) (walk (A t) s) u)
+  (walk u s) (?
+   (nilp (var? u)) u
+   (: t (has-s s u)
+    (? t (walk (A t) s) u)))
   x (walk u s) y (walk v s) (?
    (= x y)  (sun s)
    (var? x) (sun (ext-s s x y))
@@ -73,11 +76,12 @@
 
  (Run n ks g) (:
   (walk* u s) (?
-   (var? u) (? (: t (has-s s u)) (walk* (A t) s) u)
+   (var? u) (: t (has-s s u) (? t (walk* (A t) s) u))
    (twop u) (X (walk* (A u) s) (walk* (B u) s))
    u)
   (re st) (flat-map ks (\ k
-   (? (: it (has-s (X (map (A st) A ) (B st)) k)) (L k (walk* (A it) st)))))
+   (: it (has-s (X (map (A st) A ) (B st)) k)
+    (? it (L k (walk* (A it) st))))))
   (slist (smap re (? n (stake n (g ~~)) (g ~~))))))
 
 (test k2

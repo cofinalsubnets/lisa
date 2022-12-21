@@ -1,5 +1,8 @@
 # TODO
 
+## language semantics
+- block-scope local variables
+
 ## misc runtime tasks
 - hash table for internal symbols
 - closure pointer on stack (instead of in frame)
