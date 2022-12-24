@@ -6,7 +6,7 @@
 #ifdef __STDC_HOSTED__
 
 #include <stdlib.h>
-#define la_calloc calloc
+#define la_malloc malloc
 #define la_free free
 
 #include <stdio.h>

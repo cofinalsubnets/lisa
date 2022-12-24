@@ -58,7 +58,7 @@ bool please(la v, size_t req) {
 //   t0                  gc time (this cycle)
 static la_clock_t copy(la v, size_t len) {
   la_clock_t t1 = la_clock(), t0 = v->run.t0, t2;
-  ob *pool1 = la_calloc(len, sizeof(ob));
+  ob *pool1 = la_malloc(len * sizeof(ob));
   if (!pool1) return 0;
 
   ob *pool0 = v->pool;
