@@ -1,7 +1,7 @@
 #include "la.h"
 
-static la_clock_t copy(la, size_t);
-static void do_copy(la, size_t, ob*);
+static U copy(la, U);
+static u0 do_copy(la, U, ob*);
 
 // FIXME the garbage collector works pretty well but it could be better:
 //
@@ -56,16 +56,16 @@ bool please(la v, size_t req) {
 //   -----------------------------------
 //   |                          `------'
 //   t0                  gc time (this cycle)
-static la_clock_t copy(la v, size_t len) {
-  la_clock_t t1 = la_clock(), t0 = v->run.t0, t2;
-  ob *pool1 = la_malloc(len * sizeof(ob));
+static uintptr_t copy(la v, U len) {
+  uintptr_t t1 = clock(), t0 = v->run.t0, t2;
+  ob *pool1 = malloc(len * sizeof(ob));
   if (!pool1) return 0;
 
   ob *pool0 = v->pool;
   do_copy(v, len, pool1);
-  la_free(pool0);
+  free(pool0);
 
-  t2 = v->run.t0 = la_clock();
+  t2 = v->run.t0 = clock();
   t1 = t2 - t1;
   return t1 ? (t2 - t0) / t1 : VIT_CEIL; }
 
@@ -90,10 +90,10 @@ static void do_copy(la v, size_t len1, ob *pool1) {
   // copy globals
   v->topl = (tbl) cp(v, (ob) v->topl, pool0, top0);
   v->macros = (tbl) cp(v, (ob) v->macros, pool0, top0);
-  for (size_t i = 0; i < wsizeof(struct la_lexicon); i++)
+  for (size_t i = 0; i < wsizeof(struct lex); i++)
     ((ob*)&v->lex)[i] = cp(v, ((ob*)&v->lex)[i], pool0, top0);
-  for (keep r = v->safe; r; r = r->next)
-    *r->addr = (void*) cp(v, (ob) *r->addr, pool0, top0);
+  for (struct ll *r = v->safe; r; r = r->next)
+    *r->addr = cp(v, *r->addr, pool0, top0);
 
   // copy the stack
   ob *sp = v->sp;

@@ -2,7 +2,16 @@
 #include <getopt.h>
 #include <unistd.h>
 
-static NoInline int la_run(bool, bool, char**);
+static enum status la_ev_f(struct carrier *v, void *in) {
+  enum status s = la_rx(v, in);
+  return s != LA_OK ? s : la_ev_x(v, v->xp); }
+
+static enum status la_ev_fs(struct carrier *v, void *in) {
+  enum status r;
+  do r = la_ev_f(v, in); while (r == LA_OK);
+  return r == LA_EOF ? LA_OK : r; }
+
+static NoInline int main2(bool, bool, char**);
 
 int main(int ac, char **av) {
   static const char *help =
@@ -15,17 +24,17 @@ int main(int ac, char **av) {
   bool boot = true, shell = ac == 1 && isatty(STDIN_FILENO);
   for (;;) switch (getopt(ac, av, "hi_")) {
     default: return EXIT_FAILURE;
-    case 'h': fprintf(la_stdout, help, *av); continue;
+    case 'h': fprintf(stdout, help, *av); continue;
     case 'i': shell = true; continue;
     case '_': boot = false; continue;
     case -1: return ac == optind && !shell ? EXIT_SUCCESS :
-     la_run(boot, shell, av + optind); } }
+      main2(boot, shell, av + optind); } }
 
-static enum la_status bootstrap(la);
-static NoInline int la_run(bool boot, bool shell, char **av) {
+static enum status bootstrap(la);
+static NoInline int main2(bool boot, bool shell, char **av) {
   // init
-  struct la_carrier V;
-  enum la_status s = la_ini(&V);
+  static struct carrier V;
+  enum status s = la_ini(&V);
 
   if (s == LA_OK && boot) s = bootstrap(&V);
 
@@ -38,15 +47,15 @@ static NoInline int la_run(bool boot, bool shell, char **av) {
 
   // repl
   if (s == LA_OK && shell) for (;;) {
-    enum la_status t = la_ev_f(&V, la_stdin);
+    enum status t = la_ev_f(&V, stdin);
     if (t == LA_EOF) break;
-    if (t == LA_OK) la_tx(&V, la_stdout, V.xp), la_putc('\n', la_stdout);
+    if (t == LA_OK) la_tx(&V, stdout, V.xp), putc('\n', stdout);
     else la_perror(&V, t), la_reset(&V); }
 
   return la_perror(&V, s), la_fin(&V), s; }
 
 
-static FILE *find_boot_script(la_carrier v) {
+static FILE *find_boot_script(struct carrier *v) {
   FILE *b;
   char *home, buf[256];
   if ((home = getenv("HOME"))) {
@@ -57,8 +66,8 @@ static FILE *find_boot_script(la_carrier v) {
   if ((b = fopen("/usr/lib/lisa/boot.la", "r"))) return b;
   return fopen("/lib/lisa/boot.la", "r"); }
 
-static enum la_status bootstrap(la_carrier v) {
+static enum status bootstrap(struct carrier *v) {
   FILE *in = find_boot_script(v);
   if (!in) return LA_XSYS;
-  enum la_status s = la_ev_fs(v, in);
+  enum status s = la_ev_fs(v, in);
   return fclose(in), s; }

@@ -1,46 +1,45 @@
-#include "lisa.h"
+#ifndef _la_h
+#define _la_h
 #include <stddef.h>
+_Static_assert(-1 == -1 >> 1, "signed >>");
+_Static_assert(sizeof(size_t) == sizeof(void*),
+  "size_t size == data pointer size");
+
+#include "lisa.h"
 #include <stdint.h>
 #include <stdbool.h>
 
+// thanks !!
+typedef void u0;
+typedef bool u1;
+typedef int8_t i8;
+typedef uint8_t u8;
+typedef int16_t i16;
+typedef int32_t i32;
+typedef uint32_t u32;
+typedef int64_t i64;
+typedef uint64_t u64;
+
+typedef intptr_t I;
+typedef uintptr_t U;
+typedef I ob, la_ob;
+typedef struct carrier *la, *la_carrier, *F, *A;
+typedef struct M *la_fn, *la_mo, *fn, *mo; // procedures
+
 #ifdef __STDC_HOSTED__
-
 #include <stdlib.h>
-#define la_malloc malloc
-#define la_free free
-
 #include <stdio.h>
-typedef FILE *la_io;
-#define la_stdin stdin
-#define la_stdout stdout
-#define la_stderr stderr
-#define la_puts fputs
-#define la_putc fputc
-#define la_getc fgetc
-#define la_ungetc ungetc
-
 #include <time.h>
-typedef clock_t la_clock_t;
-#define la_clock clock
-
 #else
-
-typedef uintptr_t la_io, la_clock_t;
-la_clock_t la_clock(void);
-void
-  *la_calloc(size_t, size_t),
-  la_free(void*),
-  la_putc(int, la_io),
-  la_getc(la_io),
-  la_puts(const char*, la_io),
-  la_ungetc(int, la_io);
-
+struct FILE;
+uintptr_t clock(void);
+void *malloc(size_t, size_t), free(void*),
+  putc(int, FILE*), getc(FILE*), ungetc(int, FILE*),
+  fputs(const char*, FILE*);
+extern ob stdin, stdout, stderr;
 #endif
 
-// thanks !!
-typedef intptr_t ob, la_ob;
-typedef struct la_carrier *la;
-typedef struct la_fn *la_fn, *la_mo, *fn, *mo; // procedures
+typedef FILE *la_io;
 
 typedef struct sf { // stack frame
   ob *clos; // closure pointer FIXME
@@ -52,28 +51,29 @@ typedef struct sf { // stack frame
   size_t argc; // argument count
   ob argv[]; } *sf;
 
-typedef enum la_status vm(la, ob, mo, ob*, ob*, sf); // interpreter function type
-struct la_fn { vm *ap; };
+typedef enum status vm(la, ob, mo, ob*, ob*, sf); // interpreter function type
+struct M { vm *ap; };
 // every dynamically allocated thread ends
 // with a footer holding a pointer to its head
-typedef struct tl {
-  void *null; // it's always 0
-  struct la_fn *head, end[];
-} *tag, *la_fn_tag;
+typedef struct tl { struct M *null, *head, end[]; } *tag, *la_fn_tag;
 
 // static method table for built-in types
 typedef const struct mtbl {
   vm *does;
-  bool (*equi)(la, ob, ob);
-  intptr_t (*hash)(la, ob);
-  void (*emit)(la, la_io, ob);
-  ob (*evac)(la, ob, ob*, ob*);
+  u1 (*equi)(la, I, I);
+  I (*hash)(la, I);
+  u0 (*emit)(la, la_io, I);
+  I (*evac)(la, I, I*, I*);
 //  void (*walk)(la, ob, ob*, ob*);
 } *mtbl;
 
-struct hd { vm *disp; mtbl mtbl; };
+struct hd {
+  vm *disp;
+  mtbl mtbl; };
 
-typedef struct two { struct hd h; ob a, b; } *two;
+typedef struct two {
+  struct hd h;
+  ob a, b; } *two;
 
 typedef struct str { // strings
   struct hd h;
@@ -83,60 +83,59 @@ typedef struct str { // strings
 typedef struct sym {
   struct hd h;
   str nom;
-  intptr_t code;
+  I code;
   // symbols are interned into a binary search tree.
   // anonymous symbols (nom == 0) don't have branches.
   struct sym *l, *r; } *sym;
 
 typedef struct tbl_e {
-  ob key, val;
+  I key, val;
   struct tbl_e *next; } *tbl_e;
 
 typedef struct tbl { // hash tables
   struct hd h;
-  size_t len, cap;
+  U len, cap;
   tbl_e *tab; } *tbl;
 
 // linked list for gc protection
-typedef struct keep { void **addr; struct keep *next; } *keep;
+struct ll {
+  ob *addr;
+  struct ll *next; };
 
-struct la_lexicon {
-  sym define, cond, lambda, quote, begin, splat, eval; };
+struct lex {
+  sym define, cond, lambda, quote, begin,
+      splat, eval; };
 
-struct la_carrier {
+struct carrier {
   // registers -- in CPU registers when VM is running
-  mo ip;
-  sf fp;
-  ob xp, *hp, *sp;
+  mo ip; sf fp; ob xp, *hp, *sp;
 
   // global variables & state
   tbl topl, macros; // global scope
-  sym syms; // symbol table // TODO use a hash
-  struct la_lexicon lex;
+  sym syms; // symbol table
+  struct lex lex;
   intptr_t rand;
 
   // memory manager state
   size_t len;
   ob *pool;
-  keep safe;
-  // TODO list of finalizers
-  union { la_clock_t t0; ob *cp; } run; // TODO copy pointer for cheney's algorithm
-};
+  struct ll *safe;
+  union {
+    uintptr_t t0;
+    ob *cp; // TODO copy pointer for cheney's algorithm
+  } run; };
 
 // FIXME develop towards public API
 void
-  la_tx(la, la_io, ob), // write a value
-  la_reset(la), // reset interpreter state
-  la_perror(la, la_status),
-  la_putsn(const char*, size_t, la_io);
+  *bump(struct carrier*, size_t),
+  *cells(struct carrier*, size_t),
+  la_tx(struct carrier*, FILE*, ob), // write a value
+  la_reset(struct carrier*), // reset interpreter state
+  la_perror(struct carrier*, enum status),
+  la_putsn(const char*, size_t, FILE*);
 
-enum la_status
-  la_call(la, la_fn, size_t),
-  la_go(la),
-  la_ap(la, la_fn, ob),
+enum status
   la_ev_x(la, la_ob),
-  la_ev_fs(la, la_io),
-  la_ev_f(la, la_io),
   la_rx(la, la_io);
 
 vm disp; // dispatch instruction for data threads; also used as a sentinel
@@ -146,13 +145,17 @@ ob
   cp(la, ob, ob*, ob*), // copy something; used by type-specific copying functions
   hnom(la_carrier, la_fn); // get function name FIXME hide this
 
-la_fn_tag motag(la_fn); // get tag at end
-mo mkmo(la_carrier, size_t), // allocate a thread
-   ini_mo(void *, size_t);
-sym symof(la, str);
-str ini_str(void *, size_t);
+#define motag mo_tl
+#define mkmo mo_n
+#define ini_mo mo_ini
+#define ini_two two_ini
+#define ini_str str_ini
+mo mo_n(struct carrier*, size_t), // allocate a thread
+   mo_ini(void *, size_t);
+sym symof(struct carrier*, str);
+str str_ini(u0*, size_t);
 two pair(la, ob, ob), // pair constructor
-    ini_two(void *, ob, ob);
+    two_ini(u0*, ob, ob);
 
 tbl mktbl(la), tbl_set(la, tbl, ob, ob);
 
@@ -167,7 +170,8 @@ intptr_t
   hash(la, ob), // hash function for tables
   lcprng(intptr_t); // linear congruential pseudorandom number generator
 
-extern const struct mtbl mtbl_two, mtbl_str, mtbl_tbl, mtbl_sym;
+extern const struct mtbl
+  mtbl_two, mtbl_str, mtbl_tbl, mtbl_sym;
 
 // just a big random number!
 #define mix ((int64_t)2708237354241864315)
@@ -181,8 +185,7 @@ extern const struct mtbl mtbl_two, mtbl_str, mtbl_tbl, mtbl_sym;
 #define T putnum(-1)
 
 #define Avail (v->sp - v->hp)
-#define mm(r) \
-  ((v->safe = &((struct keep){(void**)(r), v->safe})))
+#define mm(r) ((v->safe = &((struct ll){(ob*)(r), v->safe})))
 #define um (v->safe = v->safe->next)
 #define with(y,...) (mm(&(y)), (__VA_ARGS__), um)
 
@@ -200,6 +203,10 @@ extern const struct mtbl mtbl_two, mtbl_str, mtbl_tbl, mtbl_sym;
 
 #define Inline inline __attribute__((always_inline))
 #define NoInline __attribute__((noinline))
+
+static Inline struct tl *mo_tl(mo k) {
+  while (G(k)) k = F(k);
+  return (struct tl*) k; }
 
 static Inline bool nilp(ob _) { return _ == nil; }
 static Inline bool nump(ob _) { return _ & 1; }
@@ -223,12 +230,6 @@ static Inline bool livep(la v, ob x) {
 
 static Inline intptr_t ror(intptr_t x, size_t n) {
   return (x<<((8*sizeof(intptr_t))-n))|(x>>n); }
-
-_Static_assert(-1 == -1 >> 1, "signed >>");
-_Static_assert(sizeof(size_t) == sizeof(void*),
-  "size_t size == data pointer size");
-_Static_assert(sizeof(vm*) == sizeof(void*),
-  "function pointer size == data pointer size");
 
 // these are vm functions used by C but not lisp.
 #define cfns(_) _(gc) _(xdom) _(xoom) _(xary)
@@ -340,16 +341,12 @@ i_primitives(ninl)
 // sp is at least hp so this is a safe check for 1 word
 #define Have1() if (sp == hp) return (v->xp = 1, ApC(gc, xp))
 
-#define Vm(n) enum la_status n(la v, ob xp, mo ip, ob *hp, ob *sp, sf fp)
+#define Vm(n) enum status n(la v, ob xp, mo ip, ob *hp, ob *sp, sf fp)
 #define Gc(n) ob n(la v, ob x, ob *pool0, ob *top0)
 
-// unchecked allocator -- make sure there's enough memory!
-static Inline void *bump(la v, size_t n) {
-  void *x = v->hp;
-  return v->hp += n, x; }
-
-static Inline void *cells(la v, size_t n) {
-  return Avail >= n || please(v, n) ? bump(v, n) : 0; }
+#define I Inline
+#define N NoInline
+#define S static
 
 static Inline void *cpyw_r2l(void *dst, const void *src, size_t n) {
   while (n--) ((void**)dst)[n] = ((void**)src)[n];
@@ -360,6 +357,8 @@ static Inline void *cpyw_l2r(void *dst, const void *src, size_t n) {
     ((void**)dst)[i] = ((void**)src)[i];
   return dst; }
 
-static Inline void *setw(void *dst, intptr_t w, size_t n) {
-  while (n--) ((intptr_t*)dst)[n] = w;
+static Inline void *setw(void *_dst, intptr_t w, size_t n) {
+  intptr_t *dst = _dst;
+  while (n) dst[--n] = w;
   return dst; }
+#endif

@@ -1,7 +1,7 @@
 #include "la.h"
 #include <string.h>
 
-str ini_str(void *_, size_t len) {
+str str_ini(void *_, size_t len) {
   str s = _;
   s->h.disp = disp, s->h.mtbl = &mtbl_str;
   s->len = len;
@@ -30,7 +30,7 @@ Vm(scat_f) {
     sum += ((str)x)->len; }
   size_t words = wsizeof(struct str) + b2w(sum);
   Have(words);
-  str d = ini_str(hp, sum);
+  str d = str_ini(hp, sum);
   hp += words;
   for (str x; i--;
     x = (str) fp->argv[i],
@@ -53,7 +53,7 @@ Vm(ssub_f) {
   size_t len = ub - lb,
          words = wsizeof(struct str) + b2w(len);
   Have(words);
-  str dst = ini_str(hp, len);
+  str dst = str_ini(hp, len);
   hp += words;
   memcpy(dst->text, src->text + lb, len);
   return ApC(ret, (ob) dst); }
@@ -62,14 +62,14 @@ Vm(str_f) {
   size_t len = fp->argc,
          words = wsizeof(struct str) + b2w(len);
   Have(words);
-  str s = ini_str(hp, len);
+  str s = str_ini(hp, len);
   hp += words;
   while (len--) s->text[len] = getnum(fp->argv[len]);
   return ApC(ret, (ob) s); }
 
 static Vm(ap_str) {
   str s = (str) ip;
-  la_putsn(s->text, s->len, la_stdout);
+  la_putsn(s->text, s->len, stdout);
   return ApC(ret, (ob) ip); }
 
 static intptr_t hx_str(la v, ob _) {
@@ -86,16 +86,16 @@ static intptr_t hx_str(la v, ob _) {
 static Inline bool escapep(char c) {
   return c == '\\' || c == '"'; }
 
-static void tx_str(la v, la_io o, ob _) {
+static void tx_str(struct carrier *v, FILE *o, ob _) {
   str s = (str) _;
   size_t len = s->len;
   const char *text = s->text;
-  la_putc('"', o);
+  putc('"', o);
   while (len--) {
     char c = *text++;
-    if (escapep(c)) la_putc('\\', o);
-    la_putc(c, o); }
-  la_putc('"', o); }
+    if (escapep(c)) putc('\\', o);
+    putc(c, o); }
+  putc('"', o); }
 
 static Gc(cp_str) {
   str src = (str) x;
@@ -103,7 +103,7 @@ static Gc(cp_str) {
     memcpy(bump(v, wsizeof(struct str) + b2w(src->len)),
       src, sizeof(struct str) + src->len)); }
 
-static bool eq_str(la v, ob x, ob y) {
+static bool eq_str(struct carrier *v, ob x, ob y) {
   if (!strp(y)) return false;
   str a = (str) x, b = (str) y;
   return a->len == b->len &&

@@ -21,21 +21,16 @@
 //   sentinel (but then the C compiler would need to
 //   align functions)
 
-la_fn ini_mo(void *_, size_t len) {
+mo mo_ini(void *_, size_t len) {
   la_fn k = _;
   la_fn_tag t = (la_fn_tag) (k + len);
   t->null = NULL, t->head = k;
   return k; }
 
 // allocate a thread
-la_fn mkmo(la_carrier v, size_t n) {
+mo mo_n(la_carrier v, size_t n) {
   la_fn k = cells(v, n + wsizeof(struct tl));
   return k ? ini_mo(k, n) : k; }
-
-// get the tag at the end of a function
-la_fn_tag motag(la_fn k) {
-  while (G(k)) k = F(k);
-  return (la_fn_tag) k; }
 
 // instructions for the internal compiler
 // initialize a function

@@ -8,23 +8,23 @@ static bool
   inst(la, const char*, vm*),
   la_ini_(la);
 
-enum la_status la_ini(la_carrier v) {
+enum status la_ini(la_carrier v) {
   const size_t len = 1 << 10; // power of 2
-  memset(v, 0, sizeof(struct la_carrier));
+  memset(v, 0, sizeof(struct carrier));
 
-  ob *pool = la_malloc(len * sizeof(ob));
+  ob *pool = malloc(len * sizeof(ob));
   if (!pool) return LA_XOOM;
 
   v->len = len;
   v->hp = v->pool = pool;
   v->fp = (sf) (v->sp = pool + len);
-  v->rand = v->run.t0 = la_clock();
+  v->rand = v->run.t0 = clock();
   return la_ini_(v) ? LA_OK : (la_fin(v),  LA_XOOM); }
 
-void la_fin(la v) {
-  if (v) la_free(v->pool), v->pool = NULL; }
+void la_fin(struct carrier *v) {
+  if (v) free(v->pool), v->pool = NULL; }
 
-void la_reset(la_carrier v) {
+void la_reset(struct carrier *v) {
   v->sp = v->pool + v->len;
   v->fp = (sf) v->sp;
   v->ip = 0;
@@ -33,7 +33,7 @@ void la_reset(la_carrier v) {
 static str strof(la v, const char* c) {
   size_t bs = strlen(c);
   str o = cells(v, wsizeof(struct str) + b2w(bs));
-  if (o) memcpy(o->text, c, bs), ini_str(o, bs);
+  if (o) memcpy(o->text, c, bs), str_ini(o, bs);
   return o; }
 
 // initialization helpers

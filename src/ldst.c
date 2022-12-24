@@ -120,7 +120,7 @@ Vm(varg) {
   two t = (two) hp;
   hp += wsizeof(struct two) * vdic;
   for (size_t i = vdic; i--;
-    ini_two(t + i, fp->argv[reqd + i], (ob) (t + i + 1)));
+    two_ini(t + i, fp->argv[reqd + i], (ob) (t + i + 1)));
   t[vdic-1].b = nil;
   fp->argv[reqd] = (ob) t;
   return ApN(2, xp); }

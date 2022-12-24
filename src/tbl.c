@@ -199,7 +199,7 @@ static ob tbl_keys(la v) {
   ob r = nil;
   tbl_e *tab = ((tbl) v->xp)->tab;
   while (len) for (tbl_e e = *tab++; e;
-    ini_two(ks, e->key, r),
+    two_ini(ks, e->key, r),
     r = (ob) ks++,
     e = e->next,
     len--);

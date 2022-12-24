@@ -1,8 +1,8 @@
 #ifndef _lisa_h
 #define _lisa_h
 
-typedef struct la_carrier *la_carrier;
-typedef enum la_status {
+struct carrier;
+enum status {
   LA_EOF = -1,
   LA_OK,
   LA_XDOM,
@@ -10,10 +10,9 @@ typedef enum la_status {
   LA_XNOM,
   LA_XSYN,
   LA_XSYS,
-  LA_XOOM,
-} la_status;
+  LA_XOOM };
 
-enum la_status la_ini(struct la_carrier *);
-void la_fin(struct la_carrier *);
+enum status la_ini(struct carrier*);
+void la_fin(struct carrier*);
 
 #endif

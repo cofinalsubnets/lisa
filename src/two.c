@@ -1,6 +1,6 @@
 #include "la.h"
 
-two ini_two(void *_, ob a, ob b) {
+two two_ini(void *_, ob a, ob b) {
   two w = _;
   w->h.disp = disp, w->h.mtbl = &mtbl_two;
   w->a = a, w->b = b;
@@ -14,34 +14,34 @@ static NoInline two pair_gc(la v, ob a, ob b) {
 
 NoInline two pair(la v, ob a, ob b) {
   return Avail >= wsizeof(struct two) ?
-    ini_two(bump(v, wsizeof(struct two)), a, b) :
+    two_ini(bump(v, wsizeof(struct two)), a, b) :
     pair_gc(v, a, b); }
 
 // length of list
 size_t llen(ob l) {
-  size_t i = 0;
-  while (twop(l)) l = B(l), i++;
-  return i; }
+  for (size_t i = 0;;)
+    if (twop(l)) l = B(l), i++;
+    else return i; }
 
 Vm(car) { return ApN(1, A(xp)); }
 Vm(cdr) { return ApN(1, B(xp)); }
 
 Vm(cons) {
   Have(wsizeof(struct two));
-  xp = (ob) ini_two(hp, xp, *sp++);
+  xp = (ob) two_ini(hp, xp, *sp++);
   hp += wsizeof(struct two);
   return ApN(1, xp); }
 
 Vm(car_f) {
-  if (fp->argc) {
-    xp = fp->argv[0];
-    xp = twop(xp) ? A(xp) : xp; }
+  if (fp->argc)
+    xp = fp->argv[0],
+    xp = twop(xp) ? A(xp) : xp;
   return ApC(ret, xp); }
 
 Vm(cdr_f) {
-  if (fp->argc) {
-    xp = fp->argv[0];
-    xp = twop(xp) ? B(xp) : nil; }
+  if (fp->argc)
+    xp = fp->argv[0],
+    xp = twop(xp) ? B(xp) : nil;
   return ApC(ret, xp); }
 
 Vm(cons_f) {
@@ -52,7 +52,7 @@ Vm(cons_f) {
     hp += n;
     xp = fp->argv[fp->argc-1];
     for (size_t i = fp->argc - 1; i--;
-      xp = (ob) ini_two(w+i, fp->argv[i], xp)); }
+      xp = (ob) two_ini(w+i, fp->argv[i], xp)); }
   return ApC(ret, xp); }
 
 static Vm(ap_two) { return
@@ -62,17 +62,17 @@ static Gc(cp_two) {
   two src = (two) x,
       dst = bump(v, wsizeof(struct two));
   src->h.disp = (vm*) dst;
-  return (ob) ini_two(dst,
+  return (ob) two_ini(dst,
     cp(v, src->a, pool0, top0),
     cp(v, src->b, pool0, top0)); }
 
 static void tx_two(la v, la_io o, ob x) {
-  la_putc('(', o);
+  putc('(', o);
   for (;;) {
     la_tx(v, o, A(x));
     if (!twop(x = B(x))) break;
-    la_putc(' ', o); }
-  la_putc(')', o); }
+    putc(' ', o); }
+  putc(')', o); }
 
 static intptr_t hx_two(la v, ob x) {
   intptr_t hc = hash(v, A(x)) * hash(v, B(x));

@@ -71,12 +71,9 @@ Vm(jump) { return ApY(GF(ip), xp); }
 // combined test/branch instructions
 Br(br1, nilp(xp), FF, GF)
 Br(br0, nilp(xp), GF, FF)
-
 Br(bre, eql(v, xp, *sp++), GF, FF)
 Br(brn, eql(v, xp, *sp++), FF, GF)
-
 Br(brl,   *sp++ <  xp, GF, FF)
 Br(brle,  *sp++ <= xp, GF, FF)
 Br(brg,   *sp++ >  xp, GF, FF)
 Br(brge,  *sp++ >= xp, GF, FF)
-// brgteq2 is brlt

@@ -73,7 +73,7 @@ static intptr_t hx_sym(la v, ob _) { return ((sym) _)->code; }
 
 static void tx_sym(la v, la_io o, ob _) {
   str s = ((sym) _)->nom;
-  s ? la_putsn(s->text, s->len, o) : la_puts("#sym", o); }
+  s ? la_putsn(s->text, s->len, o) : fputs("#sym", o); }
 
 static Vm(ap_nop) { return ApC(ret, (ob) ip); }
 

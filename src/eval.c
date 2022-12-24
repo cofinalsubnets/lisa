@@ -8,35 +8,30 @@ Vm(ev_f) {
   mo y; CallOut(y = ana(v, fp->argv[0]));
   return y ? ApY(y, xp) : ApC(xoom, xp); }
 
-enum la_status la_go(la v) {
+
+static enum status la_go(la v) {
   mo ip; sf fp; ob xp, *hp, *sp;
   return Unpack(), ApY(ip, xp); }
 
-enum la_status la_ap(la v, mo f, ob x) {
-  struct la_fn prim_ap[] = {{ap_f}, {0}};
+// return to C
+static Vm(yield) { return Pack(), LA_OK; }
+static enum status la_call(la v, mo f, size_t n) {
+  struct M go[] = { {call}, {(vm*) putnum(n)}, {yield} };
+  v->ip = go;
+  v->xp = (ob) f;
+  return la_go(v); }
+
+
+static enum status la_ap(la v, mo f, ob x) {
+  struct M prim_ap[] = {{ap_f}, {0}};
   return !pushs(v, f, x, NULL) ? LA_XOOM :
     la_call(v, prim_ap, 2); }
 
-enum la_status la_ev_fs(la_carrier v, la_io in) {
-  enum la_status r;
-  do r = la_ev_f(v, in); while (r == LA_OK);
-  return r == LA_EOF ? LA_OK : r; }
-
-// return to C
-static Vm(yield) { return Pack(), LA_OK; }
-enum la_status la_call(la v, mo f, size_t n) {
-  struct la_fn go[] = { {call}, {(vm*) putnum(n)}, {yield} };
-  return v->ip = go, v->xp = (ob) f, la_go(v); }
-
-enum la_status la_ev_x(la v, la_ob x) {
+enum status la_ev_x(la v, la_ob x) {
   if (!pushs(v, x, NULL)) return LA_XOOM;
-  struct la_fn prim_ev[] = {{ev_f}, {0}};
+  struct M prim_ev[] = {{ev_f}, {0}};
   mo ev = (mo) tbl_get(v, v->topl, (ob) v->lex.eval, (ob) prim_ev);
   return la_call(v, ev, 1); }
-
-enum la_status la_ev_f(la v, la_io in) {
-  enum la_status s = la_rx(v, in);
-  return s != LA_OK ? s : la_ev_x(v, v->xp); }
 
 ////
 ///  the thread compiler
@@ -52,9 +47,11 @@ typedef struct env {
 // if a function is not variadic its arity signature is
 // n = number of required arguments; otherwise it is -n-1
 
+typedef mo co(la, env*, size_t);
+
 static mo
-  r_pb1(la, env*, size_t),
-  r_pb2(la, env*, size_t),
+  r_pull_i(la, env*, size_t),
+  r_pull_ix(la, env*, size_t),
   r_co_ini(la, env*, size_t),
   r_co_x(la, env*, size_t),
   r_co_def_bind(la, env*, size_t),
@@ -69,26 +66,26 @@ static mo
   co_two(la, env*, size_t, ob) NoInline,
   co_i_x(la, env*, size_t, vm*, ob) NoInline;
 
-static Inline mo co_pull(la v, env *e, size_t m) { return
+static Inline mo pull_m(la v, env *e, size_t m) { return
   ((mo (*)(la, env*, size_t)) (*v->sp++))(v, e, m); }
 
 static mo ana(la v, ob x) {
-  bool ok = pushs(v, r_co_x, x, r_pb1, ret, r_co_ini, NULL);
-  return ok ? co_pull(v, 0, 0) : 0; }
+  bool ok = pushs(v, r_co_x, x, r_pull_i, ret, r_co_ini, NULL);
+  return ok ? pull_m(v, 0, 0) : 0; }
 
 #define Co(nom,...) static mo nom(la v, env *e, size_t m, ##__VA_ARGS__)
 
 static bool scan(la, env*, ob) NoInline;
 
 // apply instruction pullbacks
-static Inline mo pb1(vm *i, mo k) { return k--, G(k) = i, k; }
-static Inline mo pb2(vm *i, ob x, mo k) { return pb1(i, pb1((vm*) x, k)); }
+static Inline mo pull_i(vm *i, mo k) { return k--, G(k) = i, k; }
+static Inline mo pull_ix(vm *i, ob x, mo k) { return pull_i(i, pull_i((vm*) x, k)); }
 
 // supplemental list functions
 //
 
 // index of item in list (-1 if absent)
-static intptr_t lidx(ob l, ob x) {
+static NoInline intptr_t lidx(ob l, ob x) {
   for (intptr_t i = 0; twop(l); l = B(l), i++)
     if (x == A(l)) return i;
   return -1; }
@@ -161,16 +158,16 @@ static NoInline ob linitp(la v, ob x, ob *d) {
 
 static Inline ob comp_body(la v, env *e, ob x) {
   intptr_t i;
-  if (!pushs(v, r_co_x, x, r_pb1, ret, r_co_ini, NULL) ||
+  if (!pushs(v, r_co_x, x, r_pull_i, ret, r_co_ini, NULL) ||
       !scan(v, e, v->sp[1]) ||
-      !(x = (ob) co_pull(v, e, 4)))
+      !(x = (ob) pull_m(v, e, 4)))
     return 0;
   x = !(i = llen((*e)->loc)) ? x :
-   (ob) pb2(setloc, putnum(i), (mo) x);
+   (ob) pull_ix(setloc, putnum(i), (mo) x);
   x = (i = getnum((*e)->asig)) > 0 ?
-        (ob) pb2(arity, putnum(i), (mo) x) :
+        (ob) pull_ix(arity, putnum(i), (mo) x) :
       i < 0 ?
-        (ob) pb2(varg, putnum(-i-1), (mo) x) :
+        (ob) pull_ix(varg, putnum(-i-1), (mo) x) :
       x;
   motag((mo) x)->head = (mo) x;
   return !twop((*e)->clo) ? x : (ob) pair(v, (*e)->clo, x); }
@@ -194,24 +191,24 @@ static ob co_fn_clo(la v, env *e, ob vars, ob code) {
   size_t i = llen(vars);
   mm(&vars), mm(&code);
 
-  vars = pushs(v, r_pb2, take, putnum(i), r_co_ini, NULL) ? vars : 0;
+  vars = pushs(v, r_pull_ix, take, putnum(i), r_co_ini, NULL) ? vars : 0;
   while (vars && i--) vars =
-    pushs(v, r_co_x, A(vars), r_pb1, push, NULL) ? B(vars) : 0;
-  vars = vars ? (ob) co_pull(v, e, 0) : vars;
+    pushs(v, r_co_x, A(vars), r_pull_i, push, NULL) ? B(vars) : 0;
+  vars = vars ? (ob) pull_m(v, e, 0) : vars;
   vars = vars ? (ob) pair(v, code, vars) : vars;
   return um, um, vars; }
 
 Co(co_fn_enclose, ob x, mo k) { return
   with(k, x = co_fn_clo(v, e, A(x), B(x))),
   // FIXME no locals => no need to defer closure construction
-  x ? pb2(e && homp((*e)->loc) ? encl1 : encl0, x, k) : 0; }
+  x ? pull_ix(e && homp((*e)->loc) ? encl1 : encl0, x, k) : 0; }
 
 Co(co_fn, ob x) {
   ob nom = *v->sp == (ob) r_co_def_bind ? v->sp[1] : nil;
-  mo k; with(nom, with(x, k = co_pull(v, e, m+2)));
+  mo k; with(nom, with(x, k = pull_m(v, e, m+2)));
   if (!k) return 0;
   with(k, x = co_fn_ltu(v, e, nom, x));
-  return !x ? 0 : G(x) == disp ? co_fn_enclose(v, e, m, x, k) : pb2(imm, x, k); }
+  return !x ? 0 : G(x) == disp ? co_fn_enclose(v, e, m, x, k) : pull_ix(imm, x, k); }
 
 Co(r_co_def_bind) {
   ob _ = *v->sp++;
@@ -243,7 +240,7 @@ Co(co_def, ob x) {
   x = llen(B(x)) & 1 ?
     co_def_sugar(v, (two) x) :
     co_def_r(v, e, B(x));
-  return x ? co_pull(v, e, m) : 0; }
+  return x ? pull_m(v, e, m) : 0; }
 
 // the following functions are "post" or "pre"
 // the antecedent/consequent in the sense of
@@ -253,30 +250,30 @@ Co(co_def, ob x) {
 // before generating anything, store the
 // exit address in stack 2
 Co(co_if_pre) {
-  ob x = (ob) co_pull(v, e, m);
+  ob x = (ob) pull_m(v, e, m);
   x = x ? (ob) pair(v, x, (*e)->s2) : x;
   return x ? (mo) A((*e)->s2 = x) : 0; }
 
 // before generating a branch emit a jump to
 // the top of stack 2
 Co(co_if_pre_con) {
-  mo k, x = co_pull(v, e, m + 2);
+  mo k, x = pull_m(v, e, m + 2);
   return !x ? 0 : G(k = (mo) A((*e)->s2)) == ret ?
-    pb1(ret, x) : pb2(jump, (ob) k, x); }
+    pull_i(ret, x) : pull_ix(jump, (ob) k, x); }
 
 // after generating a branch store its address
 // in stack 1
 Co(co_if_post_con) {
-  ob x = (ob) co_pull(v, e, m);
+  ob x = (ob) pull_m(v, e, m);
   x = x ? (ob) pair(v, x, (*e)->s1) : x;
   return x ? (mo) A((*e)->s1 = x) : 0; }
 
 // before generating an antecedent emit a branch to
 // the top of stack 1
 Co(co_if_pre_ant) {
-  mo x = co_pull(v, e, m+2);
+  mo x = pull_m(v, e, m + 2);
   if (!x) return 0;
-  x = pb2(br1, A((*e)->s1), x);
+  x = pull_ix(br1, A((*e)->s1), x);
   (*e)->s1 = B((*e)->s1);
   return x; }
 
@@ -288,7 +285,7 @@ static bool co_if_loop(la v, env *e, ob x) {
     pushs(v, r_co_x, A(x), co_if_pre_con, NULL);
   with(x,
     _ = pushs(v, co_if_post_con, r_co_x,
-             AB(x), co_if_pre_con, NULL),
+              AB(x), co_if_pre_con, NULL),
     _ = _ ? co_if_loop(v, e, BB(x)) : _);
   return _ ? pushs(v, r_co_x, A(x), co_if_pre_ant, NULL) : 0; }
 
@@ -297,14 +294,14 @@ Co(co_if, ob x) {
   with(x, _ = pushs(v, co_if_pre, NULL));
   _ = _ && co_if_loop(v, e, x);
   if (!_) return 0;
-  mo pf = co_pull(v, e, m);
+  mo pf = pull_m(v, e, m);
   if (pf) (*e)->s2 = B((*e)->s2);
   return pf; }
 
 Co(r_co_ap_call) {
   ob ary = *v->sp++;
-  mo k = co_pull(v, e, m + 2);
-  return k ? pb2(G(k) == ret ? rec : call, ary, k) : 0; }
+  mo k = pull_m(v, e, m + 2);
+  return k ? pull_ix(G(k) == ret ? rec : call, ary, k) : 0; }
 
 enum where { Arg, Loc, Clo, Here, Wait };
 
@@ -325,8 +322,8 @@ Co(co_sym, ob x) {
   if (A(q) == Here) return co_i_x(v, e, m, imm, B(q));
   if (A(q) == Wait) return
     (x = (ob) pair(v, B(q), x)) &&
-    (with(x, q = (ob) co_pull(v, e, m+2)), q) ?
-      pb2(late, x, (mo) q) : 0;
+    (with(x, q = (ob) pull_m(v, e, m + 2)), q) ?
+      pull_ix(late, x, (mo) q) : 0;
 
   if (B(q) == (ob) *e) {
     ob idx = putnum(lidx(((ob*)(*e))[A(q)], x));
@@ -349,14 +346,14 @@ Co(co_ap, ob f, ob args) {
   mm(&args);
   if (!pushs(v,
         r_co_x, f,
-        r_pb1, idmo,
+        r_pull_i, idmo,
         r_co_ap_call, putnum(llen(args)),
         NULL))
     return um, NULL;
   for (; twop(args); args = B(args))
-    if (!pushs(v, r_co_x, A(args), r_pb1, push, NULL))
+    if (!pushs(v, r_co_x, A(args), r_pull_i, push, NULL))
       return um, NULL;
-  return um, co_pull(v, e, m); }
+  return um, pull_m(v, e, m); }
 
 static NoInline bool seq_mo_loop(la v, env *e, ob x) {
   if (!twop(x)) return true;
@@ -366,10 +363,10 @@ static NoInline bool seq_mo_loop(la v, env *e, ob x) {
 
 Co(co_seq, ob x) { return
   x = twop(x) ? x : (ob) pair(v, x, nil),
-  x && seq_mo_loop(v, e, x) ? co_pull(v, e, m) : 0; }
+  x && seq_mo_loop(v, e, x) ? pull_m(v, e, m) : 0; }
 
 Co(co_mac, ob mac, ob x) {
-  enum la_status s;
+  enum status s;
   ob xp = v->xp;
   mo ip = v->ip;
   with(xp, with(ip, s = la_ap(v, (mo) mac, x)));
@@ -387,19 +384,20 @@ Co(co_two, ob x) {
     if (y == v->lex.lambda) return co_fn(v, e, m, B(x));
     if (y == v->lex.define) return co_def(v, e, m, x);
     if (y == v->lex.begin) return co_seq(v, e, m, B(x)); }
-  if ((a = tbl_get(v, v->macros, a, 0))) return co_mac(v, e, m, a, B(x));
+  if ((a = tbl_get(v, v->macros, a, 0)))
+    return co_mac(v, e, m, a, B(x));
   return co_ap(v, e, m, A(x), B(x)); }
 
-Co(r_pb1) {
+Co(r_pull_i) {
   vm *i = (vm*) *v->sp++;
-  mo k = co_pull(v, e, m + 1);
-  return k ? pb1(i, k): 0; }
+  mo k = pull_m(v, e, m + 1);
+  return k ? pull_i(i, k): 0; }
 
 static mo co_i_x(la v, env *e, size_t m, vm *i, ob x) {
-  mo k; with(x, k = co_pull(v, e, m + 2));
-  return k ? pb2(i, x, k) : 0; }
+  mo k; with(x, k = pull_m(v, e, m + 2));
+  return k ? pull_ix(i, x, k) : 0; }
 
-Co(r_pb2) {
+Co(r_pull_ix) {
   vm *i = (vm*) *v->sp++;
   ob x = *v->sp++;
   return co_i_x(v, e, m, i, x); }

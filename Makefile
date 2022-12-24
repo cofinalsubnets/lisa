@@ -1,6 +1,3 @@
-# for consistent sorting
-LC_COLLATE=C
-
 nom=lisa
 suff=la
 
@@ -9,70 +6,56 @@ test_dir=test
 doc_dir=doc
 lib_dir=lib
 
-bin_release=$(build_dir)/$(nom)
-bin_debug=$(build_dir)/$(nom).dbg
+debug_build=build/$(nom).dbg
 
 boot=$(lib_dir)/boot.$(suff)
 lib=$(boot)
 
+
 # installation
 DESTDIR ?= $(HOME)
 PREFIX ?= .local
-dest_dir=$(DESTDIR)/$(PREFIX)
 
-testcmd=$(bin_debug) -_ $(boot) $(test_dir)/*.$(suff)
+run_tests=$(debug_build) -_ $(boot) $(test_dir)/*.$(suff)
 
-test: $(bin_debug)
-	/usr/bin/env TIMEFORMAT="in %Rs" bash -c "time $(testcmd)"
+test: build/lisa.dbg
+	make -C test
 
-# run the tests a lot of times to try and catch nondeterministic bugs :(
-test-lots: $(bin_debug)
-	for n in {1..2048}; do $(testcmd) || exit 1; done
+test-lots:
+	make -C test lots
 
-# build
-# tested with gcc & clang
-CFLAGS ?=\
-	-std=c99 -g -O2 -flto -fpic -Wall\
- 	-Wstrict-prototypes -Wno-shift-negative-value\
-	-fno-stack-protector
+build/%:
+	make -C src ../$@
 
-src_h=$(wildcard src/*.h)
-src_c=$(wildcard src/*.c)
-obj=$(addprefix $(build_dir)/,$(notdir $(src_c:.c=.o)))
+dest_dir=$(DESTDIR)/$(PREFIX)/
+install_bin=\
+	$(dest_dir)bin/$(nom)
+install_lib=\
+	$(addprefix $(dest_dir)lib/$(nom)/,$(notdir $(lib)))\
+install_doc=\
+	$(dest_dir)share/man/man1/$(nom).1
 
-$(build_dir)/%.o: src/%.c $(src_h) Makefile
-	$(CC) -c -o $@ $(CFLAGS) $(CPPFLAGS) $<
-
-$(bin_debug): $(obj)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
-
-$(bin_release): $(bin_debug)
-	strip --strip-unneeded -o $@ $^
-
-install_files=\
-	$(dest_dir)/bin/$(nom)\
-	$(addprefix $(dest_dir)/lib/$(nom)/,$(notdir $(lib)))\
-	$(dest_dir)/share/man/man1/$(nom).1
-
+install_files=$(install_bin) $(install_lib) $(install_doc)
 install: $(install_files)
 uninstall:
 	rm -f $(install_files)
 
-$(dest_dir)/bin/%: $(build_dir)/%
+$(dest_dir)bin/%: build/%
 	install -D $^ $@
-$(dest_dir)/share/man/man1/%: $(doc_dir)/%
+$(dest_dir)share/man/man1/%: $(doc_dir)/%
 	install -D $^ $@
-$(dest_dir)/lib/$(nom)/%: $(lib_dir)/%
+$(dest_dir)lib/$(nom)/%: lib/%
 	install -D $^ $@
 
 # vim stuff
-vim_dir=vim
-VIMPREFIX ?= $(HOME)/.vim
 vim_files=$(addprefix $(VIMPREFIX)/,syntax/$(nom).vim ftdetect/$(nom).vim)
+
 install-vim: $(vim_files)
 uninstall-vim:
 	rm -f $(vim_files)
-$(VIMPREFIX)/%: $(vim_dir)/%
+
+VIMPREFIX ?= $(HOME)/.vim
+$(VIMPREFIX)/%: vim/%
 	install -D $^ $@
 
 # other tasks
@@ -80,23 +63,23 @@ $(VIMPREFIX)/%: $(vim_dir)/%
 clean:
 	rm -f `git check-ignore * */*`
 
-repl: $(bin_debug)
-	which rlwrap && rlwrap $(testcmd) -i || $(testcmd) -i
+repl: build/$(nom).dbg
+	which rlwrap && rlwrap $(run_tests) -i || $(run_tests) -i
 
 # profiling on linux with perf
 perf: perf.data
 	perf report
-perf.data: $(bin_debug) $(lib)
-	perf record $(testcmd)
+perf.data: $(debug_build) $(lib)
+	perf record $(run_tests)
 
 # valgrind detects some memory errors
-valg: $(bin_debug)
-	valgrind --error-exitcode=1 $(testcmd)
+valg: build/$(nom).dbg
+	valgrind --error-exitcode=1 $(run_tests)
 # approximate lines of code
 sloc:
 	cloc --force-lang=Lisp,$(suff) *
 # size of binaries
-bits: $(bin_release) $(bin_debug)
+bits: build/$(nom) build/$(nom).dbg
 	du -h $^
 
 .PHONY: test test-lots repl clean\
