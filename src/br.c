@@ -24,10 +24,8 @@ Vm(call) {
   return ApY(xp, nil); }
 
 // tail calls
-//
-
 Vm(rec) {
-  size_t adic = getnum(GF(ip));
+  U adic = getnum(GF(ip));
   // save return address
   sf subd = fp->subd;
   mo retp = fp->retp;

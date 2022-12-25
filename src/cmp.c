@@ -1,10 +1,9 @@
 #include "la.h"
 
-bool neql(la v, ob x, ob y) { return false; }
-
-bool eql(la v, ob a, ob b) {
-  return a == b || (!nump(a|b) && G(a) == disp &&
-    ((mtbl) GF(a))->equi(v, a, b)); }
+u1 neql(la v, ob x, ob y) { return false; }
+u1 eql(la v, ob a, ob b) { return a == b ||
+  (!nump(a|b) && G(a) == data &&
+   ((typ) GF(a))->equi(v, a, b)); }
 
 // comparison operators
 Vm(lt) { return ApN(1, *sp++ < xp ? T : nil); }
@@ -39,8 +38,9 @@ Vm(idno) { return nump(xp) ? ApN(1, xp) : ApC(xdom, xp); }
 Vm(idmo) { return homp(xp) ? ApN(1, xp) : ApC(xdom, xp); }
 Vm(idtbl) { return tblp(xp) ? ApN(1, xp) : ApC(xdom, xp); }
 Vm(idtwo) { return twop(xp) ? ApN(1, xp) : ApC(xdom, xp); }
-Vm(arity) {
-  return fp->argc >= getnum(GF(ip)) ? ApN(2, xp) : ApC(xary, (ob) GF(ip)); }
+Vm(arity) { return
+  fp->argc >= getnum(GF(ip)) ? ApN(2, xp) :
+  ApC(xary, (ob) GF(ip)); }
 Vm(ary1) { return fp->argc >= 1 ? ApN(1, xp) : ApC(xary, putnum(1)); }
 Vm(ary2) { return fp->argc >= 2 ? ApN(1, xp) : ApC(xary, putnum(2)); }
 Vm(ary3) { return fp->argc >= 3 ? ApN(1, xp) : ApC(xary, putnum(3)); }

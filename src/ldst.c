@@ -55,10 +55,9 @@ Vm(clo3p) { return ApC(push, fp->clos[3]); }
 ////
 /// Store Instructions
 // // stack push
-Vm(push) {
-  Have1();
-  *--sp = xp;
-  return ApN(1, xp); }
+Vm(push) { Have1(); return
+  *--sp = xp,
+  ApN(1, xp); }
 
 // set a local variable
 Vm(defsl1) { return
@@ -66,20 +65,20 @@ Vm(defsl1) { return
   ApN(2, xp); }
 
 // set a module variable
-Vm(deftop) {
-  bool _;
-  CallOut(_ = tbl_set(v, (tbl) A(GF(ip)), B(GF(ip)), xp));
-  return _ ? ApN(2, xp) : ApC(xoom, xp); }
+Vm(deftop) { bool _; return
+  CallOut(_ = tbl_set(v, (tbl) A(GF(ip)), B(GF(ip)), xp)),
+  _ ? ApN(2, xp) : ApC(xoom, xp); }
 
 // allocate local variable array
 Vm(setloc) {
-  size_t n = getnum((ob) GF(ip));
+  U n = getnum((ob) GF(ip));
   // + 1 for the stack slot
   Have(n + wsizeof(struct tl) + 1);
-  mo t = setw(ini_mo(hp, n), nil, n);
-  hp += n + wsizeof(struct tl);
-  *--sp = (ob) t;
-  return ApN(2, xp); }
+  mo t = setw(mo_ini(hp, n), nil, n);
+  return
+    hp += n + wsizeof(struct tl),
+    *--sp = (ob) t,
+    ApN(2, xp); }
 
 static NoInline Vm(xnom) { return Pack(), LA_XNOM; }
 // late binding
@@ -96,30 +95,31 @@ Vm(late) {
       G(xp) == arity &&
       (ob) GF(FF(ip)) >= (ob) GF(xp))
     xp = (ob) FF(ip);
-  G(ip) = imm;
-  GF(ip) = (vm*) xp;
-  return ApN(2, xp); }
+  return
+    G(ip) = imm,
+    GF(ip) = (vm*) xp,
+    ApN(2, xp); }
 
 // varargs
 static NoInline Vm(varg0) {
-  Have1();
-  fp = cpyw_l2r((ob*) fp - 1, fp, wsizeof(struct sf) + fp->argc);
-  sp = (ob*) fp;
-  fp->argv[fp->argc++] = nil;
-  return ApN(2, xp); }
+  Have1(); return
+    fp = cpyw_l2r((ob*) fp - 1, fp, wsizeof(struct sf) + fp->argc),
+    sp = (ob*) fp,
+    fp->argv[fp->argc++] = nil,
+    ApN(2, xp); }
 
 Vm(varg) {
-  size_t reqd = getnum((ob) GF(ip));
+  U reqd = getnum((ob) GF(ip));
   if (reqd == fp->argc) return ApC(varg0, xp);
   if (reqd > fp->argc) return ApC(xary, putnum(reqd));
-  size_t vdic = fp->argc - reqd;
+  U vdic = fp->argc - reqd;
   // in this case we need to add another argument
   // slot to hold the nil.
   // in this case we just keep the existing slots.
   Have(wsizeof(struct two) * vdic);
   two t = (two) hp;
   hp += wsizeof(struct two) * vdic;
-  for (size_t i = vdic; i--;
+  for (U i = vdic; i--;
     two_ini(t + i, fp->argv[reqd + i], (ob) (t + i + 1)));
   t[vdic-1].b = nil;
   fp->argv[reqd] = (ob) t;

@@ -1,14 +1,13 @@
 #include "la.h"
 
 // math stuff
-
-intptr_t lcprng(intptr_t s) {
-  // this specific constant came from a paper i read
-  const int64_t steele_vigna_2021 = 0xaf251af3b0f025b5;
+//
+// linear congruential pseudorandom number generator
+I lcprng(I s) { // the constant came from a paper
+  const I steele_vigna_2021 = 0xaf251af3b0f025b5;
   return (s * steele_vigna_2021 + 1) >> 8; }
 
 // VM functions
-
 // frameless
 Vm(add) { return ApN(1, xp + *sp++ - 1); }
 Vm(sub) { return ApN(1, *sp++ - xp + 1); }
@@ -32,26 +31,26 @@ Vm(bnot) { return ApN(1, ~xp | 1); }
 // FIXME do type checks
 Vm(add_f) {
   xp = 0;
-  for (size_t i = 0; i < fp->argc; xp += getnum(fp->argv[i++]));
+  for (U i = 0; i < fp->argc; xp += getnum(fp->argv[i++]));
   return ApC(ret, putnum(xp)); }
 Vm(mul_f) {
   xp = 1;
-  for (size_t i = 0; i < fp->argc; xp *= getnum(fp->argv[i++]));
+  for (U i = 0; i < fp->argc; xp *= getnum(fp->argv[i++]));
   return ApC(ret, putnum(xp)); }
 
 Vm(sub_f) {
   if (fp->argc == 0) return ApC(ret, xp);
   if (fp->argc == 1) return ApC(ret, putnum(-getnum(fp->argv[0])));
   xp = getnum(fp->argv[0]);
-  size_t i = 1;
+  U i = 1;
   do xp -= getnum(fp->argv[i++]); while (i < fp->argc);
   return ApC(ret, putnum(xp)); }
 
 Vm(quot_f) {
   if (fp->argc == 0) return ApC(ret, putnum(1));
   xp = getnum(fp->argv[0]);
-  for (size_t i = 1; i < fp->argc; i++) {
-    intptr_t n = getnum(fp->argv[i]);
+  for (U i = 1; i < fp->argc; i++) {
+    I n = getnum(fp->argv[i]);
     Check(n);
     xp /= n; }
   return ApC(ret, putnum(xp)); }
@@ -59,25 +58,25 @@ Vm(quot_f) {
 Vm(rem_f) {
   if (fp->argc == 0) return ApC(ret, putnum(1));
   xp = getnum(fp->argv[0]);
-  for (size_t i = 1; i < fp->argc; i++) {
-    intptr_t n = getnum(fp->argv[i]);
+  for (U i = 1; i < fp->argc; i++) {
+    I n = getnum(fp->argv[i]);
     Check(n);
     xp %= n; }
   return ApC(ret, putnum(xp)); }
 
 Vm(bor_f) {
   xp = 0;
-  for (size_t i = 0; i < fp->argc; xp |= getnum(fp->argv[i++]));
+  for (U i = 0; i < fp->argc; xp |= getnum(fp->argv[i++]));
   return ApC(ret, putnum(xp)); }
 
 Vm(bxor_f) {
   xp = 0;
-  for (size_t i = 0; i < fp->argc; xp ^= getnum(fp->argv[i++]));
+  for (U i = 0; i < fp->argc; xp ^= getnum(fp->argv[i++]));
   return ApC(ret, putnum(xp)); }
 
 Vm(band_f) {
   xp = -1;
-  for (size_t i = 0; i < fp->argc; xp &= getnum(fp->argv[i++]));
+  for (U i = 0; i < fp->argc; xp &= getnum(fp->argv[i++]));
   return ApC(ret, putnum(xp)); }
 
 Vm(bnot_f) { return
@@ -88,7 +87,7 @@ Vm(sar_f) {
   if (fp->argc == 0) return ApC(ret, xp);
   if (fp->argc == 1) return ApC(ret, putnum(getnum(fp->argv[0])>>1));
   xp = getnum(fp->argv[0]);
-  size_t i = 1;
+  U i = 1;
   do xp >>= getnum(fp->argv[i++]); while (i < fp->argc);
   return ApC(ret, putnum(xp)); }
 
@@ -96,7 +95,7 @@ Vm(sal_f) {
   if (fp->argc == 0) return ApC(ret, xp);
   if (fp->argc == 1) return ApC(ret, putnum(getnum(fp->argv[0])<<1));
   xp = getnum(fp->argv[0]);
-  size_t i = 1;
+  U i = 1;
   do xp <<= getnum(fp->argv[i++]); while (i < fp->argc);
   return ApC(ret, putnum(xp)); }
 

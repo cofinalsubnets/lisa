@@ -1,12 +1,25 @@
 nom=lisa
 suff=la
 
+LC_COLLATE=C
+h=$(sort $(wildcard src/*.h))
+c=$(sort $(wildcard src/*.c))
+o=$(c:.c=.o)
+
+boot=lib/boot.la
+
+CFLAGS ?=\
+	-std=c99 -g -O2 -flto -fpic -Wall\
+ 	-Wstrict-prototypes -Wno-shift-negative-value\
+	-fno-stack-protector
+
 build_dir=build
 test_dir=test
 doc_dir=doc
 lib_dir=lib
 
-debug_build=build/$(nom).dbg
+release_build=$(nom)
+debug_build=$(release_build).dbg
 
 boot=$(lib_dir)/boot.$(suff)
 lib=$(boot)
@@ -16,35 +29,38 @@ lib=$(boot)
 DESTDIR ?= $(HOME)
 PREFIX ?= .local
 
-run_tests=$(debug_build) -_ $(boot) $(test_dir)/*.$(suff)
+run_tests=./$(debug_build) -_ $(boot) $(test_dir)/*.$(suff)
 
-test: build/lisa.dbg
-	make -C test
+test: $(debug_build)
+	/usr/bin/env TIMEFORMAT="in %Rs" bash -c "time $(run_tests)"
 
-test-lots:
-	make -C test lots
+# run the tests a lot of times to try and catch nondeterministic bugs :(
+test-lots: $(debug_build)
+	for n in {1..2048}; do $(run_tests) || exit 1; done
 
-build/%:
-	make -C src ../$@
+$(release_build): $(debug_build)
+	strip --strip-unneeded -o $@ $^
 
-dest_dir=$(DESTDIR)/$(PREFIX)/
-install_bin=\
-	$(dest_dir)bin/$(nom)
-install_lib=\
-	$(addprefix $(dest_dir)lib/$(nom)/,$(notdir $(lib)))\
-install_doc=\
-	$(dest_dir)share/man/man1/$(nom).1
+$(debug_build): $o
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
-install_files=$(install_bin) $(install_lib) $(install_doc)
-install: $(install_files)
+src/%.o: src/%.c $h Makefile
+	$(CC) -c -o $@ $(CFLAGS) $(CPPFLAGS) $<
+
+dest=$(DESTDIR)/$(PREFIX)/
+bin_files=$(dest)bin/$(nom)
+lib_files=$(addprefix $(dest)lib/$(nom)/,$(notdir $(lib)))
+doc_files=$(dest)share/man/man1/$(nom).1
+all_files=$(bin_files) $(lib_files) $(doc_files)
+install: $(all_files)
 uninstall:
-	rm -f $(install_files)
+	rm -f $(all_files)
 
-$(dest_dir)bin/%: build/%
+$(dest)bin/%: %
 	install -D $^ $@
-$(dest_dir)share/man/man1/%: $(doc_dir)/%
+$(dest)share/man/man1/%: $(doc_dir)/%
 	install -D $^ $@
-$(dest_dir)lib/$(nom)/%: lib/%
+$(dest)lib/$(nom)/%: lib/%
 	install -D $^ $@
 
 # vim stuff
@@ -63,7 +79,7 @@ $(VIMPREFIX)/%: vim/%
 clean:
 	rm -f `git check-ignore * */*`
 
-repl: build/$(nom).dbg
+repl: $(debug_build)
 	which rlwrap && rlwrap $(run_tests) -i || $(run_tests) -i
 
 # profiling on linux with perf
@@ -73,13 +89,13 @@ perf.data: $(debug_build) $(lib)
 	perf record $(run_tests)
 
 # valgrind detects some memory errors
-valg: build/$(nom).dbg
+valg: $(debug_build)
 	valgrind --error-exitcode=1 $(run_tests)
 # approximate lines of code
 sloc:
 	cloc --force-lang=Lisp,$(suff) *
 # size of binaries
-bits: build/$(nom) build/$(nom).dbg
+bits: $(release_build) $(debug_build)
 	du -h $^
 
 .PHONY: test test-lots repl clean\

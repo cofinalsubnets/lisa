@@ -24,12 +24,12 @@ static u0 do_copy(la, U, ob*);
 // try to return with at least req words of available memory.
 // return true on success, false otherwise. this function also
 // governs the size of the memory pool.
-bool please(la v, size_t req) {
+u1 please(la v, U req) {
   // copy into a new pool of the same size.
-  size_t len = v->len, vit = copy(v, len);
+  U len = v->len, vit = copy(v, len);
   // if this fails then the request fails.
   if (!vit) return 0;
-  size_t tar = len, all = len - (Avail - req);
+  U tar = len, all = len - (Avail - req);
   // adjust size up if we're too small or slow.
   while (all > tar || vit < VIT_FLOOR) tar <<= 1, vit <<= 1;
   // adjust size down if we're big and fast enough.
@@ -56,8 +56,8 @@ bool please(la v, size_t req) {
 //   -----------------------------------
 //   |                          `------'
 //   t0                  gc time (this cycle)
-static uintptr_t copy(la v, U len) {
-  uintptr_t t1 = clock(), t0 = v->run.t0, t2;
+static U copy(la v, U len) {
+  U t1 = clock(), t0 = v->run.t0, t2;
   ob *pool1 = malloc(len * sizeof(ob));
   if (!pool1) return 0;
 
@@ -69,7 +69,7 @@ static uintptr_t copy(la v, U len) {
   t1 = t2 - t1;
   return t1 ? (t2 - t0) / t1 : VIT_CEIL; }
 
-static void do_copy(la v, size_t len1, ob *pool1) {
+static u0 do_copy(la v, U len1, ob *pool1) {
   ob len0 = v->len,
      *sp0 = v->sp,
      *pool0 = v->pool,
@@ -90,7 +90,7 @@ static void do_copy(la v, size_t len1, ob *pool1) {
   // copy globals
   v->topl = (tbl) cp(v, (ob) v->topl, pool0, top0);
   v->macros = (tbl) cp(v, (ob) v->macros, pool0, top0);
-  for (size_t i = 0; i < wsizeof(struct lex); i++)
+  for (U i = 0; i < wsizeof(struct lex); i++)
     ((ob*)&v->lex)[i] = cp(v, ((ob*)&v->lex)[i], pool0, top0);
   for (struct ll *r = v->safe; r; r = r->next)
     *r->addr = cp(v, *r->addr, pool0, top0);
@@ -111,7 +111,7 @@ static void do_copy(la v, size_t len1, ob *pool1) {
     fp = fp->subd; } }
 
 static NoInline ob cp_mo(la v, mo src, ob *pool0, ob *top0) {
-  tag fin = motag(src);
+  struct tl *fin = mo_tl(src);
   mo ini = fin->head,
      dst = bump(v, fin->end - ini),
      d = dst;
@@ -126,13 +126,12 @@ Gc(cp) {
   if (nump(x) || !stale(x)) return x;
   ob y = (ob) G(x);
   if (!nump(y) && livep(v, y)) return y;
-  if ((vm*) y == disp) return
-    ((mtbl) GF(x))->evac(v, x, pool0, top0);
+  if ((vm*) y == data) return
+    ((typ) GF(x))->evac(v, x, pool0, top0);
   return cp_mo(v, (mo) x, pool0, top0); }
 
 // Run a GC cycle from inside the VM
 // XXX calling convention: size of request (bare size_t) in v->xp
-NoInline Vm(gc) {
-  size_t req = v->xp;
-  CallOut(req = please(v, req));
-  return req ? ApY(ip, xp) : ApC(xoom, xp); }
+NoInline Vm(gc) { size_t req = v->xp; return
+  CallOut(req = please(v, req)),
+  req ? ApY(ip, xp) : ApC(xoom, xp); }

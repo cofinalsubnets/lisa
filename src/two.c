@@ -1,8 +1,21 @@
 #include "la.h"
 
+static vm ap_two;
+static u1 eq_two(la, I, I);
+static u0 tx_two(la, FILE*, I);
+static I cp_two(la, I, I*, I*),
+         hx_two(la, I);
+
+const struct typ two_typ = {
+  .does = ap_two,
+  .emit = tx_two,
+  .evac = cp_two,
+  .hash = hx_two,
+  .equi = eq_two, };
+
 two two_ini(void *_, ob a, ob b) {
   two w = _;
-  w->h.disp = disp, w->h.mtbl = &mtbl_two;
+  w->data = data, w->typ = &two_typ;
   w->a = a, w->b = b;
   return w; }
 
@@ -18,8 +31,8 @@ NoInline two pair(la v, ob a, ob b) {
     pair_gc(v, a, b); }
 
 // length of list
-size_t llen(ob l) {
-  for (size_t i = 0;;)
+U llen(ob l) {
+  for (U i = 0;;)
     if (twop(l)) l = B(l), i++;
     else return i; }
 
@@ -46,7 +59,7 @@ Vm(cdr_f) {
 
 Vm(cons_f) {
   if (fp->argc) {
-    size_t n = wsizeof(struct two) * (fp->argc - 1);
+    U n = wsizeof(struct two) * (fp->argc - 1);
     Have(n);
     two w = (two) hp;
     hp += n;
@@ -61,7 +74,7 @@ static Vm(ap_two) { return
 static Gc(cp_two) {
   two src = (two) x,
       dst = bump(v, wsizeof(struct two));
-  src->h.disp = (vm*) dst;
+  src->data = (vm*) dst;
   return (ob) two_ini(dst,
     cp(v, src->a, pool0, top0),
     cp(v, src->b, pool0, top0)); }
@@ -78,14 +91,8 @@ static I hx_two(la v, ob x) {
   I hc = hash(v, A(x)) * hash(v, B(x));
   return ror(hc, 4 * sizeof(I)); }
 
-static bool eq_two(la v, ob x, ob y) {
-  return twop(y) &&
+static u1 eq_two(la v, ob x, ob y) {
+  return (typ) GF(y) == &two_typ &&
     eql(v, A(x), A(y)) &&
     eql(v, B(x), B(y)); }
 
-const struct mtbl mtbl_two = {
-  .does = ap_two,
-  .emit = tx_two,
-  .evac = cp_two,
-  .hash = hx_two,
-  .equi = eq_two, };

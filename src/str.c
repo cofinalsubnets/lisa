@@ -3,9 +3,59 @@
 
 str str_ini(void *_, size_t len) {
   str s = _;
-  s->h.disp = disp, s->h.mtbl = &mtbl_str;
+  s->data = data, s->typ = &str_typ;
   s->len = len;
   return s; }
+
+static I hx_str(la v, ob _) {
+  str s = (str) _;
+  I h = 1;
+  U words = s->len / sizeof(ob),
+    bytes = s->len % sizeof(ob);
+  const char *bs = s->text + s->len - bytes;
+  while (bytes--) h = mix * (h ^ (mix * bs[bytes]));
+  const I *ws = (I*) s->text;
+  while (words--) h = mix * (h ^ (mix * ws[words]));
+  return h; }
+
+SI u1 escapep(char c) { return c == '\\' || c == '"'; }
+
+static u0 tx_str(struct carrier *v, FILE *o, ob _) {
+  str s = (str) _;
+  U len = s->len;
+  const char *text = s->text;
+  putc('"', o);
+  while (len--) {
+    char c = *text++;
+    if (escapep(c)) putc('\\', o);
+    putc(c, o); }
+  putc('"', o); }
+
+static Gc(cp_str) {
+  str src = (str) x;
+  return (ob) (src->data = (vm*)
+    memcpy(bump(v, wsizeof(struct str) + b2w(src->len)),
+      src, sizeof(struct str) + src->len)); }
+
+static u1 eq_str(struct carrier *v, ob x, ob y) {
+  if (!strp(y)) return false;
+  str a = (str) x, b = (str) y;
+  return a->len == b->len &&
+    !strncmp(a->text, b->text, a->len); }
+
+static vm ap_str;
+
+const struct typ str_typ = {
+  .does = ap_str,
+  .emit = tx_str,
+  .evac = cp_str,
+  .hash = hx_str,
+  .equi = eq_str, };
+
+static Vm(ap_str) {
+  str s = (str) ip;
+  la_putsn(s->text, s->len, stdout);
+  return ApC(ret, (ob) ip); }
 
 // string instructions
 Vm(slen_f) {
@@ -50,8 +100,8 @@ Vm(ssub_f) {
   lb = max(lb, 0);
   ub = min(ub, src->len);
   ub = max(ub, lb);
-  size_t len = ub - lb,
-         words = wsizeof(struct str) + b2w(len);
+  U len = ub - lb,
+    words = wsizeof(struct str) + b2w(len);
   Have(words);
   str dst = str_ini(hp, len);
   hp += words;
@@ -59,59 +109,10 @@ Vm(ssub_f) {
   return ApC(ret, (ob) dst); }
 
 Vm(str_f) {
-  size_t len = fp->argc,
-         words = wsizeof(struct str) + b2w(len);
+  U len = fp->argc,
+    words = wsizeof(struct str) + b2w(len);
   Have(words);
   str s = str_ini(hp, len);
   hp += words;
   while (len--) s->text[len] = getnum(fp->argv[len]);
   return ApC(ret, (ob) s); }
-
-static Vm(ap_str) {
-  str s = (str) ip;
-  la_putsn(s->text, s->len, stdout);
-  return ApC(ret, (ob) ip); }
-
-static intptr_t hx_str(la v, ob _) {
-  str s = (str) _;
-  intptr_t h = 1;
-  size_t words = s->len / sizeof(ob),
-         bytes = s->len % sizeof(ob);
-  const char *bs = s->text + s->len - bytes;
-  while (bytes--) h = mix * (h ^ (mix * bs[bytes]));
-  const intptr_t *ws = (void*) s->text;
-  while (words--) h = mix * (h ^ (mix * ws[words]));
-  return h; }
-
-static Inline bool escapep(char c) {
-  return c == '\\' || c == '"'; }
-
-static void tx_str(struct carrier *v, FILE *o, ob _) {
-  str s = (str) _;
-  size_t len = s->len;
-  const char *text = s->text;
-  putc('"', o);
-  while (len--) {
-    char c = *text++;
-    if (escapep(c)) putc('\\', o);
-    putc(c, o); }
-  putc('"', o); }
-
-static Gc(cp_str) {
-  str src = (str) x;
-  return (ob) (src->h.disp = (vm*)
-    memcpy(bump(v, wsizeof(struct str) + b2w(src->len)),
-      src, sizeof(struct str) + src->len)); }
-
-static bool eq_str(struct carrier *v, ob x, ob y) {
-  if (!strp(y)) return false;
-  str a = (str) x, b = (str) y;
-  return a->len == b->len &&
-    !strncmp(a->text, b->text, a->len); }
-
-const struct mtbl mtbl_str = {
-  .does = ap_str,
-  .emit = tx_str,
-  .evac = cp_str,
-  .hash = hx_str,
-  .equi = eq_str, };

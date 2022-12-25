@@ -21,24 +21,22 @@
 //   sentinel (but then the C compiler would need to
 //   align functions)
 
-mo mo_ini(void *_, size_t len) {
-  la_fn k = _;
-  la_fn_tag t = (la_fn_tag) (k + len);
-  t->null = NULL, t->head = k;
-  return k; }
+mo mo_ini(void *_, U len) {
+  struct tl *t = (struct tl*) ((mo) _ + len);
+  return t->null = NULL, t->head = _; }
 
 // allocate a thread
-mo mo_n(la_carrier v, size_t n) {
-  la_fn k = cells(v, n + wsizeof(struct tl));
-  return k ? ini_mo(k, n) : k; }
+mo mo_n(la v, U n) {
+  mo k = cells(v, n + wsizeof(struct tl));
+  return k ? mo_ini(k, n) : k; }
 
 // instructions for the internal compiler
 // initialize a function
 Vm(hom_f) {
   if (fp->argc && nump(fp->argv[0])) {
-    size_t len = getnum(fp->argv[0]);
+    U len = getnum(fp->argv[0]);
     Have(len + wsizeof(struct tl));
-    mo k = setw(ini_mo(hp, len), nil, len);
+    mo k = setw(mo_ini(hp, len), nil, len);
     hp += len + wsizeof(struct tl);
     xp = (ob) (k + len); }
   return ApC(ret, xp); }
@@ -47,15 +45,15 @@ Vm(hom_f) {
 Vm(hfin_f) {
   if (fp->argc) {
     ob x = fp->argv[0];
-    if (homp(x) && G(x) != disp)
-      motag((mo) x)->head = (mo) x,
+    if (homp(x) && G(x) != data)
+      mo_tl((mo) x)->head = (mo) x,
       xp = x; }
   return ApC(ret, xp); }
 
 // emit data
 Vm(poke_f) {
   if (fp->argc) {
-    size_t i = fp->argc - 1;
+    U i = fp->argc - 1;
     if (homp(fp->argv[i])) {
       mo k = (mo) fp->argv[i];
       while (i--) G(--k) = (vm*) fp->argv[i];
@@ -63,8 +61,7 @@ Vm(poke_f) {
   return ApC(ret, xp); }
 
 Vm(peek_f) {
-  if (fp->argc && homp(fp->argv[0]))
-    xp = (ob) G(fp->argv[0]);
+  if (fp->argc && homp(fp->argv[0])) xp = (ob) G(fp->argv[0]);
   return ApC(ret, xp); }
 
 // thread pointer arithmetic -- not bounds checked!
@@ -73,9 +70,8 @@ Vm(seek_f) {
     xp = (ob) ((mo) fp->argv[0] + getnum(fp->argv[1]));
   return ApC(ret, xp); }
 
-// dispatch a data thread
 // TODO maybe we could do this with closures instead?
-Vm(disp) { return ApC(((mtbl) GF(ip))->does, xp); }
+Vm(data) { return ApC(((typ) GF(ip))->does, xp); }
 
 // closure functions
 //
@@ -83,7 +79,7 @@ Vm(disp) { return ApC(((mtbl) GF(ip))->does, xp); }
 Vm(take) {
   ob n = getnum((ob) GF(ip));
   Have(n + wsizeof(struct tl));
-  mo k = ini_mo(cpyw_r2l(hp, sp, n), n);
+  mo k = mo_ini(cpyw_r2l(hp, sp, n), n);
   hp += n + wsizeof(struct tl);
   return ApC(ret, (ob) k); }
 
@@ -113,32 +109,32 @@ struct clo_env {
 
 static Vm(genclo0) {
   struct clo_env *ec = (void*) GF(ip);
-  size_t adic = getnum(ec->argc);
+  U adic = getnum(ec->argc);
   Have(wsizeof(struct sf) + adic + 1);
-  sf subd = fp;
-  G(ip) = genclo1;
-  sp = (ob*) (fp = (sf) (sp - adic) - 1);
-  cpyw_r2l(fp->argv, ec->argv, adic);
-  fp->retp = ip;
-  fp->subd = subd;
-  fp->argc = adic;
-  fp->clos = (ob*) ec->clo;
-  *--sp = ec->loc;
-  return ApY(ec->cons, xp); }
+  sf subd = fp; return
+    G(ip) = genclo1,
+    sp = (ob*) (fp = (sf) (sp - adic) - 1),
+    cpyw_r2l(fp->argv, ec->argv, adic),
+    fp->retp = ip,
+    fp->subd = subd,
+    fp->argc = adic,
+    fp->clos = (ob*) ec->clo,
+    *--sp = ec->loc,
+    ApY(ec->cons, xp); }
 
 // the next few functions create and store
 // lexical environments.
 static Vm(enclose) {
-  size_t
-    thd_len = 3 + wsizeof(struct tl),
-    env_len = wsizeof(struct clo_env) + fp->argc + wsizeof(struct tl);
+  U thd_len = 3 + wsizeof(struct tl),
+    env_len = fp->argc + wsizeof(struct tl) +
+                         wsizeof(struct clo_env);
   Have(env_len + thd_len);
   ob codeXcons = (ob) GF(ip); // pair of the compiled thread & closure constructor
   ob *block = hp;
   hp += env_len + thd_len;
 
   struct clo_env *env = (void*)
-    ini_mo(block, wsizeof(struct clo_env) + fp->argc); // holds the closure environment & constructor
+    mo_ini(block, wsizeof(struct clo_env) + fp->argc); // holds the closure environment & constructor
   env->cons = (mo) B(codeXcons);
      // TODO get closure out of stack frame; configure via xp
   env->loc = nilp(xp) ? xp : ((ob*)fp)[-1];
@@ -146,7 +142,7 @@ static Vm(enclose) {
   env->argc = putnum(fp->argc);
   cpyw_r2l(env->argv, fp->argv, fp->argc);
 
-  mo thd = ini_mo(block + env_len, 3); // the thread that actually gets returned
+  mo thd = mo_ini(block + env_len, 3); // the thread that actually gets returned
   G(thd) = genclo0;
   GF(thd) = (vm*) env;
   G(FF(thd)) = (vm*) A(codeXcons);
@@ -163,11 +159,9 @@ Vm(encl0) { return ApC(enclose, putnum(0)); }
 ob hnom(la v, mo x) {
   if (!livep(v, (ob) x)) return nil;
   vm *k = G(x);
-  // closures get special treatment
-  if (k == setclo || k == genclo0 || k == genclo1)
+
+  if (k == setclo || k == genclo0 || k == genclo1) // closure?
     return hnom(v, (mo) G(FF(x)));
-  ob n = ((ob*) motag(x))[-1];
-  // this is a little hairy! basically we assume that if the
-  // last thing in a thread before the tail is a data object,
-  // then that's the name.
-  return homp(n) && livep(v, n) && G(n) == disp ? n : nil; }
+
+  ob n = ((ob*) mo_tl(x))[-1];
+  return homp(n) && livep(v, n) && G(n) == data ? n : nil; }

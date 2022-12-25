@@ -5,16 +5,16 @@
 //
 static sym ini_anon(void *_, size_t code) {
   sym y = _;
-  y->h.disp = disp;
-  y->h.mtbl = &mtbl_sym;
+  y->data = data;
+  y->typ = &sym_typ;
   y->nom = 0;
   y->code = code;
   return y; }
 
 static sym ini_sym(void *_, str nom, size_t code) {
   sym y = _;
-  y->h.disp = disp;
-  y->h.mtbl = &mtbl_sym;
+  y->data = data;
+  y->typ = &sym_typ;
   y->nom = nom;
   y->code = code;
   y->l = y->r = 0;
@@ -65,7 +65,7 @@ Vm(ynom_f) {
 
 static Gc(cp_sym) {
   sym src = (sym) x;
-  return (ob) (src->h.disp = (vm*) (src->nom ?
+  return (ob) (src->data = (vm*) (src->nom ?
     intern(v, &v->syms, (str) cp(v, (ob) src->nom, pool0, top0)) :
     ini_anon(bump(v, wsizeof(struct sym) - 2), src->code))); }
 
@@ -77,7 +77,7 @@ static void tx_sym(la v, la_io o, ob _) {
 
 static Vm(ap_nop) { return ApC(ret, (ob) ip); }
 
-const struct mtbl mtbl_sym = {
+const struct typ sym_typ = {
   .does = ap_nop,
   .emit = tx_sym,
   .evac = cp_sym,

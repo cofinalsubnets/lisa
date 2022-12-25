@@ -3,13 +3,13 @@
 
 static sym symofs(la, const char*);
 static str strof(la, const char*);
-static bool
-  defprims(la),
+static u1
+  defprim(la, vm*, const char*) NoInline,
   inst(la, const char*, vm*),
   la_ini_(la);
 
 enum status la_ini(la_carrier v) {
-  const size_t len = 1 << 10; // power of 2
+  const U len = 1 << 10; // power of 2
   memset(v, 0, sizeof(struct carrier));
 
   ob *pool = malloc(len * sizeof(ob));
@@ -21,10 +21,10 @@ enum status la_ini(la_carrier v) {
   v->rand = v->run.t0 = clock();
   return la_ini_(v) ? LA_OK : (la_fin(v),  LA_XOOM); }
 
-void la_fin(struct carrier *v) {
+u0 la_fin(struct carrier *v) {
   if (v) free(v->pool), v->pool = NULL; }
 
-void la_reset(struct carrier *v) {
+u0 la_reset(struct carrier *v) {
   v->sp = v->pool + v->len;
   v->fp = (sf) v->sp;
   v->ip = 0;
@@ -41,39 +41,37 @@ static sym symofs(la v, const char *s) {
   str _ = strof(v, s);
   return _ ? symof(v, _) : 0; }
 
+#define dp(go, nom) && defprim(v, go, nom)
+static NoInline u1 defprim(la v, vm *i, const char *n) {
+  sym y = symofs(v, n);
+  if (!y) return false;
+  mo k; with(y, k = mo_n(v, 2));
+  if (!k) return false;
+  return k[0].ap = i,
+         k[1].ap = (vm*) y,
+         tbl_set(v, v->topl, (ob) y, (ob) k); }
+
 #define reg_intl(a) && inst(v, "i-"#a, a)
-static bool la_ini_(la v) {
-  ob _; return
-    (v->lex.eval = symofs(v, "ev")) &&
-    (v->lex.define = symofs(v, ":")) &&
-    (v->lex.cond = symofs(v, "?")) &&
-    (v->lex.lambda = symofs(v, "\\")) &&
-    (v->lex.quote = symofs(v, "`")) &&
-    (v->lex.begin = symofs(v, ",")) &&
-    (v->lex.splat = symofs(v, ".")) &&
+static u1 la_ini_(la v) {
+  sym y; ob _; return
+    (y = symofs(v, "ev"), v->lex.eval = y) &&
+    (y = symofs(v, ":"), v->lex.define = y) &&
+    (y = symofs(v, "?"), v->lex.cond = y) &&
+    (y = symofs(v, "\\"), v->lex.lambda = y) &&
+    (y = symofs(v, "`"), v->lex.quote = y) &&
+    (y = symofs(v, ","), v->lex.begin = y) &&
+    (y = symofs(v, "."), v->lex.splat = y) &&
     (v->topl = mktbl(v)) i_internals(reg_intl) &&
     (v->macros = mktbl(v)) &&
     (_ = (ob) symofs(v, "_ns")) &&
     tbl_set(v, v->topl, _, (ob) v->topl) &&
     (_ = (ob) symofs(v, "macros")) &&
-    tbl_set(v, v->topl, _, (ob) v->macros) &&
-    defprims(v); }
-
-static NoInline bool defprim(la v, vm *i, const char *n) {
-  sym y = symofs(v, n);
-  if (!y) return false;
-  mo k; with(y, k = mkmo(v, 2));
-  if (!k) return false;
-  k[0].ap = i;
-  k[1].ap = (vm*) y;
-  return tbl_set(v, v->topl, (ob) y, (ob) k); }
-
-static bool defprims(la v) {
-#define dp(go, nom) && defprim(v, go, nom)
-  return true i_primitives(dp); }
+    tbl_set(v, v->topl, _, (ob) v->macros)
+    i_primitives(dp); }
 
 // store an instruction address under a variable in the
 // toplevel namespace // FIXME use a different namespace
-static bool inst(la v, const char *a, vm *b) {
+static u1 inst(la v, const char *a, vm *b) {
   sym z = symofs(v, a);
   return z && tbl_set(v, v->topl, (ob) z, (ob) b); }
+

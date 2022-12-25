@@ -3,6 +3,10 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+_Static_assert(-1 == -1 >> 1, "signed >>");
+_Static_assert(sizeof(size_t) == sizeof(void*),
+  "size_t size == data pointer size");
+
 // thanks !!
 typedef void u0;
 typedef bool u1;
@@ -35,63 +39,51 @@ typedef struct sf { // stack frame
   // functions w/o closures.
   mo retp; // thread return address
   struct sf *subd; // stack frame of caller
-  size_t argc; // argument count
+  U argc; // argument count
   ob argv[]; } *sf;
 
 typedef enum status vm(la, ob, mo, ob*, ob*, sf); // interpreter function type
 struct M { vm *ap; };
 // every dynamically allocated thread ends
 // with a footer holding a pointer to its head
-typedef struct tl { struct M *null, *head, end[]; } *tag, *la_fn_tag;
-
-// static method table for built-in types
-typedef const struct mtbl {
+struct tl { struct M *null, *head, end[]; };
+typedef const struct typ {
   vm *does;
   u1 (*equi)(la, I, I);
   I (*hash)(la, I);
   u0 (*emit)(la, la_io, I);
-  I (*evac)(la, I, I*, I*);
-//  void (*walk)(la, ob, ob*, ob*);
-} *mtbl;
-
-struct hd {
-  vm *disp;
-  mtbl mtbl; };
+  //  u0 (*walk)(la, ob, ob*, ob*);
+  I (*evac)(la, I, I*, I*); } *typ;
+extern const struct typ two_typ, str_typ, tbl_typ, sym_typ;
 
 typedef struct two {
-  struct hd h;
+  vm *data; typ typ;
   ob a, b; } *two;
 
 typedef struct str { // strings
-  struct hd h;
-  size_t len;
-  char text[]; } *str;
+  vm *data; typ typ;
+  U len; char text[]; } *str;
 
 typedef struct sym {
-  struct hd h;
+  vm *data; typ typ;
   str nom;
   I code;
   // symbols are interned into a binary search tree.
   // anonymous symbols (nom == 0) don't have branches.
   struct sym *l, *r; } *sym;
 
-typedef struct tbl_e {
-  I key, val;
-  struct tbl_e *next; } *tbl_e;
+struct tbl_e { I key, val; struct tbl_e *next; };
 
 typedef struct tbl { // hash tables
-  struct hd h;
+  vm *data; typ typ;
   U len, cap;
-  tbl_e *tab; } *tbl;
+  struct tbl_e **tab; } *tbl;
 
 // linked list for gc protection
-struct ll {
-  ob *addr;
-  struct ll *next; };
+struct ll { ob *addr; struct ll *next; };
 
 struct lex {
-  sym define, cond, lambda, quote, begin,
-      splat, eval; };
+  sym define, cond, lambda, quote, begin, splat, eval; };
 
 struct carrier {
   // registers -- in CPU registers when VM is running
@@ -101,64 +93,44 @@ struct carrier {
   tbl topl, macros; // global scope
   sym syms; // symbol table
   struct lex lex;
-  intptr_t rand;
+  U rand;
 
   // memory manager state
-  size_t len;
+  U len;
   ob *pool;
   struct ll *safe;
   union {
-    uintptr_t t0;
     ob *cp; // TODO copy pointer for cheney's algorithm
-  } run; };
+    U t0; } run; };
 
-// FIXME develop towards public API
-void
-  *bump(struct carrier*, size_t),
-  *cells(struct carrier*, size_t),
-  transmit(struct carrier*, FILE*, ob), // write a value
-  la_reset(struct carrier*), // reset interpreter state
-  la_perror(struct carrier*, enum status),
-  la_putsn(const char*, size_t, FILE*);
+u0 *bump(struct carrier*, U),
+   *cells(struct carrier*, U),
+   transmit(struct carrier*, FILE*, ob), // write a value
+   la_reset(struct carrier*), // reset interpreter state
+   la_perror(struct carrier*, enum status),
+   la_putsn(const char*, U, FILE*);
 
-enum status
-  la_ev_x(la, la_ob),
-  receive(la, la_io);
+enum status la_ev_x(la, la_ob), receive(la, la_io);
 
-vm disp; // dispatch instruction for data threads; also used as a sentinel
-
-ob
-  tbl_get(la, tbl, ob, ob),
-  cp(la, ob, ob*, ob*), // copy something; used by type-specific copying functions
-  hnom(la_carrier, la_fn); // get function name FIXME hide this
-
-#define motag mo_tl
-#define mkmo mo_n
-#define ini_mo mo_ini
-#define ini_two two_ini
-#define ini_str str_ini
-mo mo_n(struct carrier*, size_t), // allocate a thread
-   mo_ini(void *, size_t);
+vm data; // dataatch instruction for data threads; also used as a sentinel
 sym symof(struct carrier*, str);
-str str_ini(u0*, size_t);
-two pair(la, ob, ob), // pair constructor
+str str_ini(u0*, U);
+tbl mktbl(la),
+    tbl_set(la, tbl, ob, ob);
+two pair(la, ob, ob),
     two_ini(u0*, ob, ob);
-
-tbl mktbl(la), tbl_set(la, tbl, ob, ob);
-
-bool
-  please(la, size_t),
-  pushs(la, ...), // push args onto stack; true on success
-  eql(la, ob, ob), // object equality
-  neql(la, ob, ob); // always returns false
-
-size_t llen(ob); // length of list
-intptr_t
-  hash(la, ob), // hash function for tables
-  lcprng(intptr_t); // linear congruential pseudorandom number generator
-
-extern const struct mtbl
-  mtbl_two, mtbl_str, mtbl_tbl, mtbl_sym;
+mo mo_n(struct carrier*, U),
+   mo_ini(u0*, U);
+ob tbl_get(la, tbl, ob, ob),
+   cp(la, ob, ob*, ob*), // copy something; used by type-specific copying functions
+   hnom(la_carrier, la_fn); // get function name FIXME hide this
+u1 please(la, U),
+   pushs(la, ...), // push args onto stack; true on success
+   eql(la, ob, ob), // object equality
+   neql(la, ob, ob); // always returns false
+                     //
+U llen(ob);
+I hash(la, ob), lcprng(I);
 
 // just a big random number!
 #define mix ((int64_t)2708237354241864315)
@@ -199,10 +171,10 @@ SI struct tl *mo_tl(mo k) {
 SI u1 nilp(ob _) { return _ == nil; }
 SI u1 nump(ob _) { return _ & 1; }
 SI u1 homp(ob _) { return !nump(_); }
-SI u1 tblp(ob _) { return homp(_) && GF(_) == (vm*) &mtbl_tbl; }
-SI u1 strp(ob _) { return homp(_) && GF(_) == (vm*) &mtbl_str; }
-SI u1 twop(ob _) { return homp(_) && GF(_) == (vm*) &mtbl_two; }
-SI u1 symp(ob _) { return homp(_) && GF(_) == (vm*) &mtbl_sym; }
+SI u1 tblp(ob _) { return homp(_) && (typ) GF(_) == &tbl_typ; }
+SI u1 strp(ob _) { return homp(_) && (typ) GF(_) == &str_typ; }
+SI u1 twop(ob _) { return homp(_) && (typ) GF(_) == &two_typ; }
+SI u1 symp(ob _) { return homp(_) && (typ) GF(_) == &sym_typ; }
 
 SI U b2w(U b) {
   U q = b / sizeof(ob), r = b % sizeof(ob);
@@ -214,6 +186,20 @@ SI u1 livep(la v, ob x) {
 
 SI I ror(I x, U n) {
   return (x<<((8*sizeof(I))-n))|(x>>n); }
+
+#define Gc(n) ob n(la v, ob x, ob *pool0, ob *top0)
+
+SI u0 *cpyw_r2l(u0 *dst, const u0 *src, U n) {
+  while (n--) ((U*)dst)[n] = ((U*)src)[n];
+  return dst; }
+
+SI u0 *cpyw_l2r(u0 *dst, const u0 *src, U n) {
+  for (U i = 0; i < n; i++) ((U*)dst)[i] = ((U*)src)[i];
+  return dst; }
+
+SI u0 *setw(u0 *d, I w, U n) {
+  while (n) ((I*)d)[--n] = w;
+  return d; }
 
 // these are vm functions used by C but not lisp.
 #define cfns(_) _(gc) _(xdom) _(xoom) _(xary)
@@ -326,21 +312,3 @@ i_primitives(ninl)
 #define Have1() if (sp == hp) return (v->xp = 1, ApC(gc, xp))
 
 #define Vm(n) enum status n(la v, ob xp, mo ip, ob *hp, ob *sp, sf fp)
-#define Gc(n) ob n(la v, ob x, ob *pool0, ob *top0)
-
-
-SI u0 *cpyw_r2l(u0 *dst, const u0 *src, U n) {
-  while (n--) ((U*)dst)[n] = ((U*)src)[n];
-  return dst; }
-
-SI u0 *cpyw_l2r(u0 *dst, const u0 *src, U n) {
-  for (U i = 0; i < n; i++) ((U*)dst)[i] = ((U*)src)[i];
-  return dst; }
-
-SI u0 *setw(u0 *d, I w, U n) {
-  while (n) ((I*)d)[--n] = w;
-  return d; }
-
-_Static_assert(-1 == -1 >> 1, "signed >>");
-_Static_assert(sizeof(size_t) == sizeof(void*),
-  "size_t size == data pointer size");

@@ -118,7 +118,7 @@ static Inline ob new_scope(la v, env *e, ob arg, ob nom) {
   env f;
   with(nom,
     arg = asign(v, arg, 0, &asig),
-    with(arg, f = (env) mkmo(v, wsizeof(struct env))));
+    with(arg, f = (env) mo_n(v, wsizeof(struct env))));
   if (f)
     f->arg = arg,
     f->name = nom,
@@ -169,8 +169,8 @@ static Inline ob comp_body(la v, env *e, ob x) {
       i < 0 ?
         (ob) pull_ix(varg, putnum(-i-1), (mo) x) :
       x;
-  motag((mo) x)->head = (mo) x;
-  return !twop((*e)->clo) ? x : (ob) pair(v, (*e)->clo, x); }
+  return mo_tl((mo) x)->head = (mo) x,
+    !twop((*e)->clo) ? x : (ob) pair(v, (*e)->clo, x); }
 
 // takes a lambda expr, returns either a pair or or a
 // hom depending on if the function has free variables
@@ -208,7 +208,7 @@ Co(co_fn, ob x) {
   mo k; with(nom, with(x, k = pull_m(v, e, m+2)));
   if (!k) return 0;
   with(k, x = co_fn_ltu(v, e, nom, x));
-  return !x ? 0 : G(x) == disp ? co_fn_enclose(v, e, m, x, k) : pull_ix(imm, x, k); }
+  return !x ? 0 : G(x) == data ? co_fn_enclose(v, e, m, x, k) : pull_ix(imm, x, k); }
 
 Co(r_co_def_bind) {
   ob _ = *v->sp++;
@@ -403,7 +403,7 @@ Co(r_pull_ix) {
   return co_i_x(v, e, m, i, x); }
 
 Co(r_co_ini) {
-  mo k = mkmo(v, m + 1);
+  mo k = mo_n(v, m + 1);
   if (k) setw(k, nil, m),
          G(k += m) = (vm*) (e ? (*e)->name : nil);
   return k; }
