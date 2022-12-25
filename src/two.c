@@ -14,16 +14,17 @@ const struct typ two_typ = {
   .equi = eq_two, };
 
 two two_ini(void *_, ob a, ob b) {
-  two w = _;
-  w->data = data, w->typ = &two_typ;
-  w->a = a, w->b = b;
-  return w; }
+  two w = _; return
+    w->data = data,
+    w->typ = &two_typ,
+    w->a = a, w->b = b,
+    w; }
 
 // pairs and lists
 static NoInline two pair_gc(la v, ob a, ob b) {
-  bool ok;
-  with(a, with(b, ok = please(v, wsizeof(struct two))));
-  return ok ? pair(v, a, b) : 0; }
+  bool ok; return
+    with(a, with(b, ok = please(v, wsizeof(struct two)))),
+    ok ? pair(v, a, b) : 0; }
 
 NoInline two pair(la v, ob a, ob b) {
   return Avail >= wsizeof(struct two) ?

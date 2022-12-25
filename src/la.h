@@ -1,7 +1,7 @@
 #include "lisa.h"
-#include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 
 _Static_assert(-1 == -1 >> 1, "signed >>");
 _Static_assert(sizeof(size_t) == sizeof(void*),
@@ -33,10 +33,7 @@ extern ob stdin, stdout, stderr;
 typedef FILE *la_io;
 
 typedef struct sf { // stack frame
-  ob *clos; // closure pointer FIXME
-  // keep this on the stack outside the
-  // frame so we don't waste space for
-  // functions w/o closures.
+  ob *clos; // closure pointer FIXME // use stack
   mo retp; // thread return address
   struct sf *subd; // stack frame of caller
   U argc; // argument count
@@ -165,8 +162,7 @@ I hash(la, ob), lcprng(I);
 #define SI static Inline
 
 SI struct tl *mo_tl(mo k) {
-  while (G(k)) k = F(k);
-  return (struct tl*) k; }
+  for (;; k++) if (!G(k)) return (struct tl*) k; }
 
 SI u1 nilp(ob _) { return _ == nil; }
 SI u1 nump(ob _) { return _ & 1; }

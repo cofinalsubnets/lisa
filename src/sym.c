@@ -43,10 +43,30 @@ static sym intern(la v, sym *y, str b) {
   return *y = ini_sym(bump(v, wsizeof(struct sym)), b,
     hash(v, putnum(hash(v, (ob) b)))); }
 
+static Gc(cp_sym) {
+  sym src = (sym) x;
+  return (ob) (src->data = (vm*) (src->nom ?
+    intern(v, &v->syms, (str) cp(v, (ob) src->nom, pool0, top0)) :
+    ini_anon(bump(v, wsizeof(struct sym) - 2), src->code))); }
+
+static I hx_sym(la v, ob _) { return ((sym) _)->code; }
+
+static u0 tx_sym(la v, la_io o, ob _) {
+  str s = ((sym) _)->nom;
+  s ? la_putsn(s->text, s->len, o) : fputs("#sym", o); }
+
+static Vm(ap_nop) { return ApC(ret, (ob) ip); }
+
+const struct typ sym_typ = {
+  .does = ap_nop,
+  .emit = tx_sym,
+  .evac = cp_sym,
+  .hash = hx_sym,
+  .equi = neql, };
+
 sym symof(la v, str s) {
   if (Avail < wsizeof(struct sym)) {
-    bool _;
-    with(s, _ = please(v, wsizeof(struct sym)));
+    bool _; with(s, _ = please(v, wsizeof(struct sym)));
     if (!_) return 0; }
   return s ? intern(v, &v->syms, s) :
     ini_anon(bump(v, wsizeof(struct sym) - 2), v->rand = lcprng(v->rand)); }
@@ -62,24 +82,3 @@ Vm(ynom_f) {
     xp = (ob) ((sym) fp->argv[0])->nom,
     xp = xp ? xp : nil;
   return ApC(ret, xp); }
-
-static Gc(cp_sym) {
-  sym src = (sym) x;
-  return (ob) (src->data = (vm*) (src->nom ?
-    intern(v, &v->syms, (str) cp(v, (ob) src->nom, pool0, top0)) :
-    ini_anon(bump(v, wsizeof(struct sym) - 2), src->code))); }
-
-static intptr_t hx_sym(la v, ob _) { return ((sym) _)->code; }
-
-static void tx_sym(la v, la_io o, ob _) {
-  str s = ((sym) _)->nom;
-  s ? la_putsn(s->text, s->len, o) : fputs("#sym", o); }
-
-static Vm(ap_nop) { return ApC(ret, (ob) ip); }
-
-const struct typ sym_typ = {
-  .does = ap_nop,
-  .emit = tx_sym,
-  .evac = cp_sym,
-  .hash = hx_sym,
-  .equi = neql, };
