@@ -1,24 +1,11 @@
-#ifndef _la_h
-#define _la_h
-#include <stddef.h>
-_Static_assert(-1 == -1 >> 1, "signed >>");
-_Static_assert(sizeof(size_t) == sizeof(void*),
-  "size_t size == data pointer size");
-
 #include "lisa.h"
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 // thanks !!
 typedef void u0;
 typedef bool u1;
-typedef int8_t i8;
-typedef uint8_t u8;
-typedef int16_t i16;
-typedef int32_t i32;
-typedef uint32_t u32;
-typedef int64_t i64;
-typedef uint64_t u64;
 
 typedef intptr_t I;
 typedef uintptr_t U;
@@ -31,7 +18,7 @@ typedef struct M *la_fn, *la_mo, *fn, *mo; // procedures
 #include <stdio.h>
 #include <time.h>
 #else
-struct FILE;
+typedef U FILE;
 uintptr_t clock(void);
 void *malloc(size_t, size_t), free(void*),
   putc(int, FILE*), getc(FILE*), ungetc(int, FILE*),
@@ -129,14 +116,14 @@ struct carrier {
 void
   *bump(struct carrier*, size_t),
   *cells(struct carrier*, size_t),
-  la_tx(struct carrier*, FILE*, ob), // write a value
+  transmit(struct carrier*, FILE*, ob), // write a value
   la_reset(struct carrier*), // reset interpreter state
   la_perror(struct carrier*, enum status),
   la_putsn(const char*, size_t, FILE*);
 
 enum status
   la_ev_x(la, la_ob),
-  la_rx(la, la_io);
+  receive(la, la_io);
 
 vm disp; // dispatch instruction for data threads; also used as a sentinel
 
@@ -203,33 +190,30 @@ extern const struct mtbl
 
 #define Inline inline __attribute__((always_inline))
 #define NoInline __attribute__((noinline))
+#define SI static Inline
 
-static Inline struct tl *mo_tl(mo k) {
+SI struct tl *mo_tl(mo k) {
   while (G(k)) k = F(k);
   return (struct tl*) k; }
 
-static Inline bool nilp(ob _) { return _ == nil; }
-static Inline bool nump(ob _) { return _ & 1; }
-static Inline bool homp(ob _) { return !nump(_); }
-static Inline bool tblp(ob _) {
-  return homp(_) && GF(_) == (vm*) &mtbl_tbl; }
-static Inline bool strp(ob _) {
-  return homp(_) && GF(_) == (vm*) &mtbl_str; }
-static Inline bool twop(ob _) {
-  return homp(_) && GF(_) == (vm*) &mtbl_two; }
-static Inline bool symp(ob _) {
-  return homp(_) && GF(_) == (vm*) &mtbl_sym; }
+SI u1 nilp(ob _) { return _ == nil; }
+SI u1 nump(ob _) { return _ & 1; }
+SI u1 homp(ob _) { return !nump(_); }
+SI u1 tblp(ob _) { return homp(_) && GF(_) == (vm*) &mtbl_tbl; }
+SI u1 strp(ob _) { return homp(_) && GF(_) == (vm*) &mtbl_str; }
+SI u1 twop(ob _) { return homp(_) && GF(_) == (vm*) &mtbl_two; }
+SI u1 symp(ob _) { return homp(_) && GF(_) == (vm*) &mtbl_sym; }
 
-static Inline size_t b2w(size_t b) {
-  size_t q = b / sizeof(ob), r = b % sizeof(ob);
+SI U b2w(U b) {
+  U q = b / sizeof(ob), r = b % sizeof(ob);
   return r ? q + 1 : q; }
 
 // this can give a false positive if x is a fixnum
-static Inline bool livep(la v, ob x) {
+SI u1 livep(la v, ob x) {
   return (ob*) x >= v->pool && (ob*) x < v->pool + v->len; }
 
-static Inline intptr_t ror(intptr_t x, size_t n) {
-  return (x<<((8*sizeof(intptr_t))-n))|(x>>n); }
+SI I ror(I x, U n) {
+  return (x<<((8*sizeof(I))-n))|(x>>n); }
 
 // these are vm functions used by C but not lisp.
 #define cfns(_) _(gc) _(xdom) _(xoom) _(xary)
@@ -344,21 +328,19 @@ i_primitives(ninl)
 #define Vm(n) enum status n(la v, ob xp, mo ip, ob *hp, ob *sp, sf fp)
 #define Gc(n) ob n(la v, ob x, ob *pool0, ob *top0)
 
-#define I Inline
-#define N NoInline
-#define S static
 
-static Inline void *cpyw_r2l(void *dst, const void *src, size_t n) {
-  while (n--) ((void**)dst)[n] = ((void**)src)[n];
+SI u0 *cpyw_r2l(u0 *dst, const u0 *src, U n) {
+  while (n--) ((U*)dst)[n] = ((U*)src)[n];
   return dst; }
 
-static Inline void *cpyw_l2r(void *dst, const void *src, size_t n) {
-  for (size_t i = 0; i < n; i++)
-    ((void**)dst)[i] = ((void**)src)[i];
+SI u0 *cpyw_l2r(u0 *dst, const u0 *src, U n) {
+  for (U i = 0; i < n; i++) ((U*)dst)[i] = ((U*)src)[i];
   return dst; }
 
-static Inline void *setw(void *_dst, intptr_t w, size_t n) {
-  intptr_t *dst = _dst;
-  while (n) dst[--n] = w;
-  return dst; }
-#endif
+SI u0 *setw(u0 *d, I w, U n) {
+  while (n) ((I*)d)[--n] = w;
+  return d; }
+
+_Static_assert(-1 == -1 >> 1, "signed >>");
+_Static_assert(sizeof(size_t) == sizeof(void*),
+  "size_t size == data pointer size");

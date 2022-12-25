@@ -69,14 +69,14 @@ static Gc(cp_two) {
 static void tx_two(la v, la_io o, ob x) {
   putc('(', o);
   for (;;) {
-    la_tx(v, o, A(x));
+    transmit(v, o, A(x));
     if (!twop(x = B(x))) break;
     putc(' ', o); }
   putc(')', o); }
 
-static intptr_t hx_two(la v, ob x) {
-  intptr_t hc = hash(v, A(x)) * hash(v, B(x));
-  return ror(hc, 4 * sizeof(intptr_t)); }
+static I hx_two(la v, ob x) {
+  I hc = hash(v, A(x)) * hash(v, B(x));
+  return ror(hc, 4 * sizeof(I)); }
 
 static bool eq_two(la v, ob x, ob y) {
   return twop(y) &&
