@@ -4,3 +4,4 @@ vgcore.*
 .gdb_history
 lisa
 lisa.dbg
+flamegraph.svg

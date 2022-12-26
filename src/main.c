@@ -2,7 +2,12 @@
 #include <getopt.h>
 #include <unistd.h>
 
-static int main_process(u1, u1, char**);
+static u0 interact(la);
+static FILE *boot_src(void);
+static enum status
+  main_process(u1, u1, char**),
+  source(struct carrier*, FILE*);
+
 int main(int ac, char **av) {
   static const char *help =
     "usage: %s [options] [scripts]\n"
@@ -20,13 +25,25 @@ int main(int ac, char **av) {
       case -1: return ac == optind && !repl ? EXIT_SUCCESS :
         main_process(boot, repl, av + optind); } }
 
-static enum status ev_src(struct carrier *v, FILE *in) {
+static int main_process(u1 boot, u1 repl, char **av) {
+  struct carrier V;
+  enum status s = la_ini(&V);
+
+  if (s == LA_OK && boot) s = source(&V, boot_src());
+  while (s == LA_OK && *av) s = source(&V, fopen(*av++, "r"));
+  if (s == LA_OK && repl) interact(&V);
+
+  return la_perror(&V, s),
+         la_fin(&V),
+         s == LA_EOF ? LA_OK : s; }
+
+static enum status source(struct carrier *v, FILE *in) {
   if (!in) return LA_XSYS;
   for (enum status r;;)
     if ((r = receive(v, in)) != LA_OK ||
         (r = la_ev_x(v, v->xp)) != LA_OK)
-    return fclose(in),
-           r == LA_EOF ? LA_OK : r; }
+        return fclose(in),
+               r == LA_EOF ? LA_OK : r; }
 
 static FILE *boot_src(void) {
   FILE *b; char *home, buf[256]; return
@@ -37,16 +54,11 @@ static FILE *boot_src(void) {
    (b = fopen("/usr/lib/lisa/boot.la", "r"))) ? b :
    fopen("/lib/lisa/boot.la", "r"); }
 
-static int main_process(u1 boot, u1 repl, char **av) {
-  struct carrier V;
-  enum status s = la_ini(&V);
-  if (s == LA_OK && boot) s = ev_src(&V, boot_src());
-  while (s == LA_OK && *av) s = ev_src(&V, fopen(*av++, "r"));
-  if (s == LA_OK && repl)
-    while ((s = receive(&V, stdin)) == LA_OK &&
-           (s = la_ev_x(&V, V.xp)) != LA_EOF) {
-      if (s != LA_OK) la_perror(&V, s), la_reset(&V);
-      else transmit(&V, stdout, V.xp), putc('\n', stdout); }
-  return la_perror(&V, s),
-         la_fin(&V),
-         s == LA_EOF ? LA_OK : s; }
+static u0 interact(la v) {
+  enum status s;
+  while ((s = receive(v, stdin)) == LA_OK &&
+         (s = la_ev_x(v, v->xp)) != LA_EOF)
+    if (s == LA_OK) transmit(v, stdout, v->xp),
+                    putc('\n', stdout);
+    else la_perror(v, s),
+         unwind(v); }

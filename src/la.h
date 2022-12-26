@@ -15,7 +15,10 @@ typedef intptr_t I;
 typedef uintptr_t U;
 typedef I ob, la_ob;
 typedef struct carrier *la, *la_carrier, *F, *A;
-typedef struct M *la_fn, *la_mo, *fn, *mo; // procedures
+typedef struct mo *mo; // procedures
+typedef struct sf *sf;
+typedef enum status vm(la, ob, mo, ob*, ob*, sf); // interpreter function type
+
 
 #ifdef __STDC_HOSTED__
 #include <stdlib.h>
@@ -30,27 +33,26 @@ void *malloc(size_t, size_t), free(void*),
 extern ob stdin, stdout, stderr;
 #endif
 
-typedef FILE *la_io;
+typedef FILE *la_io, *io;
 
-typedef struct sf { // stack frame
+struct sf { // stack frame
   ob *clos; // closure pointer FIXME // use stack
   mo retp; // thread return address
   struct sf *subd; // stack frame of caller
   U argc; // argument count
-  ob argv[]; } *sf;
+  ob argv[]; };
 
-typedef enum status vm(la, ob, mo, ob*, ob*, sf); // interpreter function type
-struct M { vm *ap; };
-// every dynamically allocated thread ends
-// with a footer holding a pointer to its head
-struct tl { struct M *null, *head, end[]; };
+struct mo { vm *ap; };
+struct tl { struct mo *null, *head, end[]; };
+
 typedef const struct typ {
   vm *does;
   u1 (*equi)(la, I, I);
   I (*hash)(la, I);
-  u0 (*emit)(la, la_io, I);
+  u0 (*emit)(la, io, I);
   //  u0 (*walk)(la, ob, ob*, ob*);
   I (*evac)(la, I, I*, I*); } *typ;
+
 extern const struct typ two_typ, str_typ, tbl_typ, sym_typ;
 
 typedef struct two {
@@ -84,7 +86,9 @@ struct lex {
 
 struct carrier {
   // registers -- in CPU registers when VM is running
-  mo ip; sf fp; ob xp, *hp, *sp;
+  mo ip;
+  sf fp;
+  ob xp, *hp, *sp;
 
   // global variables & state
   tbl topl, macros; // global scope
@@ -100,14 +104,12 @@ struct carrier {
     ob *cp; // TODO copy pointer for cheney's algorithm
     U t0; } run; };
 
-u0 *bump(struct carrier*, U),
-   *cells(struct carrier*, U),
-   transmit(struct carrier*, FILE*, ob), // write a value
-   la_reset(struct carrier*), // reset interpreter state
-   la_perror(struct carrier*, enum status),
-   la_putsn(const char*, U, FILE*);
+u0 transmit(la, FILE*, ob), // write a value
+   la_perror(la, enum status),
+   unwind(la),
+   la_putsn(const char*, U, io);
 
-enum status la_ev_x(la, la_ob), receive(la, la_io);
+enum status la_ev_x(la, ob), receive(la, io);
 
 vm data; // dataatch instruction for data threads; also used as a sentinel
 sym symof(struct carrier*, str);
@@ -120,17 +122,16 @@ mo mo_n(struct carrier*, U),
    mo_ini(u0*, U);
 ob tbl_get(la, tbl, ob, ob),
    cp(la, ob, ob*, ob*), // copy something; used by type-specific copying functions
-   hnom(la_carrier, la_fn); // get function name FIXME hide this
+   hnom(la, mo); // get function name FIXME hide this
 u1 please(la, U),
    pushs(la, ...), // push args onto stack; true on success
    eql(la, ob, ob), // object equality
    neql(la, ob, ob); // always returns false
-                     //
 U llen(ob);
-I hash(la, ob), lcprng(I);
+I hash(la, ob);
 
 // just a big random number!
-#define mix ((int64_t)2708237354241864315)
+#define mix ((I)2708237354241864315)
 
 #define wsizeof(_) b2w(sizeof(_))
 
@@ -161,6 +162,10 @@ I hash(la, ob), lcprng(I);
 #define NoInline __attribute__((noinline))
 #define SI static Inline
 
+SI I lcprng(I s) { // the constant came from a paper
+  const I steele_vigna_2021 = 0xaf251af3b0f025b5;
+  return (s * steele_vigna_2021 + 1) >> 8; }
+
 SI struct tl *mo_tl(mo k) {
   for (;; k++) if (!G(k)) return (struct tl*) k; }
 
@@ -172,16 +177,16 @@ SI u1 strp(ob _) { return homp(_) && (typ) GF(_) == &str_typ; }
 SI u1 twop(ob _) { return homp(_) && (typ) GF(_) == &two_typ; }
 SI u1 symp(ob _) { return homp(_) && (typ) GF(_) == &sym_typ; }
 
-SI U b2w(U b) {
-  U q = b / sizeof(ob), r = b % sizeof(ob);
-  return r ? q + 1 : q; }
+SI U b2w(U b) { U q, r; return
+  q = b / sizeof(ob),
+  r = b % sizeof(ob),
+  r ? q + 1 : q; }
 
 // this can give a false positive if x is a fixnum
 SI u1 livep(la v, ob x) {
   return (ob*) x >= v->pool && (ob*) x < v->pool + v->len; }
 
-SI I ror(I x, U n) {
-  return (x<<((8*sizeof(I))-n))|(x>>n); }
+SI I ror(I x, U n) { return (x<<((8*sizeof(I))-n))|(x>>n); }
 
 #define Gc(n) ob n(la v, ob x, ob *pool0, ob *top0)
 
@@ -196,6 +201,14 @@ SI u0 *cpyw_l2r(u0 *dst, const u0 *src, U n) {
 SI u0 *setw(u0 *d, I w, U n) {
   while (n) ((I*)d)[--n] = w;
   return d; }
+
+// unchecked allocator -- make sure there's enough memory!
+SI u0 *bump(la v, U n) {
+  u0*x = v->hp;
+  return v->hp += n, x; }
+
+SI u0 *cells(la v, U n) { return
+  Avail >= n || please(v, n) ? bump(v, n) : 0; }
 
 // these are vm functions used by C but not lisp.
 #define cfns(_) _(gc) _(xdom) _(xoom) _(xary)

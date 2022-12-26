@@ -1,4 +1,5 @@
 #include "la.h"
+#include <stdarg.h>
 
 static U copy(la, U);
 static u0 do_copy(la, U, ob*);

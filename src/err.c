@@ -3,6 +3,12 @@
 #include <errno.h>
 #include <stdarg.h>
 
+u0 unwind(la v) {
+  v->sp = v->pool + v->len,
+  v->fp = (sf) v->sp,
+  v->ip = 0,
+  v->xp = nil; }
+
 // errors
 Vm(xary) { return Pack(), LA_XARY; }
 Vm(xdom) { return Pack(), LA_XDOM; }
