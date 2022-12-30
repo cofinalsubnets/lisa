@@ -440,7 +440,7 @@ const struct typ str_typ = {
 
 static Vm(ap_str) {
   str s = (str) ip;
-  la_putsn(s->text, s->len, stdout);
+  fputsn(s->text, s->len, stdout);
   return ApC(ret, (ob) ip); }
 
 // string instructions
@@ -556,7 +556,7 @@ static I hx_sym(la v, ob _) { return ((sym) _)->code; }
 
 static u0 tx_sym(la v, la_io o, ob _) {
   str s = ((sym) _)->nom;
-  s ? la_putsn(s->text, s->len, o) : fputs("#sym", o); }
+  s ? fputsn(s->text, s->len, o) : fputs("#sym", o); }
 
 static Vm(ap_nop) { return ApC(ret, (ob) ip); }
 
@@ -576,8 +576,7 @@ sym symof(la v, str s) {
 
 Vm(sym_f) {
   str i = fp->argc && strp(fp->argv[0]) ? (str) fp->argv[0] : 0;
-  sym y;
-  CallOut(y = symof(v, i));
+  sym y; CallOut(y = symof(v, i));
   return y ? ApC(ret, (ob) y) : ApC(xoom, xp); }
 
 Vm(ynom_f) {

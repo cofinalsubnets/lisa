@@ -1,8 +1,41 @@
 #include "la.h"
 #include <string.h>
-#include <ctype.h>
+
+// out
+
+static u0 tx_nom(la, la_io, ob);
+u0 transmit(la v, la_io o, ob x) {
+  if (nump(x)) fprintf(o, "%ld", getnum(x));
+  else if (G(x) == data) ((typ) GF(x))->emit(v, o, x);
+  else tx_nom(v, o, hnom(v, (mo) x)); }
+
+// print a function name // this is weird
+static NoInline u0 tx_nom(la v, la_io o, ob x) {
+  if (symp(x)) putc('\\', o), transmit(v, o, x);
+  else if (!twop(x)) putc('\\', o);
+  else {
+    if (symp(A(x)) || twop(A(x))) tx_nom(v, o, A(x));
+    if (symp(B(x)) || twop(B(x))) tx_nom(v, o, B(x)); } }
+
+Vm(txc_f) { return !fp->argc ?
+  ApC(xary, putnum(1)) :
+  ApC(ret, putnum(putc(getnum(fp->argv[0]), stdout))); }
+
+Vm(tx_f) {
+  U i = 0, l = fp->argc;
+  if (l) {
+    while (i < l - 1)
+      transmit(v, stdout, fp->argv[i++]),
+      putc(' ', stdout);
+    xp = fp->argv[i];
+    transmit(v, stdout, xp); }
+  return putc('\n', stdout), ApC(ret, xp); }
 
 Vm(rxc_f) { return ApC(ret, putnum(getc(stdin))); }
+
+
+// in
+#include <ctype.h>
 
 static str
   rx_atom_str(la, la_io),
@@ -34,14 +67,14 @@ static int rx_char(la_io i) {
     case '#': case ';': for (;;) switch (getc(i)) {
       case '\n': case EOF: return rx_char(i); } } }
 
-static Inline ob rx_pull(la v, la_io i, ob x) { return
+SI ob rx_pull(la v, FILE *i, ob x) { return
   ((ob (*)(la, la_io, ob))(*v->sp++))(v, i, x); }
 
 static ob rx_ret(la v, la_io i, ob x) { return x; }
 
 static ob rx_two_cons(la v, la_io i, ob x) {
-  ob y = *v->sp++;
-  return rx_pull(v, i, x ? (ob) pair(v, y, x) : x); }
+  ob y = *v->sp++; return
+    rx_pull(v, i, x ? (ob) pair(v, y, x) : x); }
 
 static ob rx_two_cont(la v, la_io i, ob x) {
   return !x || !pushs(v, rx_two_cons, x, NULL) ?
@@ -74,24 +107,23 @@ static NoInline ob rx_two(la v, la_io i) {
     default: return
       ungetc(c, i),
       pushs(v, rx_two_cont, NULL) ?
-        rx(v, i) :
-        rx_pull(v, i, 0); } }
+        rx(v, i) : rx_pull(v, i, 0); } }
 
-static str mkbuf(la v) {
-  str s = cells(v, wsizeof(struct str) + 1);
-  return s ? str_ini(s, sizeof(ob)) : s; }
+static str mkbuf(la v) { str s; return
+  s = cells(v, wsizeof(struct str) + 1),
+  s ? str_ini(s, sizeof(ob)) : s; }
 
 static str buf_grow(la v, str s) {
-  str t;
-  size_t len = s->len;
-  with(s, t = cells(v, wsizeof(struct str) + 2 * b2w(len)));
-  if (t) str_ini(t, 2 * len), memcpy(t->text, s->text, len);
-  return t; }
+  U len = s->len;
+  str t; return
+    with(s, t = cells(v, wsizeof(struct str) + 2 * b2w(len))),
+    !t ? t : (memcpy(t->text, s->text, len),
+              str_ini(t, 2 * len)); }
 
 // read the contents of a string literal into a string
 static str rx_str(la v, la_io p) {
   str o = mkbuf(v);
-  for (size_t n = 0, lim = sizeof(ob); o; o = buf_grow(v, o), lim *= 2)
+  for (U n = 0, lim = sizeof(ob); o; o = buf_grow(v, o), lim *= 2)
     for (int x; n < lim;) switch (x = getc(p)) {
       // backslash causes the next character
       // to be read literally // TODO more escape sequences
@@ -104,7 +136,7 @@ static str rx_str(la v, la_io p) {
 // into a string
 static str rx_atom_str(la v, la_io p) {
   str o = mkbuf(v);
-  for (size_t n = 0, lim = sizeof(ob); o; o = buf_grow(v, o), lim *= 2)
+  for (U n = 0, lim = sizeof(ob); o; o = buf_grow(v, o), lim *= 2)
     for (int x; n < lim;) switch (x = getc(p)) {
       default: o->text[n++] = x; continue;
       // these characters terminate an atom
@@ -115,9 +147,9 @@ static str rx_atom_str(la v, la_io p) {
 
 static NoInline ob rx_atom_n(la v, str b, size_t inset, int sign, int rad) {
   static const char *digits = "0123456789abcdefghijklmnopqrstuvwxyz";
-  size_t len = b->len;
+  U len = b->len;
   if (inset >= len) fail: return (ob) symof(v, b);
-  intptr_t out = 0;
+  I out = 0;
   do {
     int dig = 0, c = tolower(b->text[inset++]);
     while (digits[dig] && digits[dig] != c) dig++;
@@ -138,34 +170,3 @@ static NoInline ob rx_atom(la v, str b) {
         if (*r == c) return rx_atom_n(v, b, i+2, sign, r[1]); }
     default: goto out; } out:
   return rx_atom_n(v, b, i, sign, 10); }
-
-u0 la_putsn(const char *s, size_t n, la_io o) {
-  while (n--) putc(*s++, o); }
-
-static u0 tx_nom(la, la_io, ob);
-u0 transmit(la v, la_io o, ob x) {
-  if (nump(x)) fprintf(o, "%ld", getnum(x));
-  else if (G(x) == data) ((typ) GF(x))->emit(v, o, x);
-  else tx_nom(v, o, hnom(v, (mo) x)); }
-
-// print a function name // this is weird
-static NoInline u0 tx_nom(la v, la_io o, ob x) {
-  if (symp(x)) putc('\\', o), transmit(v, o, x);
-  else if (!twop(x)) putc('\\', o);
-  else {
-    if (symp(A(x)) || twop(A(x))) tx_nom(v, o, A(x)); 
-    if (symp(B(x)) || twop(B(x))) tx_nom(v, o, B(x)); } }
-
-Vm(txc_f) { return !fp->argc ?
-  ApC(xary, putnum(1)) :
-  ApC(ret, putnum(putc(getnum(fp->argv[0]), stdout))); }
-
-Vm(tx_f) {
-  U i = 0, l = fp->argc;
-  if (l) {
-    while (i < l - 1)
-      transmit(v, stdout, fp->argv[i++]),
-      putc(' ', stdout);
-    xp = fp->argv[i];
-    transmit(v, stdout, xp); }
-  return putc('\n', stdout), ApC(ret, xp); }

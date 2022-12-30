@@ -63,7 +63,7 @@ u0 la_perror(la v, enum status s) { switch (s) {
     break;
   case LA_XNOM: {
     const char *n = "#sym";
-    size_t l = 4;
+    U l = 4;
     str s = ((sym) v->xp)->nom;
     if (s) n = s->text, l = s->len;
     report(v, "free variable : %.*s", l, n); 

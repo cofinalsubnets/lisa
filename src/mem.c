@@ -133,6 +133,6 @@ Gc(cp) {
 
 // Run a GC cycle from inside the VM
 // XXX calling convention: size of request (bare size_t) in v->xp
-NoInline Vm(gc) { size_t req = v->xp; return
+NoInline Vm(gc) { U req = v->xp; return
   CallOut(req = please(v, req)),
   req ? ApY(ip, xp) : ApC(xoom, xp); }

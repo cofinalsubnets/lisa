@@ -106,8 +106,7 @@ struct carrier {
 
 u0 transmit(la, FILE*, ob), // write a value
    la_perror(la, enum status),
-   unwind(la),
-   la_putsn(const char*, U, io);
+   unwind(la);
 
 enum status la_ev_x(la, ob), receive(la, io);
 
@@ -161,6 +160,9 @@ I hash(la, ob);
 #define Inline inline __attribute__((always_inline))
 #define NoInline __attribute__((noinline))
 #define SI static Inline
+
+SI u0 fputsn(const char *s, U n, FILE *o) {
+  while (n--) putc(*s++, o); }
 
 SI I lcprng(I s) { // the constant came from a paper
   const I steele_vigna_2021 = 0xaf251af3b0f025b5;

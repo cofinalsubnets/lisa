@@ -8,7 +8,7 @@ static u1
   inst(la, const char*, vm*),
   la_ini_(la);
 
-enum status la_ini(la_carrier v) {
+NoInline enum status la_ini(la_carrier v) {
   const U len = 1 << 10; // power of 2
   memset(v, 0, sizeof(struct carrier));
   ob *pool = malloc(len * sizeof(ob));
