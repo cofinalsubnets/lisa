@@ -1,10 +1,10 @@
-nom=sen
+nom=li
 suff=la
 boot=lib/boot.$(suff)
 
 CC ?= gcc
 CFLAGS ?=\
-	-std=c11 -g -O2 -Wall\
+	-std=c11 -g -O2 -Wall -flto\
  	-Wstrict-prototypes -Wno-shift-negative-value\
 	-fno-stack-protector
 cc=$(CC) $(CFLAGS)
@@ -24,7 +24,7 @@ h=$(sort $(wildcard *.h))
 o=$(c:.c=.o)
 
 %.o: %.c $h makefile
-	$(cc) -c $^
+	$(cc) -c $<
 
 $(nom): $o $h
 	$(cc) -o $@ $o

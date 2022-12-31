@@ -2,7 +2,5 @@ perf.*
 vgcore.*
 *.o
 .gdb_history
-lisa
-lisa.dbg
 flamegraph.svg
-sen
+li
