@@ -1,64 +1,44 @@
-nom=lisa
+nom=sen
 suff=la
-
-LC_COLLATE=C
-h=$(sort $(wildcard src/*.h))
-c=$(sort $(wildcard src/*.c))
-o=$(c:.c=.o)
-
-boot=lib/boot.la
-
-CFLAGS ?=\
-	-std=c99 -g -O2 -flto -fpic -Wall\
- 	-Wstrict-prototypes -Wno-shift-negative-value\
-	-fno-stack-protector
-
-build_dir=build
-test_dir=test
-doc_dir=doc
-lib_dir=lib
-
-release_build=$(nom)
-debug_build=$(release_build).dbg
-
-boot=$(lib_dir)/boot.$(suff)
+boot=lib/boot.$(suff)
 lib=$(boot)
 
+CC ?= gcc
+CFLAGS ?=\
+	-std=c99 -g -O2 -Wall\
+ 	-Wstrict-prototypes -Wno-shift-negative-value\
+	-fno-stack-protector
+cc=$(CC) $(CFLAGS)
+
+lib_dir=lib
 
 # installation
 DESTDIR ?= $(HOME)
 PREFIX ?= .local
 
-run_tests=./$(debug_build) -_ $(boot) $(test_dir)/*.$(suff)
+run_tests=./$(nom) -_ $(boot) test/*.$(suff)
 
-test: $(debug_build)
+test: $(nom)
 	/usr/bin/env TIMEFORMAT="in %Rs" bash -c "time $(run_tests)"
+
+$(nom): $(nom).c
+	$(cc) -o $@ $^
 
 # run the tests a lot of times to try and catch nondeterministic bugs :(
 test-lots: $(debug_build)
 	for n in {1..2048}; do $(run_tests) || exit 1; done
 
-$(release_build): $(debug_build)
-	strip --strip-unneeded -o $@ $^
-
-$(debug_build): $o
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
-
-src/%.o: src/%.c $h Makefile
-	$(CC) -c -o $@ $(CFLAGS) $(CPPFLAGS) $<
-
-dest=$(DESTDIR)/$(PREFIX)/
-bin_files=$(dest)bin/$(nom)
-lib_files=$(addprefix $(dest)lib/$(nom)/,$(notdir $(lib)))
-doc_files=$(dest)share/man/man1/$(nom).1
-all_files=$(bin_files) $(lib_files) $(doc_files)
-install: $(all_files)
+bins=$(dest)bin/$(nom)
+libs=$(addprefix $(dest)lib/$(nom)/,$(notdir $(boot)))
+docs=$(dest)share/man/man1/$(nom).1
+files=$(bins) $(libs) $(docs)
+install: $(files)
 uninstall:
-	rm -f $(all_files)
+	rm -f $(files)
 
 $(dest)bin/%: %
 	install -D $^ $@
-$(dest)share/man/man1/%: $(doc_dir)/%
+$(dest)share/man/man1/%: %
 	install -D $^ $@
 $(dest)lib/$(nom)/%: lib/%
 	install -D $^ $@
@@ -91,11 +71,13 @@ perf.data: $(debug_build) $(lib)
 # valgrind detects some memory errors
 valg: $(debug_build)
 	valgrind --error-exitcode=1 $(run_tests)
+
 # approximate lines of code
 sloc:
 	cloc --force-lang=Lisp,$(suff) *
+
 # size of binaries
-bits: $(release_build) $(debug_build)
+bits: $(nom)
 	du -h $^
 
 .PHONY: test test-lots repl clean\
