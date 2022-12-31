@@ -4,17 +4,15 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
+#include <string.h>
+#include <stdarg.h>
+
+_Static_assert(-1 == -1 >> 1, "signed >>");
+_Static_assert(sizeof(size_t) == sizeof(void*),
+  "size_t size == data pointer size");
 
 struct carrier;
-enum status {
-  LA_EOF = -1,
-  LA_OK,
-  LA_XDOM,
-  LA_XARY,
-  LA_XNOM,
-  LA_XSYN,
-  LA_XSYS,
-  LA_XOOM };
+enum status;
 
 enum status la_ini(struct carrier*);
 void la_fin(struct carrier*);
@@ -25,21 +23,21 @@ typedef bool u1;
 
 typedef intptr_t I;
 typedef uintptr_t U;
-typedef I ob, la_ob;
-typedef struct carrier *la, *la_carrier, *F, *A;
+typedef I ob;
+typedef struct carrier *la;
 typedef struct mo *mo; // procedures
-typedef struct sf *sf;
-typedef enum status vm(la, ob, mo, ob*, ob*, sf); // interpreter function type
-
-struct sf { // stack frame
-  ob *clos; // closure pointer FIXME // use stack
-  mo retp; // thread return address
-  struct sf *subd; // stack frame of caller
-  U argc; // argument count
-  ob argv[]; };
+typedef struct frame *sf, *frame;
+typedef enum status vm(la, ob, mo, ob*, ob*, frame); // interpreter function type
 
 struct mo { vm *ap; };
 struct tl { struct mo *null, *head, end[]; };
+
+struct frame { // stack frame
+  ob *clos; // closure pointer FIXME // use stack
+  mo retp; // thread return address
+  struct frame *subd; // stack frame of caller
+  U argc; // argument count
+  ob argv[]; };
 
 typedef const struct typ {
   vm *does;
@@ -75,19 +73,19 @@ typedef struct tbl { // hash tables
 // linked list for gc protection
 struct ll { ob *addr; struct ll *next; };
 
-struct lex {
+struct glob {
   sym define, cond, lambda, quote, begin, splat, eval; };
 
 struct carrier {
   // registers -- in CPU registers when VM is running
   mo ip;
-  sf fp;
+  frame fp;
   ob xp, *hp, *sp;
 
   // global variables & state
   tbl topl, macros; // global scope
   sym syms; // symbol table
-  struct lex lex;
+  struct glob lex;
   U rand;
   enum status (*exit)(struct carrier *, enum status);
 
@@ -99,18 +97,13 @@ struct carrier {
     ob *cp; // TODO copy pointer for cheney's algorithm
     U t0; } run; };
 
-u0 transmit(la, FILE*, ob), // write a value
-   la_perror(la, enum status),
-   unwind(la);
-
-enum status la_ev_x(la, ob), receive(la, FILE*);
 
 static vm data; // dataatch instruction for data threads; also used as a sentinel
 static sym symof(struct carrier*, str);
 static str str_ini(u0*, U);
 static tbl mktbl(la), tbl_set(la, tbl, ob, ob);
 static two pair(la, ob, ob), two_ini(u0*, ob, ob);
-static mo mo_n(struct carrier*, U), mo_ini(u0*, U);
+static mo mo_n(struct carrier*, U), mo_ini(u0*, U), thd(la, ...);
 static ob tbl_get(la, tbl, ob, ob),
    cp(la, ob, ob*, ob*), // copy something; used by type-specific copying functions
    hnom(la, mo); // get function name FIXME hide this
@@ -121,13 +114,16 @@ static u1 please(la, U),
 static U llen(ob);
 static I hash(la, ob);
 
-#define wsizeof(_) b2w(sizeof(_))
+static u0 unwind(la), transmit(la, FILE*, ob),
+          la_perror(la, enum status);
+
+
+#define Width(_) b2w(sizeof(_))
 
 #define getnum(_) ((ob)(_)>>1)
 #define putnum(_) (((ob)(_)<<1)|1)
 
 #define nil putnum(0)
-#define T putnum(-1)
 
 #define Avail (v->sp - v->hp)
 #define mm(r) ((v->safe = &((struct ll){(ob*)(r), v->safe})))
@@ -205,14 +201,10 @@ static U llen(ob l) {
     if (twop(l)) l = B(l), i++;
     else return i; }
 
-_Static_assert(-1 == -1 >> 1, "signed >>");
-_Static_assert(sizeof(U) == sizeof(u0*),
-  "size_t size == data pointer size");
-
 
 // these are vm functions used by C but not lisp.
 #define cfns(_) _(gc) _(xdom) _(xoom) _(xary) _(xok)
-#define ninl(x, ...) vm x NoInline;
+#define ninl(x, ...) static NoInline vm x;
 cfns(ninl)
 #undef cfns
 
@@ -235,7 +227,7 @@ cfns(ninl)
  _(twop_) _(nump_) _(nilp_) _(strp_)\
  _(tblp_) _(symp_) _(homp_)\
  _(add) _(sub) _(mul) _(quot) _(rem) _(neg)\
- _(sar) _(sal) _(band) _(bor) _(bxor)\
+ _(sar) _(sal) _(band) _(bor) _(bxor) _(bnot)\
  _(lt) _(lteq) _(eq) _(gteq) _(gt)\
  _(tget) _(tset) _(thas) _(tlen)\
  _(cons) _(car) _(cdr)\
@@ -320,11 +312,8 @@ i_primitives(ninl)
 // sp is at least hp so this is a safe check for 1 word
 #define Have1() if (sp == hp) return (v->xp = 1, ApC(gc, xp))
 
-#define Vm(n) enum status n(la v, ob xp, mo ip, ob *hp, ob *sp, sf fp)
-
-#include <string.h>
-#include <errno.h>
-#include <stdarg.h>
+#define Vm(n) static NoInline enum status\
+  n(la v, ob xp, mo ip, ob *hp, ob *sp, frame fp)
 
 static U copy(la, U);
 static u0 do_copy(la, U, ob*);
@@ -416,7 +405,7 @@ static u0 do_copy(la v, U len1, ob *pool1) {
   // copy globals
   v->topl = (tbl) cp(v, (ob) v->topl, pool0, top0);
   v->macros = (tbl) cp(v, (ob) v->macros, pool0, top0);
-  for (U i = 0; i < wsizeof(struct lex); i++)
+  for (U i = 0; i < Width(struct glob); i++)
     ((ob*)&v->lex)[i] = cp(v, ((ob*)&v->lex)[i], pool0, top0);
   for (struct ll *r = v->safe; r; r = r->next)
     *r->addr = cp(v, *r->addr, pool0, top0);
@@ -461,6 +450,16 @@ Gc(cp) {
     ((typ) GF(x))->evac(v, x, pool0, top0);
   return cp_mo(v, (mo) x, pool0, top0); }
 
+enum status {
+  Eof = -1,
+  Ok,
+  DomainError,
+  ArityError,
+  NameError,
+  SyntaxError,
+  SystemError,
+  OomError };
+
 static sym symofs(la, const char*);
 static str strof(la, const char*);
 static u1
@@ -469,17 +468,17 @@ static u1
   la_ini_(la);
 
 static enum status vm_exit(la v, enum status r) { return r; }
-NoInline enum status la_ini(la_carrier v) {
+NoInline enum status la_ini(la v) {
   const U len = 1 << 10; // power of 2
   memset(v, 0, sizeof(struct carrier));
   ob *pool = malloc(len * sizeof(ob));
-  return !pool ? LA_XOOM :
+  return !pool ? OomError :
     (v->len = len,
      v->hp = v->pool = pool,
      v->fp = (sf) (v->sp = pool + len),
      v->rand = v->run.t0 = clock(),
      v->exit = vm_exit,
-     la_ini_(v) ? LA_OK : (la_fin(v),  LA_XOOM)); }
+     la_ini_(v) ? Ok : (la_fin(v),  OomError)); }
 
 u0 la_fin(struct carrier *v) {
   if (v) free(v->pool), v->pool = NULL; }
@@ -490,7 +489,7 @@ static Inline u0 *cells(la v, U n) { return
 
 static str strof(la v, const char* c) {
   U bs = strlen(c);
-  str o = cells(v, wsizeof(struct str) + b2w(bs));
+  str o = cells(v, Width(struct str) + b2w(bs));
   return o ? (memcpy(o->text, c, bs), str_ini(o, bs)) : o; }
 
 // initialization helpers
@@ -535,6 +534,7 @@ u1 eql(la v, ob a, ob b) { return a == b ||
   (!nump(a|b) && G(a) == data &&
    ((typ) GF(a))->equi(v, a, b)); }
 
+#define T putnum(-1)
 // comparison operators
 Vm(lt) { return ApN(1, *sp++ < xp ? T : nil); }
 Vm(lteq) { return ApN(1, *sp++ <= xp ? T : nil); }
@@ -589,7 +589,7 @@ Vm(ret) { return
 
 // normal function call
 Vm(call) {
-  Have(wsizeof(struct sf));
+  Have(Width(struct frame));
   sf subd = fp;
   sp = (ob*) (fp = (sf) sp - 1);
   fp->argc = getnum(GF(ip));
@@ -724,14 +724,14 @@ Vm(deftop) { u1 _; return
 Vm(setloc) {
   U n = getnum((ob) GF(ip));
   // + 1 for the stack slot
-  Have(n + wsizeof(struct tl) + 1);
+  Have(n + Width(struct tl) + 1);
   mo t = setw(mo_ini(hp, n), nil, n);
   return
-    hp += n + wsizeof(struct tl),
+    hp += n + Width(struct tl),
     *--sp = (ob) t,
     ApN(2, xp); }
 
-static NoInline Vm(xnom);
+NoInline Vm(xnom);
 // late binding
 // TODO dynamic type checking here
 Vm(late) {
@@ -752,9 +752,9 @@ Vm(late) {
     ApN(2, xp); }
 
 // varargs
-static NoInline Vm(varg0) {
+NoInline Vm(varg0) {
   Have1(); return
-    fp = cpyw_l2r((ob*) fp - 1, fp, wsizeof(struct sf) + fp->argc),
+    fp = cpyw_l2r((ob*) fp - 1, fp, Width(struct frame) + fp->argc),
     sp = (ob*) fp,
     fp->argv[fp->argc++] = nil,
     ApN(2, xp); }
@@ -767,9 +767,9 @@ Vm(varg) {
   // in this case we need to add another argument
   // slot to hold the nil.
   // in this case we just keep the existing slots.
-  Have(wsizeof(struct two) * vdic);
+  Have(Width(struct two) * vdic);
   two t = (two) hp;
-  hp += wsizeof(struct two) * vdic;
+  hp += Width(struct two) * vdic;
   for (U i = vdic; i--;
     two_ini(t + i, fp->argv[reqd + i], (ob) (t + i + 1)));
   t[vdic-1].b = nil;
@@ -877,37 +877,38 @@ Vm(yield) {
   enum status s = v->xp;
   return Pack(), v->exit(v, s); }
 #define Yield(s) (v->xp = (s), ApC(yield, xp))
-Vm(xary) { return Yield(LA_XARY); }
-Vm(xok) { return Yield(LA_OK); }
-Vm(xdom) { return Yield(LA_XDOM); }
-Vm(xoom) { return Yield(LA_XOOM); }
-static Vm(xnom) { return Yield(LA_XNOM); }
+Vm(xary) { return Yield(ArityError); }
+Vm(xok) { return Yield(Ok); }
+Vm(xdom) { return Yield(DomainError); }
+Vm(xoom) { return Yield(OomError); }
+Vm(xnom) { return Yield(NameError); }
 NoInline Vm(gc) {
   U req = v->xp; return
     CallOut(req = please(v, req)),
-    req ? ApY(ip, xp) : Yield(LA_XOOM); }
+    req ? ApY(ip, xp) : Yield(OomError); }
 // Run a GC cycle from inside the VM
 
 #undef Yield
 
+#include <errno.h>
 static NoInline u0 report(la, const char*, ...);
 u0 la_perror(la v, enum status s) { switch (s) {
   // not error codes, so print nothing.
-  case LA_OK: case LA_EOF: return;
-  case LA_XDOM: report(v, "has no value"); break;
-  case LA_XOOM: report(v, "oom at %d words", v->len); break;
-  case LA_XSYN: report(v, "syntax error"); break; // TODO source info
-  case LA_XARY:
+  case Ok: case Eof: return;
+  case DomainError: report(v, "has no value"); break;
+  case OomError: report(v, "oom at %d words", v->len); break;
+  case SyntaxError: report(v, "syntax error"); break; // TODO source info
+  case ArityError:
     report(v, "wrong arity : %d of %d", v->fp->argc, getnum(v->xp));
     break;
-  case LA_XNOM: {
+  case NameError: {
     const char *n = "#sym";
     U l = 4;
     str s = ((sym) v->xp)->nom;
     if (s) n = s->text, l = s->len;
     report(v, "free variable : %.*s", l, n); 
     break; }
-  case LA_XSYS:
+  case SystemError:
     report(v, "system error : %s", strerror(errno)); } }
 
 static NoInline u0 report_call(la v, mo ip, sf fp) {
@@ -990,22 +991,17 @@ Vm(rxc_f) { return ApC(ret, putnum(getc(stdin))); }
 // in
 #include <ctype.h>
 
-static str
-  rx_atom_str(la, FILE*),
-  rx_str(la, FILE*);
-static ob
-  rx_atom(la, str),
-  rx_ret(la, FILE*, ob),
-  rx(la, FILE*),
-  rx_two(la, FILE*);
+static str rx_atom_str(la, FILE*), rx_str(la, FILE*);
+static ob rx_atom(la, str), rx_ret(la, FILE*, ob),
+  rx(la, FILE*), rx_two(la, FILE*);
 
 static ob receive_x(la v, FILE* i) { return
   pushs(v, rx_ret, NULL) ? rx(v, i) : 0; }
 
 // FIXME doesn't distinguish between OOM and parse error
-enum status receive(la v, FILE* i) {
+static enum status receive(la v, FILE* i) {
   ob x = receive_x(v, i);
-  return x ? (v->xp = x, LA_OK) : feof(i) ? LA_EOF : LA_XSYN; }
+  return x ? (v->xp = x, Ok) : feof(i) ? Eof : SyntaxError; }
 
 ////
 /// " the parser "
@@ -1031,8 +1027,7 @@ static ob rx_two_cons(la v, FILE* i, ob x) {
 
 static ob rx_two_cont(la v, FILE* i, ob x) {
   return !x || !pushs(v, rx_two_cons, x, NULL) ?
-    rx_pull(v, i, 0) :
-    rx_two(v, i); }
+    rx_pull(v, i, 0) : rx_two(v, i); }
 
 static ob rx_q(la v, FILE* i, ob x) { return
   x = x ? (ob) pair(v, x, nil) : x,
@@ -1063,13 +1058,13 @@ static NoInline ob rx_two(la v, FILE* i) {
         rx(v, i) : rx_pull(v, i, 0); } }
 
 static str mkbuf(la v) { str s; return
-  s = cells(v, wsizeof(struct str) + 1),
+  s = cells(v, Width(struct str) + 1),
   s ? str_ini(s, sizeof(ob)) : s; }
 
 static str buf_grow(la v, str s) {
   U len = s->len;
   str t; return
-    with(s, t = cells(v, wsizeof(struct str) + 2 * b2w(len))),
+    with(s, t = cells(v, Width(struct str) + 2 * b2w(len))),
     !t ? t : (memcpy(t->text, s->text, len),
               str_ini(t, 2 * len)); }
 
@@ -1098,7 +1093,7 @@ static str rx_atom_str(la v, FILE* p) {
       case EOF: return o->len = n, o; }
   return 0; }
 
-static NoInline ob rx_atom_n(la v, str b, size_t inset, int sign, int rad) {
+static NoInline ob rx_atom_n(la v, str b, U inset, int sign, int rad) {
   static const char *digits = "0123456789abcdefghijklmnopqrstuvwxyz";
   U len = b->len;
   if (inset >= len) fail: return (ob) symof(v, b);
@@ -1125,6 +1120,13 @@ static NoInline ob rx_atom(la v, str b) {
   return rx_atom_n(v, b, i, sign, 10); }
 
 
+static NoInline mo thdr(la v, U n, va_list xs) {
+  vm *x = va_arg(xs, vm*);
+  if (!x) return mo_n(v, n);
+  mo k; with(x, k = thdr(v, n + 1, xs));
+  if (k) k[n].ap = x;
+  return k; }
+
 // push things onto the stack
 static NoInline u1 pushsr(la v, U i, va_list xs) {
   u1 _; ob x = va_arg(xs, ob);
@@ -1132,12 +1134,20 @@ static NoInline u1 pushsr(la v, U i, va_list xs) {
     (with(x, _ = pushsr(v, i+1, xs)),
      _ && (*--v->sp = x, true)); }
 
-u1 pushs(la v, ...) {
+static u1 pushs(la v, ...) {
   u1 _; va_list xs; return
   va_start(xs, v),
   _ = pushsr(v, 0, xs),
   va_end(xs),
   _; }
+
+static mo thd(la v, ...) {
+  mo k; va_list xs; return
+  va_start(xs, v),
+  k = thdr(v, 0, xs),
+  va_end(xs),
+  k; }
+
 
 static vm ap_two;
 static u1 eq_two(la, I, I);
@@ -1152,7 +1162,7 @@ static const struct typ two_typ = {
   .hash = hx_two,
   .equi = eq_two, };
 
-two two_ini(void *_, ob a, ob b) {
+two two_ini(u0 *_, ob a, ob b) {
   two w = _; return
     w->data = data,
     w->typ = &two_typ,
@@ -1162,21 +1172,21 @@ two two_ini(void *_, ob a, ob b) {
 // pairs and lists
 static NoInline two pair_gc(la v, ob a, ob b) {
   u1 ok; return
-    with(a, with(b, ok = please(v, wsizeof(struct two)))),
+    with(a, with(b, ok = please(v, Width(struct two)))),
     ok ? pair(v, a, b) : 0; }
 
 NoInline two pair(la v, ob a, ob b) {
-  return Avail >= wsizeof(struct two) ?
-    two_ini(bump(v, wsizeof(struct two)), a, b) :
+  return Avail >= Width(struct two) ?
+    two_ini(bump(v, Width(struct two)), a, b) :
     pair_gc(v, a, b); }
 
 Vm(car) { return ApN(1, A(xp)); }
 Vm(cdr) { return ApN(1, B(xp)); }
 
 Vm(cons) {
-  Have(wsizeof(struct two));
+  Have(Width(struct two));
   xp = (ob) two_ini(hp, xp, *sp++);
-  hp += wsizeof(struct two);
+  hp += Width(struct two);
   return ApN(1, xp); }
 
 Vm(car_f) {
@@ -1193,7 +1203,7 @@ Vm(cdr_f) {
 
 Vm(cons_f) {
   if (fp->argc) {
-    U n = wsizeof(struct two) * (fp->argc - 1);
+    U n = Width(struct two) * (fp->argc - 1);
     Have(n);
     two w = (two) hp;
     hp += n;
@@ -1202,12 +1212,12 @@ Vm(cons_f) {
       xp = (ob) two_ini(w+i, fp->argv[i], xp)); }
   return ApC(ret, xp); }
 
-static Vm(ap_two) { return
+Vm(ap_two) { return
   ApC(ret, fp->argc ? B(ip) : A(ip)); }
 
 static Gc(cp_two) {
   two src = (two) x,
-      dst = bump(v, wsizeof(struct two));
+      dst = bump(v, Width(struct two));
   src->data = (vm*) dst;
   return (ob) two_ini(dst,
     cp(v, src->a, pool0, top0),
@@ -1232,7 +1242,7 @@ static u1 eq_two(la v, ob x, ob y) {
 
 
 static vm ap_tbl;
-static u0  tx_tbl(la, FILE*, I);
+static u0 tx_tbl(la, FILE*, I);
 static I hx_tbl(la, I), cp_tbl(la, I, I*, I*);
 
 static const struct typ tbl_typ = {
@@ -1293,7 +1303,7 @@ static ob tbl_del_s(la, tbl, ob, ob), tbl_keys(la);
 static tbl tbl_grow(la, tbl), tbl_set_s(la, tbl, ob, ob);
 
 tbl mktbl(la v) {
-  tbl t = cells(v, wsizeof(struct tbl) + 1);
+  tbl t = cells(v, Width(struct tbl) + 1);
   if (t) ini_tbl(t, 0, 1, (struct tbl_e**) (t + 1)), t->tab[0] = 0;
   return t; }
 
@@ -1411,7 +1421,7 @@ static tbl tbl_set_s(la v, tbl t, ob k, ob x) {
   struct tbl_e *e = tbl_ent_hc(v, t, k, hc);
   if (e) return e->val = x, t;
   U i = tbl_idx(t->cap, hc);
-  with(t, with(k, with(x, e = cells(v, wsizeof(struct tbl_e)))));
+  with(t, with(k, with(x, e = cells(v, Width(struct tbl_e)))));
   if (!e) return 0;
   e->key = k, e->val = x, e->next = t->tab[i];
   t->tab[i] = e;
@@ -1423,7 +1433,7 @@ static tbl tbl_set_s(la v, tbl t, ob k, ob x) {
 static ob tbl_keys(la v) {
   U len = ((tbl) v->xp)->len;
   two ks;
-  ks = cells(v, wsizeof(struct two) * len);
+  ks = cells(v, Width(struct two) * len);
   if (!ks) return 0;
   ob r = nil;
   struct tbl_e **tab = ((tbl) v->xp)->tab;
@@ -1465,7 +1475,7 @@ static u0 tbl_shrink(la v, tbl t) {
     t->tab[i] = e,
     e = f; }
 
-static Vm(ap_tbl) {
+Vm(ap_tbl) {
   u1 _; ob a = fp->argc; switch (a) {
     case 0: return ApC(ret, putnum(((tbl) ip)->len));
     case 1: return
@@ -1476,15 +1486,15 @@ static Vm(ap_tbl) {
       CallOut(_ = tblss(v, 1, a)),
       _ ? ApC(ret, fp->argv[a-1]) : ApC(xoom, nil); } }
 
-static u0 tx_tbl(la_carrier v, FILE* o, ob _) {
+static u0 tx_tbl(la v, FILE* o, ob _) {
   fprintf(o, "#tbl:%ld/%ld", ((tbl)_)->len, ((tbl)_)->cap); }
 
-static I hx_tbl(la_carrier v, ob _) {
+static I hx_tbl(la v, ob _) {
   return ror(mix, 3 * sizeof(I) / 4); }
 
 static struct tbl_e *cp_tbl_e(la v, struct tbl_e *src, ob *pool0, ob *top0) {
   if (!src) return src;
-  struct tbl_e *dst = bump(v, wsizeof(struct tbl_e));
+  struct tbl_e *dst = bump(v, Width(struct tbl_e));
   dst->next = cp_tbl_e(v, src->next, pool0, top0);
   dst->val = cp(v, src->val, pool0, top0);
   dst->key = cp(v, src->key, pool0, top0);
@@ -1493,13 +1503,12 @@ static struct tbl_e *cp_tbl_e(la v, struct tbl_e *src, ob *pool0, ob *top0) {
 static Gc(cp_tbl) {
   tbl src = (tbl) x;
   U i = src->cap;
-  tbl dst = bump(v, wsizeof(struct tbl) + i);
+  tbl dst = bump(v, Width(struct tbl) + i);
   src->data = (vm*) dst;
   ini_tbl(dst, src->len, i, (struct tbl_e**) (dst+1));
   while (i--) dst->tab[i] = cp_tbl_e(v, src->tab[i], pool0, top0);
   return (ob) dst; }
 
-#include <string.h>
 
 str str_ini(void *_, size_t len) {
   str s = _; return
@@ -1532,7 +1541,7 @@ static u0 tx_str(struct carrier *v, FILE *o, ob _) {
 static Gc(cp_str) {
   str src = (str) x;
   return (ob) (src->data = (vm*)
-    memcpy(bump(v, wsizeof(struct str) + b2w(src->len)),
+    memcpy(bump(v, Width(struct str) + b2w(src->len)),
       src, sizeof(struct str) + src->len)); }
 
 static u1 eq_str(struct carrier *v, ob x, ob y) {
@@ -1549,7 +1558,7 @@ static const struct typ str_typ = {
   .hash = hx_str,
   .equi = eq_str, };
 
-static Vm(ap_str) {
+Vm(ap_str) {
   str s = (str) ip;
   fputsn(s->text, s->len, stdout);
   return ApC(ret, (ob) ip); }
@@ -1574,7 +1583,7 @@ Vm(scat_f) {
     ob x = fp->argv[i++];
     Check(strp(x));
     sum += ((str)x)->len; }
-  U words = wsizeof(struct str) + b2w(sum);
+  U words = Width(struct str) + b2w(sum);
   Have(words);
   str d = str_ini(hp, sum);
   hp += words;
@@ -1596,7 +1605,7 @@ Vm(ssub_f) {
   ub = min(ub, src->len);
   ub = max(ub, lb);
   U len = ub - lb,
-    words = wsizeof(struct str) + b2w(len);
+    words = Width(struct str) + b2w(len);
   Have(words);
   str dst = str_ini(hp, len);
   hp += words;
@@ -1605,7 +1614,7 @@ Vm(ssub_f) {
 
 Vm(str_f) {
   U len = fp->argc,
-    words = wsizeof(struct str) + b2w(len);
+    words = Width(struct str) + b2w(len);
   Have(words);
   str s = str_ini(hp, len);
   hp += words;
@@ -1640,7 +1649,7 @@ static sym ini_sym(u0 *_, str nom, U code) {
 // list & uses less memory than a hash table, but maybe we
 // should use a table anyway.
 //
-// FIXME the caller must ensure Avail >= wsizeof(struct sym)
+// FIXME the caller must ensure Avail >= Width(struct sym)
 // (because GC here would void the tree)
 static sym intern(la v, sym *y, str b) {
   if (*y) {
@@ -1652,14 +1661,14 @@ static sym intern(la v, sym *y, str b) {
       if (a->len == b->len) return z;
       i = a->len < b->len ? -1 : 1; }
     return intern(v, i < 0 ? &z->l : &z->r, b); }
-  return *y = ini_sym(bump(v, wsizeof(struct sym)), b,
+  return *y = ini_sym(bump(v, Width(struct sym)), b,
     hash(v, putnum(hash(v, (ob) b)))); }
 
 static Gc(cp_sym) {
   sym src = (sym) x;
   return (ob) (src->data = (vm*) (src->nom ?
     intern(v, &v->syms, (str) cp(v, (ob) src->nom, pool0, top0)) :
-    ini_anon(bump(v, wsizeof(struct sym) - 2), src->code))); }
+    ini_anon(bump(v, Width(struct sym) - 2), src->code))); }
 
 static I hx_sym(la v, ob _) { return ((sym) _)->code; }
 
@@ -1667,7 +1676,7 @@ static u0 tx_sym(la v, FILE* o, ob _) {
   str s = ((sym) _)->nom;
   s ? fputsn(s->text, s->len, o) : fputs("#sym", o); }
 
-static Vm(ap_nop) { return ApC(ret, (ob) ip); }
+Vm(ap_nop) { return ApC(ret, (ob) ip); }
 
 static const struct typ sym_typ = {
   .does = ap_nop,
@@ -1677,11 +1686,11 @@ static const struct typ sym_typ = {
   .equi = neql, };
 
 sym symof(la v, str s) {
-  if (Avail < wsizeof(struct sym)) {
-    u1 _; with(s, _ = please(v, wsizeof(struct sym)));
+  if (Avail < Width(struct sym)) {
+    u1 _; with(s, _ = please(v, Width(struct sym)));
     if (!_) return 0; }
   return s ? intern(v, &v->syms, s) :
-    ini_anon(bump(v, wsizeof(struct sym) - 2), v->rand = lcprng(v->rand)); }
+    ini_anon(bump(v, Width(struct sym) - 2), v->rand = lcprng(v->rand)); }
 
 Vm(sym_f) {
   str i = fp->argc && strp(fp->argv[0]) ? (str) fp->argv[0] : 0;
@@ -1722,7 +1731,7 @@ mo mo_ini(u0 *_, U len) {
 
 // allocate a thread
 mo mo_n(la v, U n) {
-  mo k = cells(v, n + wsizeof(struct tl));
+  mo k = cells(v, n + Width(struct tl));
   return k ? mo_ini(k, n) : k; }
 
 // instructions for the internal compiler
@@ -1730,9 +1739,9 @@ mo mo_n(la v, U n) {
 Vm(hom_f) {
   if (fp->argc && nump(fp->argv[0])) {
     U len = getnum(fp->argv[0]);
-    Have(len + wsizeof(struct tl));
+    Have(len + Width(struct tl));
     mo k = setw(mo_ini(hp, len), nil, len);
-    hp += len + wsizeof(struct tl);
+    hp += len + Width(struct tl);
     xp = (ob) (k + len); }
   return ApC(ret, xp); }
 
@@ -1773,18 +1782,18 @@ Vm(data) { return ApC(((typ) GF(ip))->does, xp); }
 // pop some things off the stack into an array.
 Vm(take) {
   ob n = getnum((ob) GF(ip));
-  Have(n + wsizeof(struct tl));
+  Have(n + Width(struct tl));
   mo k = mo_ini(cpyw_r2l(hp, sp, n), n);
-  hp += n + wsizeof(struct tl);
+  hp += n + Width(struct tl);
   return ApC(ret, (ob) k); }
 
 // set the closure for this frame
-static Vm(setclo) { return
+Vm(setclo) { return
   fp->clos = (ob*) GF(ip),
   ApY(G(FF(ip)), xp); }
 
 // finalize function instance closure
-static Vm(genclo1) { return
+Vm(genclo1) { return
   G(ip) = setclo,
   GF(ip) = (vm*) xp,
   ApY(ip, xp); }
@@ -1802,10 +1811,10 @@ struct clo_env {
   mo cons;
   ob loc, *clo, argc, argv[]; };
 
-static Vm(genclo0) {
+Vm(genclo0) {
   struct clo_env *ec = (u0*) GF(ip);
   U adic = getnum(ec->argc);
-  Have(wsizeof(struct sf) + adic + 1);
+  Have(Width(struct frame) + adic + 1);
   sf subd = fp; return
     G(ip) = genclo1,
     sp = (ob*) (fp = (sf) (sp - adic) - 1),
@@ -1819,17 +1828,17 @@ static Vm(genclo0) {
 
 // the next few functions create and store
 // lexical environments.
-static Vm(enclose) {
-  U thd_len = 3 + wsizeof(struct tl),
-    env_len = fp->argc + wsizeof(struct tl) +
-                         wsizeof(struct clo_env);
+Vm(enclose) {
+  U thd_len = 3 + Width(struct tl),
+    env_len = fp->argc + Width(struct tl) +
+                         Width(struct clo_env);
   Have(env_len + thd_len);
   ob codeXcons = (ob) GF(ip); // pair of the compiled thread & closure constructor
   ob *block = hp;
   hp += env_len + thd_len;
 
   struct clo_env *env = (u0*)
-    mo_ini(block, wsizeof(struct clo_env) + fp->argc); // holds the closure environment & constructor
+    mo_ini(block, Width(struct clo_env) + fp->argc); // holds the closure environment & constructor
   env->cons = (mo) B(codeXcons);
      // TODO get closure out of stack frame; configure via xp
   env->loc = nilp(xp) ? xp : ((ob*)fp)[-1];
@@ -1865,32 +1874,16 @@ static mo ana(la, ob);
 
 // bootstrap eval interpreter function
 Vm(ev_f) {
+  mo e = (mo) tbl_get(v, v->topl, (ob) v->lex.eval, 0);
+  if (e && G(e) != ev_f) return ApY(e, xp);
   if (!fp->argc) return ApC(ret, xp);
   mo y; CallOut(y = ana(v, fp->argv[0]));
   return y ? ApY(y, xp) : ApC(xoom, xp); }
 
 
-static enum status la_go(la v) {
+static NoInline enum status la_go(la v) {
   mo ip; sf fp; ob xp, *hp, *sp;
   return Unpack(), ApY(ip, xp); }
-
-// return to C
-static enum status la_call(la v, mo f, size_t n) {
-  struct mo go[] = { {call}, {(vm*) putnum(n)}, {xok} };
-  v->ip = go;
-  v->xp = (ob) f;
-  return la_go(v); }
-
-static enum status la_ap(la v, mo f, ob x) {
-  struct mo prim_ap[] = {{ap_f}, {0}};
-  return !pushs(v, f, x, NULL) ? LA_XOOM :
-    la_call(v, prim_ap, 2); }
-
-enum status la_ev_x(la v, la_ob x) {
-  if (!pushs(v, x, NULL)) return LA_XOOM;
-  struct mo prim_ev[] = {{ev_f}, {0}};
-  mo ev = (mo) tbl_get(v, v->topl, (ob) v->lex.eval, (ob) prim_ev);
-  return la_call(v, ev, 1); }
 
 ////
 ///  the thread compiler
@@ -1980,7 +1973,7 @@ static Inline ob new_scope(la v, env *e, ob arg, ob nom) {
   I asig = 0;
   with(nom,
     arg = asign(v, arg, 0, &asig),
-    with(arg, f = (env) mo_n(v, wsizeof(struct env))));
+    with(arg, f = (env) mo_n(v, Width(struct env))));
   if (f)
     f->arg = arg,
     f->name = nom,
@@ -2226,6 +2219,16 @@ Co(mo_seq, ob x) { return
     pull_m(v, e, m) :
     0; }
 
+static enum status la_call(la v, mo f, U n) { return
+  v->ip = thd(v, imm, f, call, putnum(n), xok, NULL),
+  !v->ip ? OomError : la_go(v); }
+
+static enum status la_ap(la v, mo f, ob x) {
+  mo k = thd(v, imm, x, push, imm, f, push, imm, ap_f, rec, putnum(2), ap_f, NULL);
+  return !k ? OomError :
+    (k[7].ap = (vm*) (k + 10),
+     la_call(v, k, 0)); }
+
 Co(mo_mac, ob mac, ob x) {
   enum status s;
   ob xp = v->xp;
@@ -2234,7 +2237,7 @@ Co(mo_mac, ob mac, ob x) {
     with(xp, with(ip, s = la_ap(v, (mo) mac, x))),
     x = v->xp, v->xp = xp, v->ip = ip,
     la_perror(v, s),
-    s == LA_OK ? co_x(v, e, m, x) : NULL; }
+    s == Ok ? co_x(v, e, m, x) : NULL; }
 
 Co(mo_l, ob x) {
   ob a = A(x);
@@ -2301,36 +2304,43 @@ static int main_process(u1 boot, u1 repl, char **av) {
   struct carrier V;
   enum status s = la_ini(&V);
 
-  if (s == LA_OK && boot) s = source(&V, boot_src());
-  while (s == LA_OK && *av) s = source(&V, fopen(*av++, "r"));
-  if (s == LA_OK && repl) interact(&V);
+  if (s == Ok && boot) s = source(&V, boot_src());
+  while (s == Ok && *av) s = source(&V, fopen(*av++, "r"));
+  if (s == Ok && repl) interact(&V);
 
   return la_perror(&V, s),
          la_fin(&V),
-         s == LA_EOF ? LA_OK : s; }
+         s == Eof ? Ok : s; }
+
+static NoInline enum status la_ev_x(la v, ob x) {
+  mo k = thd(v, imm, x, push, imm, ev_f, rec, putnum(1), ev_f, NULL);
+  if (!k) return OomError;
+  k[4].ap = (vm*) (k + 7);
+  return la_call(v, k, 0); }
 
 static enum status source(struct carrier *v, FILE *in) {
-  if (!in) return LA_XSYS;
+  if (!in) return SystemError;
   for (enum status r;;)
-    if ((r = receive(v, in)) != LA_OK ||
-        (r = la_ev_x(v, v->xp)) != LA_OK)
-        return fclose(in),
-               r == LA_EOF ? LA_OK : r; }
+    if ((r = receive(v, in)) != Ok ||
+        (r = la_ev_x(v, v->xp)) != Ok)
+      return fclose(in), r == Eof ? Ok : r; }
 
+#define NOM "sen"
+#define SUFF "la"
 static FILE *boot_src(void) {
   FILE *b; char *home, buf[256]; return
   (home = getenv("HOME")) &&
-  snprintf(buf, sizeof(buf), "%s/.local/lib/lisa/boot.la", home) < sizeof(buf) &&
+  snprintf(buf, sizeof(buf), "%s/.local/lib/" NOM "/boot." SUFF, home) < sizeof(buf) &&
   ((b = fopen(buf, "r")) ||
-   (b = fopen("/usr/local/lib/lisa/boot.la", "r")) ||
-   (b = fopen("/usr/lib/lisa/boot.la", "r"))) ? b :
-   fopen("/lib/lisa/boot.la", "r"); }
+   (b = fopen("/usr/local/lib/" NOM "/boot." SUFF, "r")) ||
+   (b = fopen("/usr/lib/" NOM "/boot." SUFF, "r"))) ? b :
+   fopen("/lib/" NOM "/boot." SUFF, "r"); }
 
 static u0 interact(la v) {
   enum status s;
-  while ((s = receive(v, stdin)) == LA_OK &&
-         (s = la_ev_x(v, v->xp)) != LA_EOF)
-    if (s == LA_OK) transmit(v, stdout, v->xp),
-                    putc('\n', stdout);
+  while ((s = receive(v, stdin)) == Ok &&
+         (s = la_ev_x(v, v->xp)) != Eof)
+    if (s == Ok) transmit(v, stdout, v->xp),
+                 putc('\n', stdout);
     else la_perror(v, s),
          unwind(v); }

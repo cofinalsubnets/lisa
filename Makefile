@@ -1,7 +1,6 @@
 nom=sen
 suff=la
 boot=lib/boot.$(suff)
-lib=$(boot)
 
 CC ?= gcc
 CFLAGS ?=\
@@ -9,8 +8,6 @@ CFLAGS ?=\
  	-Wstrict-prototypes -Wno-shift-negative-value\
 	-fno-stack-protector
 cc=$(CC) $(CFLAGS)
-
-lib_dir=lib
 
 # installation
 DESTDIR ?= $(HOME)
@@ -25,9 +22,10 @@ $(nom): $(nom).c
 	$(cc) -o $@ $^
 
 # run the tests a lot of times to try and catch nondeterministic bugs :(
-test-lots: $(debug_build)
+test-lots: $(nom)
 	for n in {1..2048}; do $(run_tests) || exit 1; done
 
+dest=$(DESTDIR)/$(PREFIX)/
 bins=$(dest)bin/$(nom)
 libs=$(addprefix $(dest)lib/$(nom)/,$(notdir $(boot)))
 docs=$(dest)share/man/man1/$(nom).1
@@ -38,7 +36,7 @@ uninstall:
 
 $(dest)bin/%: %
 	install -D $^ $@
-$(dest)share/man/man1/%: %
+$(dest)share/%: %
 	install -D $^ $@
 $(dest)lib/$(nom)/%: lib/%
 	install -D $^ $@
@@ -59,17 +57,17 @@ $(VIMPREFIX)/%: vim/%
 clean:
 	rm -f `git check-ignore * */*`
 
-repl: $(debug_build)
+repl: $(nom)
 	which rlwrap && rlwrap $(run_tests) -i || $(run_tests) -i
 
-# profiling on linux with perf
+# profile on linux with perf
 perf: perf.data
 	perf report
-perf.data: $(debug_build) $(lib)
+perf.data: $(nom) $(boot)
 	perf record $(run_tests)
 
 # valgrind detects some memory errors
-valg: $(debug_build)
+valg: $(nom)
 	valgrind --error-exitcode=1 $(run_tests)
 
 # approximate lines of code
