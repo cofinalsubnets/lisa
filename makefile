@@ -4,7 +4,7 @@ boot=lib/boot.$(suff)
 
 CC ?= gcc
 CFLAGS ?=\
-	-std=c99 -g -O2 -Wall\
+	-std=c11 -g -O2 -Wall\
  	-Wstrict-prototypes -Wno-shift-negative-value\
 	-fno-stack-protector
 cc=$(CC) $(CFLAGS)
@@ -18,12 +18,16 @@ run_tests=./$(nom) -_ $(boot) test/*.$(suff)
 test: $(nom)
 	/usr/bin/env TIMEFORMAT="in %Rs" bash -c "time $(run_tests)"
 
-$(nom): $(nom).c
-	$(cc) -o $@ $^
+LC_COLLATE=C
+c=$(sort $(wildcard *.c))
+h=$(sort $(wildcard *.h))
+o=$(c:.c=.o)
 
-# run the tests a lot of times to try and catch nondeterministic bugs :(
-test-lots: $(nom)
-	for n in {1..2048}; do $(run_tests) || exit 1; done
+%.o: %.c $h makefile
+	$(cc) -c $^
+
+$(nom): $o $h
+	$(cc) -o $@ $o
 
 dest=$(DESTDIR)/$(PREFIX)/
 bins=$(dest)bin/$(nom)
@@ -78,7 +82,9 @@ sloc:
 bits: $(nom)
 	du -h $^
 
-.PHONY: test test-lots repl clean\
-	install uninstall\
- 	install-vim uninstall-vim\
- 	sloc bits valg perf
+# run the tests a lot of times to try and catch nondeterministic bugs :(
+test-lots: $(nom)
+	for n in {1..2048}; do $(run_tests) || exit 1; done
+
+.PHONY: test test-lots repl clean sloc bits valg perf\
+	install uninstall install-vim uninstall-vim

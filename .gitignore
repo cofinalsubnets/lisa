@@ -1,5 +1,6 @@
 perf.*
 vgcore.*
+*.o
 .gdb_history
 lisa
 lisa.dbg
