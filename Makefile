@@ -86,5 +86,8 @@ bits: $(nom)
 test-lots: $(nom)
 	for n in {1..2048}; do $(run_tests) || exit 1; done
 
+flamegraph.svg: perf.data
+	flamegraph --perfdata $<
+
 .PHONY: test test-lots repl clean sloc bits valg perf\
 	install uninstall install-vim uninstall-vim

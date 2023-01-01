@@ -98,9 +98,7 @@ struct sym {
 #define NoInline __attribute__((noinline))
 
 mo thd(la, ...),
-   mo_ana(la, ob),
-   mo_n(la, size_t)
-   ;
+   mo_n(la, size_t);
 enum status
   la_ev_x(la, ob) NoInline,
   receive(la, FILE*);
@@ -183,6 +181,7 @@ static Inline size_t tbl_load(tbl t) {
 static Inline size_t tbl_idx(U cap, U co) {
   return co & (cap - 1); }
 intptr_t hash(la, ob);
+size_t llen(ob);
 sym intern(la, sym*, str);
 void transmit(la, FILE*, ob);
 vm act;
@@ -190,3 +189,5 @@ ob hnom(la, mo);
 sym symof(struct V*, str);
 ob cp(la, ob, ob*, ob*), // copy something; used by type-specific copying functions
    *fresh_pool(size_t);
+#define Gc(n) static ob n(la v, ob x, ob *pool0, ob *top0)
+#define mix ((intptr_t) 2708237354241864315)

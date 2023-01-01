@@ -34,10 +34,9 @@ static mo
   mo_l(la, env*, size_t, ob) NoInline,
   mo_i_x(la, env*, size_t, vm*, ob) NoInline;
 
-mo mo_ana(la v, ob x) { return
+static mo mo_ana(la v, ob x) { return
   pushs(v, x, p_pulbi, ret, p_mo_ini, NULL) ?
-    p_co_x(v, 0, 0) :
-    0; }
+    p_co_x(v, 0, 0) : 0; }
 
 static Inline mo co_pull(la v, env *e, size_t m) { return
   ((mo (*)(la, env*, U)) (*v->sp++))(v, e, m); }
@@ -87,7 +86,7 @@ static NoInline ob asign(la v, ob a, intptr_t i, ob *m) {
   return with(a, x = asign(v, B(a), i + 1, m)),
     x ? (ob) pair(v, A(a), x) : 0; }
 
-static Inline ob new_scope(la v, env *e, ob arg, ob nom) {
+static ob new_scope(la v, env *e, ob arg, ob nom) {
   env f;
   I asig = 0;
   with(nom,
@@ -407,3 +406,10 @@ Co(p_mo_ini) {
   if (k) setw(k, nil, m),
          G(k += m) = (vm*) (e ? (*e)->name : nil);
   return k; }
+
+Vm(ev_f) {
+  mo e = (mo) tbl_get(v, v->topl, (ob) v->lex.eval, 0);
+  if (e && G(e) != ev_f) return ApY(e, xp);
+  if (!fp->argc) return ApC(ret, xp);
+  mo y; CallOut(y = mo_ana(v, fp->argv[0]));
+  return y ? ApY(y, xp) : Yield(OomError, xp); }

@@ -27,7 +27,7 @@
 #define VM0(_)\
   _(gc) _(xok) _(yield)\
   _(setclo) _(genclo0) _(genclo1)\
-  _(ap_str) _(ap_nop) _(ap_two) _(ap_tbl)
+  _(ap_nop)
 #define decl(x, ...) Vm(x);
 VM0(decl)
 
@@ -92,4 +92,20 @@ VM1(decl)
 
 VM2(decl)
 #undef decl
+
+
+#define Pack() (v->ip=ip,v->sp=sp,v->hp=hp,v->fp=fp,v->xp=xp)
+#define Unpack() (fp=v->fp,hp=v->hp,sp=v->sp,ip=v->ip,xp=v->xp)
+#define CallOut(...) (Pack(), __VA_ARGS__, Unpack())
+
+#define ApN(n, x) (xp = (x), ip += (n), ApC(G(ip), xp))
+#define ApC(f, x) (f)(v, (x), ip, hp, sp, fp)
+#define ApY(f, x) (ip = (mo) (f), ApC(G(ip), (x)))
+
+#define Yield(s, x) (v->xp = (s), ApC(yield, (x)))
+#define ArityCheck(n) if (n > fp->argc) return Yield(ArityError, putnum(n))
+#define Check(_) if (!(_)) return Yield(DomainError, xp)
+#define Have(n) if (sp - hp < n) return (v->xp = n, ApC(gc, xp))
+// sp is at least hp so this is a safe check for 1 word
+#define Have1() if (sp == hp) return (v->xp = 1, ApC(gc, xp))
 

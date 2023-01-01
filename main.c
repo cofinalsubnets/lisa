@@ -60,4 +60,3 @@ static void interact(struct V *v) {
                  putc('\n', stdout);
     else report(v, s),
          v->fp = (frame) (v->sp = v->pool + v->len); }
-

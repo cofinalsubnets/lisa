@@ -68,10 +68,8 @@ static NoInline bool
 defprim(struct V *v, vm *i, const char *n) {
   mo k; sym y; return
     (y = symofs(v, n)) &&
-    (with(y, k = mo_n(v, 2)), k) &&
-    (k[0].ap = i,
-     k[1].ap = (vm*) y,
-     tbl_set(v, v->topl, (ob) y, (ob) k)); }
+    (k = thd(v, i, y, NULL)) &&
+    tbl_set(v, v->topl, (ob) GF(k), (ob) k); }
 
 // store an instruction address under a variable in the
 // toplevel namespace // FIXME use a different namespace
