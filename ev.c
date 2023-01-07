@@ -18,9 +18,9 @@ typedef struct env {
 typedef mo co(la, env*, size_t);
 
 static mo
-  p_pulbi(la, env*, size_t),
-  p_pulbix(la, env*, size_t),
-  p_mo_ini(la, env*, size_t),
+  em1(la, env*, size_t),
+  em2(la, env*, size_t),
+  mo_alloc(la, env*, size_t),
   p_co_x(la, env*, size_t),
   p_co_def_bind(la, env*, size_t),
   co_x(la, env*, size_t, ob) NoInline,
@@ -34,15 +34,27 @@ static mo
   mo_l(la, env*, size_t, ob) NoInline,
   mo_i_x(la, env*, size_t, vm*, ob) NoInline;
 
-static mo mo_ana(la v, ob x) { return
-  pushs(v, x, p_pulbi, ret, p_mo_ini, NULL) ?
-    p_co_x(v, 0, 0) : 0; }
+static mo ana(la v, ob x) { return
+  !pushs(v, x, em1, ret, mo_alloc, NULL) ? 0 :
+    p_co_x(v, 0, 0); }
 
 static Inline mo co_pull(la v, env *e, size_t m) { return
   ((mo (*)(la, env*, U)) (*v->sp++))(v, e, m); }
 
-static mo seq(la v, mo a, mo b) {
-  return thd(v, imm, a, call, nil, imm, b, rec, nil, NULL); }
+mo seq0(la v, mo a, mo b) { return
+  thd(v, imm, a, call, nil, imm, b, rec, nil, NULL); }
+
+enum status load_file(la v, FILE *i) {
+  enum status s = receives(v, i);
+  if (s != Ok) return s;
+  ob x = (ob) pair(v, (ob) v->lex.begin, v->xp);
+  x = x ? (ob) pair(v, x, nil) : x;
+  x = x ? (ob) pair(v, (ob) v->lex.quote, x) : x;
+  x = x ? (ob) pair(v, x, nil) : x;
+  x = x ? (ob) pair(v, (ob) v->lex.eval, x) : x;
+  x = x ? (ob) ana(v, x) : x;
+  if (!x) return OomError;
+  return v->xp = x, Ok; }
 
 #define Co(nom,...)\
   static mo nom(la v, env *e, size_t m, ##__VA_ARGS__)
@@ -129,7 +141,7 @@ static NoInline ob linitp(la v, ob x, ob *d) {
 
 static Inline ob comp_body(la v, env *e, ob x) {
   I i;
-  if (!pushs(v, p_co_x, x, p_pulbi, ret, p_mo_ini, NULL) ||
+  if (!pushs(v, p_co_x, x, em1, ret, mo_alloc, NULL) ||
       !scan(v, e, v->sp[1]) ||
       !(x = (ob) co_pull(v, e, 4)))
     return 0;
@@ -162,9 +174,9 @@ static ob co_fn_clo(la v, env *e, ob vars, ob code) {
   U i = llen(vars);
   mm(&vars), mm(&code);
 
-  vars = pushs(v, p_pulbix, take, putnum(i), p_mo_ini, NULL) ? vars : 0;
+  vars = pushs(v, em2, take, putnum(i), mo_alloc, NULL) ? vars : 0;
   while (vars && i--) vars =
-    pushs(v, p_co_x, A(vars), p_pulbi, push, NULL) ? B(vars) : 0;
+    pushs(v, p_co_x, A(vars), em1, push, NULL) ? B(vars) : 0;
   vars = vars ? (ob) co_pull(v, e, 0) : vars;
   vars = vars ? (ob) pair(v, code, vars) : vars;
   return um, um, vars; }
@@ -315,12 +327,12 @@ Co(co_ap, ob f, ob args) {
   mm(&args);
   if (!pushs(v,
         p_co_x, f,
-        p_pulbi, idmo,
+        em1, idmo,
         p_co_ap_call, putnum(llen(args)),
         NULL))
     return um, NULL;
   for (; twop(args); args = B(args))
-    if (!pushs(v, p_co_x, A(args), p_pulbi, push, NULL))
+    if (!pushs(v, p_co_x, A(args), em1, push, NULL))
       return um, NULL;
   return um, co_pull(v, e, m); }
 
@@ -335,20 +347,14 @@ Co(mo_seq, ob x) { return
     co_pull(v, e, m) :
     0; }
 
-static NoInline enum status la_call(la v, mo f, size_t n) {
-  return v->ip = thd(v, imm, f, call, putnum(n), xok, NULL),
-         !v->ip ? OomError : la_go(v); }
+NoInline enum status li_go(la v) {
+  mo ip; frame fp;
+  ob xp, *hp, *sp;
+  return Unpack(), ApY(ip, xp); }
 
-NoInline enum status la_ev_x(la v, ob x) {
-  mo k = thd(v,
-    imm, x, push,
-    imm, ev_f,
-    rec, putnum(1),
-    ev_f, NULL);
-  if (!k) return OomError;
-  return
-    k[4].ap = (vm*) (k + 7),
-    la_call(v, k, 0); }
+NoInline enum status li_call(la v, mo f, size_t n) {
+  return v->ip = thd(v, imm, f, call, putnum(n), xok, NULL),
+         !v->ip ? OomError : li_go(v); }
 
 static enum status la_ap(la v, mo f, ob x) {
   mo k = thd(v,
@@ -360,7 +366,7 @@ static enum status la_ap(la v, mo f, ob x) {
   if (!k) return OomError;
   return
     k[7].ap = (vm*) (k + 10),
-    la_call(v, k, 0); }
+    li_call(v, k, 0); }
 
 Co(mo_mac, ob mac, ob x) {
   enum status s;
@@ -386,7 +392,7 @@ Co(mo_l, ob x) {
     return mo_mac(v, e, m, a, B(x));
   return co_ap(v, e, m, A(x), B(x)); }
 
-Co(p_pulbi) {
+Co(em1) {
   vm *i = (vm*) *v->sp++;
   mo k = co_pull(v, e, m + 1);
   return k ? pulbi(i, k): 0; }
@@ -396,12 +402,12 @@ static mo mo_i_x(la v, env *e, size_t m, vm *i, ob x) {
     with(x, k = co_pull(v, e, m + 2)),
     k ? pulbix(i, x, k) : 0; }
 
-Co(p_pulbix) {
+Co(em2) {
   vm *i = (vm*) *v->sp++;
   ob x = *v->sp++;
   return mo_i_x(v, e, m, i, x); }
 
-Co(p_mo_ini) {
+Co(mo_alloc) {
   mo k = mo_n(v, m + 1);
   if (k) setw(k, nil, m),
          G(k += m) = (vm*) (e ? (*e)->name : nil);
@@ -411,5 +417,5 @@ Vm(ev_f) {
   mo e = (mo) tbl_get(v, v->topl, (ob) v->lex.eval, 0);
   if (e && G(e) != ev_f) return ApY(e, xp);
   if (!fp->argc) return ApC(ret, xp);
-  mo y; CallOut(y = mo_ana(v, fp->argv[0]));
+  mo y; CallOut(y = ana(v, fp->argv[0]));
   return y ? ApY(y, xp) : Yield(OomError, xp); }

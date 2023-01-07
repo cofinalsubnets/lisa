@@ -1,13 +1,6 @@
 #include "i.h"
 #include "vm.h"
 
-NoInline enum status la_go(la v) {
-  mo ip;
-  frame fp;
-  ob xp, *hp, *sp;
-  Unpack();
-  return ApY(ip, xp); }
-
 Vm(ap_nop) { return ApC(ret, (ob) ip); }
 // comparison operators
 Vm(lt) { return ApN(1, *sp++ < xp ? T : nil); }
@@ -72,12 +65,13 @@ Vm(ret) { return
 Vm(call) {
   Have(Width(struct frame));
   sf subd = fp;
-  sp = (ob*) (fp = (sf) sp - 1);
-  fp->argc = getnum(GF(ip));
-  fp->retp = FF(ip);
-  fp->subd = subd;
-  fp->clos = (ob*) nil;
-  return ApY(xp, nil); }
+  return
+    sp = (ob*) (fp = (sf) sp - 1),
+    fp->argc = getnum(GF(ip)),
+    fp->retp = FF(ip),
+    fp->subd = subd,
+    fp->clos = (ob*) nil,
+    ApY(xp, nil); }
 
 // tail calls
 Vm(rec) {
@@ -85,23 +79,24 @@ Vm(rec) {
   // save return address
   sf subd = fp->subd;
   mo retp = fp->retp;
-  // reset fp
-  fp = (sf) (fp->argv + fp->argc - adic) - 1;
-  // copy the args high to low BEFORE repopulating fp.
-  cpyw_r2l(fp->argv, sp, adic);
-  sp = (ob*) fp;
-  // populate fp
-  fp->retp = retp;
-  fp->subd = subd;
-  fp->argc = adic;
-  fp->clos = (ob*) nil;
-  return ApY((mo) xp, nil); }
+  return
+    // reset fp
+    fp = (sf) (fp->argv + fp->argc - adic) - 1,
+    // copy the args high to low BEFORE repopulating fp.
+    cpyw_r2l(fp->argv, sp, adic),
+    sp = (ob*) fp,
+    // populate fp
+    fp->retp = retp,
+    fp->subd = subd,
+    fp->argc = adic,
+    fp->clos = (ob*) nil,
+    ApY((mo) xp, nil); }
 
 Vm(ap_f) {
   if (fp->argc < 2) return Yield(ArityError, putnum(2));
   if (!homp(fp->argv[0])) return Yield(DomainError, xp);
   xp = fp->argv[1];
-  U adic = llen(xp);
+  size_t adic = llen(xp);
   Have(adic);
   ip = (mo) fp->argv[0];
   sf subd = fp->subd;
@@ -233,7 +228,8 @@ Vm(late) {
 
 // varargs
 Vm(varg0) {
-  Have1(); return
+  Have1();
+  return
     fp = cpyw_l2r((ob*) fp - 1, fp, Width(struct frame) + fp->argc),
     sp = (ob*) fp,
     fp->argv[fp->argc++] = nil,
@@ -333,11 +329,14 @@ Vm(bnot_f) { return
   ApC(ret, ~xp|1); }
 
 Vm(sar_f) {
-  if (fp->argc == 0) return ApC(ret, xp);
-  if (fp->argc == 1) return ApC(ret, putnum(getnum(fp->argv[0])>>1));
+  if (fp->argc == 0)
+    return ApC(ret, xp);
+  if (fp->argc == 1)
+    return ApC(ret, putnum(getnum(fp->argv[0])>>1));
   xp = getnum(fp->argv[0]);
   U i = 1;
-  do xp >>= getnum(fp->argv[i++]); while (i < fp->argc);
+  do xp >>= getnum(fp->argv[i++]);
+  while (i < fp->argc);
   return ApC(ret, putnum(xp)); }
 
 Vm(sal_f) {
@@ -361,36 +360,3 @@ Vm(gc) {
   U req = v->xp; return
     CallOut(req = please(v, req)),
     req ? ApY(ip, xp) : Yield(OomError, xp); }
-// Run a GC cycle from inside the VM
-
-Vm(car) { return ApN(1, A(xp)); }
-Vm(cdr) { return ApN(1, B(xp)); }
-
-Vm(cons) {
-  Have(Width(struct two));
-  xp = (ob) two_ini(hp, xp, *sp++);
-  hp += Width(struct two);
-  return ApN(1, xp); }
-
-Vm(car_f) {
-  if (fp->argc)
-    xp = fp->argv[0],
-    xp = twop(xp) ? A(xp) : xp;
-  return ApC(ret, xp); }
-
-Vm(cdr_f) {
-  if (fp->argc)
-    xp = fp->argv[0],
-    xp = twop(xp) ? B(xp) : nil;
-  return ApC(ret, xp); }
-
-Vm(cons_f) {
-  if (fp->argc) {
-    size_t n = Width(struct two) * (fp->argc - 1);
-    Have(n);
-    two w = (two) hp;
-    hp += n;
-    xp = fp->argv[fp->argc-1];
-    for (size_t i = fp->argc - 1; i--;
-      xp = (ob) two_ini(w+i, fp->argv[i], xp)); }
-  return ApC(ret, xp); }

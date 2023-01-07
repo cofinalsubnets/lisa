@@ -1,5 +1,35 @@
 #include "i.h"
 #include "vm.h"
+// function functions
+//
+// functions are laid out in memory like this
+//
+// *|*|*|*|*|*|?|0|^
+// * = function pointer or inline value
+// ? = function name / metadata (optional)
+// 0 = null
+// ^ = pointer to head of function
+//
+// this way we can support internal pointers for branch
+// destinations, return addresses, etc, while letting
+// the garbage collector always find the head.
+//
+// two easy potential optimizations are:
+// - add a tail pointer to the start of the function,
+//   so GC can find the head quickly (since often we
+//   won't have an internal pointer)
+// - tag the tail/head pointers instead of using a null
+//   sentinel (but then the C compiler would need to
+//   align functions)
+
+mo mo_ini(void *_, size_t len) {
+  struct tag *t = (struct tag*) ((mo) _ + len);
+  return t->null = NULL, t->head = _; }
+
+// allocate a thread
+mo mo_n(la v, U n) {
+  mo k = cells(v, n + Width(struct tag));
+  return k ? mo_ini(k, n) : k; }
 // instructions for the internal compiler
 // initialize a function
 Vm(hom_f) {
@@ -124,8 +154,18 @@ static NoInline mo thdr(la v, U n, va_list xs) {
 
 NoInline mo thd(la v, ...) {
   mo k; va_list xs; return
-  va_start(xs, v),
-  k = thdr(v, 0, xs),
-  va_end(xs),
-  k; }
+    va_start(xs, v),
+    k = thdr(v, 0, xs),
+    va_end(xs),
+    k; }
 
+// try to get the name of a function
+ob hnom(la v, mo x) {
+  if (!livep(v, (ob) x)) return nil;
+  vm *k = G(x);
+
+  if (k == setclo || k == genclo0 || k == genclo1) // closure?
+    return hnom(v, (mo) G(FF(x)));
+
+  ob n = ((ob*) mo_tag(x))[-1];
+  return homp(n) && livep(v, n) && G(n) == act ? n : nil; }

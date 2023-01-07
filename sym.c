@@ -1,5 +1,13 @@
 #include "i.h"
 //symbols
+
+sym symof(la v, str s) {
+  if (Avail < Width(struct sym)) {
+    bool _; with(s, _ = please(v, Width(struct sym)));
+    if (!_) return 0; }
+  return s ? intern(v, &v->syms, s) :
+    ini_anon(bump(v, Width(struct sym) - 2),
+      v->rand = lcprng(v->rand)); }
 //
 sym ini_anon(void *_, U code) {
   sym y = _;
@@ -54,6 +62,15 @@ Vm(ynom_f) {
     xp = xp ? xp : nil;
   return ApC(ret, xp); }
 
+Vm(sym_f) {
+  Have(Width(struct sym));
+  str i = fp->argc && strp(fp->argv[0]) ? (str) fp->argv[0] : 0;
+  sym y;
+  CallOut(y = i ?
+    intern(v, &v->syms, i) :
+    ini_anon(bump(v, Width(struct sym) - 2),
+      v->rand = lcprng(v->rand)));
+  return ApC(ret, (ob) y); }
 
 static void tx_sym(la v, FILE* o, ob _) {
   str s = ((sym) _)->nom;

@@ -7,6 +7,17 @@ static ob rx_atom(la, str), rxr(la, FILE*), rx_two(la, FILE*);
 
 static ob rx_ret(la v, FILE* i, ob x) { return x; }
 
+enum status receives(la v, FILE *i) {
+  enum status s = receive(v, i);
+  if (s == Eof) return nil;
+  ob x = v->xp;
+  with(x, s = receives(v, i));
+  if (s != Ok) return s;
+  x = (ob) pair(v, x, v->xp);
+  if (!x) return OomError;
+  v->xp = x;
+  return Ok; }
+
 // should distinguish between OOM and parse error
 enum status receive(la v, FILE* i) {
   ob x = pushs(v, rx_ret, NULL) ? rxr(v, i) : 0;

@@ -1,7 +1,11 @@
 #include "i.h"
 
+static Inline size_t tbl_load(tbl t) {
+  return t->len / t->cap; }
+static Inline size_t tbl_idx(U cap, U co) {
+  return co & (cap - 1); }
 
-tbl tbl_ini(void *_, U len, U cap, struct tbl_e **tab) {
+static tbl tbl_ini(void *_, U len, U cap, struct tbl_e **tab) {
   tbl t = _; return
     t->act = act,
     t->typ = &tbl_typ,

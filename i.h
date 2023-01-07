@@ -5,16 +5,121 @@
 #include <stdarg.h>
 #include <errno.h>
 #include "li.h"
-typedef struct V *la;
 
 // thanks !!
-typedef intptr_t I;
+//
+typedef struct V *la, *li;
+typedef intptr_t I, ob;
 typedef uintptr_t U;
-typedef I ob;
 typedef struct mo *mo; // procedures
-typedef struct frame *sf, *frame;
+                       //
+typedef struct frame { // stack frame
+  ob *clos; // closure pointer FIXME // use stack
+  mo retp; // thread return address
+  struct frame *subd; // stack frame of caller
+  U argc; // argument count
+  ob argv[]; } *sf, *frame;;
 
-typedef enum status vm(la, ob, mo, ob*, ob*, frame); // interpreter function type
+// interpreter type
+typedef enum status vm(li, ob, mo, ob*, ob*, frame);
+
+struct mo { vm *ap; };
+struct tag { struct mo *null, *head, end[]; };
+
+typedef const struct typ {
+  vm *actn;
+  bool (*equi)(li, I, I);
+  intptr_t (*hash)(li, I);
+  ob  (*evac)(li, I, I*, I*);
+  //  void (*walk)(li, ob, ob*, ob*);
+  void (*emit)(li, FILE*, I); } *typ;
+
+typedef struct two {
+  vm *act; typ typ;
+  ob a, b; } *two;
+typedef struct str {
+  vm *act; typ typ;
+  U len; char text[]; } *str;
+typedef struct tbl { // hash tables
+  vm *act; typ typ;
+  U len, cap;
+  struct tbl_e {
+    ob key, val;
+    struct tbl_e *next; } **tab; } *tbl;
+typedef struct sym {
+  vm *act; typ typ;
+  str nom;
+  intptr_t code;
+  // symbols are interned into a binary search tree.
+  // anonymous symbols (nom == 0) don't have branches.
+  struct sym *l, *r; } *sym;
+
+struct V {
+  mo ip; frame fp;
+  ob xp, *hp, *sp;
+
+  // global variables & state
+  tbl topl, macros; // global scope
+  struct glob {
+    sym define, cond, lambda, quote,
+        begin, splat, eval; } lex;
+  sym syms; // symbol table
+  size_t rand;
+
+  enum status
+    status,
+    (*exit)(li, enum status);
+
+  // memory manager state
+  U len;
+  ob *pool;
+  struct ll { ob *addr; struct ll *next; } *safe;
+  union { ob *cp; size_t t0; }; };
+
+size_t llen(ob);
+intptr_t hash(li, ob);
+
+enum status li_go(li);
+
+mo mo_ini(void *, size_t),
+   thd(li, ...),
+   seq0(li, mo, mo),
+   mo_n(li, size_t);
+tbl mktbl(li),
+    tbl_set(li, tbl, ob, ob);
+two two_ini(void*, ob, ob),
+    pair(li, ob, ob);
+str str_ini(void*, size_t);
+sym ini_anon(void*, uintptr_t),
+    intern(li, sym*, str),
+    symof(li, str);
+ob hnom(li, mo),
+   cp(li, ob, ob*, ob*), // copy something; used by type-specific copying functions
+   *fresh_pool(size_t),
+   tbl_get(li, tbl, ob, ob);
+
+vm act;
+
+enum status
+  li_call(li, mo, size_t),
+  receives(li, FILE*),
+  load_file(li, FILE*),
+  receive(li, FILE*);
+
+void
+  *cells(li, size_t),
+  transmit(li, FILE*, ob),
+  report(li, enum status);
+
+bool 
+  please(li, size_t),
+  pushs(li, ...), // push args onto stack; true on success
+  eql(li, ob, ob), // object equality
+  neql(li, ob, ob); // always returns false
+
+extern const struct typ
+  two_typ, str_typ,
+  tbl_typ, sym_typ;
 #define Width(_) b2w(sizeof(_))
 
 #define getnum(_) ((ob)(_)>>1)
@@ -40,79 +145,12 @@ typedef enum status vm(la, ob, mo, ob*, ob*, frame); // interpreter function typ
 #define BA(o) B(A(o))
 #define BB(o) B(B(o))
 
-struct mo { vm *ap; };
-struct tag { struct mo *null, *head, end[]; };
-
-typedef struct two *two;
-typedef struct str *str;
-typedef struct tbl *tbl;
-typedef struct sym *sym;
-
-struct V {
-  mo ip; frame fp;
-  ob xp, *hp, *sp;
-
-  // global variables & state
-  tbl topl, macros; // global scope
-  sym syms; // symbol table
-  struct glob {
-    sym define, cond, lambda, quote,
-        begin, splat, eval; } lex;
-  size_t rand;
-
-  enum status (*exit)(la, enum status);
-
-  // memory manager state
-  U len;
-  ob *pool;
-  struct ll { ob *addr; struct ll *next; } *safe;
-  union { ob *cp; size_t t0; }; };
-
-struct frame { // stack frame
-  ob *clos; // closure pointer FIXME // use stack
-  mo retp; // thread return address
-  struct frame *subd; // stack frame of caller
-  U argc; // argument count
-  ob argv[]; };
-
-struct typ {
-  vm *actn;
-  bool (*equi)(la, I, I);
-  intptr_t  (*hash)(la, I);
-  void (*emit)(la, FILE*, I);
-  //  void (*walk)(la, ob, ob*, ob*);
-  ob  (*evac)(la, I, I*, I*); };
-
-typedef const struct typ *typ;
-struct str { vm *act; typ typ; U len; char text[]; };
-struct sym {
-  vm *act; typ typ;
-  str nom;
-  I code;
-  // symbols are interned into a binary search tree.
-  // anonymous symbols (nom == 0) don't have branches.
-  struct sym *l, *r; };
-
+#define Gc(n) static ob n(li v, ob x, ob *pool0, ob *top0)
+#define mix ((intptr_t) 2708237354241864315)
 
 #define Inline inline __attribute__((always_inline))
 #define NoInline __attribute__((noinline))
 
-mo thd(la, ...),
-   mo_n(la, size_t);
-enum status
-  la_ev_x(la, ob) NoInline,
-  receive(la, FILE*);
-void transmit(la, FILE*, ob),
-     report(la, enum status);
-bool 
-  please(la, U),
-  pushs(la, ...), // push args onto stack; true on success
-  eql(la, ob, ob), // object equality
-  neql(la, ob, ob); // always returns false
-ob tbl_get(la, tbl, ob, ob);
-two pair(la, ob, ob);
-
-extern const struct typ two_typ, str_typ, tbl_typ, sym_typ;
 static Inline void *cpyw_r2l(void *dst, const void *src, size_t n) {
   while (n--) ((U*)dst)[n] = ((U*)src)[n];
   return dst; }
@@ -142,8 +180,7 @@ static Inline bool symp(ob _) { return
   homp(_) && (typ) GF(_) == &sym_typ; }
 
 static Inline size_t b2w(size_t b) {
-  size_t q = b / sizeof(ob),
-         r = b % sizeof(ob);
+  size_t q = b / sizeof(ob), r = b % sizeof(ob);
   return r ? q + 1 : q; }
 
 // this can give a false positive if x is a fixnum
@@ -153,21 +190,6 @@ static Inline bool livep(la v, ob x) {
 static Inline intptr_t ror(intptr_t x, uintptr_t n) {
   return (x << ((8 * sizeof(intptr_t)) - n)) | (x >> n); }
 
-struct two { vm *act; typ typ; ob a, b; };
-size_t llen(ob);
-struct tbl { // hash tables
-  vm *act; typ typ;
-  U len, cap;
-  struct tbl_e {
-    I key, val;
-    struct tbl_e *next; } **tab; };
-mo mo_ini(void *, size_t);
-tbl mktbl(la), tbl_set(la, tbl, ob, ob), tbl_ini(void*, size_t, size_t, struct tbl_e**);
-two two_ini(void*, ob, ob);
-str str_ini(void*, size_t);
-sym ini_anon(void*, uintptr_t);
-
-void *cells(la, size_t), *bump(la, size_t);
 static Inline void fputsn(const char *s, U n, FILE *o) {
   while (n--) putc(*s++, o); }
 
@@ -176,18 +198,7 @@ static Inline intptr_t lcprng(intptr_t s) {
   const intptr_t steele_vigna_2021 = 0xaf251af3b0f025b5;
   return (s * steele_vigna_2021 + 1) >> 8; }
 
-static Inline size_t tbl_load(tbl t) {
-  return t->len / t->cap; }
-static Inline size_t tbl_idx(U cap, U co) {
-  return co & (cap - 1); }
-intptr_t hash(la, ob);
-size_t llen(ob);
-sym intern(la, sym*, str);
-void transmit(la, FILE*, ob);
-vm act;
-ob hnom(la, mo);
-sym symof(struct V*, str);
-ob cp(la, ob, ob*, ob*), // copy something; used by type-specific copying functions
-   *fresh_pool(size_t);
-#define Gc(n) static ob n(la v, ob x, ob *pool0, ob *top0)
-#define mix ((intptr_t) 2708237354241864315)
+// unchecked allocator -- make sure there's enough memory!
+static Inline void *bump(la v, size_t n) {
+  void *x = v->hp;
+  return v->hp += n, x; }

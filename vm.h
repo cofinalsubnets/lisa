@@ -98,9 +98,9 @@ VM2(decl)
 #define Unpack() (fp=v->fp,hp=v->hp,sp=v->sp,ip=v->ip,xp=v->xp)
 #define CallOut(...) (Pack(), __VA_ARGS__, Unpack())
 
-#define ApN(n, x) (xp = (x), ip += (n), ApC(G(ip), xp))
 #define ApC(f, x) (f)(v, (x), ip, hp, sp, fp)
 #define ApY(f, x) (ip = (mo) (f), ApC(G(ip), (x)))
+#define ApN(n, x) (xp = (x), ip += (n), ApC(G(ip), xp))
 
 #define Yield(s, x) (v->xp = (s), ApC(yield, (x)))
 #define ArityCheck(n) if (n > fp->argc) return Yield(ArityError, putnum(n))
@@ -108,4 +108,3 @@ VM2(decl)
 #define Have(n) if (sp - hp < n) return (v->xp = n, ApC(gc, xp))
 // sp is at least hp so this is a safe check for 1 word
 #define Have1() if (sp == hp) return (v->xp = 1, ApC(gc, xp))
-

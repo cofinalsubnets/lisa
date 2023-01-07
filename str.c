@@ -1,5 +1,10 @@
 #include "i.h"
 
+str str_ini(void *_, size_t len) {
+  str s = _; return
+    s->act = act, s->typ = &str_typ,
+    s->len = len,
+    s; }
 
 static intptr_t hx_str(la v, ob _) {
   str s = (str) _;
@@ -24,10 +29,10 @@ static void tx_str(struct V *v, FILE *o, ob _) {
   putc('"', o); }
 
 Gc(cp_str) {
-  str src = (str) x;
-  return (ob) (src->act = (vm*)
-    memcpy(bump(v, Width(struct str) + b2w(src->len)),
-      src, sizeof(struct str) + src->len)); }
+  str src = (str) x,
+      dst = bump(v, Width(struct str) + b2w(src->len));
+  memcpy(dst, src, sizeof(struct str) + src->len);
+  return (ob) (src->act = (vm*) dst); }
 
 static bool eq_str(struct V *v, ob x, ob y) {
   if (!strp(y)) return false;
@@ -48,8 +53,6 @@ const struct typ str_typ = {
   .hash = hx_str,
   .equi = eq_str, };
 
-
-
 // string instructions
 Vm(slen_f) { return
   fp->argc == 0 ? Yield(ArityError, putnum(1)) :
@@ -65,12 +68,12 @@ Vm(sget_f) {
   return ApC(ret, xp); }
 
 Vm(scat_f) {
-  U sum = 0, i = 0;
-  for (U l = fp->argc; i < l;) {
+  size_t sum = 0, i = 0;
+  for (size_t l = fp->argc; i < l;) {
     ob x = fp->argv[i++];
     Check(strp(x));
     sum += ((str)x)->len; }
-  U words = Width(struct str) + b2w(sum);
+  size_t words = Width(struct str) + b2w(sum);
   Have(words);
   str d = str_ini(hp, sum);
   hp += words;
@@ -91,8 +94,8 @@ Vm(ssub_f) {
   lb = max(lb, 0);
   ub = min(ub, src->len);
   ub = max(ub, lb);
-  U len = ub - lb,
-    words = Width(struct str) + b2w(len);
+  size_t len = ub - lb,
+         words = Width(struct str) + b2w(len);
   Have(words);
   str dst = str_ini(hp, len);
   hp += words;
@@ -100,23 +103,10 @@ Vm(ssub_f) {
   return ApC(ret, (ob) dst); }
 
 Vm(str_f) {
-  U len = fp->argc,
-    words = Width(struct str) + b2w(len);
+  size_t len = fp->argc,
+         words = Width(struct str) + b2w(len);
   Have(words);
   str s = str_ini(hp, len);
   hp += words;
   while (len--) s->text[len] = getnum(fp->argv[len]);
   return ApC(ret, (ob) s); }
-
-
-
-Vm(sym_f) {
-  Have(Width(struct sym));
-  str i = fp->argc && strp(fp->argv[0]) ? (str) fp->argv[0] : 0;
-  sym y;
-  CallOut(y = i ?
-    intern(v, &v->syms, i) :
-    ini_anon(bump(v, Width(struct sym) - 2),
-      v->rand = lcprng(v->rand)));
-  return ApC(ret, (ob) y); }
-
