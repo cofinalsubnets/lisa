@@ -47,17 +47,25 @@ static enum status ana_arg(li v, char *path) {
     if (!f) return SystemError;
     enum status s = load_file(v, f);
     if (s != Ok) return s;
-    mo k = seq0(v, v->ip, (mo) v->xp);
+    mo k = seq0(v, (mo) v->xp, v->ip);
     if (!k) return OomError;
     return v->ip = k, Ok; }
 
-static enum status ana_args(li v, char **av, mo k) {
-  char *path = *av;
-  if (!path) return v->ip = k, Ok;
-  enum status s = ana_args(v, ++av, k);
-  return s != Ok ? s : ana_arg(v, path); }
-
 static vm vm_fin_exit_ok, vm_repl;
+static enum status load_main_thread(li v, int ac, char **av, bool boot, bool repl) {
+  mo k = thd(v, repl ? vm_repl : vm_fin_exit_ok, NULL);
+  if (!k) return OomError;
+  for (v->ip = k; ac--;) {
+    enum status r = ana_arg(v, av[ac]);
+    if (r != Ok) return r; }
+  if (boot) {
+    enum status r = load_file(v, boot_src());
+    if (r != Ok) return r;
+    k = seq0(v, (mo) v->xp, v->ip);
+    if (!k) return OomError;
+    v->ip = k; }
+  return Ok; }
+
 static enum status main_process(int ac, char **av, bool boot, bool repl) {
   av += optind;
   struct V v;

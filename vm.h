@@ -102,7 +102,7 @@ VM2(decl)
 #define ApY(f, x) (ip = (mo) (f), ApC(G(ip), (x)))
 #define ApN(n, x) (xp = (x), ip += (n), ApC(G(ip), xp))
 
-#define Yield(s, x) (v->xp = (s), ApC(yield, (x)))
+#define Yield(s, x) (Pack(), v->status = (s))
 #define ArityCheck(n) if (n > fp->argc) return Yield(ArityError, putnum(n))
 #define Check(_) if (!(_)) return Yield(DomainError, xp)
 #define Have(n) if (sp - hp < n) return (v->xp = n, ApC(gc, xp))

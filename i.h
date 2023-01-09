@@ -68,7 +68,7 @@ struct V {
 
   enum status
     status,
-    (*exit)(li, enum status);
+    (*yield)(li, enum status);
 
   // memory manager state
   U len;
@@ -96,6 +96,7 @@ sym ini_anon(void*, uintptr_t),
 ob hnom(li, mo),
    cp(li, ob, ob*, ob*), // copy something; used by type-specific copying functions
    *fresh_pool(size_t),
+   l_call(li, mo, size_t),
    tbl_get(li, tbl, ob, ob);
 
 vm act;

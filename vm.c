@@ -351,12 +351,12 @@ Vm(rand_f) { return
   v->rand = lcprng(v->rand),
   ApC(ret, putnum(v->rand)); }
 
-Vm(yield) {
-  enum status s = v->xp;
-  return Pack(), v->exit(v, s); }
+Vm(yield) { return Pack(),
+  v->yield ? v->yield(v, v->status) : v->status; }
+
 Vm(xok) { return Yield(Ok, xp); }
 Vm(xdom) { return Yield(DomainError, xp); }
 Vm(gc) {
-  U req = v->xp; return
-    CallOut(req = please(v, req)),
-    req ? ApY(ip, xp) : Yield(OomError, xp); }
+  size_t req = v->xp;
+  CallOut(req = please(v, req));
+  return req ? ApY(ip, xp) : Yield(OomError, xp); }

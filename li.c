@@ -21,8 +21,7 @@ NoInline enum status li_ini(struct V *v) {
     v->len = len,
     v->hp = v->pool = pool,
     v->fp = (sf) (v->sp = pool + len),
-    v->rand = v->t0 = clock(),
-    v->exit = vm_exit;
+    v->rand = v->t0 = clock();
     if (li_ini_env(v)) return Ok;
     li_fin(v); }
 

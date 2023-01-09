@@ -356,6 +356,18 @@ NoInline enum status li_call(la v, mo f, size_t n) {
   return v->ip = thd(v, imm, f, call, putnum(n), xok, NULL),
          !v->ip ? OomError : li_go(v); }
 
+NoInline ob l_call(li v, mo f, size_t n) {
+  mo k = thd(v, imm, f, call, putnum(n), xok, NULL);
+  if (!k) return v->status = OomError, 0;
+  mo ip = v->ip;
+  v->ip = k;
+  enum status r;
+  with(ip, r = li_go(v));
+  v->ip = ip;
+  if (r == Ok) return v->xp;
+  v->status = r;
+  return 0; }
+
 static enum status la_ap(la v, mo f, ob x) {
   mo k = thd(v,
     imm, x, push,
