@@ -46,7 +46,6 @@ static bool eq_two(la v, ob x, ob y) {
     eql(v, A(x), A(y)) &&
     eql(v, B(x), B(y)); }
 
-#include "vm.h"
 static Vm(ap_two) { return
   ApC(ret, fp->argc ? B(ip) : A(ip)); }
 

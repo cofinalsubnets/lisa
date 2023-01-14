@@ -39,8 +39,6 @@ static bool eq_str(struct V *v, ob x, ob y) {
   str a = (str) x, b = (str) y;
   return a->len == b->len && !strncmp(a->text, b->text, a->len); }
 
-#include "vm.h"
-
 static Vm(ap_str) {
   str s = (str) ip;
   fputsn(s->text, s->len, stdout);

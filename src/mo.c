@@ -1,5 +1,4 @@
 #include "i.h"
-#include "vm.h"
 // function functions
 //
 // functions are laid out in memory like this
@@ -97,6 +96,7 @@ Vm(genclo1) { return
 struct clo_env {
   mo cons;
   ob loc, *clo, argc, argv[]; };
+
 Vm(genclo0) {
   struct clo_env *ec = (void*) GF(ip);
   U adic = getnum(ec->argc);

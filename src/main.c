@@ -1,5 +1,4 @@
 #include "i.h"
-#include "vm.h"
 #include <getopt.h>
 #include <unistd.h>
 
@@ -40,7 +39,7 @@ int main(int ac, char **av) {
     case 'h': fprintf(stdout, help, *av); continue;
     case -1:
       if (ac == optind && !repl) return EXIT_SUCCESS;
-      return main_process(ac, av, boot, repl); } }
+      return main_process(ac, av + optind, boot, repl); } }
 
 static enum status ana_arg(li v, char *path) {
     FILE *f = fopen(path, "r");
@@ -67,18 +66,15 @@ static enum status load_main_thread(li v, int ac, char **av, bool boot, bool rep
   return Ok; }
 
 static enum status main_process(int ac, char **av, bool boot, bool repl) {
-  av += optind;
-  struct V v;
-  enum status s = li_ini(&v);
-  if (s == Ok && boot)
-    s = source(&v, boot_src());
-  while (s == Ok && *av)
-    s = source(&v, fopen(*av++, "r"));
-  if (s == Ok && repl)
-    interact(&v);
-  return report(&v, s),
-         li_fin(&v),
-         s; }
+  li v = malloc(sizeof(struct V));
+  enum status s = v ? li_ini(v) : OomError;
+  if (s == Ok && boot) s = source(v, boot_src());
+  while (s == Ok && *av) s = source(v, fopen(*av++, "r"));
+  if (s == Ok && repl) interact(v);
+  return report(v, s), li_fin(v), free(v), s; }
+
+static enum status process_end(li v, enum status s) {
+  return report(v, s), li_fin(v), s; }
 
 static enum status source(struct V *v, FILE *in) {
   if (!in) return SystemError;
@@ -101,10 +97,6 @@ static FILE *boot_src(void) {
 void li_unwind(li v) {
   while (v->fp != v->fp->subd) v->fp = v->fp->subd;
   v->sp = (ob*) v->fp; }
-
-
-static Vm(vm_fin_exit_ok) {
-  return li_fin(v), Ok; }
 
 static Vm(vm_repl) {
   Pack();

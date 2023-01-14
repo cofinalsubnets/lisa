@@ -133,7 +133,6 @@ Gc(cp_tbl) {
     dst->tab[i] = cp_tbl_e(v, src->tab[i], pool0, top0);
   return (ob) dst; }
 
-#include "vm.h"
 static ob tbl_del_s(la, tbl, ob, ob), tbl_keys(la);
 // get table keys
 // XXX calling convention: table in v->xp

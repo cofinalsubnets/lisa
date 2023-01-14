@@ -67,7 +67,7 @@ valg: $(nom)
 	valgrind --error-exitcode=1 $(test)
 # approximate lines of code
 sloc:
-	cloc --force-lang=Lisp,$(suff) *
+	cloc --force-lang=Lisp,$(suff) src/* test/* lib/*
 # size of binaries
 bits: $(nom)
 	du -h $^

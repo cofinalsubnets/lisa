@@ -1,21 +1,19 @@
 #include "i.h"
 //symbols
 
-sym symof(la v, str s) {
-  if (Avail < Width(struct sym)) {
-    bool _; with(s, _ = please(v, Width(struct sym)));
-    if (!_) return 0; }
-  return s ? intern(v, &v->syms, s) :
-    ini_anon(bump(v, Width(struct sym) - 2),
-      v->rand = lcprng(v->rand)); }
-//
-sym ini_anon(void *_, U code) {
+static sym ini_anon(void *_, U code) {
   sym y = _;
   y->act = act;
   y->typ = &sym_typ;
   y->nom = 0;
   y->code = code;
   return y; }
+
+sym symof(la v, str s) {
+  if (Avail < Width(struct sym)) {
+    bool _; with(s, _ = please(v, Width(struct sym)));
+    if (!_) return 0; }
+  return intern(v, &v->syms, s); }
 
 // FIXME this should probably change at some point.
 // symbols are interned into a binary search tree. we make no
@@ -55,7 +53,6 @@ Gc(cp_sym) {
     intern(v, &v->syms, (str) cp(v, (ob) src->nom, pool0, top0)) :
     ini_anon(bump(v, Width(struct sym) - 2), src->code))); }
 
-#include "vm.h"
 Vm(ynom_f) {
   if (fp->argc && symp(fp->argv[0]))
     xp = (ob) ((sym) fp->argv[0])->nom,
@@ -78,7 +75,7 @@ static void tx_sym(la v, FILE* o, ob _) {
 static intptr_t hx_sym(la v, ob _) {
   return ((sym) _)->code; }
 const struct typ sym_typ = {
-  .actn = ap_nop,
+  .actn = immk,
   .emit = tx_sym,
   .evac = cp_sym,
   .hash = hx_sym,
