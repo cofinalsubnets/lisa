@@ -112,15 +112,14 @@ void
   transmit(li, FILE*, ob),
   report(li, enum status);
 
-bool 
+bool
   please(li, size_t),
   pushs(li, ...), // push args onto stack; true on success
   eql(li, ob, ob), // object equality
   neql(li, ob, ob); // always returns false
 
 extern const struct typ
-  two_typ, str_typ,
-  tbl_typ, sym_typ;
+  two_typ, str_typ, tbl_typ, sym_typ;
 #define Width(_) b2w(sizeof(_))
 
 #define getnum(_) ((ob)(_)>>1)
@@ -171,14 +170,10 @@ static Inline bool nilp(ob _) { return _ == nil; }
 static Inline bool nump(ob _) { return _ & 1; }
 static Inline bool homp(ob _) { return !nump(_); }
 
-static Inline bool tblp(ob _) { return
-  homp(_) && (typ) GF(_) == &tbl_typ; }
-static Inline bool strp(ob _) { return
-  homp(_) && (typ) GF(_) == &str_typ; }
-static Inline bool twop(ob _) { return
-  homp(_) && (typ) GF(_) == &two_typ; }
-static Inline bool symp(ob _) { return
-  homp(_) && (typ) GF(_) == &sym_typ; }
+static Inline bool tblp(ob _) { return homp(_) && (typ) GF(_) == &tbl_typ; }
+static Inline bool strp(ob _) { return homp(_) && (typ) GF(_) == &str_typ; }
+static Inline bool twop(ob _) { return homp(_) && (typ) GF(_) == &two_typ; }
+static Inline bool symp(ob _) { return homp(_) && (typ) GF(_) == &sym_typ; }
 
 static Inline size_t b2w(size_t b) {
   size_t q = b / sizeof(ob), r = b % sizeof(ob);

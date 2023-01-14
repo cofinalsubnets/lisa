@@ -1,6 +1,17 @@
+this=Makefile
 nom=li
 suff=la
 boot=lib/boot.$(suff)
+
+run_tests=./$(nom) -_ $(boot) test/*.$(suff)
+
+test: $(nom)
+	/usr/bin/env TIMEFORMAT="in %Rs" bash -c "time $(run_tests)"
+
+LC_COLLATE=C
+c=$(sort $(wildcard src/*.c))
+h=$(sort $(wildcard src/*.h))
+o=$(c:.c=.o)
 
 CC ?= gcc
 CFLAGS ?=\
@@ -9,26 +20,15 @@ CFLAGS ?=\
 	-fno-stack-protector
 cc=$(CC) $(CFLAGS)
 
-# installation
-DESTDIR ?= $(HOME)
-PREFIX ?= .local
-
-run_tests=./$(nom) -_ $(boot) test/*.$(suff)
-
-test: $(nom)
-	/usr/bin/env TIMEFORMAT="in %Rs" bash -c "time $(run_tests)"
-
-LC_COLLATE=C
-c=$(sort $(wildcard *.c))
-h=$(sort $(wildcard *.h))
-o=$(c:.c=.o)
-
-%.o: %.c $h makefile
-	$(cc) -c $<
+src/%.o: src/%.c $h $(this)
+	$(cc) -c $< -o $@
 
 $(nom): $o $h
 	$(cc) -o $@ $o
 
+# installation
+DESTDIR ?= $(HOME)
+PREFIX ?= .local
 dest=$(DESTDIR)/$(PREFIX)/
 bins=$(dest)bin/$(nom)
 libs=$(addprefix $(dest)lib/$(nom)/,$(notdir $(boot)))

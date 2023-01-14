@@ -170,5 +170,3 @@ Vm(tx_f) {
   return putc('\n', stdout), ApC(ret, xp); }
 
 Vm(rxc_f) { return ApC(ret, putnum(getc(stdin))); }
-
-
