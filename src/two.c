@@ -1,9 +1,9 @@
 #include "i.h"
 
 // pairs and lists
-static U llenr(ob l, U n) {
+static size_t llenr(ob l, size_t n) {
   return twop(l) ? llenr(B(l), n + 1) : n; }
-U llen(ob l) { return llenr(l, 0); }
+size_t llen(ob l) { return llenr(l, 0); }
 
 two two_ini(void *_, ob a, ob b) {
   two w = _;

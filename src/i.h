@@ -92,12 +92,14 @@ enum status
   li_go(li),
   li_call(li, mo, size_t),
   receives(li, FILE*),
+  vm_yield(li, enum status),
   load_file(li, FILE*),
   receive(li, FILE*);
 
 uintptr_t
   llen(ob),
   hash(li, ob),
+  hx_typ(li, ob),
   liprng(li);
 
 mo mo_ini(void*, size_t),

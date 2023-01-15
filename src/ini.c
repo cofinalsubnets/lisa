@@ -19,21 +19,18 @@ static sym symofs(la v, const char *s) {
 
 static bool li_ini_env(la);
 
-enum status vm_exit(li v, enum status r) { return r; }
-enum status vm_loop(li v, enum status r) {
-  return report(v, r), li_go(v); }
+enum status vm_yield(li v, enum status r) { return r; }
 
 NoInline enum status li_ini(struct V *v) {
   memset(v, 0, sizeof(struct V));
   const size_t len = 1 << 10; // power of 2
-                         //
   ob *pool = malloc(len * sizeof(ob));
   if (pool) {
     v->len = len,
     v->hp = v->pool = pool,
     v->fp = (sf) (v->sp = pool + len),
     v->rand = v->t0 = clock();
-    v->yield = vm_exit;
+    v->yield = vm_yield;
     if (li_ini_env(v)) return Ok;
     li_fin(v); }
 

@@ -1,11 +1,13 @@
 #include "i.h"
 #include <getopt.h>
 #include <unistd.h>
-static vm vm_fin_exit_ok, vm_repl;
-static enum status enproc(li, char**, vm*);
-static enum status enproc2(li, FILE*);
-static enum status vm_exit_error(li v, enum status r) {
+static vm vm_repl;
+static enum status
+  enproc(li, char**, vm*),
+  enproc2(li, FILE*);
+static enum status vm_fin(li v, enum status r) {
   return report(v, r), li_fin(v), free(v), r; }
+static Vm(vm_fin_ok) { return Pack(), vm_fin(v, Ok); }
 
 static NoInline enum status la_ev_x(la v, ob x) {
   mo k = thd(v,
@@ -18,9 +20,7 @@ static NoInline enum status la_ev_x(la v, ob x) {
     k[4].ap = (vm*) (k + 7),
     li_call(v, k, 0); }
 
-static void interact(struct V*);
 static FILE *boot_src(void);
-static enum status source(struct V*, FILE*);
 
 int main(int ac, char **av) {
 
@@ -47,7 +47,7 @@ int main(int ac, char **av) {
 
   li v = malloc(sizeof(struct V));
   enum status s = v ? li_ini(v) : OomError;
-  if (s == Ok) s = enproc(v, av, repl ? vm_repl : vm_fin_exit_ok);
+  if (s == Ok) s = enproc(v, av, repl ? vm_repl : vm_fin_ok);
   if (s == Ok && boot) s = enproc2(v, boot_src());
   if (s != Ok) return report(v, s), li_fin(v), free(v), s;
   return li_go(v); }
@@ -80,16 +80,14 @@ static enum status enproc(li v, char **av, vm *j) {
   enum status r = enproc(v, av+1, j);
   return r == Ok ? enproc1(v, p) : r; }
 
-static Vm(vm_fin_exit_ok) { return li_fin(v), free(v), Ok; }
 static Vm(vm_repl) {
   Pack();
+  v->yield = vm_yield;
   enum status s;
   while ((s = receive(v, stdin)) == Ok &&
          (s = la_ev_x(v, v->xp)) != Eof)
-    if (s == Ok) transmit(v, stdout, v->xp),
-                 putc('\n', stdout);
-    else report(v, s),
-         li_unwind(v);
+    if (s != Ok) report(v, s), li_unwind(v);
+    else transmit(v, stdout, v->xp), putc('\n', stdout);
   return li_fin(v), free(v), Ok; }
 
 #define NOM "li"

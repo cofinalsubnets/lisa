@@ -22,8 +22,11 @@ tbl mktbl(la v) {
   return t; }
 
 static void tx_tbl(la, FILE*, ob);
-static uintptr_t hx_tbl(la, ob);
 static ob cp_tbl(la, ob, ob*, ob*);
+
+// hash tables are hashed by their type
+uintptr_t hx_typ(la v, ob _) {
+  return ror(mix * (uintptr_t) GF(_), 16); }
 
 // hash tables
 // some of the worst code is here :(
@@ -91,9 +94,6 @@ static tbl tbl_set_s(la v, tbl t, ob k, ob x) {
 static void tx_tbl(la v, FILE* o, ob _) {
   fprintf(o, "#tbl:%ld/%ld", ((tbl)_)->len, ((tbl)_)->cap); }
 
-static uintptr_t hx_tbl(la v, ob _) {
-  return ror(mix, 3 * sizeof(uintptr_t) / 4); }
-
 static struct tbl_e *cp_tbl_e(la v, struct tbl_e *src, ob *pool0, ob *top0) {
   if (!src) return src;
   struct tbl_e *dst = bump(v, Width(struct tbl_e));
@@ -108,8 +108,7 @@ Gc(cp_tbl) {
   tbl dst = bump(v, Width(struct tbl) + i);
   src->act = (vm*) dst;
   tbl_ini(dst, src->len, i, (struct tbl_e**) (dst+1));
-  while (i--)
-    dst->tab[i] = cp_tbl_e(v, src->tab[i], pool0, top0);
+  while (i--) dst->tab[i] = cp_tbl_e(v, src->tab[i], pool0, top0);
   return (ob) dst; }
 
 static ob tbl_del_s(la, tbl, ob, ob), tbl_keys(la);
@@ -235,7 +234,7 @@ static Vm(ap_tbl) {
 
 const struct typ tbl_typ = {
   .actn = ap_tbl, .emit = tx_tbl, .evac = cp_tbl,
-  .hash = hx_tbl, .equi = neql, };
+  .hash = hx_typ, .equi = neql, };
 
 static ob tbl_del_s(la v, tbl y, ob key, ob val) {
   size_t b = tbl_idx(y->cap, hash(v, key));
