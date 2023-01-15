@@ -2,8 +2,6 @@
 
 Vm(xok) { return Yield(Ok, xp); }
 Vm(xdom) { return Yield(DomainError, xp); }
-Vm(yield) { return Pack(),
-  v->yield ? v->yield(v, v->status) : v->status; }
 
 ////
 /// Branch Instructions

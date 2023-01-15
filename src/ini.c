@@ -19,7 +19,7 @@ static sym symofs(la v, const char *s) {
 
 static bool li_ini_env(la);
 
-enum status vm_exit(li v, enum status r) { return v->status = r; }
+enum status vm_exit(li v, enum status r) { return r; }
 enum status vm_loop(li v, enum status r) {
   return report(v, r), li_go(v); }
 
@@ -45,18 +45,6 @@ void li_fin(struct V *v) {
 static bool
   defprim(la, vm*, const char*) NoInline,
   inst(la, const char*, vm*);
-static bool li_ini_stack(li v) {
-  if (Avail < Width(struct frame) &&
-      !please(v, Width(struct frame)))
-    return false;
-  ob *top = v->pool + v->len;
-  v->fp = (frame) top - 1;
-  v->sp = (ob*) v->fp;
-  v->fp->subd = v->fp;
-  v->fp->argc = 0;
-  v->fp->retp = 0;
-  v->fp->clos = 0;
-  return true; }
 #define reg_prim(go, nom) && defprim(v, go, nom)
 #define reg_inst(a) && inst(v, "i-"#a, a)
 static bool li_ini_vm(li v) {
@@ -67,9 +55,7 @@ static bool li_ini_vm(li v) {
     tbl_set(v, v->lex.topl, _, (ob) v->lex.topl) &&
     (_ = (ob) symofs(v, "macros")) &&
     tbl_set(v, v->lex.topl, _, (ob) v->lex.macros)
-    VM2(reg_prim) &&
-    li_ini_stack(v); }
-
+    VM2(reg_prim); }
 
 static bool li_ini_env(struct V* v) {
   struct sym *y; return

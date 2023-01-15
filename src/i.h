@@ -64,11 +64,9 @@ struct V {
     sym define, cond, lambda, quote,
         begin, splat, eval; } lex;
   sym syms; // internal symbols
-  U rand;
+  uintptr_t rand;
 
-  enum status
-    status,
-    (*yield)(li, enum status);
+  enum status (*yield)(li, enum status);
 
   // memory manager state
   uintptr_t len;
@@ -97,8 +95,8 @@ enum status
   load_file(li, FILE*),
   receive(li, FILE*);
 
-size_t llen(ob);
 uintptr_t
+  llen(ob),
   hash(li, ob),
   liprng(li);
 

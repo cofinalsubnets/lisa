@@ -30,7 +30,7 @@ static NoInline void show_call(la v, mo ip, frame fp) {
 
 // this prints a backtrace.
 // TODO maybe show it upside down like python?
-#define aubas (fp == fp->subd)
+#define aubas (fp == (sf) (v->pool + v->len))
 static NoInline void errp(la v, const char *msg, ...) {
   mo ip = v->ip;
   sf fp = v->fp;
