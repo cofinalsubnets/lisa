@@ -66,13 +66,13 @@ Vm(sym_f) {
   CallOut(y = i ?
     intern(v, &v->syms, i) :
     ini_anon(bump(v, Width(struct sym) - 2),
-      v->rand = lcprng(v->rand)));
+      v->rand = liprng(v)));
   return ApC(ret, (ob) y); }
 
 static void tx_sym(la v, FILE* o, ob _) {
   str s = ((sym) _)->nom;
   s ? fputsn(s->text, s->len, o) : fputs("#sym", o); }
-static intptr_t hx_sym(la v, ob _) {
+static uintptr_t hx_sym(la v, ob _) {
   return ((sym) _)->code; }
 const struct typ sym_typ = {
   .actn = immk,

@@ -1,5 +1,11 @@
 #include "i.h"
 
+
+uintptr_t liprng(li v) {
+  const intptr_t steele_vigna_2021 = 0xaf251af3b0f025b5;
+  uintptr_t r = (steele_vigna_2021 * v->rand + 1) >> 8;
+  return v->rand = r; }
+
 static str strof(la v, const char* c) {
   size_t bs = strlen(c);
   str o = cells(v, Width(struct str) + b2w(bs));
@@ -21,7 +27,7 @@ NoInline enum status li_ini(struct V *v) {
   memset(v, 0, sizeof(struct V));
   const size_t len = 1 << 10; // power of 2
                          //
-  ob *pool = fresh_pool(len);
+  ob *pool = malloc(len * sizeof(ob));
   if (pool) {
     v->len = len,
     v->hp = v->pool = pool,

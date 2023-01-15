@@ -17,7 +17,7 @@ ob *fresh_pool(size_t n) { return malloc(n * sizeof(ob)); }
 //   better only to call out when we need to grow or shrink the pool.
 
 #define MinVim 32
-#define MaxVim 128
+#define MaxVim (MinVim<<2)
 ////
 /// garbage collector
 //
@@ -44,7 +44,9 @@ NoInline bool please(struct V *v, size_t req) {
     do want >>= 1, vim >>= 1;
     while (vim > MaxVim && need < want >> 1);
 
-  return want == have || copy(v, want) || need <= have; }
+  return want == have
+    || copy(v, want)
+    || need <= have; }
 
 // copy : la_clock_t la size_t
 // relocate all reachable data into a newly allocated
@@ -62,9 +64,9 @@ NoInline bool please(struct V *v, size_t req) {
 //   |                          `------'
 //   t0                  gc time (this cycle)
 
-static size_t copy(struct V *v, size_t len) {
+static size_t copy(li v, size_t len) {
   U t1 = clock(), t0 = v->t0, t2;
-  ob *pool0 = v->pool, *pool1 = fresh_pool(len);
+  ob *pool0 = v->pool, *pool1 = malloc(len * sizeof(ob));
   if (!pool1) return 0;
   copy_to(v, len, pool1),
   free(pool0),

@@ -17,37 +17,28 @@ Vm(ret) { return
   fp = fp->subd,
   ApY(ip, xp); }
 
-static Inline enum status
-ccall(li v, ob xp, mo ip, ob *hp, ob *sp, frame fp, size_t n, mo retp) {
+// normal function call
+Vm(call) {
   Have(Width(struct frame));
   sf subd = fp;
   return
     sp = (ob*) (fp = (sf) sp - 1),
-    fp->argc = n,
-    fp->retp = retp,
+    fp->argc = getnum(ip[1].ap),
+    fp->retp = ip + 2,
     fp->subd = subd,
     fp->clos = (ob*) nil,
     ApY(xp, nil); }
 
-
-// normal function call
-Vm(call) {
-  return ccall(v, xp, ip, hp, sp, fp, getnum(GF(ip)), FF(ip)); }
-
-
 // tail calls
 Vm(rec) {
-  U adic = getnum(GF(ip));
+  size_t adic = getnum(GF(ip));
   // save return address
   sf subd = fp->subd;
   mo retp = fp->retp;
   return
-    // reset fp
-    fp = (sf) (fp->argv + fp->argc - adic) - 1,
-    // copy the args high to low BEFORE repopulating fp.
+    fp = (frame) (fp->argv + fp->argc - adic) - 1,
     cpyw_r2l(fp->argv, sp, adic),
     sp = (ob*) fp,
-    // populate fp
     fp->retp = retp,
     fp->subd = subd,
     fp->argc = adic,
@@ -88,4 +79,3 @@ Br(brl, *sp++ < xp, GF, FF)
 Br(brg, *sp++ > xp, GF, FF)
 Br(brle, *sp++ <= xp, GF, FF)
 Br(brge, *sp++ >= xp, GF, FF)
-

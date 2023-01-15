@@ -14,7 +14,8 @@ Vm(tx_f) {
       putc(' ', stdout);
     xp = fp->argv[i];
     transmit(v, stdout, xp); }
-  return putc('\n', stdout), ApC(ret, xp); }
+  return putc('\n', stdout),
+         ApC(ret, xp); }
 
 static void tx_nom(la, FILE*, ob);
 void transmit(la v, FILE* o, ob x) {
@@ -26,6 +27,5 @@ void transmit(la v, FILE* o, ob x) {
 static NoInline void tx_nom(la v, FILE* o, ob x) {
   if (symp(x)) putc('\\', o), transmit(v, o, x);
   else if (!twop(x)) putc('\\', o);
-  else {
-    if (symp(A(x)) || twop(A(x))) tx_nom(v, o, A(x));
-    if (symp(B(x)) || twop(B(x))) tx_nom(v, o, B(x)); } }
+  else { if (symp(A(x)) || twop(A(x))) tx_nom(v, o, A(x));
+         if (symp(B(x)) || twop(B(x))) tx_nom(v, o, B(x)); } }

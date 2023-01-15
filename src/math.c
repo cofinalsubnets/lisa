@@ -1,9 +1,7 @@
 #include "i.h"
 
 // rng
-Vm(rand_f) { return
-  v->rand = lcprng(v->rand),
-  ApC(ret, putnum(v->rand)); }
+Vm(rand_f) { return ApC(ret, putnum(liprng(v))); }
 
 // fixnum arithmetic
 // frameless

@@ -29,7 +29,7 @@ struct tag { struct mo *null, *head, end[]; };
 typedef const struct typ {
   vm *actn;
   bool (*equi)(li, I, I);
-  intptr_t (*hash)(li, I);
+  uintptr_t (*hash)(li, I);
   ob  (*evac)(li, I, I*, I*);
   //  void (*walk)(li, ob, ob*, ob*);
   void (*emit)(li, FILE*, I); } *typ;
@@ -49,7 +49,7 @@ typedef struct tbl { // hash tables
 typedef struct sym {
   vm *act; typ typ;
   str nom;
-  intptr_t code;
+  uintptr_t code;
   // symbols are interned into a binary search tree.
   // anonymous symbols (nom == 0) don't have branches.
   struct sym *l, *r; } *sym;
@@ -76,14 +76,35 @@ struct V {
   struct ll { ob *addr; struct ll *next; } *safe;
   union { ob *cp; size_t t0; }; };
 
+vm act, immk;
+
+void
+  transmit(li, FILE*, ob), // write to output
+  report(li, enum status), // show error message
+  *bump(li, size_t),
+  *cells(li, size_t);
+
+bool
+  please(li, size_t),
+  pushs(li, ...), // push args onto stack; true on success
+  eql(li, ob, ob), // object equality
+  neql(li, ob, ob); // always returns false
+
+enum status
+  li_go(li),
+  li_call(li, mo, size_t),
+  receives(li, FILE*),
+  load_file(li, FILE*),
+  receive(li, FILE*);
+
 size_t llen(ob);
-intptr_t hash(li, ob);
+uintptr_t
+  hash(li, ob),
+  liprng(li);
 
-enum status li_go(li);
-
-mo mo_ini(void *, size_t),
+mo mo_ini(void*, size_t),
    thd(li, ...),
-   seq0(li, mo, mo),
+   ana(li, ob),
    mo_n(li, size_t);
 tbl mktbl(li),
     tbl_set(li, tbl, ob, ob);
@@ -94,28 +115,9 @@ sym intern(li, sym*, str),
     symof(li, str);
 ob hnom(li, mo),
    cp(li, ob, ob*, ob*), // copy something; used by type-specific copying functions
-   *fresh_pool(size_t),
    tbl_get(li, tbl, ob, ob);
 
-vm act, immk;
-
-enum status
-  li_call(li, mo, size_t),
-  receives(li, FILE*),
-  load_file(li, FILE*),
-  receive(li, FILE*);
-
-void
-  transmit(li, FILE*, ob), // write to output
-  report(li, enum status), // show error message
-  *cells(li, size_t);
-
-bool
-  please(li, size_t),
-  pushs(li, ...), // push args onto stack; true on success
-  eql(li, ob, ob), // object equality
-  neql(li, ob, ob); // always returns false
-
+extern const uintptr_t mix;
 extern const struct typ
   two_typ, str_typ, tbl_typ, sym_typ;
 #define Width(_) b2w(sizeof(_))
@@ -144,7 +146,6 @@ extern const struct typ
 #define BB(o) B(B(o))
 
 #define Gc(n) static ob n(li v, ob x, ob *pool0, ob *top0)
-#define mix ((intptr_t) 2708237354241864315)
 
 #define Inline inline __attribute__((always_inline))
 #define NoInline __attribute__((noinline))
@@ -187,16 +188,6 @@ static Inline intptr_t ror(intptr_t x, uintptr_t n) {
 static Inline void fputsn(const char *s, U n, FILE *o) {
   while (n--) putc(*s++, o); }
 
-static Inline intptr_t lcprng(intptr_t s) {
-  // this comes from a paper
-  const intptr_t steele_vigna_2021 = 0xaf251af3b0f025b5;
-  return (s * steele_vigna_2021 + 1) >> 8; }
-
-// unchecked allocator -- make sure there's enough memory!
-static Inline void *bump(la v, size_t n) {
-  void *x = v->hp;
-  return v->hp += n, x; }
-
 // " the interpreter "
 #define Vm(n, ...) NoInline enum status\
   n(la v, ob xp, mo ip, ob *hp, ob *sp, frame fp, ##__VA_ARGS__)
@@ -222,12 +213,23 @@ static Inline void *bump(la v, size_t n) {
 // the current values in the vm struct before it makes any
 // "external" function calls.
 
+#define Pack() (v->ip=ip,v->sp=sp,v->hp=hp,v->fp=fp,v->xp=xp)
+#define Unpack() (fp=v->fp,hp=v->hp,sp=v->sp,ip=v->ip,xp=v->xp)
+#define CallOut(...) (Pack(), __VA_ARGS__, Unpack())
+
+#define ApC(f, x) (f)(v, (x), ip, hp, sp, fp)
+#define ApY(f, x) (ip = (mo) (f), ApC(G(ip), (x)))
+#define ApN(n, x) (xp = (x), ip += (n), ApC(G(ip), xp))
+
+#define Yield(s, x) (xp = (x), Pack(), v->yield(v, (s)))
+#define ArityCheck(n) if (n > fp->argc) return Yield(ArityError, putnum(n))
+#define Check(_) if (!(_)) return Yield(DomainError, xp)
+#define Have(n) if (sp - hp < n) return (v->xp = n, ApC(gc, xp))
+// sp is at least hp so this is a safe check for 1 word
+#define Have1() if (sp == hp) return (v->xp = 1, ApC(gc, xp))
+
 // these are vm functions used by C but not lisp.
-#define VM0(_)\
-  _(gc) _(xok)\
-  _(setclo) _(genclo0) _(genclo1)
-#define decl(x, ...) Vm(x);
-VM0(decl)
+vm gc, xok, setclo, genclo0, genclo1;
 
 // used by the compiler but not exposed as primitives
 #define VM1(_)\
@@ -256,6 +258,7 @@ VM0(decl)
  _(brl) _(brle) _(brge) _(brg)\
  _(push)
 
+#define decl(x, ...) Vm(x);
 VM1(decl)
 
 // primitive functions
@@ -290,19 +293,3 @@ VM1(decl)
 
 VM2(decl)
 #undef decl
-
-
-#define Pack() (v->ip=ip,v->sp=sp,v->hp=hp,v->fp=fp,v->xp=xp)
-#define Unpack() (fp=v->fp,hp=v->hp,sp=v->sp,ip=v->ip,xp=v->xp)
-#define CallOut(...) (Pack(), __VA_ARGS__, Unpack())
-
-#define ApC(f, x) (f)(v, (x), ip, hp, sp, fp)
-#define ApY(f, x) (ip = (mo) (f), ApC(G(ip), (x)))
-#define ApN(n, x) (xp = (x), ip += (n), ApC(G(ip), xp))
-
-#define Yield(s, x) (xp = (x), Pack(), v->yield(v, (s)))
-#define ArityCheck(n) if (n > fp->argc) return Yield(ArityError, putnum(n))
-#define Check(_) if (!(_)) return Yield(DomainError, xp)
-#define Have(n) if (sp - hp < n) return (v->xp = n, ApC(gc, xp))
-// sp is at least hp so this is a safe check for 1 word
-#define Have1() if (sp == hp) return (v->xp = 1, ApC(gc, xp))

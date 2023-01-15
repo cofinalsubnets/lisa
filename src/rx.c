@@ -71,8 +71,7 @@ static NoInline ob rxr(la v, FILE* i) {
 static NoInline ob rx_two(la v, FILE* i) {
   int c = rx_char(i);
   switch (c) {
-    case ')': return rx_pull(v, i, nil);
-    case EOF: return rx_pull(v, i, 0);
+    case ')': case EOF: return rx_pull(v, i, nil);
     default: return
       ungetc(c, i),
       pushs(v, rx_two_cont, NULL) ?
@@ -86,8 +85,8 @@ static str buf_grow(la v, str s) {
   str t; size_t len = s->len;
   with(s, t = cells(v, Width(struct str) + 2 * b2w(len)));
   if (!t) return t;
-  return memcpy(t->text, s->text, len),
-         str_ini(t, 2 * len); }
+  memcpy(t->text, s->text, len);
+  return str_ini(t, 2 * len); }
 
 // read the contents of a string literal into a string
 static str rx_str(la v, FILE* p) {
@@ -139,4 +138,3 @@ static NoInline ob rx_atom(la v, str b) {
         if (*r == c) return rx_atom_n(v, b, i+2, sign, r[1]); }
     default: goto out; } out:
   return rx_atom_n(v, b, i, sign, 10); }
-

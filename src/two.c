@@ -1,26 +1,27 @@
 #include "i.h"
 
 // pairs and lists
+static U llenr(ob l, U n) {
+  return twop(l) ? llenr(B(l), n + 1) : n; }
+U llen(ob l) { return llenr(l, 0); }
+
 two two_ini(void *_, ob a, ob b) {
-  two w = _; return
+  two w = _;
+  return
     w->act = act,
     w->typ = &two_typ,
     w->a = a, w->b = b,
     w; }
 
 static NoInline two pair_gc(la v, ob a, ob b) {
-  bool ok; return
-    with(a, with(b, ok = please(v, Width(struct two)))),
-    ok ? pair(v, a, b) : 0; }
+  bool ok;
+  with(a, with(b, ok = please(v, Width(struct two))));
+  return ok ? pair(v, a, b) : 0; }
 
 NoInline two pair(la v, ob a, ob b) {
-  return Avail >= Width(struct two) ?
-    two_ini(bump(v, Width(struct two)), a, b) :
-    pair_gc(v, a, b); }
+  if (Avail < Width(struct two)) return pair_gc(v, a, b);
+  return two_ini(bump(v, Width(struct two)), a, b); }
 
-size_t llenr(ob l, size_t n) {
-  return twop(l) ? llenr(B(l), n + 1) : n; }
-size_t llen(ob l) { return llenr(l, 0); }
 Gc(cp_two) {
   two src = (two) x,
       dst = bump(v, Width(struct two));
@@ -37,8 +38,8 @@ static void tx_two(la v, FILE* o, ob x) {
     putc(' ', o); }
   putc(')', o); }
 
-static intptr_t hx_two(la v, ob x) {
-  intptr_t hc = hash(v, A(x)) * hash(v, B(x));
+static uintptr_t hx_two(la v, ob x) {
+  uintptr_t hc = hash(v, A(x)) * hash(v, B(x));
   return ror(hc, 4 * sizeof(I)); }
 
 static bool eq_two(la v, ob x, ob y) {

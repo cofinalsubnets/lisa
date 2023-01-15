@@ -12,23 +12,17 @@
 // this way we can support internal pointers for branch
 // destinations, return addresses, etc, while letting
 // the garbage collector always find the head.
-//
-// two easy potential optimizations are:
-// - add a tail pointer to the start of the function,
-//   so GC can find the head quickly (since often we
-//   won't have an internal pointer)
-// - tag the tail/head pointers instead of using a null
-//   sentinel (but then the C compiler would need to
-//   align functions)
 
 mo mo_ini(void *_, size_t len) {
   struct tag *t = (struct tag*) ((mo) _ + len);
-  return t->null = NULL, t->head = _; }
+  t->null = NULL;
+  return t->head = _; }
 
 // allocate a thread
 mo mo_n(la v, U n) {
   mo k = cells(v, n + Width(struct tag));
   return k ? mo_ini(k, n) : k; }
+
 // instructions for the internal compiler
 // initialize a function
 Vm(hom_f) {
@@ -63,13 +57,12 @@ Vm(peek_f) {
   if (fp->argc && homp(fp->argv[0])) xp = (ob) G(fp->argv[0]);
   return ApC(ret, xp); }
 
-// thread pointer arithmetic -- not bounds checked!
+// thread pointer arithmetic. not bounds checked.
 Vm(seek_f) {
   if (fp->argc >= 2 && homp(fp->argv[0]) && nump(fp->argv[1]))
     xp = (ob) ((mo) fp->argv[0] + getnum(fp->argv[1]));
   return ApC(ret, xp); }
 
-// TODO maybe we could do this with closures instead?
 Vm(act) { return ApC(((typ) GF(ip))->actn, xp); }
 
 // closure functions
@@ -153,11 +146,11 @@ static NoInline mo thdr(la v, U n, va_list xs) {
   return k; }
 
 NoInline mo thd(la v, ...) {
-  mo k; va_list xs; return
-    va_start(xs, v),
-    k = thdr(v, 0, xs),
-    va_end(xs),
-    k; }
+  va_list xs;
+  va_start(xs, v);
+  mo k = thdr(v, 0, xs);
+  va_end(xs);
+  return k; }
 
 // try to get the name of a function
 ob hnom(la v, mo x) {

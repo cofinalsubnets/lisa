@@ -6,9 +6,9 @@ str str_ini(void *_, size_t len) {
     s->len = len,
     s; }
 
-static intptr_t hx_str(la v, ob _) {
+static uintptr_t hx_str(la v, ob _) {
   str s = (str) _;
-  intptr_t h = 1;
+  uintptr_t h = 1;
   size_t words = s->len / sizeof(ob),
          bytes = s->len % sizeof(ob);
   const char *bs = s->text + s->len - bytes;
