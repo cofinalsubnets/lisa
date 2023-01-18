@@ -19,8 +19,6 @@ static sym symofs(la v, const char *s) {
 
 static bool li_ini_env(la);
 
-enum status vm_yield(li v, enum status r) { return r; }
-
 NoInline enum status li_ini(struct V *v) {
   memset(v, 0, sizeof(struct V));
   const size_t len = 1 << 10; // power of 2
@@ -30,7 +28,6 @@ NoInline enum status li_ini(struct V *v) {
     v->hp = v->pool = pool,
     v->fp = (sf) (v->sp = pool + len),
     v->rand = v->t0 = clock();
-    v->yield = vm_yield;
     if (li_ini_env(v)) return Ok;
     li_fin(v); }
 
@@ -78,3 +75,6 @@ static NoInline bool inst(la v, const char *a, vm *b) {
   sym z; return
     (z  = symofs(v, a)) &&
     tbl_set(v, v->lex.topl, (ob) z, (ob) b); }
+
+void li_unwind(li v) {
+  v->sp = (ob*) (v->fp = (frame) (v->pool + v->len)); }

@@ -34,14 +34,10 @@ cmp(LT, lt) cmp(LE, lteq) cmp(GE, gteq) cmp(GT, gt) cmp(EQ, eq)
 Tp(num) Tp(hom) Tp(two) Tp(sym) Tp(str) Tp(tbl) Tp(nil)
 
 // type/arity checking
-Vm(idno) { return nump(xp) ? ApN(1, xp) :
-  Yield(DomainError, xp); }
-Vm(idmo) { return homp(xp) ? ApN(1, xp) :
-  Yield(DomainError, xp); }
-Vm(idtbl) { return tblp(xp) ? ApN(1, xp) :
-  Yield(DomainError, xp); }
-Vm(idtwo) { return twop(xp) ? ApN(1, xp) :
-  Yield(DomainError, xp); }
+Vm(idno) { return nump(xp) ? ApN(1, xp) : ApC(xdom, xp); }
+Vm(idmo) { return homp(xp) ? ApN(1, xp) : ApC(xdom, xp); }
+Vm(idtbl) { return tblp(xp) ? ApN(1, xp) : ApC(xdom, xp); }
+Vm(idtwo) { return twop(xp) ? ApN(1, xp) : ApC(xdom, xp); }
 Vm(arity) { return fp->argc >= getnum(GF(ip)) ? ApN(2, xp) :
     Yield(ArityError, (ob) GF(ip)); }
 Vm(ary1) { return fp->argc >= 1 ? ApN(1, xp) :

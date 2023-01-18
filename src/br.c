@@ -1,11 +1,30 @@
 #include "i.h"
 
-Vm(xok) { return Yield(Ok, xp); }
-Vm(xdom) { return Yield(DomainError, xp); }
+Vm(xok) { return Pack(), Ok; }
+Vm(xdom) { return Pack(), DomainError; }
 
 ////
 /// Branch Instructions
 //
+//
+// unconditional jump
+Vm(jump) { return ApY(GF(ip), xp); }
+
+// conditional jumps
+//
+// args: test, yes addr, yes val, no addr, no val
+#define Br(nom, test, a, b) Vm(nom) { return\
+  ApY((test) ? (ob) a(ip) : (ob) b(ip), xp); }
+// combined test/branch instructions
+Br(br1, nilp(xp), FF, GF)
+Br(br0, nilp(xp), GF, FF)
+Br(bre, eql(v, xp, *sp++), GF, FF)
+Br(brn, eql(v, xp, *sp++), FF, GF)
+Br(brl, *sp++ < xp, GF, FF)
+Br(brg, *sp++ > xp, GF, FF)
+Br(brle, *sp++ <= xp, GF, FF)
+Br(brge, *sp++ >= xp, GF, FF)
+
 // calling and returning
 //
 // return from a function
@@ -59,21 +78,3 @@ Vm(ap_f) {
   fp->clos = (ob*) nil;
   for (ob *i = fp->argv; adic--; xp = B(xp)) *i++ = A(xp);
   return ApY(ip, nil); }
-
-// unconditional jump
-Vm(jump) { return ApY(GF(ip), xp); }
-
-// conditional jumps
-//
-// args: test, yes addr, yes val, no addr, no val
-#define Br(nom, test, a, b) Vm(nom) { return\
-  ApY((test) ? (ob) a(ip) : (ob) b(ip), xp); }
-// combined test/branch instructions
-Br(br1, nilp(xp), FF, GF)
-Br(br0, nilp(xp), GF, FF)
-Br(bre, eql(v, xp, *sp++), GF, FF)
-Br(brn, eql(v, xp, *sp++), FF, GF)
-Br(brl, *sp++ < xp, GF, FF)
-Br(brg, *sp++ > xp, GF, FF)
-Br(brle, *sp++ <= xp, GF, FF)
-Br(brge, *sp++ >= xp, GF, FF)

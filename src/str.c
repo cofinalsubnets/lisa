@@ -39,13 +39,8 @@ static bool eq_str(struct V *v, ob x, ob y) {
   str a = (str) x, b = (str) y;
   return a->len == b->len && !strncmp(a->text, b->text, a->len); }
 
-static Vm(ap_str) {
-  str s = (str) ip;
-  fputsn(s->text, s->len, stdout);
-  return ApC(ret, (ob) ip); }
-
 const struct typ str_typ = {
-  .actn = ap_str,
+  .actn = immk,
   .emit = tx_str,
   .evac = cp_str,
   .hash = hx_str,

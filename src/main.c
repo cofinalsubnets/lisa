@@ -1,40 +1,24 @@
 #include "i.h"
 #include <getopt.h>
 #include <unistd.h>
-static vm vm_repl;
-static enum status
-  enproc(li, char**, vm*),
-  enproc2(li, FILE*);
-static enum status vm_fin(li v, enum status r) {
-  return report(v, r), li_fin(v), free(v), r; }
-static Vm(vm_fin_ok) { return Pack(), vm_fin(v, Ok); }
-
-static NoInline enum status la_ev_x(la v, ob x) {
-  mo k = thd(v,
-    imm, x, push,
-    imm, ev_f,
-    rec, putnum(1),
-    ev_f, NULL);
-  if (!k) return OomError;
-  return
-    k[4].ap = (vm*) (k + 7),
-    li_call(v, k, 0); }
 
 static FILE *boot_src(void);
+static vm vm_repl, vm_fin_ok;
+static enum status enproc(li, char**, vm*),
+                   enprocf(li, FILE*),
+                   li_ev(li, ob);
+
+static const char *help =
+  "usage: %s [options] [scripts]\n"
+  "with no arguments, interact\n"
+  "options:\n"
+  "  -h show this message\n"
+  "  -i interact\n"
+  "  -_ don't bootstrap\n";
 
 int main(int ac, char **av) {
-
-  static const char *help =
-    "usage: %s [options] [scripts]\n"
-    "with no arguments, interact\n"
-    "options:\n"
-    "  -h show this message\n"
-    "  -i interact\n"
-    "  -_ don't bootstrap\n";
-
   bool boot = true,
        repl = ac == 1 && isatty(STDIN_FILENO);
-
   for (;;) switch (getopt(ac, av, "hi_")) {
     default: return EXIT_FAILURE;
     case 'i': repl = true; continue;
@@ -42,22 +26,24 @@ int main(int ac, char **av) {
     case 'h': fprintf(stdout, help, *av); continue;
     case -1:
       if (ac == optind && !repl) return EXIT_SUCCESS;
+      struct V v;
       av += optind;
-      goto out; } out:
+      vm *j = repl ? vm_repl : vm_fin_ok;
+      enum status s = li_ini(&v);
+      if (s == Ok) s = enproc(&v, av, j);
+      if (s == Ok && boot) s = enprocf(&v, boot_src());
+      if (s == Ok) s = li_go(&v);
+      return report(&v, s),
+             li_fin(&v),
+             s; } }
 
-  li v = malloc(sizeof(struct V));
-  enum status s = v ? li_ini(v) : OomError;
-  if (s == Ok) s = enproc(v, av, repl ? vm_repl : vm_fin_ok);
-  if (s == Ok && boot) s = enproc2(v, boot_src());
-  if (s != Ok) return report(v, s), li_fin(v), free(v), s;
-  return li_go(v); }
-
-static enum status enproc2(li v, FILE *f) {
+static enum status enprocf(li v, FILE *f) {
   if (!f) return SystemError;
   enum status r = receive(v, f);
-  if (r == Eof) return fclose(f), Ok;
+  if (r != Ok) return fclose(f),
+                      r == Eof ? Ok : r;
   ob x = v->xp;
-  with(x, r = enproc2(v, f));
+  with(x, r = enprocf(v, f));
   if (r != Ok) return r;
   x = (ob) pair(v, x, nil);
   x = x ? (ob) pair(v, (ob) v->lex.quote, x) : x;
@@ -66,29 +52,27 @@ static enum status enproc2(li v, FILE *f) {
   x = x ? (ob) ana(v, x) : x;
   x = x ? (ob) thd(v, imm, x, call, nil, jump, v->ip, NULL) : x;
   if (!x) return OomError;
-  v->ip = (mo) x;
-  return Ok; }
-
-static enum status enproc1(li v, const char *p) {
-  return enproc2(v, fopen(p, "r")); }
+  return v->ip = (mo) x,
+         Ok; }
 
 static enum status enproc(li v, char **av, vm *j) {
   const char *p = *av;
   if (!p) {
     mo k = thd(v, j, NULL);
-    return k ? (v->ip = k, Ok) : OomError; }
+    return !k ? OomError : (v->ip = k, Ok); }
   enum status r = enproc(v, av+1, j);
-  return r == Ok ? enproc1(v, p) : r; }
+  return r != Ok ? r : enprocf(v, fopen(p, "r")); }
 
+static Vm(vm_fin_ok) { return Pack(), Ok; }
 static Vm(vm_repl) {
   Pack();
-  v->yield = vm_yield;
   enum status s;
-  while ((s = receive(v, stdin)) == Ok &&
-         (s = la_ev_x(v, v->xp)) != Eof)
+  while ((s = receive(v, stdin)) != Eof) {
+    s = s == Ok ? li_ev(v, v->xp) : s;
     if (s != Ok) report(v, s), li_unwind(v);
-    else transmit(v, stdout, v->xp), putc('\n', stdout);
-  return li_fin(v), free(v), Ok; }
+    else transmit(v, stdout, v->xp),
+         putc('\n', stdout); }
+  return Ok; }
 
 #define NOM "li"
 #define SUFF "la"
@@ -101,5 +85,14 @@ static FILE *boot_src(void) {
    (b = fopen("/usr/lib/" NOM "/boot." SUFF, "r"))) ? b :
    fopen("/lib/" NOM "/boot." SUFF, "r"); }
 
-void li_unwind(li v) {
-  v->sp = (ob*) (v->fp = (frame) (v->pool + v->len)); }
+static enum status li_ev(li v, ob x) {
+  mo k = thd(v,
+    imm, x, push,
+    imm, nil, // assignment target idx=4
+    call, putnum(1),
+    xok, ev_f, // source idx=8
+    NULL);
+  if (!k) return OomError;
+  return k[4].ap = (vm*) (k + 8),
+         v->ip = k,
+         li_go(v); }

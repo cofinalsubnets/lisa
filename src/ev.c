@@ -4,10 +4,6 @@ NoInline enum status li_go(la v) {
   mo ip; frame fp; ob xp, *hp, *sp;
   return Unpack(), ApY(ip, xp); }
 
-NoInline enum status li_call(la v, mo f, size_t n) {
-  return v->ip = thd(v, imm, f, call, putnum(n), xok, NULL),
-         !v->ip ? OomError : li_go(v); }
-
 Vm(ev_f) {
   mo e = (mo) tbl_get(v, v->lex.topl, (ob) v->lex.eval, 0);
   if (e && G(e) != ev_f) return ApY(e, xp);
@@ -49,16 +45,18 @@ static mo
   mo_two(la, env*, size_t, ob) NoInline,
   mo_i_x(la, env*, size_t, vm*, ob) NoInline;
 
-static enum status la_ap(la v, mo f, ob x) {
+static enum status li_ap(la v, mo f, ob x) {
   mo k = thd(v,
     imm, x, push,
     imm, f, push,
-    imm, nil, // assignment target
-    rec, putnum(2),
-    ap_f, NULL);
+    imm, nil, // assignment target idx=7
+    call, putnum(2),
+    xok, ap_f, // source idx=11
+    NULL);
   if (!k) return OomError;
-  k[7].ap = (vm*) (k + 10);
-  return li_call(v, k, 0); }
+  return k[7].ap = (vm*) (k + 11),
+         v->ip = k,
+         li_go(v); }
 
 mo ana(la v, ob x) { return
   !pushs(v, x, em1, ret, mo_alloc, NULL) ? 0 :
@@ -366,7 +364,7 @@ static Co(mo_mac, ob mac, ob x) {
   ob xp = v->xp;
   mo ip = v->ip;
   return
-    with(xp, with(ip, s = la_ap(v, (mo) mac, x))),
+    with(xp, with(ip, s = li_ap(v, (mo) mac, x))),
     x = v->xp, v->xp = xp, v->ip = ip,
     report(v, s), // FIXME should return status
     s == Ok ? co_x(v, e, m, x) : NULL; }

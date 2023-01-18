@@ -1,20 +1,6 @@
 #include "i.h"
 //symbols
 
-static sym ini_anon(void *_, U code) {
-  sym y = _;
-  y->act = act;
-  y->typ = &sym_typ;
-  y->nom = 0;
-  y->code = code;
-  return y; }
-
-sym symof(la v, str s) {
-  if (Avail < Width(struct sym)) {
-    bool _; with(s, _ = please(v, Width(struct sym)));
-    if (!_) return 0; }
-  return intern(v, &v->syms, s); }
-
 // FIXME this should probably change at some point.
 // symbols are interned into a binary search tree. we make no
 // attempt to keep it balanced but it gets rebuilt in somewhat
@@ -32,9 +18,17 @@ static sym sym_ini(void *_, str nom, U code) {
     y->l = y->r = 0,
     y; }
 
+static sym ini_anon(void *_, U code) {
+  sym y = _;
+  y->act = act;
+  y->typ = &sym_typ;
+  y->nom = 0;
+  y->code = code;
+  return y; }
+
 // FIXME the caller must ensure Avail >= Width(struct sym)
 // (because GC here would void the tree)
-sym intern(la v, sym *y, str b) {
+static sym intern(la v, sym *y, str b) {
   if (*y) {
     sym z = *y;
     str a = z->nom;
@@ -46,6 +40,12 @@ sym intern(la v, sym *y, str b) {
     return intern(v, i < 0 ? &z->l : &z->r, b); }
   return *y = sym_ini(bump(v, Width(struct sym)), b,
     hash(v, putnum(hash(v, (ob) b)))); }
+
+sym symof(la v, str s) {
+  if (Avail < Width(struct sym)) {
+    bool _; with(s, _ = please(v, Width(struct sym)));
+    if (!_) return 0; }
+  return intern(v, &v->syms, s); }
 
 Gc(cp_sym) {
   sym src = (sym) x;
@@ -69,6 +69,8 @@ Vm(sym_f) {
       v->rand = liprng(v)));
   return ApC(ret, (ob) y); }
 
+static void fputsn(const char *s, U n, FILE *o) {
+  while (n--) putc(*s++, o); }
 static void tx_sym(la v, FILE* o, ob _) {
   str s = ((sym) _)->nom;
   s ? fputsn(s->text, s->len, o) : fputs("#sym", o); }

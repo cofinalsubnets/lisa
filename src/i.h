@@ -66,8 +66,6 @@ struct V {
   sym syms; // internal symbols
   uintptr_t rand;
 
-  enum status (*yield)(li, enum status);
-
   // memory manager state
   uintptr_t len;
   intptr_t *pool;
@@ -90,10 +88,7 @@ bool
 
 enum status
   li_go(li),
-  li_call(li, mo, size_t),
   receives(li, FILE*),
-  vm_yield(li, enum status),
-  load_file(li, FILE*),
   receive(li, FILE*);
 
 uintptr_t
@@ -111,8 +106,7 @@ tbl mktbl(li),
 two two_ini(void*, ob, ob),
     pair(li, ob, ob);
 str str_ini(void*, size_t);
-sym intern(li, sym*, str),
-    symof(li, str);
+sym symof(li, str);
 ob hnom(li, mo),
    cp(li, ob, ob*, ob*), // copy something; used by type-specific copying functions
    tbl_get(li, tbl, ob, ob);
@@ -185,9 +179,6 @@ static Inline bool livep(la v, ob x) {
 static Inline intptr_t ror(intptr_t x, uintptr_t n) {
   return (x << ((8 * sizeof(intptr_t)) - n)) | (x >> n); }
 
-static Inline void fputsn(const char *s, U n, FILE *o) {
-  while (n--) putc(*s++, o); }
-
 // " the interpreter "
 #define Vm(n, ...) NoInline enum status\
   n(la v, ob xp, mo ip, ob *hp, ob *sp, frame fp, ##__VA_ARGS__)
@@ -221,7 +212,7 @@ static Inline void fputsn(const char *s, U n, FILE *o) {
 #define ApY(f, x) (ip = (mo) (f), ApC(G(ip), (x)))
 #define ApN(n, x) (xp = (x), ip += (n), ApC(G(ip), xp))
 
-#define Yield(s, x) (xp = (x), Pack(), v->yield(v, (s)))
+#define Yield(s, x) (xp = (x), Pack(), (s))
 #define ArityCheck(n) if (n > fp->argc) return Yield(ArityError, putnum(n))
 #define Check(_) if (!(_)) return Yield(DomainError, xp)
 #define Have(n) if (sp - hp < n) return (v->xp = n, ApC(gc, xp))
