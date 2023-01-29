@@ -1,16 +1,8 @@
 #include "i.h"
 
-NoInline enum status li_go(la v) {
+NoInline enum status li_go(li v) {
   mo ip; frame fp; ob xp, *hp, *sp;
   return Unpack(), ApY(ip, xp); }
-
-Vm(ev_f) {
-  mo e = (mo) tbl_get(v, v->lex.topl, (ob) v->lex.eval, 0);
-  if (e && G(e) != ev_f) return ApY(e, xp);
-  if (!fp->argc) return ApC(ret, xp);
-  mo y; CallOut(y = ana(v, fp->argv[0]));
-  return y ? ApY(y, xp) : Yield(OomError, xp); }
-
 
 ////
 ///  the thread compiler
@@ -33,39 +25,27 @@ static mo
   em2(la, env*, size_t),
   mo_alloc(la, env*, size_t),
   p_co_x(la, env*, size_t),
-  p_co_def_bind(la, env*, size_t),
-  co_x(la, env*, size_t, ob) NoInline,
-  co_if(la, env*, size_t, ob) NoInline,
-  mo_ap(la, env*, size_t, ob, ob) NoInline,
   co_def(la, env*, size_t, ob) NoInline,
   co_fn(la, env*, size_t, ob) NoInline,
-  mo_seq(la, env*, size_t, ob) NoInline,
-  co_sym(la, env*, size_t, ob) NoInline,
   mo_mac(la, env*, size_t, ob, ob) NoInline,
   mo_two(la, env*, size_t, ob) NoInline,
   mo_i_x(la, env*, size_t, vm*, ob) NoInline;
 
-static enum status li_ap(la v, mo f, ob x) {
-  mo k = thd(v,
-    imm, x, push,
-    imm, f, push,
-    imm, nil, // assignment target idx=7
-    call, putnum(2),
-    xok, ap_f, // source idx=11
-    NULL);
-  if (!k) return OomError;
-  return k[7].ap = (vm*) (k + 11),
-         v->ip = k,
-         li_go(v); }
-
-mo ana(la v, ob x) { return
+static mo ana(la v, ob x) { return
   !pushs(v, x, em1, ret, mo_alloc, NULL) ? 0 :
     p_co_x(v, 0, 0); }
+
+Vm(ev_f) {
+  mo e = (mo) tbl_get(v, v->lex.topl, (ob) v->lex.eval, 0);
+  return
+    e && G(e) != ev_f ? ApY(e, xp) :
+    !fp->argc ? ApC(ret, xp) :
+    (CallOut(e = ana(v, fp->argv[0])), !e) ? Yield(OomError, xp) :
+    ApY(e, xp); }
 
 static Inline mo co_pull(la v, env *e, size_t m) { return
   ((mo (*)(la, env*, U)) (*v->sp++))(v, e, m); }
 
-static bool scan(la, env*, ob) NoInline;
 
 // apply instruction pullbacks
 static Inline mo pulli(vm *i, mo k) {
@@ -118,6 +98,7 @@ static ob new_scope(la v, env *e, ob arg, ob nom) {
     f->par = e ? *e : (env) nil;
   return (ob) f; }
 
+static bool scan(la, env*, ob) NoInline;
 static NoInline int scan_def(la v, env *e, ob x) {
   int r;
   if (!twop(x)) return 1; // this is an even case so export all the definitions to the local scope
@@ -196,6 +177,13 @@ static Co(co_fn_enclose, ob x, mo k) {
   if (!x) return 0;
   return pullix(e && homp((*e)->loc) ? encl1 : encl0, x, k); }
 
+static Co(p_co_def_bind) {
+  ob _ = *v->sp++;
+  if (!e) return
+    _ = (ob) pair(v, (ob) v->lex.topl, _),
+    _ ? mo_i_x(v, e, m, deftop, _) : 0;
+  return mo_i_x(v, e, m, defsl1, putnum(lidx((*e)->loc, _))); }
+
 static Co(co_fn, ob x) {
   ob nom = *v->sp == (ob) p_co_def_bind ? v->sp[1] : nil;
   mo k; with(nom, with(x, k = co_pull(v, e, m+2)));
@@ -204,13 +192,6 @@ static Co(co_fn, ob x) {
   if (!x) return 0;
   if (G(x) == act) return co_fn_enclose(v, e, m, x, k);
   return pullix(imm, x, k); }
-
-static Co(p_co_def_bind) {
-  ob _ = *v->sp++;
-  if (!e) return
-    _ = (ob) pair(v, (ob) v->lex.topl, _),
-    _ ? mo_i_x(v, e, m, deftop, _) : 0;
-  return mo_i_x(v, e, m, defsl1, putnum(lidx((*e)->loc, _))); }
 
 static bool co_def_r(la v, env *e, ob x) {
   bool _; return !twop(x) ||
@@ -358,6 +339,19 @@ static Co(mo_seq, ob x) { return
   x && seq_mo_twooop(v, e, x) ?
     co_pull(v, e, m) :
     0; }
+
+static enum status li_ap(la v, mo f, ob x) {
+  mo k = thd(v,
+    imm, x, push,
+    imm, f, push,
+    imm, nil, // assignment target idx=7
+    call, putnum(2),
+    xok, ap_f, // source idx=11
+    NULL);
+  if (!k) return OomError;
+  return k[7].ap = (vm*) (k + 11),
+         v->ip = k,
+         li_go(v); }
 
 static Co(mo_mac, ob mac, ob x) {
   enum status s;

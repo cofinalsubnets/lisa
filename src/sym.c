@@ -47,7 +47,7 @@ sym symof(la v, str s) {
     if (!_) return 0; }
   return intern(v, &v->syms, s); }
 
-Gc(cp_sym) {
+static Gc(cp_sym) {
   sym src = (sym) x;
   return (ob) (src->act = (vm*) (src->nom ?
     intern(v, &v->syms, (str) cp(v, (ob) src->nom, pool0, top0)) :

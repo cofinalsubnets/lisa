@@ -1,10 +1,11 @@
 #include "i.h"
 
-str str_ini(void *_, size_t len) {
-  str s = _; return
-    s->act = act, s->typ = &str_typ,
-    s->len = len,
-    s; }
+str strof(la v, const char* c) {
+  size_t bs = strlen(c);
+  str o = cells(v, Width(struct str) + b2w(bs));
+  if (!o) return 0;
+  memcpy(o->text, c, bs);
+  return str_ini(o, bs); }
 
 static uintptr_t hx_str(la v, ob _) {
   str s = (str) _;
@@ -28,7 +29,7 @@ static void tx_str(struct V *v, FILE *o, ob _) {
     if (escapep(c = *text++)) putc('\\', o);
   putc('"', o); }
 
-Gc(cp_str) {
+static Gc(cp_str) {
   str src = (str) x,
       dst = bump(v, Width(struct str) + b2w(src->len));
   memcpy(dst, src, sizeof(struct str) + src->len);

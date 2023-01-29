@@ -45,15 +45,16 @@ static enum status enprocf(li v, FILE *f) {
   ob x = v->xp;
   with(x, r = enprocf(v, f));
   if (r != Ok) return r;
-  x = (ob) pair(v, x, nil);
-  x = x ? (ob) pair(v, (ob) v->lex.quote, x) : x;
-  x = x ? (ob) pair(v, x, nil) : x;
-  x = x ? (ob) pair(v, (ob) v->lex.eval, x) : x;
-  x = x ? (ob) ana(v, x) : x;
-  x = x ? (ob) thd(v, imm, x, call, nil, jump, v->ip, NULL) : x;
-  if (!x) return OomError;
-  return v->ip = (mo) x,
-         Ok; }
+  mo k = thd(v,
+    imm, x, push,
+    imm, ev_f, // assign target idx=4
+    call, putnum(1),
+    jump, v->ip, ev_f, // assign src idx=9
+    NULL);
+  if (!k) return OomError;
+  k[4].ap = (vm*) (k+9);
+  v->ip = k;
+  return Ok; }
 
 static enum status enproc(li v, char **av, vm *j) {
   const char *p = *av;
@@ -93,6 +94,6 @@ static enum status li_ev(li v, ob x) {
     xok, ev_f, // source idx=8
     NULL);
   if (!k) return OomError;
-  return k[4].ap = (vm*) (k + 8),
-         v->ip = k,
-         li_go(v); }
+  k[4].ap = (vm*) (k + 8);
+  v->ip = k;
+  return li_go(v); }

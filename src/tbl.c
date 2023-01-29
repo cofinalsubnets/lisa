@@ -1,24 +1,30 @@
 #include "i.h"
+typedef struct tbl { // hash tables
+  vm *act; typ typ;
+  U len, cap;
+  struct tbl_e {
+    ob key, val;
+    struct tbl_e *next; } **tab; } *tbl;
 
 static Inline size_t tbl_load(tbl t) {
   return t->len / t->cap; }
+
 static Inline size_t tbl_idx(size_t cap, size_t co) {
   return co & (cap - 1); }
 
-static tbl tbl_ini(void *_, size_t len, size_t cap, struct tbl_e **tab) {
-  tbl t = _;
-  t->act = act;
-  t->typ = &tbl_typ;
-  t->len = len;
-  t->cap = cap;
-  t->tab = tab;
-  return t; }
+static Inline tbl tbl_ini(void *_, size_t len, size_t cap, struct tbl_e **tab) {
+  tbl t = _; return
+    t->act = act,
+    t->typ = &tbl_typ,
+    t->len = len,
+    t->cap = cap,
+    t->tab = tab,
+    t; }
 
 tbl mktbl(la v) {
   tbl t = cells(v, Width(struct tbl) + 1);
-  if (t)
-    tbl_ini(t, 0, 1, (struct tbl_e**) (t + 1)),
-    t->tab[0] = 0;
+  if (t) tbl_ini(t, 0, 1, (struct tbl_e**) (t + 1)),
+         t->tab[0] = 0;
   return t; }
 
 static void tx_tbl(la, FILE*, ob);
@@ -39,17 +45,14 @@ static struct tbl_e *tbl_ent_hc(la v, tbl t, ob k, uintptr_t hc) {
 static struct tbl_e *tbl_ent(la v, tbl t, ob k) {
   return tbl_ent_hc(v, t, k, hash(v, k)); }
 
-static tbl
-  tbl_grow(la, tbl),
-  tbl_set_s(la, tbl, ob, ob);
-
-tbl tbl_set(la v, tbl t, ob k, ob x) {
-  t = tbl_set_s(v, t, k, x);
-  return t ? tbl_grow(v, t) : 0; }
-
 ob tbl_get(la v, tbl t, ob k, ob d) {
   struct tbl_e *e = tbl_ent(v, t, k);
   return e ? e->val : d; }
+
+static tbl tbl_grow(la, tbl), tbl_set_s(la, tbl, ob, ob);
+tbl tbl_set(la v, tbl t, ob k, ob x) {
+  t = tbl_set_s(v, t, k, x);
+  return t ? tbl_grow(v, t) : 0; }
 
 // tbl_grow(vm, tbl, new_size): destructively resize a hash table.
 // new_size words of memory are allocated for the new bucket array.
@@ -91,26 +94,6 @@ static tbl tbl_set_s(la v, tbl t, ob k, ob x) {
   t->len++;
   return t; }
 
-static void tx_tbl(la v, FILE* o, ob _) {
-  fprintf(o, "#tbl:%ld/%ld", ((tbl)_)->len, ((tbl)_)->cap); }
-
-static struct tbl_e *cp_tbl_e(la v, struct tbl_e *src, ob *pool0, ob *top0) {
-  if (!src) return src;
-  struct tbl_e *dst = bump(v, Width(struct tbl_e));
-  dst->next = cp_tbl_e(v, src->next, pool0, top0);
-  dst->val = cp(v, src->val, pool0, top0);
-  dst->key = cp(v, src->key, pool0, top0);
-  return dst; }
-
-Gc(cp_tbl) {
-  tbl src = (tbl) x;
-  size_t i = src->cap;
-  tbl dst = bump(v, Width(struct tbl) + i);
-  src->act = (vm*) dst;
-  tbl_ini(dst, src->len, i, (struct tbl_e**) (dst+1));
-  while (i--) dst->tab[i] = cp_tbl_e(v, src->tab[i], pool0, top0);
-  return (ob) dst; }
-
 static ob tbl_del_s(la, tbl, ob, ob), tbl_keys(la);
 // get table keys
 // XXX calling convention: table in v->xp
@@ -128,14 +111,8 @@ static ob tbl_keys(la v) {
     len--);
   return r; }
 
-Vm(tget_f) { return
-  fp->argc < 2 ? Yield(ArityError, putnum(2)) :
-  !tblp(fp->argv[0]) ? Yield(DomainError, xp) :
-  ApC(ret, tbl_get(v, (tbl) fp->argv[0], fp->argv[1], nil)); }
-
 // shrinking a table never allocates memory, so it's safe
 // to do at any time.
-static void tbl_shrink(la, tbl);
 static void tbl_shrink(la v, tbl t) {
   struct tbl_e *e = NULL, *f, *g;
   size_t i = t->cap;
@@ -154,6 +131,35 @@ static void tbl_shrink(la v, tbl t) {
     e->next = t->tab[i],
     t->tab[i] = e,
     e = f; }
+
+// do a bunch of table assignments.
+// XXX calling convention: table in v->xp
+// FIXME gross!
+static bool tblss(la v, I i, I l) {
+  bool _ = true;
+  while (_ && i <= l - 2)
+    _ = tbl_set(v, (tbl) v->xp, v->fp->argv[i], v->fp->argv[i+1]),
+    i += 2;
+  return _; }
+
+static ob tbl_del_s(la v, tbl y, ob key, ob val) {
+  size_t b = tbl_idx(y->cap, hash(v, key));
+  struct tbl_e *e = y->tab[b], prev = {0,0,e};
+
+  for (struct tbl_e *l = &prev; l && l->next; l = l->next)
+    if (eql(v, l->next->key, key)) {
+      val = l->next->val;
+      l->next = l->next->next;
+      y->len--;
+      break; }
+
+  y->tab[b] = prev.next;
+  return val; }
+
+Vm(tget_f) { return
+  fp->argc < 2 ? Yield(ArityError, putnum(2)) :
+  !tblp(fp->argv[0]) ? Yield(DomainError, xp) :
+  ApC(ret, tbl_get(v, (tbl) fp->argv[0], fp->argv[1], nil)); }
 
 Vm(tdel_f) {
   ArityCheck(1);
@@ -179,16 +185,6 @@ Vm(thas_f) { return
   !tblp(fp->argv[0]) ? Yield(DomainError, xp) :
   (xp = tbl_get(v, (tbl) fp->argv[0], fp->argv[1], 0),
    ApC(ret, xp ? T : nil)); }
-
-// do a bunch of table assignments.
-// XXX calling convention: table in v->xp
-// FIXME gross!
-static bool tblss(la v, I i, I l) {
-  bool _ = true;
-  while (_ && i <= l - 2)
-    _ = tbl_set(v, (tbl) v->xp, v->fp->argv[i], v->fp->argv[i+1]),
-    i += 2;
-  return _; }
 
 Vm(tset_f) {
   bool _; return
@@ -232,20 +228,26 @@ static Vm(ap_tbl) {
       CallOut(_ = tblss(v, 1, a)),
       _ ? ApC(ret, fp->argv[a-1]) : Yield(OomError, nil); } }
 
+static void tx_tbl(la v, FILE* o, ob _) {
+  fprintf(o, "#tbl:%ld/%ld", ((tbl)_)->len, ((tbl)_)->cap); }
+
+static struct tbl_e *cp_tbl_e(la v, struct tbl_e *src, ob *pool0, ob *top0) {
+  if (!src) return src;
+  struct tbl_e *dst = bump(v, Width(struct tbl_e));
+  dst->next = cp_tbl_e(v, src->next, pool0, top0);
+  dst->val = cp(v, src->val, pool0, top0);
+  dst->key = cp(v, src->key, pool0, top0);
+  return dst; }
+
+static Gc(cp_tbl) {
+  tbl src = (tbl) x;
+  size_t i = src->cap;
+  tbl dst = bump(v, Width(struct tbl) + i);
+  src->act = (vm*) dst;
+  tbl_ini(dst, src->len, i, (struct tbl_e**) (dst+1));
+  while (i--) dst->tab[i] = cp_tbl_e(v, src->tab[i], pool0, top0);
+  return (ob) dst; }
+
 const struct typ tbl_typ = {
   .actn = ap_tbl, .emit = tx_tbl, .evac = cp_tbl,
   .hash = hx_typ, .equi = neql, };
-
-static ob tbl_del_s(la v, tbl y, ob key, ob val) {
-  size_t b = tbl_idx(y->cap, hash(v, key));
-  struct tbl_e *e = y->tab[b], prev = {0,0,e};
-
-  for (struct tbl_e *l = &prev; l && l->next; l = l->next)
-    if (eql(v, l->next->key, key)) {
-      val = l->next->val;
-      l->next = l->next->next;
-      y->len--;
-      break; }
-
-  y->tab[b] = prev.next;
-  return val; }

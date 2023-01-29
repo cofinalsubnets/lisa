@@ -40,12 +40,7 @@ typedef struct two {
 typedef struct str {
   vm *act; typ typ;
   U len; char text[]; } *str;
-typedef struct tbl { // hash tables
-  vm *act; typ typ;
-  U len, cap;
-  struct tbl_e {
-    ob key, val;
-    struct tbl_e *next; } **tab; } *tbl;
+typedef struct tbl *tbl;
 typedef struct sym {
   vm *act; typ typ;
   str nom;
@@ -72,13 +67,15 @@ struct V {
   struct ll { ob *addr; struct ll *next; } *safe;
   union { ob *cp; size_t t0; }; };
 
+extern const uintptr_t mix;
+extern const struct typ
+  two_typ, str_typ, tbl_typ, sym_typ;
+
 vm act, immk;
 
 void
   transmit(li, FILE*, ob), // write to output
-  report(li, enum status), // show error message
-  *bump(li, size_t),
-  *cells(li, size_t);
+  report(li, enum status); // show error message
 
 bool
   please(li, size_t),
@@ -97,23 +94,20 @@ uintptr_t
   hx_typ(li, ob),
   liprng(li);
 
-mo mo_ini(void*, size_t),
-   thd(li, ...),
-   ana(li, ob),
+
+mo thd(li, ...),
    mo_n(li, size_t);
 tbl mktbl(li),
     tbl_set(li, tbl, ob, ob);
-two two_ini(void*, ob, ob),
-    pair(li, ob, ob);
-str str_ini(void*, size_t);
+two pair(li, ob, ob);
+str strof(li, const char*);
 sym symof(li, str);
 ob hnom(li, mo),
-   cp(li, ob, ob*, ob*), // copy something; used by type-specific copying functions
+   *new_pool(size_t),
    tbl_get(li, tbl, ob, ob);
+#define Gc(n) ob n(li v, ob x, ob *pool0, ob *top0)
+Gc(cp);
 
-extern const uintptr_t mix;
-extern const struct typ
-  two_typ, str_typ, tbl_typ, sym_typ;
 #define Width(_) b2w(sizeof(_))
 
 #define getnum(_) ((ob)(_)>>1)
@@ -139,10 +133,16 @@ extern const struct typ
 #define BA(o) B(A(o))
 #define BB(o) B(B(o))
 
-#define Gc(n) static ob n(li v, ob x, ob *pool0, ob *top0)
 
 #define Inline inline __attribute__((always_inline))
 #define NoInline __attribute__((noinline))
+
+static Inline void *bump(li v, size_t n) {
+  void *x = v->hp;
+  return v->hp += n, x; }
+
+static Inline void *cells(li v, size_t n) {
+  return Avail < n && !please(v, n) ? 0 : bump(v, n); }
 
 static Inline void *cpyw_r2l(void *dst, const void *src, size_t n) {
   while (n--) ((U*)dst)[n] = ((U*)src)[n];
@@ -178,6 +178,26 @@ static Inline bool livep(la v, ob x) {
 
 static Inline intptr_t ror(intptr_t x, uintptr_t n) {
   return (x << ((8 * sizeof(intptr_t)) - n)) | (x >> n); }
+
+
+static Inline mo mo_ini(void *_, size_t len) {
+  struct tag *t = (struct tag*) ((mo) _ + len);
+  t->null = NULL;
+  return t->head = _; }
+
+static Inline two two_ini(void *_, ob a, ob b) {
+  two w = _;
+  return
+    w->act = act,
+    w->typ = &two_typ,
+    w->a = a, w->b = b,
+    w; }
+
+static Inline str str_ini(void *_, size_t len) {
+  str s = _; return
+    s->act = act, s->typ = &str_typ,
+    s->len = len,
+    s; }
 
 // " the interpreter "
 #define Vm(n, ...) NoInline enum status\

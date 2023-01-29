@@ -13,11 +13,3 @@ bool pushs(la v, ...) {
   _ = pushsr(v, 0, xs),
   va_end(xs),
   _; }
-
-void *cells(la v, size_t n) {
-  return Avail < n && !please(v, n) ? 0 : bump(v, n); }
-
-// unchecked allocator -- make sure there's enough memory!
-void *bump(la v, size_t n) {
-  void *x = v->hp;
-  return v->hp += n, x; }

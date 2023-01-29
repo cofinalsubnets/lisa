@@ -13,11 +13,6 @@
 // destinations, return addresses, etc, while letting
 // the garbage collector always find the head.
 
-mo mo_ini(void *_, size_t len) {
-  struct tag *t = (struct tag*) ((mo) _ + len);
-  t->null = NULL;
-  return t->head = _; }
-
 // allocate a thread
 mo mo_n(la v, U n) {
   mo k = cells(v, n + Width(struct tag));
@@ -145,7 +140,7 @@ static NoInline mo thdr(la v, U n, va_list xs) {
   if (k) k[n].ap = x;
   return k; }
 
-NoInline mo thd(la v, ...) {
+NoInline mo thd(li v, ...) {
   va_list xs;
   va_start(xs, v);
   mo k = thdr(v, 0, xs);

@@ -1,28 +1,15 @@
 #include "i.h"
 
-
-uintptr_t liprng(li v) {
-  const intptr_t steele_vigna_2021 = 0xaf251af3b0f025b5;
-  uintptr_t r = (steele_vigna_2021 * v->rand + 1) >> 8;
-  return v->rand = r; }
-
-static str strof(la v, const char* c) {
-  size_t bs = strlen(c);
-  str o = cells(v, Width(struct str) + b2w(bs));
-  if (!o) return 0;
-  memcpy(o->text, c, bs);
-  return str_ini(o, bs); }
-
 static sym symofs(la v, const char *s) {
   str _ = strof(v, s);
   return _ ? symof(v, _) : 0; }
 
 static bool li_ini_env(la);
 
-NoInline enum status li_ini(struct V *v) {
+NoInline enum status li_ini(li v) {
   memset(v, 0, sizeof(struct V));
   const size_t len = 1 << 10; // power of 2
-  ob *pool = malloc(len * sizeof(ob));
+  ob *pool = new_pool(len);
   if (pool) {
     v->len = len,
     v->hp = v->pool = pool,

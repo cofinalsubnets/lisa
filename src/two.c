@@ -5,14 +5,6 @@ static size_t llenr(ob l, size_t n) {
   return twop(l) ? llenr(B(l), n + 1) : n; }
 size_t llen(ob l) { return llenr(l, 0); }
 
-two two_ini(void *_, ob a, ob b) {
-  two w = _;
-  return
-    w->act = act,
-    w->typ = &two_typ,
-    w->a = a, w->b = b,
-    w; }
-
 static NoInline two pair_gc(la v, ob a, ob b) {
   bool ok;
   with(a, with(b, ok = please(v, Width(struct two))));
@@ -22,7 +14,7 @@ NoInline two pair(la v, ob a, ob b) {
   if (Avail < Width(struct two)) return pair_gc(v, a, b);
   return two_ini(bump(v, Width(struct two)), a, b); }
 
-Gc(cp_two) {
+static Gc(cp_two) {
   two src = (two) x,
       dst = bump(v, Width(struct two));
   src->act = (vm*) dst;
