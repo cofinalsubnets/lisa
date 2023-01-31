@@ -36,7 +36,7 @@ static mo ana(la v, ob x) { return
     p_co_x(v, 0, 0); }
 
 Vm(ev_f) {
-  mo e = (mo) tbl_get(v, v->lex.topl, (ob) v->lex.eval, 0);
+  mo e = (mo) tbl_get(v, v->lex->topl, (ob) v->lex->eval, 0);
   return
     e && G(e) != ev_f ? ApY(e, xp) :
     !fp->argc ? ApC(ret, xp) :
@@ -72,14 +72,14 @@ static NoInline ob rw_let_fn(la v, ob x) {
   mm(&x);
   for (two w; x && twop(A(x)); x =
     (w = snoc(v, BA(x), AB(x))) &&
-    (w = pair(v, (ob) v->lex.lambda, (ob) w)) &&
+    (w = pair(v, (ob) v->lex->lambda, (ob) w)) &&
     (w = pair(v, (ob) w, BB(x))) ?
       (ob) pair(v, AA(x), (ob) w) : 0);
   return um, x; }
 
 static NoInline ob asign(la v, ob a, intptr_t i, ob *m) {
   if (!twop(a)) return *m = i, a;
-  if (twop(B(a)) && AB(a) == (ob) v->lex.splat)
+  if (twop(B(a)) && AB(a) == (ob) v->lex->splat)
     return *m = -i - 1, (ob) pair(v, A(a), nil);
   ob x; with(a, x = asign(v, B(a), i + 1, m));
   return !x ? 0 : (ob) pair(v, A(a), x); }
@@ -113,9 +113,9 @@ static NoInline int scan_def(la v, env *e, ob x) {
 
 static NoInline bool scan(la v, env *e, ob x) {
   bool _; return !twop(x) ||
-    A(x) == (ob) v->lex.lambda ||
-    A(x) == (ob) v->lex.quote ||
-    (A(x) == (ob) v->lex.define &&
+    A(x) == (ob) v->lex->lambda ||
+    A(x) == (ob) v->lex->quote ||
+    (A(x) == (ob) v->lex->define &&
      scan_def(v, e, B(x)) != -1) ||
     (with(x, _ = scan(v, e, A(x))),
      _ && scan(v, e, B(x))); }
@@ -180,7 +180,7 @@ static Co(co_fn_enclose, ob x, mo k) {
 static Co(p_co_def_bind) {
   ob _ = *v->sp++;
   if (!e) return
-    _ = (ob) pair(v, (ob) v->lex.topl, _),
+    _ = (ob) pair(v, (ob) v->lex->topl, _),
     _ ? mo_i_x(v, e, m, deftop, _) : 0;
   return mo_i_x(v, e, m, defsl1, putnum(lidx((*e)->loc, _))); }
 
@@ -204,9 +204,9 @@ static bool co_def_sug(la v, two x) {
   ob _ = nil; return
     (with(_, x = (two) linitp(v, (ob) x, &_)), x) &&
     (x = pair(v, (ob) x, _)) &&
-    (x = pair(v, (ob) v->lex.begin, (ob) x)) &&
+    (x = pair(v, (ob) v->lex->begin, (ob) x)) &&
     (x = pair(v, (ob) x, nil)) &&
-    (x = pair(v, (ob) v->lex.lambda, (ob) x)) &&
+    (x = pair(v, (ob) v->lex->lambda, (ob) x)) &&
     (x = pair(v, (ob) x, nil)) &&
     pushs(v, p_co_x, x, NULL); }
 
@@ -282,9 +282,9 @@ enum where { Arg, Loc, Clo, Here, Wait };
 
 static NoInline ob co_sym_look(la v, env e, ob y) { return
   nilp((ob) e) ?
-    (y = tbl_get(v, v->lex.topl, y, 0)) ?
+    (y = tbl_get(v, v->lex->topl, y, 0)) ?
       (ob) pair(v, Here, y) :
-      (ob) pair(v, Wait, (ob) v->lex.topl) :
+      (ob) pair(v, Wait, (ob) v->lex->topl) :
   lidx(e->loc, y) >= 0 ? (ob) pair(v, Loc, (ob) e) :
   lidx(e->arg, y) >= 0 ? (ob) pair(v, Arg, (ob) e) :
   lidx(e->clo, y) >= 0 ? (ob) pair(v, Clo, (ob) e) :
@@ -367,13 +367,13 @@ static Co(mo_two, ob x) {
   ob a = A(x);
   if (symp(a)) {
     sym y = (sym) a;
-    if (y == v->lex.quote) return
+    if (y == v->lex->quote) return
       mo_i_x(v, e, m, imm, twop(B(x)) ? AB(x) : B(x));
-    if (y == v->lex.cond)   return co_if(v, e, m, B(x));
-    if (y == v->lex.lambda) return co_fn(v, e, m, B(x));
-    if (y == v->lex.define) return co_def(v, e, m, x);
-    if (y == v->lex.begin)  return mo_seq(v, e, m, B(x)); }
-  if ((a = tbl_get(v, v->lex.macros, a, 0)))
+    if (y == v->lex->cond)   return co_if(v, e, m, B(x));
+    if (y == v->lex->lambda) return co_fn(v, e, m, B(x));
+    if (y == v->lex->define) return co_def(v, e, m, x);
+    if (y == v->lex->begin)  return mo_seq(v, e, m, B(x)); }
+  if ((a = tbl_get(v, v->lex->macros, a, 0)))
     return mo_mac(v, e, m, a, B(x));
   return mo_ap(v, e, m, A(x), B(x)); }
 

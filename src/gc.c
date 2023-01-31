@@ -104,8 +104,7 @@ static void copy_from(li v, ob *pool0, ob *top0) {
   v->ip = (mo) cp(v, (ob) v->ip, pool0, top0);
 
   // copy globals
-  for (U i = 0; i < Width(struct glob); i++)
-    ((ob*)&v->lex)[i] = cp(v, ((ob*)&v->lex)[i], pool0, top0);
+  v->lex = (struct glob*) cp(v, (ob) v->lex, pool0, top0);
   for (struct ll *r = v->safe; r; r = r->next)
     *r->addr = cp(v, *r->addr, pool0, top0);
 

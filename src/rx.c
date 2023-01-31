@@ -52,7 +52,7 @@ static ob rx_two_cont(la v, FILE* i, ob x) {
 
 static ob rx_q(la v, FILE* i, ob x) { return
   x = x ? (ob) pair(v, x, nil) : x,
-  x = x ? (ob) pair(v, (ob) v->lex.quote, x) : x,
+  x = x ? (ob) pair(v, (ob) v->lex->quote, x) : x,
   rx_pull(v, i, x); }
 
 static NoInline ob rxr(la v, FILE* i) {

@@ -31,35 +31,39 @@ static NoInline bool defprim(struct V *v, vm *i, const char *n) {
   mo k; sym y; return
     (y = symofs(v, n)) &&
     (k = thd(v, i, y, NULL)) &&
-    tbl_set(v, v->lex.topl, (ob) GF(k), (ob) k); }
+    tbl_set(v, v->lex->topl, (ob) GF(k), (ob) k); }
 
 // store an instruction address under a variable in the
 // toplevel namespace // FIXME use a different namespace
 static NoInline bool inst(la v, const char *a, vm *b) {
   sym z; return
     (z  = symofs(v, a)) &&
-    tbl_set(v, v->lex.topl, (ob) z, (ob) b); }
+    tbl_set(v, v->lex->topl, (ob) z, (ob) b); }
 
 #define RegisterFunction(go, nom) && defprim(v, go, nom)
 #define RegisterInstruction(a) && inst(v, "i-"#a, a)
 static bool li_ini_vm(li v) {
   ob _; return
-    (v->lex.topl = mktbl(v))
+    (v->lex->topl = mktbl(v))
     ForEachInstruction(RegisterInstruction) &&
-    (v->lex.macros = mktbl(v)) &&
+    (v->lex->macros = mktbl(v)) &&
     (_ = (ob) symofs(v, "_ns")) &&
-    tbl_set(v, v->lex.topl, _, (ob) v->lex.topl) &&
+    tbl_set(v, v->lex->topl, _, (ob) v->lex->topl) &&
     (_ = (ob) symofs(v, "macros")) &&
-    tbl_set(v, v->lex.topl, _, (ob) v->lex.macros)
+    tbl_set(v, v->lex->topl, _, (ob) v->lex->macros)
     ForEachFunction(RegisterFunction); }
 
 static bool li_ini_env(struct V* v) {
-  struct sym *y; return
-    (y = symofs(v, "ev"), v->lex.eval = y) &&
-    (y = symofs(v, ":"), v->lex.define = y) &&
-    (y = symofs(v, "?"), v->lex.cond = y) &&
-    (y = symofs(v, "\\"), v->lex.lambda = y) &&
-    (y = symofs(v, "`"), v->lex.quote = y) &&
-    (y = symofs(v, ","), v->lex.begin = y) &&
-    (y = symofs(v, "."), v->lex.splat = y) &&
+  struct glob *lex = (struct glob*) mo_n(v, Width(struct glob));
+  if (!lex) return false;
+  v->lex = setw(lex, nil, Width(struct glob));
+  struct sym *y;
+  return
+    (y = symofs(v, "ev"), v->lex->eval = y) &&
+    (y = symofs(v, ":"), v->lex->define = y) &&
+    (y = symofs(v, "?"), v->lex->cond = y) &&
+    (y = symofs(v, "\\"), v->lex->lambda = y) &&
+    (y = symofs(v, "`"), v->lex->quote = y) &&
+    (y = symofs(v, ","), v->lex->begin = y) &&
+    (y = symofs(v, "."), v->lex->splat = y) &&
     li_ini_vm(v); }

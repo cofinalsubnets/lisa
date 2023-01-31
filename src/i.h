@@ -59,7 +59,7 @@ struct V {
   struct glob {
     tbl topl, macros; // global scope
     sym define, cond, lambda, quote,
-        begin, splat, eval; } lex;
+        begin, splat, eval; } *lex;
   sym syms; // internal symbols
   uintptr_t rand;
 
