@@ -1,8 +1,10 @@
 #include "i.h"
 
-static sym symofs(la v, const char *s) {
-  str _ = strof(v, s);
-  return _ ? symof(v, _) : 0; }
+void li_unwind(li v) {
+  v->sp = (ob*) (v->fp = (frame) (v->pool + v->len)); }
+
+void li_fin(struct V *v) {
+  if (v) free(v->pool), v->pool = NULL; }
 
 static bool li_ini_env(la);
 
@@ -20,37 +22,12 @@ NoInline enum status li_ini(li v) {
 
   return OomError; }
 
-void li_fin(struct V *v) {
-  if (v) free(v->pool), v->pool = NULL; }
+static sym symofs(la v, const char *s) {
+  str _ = strof(v, s);
+  return _ ? symof(v, _) : 0; }
 
-static bool
-  defprim(la, vm*, const char*) NoInline,
-  inst(la, const char*, vm*);
-#define reg_prim(go, nom) && defprim(v, go, nom)
-#define reg_inst(a) && inst(v, "i-"#a, a)
-static bool li_ini_vm(li v) {
-  ob _; return
-    (v->lex.topl = mktbl(v)) VM1(reg_inst) &&
-    (v->lex.macros = mktbl(v)) &&
-    (_ = (ob) symofs(v, "_ns")) &&
-    tbl_set(v, v->lex.topl, _, (ob) v->lex.topl) &&
-    (_ = (ob) symofs(v, "macros")) &&
-    tbl_set(v, v->lex.topl, _, (ob) v->lex.macros)
-    VM2(reg_prim); }
 
-static bool li_ini_env(struct V* v) {
-  struct sym *y; return
-    (y = symofs(v, "ev"), v->lex.eval = y) &&
-    (y = symofs(v, ":"), v->lex.define = y) &&
-    (y = symofs(v, "?"), v->lex.cond = y) &&
-    (y = symofs(v, "\\"), v->lex.lambda = y) &&
-    (y = symofs(v, "`"), v->lex.quote = y) &&
-    (y = symofs(v, ","), v->lex.begin = y) &&
-    (y = symofs(v, "."), v->lex.splat = y) &&
-    li_ini_vm(v); }
-
-static NoInline bool
-defprim(struct V *v, vm *i, const char *n) {
+static NoInline bool defprim(struct V *v, vm *i, const char *n) {
   mo k; sym y; return
     (y = symofs(v, n)) &&
     (k = thd(v, i, y, NULL)) &&
@@ -63,5 +40,26 @@ static NoInline bool inst(la v, const char *a, vm *b) {
     (z  = symofs(v, a)) &&
     tbl_set(v, v->lex.topl, (ob) z, (ob) b); }
 
-void li_unwind(li v) {
-  v->sp = (ob*) (v->fp = (frame) (v->pool + v->len)); }
+#define RegisterFunction(go, nom) && defprim(v, go, nom)
+#define RegisterInstruction(a) && inst(v, "i-"#a, a)
+static bool li_ini_vm(li v) {
+  ob _; return
+    (v->lex.topl = mktbl(v))
+    ForEachInstruction(RegisterInstruction) &&
+    (v->lex.macros = mktbl(v)) &&
+    (_ = (ob) symofs(v, "_ns")) &&
+    tbl_set(v, v->lex.topl, _, (ob) v->lex.topl) &&
+    (_ = (ob) symofs(v, "macros")) &&
+    tbl_set(v, v->lex.topl, _, (ob) v->lex.macros)
+    ForEachFunction(RegisterFunction); }
+
+static bool li_ini_env(struct V* v) {
+  struct sym *y; return
+    (y = symofs(v, "ev"), v->lex.eval = y) &&
+    (y = symofs(v, ":"), v->lex.define = y) &&
+    (y = symofs(v, "?"), v->lex.cond = y) &&
+    (y = symofs(v, "\\"), v->lex.lambda = y) &&
+    (y = symofs(v, "`"), v->lex.quote = y) &&
+    (y = symofs(v, ","), v->lex.begin = y) &&
+    (y = symofs(v, "."), v->lex.splat = y) &&
+    li_ini_vm(v); }

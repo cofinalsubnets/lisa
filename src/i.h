@@ -1,3 +1,5 @@
+#ifndef _l_i_h
+#define _l_i_h
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
@@ -93,7 +95,6 @@ uintptr_t
   hash(li, ob),
   hx_typ(li, ob),
   liprng(li);
-
 
 mo thd(li, ...),
    mo_n(li, size_t);
@@ -243,7 +244,7 @@ static Inline str str_ini(void *_, size_t len) {
 vm gc, xok, setclo, genclo0, genclo1;
 
 // used by the compiler but not exposed as primitives
-#define VM1(_)\
+#define ForEachInstruction(_)\
  _(call) _(ret) _(rec) _(jump) _(varg)\
  _(arity) _(ary1) _(ary2) _(ary3) _(ary4)\
  _(idno) _(idmo) _(idtwo) _(idtbl)\
@@ -269,11 +270,8 @@ vm gc, xok, setclo, genclo0, genclo1;
  _(brl) _(brle) _(brge) _(brg)\
  _(push)
 
-#define decl(x, ...) Vm(x);
-VM1(decl)
-
 // primitive functions
-#define VM2(_) _(ev_f, "ev") _(ap_f, "ap")\
+#define ForEachFunction(_) _(ev_f, "ev") _(ap_f, "ap")\
  _(hom_f, "hom") _(homp_f, "homp")\
  _(poke_f, "poke") _(peek_f, "peek")\
  _(seek_f, "seek") _(hfin_f, "hfin")\
@@ -302,5 +300,8 @@ VM1(decl)
   \
  _(xdom, "nope")
 
-VM2(decl)
+#define decl(x, ...) Vm(x);
+ForEachInstruction(decl)
+ForEachFunction(decl)
 #undef decl
+#endif

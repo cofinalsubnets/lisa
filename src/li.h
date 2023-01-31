@@ -1,5 +1,5 @@
-#ifndef _li_h
-#define _li_h
+#ifndef _l_h
+#define _l_h
 
 #include <stdbool.h>
 #include <stddef.h>
