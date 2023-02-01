@@ -87,7 +87,6 @@ bool
 
 enum status
   li_go(li),
-  receives(li, FILE*),
   receive(li, FILE*);
 
 uintptr_t

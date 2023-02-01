@@ -1,16 +1,19 @@
 #include "i.h"
 
 void li_unwind(li v) {
-  v->sp = (ob*) (v->fp = (frame) (v->pool + v->len)); }
+  // reset the stack
+  v->fp = (frame) (v->pool + v->len);
+  v->sp = (ob*) v->fp; }
 
 void li_fin(struct V *v) {
   if (v) free(v->pool), v->pool = NULL; }
 
 static bool li_ini_env(la);
 
-NoInline enum status li_ini(li v) {
+// initialize a state
+NoInline enum status li_ini(struct V *v) {
   memset(v, 0, sizeof(struct V));
-  const size_t len = 1 << 10; // power of 2
+  const size_t len = 1 << 10; // expected to be a power of 2
   ob *pool = new_pool(len);
   if (pool) {
     v->len = len,
@@ -22,10 +25,10 @@ NoInline enum status li_ini(li v) {
 
   return OomError; }
 
-static sym symofs(la v, const char *s) {
-  str _ = strof(v, s);
-  return _ ? symof(v, _) : 0; }
-
+// helper function for making symbols
+static sym symofs(la v, const char *c) {
+  str s = strof(v, c);
+  return s ? symof(v, s) : 0; }
 
 static NoInline bool defprim(struct V *v, vm *i, const char *n) {
   mo k; sym y; return

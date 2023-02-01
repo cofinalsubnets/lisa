@@ -1,4 +1,5 @@
 #include "i.h"
+
 // function functions
 //
 // functions are laid out in memory like this
@@ -18,11 +19,37 @@ mo mo_n(la v, U n) {
   mo k = cells(v, n + Width(struct tag));
   return k ? mo_ini(k, n) : k; }
 
+static NoInline mo thdr(la v, U n, va_list xs) {
+  vm *x = va_arg(xs, vm*);
+  if (!x) return mo_n(v, n);
+  mo k; with(x, k = thdr(v, n + 1, xs));
+  if (k) k[n].ap = x;
+  return k; }
+
+NoInline mo thd(li v, ...) {
+  va_list xs;
+  va_start(xs, v);
+  mo k = thdr(v, 0, xs);
+  va_end(xs);
+  return k; }
+
+// try to get the name of a function
+ob hnom(la v, mo x) {
+  if (!livep(v, (ob) x)) return nil;
+  vm *k = G(x);
+
+  if (k == setclo || k == genclo0 || k == genclo1) // closure?
+    return hnom(v, (mo) G(FF(x)));
+
+  ob n = ((ob*) mo_tag(x))[-1];
+  return homp(n) && livep(v, n) && G(n) == act ? n : nil; }
+
 // instructions for the internal compiler
-// initialize a function
+//
+// vm interface to mo_n
 Vm(hom_f) {
   if (fp->argc && nump(fp->argv[0])) {
-    U len = getnum(fp->argv[0]);
+    size_t len = getnum(fp->argv[0]);
     Have(len + Width(struct tag));
     mo k = setw(mo_ini(hp, len), nil, len);
     hp += len + Width(struct tag);
@@ -81,15 +108,14 @@ Vm(genclo1) { return
   GF(ip) = (vm*) xp,
   ApY(ip, xp); }
 
-struct clo_env {
-  mo cons;
-  ob loc, *clo, argc, argv[]; };
+struct clo_env { mo cons; ob loc, *clo, argc, argv[]; };
 
 Vm(genclo0) {
   struct clo_env *ec = (void*) GF(ip);
-  U adic = getnum(ec->argc);
+  size_t adic = getnum(ec->argc);
   Have(Width(struct frame) + adic + 1);
-  sf subd = fp; return
+  frame subd = fp;
+  return
     G(ip) = genclo1,
     sp = (ob*) (fp = (sf) (sp - adic) - 1),
     cpyw_r2l(fp->argv, ec->argv, adic),
@@ -103,12 +129,12 @@ Vm(genclo0) {
 // the next few functions create and store
 // lexical environments.
 Vm(enclose) {
-  U thd_len = 3 + Width(struct tag),
-    env_len = fp->argc + Width(struct tag) +
-                         Width(struct clo_env);
+  size_t thd_len = 3 + Width(struct tag),
+         env_len = fp->argc + Width(struct tag) +
+                              Width(struct clo_env);
   Have(env_len + thd_len);
-  ob codeXcons = (ob) GF(ip); // pair of the compiled thread & closure constructor
-  ob *block = hp;
+  ob codeXcons = (ob) GF(ip), // pair of the compiled thread & closure constructor
+     *block = hp;
   hp += env_len + thd_len;
 
   struct clo_env *env = (void*)
@@ -132,28 +158,3 @@ Vm(enclose) {
 Vm(encl1) { return ApC(enclose, putnum(1)); }
 // FIXME if there are no locals we don't need to defer closure construction!
 Vm(encl0) { return ApC(enclose, putnum(0)); }
-
-static NoInline mo thdr(la v, U n, va_list xs) {
-  vm *x = va_arg(xs, vm*);
-  if (!x) return mo_n(v, n);
-  mo k; with(x, k = thdr(v, n + 1, xs));
-  if (k) k[n].ap = x;
-  return k; }
-
-NoInline mo thd(li v, ...) {
-  va_list xs;
-  va_start(xs, v);
-  mo k = thdr(v, 0, xs);
-  va_end(xs);
-  return k; }
-
-// try to get the name of a function
-ob hnom(la v, mo x) {
-  if (!livep(v, (ob) x)) return nil;
-  vm *k = G(x);
-
-  if (k == setclo || k == genclo0 || k == genclo1) // closure?
-    return hnom(v, (mo) G(FF(x)));
-
-  ob n = ((ob*) mo_tag(x))[-1];
-  return homp(n) && livep(v, n) && G(n) == act ? n : nil; }

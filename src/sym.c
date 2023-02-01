@@ -69,13 +69,17 @@ Vm(sym_f) {
       v->rand = liprng(v)));
   return ApC(ret, (ob) y); }
 
-static void fputsn(const char *s, U n, FILE *o) {
-  while (n--) putc(*s++, o); }
 static void tx_sym(la v, FILE* o, ob _) {
   str s = ((sym) _)->nom;
-  s ? fputsn(s->text, s->len, o) : fputs("#sym", o); }
+  if (!s) fputs("#sym", o);
+  else {
+    size_t n = s->len;
+    const char *c = s->text;
+    while (n--) putc(*c++, o); } }
+
 static uintptr_t hx_sym(la v, ob _) {
   return ((sym) _)->code; }
+
 const struct typ sym_typ = {
   .actn = immk,
   .emit = tx_sym,
