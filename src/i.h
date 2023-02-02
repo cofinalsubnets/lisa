@@ -73,7 +73,7 @@ extern const uintptr_t mix;
 extern const struct typ
   two_typ, str_typ, tbl_typ, sym_typ;
 
-vm act, immk;
+vm act, immk, vm_yield;
 
 void
   transmit(li, FILE*, ob), // write to output
@@ -82,7 +82,7 @@ void
 bool
   please(li, size_t),
   pushs(li, ...), // push args onto stack; true on success
-  eql(li, ob, ob), // object equality
+  _eql(li, ob, ob),
   neql(li, ob, ob); // always returns false
 
 enum status
@@ -199,6 +199,9 @@ static Inline str str_ini(void *_, size_t len) {
     s->len = len,
     s; }
 
+static Inline bool eql(li v, ob a, ob b) {
+  return a == b || _eql(v, a, b); }
+
 // " the interpreter "
 #define Vm(n, ...) NoInline enum status\
   n(la v, ob xp, mo ip, ob *hp, ob *sp, frame fp, ##__VA_ARGS__)
@@ -232,7 +235,7 @@ static Inline str str_ini(void *_, size_t len) {
 #define ApY(f, x) (ip = (mo) (f), ApC(G(ip), (x)))
 #define ApN(n, x) (xp = (x), ip += (n), ApC(G(ip), xp))
 
-#define Yield(s, x) (xp = (x), Pack(), (s))
+#define Yield(s, x) (v->xp = (s), ApC(vm_yield, (x)))
 #define ArityCheck(n) if (n > fp->argc) return Yield(ArityError, putnum(n))
 #define Check(_) if (!(_)) return Yield(DomainError, xp)
 #define Have(n) if (sp - hp < n) return (v->xp = n, ApC(gc, xp))

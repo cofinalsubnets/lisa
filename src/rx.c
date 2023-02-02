@@ -62,8 +62,7 @@ static NoInline ob rx_two(la v, FILE* i) {
   int c = rx_char(i);
   switch (c) {
     case ')': case EOF: return rx_pull(v, i, nil);
-    default: return
-      ungetc(c, i),
+    default: return ungetc(c, i),
       pushs(v, rx_two_cont, NULL) ?
         rxr(v, i) : rx_pull(v, i, 0); } }
 

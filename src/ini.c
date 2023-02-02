@@ -45,8 +45,20 @@ static NoInline bool inst(la v, const char *a, vm *b) {
 
 #define RegisterFunction(go, nom) && defprim(v, go, nom)
 #define RegisterInstruction(a) && inst(v, "i-"#a, a)
-static bool li_ini_vm(li v) {
+
+static bool li_ini_env(struct V* v) {
+  struct glob *l = (struct glob*) mo_n(v, Width(struct glob));
+  if (!l) return false;
+  v->lex = setw(l, nil, Width(struct glob));
+  struct sym *y;
   ob _; return
+    (y = symofs(v, "ev"), v->lex->eval = y) &&
+    (y = symofs(v, ":"), v->lex->define = y) &&
+    (y = symofs(v, "?"), v->lex->cond = y) &&
+    (y = symofs(v, "\\"), v->lex->lambda = y) &&
+    (y = symofs(v, "`"), v->lex->quote = y) &&
+    (y = symofs(v, ","), v->lex->begin = y) &&
+    (y = symofs(v, "."), v->lex->splat = y) &&
     (v->lex->topl = mktbl(v))
     ForEachInstruction(RegisterInstruction) &&
     (v->lex->macros = mktbl(v)) &&
@@ -55,18 +67,3 @@ static bool li_ini_vm(li v) {
     (_ = (ob) symofs(v, "macros")) &&
     tbl_set(v, v->lex->topl, _, (ob) v->lex->macros)
     ForEachFunction(RegisterFunction); }
-
-static bool li_ini_env(struct V* v) {
-  struct glob *lex = (struct glob*) mo_n(v, Width(struct glob));
-  if (!lex) return false;
-  v->lex = setw(lex, nil, Width(struct glob));
-  struct sym *y;
-  return
-    (y = symofs(v, "ev"), v->lex->eval = y) &&
-    (y = symofs(v, ":"), v->lex->define = y) &&
-    (y = symofs(v, "?"), v->lex->cond = y) &&
-    (y = symofs(v, "\\"), v->lex->lambda = y) &&
-    (y = symofs(v, "`"), v->lex->quote = y) &&
-    (y = symofs(v, ","), v->lex->begin = y) &&
-    (y = symofs(v, "."), v->lex->splat = y) &&
-    li_ini_vm(v); }

@@ -142,7 +142,7 @@ static bool tblss(la v, I i, I l) {
     i += 2;
   return _; }
 
-static ob tbl_del_s(la v, tbl y, ob key, ob val) {
+static NoInline ob tbl_del_s(la v, tbl y, ob key, ob val) {
   size_t b = tbl_idx(y->cap, hash(v, key));
   struct tbl_e *e = y->tab[b], prev = {0,0,e};
 

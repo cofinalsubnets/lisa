@@ -13,16 +13,15 @@ LC_COLLATE=C
 c=$(sort $(wildcard src/*.c))
 h=$(sort $(wildcard src/*.h))
 o=$(c:.c=.o)
-CC ?= gcc
-CFLAGS ?=\
-	-std=c11 -g -O2 -Wall -flto\
+CC=gcc
+CFLAGS=\
+	-std=c11 -g -Os -Wall -flto\
  	-Wstrict-prototypes -Wno-shift-negative-value\
-	-fno-stack-protector
-cc=$(CC) $(CFLAGS)
+	-fno-stack-protector -fno-inline
 src/%.o: src/%.c $h $(this)
-	$(cc) -c $< -o $@
+	$(CC) $(CFLAGS) -c $< -o $@
 $(nom): $o $h
-	$(cc) -o $@ $o
+	$(CC) $(CFLAGS) -o $@ $o
 
 # install
 DESTDIR ?= $(HOME)

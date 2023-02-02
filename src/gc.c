@@ -7,15 +7,7 @@ Vm(gc) { size_t req = v->xp; return
   CallOut(req = please(v, req)),
   req ? ApY(ip, xp) : Yield(OomError, xp); }
 
-NoInline ob cp(la v, ob x, ob *pool0, ob *top0) {
-  if (nump(x) || (ob*) x < pool0 || (ob*) x >= top0) return x;
-
-  mo src = (mo) x;
-  x = (ob) G(src);
-  if (!nump(x) && livep(v, x)) return x;
-  if ((vm*) x == act) return
-    ((typ) GF(src))->evac(v, (ob) src, pool0, top0);
-
+static NoInline ob cp_mo(li v, mo src, ob *pool0, ob *top0) {
   struct tag *fin = mo_tag(src);
   mo ini = fin->head,
      dst = bump(v, fin->end - ini),
@@ -24,37 +16,25 @@ NoInline ob cp(la v, ob x, ob *pool0, ob *top0) {
   for (GF(d) = (vm*) dst; d-- > dst;
     G(d) = (vm*) cp(v, (ob) G(d), pool0, top0));
   return (ob) (src - ini + dst); }
+
+NoInline ob cp(la v, ob x, ob *pool0, ob *top0) {
+  if (nump(x) || (ob*) x < pool0 || (ob*) x >= top0) return x;
+  mo src = (mo) x;
+  x = (ob) G(src);
+  if (!nump(x) && livep(v, x)) return x;
+  if ((vm*) x == act) return
+    ((typ) GF(src))->evac(v, (ob) src, pool0, top0);
+  return cp_mo(v, src, pool0, top0); }
       
 ////
 /// garbage collector
 //
-#define MinVim 32
-#define MaxVim (MinVim<<2)
+//
 // please : bool la size_t
 // try to return with at least req words of available memory.
 // return true on success, false otherwise. this function also
 // governs the size of the memory pool.
-static size_t copy(li, size_t);
-NoInline bool please(li v, size_t req) {
-  // copy into a new pool of the same size.
-  size_t have = v->len, vim = copy(v, have);
-  if (!vim) return 0;
-  size_t want = have, need = have - (Avail - req);
-
-  // grow if we're too slow or small
-  if (want < need || vim < MinVim)
-    do want <<= 1, vim <<= 1;
-    while (want < need || vim < MinVim);
-
-  // shrink if we're too big and fast
-  else if (want >> 1 > need && vim > MaxVim)
-    do want >>= 1, vim >>= 1;
-    while (want >> 1 > need && vim > MaxVim);
-
-  return want == have ||
-         copy(v, want) ||
-         need <= have; }
-
+//
 // copy : la_clock_t la size_t
 // relocate all reachable data into a newly allocated
 // memory pool of the given length. return 0 if a new
@@ -71,22 +51,49 @@ NoInline bool please(li v, size_t req) {
 //   |                          `------'
 //   t0                  gc time (this cycle)
 
-static void copy_from(li, ob*, ob*);
-static NoInline size_t copy(li v, size_t len1) {
-  size_t t2, t1 = clock(), t0 = v->t0, len0 = v->len;
-  ob *pool0 = v->pool,
-     *pool1 = new_pool(len1);
-  if (!pool1) return 0;
-  return
-    v->len = len1,
-    v->pool = pool1,
-    copy_from(v, pool0, pool0 + len0),
-    free(pool0),
-    t2 = v->t0 = clock(),
-    t1 = t2 - t1,
-    t1 ? (t2 - t0) / t1 : MaxVim; }
+#define MinVim 32
+#define MaxVim (MinVim<<2)
 
-static void copy_from(li v, ob *pool0, ob *top0) {
+static void copy_from(li, ob*, ob*);
+NoInline bool please(li v, size_t req) {
+  size_t t1 = clock(), t0 = v->t0, t2,
+         have = v->len;
+  ob *pool0 = v->pool, *pool1 = new_pool(have);
+  if (!pool1) return false;
+
+  v->pool = pool1;
+  copy_from(v, pool0, pool0 + have);
+  free(pool0);
+  t2 = v->t0 = clock();
+
+  size_t vim = t2 == t1 ? MaxVim : (t2 - t0) / (t2 - t1),
+         want = have,
+         need = have - (Avail - req);
+
+  // grow if we're too slow or small
+  if (want < need || vim < MinVim)
+    do want <<= 1, vim <<= 1;
+    while (want < need || vim < MinVim);
+
+  // shrink if we're too big and fast
+  else if (want >> 1 > need && vim > MaxVim)
+    do want >>= 1, vim >>= 1;
+    while (want >> 1 > need && vim > MaxVim);
+
+  if (want == have) return true;
+
+  pool1 = new_pool(want);
+  if (!pool1) return need <= have;
+
+  pool0 = v->pool;
+  v->pool = pool1;
+  v->len = want;
+  copy_from(v, pool0, pool0 + have);
+  free(pool0);
+  v->t0 = clock();
+  return true; }
+
+static NoInline void copy_from(li v, ob *pool0, ob *top0) {
   size_t len1 = v->len;
   ob *sp0 = v->sp,
      *pool1 = v->pool,

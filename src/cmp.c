@@ -1,7 +1,7 @@
 #include "i.h"
 
 bool neql(la v, ob x, ob y) { return false; }
-bool eql(la v, ob a, ob b) { return a == b ||
+bool _eql(la v, ob a, ob b) { return
   (!nump(a|b) && G(a) == act &&
    ((typ) GF(a))->equi(v, a, b)); }
 
@@ -33,6 +33,9 @@ cmp(LT, lt) cmp(LE, lteq) cmp(GE, gteq) cmp(GT, gt) cmp(EQ, eq)
     return ApC(ret, T); }
 Tp(num) Tp(hom) Tp(two) Tp(sym) Tp(str) Tp(tbl) Tp(nil)
 
+Vm(vm_yield) {
+  enum status r = v->xp;
+  return Pack(), r; }
 // type/arity checking
 Vm(idno) { return nump(xp) ? ApN(1, xp) : ApC(xdom, xp); }
 Vm(idmo) { return homp(xp) ? ApN(1, xp) : ApC(xdom, xp); }

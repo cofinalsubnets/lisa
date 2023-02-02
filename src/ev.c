@@ -357,11 +357,10 @@ static Co(mo_mac, ob mac, ob x) {
   enum status s;
   ob xp = v->xp;
   mo ip = v->ip;
-  return
-    with(xp, with(ip, s = li_ap(v, (mo) mac, x))),
-    x = v->xp, v->xp = xp, v->ip = ip,
-    report(v, s), // FIXME should return status
-    s == Ok ? co_x(v, e, m, x) : NULL; }
+  with(xp, with(ip, s = li_ap(v, (mo) mac, x)));
+  x = v->xp, v->xp = xp, v->ip = ip;
+  report(v, s);
+  return s == Ok ? co_x(v, e, m, x) : NULL; }
 
 static Co(mo_two, ob x) {
   ob a = A(x);
@@ -372,9 +371,9 @@ static Co(mo_two, ob x) {
     if (y == v->lex->cond)   return co_if(v, e, m, B(x));
     if (y == v->lex->lambda) return co_fn(v, e, m, B(x));
     if (y == v->lex->define) return co_def(v, e, m, x);
-    if (y == v->lex->begin)  return mo_seq(v, e, m, B(x)); }
-  if ((a = tbl_get(v, v->lex->macros, a, 0)))
-    return mo_mac(v, e, m, a, B(x));
+    if (y == v->lex->begin)  return mo_seq(v, e, m, B(x));
+    if ((a = tbl_get(v, v->lex->macros, a, 0)))
+      return mo_mac(v, e, m, a, B(x)); }
   return mo_ap(v, e, m, A(x), B(x)); }
 
 static Co(em1) {
