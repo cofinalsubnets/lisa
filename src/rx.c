@@ -1,8 +1,6 @@
 #include "i.h"
 #include <ctype.h>
 
-Vm(rxc_f) { return ApC(ret, putnum(getc(stdin))); }
-
 // code parser
 
 static ob rx_atom(la, str), rxr(la, FILE*), rx_two(la, FILE*);

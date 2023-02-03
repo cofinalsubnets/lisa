@@ -49,17 +49,9 @@ static mo
   ana_i(li, env*, size_t, vm*) NoInline,
   ana_i_x(li, env*, size_t, vm*, ob) NoInline;
 
-static mo ana(li v, ob x) { return
+mo ana(li v, ob x) { return
   !pushs(v, x, em1, ret, ana_alloc, EndArgs) ? NULL :
     p_co_x(v, NULL, 0); }
-
-Vm(ev_f) {
-  mo k = (mo) tbl_get(v, v->lex->topl, (ob) v->lex->eval, 0);
-  return
-    k && G(k) != ev_f ? ApY(k, xp) :
-    !fp->argc ? ApC(ret, xp) :
-    (CallOut(k = ana(v, fp->argv[0])), !k) ? Yield(OomError, xp) :
-    ApY(k, xp); }
 
 static NoInline mo co_pull(li v, env *e, size_t m) { return
   ((mo (*)(li, env*, size_t)) (*v->sp++))(v, e, m); }
@@ -162,8 +154,10 @@ static NoInline bool ana_lambda_b_enclose(li v, env *e, ob x) {
     pushs(v, p_co_x, A(vars), em1, push, EndArgs) ? B(vars) : 0;
   vars = vars ? (ob) co_pull(v, e, 0) : vars;
   vars = vars ? (ob) pair(v, code, vars) : vars;
+  um, um;
+  if (!vars) return false;
   vm *j = e && homp((*e)->loc) ? encl1 : encl0;
-  return um, um, vars && pushs(v, em2, j, vars, EndArgs); }
+  return pushs(v, em2, j, vars, EndArgs); }
 
 // takes a lambda expr, returns either a pair or or a
 // hom depending on if the function has free variables
@@ -190,7 +184,8 @@ static Co(ana_lambda, ob x) { return
   ana_lambda_b(v, e, x) ? co_pull(v, e, m) : 0; }
 
 static NoInline bool ana_define_r(la v, env *e, ob x) {
-  bool _; return !twop(x) ||
+  bool _;
+  return !twop(x) ||
     ((x = rw_let_fn(v, x)) &&
      (with(x, _ = ana_define_r(v, e, BB(x))), _) &&
      pushs(v, p_co_x, AB(x), p_ana_define_bind, A(x), EndArgs)); }
@@ -404,3 +399,11 @@ static Co(ana_alloc) {
   if (k) setw(k, nil, m),
          G(k += m) = (vm*) (e ? (*e)->name : nil);
   return k; }
+
+Vm(ev_f) {
+  mo k = (mo) tbl_get(v, v->lex->topl, (ob) v->lex->eval, 0);
+  return
+    k && G(k) != ev_f ? ApY(k, xp) :
+    !fp->argc ? ApC(ret, xp) :
+    (CallOut(k = ana(v, fp->argv[0])), !k) ? Yield(OomError, xp) :
+    ApY(k, xp); }

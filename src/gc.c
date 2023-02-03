@@ -3,10 +3,6 @@
 ob *new_pool(size_t n) {
   return malloc(n * sizeof(ob)); }
 
-Vm(gc) { size_t req = v->xp; return
-  CallOut(req = please(v, req)),
-  req ? ApY(ip, xp) : Yield(OomError, xp); }
-
 static NoInline ob cp_mo(li v, mo src, ob *pool0, ob *top0) {
   struct tag *fin = mo_tag(src);
   mo ini = fin->head,

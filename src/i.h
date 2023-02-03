@@ -95,8 +95,8 @@ uintptr_t
   hx_typ(li, ob),
   liprng(li);
 
-#define EndArgs ((intptr_t)0)
 mo thd(li, ...),
+   ana(li, ob),
    mo_n(li, size_t);
 tbl mktbl(li),
     tbl_set(li, tbl, ob, ob);
@@ -105,10 +105,11 @@ str strof(li, const char*);
 sym symof(li, str);
 ob hnom(li, mo),
    *new_pool(size_t),
+   cp(li, ob, ob*, ob*),
    tbl_get(li, tbl, ob, ob);
-#define Gc(n) ob n(li v, ob x, ob *pool0, ob *top0)
-Gc(cp);
 
+#define Gc(n) ob n(li v, ob x, ob *pool0, ob *top0)
+#define EndArgs ((intptr_t)0)
 #define Width(_) b2w(sizeof(_))
 
 #define getnum(_) ((ob)(_)>>1)
