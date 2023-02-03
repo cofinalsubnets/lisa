@@ -17,9 +17,9 @@
 // allocate a thread
 mo mo_n(la v, U n) {
   mo k = cells(v, n + Width(struct tag));
-  return k ? mo_ini(k, n) : k; }
+  return !k ? k : mo_ini(k, n); }
 
-static NoInline mo thdr(la v, U n, va_list xs) {
+static NoInline mo thdr(li v, size_t n, va_list xs) {
   vm *x = va_arg(xs, vm*);
   if (!x) return mo_n(v, n);
   mo k; with(x, k = thdr(v, n + 1, xs));
@@ -34,7 +34,7 @@ NoInline mo thd(li v, ...) {
   return k; }
 
 // try to get the name of a function
-ob hnom(la v, mo x) {
+ob hnom(li v, mo x) {
   if (!livep(v, (ob) x)) return nil;
   vm *k = G(x);
 

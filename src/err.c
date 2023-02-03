@@ -5,19 +5,22 @@ static NoInline void errp(la, const char*, ...);
 void report(la v, enum status s) {
   switch (s) {
     default: return;
-    case DomainError: return errp(v, "has no value");
-    case OomError: return errp(v, "oom at %d words", v->len);
-    case SyntaxError: return errp(v, "syntax error");
-    case ArityError: return
+    case DomainError: errp(v, "has no value"); return;
+    case OomError: errp(v, "oom at %d words", v->len); return;
+    case SyntaxError: errp(v, "syntax error"); return;
+    case ArityError:
       errp(v, "wrong arity : %d of %d", v->fp->argc, getnum(v->xp));
+      return;
     case SystemError:
-      return errp(v, "system error : %s", strerror(errno));
+      errp(v, "system error : %s", strerror(errno));
+      return;
     case NameError: {
       const char *n = "#sym";
       size_t l = 4;
       str s = ((sym) v->xp)->nom;
       if (s) n = s->text, l = s->len;
-      return errp(v, "free variable : %.*s", l, n); } } }
+      errp(v, "free variable : %.*s", l, n);
+      return; } } }
 
 static NoInline void show_call(la v, mo ip, frame fp) {
   putc('(', stderr);

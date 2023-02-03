@@ -13,11 +13,10 @@ LC_COLLATE=C
 c=$(sort $(wildcard src/*.c))
 h=$(sort $(wildcard src/*.h))
 o=$(c:.c=.o)
-CC=gcc
-CFLAGS=\
-	-std=c11 -g -Os -Wall -flto\
+CFLAGS ?=\
+	-std=c99 -g -O2 -Wall\
  	-Wstrict-prototypes -Wno-shift-negative-value\
-	-fno-stack-protector -fno-inline
+	-fno-stack-protector
 src/%.o: src/%.c $h $(this)
 	$(CC) $(CFLAGS) -c $< -o $@
 $(nom): $o $h

@@ -95,6 +95,7 @@ uintptr_t
   hx_typ(li, ob),
   liprng(li);
 
+#define EndArgs ((intptr_t)0)
 mo thd(li, ...),
    mo_n(li, size_t);
 tbl mktbl(li),
@@ -251,7 +252,7 @@ vm gc, xok, setclo, genclo0, genclo1;
  _(arity) _(ary1) _(ary2) _(ary3) _(ary4)\
  _(idno) _(idmo) _(idtwo) _(idtbl)\
  _(imm) _(immn1) _(imm0) _(imm1)\
- _(immn1p) _(imm0p) _(imm1p)\
+ _(immn1p) _(imm0p) _(imm1p) _(immp)\
  _(argn) _(arg0) _(arg1) _(arg2) _(arg3)\
  _(arg0p) _(arg1p) _(arg2p) _(arg3p)\
  _(clon) _(clo0) _(clo1) _(clo2) _(clo3)\
@@ -273,33 +274,26 @@ vm gc, xok, setclo, genclo0, genclo1;
  _(push)
 
 // primitive functions
-#define ForEachFunction(_) _(ev_f, "ev") _(ap_f, "ap")\
+#define ForEachFunction(_)\
+ _(ev_f, "ev") _(ap_f, "ap")\
  _(hom_f, "hom") _(homp_f, "homp")\
  _(poke_f, "poke") _(peek_f, "peek")\
  _(seek_f, "seek") _(hfin_f, "hfin")\
-  \
  _(nump_f, "nump") _(rand_f, "rand")\
  _(add_f, "+") _(sub_f, "-") _(mul_f, "*")\
  _(quot_f, "/") _(rem_f, "%")\
  _(sar_f, ">>") _(sal_f, "<<")\
  _(band_f, "&") _(bnot_f, "!") _(bor_f, "|") _(bxor_f, "^")\
-  \
  _(twop_f, "twop") _(cons_f, "X") _(car_f, "A") _(cdr_f, "B")\
-  \
  _(tbl_f, "tbl") _(tblp_f, "tblp") _(tlen_f, "tlen")\
  _(tget_f, "tget") _(thas_f, "thas") _(tset_f, "tset")\
  _(tdel_f, "tdel") _(tkeys_f, "tkeys")\
-  \
  _(str_f, "str") _(strp_f, "strp") _(slen_f, "slen")\
  _(ssub_f, "ssub") _(scat_f, "scat") _(sget_f, "schr")\
-  \
  _(sym_f, "sym") _(symp_f, "symp") _(ynom_f, "ynom")\
-  \
  _(tx_f, ".") _(txc_f, "putc") _(rxc_f, "getc")\
-  \
  _(eq_f, "=") _(lt_f, "<") _(lteq_f, "<=")\
  _(gteq_f, ">=") _(gt_f, ">") _(nilp_f, "nilp")\
-  \
  _(xdom, "nope")
 
 #define decl(x, ...) Vm(x);

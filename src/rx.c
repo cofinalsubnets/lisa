@@ -12,7 +12,7 @@ static ob rx_ret(la v, FILE* i, ob x) { return x; }
 
 // should distinguish between OOM and parse error
 enum status receive(la v, FILE* i) { ob x; return
-  !pushs(v, rx_ret, NULL) ? OomError :
+  !pushs(v, rx_ret, EndArgs) ? OomError :
   !(x = rxr(v, i)) ? feof(i) ? Eof : SyntaxError :
   (v->xp = x, Ok); }
 
@@ -37,7 +37,7 @@ static ob rx_two_cons(la v, FILE* i, ob x) {
     rx_pull(v, i, x ? (ob) pair(v, y, x) : x); }
 
 static ob rx_two_cont(la v, FILE* i, ob x) {
-  return !x || !pushs(v, rx_two_cons, x, NULL) ?
+  return !x || !pushs(v, rx_two_cons, x, EndArgs) ?
     rx_pull(v, i, 0) : rx_two(v, i); }
 
 static ob rx_q(la v, FILE* i, ob x) { return
@@ -52,7 +52,9 @@ static NoInline ob rxr(la v, FILE* i) {
     case '(': return rx_two(v, i);
     case '"': return rx_pull(v, i, (ob) rx_str(v, i));
     case '\'': return
-      pushs(v, rx_q, NULL) ? rxr(v, i) : rx_pull(v, i, 0); }
+      pushs(v, rx_q, EndArgs) ?
+        rxr(v, i) :
+        rx_pull(v, i, 0); }
   ungetc(c, i);
   str a = rx_atom_str(v, i);
   ob x = a ? rx_atom(v, a) : 0;
@@ -63,8 +65,9 @@ static NoInline ob rx_two(la v, FILE* i) {
   switch (c) {
     case ')': case EOF: return rx_pull(v, i, nil);
     default: return ungetc(c, i),
-      pushs(v, rx_two_cont, NULL) ?
-        rxr(v, i) : rx_pull(v, i, 0); } }
+      pushs(v, rx_two_cont, EndArgs) ?
+        rxr(v, i) :
+        rx_pull(v, i, 0); } }
 
 static str mkbuf(la v) {
   str s = cells(v, Width(struct str) + 1);

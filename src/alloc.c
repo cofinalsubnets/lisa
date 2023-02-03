@@ -7,7 +7,7 @@ static NoInline bool pushsr(la v, size_t i, va_list xs) {
     (with(x, _ = pushsr(v, i+1, xs)),
      _ && (*--v->sp = x, true)); }
 
-bool pushs(la v, ...) {
+NoInline bool pushs(la v, ...) {
   bool _; va_list xs; return
   va_start(xs, v),
   _ = pushsr(v, 0, xs),

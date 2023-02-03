@@ -46,20 +46,20 @@ static enum status enprocf(li v, FILE *f) {
   with(x, r = enprocf(v, f));
   if (r != Ok) return r;
   mo k = thd(v,
-    imm, x, push,
-    imm, ev_f, // assign target idx=4
+    immp, x,
+    imm, ev_f, // assign target idx=3
     call, putnum(1),
-    jump, v->ip, ev_f, // assign src idx=9
-    NULL);
+    jump, v->ip, ev_f, // assign src idx=8
+    EndArgs);
   if (!k) return OomError;
-  k[4].ap = (vm*) (k+9);
+  k[3].ap = (vm*) (k+8);
   v->ip = k;
   return Ok; }
 
 static enum status enproc(li v, char **av, vm *j) {
   const char *p = *av;
   if (!p) {
-    mo k = thd(v, j, NULL);
+    mo k = thd(v, j, EndArgs);
     return !k ? OomError : (v->ip = k, Ok); }
   enum status r = enproc(v, av+1, j);
   return r != Ok ? r : enprocf(v, fopen(p, "r")); }
@@ -88,12 +88,12 @@ static FILE *boot_src(void) {
 
 static enum status li_ev(li v, ob x) {
   mo k = thd(v,
-    imm, x, push,
-    imm, nil, // assignment target idx=4
+    immp, x,
+    imm, nil, // assignment target idx=3
     call, putnum(1),
-    xok, ev_f, // source idx=8
-    NULL);
+    xok, ev_f, // source idx=7
+    EndArgs);
   if (!k) return OomError;
-  k[4].ap = (vm*) (k + 8);
-  v->ip = k;
-  return li_go(v); }
+  return k[3].ap = (vm*) (k + 7),
+         v->ip = k,
+         li_go(v); }

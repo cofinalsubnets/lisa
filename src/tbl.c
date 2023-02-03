@@ -1,10 +1,10 @@
 #include "i.h"
-typedef struct tbl { // hash tables
+struct tbl { // hash tables
   vm *act; typ typ;
   U len, cap;
   struct tbl_e {
     ob key, val;
-    struct tbl_e *next; } **tab; } *tbl;
+    struct tbl_e *next; } **tab; };
 
 static Inline size_t tbl_load(tbl t) {
   return t->len / t->cap; }
@@ -49,22 +49,33 @@ ob tbl_get(la v, tbl t, ob k, ob d) {
   struct tbl_e *e = tbl_ent(v, t, k);
   return e ? e->val : d; }
 
-static tbl tbl_grow(la, tbl), tbl_set_s(la, tbl, ob, ob);
+static tbl tbl_grow(la, tbl);
+
 tbl tbl_set(la v, tbl t, ob k, ob x) {
-  t = tbl_set_s(v, t, k, x);
-  return t ? tbl_grow(v, t) : 0; }
+  uintptr_t hc = hash(v, k);
+  struct tbl_e *e = tbl_ent_hc(v, t, k, hc);
+  if (e) return e->val = x, t;
+
+  uintptr_t i = tbl_idx(t->cap, hc);
+  with(t, with(k, with(x, e = cells(v, Width(struct tbl_e)))));
+  if (!e) return 0;
+
+  e->key = k, e->val = x, e->next = t->tab[i];
+  t->tab[i] = e;
+  t->len++;
+  return tbl_grow(v, t); }
 
 // tbl_grow(vm, tbl, new_size): destructively resize a hash table.
 // new_size words of memory are allocated for the new bucket array.
 // the old table entries are reused to populate the modified table.
-static tbl tbl_grow(la v, tbl t) {
-  struct tbl_e **tab0, **tab1;
+static NoInline tbl tbl_grow(la v, tbl t) {
   size_t cap0 = t->cap,
          cap1 = cap0,
          load = tbl_load(t);
   while (load > 1) cap1 <<= 1, load >>= 1;
   if (cap0 == cap1) return t;
 
+  struct tbl_e **tab0, **tab1;
   with(t, tab1 = (struct tbl_e**) cells(v, cap1));
   if (!tab1) return 0;
   setw(tab1, 0, cap1);
@@ -80,18 +91,6 @@ static tbl tbl_grow(la v, tbl t) {
 
   t->cap = cap1;
   t->tab = tab1;
-  return t; }
-
-static tbl tbl_set_s(la v, tbl t, ob k, ob x) {
-  uintptr_t hc = hash(v, k);
-  struct tbl_e *e = tbl_ent_hc(v, t, k, hc);
-  if (e) return e->val = x, t;
-  uintptr_t i = tbl_idx(t->cap, hc);
-  with(t, with(k, with(x, e = cells(v, Width(struct tbl_e)))));
-  if (!e) return 0;
-  e->key = k, e->val = x, e->next = t->tab[i];
-  t->tab[i] = e;
-  t->len++;
   return t; }
 
 static ob tbl_del_s(la, tbl, ob, ob), tbl_keys(la);
@@ -138,7 +137,7 @@ static void tbl_shrink(la v, tbl t) {
 static bool tblss(la v, I i, I l) {
   bool _ = true;
   while (_ && i <= l - 2)
-    _ = tbl_set(v, (tbl) v->xp, v->fp->argv[i], v->fp->argv[i+1]),
+    _ = !!tbl_set(v, (tbl) v->xp, v->fp->argv[i], v->fp->argv[i+1]),
     i += 2;
   return _; }
 

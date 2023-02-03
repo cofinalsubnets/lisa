@@ -18,47 +18,67 @@ typedef struct env {
 // if a function is not variadic its arity signature is
 // n = number of required arguments; otherwise it is -n-1
 
-typedef mo co(la, env*, size_t);
+static NoInline ob asign(la v, ob a, intptr_t i, ob *m) {
+  if (!twop(a)) return *m = i, a;
+  if (twop(B(a)) && AB(a) == (ob) v->lex->splat)
+    return *m = -i - 1, (ob) pair(v, A(a), nil);
+  ob x; with(a, x = asign(v, B(a), i + 1, m));
+  return !x ? 0 : (ob) pair(v, A(a), x); }
+
+static NoInline ob new_scope(li v, env *e, ob arg, ob nom) {
+  intptr_t asig = 0;
+  with(nom, arg = asign(v, arg, 0, &asig));
+  return !arg ? 0 : (ob) thd(v,
+    arg, nil, nil, // arg loc clo
+    nom, putnum(asig), // name asig
+    nil, nil, // s1 s2
+    e ? *e : (env) nil, // par
+    EndArgs); }
+
+typedef mo co(li, env*, size_t);
 
 static mo
-  em1(la, env*, size_t),
-  em2(la, env*, size_t),
-  mo_alloc(la, env*, size_t),
-  p_co_x(la, env*, size_t),
-  co_def(la, env*, size_t, ob) NoInline,
-  co_fn(la, env*, size_t, ob) NoInline,
-  mo_mac(la, env*, size_t, ob, ob) NoInline,
-  mo_two(la, env*, size_t, ob) NoInline,
-  mo_i_x(la, env*, size_t, vm*, ob) NoInline;
+  em1(li, env*, size_t),
+  em2(li, env*, size_t),
+  ana_alloc(li, env*, size_t),
+  p_co_x(li, env*, size_t),
+  ana_define(li, env*, size_t, ob) NoInline,
+  ana_lambda(li, env*, size_t, ob) NoInline,
+  ana_macro(li, env*, size_t, ob, ob) NoInline,
+  ana_list(li, env*, size_t, ob) NoInline,
+  ana_i(li, env*, size_t, vm*) NoInline,
+  ana_i_x(li, env*, size_t, vm*, ob) NoInline;
 
-static mo ana(la v, ob x) { return
-  !pushs(v, x, em1, ret, mo_alloc, NULL) ? 0 :
-    p_co_x(v, 0, 0); }
+static mo ana(li v, ob x) { return
+  !pushs(v, x, em1, ret, ana_alloc, EndArgs) ? NULL :
+    p_co_x(v, NULL, 0); }
 
 Vm(ev_f) {
-  mo e = (mo) tbl_get(v, v->lex->topl, (ob) v->lex->eval, 0);
+  mo k = (mo) tbl_get(v, v->lex->topl, (ob) v->lex->eval, 0);
   return
-    e && G(e) != ev_f ? ApY(e, xp) :
+    k && G(k) != ev_f ? ApY(k, xp) :
     !fp->argc ? ApC(ret, xp) :
-    (CallOut(e = ana(v, fp->argv[0])), !e) ? Yield(OomError, xp) :
-    ApY(e, xp); }
+    (CallOut(k = ana(v, fp->argv[0])), !k) ? Yield(OomError, xp) :
+    ApY(k, xp); }
 
-static Inline mo co_pull(la v, env *e, size_t m) { return
-  ((mo (*)(la, env*, U)) (*v->sp++))(v, e, m); }
-
+static NoInline mo co_pull(li v, env *e, size_t m) { return
+  ((mo (*)(li, env*, size_t)) (*v->sp++))(v, e, m); }
 
 // apply instruction pullbacks
 static Inline mo pulli(vm *i, mo k) {
   return k--, G(k) = i, k; }
-static Inline mo pullix(vm *i, ob x, mo k) {
-  return pulli(i, pulli((vm*) x, k)); }
+
+static NoInline mo pullix(vm *i, ob x, mo k) {
+  k -= 2;
+  G(k) = i, GF(k) = (vm*) x;
+  return k; }
 
 // supplemental list functions
 //
 
 // index of item in list (-1 if absent)
 static NoInline intptr_t lidx(ob l, ob x) {
-  for (I i = 0; twop(l); l = B(l), i++)
+  for (intptr_t i = 0; twop(l); l = B(l), i++)
     if (x == A(l)) return i;
   return -1; }
 
@@ -77,29 +97,8 @@ static NoInline ob rw_let_fn(la v, ob x) {
       (ob) pair(v, AA(x), (ob) w) : 0);
   return um, x; }
 
-static NoInline ob asign(la v, ob a, intptr_t i, ob *m) {
-  if (!twop(a)) return *m = i, a;
-  if (twop(B(a)) && AB(a) == (ob) v->lex->splat)
-    return *m = -i - 1, (ob) pair(v, A(a), nil);
-  ob x; with(a, x = asign(v, B(a), i + 1, m));
-  return !x ? 0 : (ob) pair(v, A(a), x); }
-
-static ob new_scope(la v, env *e, ob arg, ob nom) {
-  env f;
-  I asig = 0;
-  with(nom,
-    arg = asign(v, arg, 0, &asig),
-    with(arg, f = (env) mo_n(v, Width(struct env))));
-  if (f)
-    f->arg = arg,
-    f->name = nom,
-    f->asig = putnum(asig),
-    f->loc = f->clo = f->s1 = f->s2 = nil,
-    f->par = e ? *e : (env) nil;
-  return (ob) f; }
-
-static bool scan(la, env*, ob) NoInline;
-static NoInline int scan_def(la v, env *e, ob x) {
+static bool scan(li, env*, ob) NoInline;
+static NoInline int scan_def(li v, env *e, ob x) {
   int r;
   if (!twop(x)) return 1; // this is an even case so export all the definitions to the local scope
   if (!twop(B(x))) return 0; // this is an odd case so ignore these, they'll be imported after the rewrite
@@ -111,7 +110,7 @@ static NoInline int scan_def(la v, env *e, ob x) {
        !scan(v, e, AB(x)) ? -1 : 1);
   return r; }
 
-static NoInline bool scan(la v, env *e, ob x) {
+static NoInline bool scan(li v, env *e, ob x) {
   bool _; return !twop(x) ||
     A(x) == (ob) v->lex->lambda ||
     A(x) == (ob) v->lex->quote ||
@@ -125,12 +124,23 @@ static NoInline ob linitp(la v, ob x, ob *d) {
   ob y; with(x, y = linitp(v, B(x), d));
   return y ? (ob) pair(v, A(x), y) : 0; }
 
-static Inline ob comp_body(la v, env *e, ob x) {
-  I i;
-  if (!pushs(v, p_co_x, x, em1, ret, mo_alloc, NULL) ||
+#define Co(nom,...)\
+  mo nom(la v, env *e, size_t m, ##__VA_ARGS__)
+
+static Co(p_ana_define_bind) {
+  ob _ = *v->sp++;
+  if (!e) return
+    _ = (ob) pair(v, (ob) v->lex->topl, _),
+    _ ? ana_i_x(v, e, m, deftop, _) : 0;
+  return ana_i_x(v, e, m, defsl1, putnum(lidx((*e)->loc, _))); }
+
+static Inline ob ana_lambda_body(la v, env *e, ob x) {
+  intptr_t i;
+  if (!pushs(v, p_co_x, x, em1, ret, ana_alloc, EndArgs) ||
       !scan(v, e, v->sp[1]) ||
       !(x = (ob) co_pull(v, e, 4)))
     return 0;
+
   x = !(i = llen((*e)->loc)) ? x :
    (ob) pullix(setloc, putnum(i), (mo) x);
   x = (i = getnum((*e)->asig)) > 0 ?
@@ -138,69 +148,55 @@ static Inline ob comp_body(la v, env *e, ob x) {
       i < 0 ?
         (ob) pullix(varg, putnum(-i-1), (mo) x) :
       x;
+
   mo_tag((mo) x)->head = (mo) x;
-  if (!twop((*e)->clo)) return x;
-  return (ob) pair(v, (*e)->clo, x); }
+  return !twop((*e)->clo) ? x :
+    (ob) pair(v, (*e)->clo, x); }
+
+static NoInline bool ana_lambda_b_enclose(li v, env *e, ob x) {
+  ob vars = A(x), code = B(x);
+  size_t i = llen(vars);
+  mm(&vars); mm(&code);
+  vars = pushs(v, em2, take, putnum(i), ana_alloc, EndArgs) ? vars : 0;
+  while (vars && i--) vars =
+    pushs(v, p_co_x, A(vars), em1, push, EndArgs) ? B(vars) : 0;
+  vars = vars ? (ob) co_pull(v, e, 0) : vars;
+  vars = vars ? (ob) pair(v, code, vars) : vars;
+  vm *j = e && homp((*e)->loc) ? encl1 : encl0;
+  return um, um, vars && pushs(v, em2, j, vars, EndArgs); }
 
 // takes a lambda expr, returns either a pair or or a
 // hom depending on if the function has free variables
 // (in the former case the car is the list of free variables
 // and the cdr is a hom that assumes the missing variables
 // are available in the closure).
-static ob co_fn_ltu(la v, env *e, ob n, ob l) {
-  ob y = nil;
-  with(n, with(y, with(l,
-    l = (l = twop(l) ? l : (ob) pair(v, l, nil)) &&
-        (l = linitp(v, l, &y)) &&
-        (n = (ob) pair(v, n, e ? (*e)->name : nil)) &&
-        (n = new_scope(v, e, l, n)) ?
-          comp_body(v, (env*) &n, A(y)) :
-          0)));
-  return l; }
 
-static ob co_fn_clo(la v, env *e, ob vars, ob code) {
-  U i = llen(vars);
-  mm(&vars), mm(&code);
+static NoInline bool ana_lambda_b(li v, env *e, ob x) {
+  ob y = nil,
+     n = *v->sp == (ob) p_ana_define_bind ? v->sp[1] : nil;
+  mm(&n); mm(&x); mm(&y);
+  x = (x = twop(x) ? x : (ob) pair(v, x, nil)) &&
+      (x = linitp(v, x, &y)) &&
+      (n = (ob) pair(v, n, e ? (*e)->name : nil)) &&
+      (n = new_scope(v, e, x, n)) ?
+        ana_lambda_body(v, (env*) &n, A(y)) :
+        0;
+  um, um, um;
+  return !x ? 0 :
+    G(x) == act ? ana_lambda_b_enclose(v, e, x) :
+    pushs(v, em2, imm, x, EndArgs); }
 
-  vars = pushs(v, em2, take, putnum(i), mo_alloc, NULL) ? vars : 0;
-  while (vars && i--) vars =
-    pushs(v, p_co_x, A(vars), em1, push, NULL) ? B(vars) : 0;
-  vars = vars ? (ob) co_pull(v, e, 0) : vars;
-  vars = vars ? (ob) pair(v, code, vars) : vars;
-  return um, um, vars; }
+static Co(ana_lambda, ob x) { return
+  ana_lambda_b(v, e, x) ? co_pull(v, e, m) : 0; }
 
-#define Co(nom,...)\
-  mo nom(la v, env *e, size_t m, ##__VA_ARGS__)
-
-static Co(co_fn_enclose, ob x, mo k) {
-  with(k, x = co_fn_clo(v, e, A(x), B(x)));
-  if (!x) return 0;
-  return pullix(e && homp((*e)->loc) ? encl1 : encl0, x, k); }
-
-static Co(p_co_def_bind) {
-  ob _ = *v->sp++;
-  if (!e) return
-    _ = (ob) pair(v, (ob) v->lex->topl, _),
-    _ ? mo_i_x(v, e, m, deftop, _) : 0;
-  return mo_i_x(v, e, m, defsl1, putnum(lidx((*e)->loc, _))); }
-
-static Co(co_fn, ob x) {
-  ob nom = *v->sp == (ob) p_co_def_bind ? v->sp[1] : nil;
-  mo k; with(nom, with(x, k = co_pull(v, e, m+2)));
-  if (!k) return 0;
-  with(k, x = co_fn_ltu(v, e, nom, x));
-  if (!x) return 0;
-  if (G(x) == act) return co_fn_enclose(v, e, m, x, k);
-  return pullix(imm, x, k); }
-
-static bool co_def_r(la v, env *e, ob x) {
+static NoInline bool ana_define_r(la v, env *e, ob x) {
   bool _; return !twop(x) ||
     ((x = rw_let_fn(v, x)) &&
-     (with(x, _ = co_def_r(v, e, BB(x))), _) &&
-     pushs(v, p_co_x, AB(x), p_co_def_bind, A(x), NULL)); }
+     (with(x, _ = ana_define_r(v, e, BB(x))), _) &&
+     pushs(v, p_co_x, AB(x), p_ana_define_bind, A(x), EndArgs)); }
 
 // syntactic sugar for define
-static bool co_def_sug(la v, two x) {
+static NoInline bool ana_define_sug(la v, two x) {
   ob _ = nil; return
     (with(_, x = (two) linitp(v, (ob) x, &_)), x) &&
     (x = pair(v, (ob) x, _)) &&
@@ -208,14 +204,17 @@ static bool co_def_sug(la v, two x) {
     (x = pair(v, (ob) x, nil)) &&
     (x = pair(v, (ob) v->lex->lambda, (ob) x)) &&
     (x = pair(v, (ob) x, nil)) &&
-    pushs(v, p_co_x, x, NULL); }
+    pushs(v, p_co_x, x, EndArgs); }
 
-static Co(co_def, ob x) { return
-  !twop(B(x)) ? mo_i_x(v, e, m, imm, nil) :
-  (llen(B(x)) & 1 ?
-   co_def_sug(v, (two) x) : co_def_r(v, e, B(x))) ?
-    co_pull(v, e, m) :
-    0; }
+static NoInline bool ana_define_b(li v, env *e, ob x) {
+  ob b = B(x);
+  if (!twop(b)) return pushs(v, em1, imm0, EndArgs);
+  return llen(b) & 1 ?
+    ana_define_sug(v, (two) x) :
+    ana_define_r(v, e, b); }
+
+static NoInline Co(ana_define, ob x) { return
+  ana_define_b(v, e, x) ? co_pull(v, e, m) : 0; }
 
 // the following functions are "post" or "pre"
 // the antecedent/consequent in the sense of
@@ -224,174 +223,183 @@ static Co(co_def, ob x) { return
 
 // before generating anything, store the
 // exit address in stack 2
-static Co(co_if_pre) {
+static NoInline Co(ana_cond_pre) {
   ob x = (ob) co_pull(v, e, m);
   x = x ? (ob) pair(v, x, (*e)->s2) : x;
-  return x ? (mo) A((*e)->s2 = x) : 0; }
+  return !x ? 0 : (mo) A((*e)->s2 = x); }
 
 // before generating a branch emit a jump to
 // the top of stack 2
-static Co(co_if_pre_con) {
-  mo k, x = co_pull(v, e, m + 2);
-  return !x ? 0 : G(k = (mo) A((*e)->s2)) == ret ?
-    pulli(ret, x) : pullix(jump, (ob) k, x); }
+static Co(ana_cond_pre_con) {
+  mo x = co_pull(v, e, m + 2);
+  if (!x) return x;
+  mo k = (mo) A((*e)->s2);
+  return G(k) == ret ? pulli(ret, x) :
+                       pullix(jump, (ob) k, x); }
 
 // after generating a branch store its address
 // in stack 1
-static Co(co_if_post_con) {
+static Co(ana_cond_post_con) {
   ob x = (ob) co_pull(v, e, m);
   x = x ? (ob) pair(v, x, (*e)->s1) : x;
   return x ? (mo) A((*e)->s1 = x) : 0; }
 
 // before generating an antecedent emit a branch to
 // the top of stack 1
-static Co(co_if_pre_ant) {
+static Co(ana_cond_pre_ant) {
   mo x = co_pull(v, e, m + 2);
   if (!x) return 0;
   x = pullix(br1, A((*e)->s1), x);
   (*e)->s1 = B((*e)->s1);
   return x; }
 
-static bool co_if_loop(la v, env *e, ob x) {
-  bool _;
+static NoInline bool ana_cond_loop(la v, env *e, ob x) {
   x = twop(x) ? x : (ob) pair(v, nil, nil);
   if (!x) return false;
   if (!twop(B(x))) return
-    pushs(v, p_co_x, A(x), co_if_pre_con, NULL);
-  with(x,
-    _ = pushs(v, co_if_post_con, p_co_x,
-              AB(x), co_if_pre_con, NULL),
-    _ = _ ? co_if_loop(v, e, BB(x)) : _);
-  return _ ? pushs(v, p_co_x, A(x), co_if_pre_ant, NULL) : 0; }
+    pushs(v, p_co_x, A(x), ana_cond_pre_con, EndArgs);
+  bool _; with(x,
+    _ = pushs(v, ana_cond_post_con, p_co_x,
+              AB(x), ana_cond_pre_con, EndArgs),
+    _ = _ ? ana_cond_loop(v, e, BB(x)) : _);
+  return _ ? pushs(v, p_co_x, A(x), ana_cond_pre_ant, EndArgs) : 0; }
 
-static Co(co_if, ob x) {
+static NoInline Co(ana_cond_post) {
+  mo k = co_pull(v, e, m);
+  (*e)->s2 = B((*e)->s2);
+  return k; }
+static NoInline Co(ana_cond, ob x) {
   bool _;
-  with(x, _ = pushs(v, co_if_pre, NULL));
-  _ = _ && co_if_loop(v, e, x);
-  if (!_) return 0;
-  mo pf = co_pull(v, e, m);
-  if (pf) (*e)->s2 = B((*e)->s2);
-  return pf; }
+  with(x, _ = pushs(v, ana_cond_pre, EndArgs));
+  _ = _ && ana_cond_loop(v, e, x) && pushs(v, ana_cond_post, EndArgs);
+  return !_ ? 0 : co_pull(v, e, m); }
 
-static Co(p_mo_ap_call) {
+static NoInline Co(p_ana_ap_call) {
   ob ary = *v->sp++;
   mo k = co_pull(v, e, m + 2);
-  return k ? pullix(G(k) == ret ? rec : call, ary, k) : 0; }
+  return !k ? k :
+    G(k) == ret ? pullix(rec, ary, k + 1) :
+    pullix(call, ary, k); }
 
 enum where { Arg, Loc, Clo, Here, Wait };
-
-static NoInline ob co_sym_look(la v, env e, ob y) { return
+static NoInline enum where ana_sym_look(la v, env e, ob y, ob *p) { return
   nilp((ob) e) ?
     (y = tbl_get(v, v->lex->topl, y, 0)) ?
-      (ob) pair(v, Here, y) :
-      (ob) pair(v, Wait, (ob) v->lex->topl) :
-  lidx(e->loc, y) >= 0 ? (ob) pair(v, Loc, (ob) e) :
-  lidx(e->arg, y) >= 0 ? (ob) pair(v, Arg, (ob) e) :
-  lidx(e->clo, y) >= 0 ? (ob) pair(v, Clo, (ob) e) :
-  co_sym_look(v, (env) e->par, y); }
+      (*p = y, Here) :
+      (*p = (ob) v->lex->topl, Wait) :
+  lidx(e->loc, y) >= 0 ? (*p = (ob) e, Loc) :
+  lidx(e->arg, y) >= 0 ? (*p = (ob) e, Arg) :
+  lidx(e->clo, y) >= 0 ? (*p = (ob) e, Clo) :
+  ana_sym_look(v, (env) e->par, y, p); }
 
-static Co(co_sym, ob x) {
-  ob q;
-  with(x, q = co_sym_look(v, e ? *e : (env) nil, x));
-  if (!q) return 0;
-  if (A(q) == Here) return mo_i_x(v, e, m, imm, B(q));
-  if (A(q) == Wait) return
-    (x = (ob) pair(v, B(q), x)) &&
-    (with(x, q = (ob) co_pull(v, e, m + 2)), q) ?
-      pullix(late, x, (mo) q) : 0;
+static NoInline Co(ana_sym_lazy, ob x, ob b) { return
+  (x = (ob) pair(v, b, x)) &&
+  (with(x, b = (ob) co_pull(v, e, m + 2)), b) ?
+  pullix(late, x, (mo) b) : 0; }
 
-  if (B(q) == (ob) *e) {
-    ob idx = putnum(lidx(((ob*)(*e))[A(q)], x));
-    vm *i = A(q) == Arg ? argn : A(q) == Loc ? sl1n : clon;
-    return mo_i_x(v, e, m, i, idx); }
+static NoInline Co(ana_sym_ref, ob x, ob a) {
+  ob idx = putnum(lidx(((ob*)(*e))[a], x));
+  vm *i = a == Arg ? argn : a == Clo ? clon : sl1n;
+  return ana_i_x(v, e, m, i, idx); }
 
-  U y = llen((*e)->clo);
-  if (!(q = (ob) snoc(v, (*e)->clo, x))) return 0;
-  return (*e)->clo = q, mo_i_x(v, e, m, clon, putnum(y)); }
+static NoInline Co(ana_sym, ob x) {
+  ob b;
+  enum where a = ana_sym_look(v, e ? *e : (env) nil, x, &b);
+  if (a == Here) return ana_i_x(v, e, m, imm, b);
+  if (a == Wait) return ana_sym_lazy(v, e, m, x, b); 
+  if (b == (ob) *e) return ana_sym_ref(v, e, m, x, a);
+  size_t y = llen((*e)->clo);
+  if (!(x = (ob) snoc(v, (*e)->clo, x))) return 0;
+  return (*e)->clo = x, ana_i_x(v, e, m, clon, putnum(y)); }
 
-static Co(co_x, ob x) { return
-  symp(x) ? co_sym(v, e, m, x) :
-  twop(x) ? mo_two(v, e, m, x) :
-  mo_i_x(v, e, m, imm, x); }
+static NoInline Co(co_x, ob x) { return
+  symp(x) ? ana_sym(v, e, m, x) :
+  twop(x) ? ana_list(v, e, m, x) :
+  ana_i_x(v, e, m, imm, x); }
 
 static Co(p_co_x) { return co_x(v, e, m, *v->sp++); }
 
-static Co(mo_ap, ob f, ob args) {
-  mm(&args);
-  if (!pushs(v,
-        p_co_x, f,
-        em1, idmo,
-        p_mo_ap_call, putnum(llen(args)),
-        NULL))
-    return um, NULL;
-  for (; twop(args); args = B(args))
-    if (!pushs(v, p_co_x, A(args), em1, push, NULL))
-      return um, NULL;
-  return um, co_pull(v, e, m); }
+static NoInline bool ana_ap_b(li v, ob f, ob x) {
+  mm(&x);
+  bool ok = pushs(v,
+    p_co_x, f,
+    em1, idmo,
+    p_ana_ap_call, putnum(llen(x)),
+    EndArgs);
+  for (; ok && twop(x); x = B(x)) ok =
+    pushs(v, p_co_x, A(x), em1, push, EndArgs);
+  return um, ok; }
 
-static NoInline bool seq_mo_twooop(la v, env *e, ob x) {
+static NoInline Co(ana_ap, ob f, ob args) {
+  return ana_ap_b(v, f, args) ? co_pull(v, e, m) : 0; }
+
+static NoInline bool ana_begin_loop(la v, env *e, ob x) {
   bool _; return !twop(x) ||
-    (with(x, _ = seq_mo_twooop(v, e, B(x))),
-     _ && pushs(v, p_co_x, A(x), NULL)); }
+    (with(x, _ = ana_begin_loop(v, e, B(x))),
+     _ && pushs(v, p_co_x, A(x), EndArgs)); }
 
-static Co(mo_seq, ob x) { return
+static NoInline bool ana_begin_b(li v, env *e, ob x) { return
   x = twop(x) ? x : (ob) pair(v, x, nil),
-  x && seq_mo_twooop(v, e, x) ?
-    co_pull(v, e, m) :
-    0; }
+  x && ana_begin_loop(v, e, x); }
+
+static NoInline Co(ana_begin, ob x) { return
+  ana_begin_b(v, e, x) ? co_pull(v, e, m) : 0; }
 
 static enum status li_ap(la v, mo f, ob x) {
   mo k = thd(v,
-    imm, x, push,
-    imm, f, push,
-    imm, nil, // assignment target idx=7
+    immp, x,
+    immp, f,
+    imm, nil, // assignment target idx=5
     call, putnum(2),
-    xok, ap_f, // source idx=11
-    NULL);
+    xok, ap_f, // source idx=9
+    EndArgs);
   if (!k) return OomError;
-  return k[7].ap = (vm*) (k + 11),
+  return k[5].ap = (vm*) (k + 9),
          v->ip = k,
          li_go(v); }
 
-static Co(mo_mac, ob mac, ob x) {
+static NoInline bool ana_macro_b(li v, ob mac, ob x) {
   enum status s;
   ob xp = v->xp;
   mo ip = v->ip;
   with(xp, with(ip, s = li_ap(v, (mo) mac, x)));
   x = v->xp, v->xp = xp, v->ip = ip;
-  report(v, s);
-  return s == Ok ? co_x(v, e, m, x) : NULL; }
+  if (s != Ok) return report(v, s), 0;
+  return pushs(v, p_co_x, x, EndArgs); }
 
-static Co(mo_two, ob x) {
-  ob a = A(x);
+static NoInline Co(ana_macro, ob mac, ob x) {
+  return ana_macro_b(v, mac, x) ? co_pull(v, e, m) : 0; }
+
+static NoInline Co(ana_list, ob x) {
+  ob a = A(x), b = B(x);
   if (symp(a)) {
     sym y = (sym) a;
     if (y == v->lex->quote) return
-      mo_i_x(v, e, m, imm, twop(B(x)) ? AB(x) : B(x));
-    if (y == v->lex->cond)   return co_if(v, e, m, B(x));
-    if (y == v->lex->lambda) return co_fn(v, e, m, B(x));
-    if (y == v->lex->define) return co_def(v, e, m, x);
-    if (y == v->lex->begin)  return mo_seq(v, e, m, B(x));
-    if ((a = tbl_get(v, v->lex->macros, a, 0)))
-      return mo_mac(v, e, m, a, B(x)); }
-  return mo_ap(v, e, m, A(x), B(x)); }
+      ana_i_x(v, e, m, imm, twop(b) ? A(b) : b); // b (em2)
+    if (y == v->lex->cond)   return ana_cond(v, e, m, b); // b
+    if (y == v->lex->lambda) return ana_lambda(v, e, m, b); // b
+    if (y == v->lex->define) return ana_define(v, e, m, x); // b
+    if (y == v->lex->begin)  return ana_begin(v, e, m, b); // b
+    if ((x = tbl_get(v, v->lex->macros, a, 0)))
+      return ana_macro(v, e, m, x, b); } // b
+  return ana_ap(v, e, m, a, b); } // b
 
-static Co(em1) {
-  vm *i = (vm*) *v->sp++;
+static NoInline Co(em1) { return ana_i(v, e, m, (vm*) *v->sp++); }
+
+static NoInline mo ana_i(la v, env *e, size_t m, vm *i) {
   mo k = co_pull(v, e, m + 1);
-  return k ? pulli(i, k): 0; }
+  return k ? pulli(i, k) : 0; }
 
-static mo mo_i_x(la v, env *e, size_t m, vm *i, ob x) {
-  mo k; return
-    with(x, k = co_pull(v, e, m + 2)),
-    k ? pullix(i, x, k) : 0; }
+static NoInline mo ana_i_x(li v, env *e, size_t m, vm *i, ob x) {
+  mo k; with(x, k = co_pull(v, e, m + 2));
+  return k ? pullix(i, x, k) : 0; }
 
-static Co(em2) {
+static NoInline Co(em2) {
   vm *i = (vm*) *v->sp++;
   ob x = *v->sp++;
-  return mo_i_x(v, e, m, i, x); }
+  return ana_i_x(v, e, m, i, x); }
 
-static Co(mo_alloc) {
+static Co(ana_alloc) {
   mo k = mo_n(v, m + 1);
   if (k) setw(k, nil, m),
          G(k += m) = (vm*) (e ? (*e)->name : nil);

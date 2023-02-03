@@ -11,6 +11,9 @@ Vm(imm0) { return ApN(1, putnum(0)); }
 Vm(imm1) { return ApN(1, putnum(1)); }
 Vm(immn1) { return ApN(1, putnum(-1)); }
 Vm(immk) { return ApC(ret, (ob) ip); }
+Vm(immp) { Have1(); return
+  xp = *--sp = (ob) GF(ip),
+  ApN(2, xp); }
 
 Vm(imm0p) { return ApC(push, putnum(0)); }
 Vm(imm1p) { return ApC(push, putnum(1)); }
@@ -68,7 +71,7 @@ Vm(defsl1) { return
 
 // set a module variable
 Vm(deftop) { bool _; return
-  CallOut(_ = tbl_set(v, (tbl) A(GF(ip)), B(GF(ip)), xp)),
+  CallOut(_ = !!tbl_set(v, (tbl) A(GF(ip)), B(GF(ip)), xp)),
   _ ? ApN(2, xp) : Yield(OomError, xp); }
 
 // allocate local variable array
