@@ -63,8 +63,8 @@ static bool li_ini_env(struct V* v) {
     (y = symofs(v, "`"), v->lex->quote = y) &&
     (y = symofs(v, ","), v->lex->begin = y) &&
     (y = symofs(v, "."), v->lex->splat = y) &&
-    (v->lex->topl = mktbl(v)) &&
-    (v->lex->macros = mktbl(v)) &&
+    (v->lex->topl = tbl_new(v)) &&
+    (v->lex->macros = tbl_new(v)) &&
     (_ = (ob) symofs(v, "_ns")) &&
     tbl_set(v, v->lex->topl, _, (ob) v->lex->topl) &&
     (_ = (ob) symofs(v, "macros")) &&

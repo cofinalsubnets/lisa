@@ -21,7 +21,7 @@ static Inline tbl tbl_ini(void *_, size_t len, size_t cap, struct tbl_e **tab) {
     t->tab = tab,
     t; }
 
-tbl mktbl(la v) {
+tbl tbl_new(la v) {
   tbl t = cells(v, Width(struct tbl) + 1);
   if (t) tbl_ini(t, 0, 1, (struct tbl_e**) (t + 1)),
          t->tab[0] = 0;
@@ -191,7 +191,7 @@ Vm(tset_f) {
 
 Vm(tbl_f) {
   ob x = fp->argc; return
-    CallOut(x = (v->xp = (ob) mktbl(v)) && tblss(v, 0, x)),
+    CallOut(x = (v->xp = (ob) tbl_new(v)) && tblss(v, 0, x)),
     x ? ApC(ret, xp) : Yield(OomError, nil); }
 
 Vm(tkeys_f) { ob x; return

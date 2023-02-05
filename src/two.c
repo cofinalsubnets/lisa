@@ -5,15 +5,6 @@ static size_t llenr(ob l, size_t n) {
   return twop(l) ? llenr(B(l), n + 1) : n; }
 size_t llen(ob l) { return llenr(l, 0); }
 
-static NoInline two pair_gc(la v, ob a, ob b) {
-  bool ok;
-  with(a, with(b, ok = please(v, Width(struct two))));
-  return ok ? pair(v, a, b) : 0; }
-
-NoInline two pair(la v, ob a, ob b) {
-  if (Avail < Width(struct two)) return pair_gc(v, a, b);
-  return two_ini(bump(v, Width(struct two)), a, b); }
-
 static Gc(cp_two) {
   two src = (two) x,
       dst = bump(v, Width(struct two));

@@ -97,7 +97,7 @@ uintptr_t
 mo thd(li, ...),
    ana(li, ob),
    mo_n(li, size_t);
-tbl mktbl(li),
+tbl tbl_new(li),
     tbl_set(li, tbl, ob, ob);
 two pair(li, ob, ob);
 str strof(li, const char*);
