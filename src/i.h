@@ -65,7 +65,7 @@ struct V {
 
   // memory manager state
   uintptr_t len;
-  intptr_t *pool;
+  intptr_t *pool, *loop;
   struct ll { ob *addr; struct ll *next; } *safe;
   union { ob *cp; size_t t0; }; };
 

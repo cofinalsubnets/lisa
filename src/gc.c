@@ -1,7 +1,7 @@
 #include "i.h"
 
 ob *new_pool(size_t n) {
-  return malloc(n * sizeof(ob)); }
+  return malloc(n * 2 * sizeof(ob)); }
 
 static NoInline ob cp_mo(li v, mo src, ob *pool0, ob *top0) {
   struct tag *fin = mo_tag(src);
@@ -47,20 +47,18 @@ NoInline ob cp(la v, ob x, ob *pool0, ob *top0) {
 //   |                          `------'
 //   t0                  gc time (this cycle)
 
-#define MinVim 32
-#define MaxVim (MinVim<<2)
+#define MinVim 8
+#define MaxVim (MinVim<<8)
 
 static void copy_from(li, ob*, ob*);
 
 NoInline bool please(li v, size_t req) {
   size_t t1 = clock(), t0 = v->t0, t2,
          have = v->len;
-  ob *pool0 = v->pool, *pool1 = new_pool(have);
-  if (!pool1) return false;
 
-  v->pool = pool1;
-  copy_from(v, pool0, pool0 + have);
-  free(pool0);
+  ob *pool = v->pool, *loop = v->loop;
+  v->pool = loop, v->loop = pool;
+  copy_from(v, pool, pool + have);
   t2 = v->t0 = clock();
 
   size_t vim = t2 == t1 ? MaxVim : (t2 - t0) / (t2 - t1),
@@ -79,14 +77,14 @@ NoInline bool please(li v, size_t req) {
 
   if (want == have) return true;
 
-  pool1 = new_pool(want);
-  if (!pool1) return need <= have;
+  ob *mov = new_pool(want);
+  if (!mov) return need <= have;
 
-  pool0 = v->pool;
-  v->pool = pool1;
   v->len = want;
-  copy_from(v, pool0, pool0 + have);
-  free(pool0);
+  v->pool = mov;
+  v->loop = mov + want;
+  copy_from(v, loop, loop + have);
+  free(pool < loop ? pool : loop);
   v->t0 = clock();
   return true; }
 

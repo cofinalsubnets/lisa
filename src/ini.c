@@ -9,8 +9,9 @@ void li_unwind(li v) {
   v->fp = (frame) (v->pool + v->len);
   v->sp = (ob*) v->fp; }
 
-void li_fin(struct V *v) {
-  if (v) free(v->pool), v->pool = NULL; }
+void li_fin(struct V *v) { if (v)
+  free(v->pool < v->loop ? v->pool : v->loop),
+  v->pool = v->loop = NULL; }
 
 static bool li_ini_env(la);
 
@@ -21,7 +22,8 @@ NoInline enum status li_ini(li v) {
   ob *pool = new_pool(len);
   if (pool) {
     v->len = len,
-    v->hp = v->pool = pool,
+    v->pool = v->hp = pool,
+    v->loop = pool + len,
     v->fp = (sf) (v->sp = pool + len),
     v->rand = v->t0 = clock();
     if (li_ini_env(v)) return Ok;
