@@ -21,7 +21,7 @@ NoInline ob cp(la v, ob x, ob *pool0, ob *top0) {
   if ((vm*) x == act) return
     ((typ) GF(src))->evac(v, (ob) src, pool0, top0);
   return cp_mo(v, src, pool0, top0); }
-      
+
 ////
 /// garbage collector
 //
@@ -51,6 +51,7 @@ NoInline ob cp(la v, ob x, ob *pool0, ob *top0) {
 #define MaxVim (MinVim<<2)
 
 static void copy_from(li, ob*, ob*);
+
 NoInline bool please(li v, size_t req) {
   size_t t1 = clock(), t0 = v->t0, t2,
          have = v->len;

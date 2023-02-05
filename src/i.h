@@ -92,7 +92,6 @@ enum status
 uintptr_t
   llen(ob),
   hash(li, ob),
-  hx_typ(li, ob),
   liprng(li);
 
 mo thd(li, ...),
@@ -109,7 +108,8 @@ ob hnom(li, mo),
    tbl_get(li, tbl, ob, ob);
 
 #define Gc(n) ob n(li v, ob x, ob *pool0, ob *top0)
-#define EndArgs ((intptr_t)0)
+#define End ((intptr_t)0)
+#define EndArgs End
 #define Width(_) b2w(sizeof(_))
 
 #define getnum(_) ((ob)(_)>>1)

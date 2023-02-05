@@ -286,3 +286,313 @@ Vm(enclose) {
 Vm(encl1) { return ApC(enclose, putnum(1)); }
 // FIXME if there are no locals we don't need to defer closure construction!
 Vm(encl0) { return ApC(enclose, putnum(0)); }
+
+Vm(ev_f) {
+  mo k = (mo) tbl_get(v, v->lex->topl, (ob) v->lex->eval, 0);
+  return
+    k && G(k) != ev_f ? ApY(k, xp) :
+    !fp->argc ? ApC(ret, xp) :
+    (CallOut(k = ana(v, fp->argv[0])), !k) ? Yield(OomError, xp) :
+    ApY(k, xp); }
+
+////
+/// Load Instructions
+//
+
+// immediate values
+
+Vm(imm) { return ApN(2, (ob) GF(ip)); }
+Vm(imm0) { return ApN(1, putnum(0)); }
+Vm(imm1) { return ApN(1, putnum(1)); }
+Vm(immn1) { return ApN(1, putnum(-1)); }
+Vm(immk) { return ApC(ret, (ob) ip); }
+Vm(immp) { Have1(); return
+  xp = *--sp = (ob) GF(ip),
+  ApN(2, xp); }
+
+Vm(imm0p) { return ApC(push, putnum(0)); }
+Vm(imm1p) { return ApC(push, putnum(1)); }
+Vm(immn1p) { return ApC(push, putnum(-1)); }
+
+// function arguments
+Vm(argn) { return ApN(2, fp->argv[getnum(GF(ip))]); }
+Vm(arg0) { return ApN(1, fp->argv[0]); }
+Vm(arg1) { return ApN(1, fp->argv[1]); }
+Vm(arg2) { return ApN(1, fp->argv[2]); }
+Vm(arg3) { return ApN(1, fp->argv[3]); }
+Vm(arg0p) { return ApC(push, fp->argv[0]); }
+Vm(arg1p) { return ApC(push, fp->argv[1]); }
+Vm(arg2p) { return ApC(push, fp->argv[2]); }
+Vm(arg3p) { return ApC(push, fp->argv[3]); }
+
+// the first two stack slots under the current frame
+// may hold extra call data.
+#define Slot1 ((ob**)fp)[-1]
+#define Slot2 ((ob**)fp)[-2]
+
+// local variables
+Vm(sl1n) { return ApN(2, Slot1[getnum(GF(ip))]); }
+Vm(sl10) { return ApN(1, Slot1[0]); }
+Vm(sl11) { return ApN(1, Slot1[1]); }
+Vm(sl12) { return ApN(1, Slot1[2]); }
+Vm(sl13) { return ApN(1, Slot1[3]); }
+Vm(sl10p) { return ApC(push, Slot1[0]); }
+Vm(sl11p) { return ApC(push, Slot1[1]); }
+Vm(sl12p) { return ApC(push, Slot1[2]); }
+Vm(sl13p) { return ApC(push, Slot1[3]); }
+
+// closure variables
+Vm(clon) { return ApN(2, fp->clos[getnum(GF(ip))]); }
+Vm(clo0) { return ApN(1, fp->clos[0]); }
+Vm(clo1) { return ApN(1, fp->clos[1]); }
+Vm(clo2) { return ApN(1, fp->clos[2]); }
+Vm(clo3) { return ApN(1, fp->clos[3]); }
+Vm(clo0p) { return ApC(push, fp->clos[0]); }
+Vm(clo1p) { return ApC(push, fp->clos[1]); }
+Vm(clo2p) { return ApC(push, fp->clos[2]); }
+Vm(clo3p) { return ApC(push, fp->clos[3]); }
+
+////
+/// Store Instructions
+// // stack push
+Vm(push) { Have1(); return
+  *--sp = xp,
+  ApN(1, xp); }
+
+// set a local variable
+Vm(defsl1) { return
+  Slot1[getnum(GF(ip))] = xp,
+  ApN(2, xp); }
+
+// set a module variable
+Vm(deftop) { bool _; return
+  CallOut(_ = !!tbl_set(v, (tbl) A(GF(ip)), B(GF(ip)), xp)),
+  _ ? ApN(2, xp) : Yield(OomError, xp); }
+
+// allocate local variable array
+Vm(setloc) {
+  U n = getnum((ob) GF(ip));
+  // + 1 for the stack slot
+  Have(n + Width(struct tag) + 1);
+  mo t = setw(mo_ini(hp, n), nil, n);
+  return
+    hp += n + Width(struct tag),
+    *--sp = (ob) t,
+    ApN(2, xp); }
+
+// late binding
+// TODO dynamic type checking here
+Vm(late) {
+  ob w = (ob) GF(ip), d = A(w);
+  xp = B(w);
+  w = tbl_get(v, (tbl) d, xp, 0); // FIXME call name resolve procedure
+  if (!w) return Yield(NameError, xp);
+  xp = w;
+  // omit the arity check if possible
+  vm *n = G(FF(ip));
+  if ((n == call || n == rec) && // xp will be a hom
+      G(xp) == arity &&
+      (ob) GF(FF(ip)) >= (ob) GF(xp))
+    xp = (ob) FF(ip);
+  return
+    G(ip) = imm,
+    GF(ip) = (vm*) xp,
+    ApN(2, xp); }
+
+// varargs
+Vm(varg0) {
+  Have1();
+  return
+    fp = cpyw_l2r((ob*) fp - 1, fp, Width(struct frame) + fp->argc),
+    sp = (ob*) fp,
+    fp->argv[fp->argc++] = nil,
+    ApN(2, xp); }
+
+Vm(varg) {
+  U reqd = getnum((ob) GF(ip));
+  if (reqd == fp->argc) return ApC(varg0, xp);
+  if (reqd > fp->argc) return Yield(ArityError, putnum(reqd));
+  U vdic = fp->argc - reqd;
+  // in this case we need to add another argument
+  // slot to hold the nil.
+  // in this case we just keep the existing slots.
+  Have(Width(struct two) * vdic);
+  two t = (two) hp;
+  hp += Width(struct two) * vdic;
+  for (U i = vdic; i--;
+    two_ini(t + i, fp->argv[reqd + i], (ob) (t + i + 1)));
+  t[vdic-1].b = nil;
+  fp->argv[reqd] = (ob) t;
+  return ApN(2, xp); }
+
+Vm(xok) { return Pack(), Ok; }
+Vm(xdom) { return Pack(), DomainError; }
+
+////
+/// Branch Instructions
+//
+//
+// unconditional jump
+Vm(jump) { return ApY(GF(ip), xp); }
+
+// conditional jumps
+//
+// args: test, yes addr, yes val, no addr, no val
+#define Br(nom, test, a, b) Vm(nom) { return\
+  ApY((test) ? (ob) a(ip) : (ob) b(ip), xp); }
+// combined test/branch instructions
+Br(br1, nilp(xp), FF, GF)
+Br(br0, nilp(xp), GF, FF)
+Br(bre, eql(v, xp, *sp++), GF, FF)
+Br(brn, eql(v, xp, *sp++), FF, GF)
+Br(brl, *sp++ < xp, GF, FF)
+Br(brg, *sp++ > xp, GF, FF)
+Br(brle, *sp++ <= xp, GF, FF)
+Br(brge, *sp++ >= xp, GF, FF)
+
+// calling and returning
+//
+// return from a function
+Vm(ret) { return
+  ip = fp->retp,
+  sp = fp->argv + fp->argc,
+  fp = fp->subd,
+  ApY(ip, xp); }
+
+// normal function call
+Vm(call) {
+  Have(Width(struct frame));
+  frame subd = fp;
+  return
+    fp = (sf) sp - 1,
+    sp = (ob*) fp,
+    fp->argc = getnum(ip[1].ap),
+    fp->retp = ip + 2,
+    fp->subd = subd,
+    fp->clos = (ob*) nil,
+    ApY(xp, nil); }
+
+// tail calls
+Vm(rec) {
+  size_t adic = getnum(GF(ip));
+  // save return address
+  sf subd = fp->subd;
+  mo retp = fp->retp;
+  return
+    fp = (frame) (fp->argv + fp->argc - adic) - 1,
+    cpyw_r2l(fp->argv, sp, adic),
+    sp = (ob*) fp,
+    fp->retp = retp,
+    fp->subd = subd,
+    fp->argc = adic,
+    fp->clos = (ob*) nil,
+    ApY((mo) xp, nil); }
+
+Vm(ap_f) {
+  if (fp->argc < 2) return Yield(ArityError, putnum(2));
+  if (!homp(fp->argv[0])) return Yield(DomainError, xp);
+  xp = fp->argv[1];
+  size_t adic = llen(xp);
+  Have(adic);
+  ip = (mo) fp->argv[0];
+  frame subd = fp->subd;
+  mo retp = fp->retp;
+  fp = (frame) (fp->argv + fp->argc - adic) - 1;
+  sp = (ob*) fp;
+  fp->retp = retp;
+  fp->argc = adic;
+  fp->subd = subd;
+  fp->clos = (ob*) nil;
+  for (ob *i = fp->argv; adic--; *i++ = A(xp), xp = B(xp));
+  return ApY(ip, nil); }
+
+  // pairs
+Vm(car) { return ApN(1, A(xp)); }
+Vm(cdr) { return ApN(1, B(xp)); }
+
+Vm(cons) {
+  Have(Width(struct two));
+  xp = (ob) two_ini(hp, xp, *sp++);
+  hp += Width(struct two);
+  return ApN(1, xp); }
+
+Vm(car_f) {
+  if (fp->argc)
+    xp = fp->argv[0],
+    xp = twop(xp) ? A(xp) : xp;
+  return ApC(ret, xp); }
+
+Vm(cdr_f) {
+  if (fp->argc)
+    xp = fp->argv[0],
+    xp = twop(xp) ? B(xp) : nil;
+  return ApC(ret, xp); }
+
+Vm(cons_f) {
+  if (fp->argc) {
+    size_t n = Width(struct two) * (fp->argc - 1);
+    Have(n);
+    two w = (two) hp;
+    hp += n;
+    xp = fp->argv[fp->argc-1];
+    for (size_t i = fp->argc - 1; i--;
+      xp = (ob) two_ini(w+i, fp->argv[i], xp)); }
+  return ApC(ret, xp); }
+
+// string instructions
+Vm(slen_f) { return
+  fp->argc == 0 ? Yield(ArityError, putnum(1)) :
+  !strp(xp = fp->argv[0]) ? Yield(DomainError, xp) :
+  ApC(ret, putnum(((str) xp)->len)); }
+
+Vm(sget_f) {
+  if (fp->argc < 2) return Yield(ArityError, putnum(2));
+  if (!strp(fp->argv[0])) return Yield(DomainError, xp);
+  str s = (str) fp->argv[0];
+  I i = getnum(fp->argv[1]);
+  xp = i < 0 || i >= s->len ? nil : putnum(s->text[i]);
+  return ApC(ret, xp); }
+
+Vm(scat_f) {
+  size_t sum = 0, i = 0;
+  for (size_t l = fp->argc; i < l;) {
+    ob x = fp->argv[i++];
+    Check(strp(x));
+    sum += ((str)x)->len; }
+  size_t words = Width(struct str) + b2w(sum);
+  Have(words);
+  str d = str_ini(hp, sum);
+  hp += words;
+  for (str x; i--;
+    x = (str) fp->argv[i],
+    sum -= x->len,
+    memcpy(d->text+sum, x->text, x->len));
+  return ApC(ret, (ob) d); }
+
+#define min(a,b)(a<b?a:b)
+#define max(a,b)(a>b?a:b)
+Vm(ssub_f) {
+  if (fp->argc < 2) return Yield(ArityError, putnum(2));
+  if (!strp(fp->argv[0])) return Yield(DomainError, xp);
+  str src = (str) fp->argv[0];
+  I lb = getnum(fp->argv[1]),
+    ub = fp->argc > 2 ? getnum(fp->argv[2]) : INTPTR_MAX;
+  lb = max(lb, 0);
+  ub = min(ub, src->len);
+  ub = max(ub, lb);
+  size_t len = ub - lb,
+         words = Width(struct str) + b2w(len);
+  Have(words);
+  str dst = str_ini(hp, len);
+  hp += words;
+  memcpy(dst->text, src->text + lb, len);
+  return ApC(ret, (ob) dst); }
+
+Vm(str_f) {
+  size_t len = fp->argc,
+         words = Width(struct str) + b2w(len);
+  Have(words);
+  str s = str_ini(hp, len);
+  hp += words;
+  while (len--) s->text[len] = getnum(fp->argv[len]);
+  return ApC(ret, (ob) s); }

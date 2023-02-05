@@ -10,7 +10,7 @@ static ob rx_ret(la v, FILE* i, ob x) { return x; }
 
 // should distinguish between OOM and parse error
 enum status receive(la v, FILE* i) { ob x; return
-  !pushs(v, rx_ret, EndArgs) ? OomError :
+  !pushs(v, rx_ret, End) ? OomError :
   !(x = rxr(v, i)) ? feof(i) ? Eof : SyntaxError :
   (v->xp = x, Ok); }
 
@@ -21,67 +21,67 @@ enum status receive(la v, FILE* i) { ob x; return
 
 // get the next token character from the stream
 static NoInline int rx_char(FILE* i) {
-  for (int c;;) switch ((c = getc(i))) {
+  for (int c;;) switch (c = getc(i)) {
     default: return c;
     case ' ': case '\t': case '\n': continue;
     case '#': case ';': for (;;) switch (getc(i)) {
       case '\n': case EOF: return rx_char(i); } } }
 
-static Inline ob rx_pull(la v, FILE *i, ob x) { return
+static ob rx_pull(li v, FILE *i, ob x) { return
   ((ob (*)(la, FILE*, ob))(*v->sp++))(v, i, x); }
 
-static ob rx_two_cons(la v, FILE* i, ob x) {
+static ob rx_two_cons(li v, FILE* i, ob x) {
   ob y = *v->sp++; return
-    rx_pull(v, i, x ? (ob) pair(v, y, x) : x); }
+    x = x ? (ob) pair(v, y, x) : x,
+    rx_pull(v, i, x); }
 
-static ob rx_two_cont(la v, FILE* i, ob x) {
-  return !x || !pushs(v, rx_two_cons, x, EndArgs) ?
-    rx_pull(v, i, 0) : rx_two(v, i); }
+static ob rx_two_cont(li v, FILE* i, ob x) { return
+  !x || !pushs(v, rx_two_cons, x, End) ?
+    rx_pull(v, i, 0) :
+    rx_two(v, i); }
 
-static ob rx_q(la v, FILE* i, ob x) { return
+static ob rx_q(li v, FILE* i, ob x) { return
   x = x ? (ob) pair(v, x, nil) : x,
   x = x ? (ob) pair(v, (ob) v->lex->quote, x) : x,
   rx_pull(v, i, x); }
 
-static NoInline ob rxr(la v, FILE* i) {
+static NoInline ob rxr(li v, FILE* i) {
   int c = rx_char(i);
   switch (c) {
     case ')': case EOF: return rx_pull(v, i, 0);
     case '(': return rx_two(v, i);
     case '"': return rx_pull(v, i, (ob) rx_str(v, i));
     case '\'': return
-      pushs(v, rx_q, EndArgs) ?
-        rxr(v, i) :
-        rx_pull(v, i, 0); }
+      pushs(v, rx_q, End) ? rxr(v, i) :
+                            rx_pull(v, i, 0); }
   ungetc(c, i);
   str a = rx_atom_str(v, i);
   ob x = a ? rx_atom(v, a) : 0;
   return rx_pull(v, i, x); }
 
-static NoInline ob rx_two(la v, FILE* i) {
+static NoInline ob rx_two(li v, FILE* i) {
   int c = rx_char(i);
   switch (c) {
     case ')': case EOF: return rx_pull(v, i, nil);
     default: return ungetc(c, i),
-      pushs(v, rx_two_cont, EndArgs) ?
+      pushs(v, rx_two_cont, End) ?
         rxr(v, i) :
         rx_pull(v, i, 0); } }
 
-static str mkbuf(la v) {
+static str mkbuf(li v) {
   str s = cells(v, Width(struct str) + 1);
   return s ? str_ini(s, sizeof(ob)) : s; }
 
-static str buf_grow(la v, str s) {
+static NoInline str buf_grow(li v, str s) {
   str t; size_t len = s->len;
   with(s, t = cells(v, Width(struct str) + 2 * b2w(len)));
-  if (!t) return t;
-  memcpy(t->text, s->text, len);
-  return str_ini(t, 2 * len); }
+  return !t ? t : (memcpy(t->text, s->text, len),
+                   str_ini(t, 2 * len)); }
 
 // read the contents of a string literal into a string
 static str rx_str(la v, FILE* p) {
   str o = mkbuf(v);
-  for (U n = 0, lim = sizeof(ob); o; o = buf_grow(v, o), lim *= 2)
+  for (size_t n = 0, lim = sizeof(ob); o; o = buf_grow(v, o), lim *= 2)
     for (int x; n < lim;) switch (x = getc(p)) {
       // backslash causes the next character
       // to be read literally // TODO more escape sequences
@@ -94,7 +94,7 @@ static str rx_str(la v, FILE* p) {
 // into a string
 static str rx_atom_str(la v, FILE* p) {
   str o = mkbuf(v);
-  for (U n = 0, lim = sizeof(ob); o; o = buf_grow(v, o), lim *= 2)
+  for (size_t n = 0, lim = sizeof(ob); o; o = buf_grow(v, o), lim *= 2)
     for (int x; n < lim;) switch (x = getc(p)) {
       default: o->text[n++] = x; continue;
       // these characters terminate an atom
@@ -103,11 +103,11 @@ static str rx_atom_str(la v, FILE* p) {
       case EOF: return o->len = n, o; }
   return 0; }
 
-static NoInline ob rx_atom_n(la v, str b, U inset, int sign, int rad) {
+static NoInline ob rx_atom_n(li v, str b, size_t inset, int sign, int rad) {
   static const char *digits = "0123456789abcdefghijklmnopqrstuvwxyz";
-  U len = b->len;
+  size_t len = b->len;
   if (inset >= len) fail: return (ob) symof(v, b);
-  I out = 0;
+  intptr_t out = 0;
   do {
     int dig = 0, c = tolower(b->text[inset++]);
     while (digits[dig] && digits[dig] != c) dig++;

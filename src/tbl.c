@@ -31,13 +31,13 @@ static void tx_tbl(la, FILE*, ob);
 static ob cp_tbl(la, ob, ob*, ob*);
 
 // hash tables are hashed by their type
-uintptr_t hx_typ(la v, ob _) {
+static uintptr_t hx_typ(la v, ob _) {
   return ror(mix * (uintptr_t) GF(_), 16); }
 
 // hash tables
 // some of the worst code is here :(
 
-static struct tbl_e *tbl_ent_hc(la v, tbl t, ob k, uintptr_t hc) {
+static NoInline struct tbl_e *tbl_ent_hc(la v, tbl t, ob k, uintptr_t hc) {
   struct tbl_e *e = t->tab[tbl_idx(t->cap, hc)];
   while (e && !eql(v, e->key, k)) e = e->next;
   return e; }
@@ -45,7 +45,7 @@ static struct tbl_e *tbl_ent_hc(la v, tbl t, ob k, uintptr_t hc) {
 static struct tbl_e *tbl_ent(la v, tbl t, ob k) {
   return tbl_ent_hc(v, t, k, hash(v, k)); }
 
-ob tbl_get(la v, tbl t, ob k, ob d) {
+NoInline ob tbl_get(la v, tbl t, ob k, ob d) {
   struct tbl_e *e = tbl_ent(v, t, k);
   return e ? e->val : d; }
 
@@ -89,17 +89,16 @@ static NoInline tbl tbl_grow(la v, tbl t) {
       e->next = tab1[i],
       tab1[i] = e);
 
-  t->cap = cap1;
-  t->tab = tab1;
-  return t; }
+  return t->cap = cap1,
+         t->tab = tab1,
+         t; }
 
 static ob tbl_del_s(la, tbl, ob, ob), tbl_keys(la);
 // get table keys
 // XXX calling convention: table in v->xp
 static ob tbl_keys(la v) {
   size_t len = ((tbl) v->xp)->len;
-  two ks;
-  ks = cells(v, Width(struct two) * len);
+  two ks = cells(v, Width(struct two) * len);
   if (!ks) return 0;
   ob r = nil;
   struct tbl_e **tab = ((tbl) v->xp)->tab;
@@ -133,13 +132,10 @@ static void tbl_shrink(la v, tbl t) {
 
 // do a bunch of table assignments.
 // XXX calling convention: table in v->xp
-// FIXME gross!
-static bool tblss(la v, I i, I l) {
-  bool _ = true;
-  while (_ && i <= l - 2)
-    _ = !!tbl_set(v, (tbl) v->xp, v->fp->argv[i], v->fp->argv[i+1]),
-    i += 2;
-  return _; }
+static NoInline bool tblss(la v, I i, I l) {
+  return i > l - 2 ||
+    (tbl_set(v, (tbl) v->xp, v->fp->argv[i], v->fp->argv[i + 1]) &&
+     tblss(v, i + 2, l)); }
 
 static NoInline ob tbl_del_s(la v, tbl y, ob key, ob val) {
   size_t b = tbl_idx(y->cap, hash(v, key));
@@ -152,8 +148,8 @@ static NoInline ob tbl_del_s(la v, tbl y, ob key, ob val) {
       y->len--;
       break; }
 
-  y->tab[b] = prev.next;
-  return val; }
+  return y->tab[b] = prev.next,
+         val; }
 
 Vm(tget_f) { return
   fp->argc < 2 ? Yield(ArityError, putnum(2)) :
@@ -169,13 +165,13 @@ Vm(tdel_f) {
   if (!tbl_load(t)) tbl_shrink(v, t);
   return ApC(ret, xp); }
 
-Vm(tget) {
-  xp = tbl_get(v, (tbl) xp, *sp++, nil);
-  return ApN(1, xp); }
+Vm(tget) { return
+  xp = tbl_get(v, (tbl) xp, *sp++, nil),
+  ApN(1, xp); }
 
-Vm(thas) {
-  xp = tbl_get(v, (tbl) xp, *sp++, 0);
-  return ApN(1, xp ? T : nil); }
+Vm(thas) { return
+  xp = tbl_get(v, (tbl) xp, *sp++, 0) ? T : nil,
+  ApN(1, xp); }
 
 Vm(tlen) { return ApN(1, putnum(((tbl) xp)->len)); }
 
