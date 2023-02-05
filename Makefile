@@ -78,5 +78,8 @@ flamegraph.svg: perf.data
 flame: flamegraph.svg
 	xdg-open $<
 
+disasm: $(nom)
+	rizin -A $^
+
 .PHONY: test test-lots repl clean sloc bits valg perf\
-	install uninstall install-vim uninstall-vim flame
+	install uninstall install-vim uninstall-vim flame disasm

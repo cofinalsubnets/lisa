@@ -1,27 +1,5 @@
 #include "i.h"
 
-ob *new_pool(size_t n) {
-  return malloc(n * 2 * sizeof(ob)); }
-
-static NoInline ob cp_mo(li v, mo src, ob *pool0, ob *top0) {
-  struct tag *fin = mo_tag(src);
-  mo ini = fin->head,
-     dst = bump(v, fin->end - ini),
-     d = dst;
-  for (mo s = ini; (G(d) = G(s)); G(s++) = (vm*) d++);
-  for (GF(d) = (vm*) dst; d-- > dst;
-    G(d) = (vm*) cp(v, (ob) G(d), pool0, top0));
-  return (ob) (src - ini + dst); }
-
-NoInline ob cp(la v, ob x, ob *pool0, ob *top0) {
-  if (nump(x) || (ob*) x < pool0 || (ob*) x >= top0) return x;
-  mo src = (mo) x;
-  x = (ob) G(src);
-  if (!nump(x) && livep(v, x)) return x;
-  if ((vm*) x == act) return
-    ((typ) GF(src))->evac(v, (ob) src, pool0, top0);
-  return cp_mo(v, src, pool0, top0); }
-
 ////
 /// garbage collector
 //
@@ -29,16 +7,14 @@ NoInline ob cp(la v, ob x, ob *pool0, ob *top0) {
 // please : bool la size_t
 // try to return with at least req words of available memory.
 // return true on success, false otherwise. this function also
-// governs the size of the memory pool.
+// governs the size of the memory pool by trying to keep
 //
-// copy : la_clock_t la size_t
-// relocate all reachable data into a newly allocated
-// memory pool of the given length. return 0 if a new
-// pool can't be allocated or else a positive integer
-// value u that's higher the less time we spend in GC:
+//   vim = t1 == t2 ? 1 : (t2 - t0) / (t2 - t1)
 //
-//   u = t1 == t2 ? 1 : (t2 - t0) / (t2 - t1)
-//
+// between
+#define MinVim 8
+// and
+#define MaxVim (MinVim<<8)
 // where
 //
 //       non-gc running time     t1    t2
@@ -46,22 +22,15 @@ NoInline ob cp(la v, ob x, ob *pool0, ob *top0) {
 //   -----------------------------------
 //   |                          `------'
 //   t0                  gc time (this cycle)
-
-#define MinVim 8
-#define MaxVim (MinVim<<8)
-
 static void copy_from(li, ob*, ob*);
-
 NoInline bool please(li v, size_t req) {
-  size_t t1 = clock(), t0 = v->t0, t2,
-         have = v->len;
-
+  size_t t1 = clock(), have = v->len;
   ob *pool = v->pool, *loop = v->loop;
   v->pool = loop, v->loop = pool;
   copy_from(v, pool, pool + have);
-  t2 = v->t0 = clock();
-
-  size_t vim = t2 == t1 ? MaxVim : (t2 - t0) / (t2 - t1),
+  size_t t0 = v->t0,
+         t2 = v->t0 = clock(),
+         vim = t2 == t1 ? MaxVim : (t2 - t0) / (t2 - t1),
          want = have,
          need = have - (Avail - req);
 
@@ -75,14 +44,12 @@ NoInline bool please(li v, size_t req) {
     do want >>= 1, vim >>= 1;
     while (want >> 1 > need && vim > MaxVim);
 
-  if (want == have) return true;
+  else return true;
 
-  ob *mov = new_pool(want);
-  if (!mov) return need <= have;
+  ob *new = new_pool(want);
+  if (!new) return need <= have;
 
-  v->len = want;
-  v->pool = mov;
-  v->loop = mov + want;
+  v->len = want, v->pool = new, v->loop = new + want;
   copy_from(v, loop, loop + have);
   free(pool < loop ? pool : loop);
   v->t0 = clock();
@@ -124,3 +91,25 @@ static NoInline void copy_from(li v, ob *pool0, ob *top0) {
     sp = fp->argv;
     sp0 = fp0->argv;
     fp = fp->subd; } }
+
+ob *new_pool(size_t n) {
+  return malloc(n * 2 * sizeof(ob)); }
+
+static NoInline ob cp_mo(li v, mo src, ob *pool0, ob *top0) {
+  struct tag *fin = mo_tag(src);
+  mo ini = fin->head,
+     dst = bump(v, fin->end - ini),
+     d = dst;
+  for (mo s = ini; (G(d) = G(s)); G(s++) = (vm*) d++);
+  for (GF(d) = (vm*) dst; d-- > dst;
+    G(d) = (vm*) cp(v, (ob) G(d), pool0, top0));
+  return (ob) (src - ini + dst); }
+
+NoInline ob cp(la v, ob x, ob *pool0, ob *top0) {
+  if (nump(x) || (ob*) x < pool0 || (ob*) x >= top0) return x;
+  mo src = (mo) x;
+  x = (ob) G(src);
+  if (!nump(x) && livep(v, x)) return x;
+  if ((vm*) x == act) return
+    ((typ) GF(src))->evac(v, (ob) src, pool0, top0);
+  return cp_mo(v, src, pool0, top0); }
