@@ -1,6 +1,4 @@
 #include "i.h"
-
-static void wk_mo(li, mo, ob*, ob*);
 ////
 /// garbage collector
 //
@@ -92,10 +90,13 @@ static NoInline void copy_from(li v, ob *pool0, ob *top0) {
     sp0 = fp0->argv;
     fp = fp->subd; }
 
+  // cheney's alg
   while (v->cp < v->hp) {
     mo k = (mo) v->cp;
-    if (G(k) != act) wk_mo(v, k, pool0, top0);
-    else ((typ) GF(k))->walk(v, (ob) k, pool0, top0); } }
+    if (G(k) == act) ((typ) GF(k))->walk(v, (ob) k, pool0, top0);
+    else {
+      for (; G(k); k++) G(k) = (vm*) cp(v, (ob) G(k), pool0, top0);
+      v->cp = (ob*) k + 2; } } }
 
 ob *new_pool(size_t n) {
   return malloc(n * 2 * sizeof(ob)); }
@@ -108,11 +109,6 @@ static NoInline ob cp_mo(li v, mo src, ob *pool0, ob *top0) {
   for (mo s = ini; (G(d) = G(s)); G(s++) = (vm*) d++);
   return GF(d) = (vm*) dst,
          (ob) (src - ini + dst); }
-
-static NoInline void wk_mo(li v, mo src, ob *pool0, ob *top0) {
-  for (; G(src); src++)
-    G(src) = (vm*) cp(v, (ob) G(src), pool0, top0);
-  v->cp = (ob*) src + 2; }
 
 NoInline ob cp(la v, ob x, ob *pool0, ob *top0) {
   if (nump(x) || (ob*) x < pool0 || (ob*) x >= top0) return x;
