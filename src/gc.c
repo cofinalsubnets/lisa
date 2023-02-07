@@ -1,6 +1,6 @@
 #include "i.h"
 
-static void wk(li, ob*, ob*);
+static void wk_mo(li, mo, ob*, ob*);
 ////
 /// garbage collector
 //
@@ -92,8 +92,10 @@ static NoInline void copy_from(li v, ob *pool0, ob *top0) {
     sp0 = fp0->argv;
     fp = fp->subd; }
 
-  // while (v->cp < v->hp) wk(v, pool0, top0);
-}
+  while (v->cp < v->hp) {
+    mo k = (mo) v->cp;
+    if (G(k) != act) wk_mo(v, k, pool0, top0);
+    else ((typ) GF(k))->walk(v, (ob) k, pool0, top0); } }
 
 ob *new_pool(size_t n) {
   return malloc(n * 2 * sizeof(ob)); }
@@ -104,19 +106,13 @@ static NoInline ob cp_mo(li v, mo src, ob *pool0, ob *top0) {
      dst = bump(v, fin->end - ini),
      d = dst;
   for (mo s = ini; (G(d) = G(s)); G(s++) = (vm*) d++);
-  for (GF(d) = (vm*) dst; d-- > dst;
-    G(d) = (vm*) cp(v, (ob) G(d), pool0, top0));
-  return (ob) (src - ini + dst); }
+  return GF(d) = (vm*) dst,
+         (ob) (src - ini + dst); }
 
 static NoInline void wk_mo(li v, mo src, ob *pool0, ob *top0) {
   for (; G(src); src++)
     G(src) = (vm*) cp(v, (ob) G(src), pool0, top0);
   v->cp = (ob*) src + 2; }
-
-static void wk(li v, ob *pool0, ob *top0) {
-  mo k = (mo) v->cp;
-  if (G(k) == act) ((typ) GF(k))->walk(v, (ob) k, pool0, top0);
-  else wk_mo(v, k, pool0, top0); }
 
 NoInline ob cp(la v, ob x, ob *pool0, ob *top0) {
   if (nump(x) || (ob*) x < pool0 || (ob*) x >= top0) return x;

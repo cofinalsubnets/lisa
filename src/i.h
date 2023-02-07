@@ -32,7 +32,7 @@ typedef const struct typ {
   vm *actn;
   bool (*equi)(li, ob, ob);
   uintptr_t (*hash)(li, ob);
-  ob  (*evac)(li, ob, ob*, ob*);
+  ob (*evac)(li, ob, ob*, ob*);
   void (*walk)(li, ob, ob*, ob*);
   void (*emit)(li, FILE*, ob); } *typ;
 
@@ -41,7 +41,7 @@ typedef struct two {
   ob a, b; } *two;
 typedef struct str {
   vm *act; typ typ;
-  U len; char text[]; } *str;
+  uintptr_t len; char text[]; } *str;
 typedef struct tbl *tbl;
 typedef struct sym {
   vm *act; typ typ;

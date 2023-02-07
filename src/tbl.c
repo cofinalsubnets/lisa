@@ -230,8 +230,8 @@ static struct tbl_e *cp_tbl_e(la v, struct tbl_e *src, ob *pool0, ob *top0) {
   if (!src) return src;
   struct tbl_e *dst = bump(v, Width(struct tbl_e));
   dst->next = cp_tbl_e(v, src->next, pool0, top0);
-  dst->val = cp(v, src->val, pool0, top0);
-  dst->key = cp(v, src->key, pool0, top0);
+  dst->val = src->val;
+  dst->key = src->key;
   return dst; }
 
 static Gc(cp_tbl) {

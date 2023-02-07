@@ -48,10 +48,11 @@ sym symof(la v, str s) {
   return intern(v, &v->syms, s); }
 
 static Gc(cp_sym) {
-  sym src = (sym) x;
-  return (ob) (src->act = (vm*) (src->nom ?
-    intern(v, &v->syms, (str) cp(v, (ob) src->nom, pool0, top0)) :
-    ini_anon(bump(v, Width(struct sym) - 2), src->code))); }
+  sym src = (sym) x,
+      dst = src->nom ?
+        intern(v, &v->syms, (str) cp(v, (ob) src->nom, pool0, top0)) :
+        ini_anon(bump(v, Width(struct sym) - 2), src->code);
+  return (ob) (src->act = (vm*) dst); }
 
 static void wk_sym(li v, ob x, ob *pool0, ob *top0) {
   v->cp += Width(struct sym) - (((sym) x)->nom ? 0 : 2); }

@@ -9,9 +9,7 @@ static Gc(cp_two) {
   two src = (two) x,
       dst = bump(v, Width(struct two));
   src->act = (vm*) dst;
-  return (ob) two_ini(dst,
-    cp(v, src->a, pool0, top0),
-    cp(v, src->b, pool0, top0)); }
+  return (ob) two_ini(dst, src->a, src->b); }
 
 static void wk_two(li v, ob x, ob *pool0, ob *top0) {
   B(x) = cp(v, B(x), pool0, top0); 
