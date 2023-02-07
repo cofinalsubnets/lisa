@@ -226,21 +226,18 @@ static Vm(ap_tbl) {
 static void tx_tbl(la v, FILE* o, ob _) {
   fprintf(o, "#tbl:%ld/%ld", ((tbl)_)->len, ((tbl)_)->cap); }
 
-static struct tbl_e *cp_tbl_e(la v, struct tbl_e *src, ob *pool0, ob *top0) {
-  if (!src) return src;
-  struct tbl_e *dst = bump(v, Width(struct tbl_e));
-  dst->next = cp_tbl_e(v, src->next, pool0, top0);
-  dst->val = src->val;
-  dst->key = src->key;
-  return dst; }
-
 static Gc(cp_tbl) {
   tbl src = (tbl) x;
   size_t i = src->cap;
   tbl dst = bump(v, Width(struct tbl) + i);
   src->act = (vm*) dst;
   tbl_ini(dst, src->len, i, (struct tbl_e**) (dst+1));
-  while (i--) dst->tab[i] = cp_tbl_e(v, src->tab[i], pool0, top0);
+  for (struct tbl_e *s, *e, *d; i--; dst->tab[i] = e)
+    for (s = src->tab[i], e = NULL; s;
+      d = bump(v, Width(struct tbl_e)),
+      d->key = s->key, d->val = s->val,
+      d->next = e, e = d,
+      s = s->next);
   return (ob) dst; }
 
 static void wk_tbl(li v, ob x, ob *pool0, ob *top0) {
