@@ -1,5 +1,6 @@
 #include "i.h"
 
+static void wk(li, ob*, ob*);
 ////
 /// garbage collector
 //
@@ -24,12 +25,11 @@
 //   t0                  gc time (this cycle)
 static void copy_from(li, ob*, ob*);
 NoInline bool please(li v, size_t req) {
-  size_t t1 = clock(), have = v->len;
+  size_t t1 = clock(), t0 = v->t0, have = v->len;
   ob *pool = v->pool, *loop = v->loop;
   v->pool = loop, v->loop = pool;
   copy_from(v, pool, pool + have);
-  size_t t0 = v->t0,
-         t2 = v->t0 = clock(),
+  size_t t2 = v->t0 = clock(),
          vim = t2 == t1 ? MaxVim : (t2 - t0) / (t2 - t1),
          want = have,
          need = have - (Avail - req);
@@ -65,7 +65,7 @@ static NoInline void copy_from(li v, ob *pool0, ob *top0) {
   // reset state
   v->syms = 0;
   v->len = len1;
-  v->hp = v->pool = pool1;
+  v->hp = v->cp = v->pool = pool1;
   v->sp = sp0 + shift;
   v->fp = (sf) ((ob*) v->fp + shift);
 
@@ -90,7 +90,10 @@ static NoInline void copy_from(li v, ob *pool0, ob *top0) {
     fp->retp = (mo) cp(v, (ob) fp0->retp, pool0, top0);
     sp = fp->argv;
     sp0 = fp0->argv;
-    fp = fp->subd; } }
+    fp = fp->subd; }
+
+  // while (v->cp < v->hp) wk(v, pool0, top0);
+}
 
 ob *new_pool(size_t n) {
   return malloc(n * 2 * sizeof(ob)); }
@@ -105,11 +108,15 @@ static NoInline ob cp_mo(li v, mo src, ob *pool0, ob *top0) {
     G(d) = (vm*) cp(v, (ob) G(d), pool0, top0));
   return (ob) (src - ini + dst); }
 
-static NoInline void wk_mo(li v, ob x, ob *pool0, ob *top0) {
-  mo src = (mo) x;
+static NoInline void wk_mo(li v, mo src, ob *pool0, ob *top0) {
   for (; G(src); src++)
     G(src) = (vm*) cp(v, (ob) G(src), pool0, top0);
   v->cp = (ob*) src + 2; }
+
+static void wk(li v, ob *pool0, ob *top0) {
+  mo k = (mo) v->cp;
+  if (G(k) == act) ((typ) GF(k))->walk(v, (ob) k, pool0, top0);
+  else wk_mo(v, k, pool0, top0); }
 
 NoInline ob cp(la v, ob x, ob *pool0, ob *top0) {
   if (nump(x) || (ob*) x < pool0 || (ob*) x >= top0) return x;
