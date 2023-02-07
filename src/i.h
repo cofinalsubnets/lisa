@@ -30,11 +30,11 @@ struct tag { struct mo *null, *head, end[]; };
 
 typedef const struct typ {
   vm *actn;
-  bool (*equi)(li, I, I);
-  uintptr_t (*hash)(li, I);
-  ob  (*evac)(li, I, I*, I*);
-  //  void (*walk)(li, ob, ob*, ob*);
-  void (*emit)(li, FILE*, I); } *typ;
+  bool (*equi)(li, ob, ob);
+  uintptr_t (*hash)(li, ob);
+  ob  (*evac)(li, ob, ob*, ob*);
+  void (*walk)(li, ob, ob*, ob*);
+  void (*emit)(li, FILE*, ob); } *typ;
 
 typedef struct two {
   vm *act; typ typ;
@@ -69,11 +69,8 @@ struct V {
   struct ll { ob *addr; struct ll *next; } *safe;
   union { ob *cp; size_t t0; }; };
 
-extern const uintptr_t mix;
-extern const struct typ
-  two_typ, str_typ, tbl_typ, sym_typ;
-
-vm act, immk, vm_yield;
+vm act, immk, vm_yield,
+   gc, xok, setclo, genclo0, genclo1;
 
 void
   transmit(li, FILE*, ob), // write to output
@@ -106,6 +103,10 @@ ob hnom(li, mo),
    *new_pool(size_t),
    cp(li, ob, ob*, ob*),
    tbl_get(li, tbl, ob, ob);
+
+extern const uintptr_t mix;
+extern const struct typ
+  two_typ, str_typ, tbl_typ, sym_typ;
 
 #define Gc(n) ob n(li v, ob x, ob *pool0, ob *top0)
 #define End ((intptr_t)0)
@@ -243,9 +244,6 @@ static Inline bool eql(li v, ob a, ob b) {
 #define Have(n) if (sp - hp < n) return (v->xp = n, ApC(gc, xp))
 // sp is at least hp so this is a safe check for 1 word
 #define Have1() if (sp == hp) return (v->xp = 1, ApC(gc, xp))
-
-// these are vm functions used by C but not lisp.
-vm gc, xok, setclo, genclo0, genclo1;
 
 // used by the compiler but not exposed as primitives
 #define ForEachInstruction(_)\

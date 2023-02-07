@@ -14,7 +14,7 @@
 // between
 #define MinVim 8
 // and
-#define MaxVim (MinVim<<8)
+#define MaxVim (MinVim<<6)
 // where
 //
 //       non-gc running time     t1    t2

@@ -53,6 +53,9 @@ static Gc(cp_sym) {
     intern(v, &v->syms, (str) cp(v, (ob) src->nom, pool0, top0)) :
     ini_anon(bump(v, Width(struct sym) - 2), src->code))); }
 
+static void wk_sym(li v, ob x, ob *pool0, ob *top0) {
+  v->cp += Width(struct sym) - (((sym) x)->nom ? 0 : 2); }
+
 Vm(ynom_f) {
   if (fp->argc && symp(fp->argv[0]))
     xp = (ob) ((sym) fp->argv[0])->nom,
@@ -81,8 +84,5 @@ static uintptr_t hx_sym(la v, ob _) {
   return ((sym) _)->code; }
 
 const struct typ sym_typ = {
-  .actn = immk,
-  .emit = tx_sym,
-  .evac = cp_sym,
-  .hash = hx_sym,
-  .equi = neql, };
+  .actn = immk, .emit = tx_sym, .evac = cp_sym,
+  .hash = hx_sym, .walk = wk_sym, .equi = neql, };

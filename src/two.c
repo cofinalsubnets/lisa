@@ -13,6 +13,11 @@ static Gc(cp_two) {
     cp(v, src->a, pool0, top0),
     cp(v, src->b, pool0, top0)); }
 
+static void wk_two(li v, ob x, ob *pool0, ob *top0) {
+  B(x) = cp(v, B(x), pool0, top0); 
+  A(x) = cp(v, A(x), pool0, top0);
+  v->cp += Width(struct two); }
+
 static void tx_two(la v, FILE* o, ob x) {
   putc('(', o);
   for (;;) {
@@ -38,4 +43,5 @@ const struct typ two_typ = {
   .emit = tx_two,
   .evac = cp_two,
   .hash = hx_two,
+  .walk = wk_two,
   .equi = eq_two, };

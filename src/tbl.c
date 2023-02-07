@@ -243,6 +243,15 @@ static Gc(cp_tbl) {
   while (i--) dst->tab[i] = cp_tbl_e(v, src->tab[i], pool0, top0);
   return (ob) dst; }
 
+static void wk_tbl(li v, ob x, ob *pool0, ob *top0) {
+  tbl t = (tbl) x;
+  v->cp += Width(struct tbl) + t->cap +
+           t->len * Width(struct tbl_e);
+  for (size_t i = 0, lim = t->cap; i < lim; i++)
+    for (struct tbl_e *e = t->tab[i]; e; e = e->next)
+      e->key = cp(v, e->key, pool0, top0),
+      e->val = cp(v, e->val, pool0, top0); }
+
 const struct typ tbl_typ = {
   .actn = ap_tbl, .emit = tx_tbl, .evac = cp_tbl,
-  .hash = hx_typ, .equi = neql, };
+  .hash = hx_typ, .equi = neql, .walk = wk_tbl, };

@@ -37,6 +37,9 @@ static Gc(cp_str) {
     memcpy(dst, src, sizeof(struct str) + src->len),
     (ob) (src->act = (vm*) dst); }
 
+static void wk_str(li v, ob x, ob *pool0, ob *top0) {
+  v->cp += Width(struct str) + b2w(((str)x)->len); }
+
 static bool eq_str(struct V *v, ob x, ob y) {
   if (!strp(y)) return false;
   str a = (str) x, b = (str) y;
@@ -47,4 +50,5 @@ const struct typ str_typ = {
   .emit = tx_str,
   .evac = cp_str,
   .hash = hx_str,
+  .walk = wk_str,
   .equi = eq_str, };
