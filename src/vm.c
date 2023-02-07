@@ -213,7 +213,7 @@ Vm(seek_f) {
     xp = (ob) ((mo) fp->argv[0] + getnum(fp->argv[1]));
   return ApC(ret, xp); }
 
-Vm(act) { return ApC(((typ) GF(ip))->actn, xp); }
+Vm(act) { return ApC(gettyp(ip)->does, xp); }
 
 // closure functions
 //
@@ -301,11 +301,12 @@ Vm(ev_f) {
 
 // immediate values
 
+Vm(do_id) { return ApC(ret, (ob) ip); }
+
 Vm(imm) { return ApN(2, (ob) GF(ip)); }
 Vm(imm0) { return ApN(1, putnum(0)); }
 Vm(imm1) { return ApN(1, putnum(1)); }
 Vm(immn1) { return ApN(1, putnum(-1)); }
-Vm(immk) { return ApC(ret, (ob) ip); }
 Vm(immp) { Have1(); return
   xp = *--sp = (ob) GF(ip),
   ApN(2, xp); }

@@ -46,7 +46,7 @@ static bool eq_str(struct V *v, ob x, ob y) {
   return a->len == b->len && !strncmp(a->text, b->text, a->len); }
 
 const struct typ str_typ = {
-  .actn = immk,
+  .does = do_id,
   .emit = tx_str,
   .evac = cp_str,
   .hash = hx_str,

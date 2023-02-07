@@ -9,5 +9,5 @@ static NoInline void tx_mo_nom(la v, FILE* o, ob x) {
 
 void transmit(la v, FILE* o, ob x) {
   if (nump(x)) fprintf(o, "%ld", getnum(x));
-  else if (G(x) == act) ((typ) GF(x))->emit(v, o, x);
+  else if (G(x) == act) gettyp(x)->emit(v, o, x);
   else tx_mo_nom(v, o, hnom(v, (mo) x)); }

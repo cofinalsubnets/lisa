@@ -19,6 +19,6 @@
 const uintptr_t mix = 2708237354241864315;
 uintptr_t hash(la v, ob x) {
   if (nump(x)) return ror(mix * x, sizeof(I) * 2);
-  if (G(x) == act) return ((typ) GF(x))->hash(v, x);
+  if (G(x) == act) return gettyp(x)->hash(v, x);
   if (!livep(v, x)) return mix ^ (x * mix);
   return mix ^ hash(v, hnom(v, (mo) x)); }

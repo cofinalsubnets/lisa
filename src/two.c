@@ -33,11 +33,11 @@ static bool eq_two(la v, ob x, ob y) {
     eql(v, A(x), A(y)) &&
     eql(v, B(x), B(y)); }
 
-static Vm(ap_two) { return
+static Vm(do_two) { return
   ApC(ret, fp->argc ? B(ip) : A(ip)); }
 
 const struct typ two_typ = {
-  .actn = ap_two,
+  .does = do_two,
   .emit = tx_two,
   .evac = cp_two,
   .hash = hx_two,

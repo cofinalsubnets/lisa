@@ -1,7 +1,8 @@
 #include "i.h"
 struct tbl { // hash tables
-  vm *act; typ typ;
-  U len, cap;
+  vm *act;
+  const struct typ *typ;
+  uintptr_t len, cap;
   struct tbl_e {
     ob key, val;
     struct tbl_e *next; } **tab; };
@@ -10,9 +11,9 @@ static Inline size_t tbl_load(tbl t) {
   return t->len / t->cap; }
 
 static Inline size_t tbl_idx(size_t cap, size_t co) {
-  return co & (cap - 1); }
+  return (cap - 1) & co; }
 
-static Inline tbl tbl_ini(void *_, size_t len, size_t cap, struct tbl_e **tab) {
+static Inline tbl ini_tbl(void *_, size_t len, size_t cap, struct tbl_e **tab) {
   tbl t = _; return
     t->act = act,
     t->typ = &tbl_typ,
@@ -21,10 +22,9 @@ static Inline tbl tbl_ini(void *_, size_t len, size_t cap, struct tbl_e **tab) {
     t->tab = tab,
     t; }
 
-tbl tbl_new(la v) {
+tbl tbl_new(li v) {
   tbl t = cells(v, Width(struct tbl) + 1);
-  if (t) tbl_ini(t, 0, 1, (struct tbl_e**) (t + 1)),
-         t->tab[0] = 0;
+  if (t) ini_tbl(t, 0, 1, (struct tbl_e**) (t + 1))->tab[0] = 0;
   return t; }
 
 static void tx_tbl(la, FILE*, ob);
@@ -210,7 +210,7 @@ Vm(tset) {
   CallOut(x = (ob) tbl_set(v, (tbl) xp, x, *sp));
   return x ? ApN(1, *sp++) : Yield(OomError, xp); }
 
-static Vm(ap_tbl) {
+static Vm(do_tbl) {
   bool _;
   ob a = fp->argc;
   switch (a) {
@@ -231,7 +231,7 @@ static Gc(cp_tbl) {
   size_t i = src->cap;
   tbl dst = bump(v, Width(struct tbl) + i);
   src->act = (vm*) dst;
-  tbl_ini(dst, src->len, i, (struct tbl_e**) (dst+1));
+  ini_tbl(dst, src->len, i, (struct tbl_e**) (dst+1));
   for (struct tbl_e *s, *e, *d; i--; dst->tab[i] = e)
     for (s = src->tab[i], e = NULL; s;
       d = bump(v, Width(struct tbl_e)),
@@ -250,5 +250,5 @@ static void wk_tbl(li v, ob x, ob *pool0, ob *top0) {
       e->val = cp(v, e->val, pool0, top0); }
 
 const struct typ tbl_typ = {
-  .actn = ap_tbl, .emit = tx_tbl, .evac = cp_tbl,
+  .does = do_tbl, .emit = tx_tbl, .evac = cp_tbl,
   .hash = hx_typ, .equi = neql, .walk = wk_tbl, };

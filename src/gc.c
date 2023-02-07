@@ -1,4 +1,6 @@
 #include "i.h"
+static void copy_from(li, ob*, ob*);
+
 ////
 /// garbage collector
 //
@@ -6,7 +8,7 @@
 // please : bool la size_t
 // try to return with at least req words of available memory.
 // return true on success, false otherwise. this function also
-// governs the size of the memory pool by trying to keep
+// governs the size of the memory pool by attempting to keep
 //
 //   vim = t1 == t2 ? 1 : (t2 - t0) / (t2 - t1)
 //
@@ -21,7 +23,6 @@
 //   -----------------------------------
 //   |                          `------'
 //   t0                  gc time (this cycle)
-static void copy_from(li, ob*, ob*);
 NoInline bool please(li v, size_t req) {
   size_t t1 = clock(), t0 = v->t0, have = v->len;
   ob *pool = v->pool, *loop = v->loop;
@@ -93,13 +94,11 @@ static NoInline void copy_from(li v, ob *pool0, ob *top0) {
   // cheney's alg
   while (v->cp < v->hp) {
     mo k = (mo) v->cp;
-    if (G(k) == act) ((typ) GF(k))->walk(v, (ob) k, pool0, top0);
-    else {
-      for (; G(k); k++) G(k) = (vm*) cp(v, (ob) G(k), pool0, top0);
-      v->cp = (ob*) k + 2; } } }
+    if (G(k) == act) gettyp(k)->walk(v, (ob) k, pool0, top0);
+    else { for (; G(k); k++) G(k) = (vm*) cp(v, (ob) G(k), pool0, top0);
+           v->cp = (ob*) k + 2; } } }
 
-ob *new_pool(size_t n) {
-  return malloc(n * 2 * sizeof(ob)); }
+ob *new_pool(size_t n) { return malloc(n * 2 * sizeof(ob)); }
 
 static NoInline ob cp_mo(li v, mo src, ob *pool0, ob *top0) {
   struct tag *fin = mo_tag(src);
@@ -116,5 +115,5 @@ NoInline ob cp(la v, ob x, ob *pool0, ob *top0) {
   x = (ob) G(src);
   if (!nump(x) && livep(v, x)) return x;
   if ((vm*) x == act) return
-    ((typ) GF(src))->evac(v, (ob) src, pool0, top0);
+    gettyp(src)->evac(v, (ob) src, pool0, top0);
   return cp_mo(v, src, pool0, top0); }

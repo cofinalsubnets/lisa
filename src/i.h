@@ -29,7 +29,7 @@ struct mo { vm *ap; };
 struct tag { struct mo *null, *head, end[]; };
 
 typedef const struct typ {
-  vm *actn;
+  vm *does;
   bool (*equi)(li, ob, ob);
   uintptr_t (*hash)(li, ob);
   ob (*evac)(li, ob, ob*, ob*);
@@ -37,20 +37,22 @@ typedef const struct typ {
   void (*emit)(li, FILE*, ob); } *typ;
 
 typedef struct two {
-  vm *act; typ typ;
+  vm *act;
+  const struct typ *typ;
   ob a, b; } *two;
 typedef struct str {
-  vm *act; typ typ;
+  vm *act;
+  const struct typ *typ;
   uintptr_t len; char text[]; } *str;
 typedef struct tbl *tbl;
 typedef struct sym {
-  vm *act; typ typ;
+  vm *act;
+  const struct typ *typ;
   str nom;
   uintptr_t code;
   // symbols are interned into a binary search tree.
   // anonymous symbols (nom == 0) don't have branches.
   struct sym *l, *r; } *sym;
-
 
 struct V {
   mo ip; frame fp; ob xp, *hp, *sp;
@@ -69,7 +71,7 @@ struct V {
   struct ll { ob *addr; struct ll *next; } *safe;
   union { ob *cp; size_t t0; }; };
 
-vm act, immk, vm_yield,
+vm act, do_id, vm_yield,
    gc, xok, setclo, genclo0, genclo1;
 
 void
@@ -185,12 +187,10 @@ static Inline intptr_t ror(intptr_t x, uintptr_t n) {
 
 static Inline mo mo_ini(void *_, size_t len) {
   struct tag *t = (struct tag*) ((mo) _ + len);
-  t->null = NULL;
-  return t->head = _; }
+  return t->null = NULL, t->head = _; }
 
 static Inline two two_ini(void *_, ob a, ob b) {
-  two w = _;
-  return
+  two w = _; return
     w->act = act,
     w->typ = &two_typ,
     w->a = a, w->b = b,
@@ -204,6 +204,8 @@ static Inline str str_ini(void *_, size_t len) {
 
 static Inline bool eql(li v, ob a, ob b) {
   return a == b || _eql(v, a, b); }
+
+#define gettyp(x) ((typ)GF((x)))
 
 // " the interpreter "
 #define Vm(n, ...) NoInline enum status\
