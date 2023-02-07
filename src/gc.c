@@ -105,6 +105,12 @@ static NoInline ob cp_mo(li v, mo src, ob *pool0, ob *top0) {
     G(d) = (vm*) cp(v, (ob) G(d), pool0, top0));
   return (ob) (src - ini + dst); }
 
+static NoInline void wk_mo(li v, ob x, ob *pool0, ob *top0) {
+  mo src = (mo) x;
+  for (; G(src); src++)
+    G(src) = (vm*) cp(v, (ob) G(src), pool0, top0);
+  v->cp = (ob*) src + 2; }
+
 NoInline ob cp(la v, ob x, ob *pool0, ob *top0) {
   if (nump(x) || (ob*) x < pool0 || (ob*) x >= top0) return x;
   mo src = (mo) x;
