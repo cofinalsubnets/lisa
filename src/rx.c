@@ -79,7 +79,7 @@ static NoInline str buf_grow(li v, str s) {
                    str_ini(t, 2 * len)); }
 
 // read the contents of a string literal into a string
-static str rx_str(la v, FILE* p) {
+static NoInline str rx_str(la v, FILE* p) {
   str o = mkbuf(v);
   for (size_t n = 0, lim = sizeof(ob); o; o = buf_grow(v, o), lim *= 2)
     for (int x; n < lim;) switch (x = getc(p)) {
@@ -92,7 +92,7 @@ static str rx_str(la v, FILE* p) {
 
 // read the characters of an atom (number or symbol)
 // into a string
-static str rx_atom_str(la v, FILE* p) {
+static NoInline str rx_atom_str(li v, FILE* p) {
   str o = mkbuf(v);
   for (size_t n = 0, lim = sizeof(ob); o; o = buf_grow(v, o), lim *= 2)
     for (int x; n < lim;) switch (x = getc(p)) {

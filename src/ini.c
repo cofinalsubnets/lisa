@@ -38,7 +38,7 @@ static sym symofs(la v, const char *c) {
 
 static NoInline bool defprim(struct V *v, vm *i, const char *n) {
   sym y = symofs(v, n);
-  mo k = y ? thd(v, i, y, EndArgs) : 0;
+  mo k = y ? thd(v, i, y, End) : 0;
   return k && !!tbl_set(v, v->lex->topl, (ob) GF(k), (ob) k); }
 
 // store an instruction address under a variable in the

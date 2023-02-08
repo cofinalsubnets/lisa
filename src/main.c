@@ -3,7 +3,7 @@
 #include <unistd.h>
 
 static FILE *boot_src(void);
-static vm vm_repl, vm_fin_ok;
+static vm vm_repl;
 static enum status enproc(li, char**, vm*),
                    enprocf(li, FILE*),
                    li_ev(li, ob);
@@ -28,7 +28,7 @@ int main(int ac, char **av) {
       if (ac == optind && !repl) return EXIT_SUCCESS;
       struct V v;
       av += optind;
-      vm *j = repl ? vm_repl : vm_fin_ok;
+      vm *j = repl ? vm_repl : xok;
       enum status s = li_ini(&v);
       if (s == Ok) s = enproc(&v, av, j);
       if (s == Ok && boot) s = enprocf(&v, boot_src());
@@ -50,30 +50,39 @@ static enum status enprocf(li v, FILE *f) {
     imm, ev_f, // assign target idx=3
     call, putnum(1),
     jump, v->ip, ev_f, // assign src idx=8
-    EndArgs);
+    End);
   if (!k) return OomError;
-  k[3].ap = (vm*) (k+8);
-  v->ip = k;
-  return Ok; }
+  return k[3].ap = (vm*) (k+8),
+         v->ip = k,
+         Ok; }
 
 static enum status enproc(li v, char **av, vm *j) {
   const char *p = *av;
   if (!p) {
-    mo k = thd(v, j, EndArgs);
+    mo k = thd(v, j, End);
     return !k ? OomError : (v->ip = k, Ok); }
   enum status r = enproc(v, av+1, j);
-  return r != Ok ? r : enprocf(v, fopen(p, "r")); }
+  return r == Ok ? enprocf(v, fopen(p, "r")) : r; }
 
-static Vm(vm_fin_ok) { return Pack(), Ok; }
 static Vm(vm_repl) {
   Pack();
-  enum status s;
-  while ((s = receive(v, stdin)) != Eof) {
+  for (enum status s; (s = receive(v, stdin)) != Eof;) {
     s = s == Ok ? li_ev(v, v->xp) : s;
-    if (s != Ok) report(v, s), li_unwind(v);
-    else transmit(v, stdout, v->xp),
-         putc('\n', stdout); }
+    report(v, s), li_unwind(v);
+    if (s == Ok) transmit(v, stdout, v->xp), putc('\n', stdout); }
   return Ok; }
+
+static enum status li_ev(li v, ob x) {
+  mo k = thd(v,
+    immp, x,
+    imm, nil, // assignment target idx=3
+    call, putnum(1),
+    xok, ev_f, // source idx=7
+    End);
+  if (!k) return OomError;
+  return k[3].ap = (vm*) (k + 7),
+         v->ip = k,
+         li_go(v); }
 
 #define NOM "li"
 #define SUFF "la"
@@ -85,15 +94,3 @@ static FILE *boot_src(void) {
    (b = fopen("/usr/local/lib/" NOM "/boot." SUFF, "r")) ||
    (b = fopen("/usr/lib/" NOM "/boot." SUFF, "r"))) ? b :
    fopen("/lib/" NOM "/boot." SUFF, "r"); }
-
-static enum status li_ev(li v, ob x) {
-  mo k = thd(v,
-    immp, x,
-    imm, nil, // assignment target idx=3
-    call, putnum(1),
-    xok, ev_f, // source idx=7
-    EndArgs);
-  if (!k) return OomError;
-  return k[3].ap = (vm*) (k + 7),
-         v->ip = k,
-         li_go(v); }

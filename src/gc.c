@@ -4,6 +4,8 @@ static void copy_from(li, ob*, ob*);
 ////
 /// garbage collector
 //
+// it's a dynamic semispace copying collector that uses
+// cheney's algorithm to avoid stack recursion.
 //
 // please : bool la size_t
 // try to return with at least req words of available memory.
@@ -33,26 +35,33 @@ NoInline bool please(li v, size_t req) {
          want = have,
          need = have - (Avail - req);
 
-  // grow if we're too slow or small
+  // if we're too slow or small then grow
   if (want < need || vim < MinVim)
     do want <<= 1, vim <<= 1;
     while (want < need || vim < MinVim);
 
-  // shrink if we're too big and fast
+  // else if we're too big and fast then shrink
   else if (want >> 1 > need && vim > MaxVim)
     do want >>= 1, vim >>= 1;
     while (want >> 1 > need && vim > MaxVim);
 
+  // else return ok
   else return true;
 
+  // allocate a new pool
   ob *new = new_pool(want);
+
+  // if it fails, succeed iff the first copy is big enough
   if (!new) return need <= have;
 
-  v->len = want, v->pool = new, v->loop = new + want;
-  copy_from(v, loop, loop + have);
-  free(pool < loop ? pool : loop);
-  v->t0 = clock();
-  return true; }
+  // copy again, free old pool, return ok
+  return v->len = want,
+         v->pool = new,
+         v->loop = new + want,
+         copy_from(v, loop, loop + have),
+         free(pool < loop ? pool : loop),
+         v->t0 = clock(),
+         true; }
 
 static NoInline void copy_from(li v, ob *pool0, ob *top0) {
   size_t len1 = v->len;
@@ -63,7 +72,6 @@ static NoInline void copy_from(li v, ob *pool0, ob *top0) {
 
   // reset state
   v->syms = 0;
-  v->len = len1;
   v->hp = v->cp = v->pool = pool1;
   v->sp = sp0 + shift;
   v->fp = (sf) ((ob*) v->fp + shift);
@@ -95,8 +103,10 @@ static NoInline void copy_from(li v, ob *pool0, ob *top0) {
   while (v->cp < v->hp) {
     mo k = (mo) v->cp;
     if (G(k) == act) gettyp(k)->walk(v, (ob) k, pool0, top0);
-    else { for (; G(k); k++) G(k) = (vm*) cp(v, (ob) G(k), pool0, top0);
-           v->cp = (ob*) k + 2; } } }
+    else { // it's a function thread
+      for (; G(k); k++)
+        G(k) = (vm*) cp(v, (ob) G(k), pool0, top0);
+      v->cp = (ob*) k + 2; } } }
 
 ob *new_pool(size_t n) { return malloc(n * 2 * sizeof(ob)); }
 
