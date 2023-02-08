@@ -104,8 +104,7 @@ static NoInline void copy_from(li v, ob *pool0, ob *top0) {
     mo k = (mo) v->cp;
     if (G(k) == act) gettyp(k)->walk(v, (ob) k, pool0, top0);
     else { // it's a function thread
-      for (; G(k); k++)
-        G(k) = (vm*) cp(v, (ob) G(k), pool0, top0);
+      for (; G(k); k++) G(k) = (vm*) cp(v, (ob) G(k), pool0, top0);
       v->cp = (ob*) k + 2; } } }
 
 ob *new_pool(size_t n) { return malloc(n * 2 * sizeof(ob)); }

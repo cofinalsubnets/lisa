@@ -11,14 +11,14 @@ static NoInline intptr_t lidx(ob l, ob x) {
 
 // append to tail
 static NoInline two snoc(la v, ob l, ob x) {
-  if (!twop(l)) return pair(v, x, l);
-  return with(l, x = (ob) snoc(v, B(l), x)),
-         x ? pair(v, A(l), x) : 0; }
+  return !twop(l) ? pair(v, x, l) :
+    (with(l, x = (ob) snoc(v, B(l), x)),
+     x ? pair(v, A(l), x) : 0); }
 
 static NoInline ob linitp(la v, ob x, ob *d) {
-  if (!twop(B(x))) return *d = x, nil;
-  ob y; return with(x, y = linitp(v, B(x), d)),
-               y ? (ob) pair(v, A(x), y) : 0; }
+  ob y; return !twop(B(x)) ? (*d = x, nil) :
+    (with(x, y = linitp(v, B(x), d)),
+     y ? (ob) pair(v, A(x), y) : 0); }
 
 ////
 ///  the thread compiler
@@ -40,15 +40,16 @@ static NoInline ob asign(la v, ob a, intptr_t i, ob *m) {
 typedef struct env {
   ob arg, loc, clo, name, asig, s1, s2;
   struct env *par; } *env;
+
 static NoInline ob new_scope(li v, env *e, ob arg, ob nom) {
-  intptr_t asig = 0;
-  with(nom, arg = asign(v, arg, 0, &asig));
-  return !arg ? 0 : (ob) thd(v,
-    arg, nil, nil, // arg loc clo
-    nom, putnum(asig), // name asig
-    nil, nil, // s1 s2
-    e ? *e : (env) nil, // par
-    End); }
+  intptr_t asig = 0; return
+    with(nom, arg = asign(v, arg, 0, &asig)),
+    !arg ? 0 : (ob) thd(v,
+      arg, nil, nil, // arg loc clo
+      nom, putnum(asig), // name asig
+      nil, nil, // s1 s2
+      e ? *e : (env) nil, // par
+      End); }
 
 static mo
   ana_alloc(li, env*, size_t),
@@ -189,8 +190,7 @@ static NoInline Co(ana_lambda, ob x) { return
   ana_lambda_b(v, e, x) ? co_pull(v, e, m) : 0; }
 
 static NoInline bool ana_define_r(la v, env *e, ob x) {
-  bool _;
-  return !twop(x) ||
+  bool _; return !twop(x) ||
     ((x = rw_let_fn(v, x)) &&
      (with(x, _ = ana_define_r(v, e, BB(x))), _) &&
      pushs(v, p_co_x, AB(x),
@@ -198,7 +198,8 @@ static NoInline bool ana_define_r(la v, env *e, ob x) {
               End)); }
 
 // syntactic sugar for define
-static NoInline bool ana_define_sug(la v, two x) {
+// (: a b c) => (, (: a b) c)
+static NoInline bool ana_define_sug(li v, two x) {
   ob _ = nil; return
     (with(_, x = (two) linitp(v, (ob) x, &_)), x) &&
     (x = pair(v, (ob) x, _)) &&
@@ -212,7 +213,7 @@ static NoInline bool ana_define_b(li v, env *e, ob x) {
   ob b = B(x); return
     !twop(b) ? pushs(v, em1, imm0, End) :
     llen(b) & 1 ? ana_define_sug(v, (two) x) :
-    ana_define_r(v, e, b); }
+                  ana_define_r(v, e, b); }
 
 static NoInline Co(ana_define, ob x) { return
   ana_define_b(v, e, x) ? co_pull(v, e, m) : 0; }
@@ -225,9 +226,9 @@ static NoInline Co(ana_define, ob x) { return
 // before generating anything, store the
 // exit address in stack 2
 static NoInline Co(ana_cond_pre) {
-  ob x = (ob) co_pull(v, e, m);
-  return x = x ? (ob) pair(v, x, (*e)->s2) : x,
-         !x ? 0 : (mo) A((*e)->s2 = x); }
+  ob x = (ob) co_pull(v, e, m); return
+    x = x ? (ob) pair(v, x, (*e)->s2) : x,
+    !x ? 0 : (mo) A((*e)->s2 = x); }
 
 // before generating a branch emit a jump to
 // the top of stack 2
@@ -311,11 +312,12 @@ static NoInline Co(ana_sym, ob x) {
   ob b;
   enum where a = ana_sym_look(v, e ? *e : (env) nil, x, &b);
   if (a == Here) return ana_i_x(v, e, m, imm, b);
-  if (a == Wait) return ana_sym_lazy(v, e, m, x, b); 
+  if (a == Wait) return ana_sym_lazy(v, e, m, x, b);
   if (b == (ob) *e) return ana_sym_ref(v, e, m, x, a);
   size_t y = llen((*e)->clo);
   if (!(x = (ob) snoc(v, (*e)->clo, x))) return 0;
-  return (*e)->clo = x, ana_i_x(v, e, m, clon, putnum(y)); }
+  return (*e)->clo = x,
+         ana_i_x(v, e, m, clon, putnum(y)); }
 
 static NoInline Co(co_x, ob x) { return
   symp(x) ? ana_sym(v, e, m, x) :
@@ -371,8 +373,7 @@ static NoInline bool ana_macro_b(li v, ob mac, ob x) {
     x = v->xp,
     v->xp = xp,
     v->ip = ip,
-    s != Ok ? (report(v, s), false) :
-      pushs(v, p_co_x, x, End); }
+    s != Ok ? (report(v, s), false) : pushs(v, p_co_x, x, End); }
 
 static NoInline Co(ana_macro, ob mac, ob x) {
   return ana_macro_b(v, mac, x) ? co_pull(v, e, m) : 0; }

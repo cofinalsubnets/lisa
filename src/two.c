@@ -12,9 +12,9 @@ static Gc(cp_two) {
   return (ob) two_ini(dst, src->a, src->b); }
 
 static void wk_two(li v, ob x, ob *pool0, ob *top0) {
-  B(x) = cp(v, B(x), pool0, top0); 
+  v->cp += Width(struct two);
   A(x) = cp(v, A(x), pool0, top0);
-  v->cp += Width(struct two); }
+  B(x) = cp(v, B(x), pool0, top0); }
 
 static void tx_two(la v, FILE* o, ob x) {
   putc('(', o);
@@ -29,7 +29,7 @@ static uintptr_t hx_two(la v, ob x) {
   return ror(hc, 4 * sizeof(I)); }
 
 static bool eq_two(la v, ob x, ob y) {
-  return (typ) GF(y) == &two_typ &&
+  return gettyp(y) == &two_typ &&
     eql(v, A(x), A(y)) &&
     eql(v, B(x), B(y)); }
 

@@ -245,9 +245,10 @@ static void wk_tbl(li v, ob x, ob *pool0, ob *top0) {
   v->cp += Width(struct tbl) + t->cap +
            t->len * Width(struct tbl_e);
   for (size_t i = 0, lim = t->cap; i < lim; i++)
-    for (struct tbl_e *e = t->tab[i]; e; e = e->next)
+    for (struct tbl_e *e = t->tab[i]; e;
       e->key = cp(v, e->key, pool0, top0),
-      e->val = cp(v, e->val, pool0, top0); }
+      e->val = cp(v, e->val, pool0, top0),
+      e = e->next); }
 
 const struct typ tbl_typ = {
   .does = do_tbl, .emit = tx_tbl, .evac = cp_tbl,

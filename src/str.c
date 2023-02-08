@@ -38,7 +38,7 @@ static Gc(cp_str) {
   return (ob) dst; }
 
 static void wk_str(li v, ob x, ob *pool0, ob *top0) {
-  v->cp += Width(struct str) + b2w(((str)x)->len); }
+  v->cp += Width(struct str) + b2w(((str) x)->len); }
 
 static bool eq_str(struct V *v, ob x, ob y) {
   if (!strp(y)) return false;
