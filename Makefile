@@ -1,5 +1,5 @@
 this=Makefile
-nom=li
+nom=lisa
 suff=la
 boot=lib/boot.$(suff)
 

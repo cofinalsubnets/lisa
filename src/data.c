@@ -1,4 +1,235 @@
 #include "i.h"
+
+// function functions
+//
+// functions are laid out in memory like this
+//
+// *|*|*|*|*|*|?|0|^
+// * = function pointer or inline value
+// ? = function name / metadata (optional)
+// 0 = null
+// ^ = pointer to head of function
+//
+// this way we can support internal pointers for branch
+// destinations, return addresses, etc, while letting
+// the garbage collector always find the head.
+
+// try to get the name of a function
+ob hnom(li v, mo x) {
+  if (!livep(v, (ob) x)) return nil;
+  vm *k = G(x);
+
+  if (k == setclo || k == genclo0 || k == genclo1) // closure?
+    return hnom(v, (mo) G(FF(x)));
+
+  ob n = ((ob*) mo_tag(x))[-1];
+  return homp(n) && livep(v, n) && G(n) == act ? n : nil; }
+//symbols
+
+// FIXME this should probably change at some point.
+// symbols are interned into a binary search tree. we make no
+// attempt to keep it balanced but it gets rebuilt in somewhat
+// unpredictable order every gc cycle which seems to keep it
+// from getting too bad. this is much more performant than a
+// list & uses less memory than a hash table, but maybe we
+// should use a table anyway.
+//
+static Inline sym ini_sym(void *_, str nom, U code) {
+  sym y = _; return
+    y->act = act,
+    y->typ = &sym_typ,
+    y->nom = nom,
+    y->code = code,
+    y->l = y->r = 0,
+    y; }
+
+static sym ini_anon(void *_, U code) {
+  sym y = _;
+  y->act = act;
+  y->typ = &sym_typ;
+  y->nom = 0;
+  y->code = code;
+  return y; }
+
+// FIXME the caller must ensure Avail >= Width(struct sym)
+// (because GC here would void the tree)
+static sym intern(la v, sym *y, str b) {
+  if (*y) {
+    sym z = *y;
+    str a = z->nom;
+    int i = strncmp(a->text, b->text,
+      a->len < b->len ? a->len : b->len);
+    if (i == 0) {
+      if (a->len == b->len) return z;
+      i = a->len < b->len ? -1 : 1; }
+    return intern(v, i < 0 ? &z->l : &z->r, b); }
+  return *y = ini_sym(bump(v, Width(struct sym)), b,
+    hash(v, putnum(hash(v, (ob) b)))); }
+
+sym symof(la v, str s) {
+  if (Avail < Width(struct sym)) {
+    bool _; with(s, _ = please(v, Width(struct sym)));
+    if (!_) return 0; }
+  return intern(v, &v->syms, s); }
+
+static Gc(cp_sym) {
+  sym src = (sym) x,
+      dst = src->nom ?
+        intern(v, &v->syms, (str) cp(v, (ob) src->nom, pool0, top0)) :
+        ini_anon(bump(v, Width(struct sym) - 2), src->code);
+  return (ob) (src->act = (vm*) dst); }
+
+static void wk_sym(li v, ob x, ob *pool0, ob *top0) {
+  v->cp += Width(struct sym) - (((sym) x)->nom ? 0 : 2); }
+
+Vm(ynom_f) {
+  if (fp->argc && symp(fp->argv[0]))
+    xp = (ob) ((sym) fp->argv[0])->nom,
+    xp = xp ? xp : nil;
+  return ApC(ret, xp); }
+
+Vm(sym_f) {
+  Have(Width(struct sym));
+  str i = fp->argc && strp(fp->argv[0]) ? (str) fp->argv[0] : 0;
+  sym y;
+  CallOut(y = i ?
+    intern(v, &v->syms, i) :
+    ini_anon(bump(v, Width(struct sym) - 2),
+      v->rand = liprng(v)));
+  return ApC(ret, (ob) y); }
+
+static void tx_sym(la v, FILE* o, ob _) {
+  str s = ((sym) _)->nom;
+  if (!s) fputs("#sym", o);
+  else {
+    size_t n = s->len;
+    const char *c = s->text;
+    while (n--) putc(*c++, o); } }
+
+static uintptr_t hx_sym(la v, ob _) {
+  return ((sym) _)->code; }
+
+const struct typ sym_typ = {
+  .does = do_id, .emit = tx_sym, .evac = cp_sym,
+  .hash = hx_sym, .walk = wk_sym, .equi = neql, };
+str strof(la v, const char* c) {
+  size_t bs = strlen(c);
+  str o = cells(v, Width(struct str) + b2w(bs));
+  if (!o) return 0;
+  memcpy(o->text, c, bs);
+  return str_ini(o, bs); }
+
+static uintptr_t hx_str(la v, ob _) {
+  str s = (str) _;
+  uintptr_t h = 1;
+  size_t words = s->len / sizeof(ob),
+         bytes = s->len % sizeof(ob);
+  const char *bs = s->text + s->len - bytes;
+  while (bytes--) h = mix * (h ^ (mix * bs[bytes]));
+  const I *ws = (I*) s->text;
+  while (words--) h = mix * (h ^ (mix * ws[words]));
+  return h; }
+
+static Inline bool escapep(char c) {
+  return c == '\\' || c == '"'; }
+
+static void tx_str(struct V *v, FILE *o, ob _) {
+  str s = (str) _;
+  size_t len = s->len;
+  const char *text = s->text;
+  putc('"', o);
+  for (char c; len--; putc(c, o))
+    if (escapep(c = *text++)) putc('\\', o);
+  putc('"', o); }
+
+static Gc(cp_str) {
+  str src = (str) x,
+      dst = bump(v, Width(struct str) + b2w(src->len));
+  memcpy(dst, src, sizeof(struct str) + src->len);
+  src->act = (vm*) dst;
+  return (ob) dst; }
+
+static void wk_str(li v, ob x, ob *pool0, ob *top0) {
+  v->cp += Width(struct str) + b2w(((str) x)->len); }
+
+static bool eq_str(struct V *v, ob x, ob y) {
+  if (!strp(y)) return false;
+  str a = (str) x, b = (str) y;
+  return a->len == b->len && !strncmp(a->text, b->text, a->len); }
+
+const struct typ str_typ = {
+  .does = do_id,
+  .emit = tx_str,
+  .evac = cp_str,
+  .hash = hx_str,
+  .walk = wk_str,
+  .equi = eq_str, };
+// pairs and lists
+static size_t llenr(ob l, size_t n) {
+  return twop(l) ? llenr(B(l), n + 1) : n; }
+size_t llen(ob l) { return llenr(l, 0); }
+
+static Gc(cp_two) {
+  two src = (two) x,
+      dst = bump(v, Width(struct two));
+  src->act = (vm*) dst;
+  return (ob) two_ini(dst, src->a, src->b); }
+
+static void wk_two(li v, ob x, ob *pool0, ob *top0) {
+  v->cp += Width(struct two);
+  A(x) = cp(v, A(x), pool0, top0);
+  B(x) = cp(v, B(x), pool0, top0); }
+
+static void tx_two(la v, FILE* o, ob x) {
+  putc('(', o);
+  for (;;) {
+    transmit(v, o, A(x));
+    if (!twop(x = B(x))) break;
+    putc(' ', o); }
+  putc(')', o); }
+
+static uintptr_t hx_two(la v, ob x) {
+  uintptr_t hc = hash(v, A(x)) * hash(v, B(x));
+  return ror(hc, 4 * sizeof(I)); }
+
+static bool eq_two(la v, ob x, ob y) {
+  return gettyp(y) == &two_typ &&
+    eql(v, A(x), A(y)) &&
+    eql(v, B(x), B(y)); }
+
+static Vm(do_two) { return
+  ApC(ret, fp->argc ? B(ip) : A(ip)); }
+
+const struct typ two_typ = {
+  .does = do_two,
+  .emit = tx_two,
+  .evac = cp_two,
+  .hash = hx_two,
+  .walk = wk_two,
+  .equi = eq_two, };
+
+// FIXME this is a totally ad hoc, unproven hashing method.
+//
+// its performance on hash tables and anonymous functions
+// is very bad (they all go to the same bucket!)
+//
+// strings, symbols, and numbers do better. for pairs it
+// depends on what they contain.
+//
+// copying GC complicates the use of memory addresses for
+// hashing mutable data, which is the obvious way to fix
+// the bad cases. we would either need to assign each datum
+// a unique identifier when it's created & hash using that,
+// or use the address but rehash as part of garbage collection.
+//
+// TODO replace with something better, verify & benchmark
+
+const uintptr_t mix = 2708237354241864315;
+uintptr_t hash(la v, ob x) {
+  if (nump(x)) return ror(mix * x, sizeof(I) * 2);
+  if (G(x) == act) return gettyp(x)->hash(v, x);
+  if (!livep(v, x)) return mix ^ (x * mix);
+  return mix ^ hash(v, hnom(v, (mo) x)); }
 struct tbl { // hash tables
   vm *act;
   const struct typ *typ;
