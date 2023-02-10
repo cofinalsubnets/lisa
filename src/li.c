@@ -153,11 +153,6 @@ static NoInline void copy_from(li v, ob *pool0, ob *top0) {
   v->xp = cp(v, v->xp, pool0, top0);
   v->ip = (mo) cp(v, (ob) v->ip, pool0, top0);
 
-  // copy globals
-  v->lex = (struct glob*) cp(v, (ob) v->lex, pool0, top0);
-  for (struct ll *r = v->safe; r; r = r->next)
-    *r->addr = cp(v, *r->addr, pool0, top0);
-
   // copy the stack
   ob *sp = v->sp;
   frame fp = v->fp;
@@ -173,7 +168,14 @@ static NoInline void copy_from(li v, ob *pool0, ob *top0) {
     sp0 = fp0->argv;
     fp = fp->subd; }
 
-  // cheney's alg
+  // copy saved values
+  for (struct ll *r = v->safe; r; r = r->next)
+    *r->addr = cp(v, *r->addr, pool0, top0);
+
+  // copy globals
+  v->lex = (struct glob*) cp(v, (ob) v->lex, pool0, top0);
+
+  // cheney's algorithm
   while (v->cp < v->hp) {
     mo k = (mo) v->cp;
     if (G(k) == act) gettyp(k)->walk(v, (ob) k, pool0, top0);
