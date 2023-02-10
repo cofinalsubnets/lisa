@@ -1,8 +1,9 @@
 #include "i.h"
 
-static NoInline void errp(la, const char*, ...);
 
-void report(la v, enum status s) {
+static NoInline void errp(li, const char*, ...);
+
+void report(li v, enum status s) {
   switch (s) {
     default: return;
     case DomainError: errp(v, "has no value"); return;
@@ -22,7 +23,7 @@ void report(la v, enum status s) {
       errp(v, "free variable : %.*s", l, n);
       return; } } }
 
-static NoInline void show_call(la v, mo ip, frame fp) {
+static NoInline void show_call(li v, mo ip, frame fp) {
   putc('(', stderr);
   transmit(v, stderr, (ob) ip);
   for (size_t i = 0, argc = fp->argc; i < argc;
@@ -30,32 +31,30 @@ static NoInline void show_call(la v, mo ip, frame fp) {
     transmit(v, stderr, fp->argv[i++]));
   putc(')', stderr); }
 
+#define ErrPrefix ";;"
 #define aubas (fp == (sf) (v->pool + v->len))
 static void show_backtrace(li v, mo ip, frame fp) {
-  // show backtrace
-  while (!aubas)
-    fputs(";; in ", stderr),
-    show_call(v, ip, fp),
-    putc('\n', stderr),
-    ip = (mo) fp->retp,
-    fp = fp->subd; }
+  while (!aubas) fputs(ErrPrefix " in ", stderr),
+                 show_call(v, ip, fp),
+                 putc('\n', stderr),
+                 ip = (mo) fp->retp,
+                 fp = fp->subd; }
 
 // this prints a backtrace.
-static NoInline void errp(la v, const char *msg, ...) {
-  mo ip = v->ip;
-  sf fp = v->fp;
+static NoInline void errp(li v, const char *msg, ...) {
+  mo ip = v->ip; sf fp = v->fp;
+  fputs(ErrPrefix " ", stderr);
 
-  // print error
-  fputs(";; ", stderr);
   // show the function if there is one
-  if (!aubas)
-    show_call(v, ip, fp),
-    putc(' ', stderr),
-    ip = fp->retp,
-    fp = fp->subd;
+  if (!aubas) show_call(v, ip, fp),
+              putc(' ', stderr),
+              ip = fp->retp,
+              fp = fp->subd;
   // show message
   va_list xs;
-  va_start(xs, msg), vfprintf(stderr, msg, xs), va_end(xs);
-  putc('\n', stderr);
+  va_start(xs, msg),
+  vfprintf(stderr, msg, xs),
+  va_end(xs);
 
+  putc('\n', stderr),
   show_backtrace(v, ip, fp); }

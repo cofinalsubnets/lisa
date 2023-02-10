@@ -102,6 +102,7 @@ two pair(li, ob, ob);
 str strof(li, const char*);
 sym symof(li, str);
 ob hnom(li, mo),
+   *new_pool(size_t),
    cp(li, ob, ob*, ob*),
    tbl_get(li, tbl, ob, ob);
 

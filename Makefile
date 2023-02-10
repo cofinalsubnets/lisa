@@ -1,6 +1,6 @@
 this=Makefile
 nom=lisa
-suff=la
+suff=ls
 boot=lib/boot.$(suff)
 
 # default task
@@ -12,15 +12,16 @@ test: $(nom)
 LC_COLLATE=C
 c=$(sort $(wildcard src/*.c))
 h=$(sort $(wildcard src/*.h))
+CPPFLAGS += -DNOM='"$(nom)"' -DSUFF='"$(suff)"'
 o=$(c:.c=.o)
 CFLAGS ?=\
 	-std=c99 -g -O2 -Wall\
  	-Wstrict-prototypes -Wno-shift-negative-value\
 	-fno-stack-protector
 src/%.o: src/%.c $h $(this)
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -c $< -o $@
+	$(CC) -c $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $< -o $@
 $(nom): $o $h
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ $o
+	$(CC) -o $@ $o $(CPPFLAGS) $(CFLAGS) $(LDFLAGS)
 
 # install
 DESTDIR ?= $(HOME)
@@ -41,11 +42,11 @@ $(dest)lib/$(nom)/%: lib/%
 	install -D $^ $@
 
 # for vim
+VIMPREFIX ?= $(HOME)/.vim
 vim_files=$(addprefix $(VIMPREFIX)/,syntax/$(nom).vim ftdetect/$(nom).vim)
 install-vim: $(vim_files)
 uninstall-vim:
 	rm -f $(vim_files)
-VIMPREFIX ?= $(HOME)/.vim
 $(VIMPREFIX)/%: vim/%
 	install -D $^ $@
 

@@ -45,12 +45,11 @@ static enum status enprocf(li v, FILE *f) {
   ob x = v->xp;
   with(x, r = enprocf(v, f));
   if (r != Ok) return r;
-  mo k = thd(v,
-    immp, x,
-    imm, ev_f, // assign target idx=3
-    call, putnum(1),
-    jump, v->ip, ev_f, // assign src idx=8
-    End);
+  mo k = thd(v, immp, x,
+                imm, ev_f, // assign target idx=3
+                call, putnum(1),
+                jump, v->ip, ev_f, // assign src idx=8
+                End);
   if (!k) return OomError;
   return k[3].ap = (vm*) (k+8),
          v->ip = k,
@@ -84,8 +83,12 @@ static enum status li_ev(li v, ob x) {
          v->ip = k,
          li_go(v); }
 
-#define NOM "li"
+#ifndef NOM
+#define NOM "lisa"
+#endif
+#ifndef SUFF
 #define SUFF "la"
+#endif
 static FILE *boot_src(void) {
   FILE *b; char *home, buf[256]; return
   (home = getenv("HOME")) &&
