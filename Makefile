@@ -18,9 +18,9 @@ CFLAGS ?=\
  	-Wstrict-prototypes -Wno-shift-negative-value\
 	-fno-stack-protector
 src/%.o: src/%.c $h $(this)
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -c $< -o $@
 $(nom): $o $h
-	$(CC) $(CFLAGS) -o $@ $o
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ $o
 
 # install
 DESTDIR ?= $(HOME)
