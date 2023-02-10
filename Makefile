@@ -35,11 +35,11 @@ install: $(files)
 uninstall:
 	rm -f $(files)
 $(dest)bin/%: %
-	install -D $^ $@
+	install -D -m 755 $^ $@
 $(dest)share/%: %
-	install -D $^ $@
+	install -D -m 644 $^ $@
 $(dest)lib/$(nom)/%: lib/%
-	install -D $^ $@
+	install -D -m 644 $^ $@
 
 # for vim
 VIMPREFIX ?= $(HOME)/.vim
@@ -48,7 +48,7 @@ install-vim: $(vim_files)
 uninstall-vim:
 	rm -f $(vim_files)
 $(VIMPREFIX)/%: vim/%
-	install -D $^ $@
+	install -D -m 644 $^ $@
 
 # other tasks
 #
