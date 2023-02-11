@@ -77,8 +77,7 @@ struct V {
   struct ll { ob *addr; struct ll *next; } *safe;
   union { ob *cp; size_t t0; }; };
 
-vm act, vm_yield,
-   gc, xok, setclo, genclo0, genclo1;
+vm act, yield_status, gc, xok, setclo, genclo0, genclo1;
 
 void
   transmit(li, FILE*, ob), // write to output
@@ -90,14 +89,9 @@ bool
   _eql(li, ob, ob),
   neql(li, ob, ob); // always returns false
 
-enum status
-  li_go(li),
-  receive(li, FILE*);
+enum status li_go(li), receive(li, FILE*);
 
-uintptr_t
-  llen(ob),
-  hash(li, ob),
-  liprng(li);
+uintptr_t llen(ob), hash(li, ob), liprng(li);
 
 vm do_id, do_tbl, do_two;
 typedef void emitter(li, FILE*, ob), gc_walk(li, ob, ob*, ob*);
@@ -110,24 +104,18 @@ gc_evac cp_str, cp_sym, cp_tbl, cp_two;
 hasher hx_two, hx_sym, hx_typ, hx_str;
 equator eq_two, eq_str;
 
-
-mo thd(li, ...),
-   ana(li, ob),
-   mo_n(li, size_t);
-tbl tbl_new(li),
-    tbl_set(li, tbl, ob, ob);
+mo thd(li, ...), ana(li, ob), mo_n(li, size_t);
+tbl tbl_new(li), tbl_set(li, tbl, ob, ob);
 two pair(li, ob, ob);
 str strof(li, const char*);
-sym symof(li, str),
-    intern(li, sym*, str);
+sym symof(li, str), intern(li, sym*, str);
 ob hnom(li, mo),
    *new_pool(size_t),
    cp(li, ob, ob*, ob*),
    tbl_get(li, tbl, ob, ob);
 
 extern const uintptr_t mix;
-extern const struct typ
-  two_typ, str_typ, tbl_typ, sym_typ;
+extern const struct typ two_typ, str_typ, tbl_typ, sym_typ;
 
 #define Gc(n) ob n(li v, ob x, ob *pool0, ob *top0)
 #define End ((intptr_t)0)
@@ -276,7 +264,7 @@ static Inline bool eql(li v, ob a, ob b) {
 #define ApY(f, x) (ip = (mo) (f), ApC(G(ip), (x)))
 #define ApN(n, x) (xp = (x), ip += (n), ApC(G(ip), xp))
 
-#define Yield(s, x) (v->xp = (s), ApC(vm_yield, (x)))
+#define Yield(s, x) (v->xp = (s), ApC(yield_status, (x)))
 #define ArityCheck(n) if (n > fp->argc) return Yield(ArityError, putnum(n))
 #define Check(_) if (!(_)) return Yield(DomainError, xp)
 #define Have(n) if (sp - hp < n) return (v->xp = n, ApC(gc, xp))

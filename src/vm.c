@@ -47,7 +47,7 @@ cmp(LT, lt) cmp(LE, lteq) cmp(GE, gteq) cmp(GT, gt) cmp(EQ, eq)
     return ApC(ret, T); }
 Tp(num) Tp(hom) Tp(two) Tp(sym) Tp(str) Tp(tbl) Tp(nil)
 
-Vm(vm_yield) {
+Vm(yield_status) {
   enum status r = v->xp;
   return Pack(), r; }
 // type/arity checking
