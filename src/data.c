@@ -1,5 +1,18 @@
 #include "i.h"
 
+const struct typ tbl_typ = {
+  .does = do_tbl, .emit = tx_tbl, .evac = cp_tbl,
+  .hash = hx_typ, .equi = neql, .walk = wk_tbl, };
+const struct typ sym_typ = {
+  .does = do_id, .emit = tx_sym, .evac = cp_sym,
+  .hash = hx_sym, .walk = wk_sym, .equi = neql, };
+const struct typ str_typ = {
+  .does = do_id, .emit = tx_str, .evac = cp_str,
+  .hash = hx_str, .walk = wk_str, .equi = eq_str, };
+const struct typ two_typ = {
+  .does = do_two, .emit = tx_two, .evac = cp_two,
+  .hash = hx_two, .walk = wk_two, .equi = eq_two, };
+
 // function functions
 //
 // functions are laid out in memory like this
@@ -43,17 +56,9 @@ static Inline sym ini_sym(void *_, str nom, U code) {
     y->l = y->r = 0,
     y; }
 
-static sym ini_anon(void *_, U code) {
-  sym y = _;
-  y->act = act;
-  y->typ = &sym_typ;
-  y->nom = 0;
-  y->code = code;
-  return y; }
-
 // FIXME the caller must ensure Avail >= Width(struct sym)
 // (because GC here would void the tree)
-static sym intern(la v, sym *y, str b) {
+sym intern(la v, sym *y, str b) {
   if (*y) {
     sym z = *y;
     str a = z->nom;
@@ -72,14 +77,7 @@ sym symof(la v, str s) {
     if (!_) return 0; }
   return intern(v, &v->syms, s); }
 
-static Gc(cp_sym) {
-  sym src = (sym) x,
-      dst = src->nom ?
-        intern(v, &v->syms, (str) cp(v, (ob) src->nom, pool0, top0)) :
-        ini_anon(bump(v, Width(struct sym) - 2), src->code);
-  return (ob) (src->act = (vm*) dst); }
-
-static void wk_sym(li v, ob x, ob *pool0, ob *top0) {
+void wk_sym(li v, ob x, ob *pool0, ob *top0) {
   v->cp += Width(struct sym) - (((sym) x)->nom ? 0 : 2); }
 
 Vm(ynom_f) {
@@ -98,20 +96,6 @@ Vm(sym_f) {
       v->rand = liprng(v)));
   return ApC(ret, (ob) y); }
 
-static void tx_sym(la v, FILE* o, ob _) {
-  str s = ((sym) _)->nom;
-  if (!s) fputs("#sym", o);
-  else {
-    size_t n = s->len;
-    const char *c = s->text;
-    while (n--) putc(*c++, o); } }
-
-static uintptr_t hx_sym(la v, ob _) {
-  return ((sym) _)->code; }
-
-const struct typ sym_typ = {
-  .does = do_id, .emit = tx_sym, .evac = cp_sym,
-  .hash = hx_sym, .walk = wk_sym, .equi = neql, };
 str strof(la v, const char* c) {
   size_t bs = strlen(c);
   str o = cells(v, Width(struct str) + b2w(bs));
@@ -119,124 +103,30 @@ str strof(la v, const char* c) {
   memcpy(o->text, c, bs);
   return str_ini(o, bs); }
 
-static uintptr_t hx_str(la v, ob _) {
-  str s = (str) _;
-  uintptr_t h = 1;
-  size_t words = s->len / sizeof(ob),
-         bytes = s->len % sizeof(ob);
-  const char *bs = s->text + s->len - bytes;
-  while (bytes--) h = mix * (h ^ (mix * bs[bytes]));
-  const I *ws = (I*) s->text;
-  while (words--) h = mix * (h ^ (mix * ws[words]));
-  return h; }
-
-static Inline bool escapep(char c) {
-  return c == '\\' || c == '"'; }
-
-static void tx_str(struct V *v, FILE *o, ob _) {
-  str s = (str) _;
-  size_t len = s->len;
-  const char *text = s->text;
-  putc('"', o);
-  for (char c; len--; putc(c, o))
-    if (escapep(c = *text++)) putc('\\', o);
-  putc('"', o); }
-
-static Gc(cp_str) {
-  str src = (str) x,
-      dst = bump(v, Width(struct str) + b2w(src->len));
-  memcpy(dst, src, sizeof(struct str) + src->len);
-  src->act = (vm*) dst;
-  return (ob) dst; }
-
-static void wk_str(li v, ob x, ob *pool0, ob *top0) {
+void wk_str(li v, ob x, ob *pool0, ob *top0) {
   v->cp += Width(struct str) + b2w(((str) x)->len); }
 
-static bool eq_str(struct V *v, ob x, ob y) {
+bool eq_str(li v, ob x, ob y) {
   if (!strp(y)) return false;
   str a = (str) x, b = (str) y;
   return a->len == b->len && !strncmp(a->text, b->text, a->len); }
 
-const struct typ str_typ = {
-  .does = do_id,
-  .emit = tx_str,
-  .evac = cp_str,
-  .hash = hx_str,
-  .walk = wk_str,
-  .equi = eq_str, };
 // pairs and lists
 static size_t llenr(ob l, size_t n) {
   return twop(l) ? llenr(B(l), n + 1) : n; }
 size_t llen(ob l) { return llenr(l, 0); }
 
-static Gc(cp_two) {
-  two src = (two) x,
-      dst = bump(v, Width(struct two));
-  src->act = (vm*) dst;
-  return (ob) two_ini(dst, src->a, src->b); }
-
-static void wk_two(li v, ob x, ob *pool0, ob *top0) {
+void wk_two(li v, ob x, ob *pool0, ob *top0) {
   v->cp += Width(struct two);
   A(x) = cp(v, A(x), pool0, top0);
   B(x) = cp(v, B(x), pool0, top0); }
 
-static void tx_two(la v, FILE* o, ob x) {
-  putc('(', o);
-  for (;;) {
-    transmit(v, o, A(x));
-    if (!twop(x = B(x))) break;
-    putc(' ', o); }
-  putc(')', o); }
-
-static uintptr_t hx_two(la v, ob x) {
-  uintptr_t hc = hash(v, A(x)) * hash(v, B(x));
-  return ror(hc, 4 * sizeof(I)); }
-
-static bool eq_two(la v, ob x, ob y) {
+bool eq_two(la v, ob x, ob y) {
   return gettyp(y) == &two_typ &&
     eql(v, A(x), A(y)) &&
     eql(v, B(x), B(y)); }
 
-static Vm(do_two) { return
-  ApC(ret, fp->argc ? B(ip) : A(ip)); }
-
-const struct typ two_typ = {
-  .does = do_two,
-  .emit = tx_two,
-  .evac = cp_two,
-  .hash = hx_two,
-  .walk = wk_two,
-  .equi = eq_two, };
-
-// FIXME this is a totally ad hoc, unproven hashing method.
-//
-// its performance on hash tables and anonymous functions
-// is very bad (they all go to the same bucket!)
-//
-// strings, symbols, and numbers do better. for pairs it
-// depends on what they contain.
-//
-// copying GC complicates the use of memory addresses for
-// hashing mutable data, which is the obvious way to fix
-// the bad cases. we would either need to assign each datum
-// a unique identifier when it's created & hash using that,
-// or use the address but rehash as part of garbage collection.
-//
-// TODO replace with something better, verify & benchmark
-
-const uintptr_t mix = 2708237354241864315;
-uintptr_t hash(la v, ob x) {
-  if (nump(x)) return ror(mix * x, sizeof(I) * 2);
-  if (G(x) == act) return gettyp(x)->hash(v, x);
-  if (!livep(v, x)) return mix ^ (x * mix);
-  return mix ^ hash(v, hnom(v, (mo) x)); }
-struct tbl { // hash tables
-  vm *act;
-  const struct typ *typ;
-  uintptr_t len, cap;
-  struct tbl_e {
-    ob key, val;
-    struct tbl_e *next; } **tab; };
+Vm(do_two) { return ApC(ret, fp->argc ? B(ip) : A(ip)); }
 
 static Inline size_t tbl_load(tbl t) {
   return t->len / t->cap; }
@@ -244,26 +134,10 @@ static Inline size_t tbl_load(tbl t) {
 static Inline size_t tbl_idx(size_t cap, size_t co) {
   return (cap - 1) & co; }
 
-static Inline tbl ini_tbl(void *_, size_t len, size_t cap, struct tbl_e **tab) {
-  tbl t = _; return
-    t->act = act,
-    t->typ = &tbl_typ,
-    t->len = len,
-    t->cap = cap,
-    t->tab = tab,
-    t; }
-
 tbl tbl_new(li v) {
   tbl t = cells(v, Width(struct tbl) + 1);
   if (t) ini_tbl(t, 0, 1, (struct tbl_e**) (t + 1))->tab[0] = 0;
   return t; }
-
-static void tx_tbl(la, FILE*, ob);
-static ob cp_tbl(la, ob, ob*, ob*);
-
-// hash tables are hashed by their type
-static uintptr_t hx_typ(la v, ob _) {
-  return ror(mix * (uintptr_t) GF(_), 16); }
 
 // hash tables
 // some of the worst code is here :(
@@ -441,7 +315,7 @@ Vm(tset) {
   CallOut(x = (ob) tbl_set(v, (tbl) xp, x, *sp));
   return x ? ApN(1, *sp++) : Yield(OomError, xp); }
 
-static Vm(do_tbl) {
+Vm(do_tbl) {
   bool _;
   ob a = fp->argc;
   switch (a) {
@@ -454,24 +328,7 @@ static Vm(do_tbl) {
       CallOut(_ = tblss(v, 1, a)),
       _ ? ApC(ret, fp->argv[a-1]) : Yield(OomError, nil); } }
 
-static void tx_tbl(la v, FILE* o, ob _) {
-  fprintf(o, "#tbl:%ld/%ld", ((tbl)_)->len, ((tbl)_)->cap); }
-
-static Gc(cp_tbl) {
-  tbl src = (tbl) x;
-  size_t i = src->cap;
-  tbl dst = bump(v, Width(struct tbl) + i);
-  src->act = (vm*) dst;
-  ini_tbl(dst, src->len, i, (struct tbl_e**) (dst+1));
-  for (struct tbl_e *s, *e, *d; i--; dst->tab[i] = e)
-    for (s = src->tab[i], e = NULL; s;
-      d = bump(v, Width(struct tbl_e)),
-      d->key = s->key, d->val = s->val,
-      d->next = e, e = d,
-      s = s->next);
-  return (ob) dst; }
-
-static void wk_tbl(li v, ob x, ob *pool0, ob *top0) {
+void wk_tbl(li v, ob x, ob *pool0, ob *top0) {
   tbl t = (tbl) x;
   v->cp += Width(struct tbl) + t->cap +
            t->len * Width(struct tbl_e);
@@ -480,7 +337,3 @@ static void wk_tbl(li v, ob x, ob *pool0, ob *top0) {
       e->key = cp(v, e->key, pool0, top0),
       e->val = cp(v, e->val, pool0, top0),
       e = e->next); }
-
-const struct typ tbl_typ = {
-  .does = do_tbl, .emit = tx_tbl, .evac = cp_tbl,
-  .hash = hx_typ, .equi = neql, .walk = wk_tbl, };

@@ -44,7 +44,13 @@ typedef struct str {
   vm *act;
   const struct typ *typ;
   uintptr_t len; char text[]; } *str;
-typedef struct tbl *tbl;
+typedef struct tbl { // hash tables
+  vm *act;
+  const struct typ *typ;
+  uintptr_t len, cap;
+  struct tbl_e {
+    ob key, val;
+    struct tbl_e *next; } **tab; } *tbl;
 typedef struct sym {
   vm *act;
   const struct typ *typ;
@@ -71,7 +77,7 @@ struct V {
   struct ll { ob *addr; struct ll *next; } *safe;
   union { ob *cp; size_t t0; }; };
 
-vm act, do_id, vm_yield,
+vm act, vm_yield,
    gc, xok, setclo, genclo0, genclo1;
 
 void
@@ -93,6 +99,18 @@ uintptr_t
   hash(li, ob),
   liprng(li);
 
+vm do_id, do_tbl, do_two;
+typedef void emitter(li, FILE*, ob), gc_walk(li, ob, ob*, ob*);
+typedef ob gc_evac(li, ob, ob*, ob*);
+typedef uintptr_t hasher(li, ob);
+typedef bool equator(li, ob, ob);
+emitter tx_two, tx_tbl, tx_str, tx_sym;
+gc_walk wk_tbl, wk_str, wk_sym, wk_two;
+gc_evac cp_str, cp_sym, cp_tbl, cp_two;
+hasher hx_two, hx_sym, hx_typ, hx_str;
+equator eq_two, eq_str;
+
+
 mo thd(li, ...),
    ana(li, ob),
    mo_n(li, size_t);
@@ -100,7 +118,8 @@ tbl tbl_new(li),
     tbl_set(li, tbl, ob, ob);
 two pair(li, ob, ob);
 str strof(li, const char*);
-sym symof(li, str);
+sym symof(li, str),
+    intern(li, sym*, str);
 ob hnom(li, mo),
    *new_pool(size_t),
    cp(li, ob, ob*, ob*),
@@ -201,6 +220,23 @@ static Inline str str_ini(void *_, size_t len) {
     s->act = act, s->typ = &str_typ,
     s->len = len,
     s; }
+
+static Inline tbl ini_tbl(void *_, size_t len, size_t cap, struct tbl_e **tab) {
+  tbl t = _; return
+    t->act = act,
+    t->typ = &tbl_typ,
+    t->len = len,
+    t->cap = cap,
+    t->tab = tab,
+    t; }
+
+static Inline sym ini_anon(void *_, U code) {
+  sym y = _;
+  y->act = act;
+  y->typ = &sym_typ;
+  y->nom = 0;
+  y->code = code;
+  return y; }
 
 static Inline bool eql(li v, ob a, ob b) {
   return a == b || _eql(v, a, b); }

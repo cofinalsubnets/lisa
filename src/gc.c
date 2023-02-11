@@ -129,3 +129,36 @@ NoInline ob cp(la v, ob x, ob *pool0, ob *top0) {
     gettyp(src)->evac(v, (ob) src, pool0, top0);
   return cp_mo(v, src, pool0, top0); }
 
+Gc(cp_tbl) {
+  tbl src = (tbl) x;
+  size_t i = src->cap;
+  tbl dst = bump(v, Width(struct tbl) + i);
+  src->act = (vm*) dst;
+  ini_tbl(dst, src->len, i, (struct tbl_e**) (dst+1));
+  for (struct tbl_e *s, *e, *d; i--; dst->tab[i] = e)
+    for (s = src->tab[i], e = NULL; s;
+      d = bump(v, Width(struct tbl_e)),
+      d->key = s->key, d->val = s->val,
+      d->next = e, e = d,
+      s = s->next);
+  return (ob) dst; }
+
+Gc(cp_sym) {
+  sym src = (sym) x,
+      dst = src->nom ?
+        intern(v, &v->syms, (str) cp(v, (ob) src->nom, pool0, top0)) :
+        ini_anon(bump(v, Width(struct sym) - 2), src->code);
+  return (ob) (src->act = (vm*) dst); }
+
+Gc(cp_str) {
+  str src = (str) x,
+      dst = bump(v, Width(struct str) + b2w(src->len));
+  memcpy(dst, src, sizeof(struct str) + src->len);
+  src->act = (vm*) dst;
+  return (ob) dst; }
+
+Gc(cp_two) {
+  two src = (two) x,
+      dst = bump(v, Width(struct two));
+  src->act = (vm*) dst;
+  return (ob) two_ini(dst, src->a, src->b); }
