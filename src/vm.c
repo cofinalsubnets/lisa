@@ -33,7 +33,7 @@ Vm(gt) { return ApN(1, *sp++ > xp ? T : nil); }
 #define GT(a,b) (a>b)
 #define EQ(a,b) eql(v,a,b)
 #define cmp(op, n) Vm(n##_f) {\
-  for (I i = fp->argc-1; i > 0; i--)\
+  for (intptr_t i = fp->argc-1; i > 0; i--)\
     if (!op(fp->argv[i-1], fp->argv[i])) return ApC(ret, nil);\
   return ApC(ret, T); }
 cmp(LT, lt) cmp(LE, lteq) cmp(GE, gteq) cmp(GT, gt) cmp(EQ, eq)
@@ -97,26 +97,27 @@ Vm(bnot) { return ApN(1, ~xp | 1); }
 // FIXME do type checks
 Vm(add_f) {
   xp = 0;
-  for (U i = 0; i < fp->argc; xp += getnum(fp->argv[i++]));
+  for (size_t i = 0; i < fp->argc; xp += getnum(fp->argv[i++]));
   return ApC(ret, putnum(xp)); }
+
 Vm(mul_f) {
   xp = 1;
-  for (U i = 0; i < fp->argc; xp *= getnum(fp->argv[i++]));
+  for (size_t i = 0; i < fp->argc; xp *= getnum(fp->argv[i++]));
   return ApC(ret, putnum(xp)); }
 
 Vm(sub_f) {
   if (fp->argc == 0) return ApC(ret, xp);
   if (fp->argc == 1) return ApC(ret, putnum(-getnum(fp->argv[0])));
   xp = getnum(fp->argv[0]);
-  U i = 1;
+  size_t i = 1;
   do xp -= getnum(fp->argv[i++]); while (i < fp->argc);
   return ApC(ret, putnum(xp)); }
 
 Vm(quot_f) {
   if (fp->argc == 0) return ApC(ret, putnum(1));
   xp = getnum(fp->argv[0]);
-  for (U i = 1; i < fp->argc; i++) {
-    I n = getnum(fp->argv[i]);
+  for (size_t i = 1; i < fp->argc; i++) {
+    intptr_t n = getnum(fp->argv[i]);
     Check(n);
     xp /= n; }
   return ApC(ret, putnum(xp)); }
@@ -124,25 +125,25 @@ Vm(quot_f) {
 Vm(rem_f) {
   if (fp->argc == 0) return ApC(ret, putnum(1));
   xp = getnum(fp->argv[0]);
-  for (U i = 1; i < fp->argc; i++) {
-    I n = getnum(fp->argv[i]);
+  for (size_t i = 1; i < fp->argc; i++) {
+    intptr_t n = getnum(fp->argv[i]);
     Check(n);
     xp %= n; }
   return ApC(ret, putnum(xp)); }
 
 Vm(bor_f) {
   xp = 0;
-  for (U i = 0; i < fp->argc; xp |= getnum(fp->argv[i++]));
+  for (size_t i = 0; i < fp->argc; xp |= getnum(fp->argv[i++]));
   return ApC(ret, putnum(xp)); }
 
 Vm(bxor_f) {
   xp = 0;
-  for (U i = 0; i < fp->argc; xp ^= getnum(fp->argv[i++]));
+  for (size_t i = 0; i < fp->argc; xp ^= getnum(fp->argv[i++]));
   return ApC(ret, putnum(xp)); }
 
 Vm(band_f) {
   xp = -1;
-  for (U i = 0; i < fp->argc; xp &= getnum(fp->argv[i++]));
+  for (size_t i = 0; i < fp->argc; xp &= getnum(fp->argv[i++]));
   return ApC(ret, putnum(xp)); }
 
 Vm(bnot_f) { return
@@ -155,7 +156,7 @@ Vm(sar_f) {
   if (fp->argc == 1)
     return ApC(ret, putnum(getnum(fp->argv[0])>>1));
   xp = getnum(fp->argv[0]);
-  U i = 1;
+  size_t i = 1;
   do xp >>= getnum(fp->argv[i++]);
   while (i < fp->argc);
   return ApC(ret, putnum(xp)); }
@@ -164,7 +165,7 @@ Vm(sal_f) {
   if (fp->argc == 0) return ApC(ret, xp);
   if (fp->argc == 1) return ApC(ret, putnum(getnum(fp->argv[0])<<1));
   xp = getnum(fp->argv[0]);
-  U i = 1;
+  size_t i = 1;
   do xp <<= getnum(fp->argv[i++]); while (i < fp->argc);
   return ApC(ret, putnum(xp)); }
 
@@ -196,7 +197,7 @@ Vm(hfin_f) {
 // emit data
 Vm(poke_f) {
   if (fp->argc) {
-    U i = fp->argc - 1;
+    size_t i = fp->argc - 1;
     if (homp(fp->argv[i])) {
       mo k = (mo) fp->argv[i];
       while (i--) G(--k) = (vm*) fp->argv[i];
@@ -372,7 +373,7 @@ Vm(deftop) { bool _; return
 
 // allocate local variable array
 Vm(setloc) {
-  U n = getnum((ob) GF(ip));
+  size_t n = getnum((ob) GF(ip));
   // + 1 for the stack slot
   Have(n + Width(struct tag) + 1);
   mo t = setw(mo_ini(hp, n), nil, n);
@@ -410,17 +411,17 @@ Vm(varg0) {
     ApN(2, xp); }
 
 Vm(varg) {
-  U reqd = getnum((ob) GF(ip));
+  size_t reqd = getnum((ob) GF(ip));
   if (reqd == fp->argc) return ApC(varg0, xp);
   if (reqd > fp->argc) return Yield(ArityError, putnum(reqd));
-  U vdic = fp->argc - reqd;
+  size_t vdic = fp->argc - reqd;
   // in this case we need to add another argument
   // slot to hold the nil.
   // in this case we just keep the existing slots.
   Have(Width(struct two) * vdic);
   two t = (two) hp;
   hp += Width(struct two) * vdic;
-  for (U i = vdic; i--;
+  for (size_t i = vdic; i--;
     two_ini(t + i, fp->argv[reqd + i], (ob) (t + i + 1)));
   t[vdic-1].b = nil;
   fp->argv[reqd] = (ob) t;
@@ -550,7 +551,7 @@ Vm(sget_f) {
   if (fp->argc < 2) return Yield(ArityError, putnum(2));
   if (!strp(fp->argv[0])) return Yield(DomainError, xp);
   str s = (str) fp->argv[0];
-  I i = getnum(fp->argv[1]);
+  intptr_t i = getnum(fp->argv[1]);
   xp = i < 0 || i >= s->len ? nil : putnum(s->text[i]);
   return ApC(ret, xp); }
 
@@ -576,8 +577,8 @@ Vm(ssub_f) {
   if (fp->argc < 2) return Yield(ArityError, putnum(2));
   if (!strp(fp->argv[0])) return Yield(DomainError, xp);
   str src = (str) fp->argv[0];
-  I lb = getnum(fp->argv[1]),
-    ub = fp->argc > 2 ? getnum(fp->argv[2]) : INTPTR_MAX;
+  intptr_t lb = getnum(fp->argv[1]),
+           ub = fp->argc > 2 ? getnum(fp->argv[2]) : INTPTR_MAX;
   lb = max(lb, 0);
   ub = min(ub, src->len);
   ub = max(ub, lb);

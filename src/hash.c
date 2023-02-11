@@ -1,6 +1,6 @@
 #include "i.h"
 
-// FIXME this is a totally ad hoc, unproven hashing method.
+// this is a totally ad hoc, unproven hashing method.
 //
 // its performance on hash tables and anonymous functions
 // is very bad (they all go to the same bucket!)
@@ -13,19 +13,16 @@
 // the bad cases. we would either need to assign each datum
 // a unique identifier when it's created & hash using that,
 // or use the address but rehash as part of garbage collection.
-//
-// TODO replace with something better, verify & benchmark
 
-const uintptr_t mix = 2708237354241864315;
 uintptr_t hash(la v, ob x) {
-  if (nump(x)) return ror(mix * x, sizeof(I) * 2);
+  if (nump(x)) return ror(mix * x, sizeof(uintptr_t) * 2);
   if (G(x) == act) return gettyp(x)->hash(v, x);
   if (!livep(v, x)) return mix ^ (x * mix);
   return mix ^ hash(v, hnom(v, (mo) x)); }
 
 uintptr_t hx_two(la v, ob x) {
   uintptr_t hc = hash(v, A(x)) * hash(v, B(x));
-  return ror(hc, 4 * sizeof(I)); }
+  return ror(hc, 4 * sizeof(uintptr_t)); }
 
 uintptr_t hx_sym(la v, ob _) {
   return ((sym) _)->code; }

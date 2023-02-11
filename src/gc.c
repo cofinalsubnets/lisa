@@ -162,3 +162,24 @@ Gc(cp_two) {
       dst = bump(v, Width(struct two));
   src->act = (vm*) dst;
   return (ob) two_ini(dst, src->a, src->b); }
+
+void wk_tbl(li v, ob x, ob *pool0, ob *top0) {
+  tbl t = (tbl) x;
+  v->cp += Width(struct tbl) + t->cap +
+           t->len * Width(struct tbl_e);
+  for (size_t i = 0, lim = t->cap; i < lim; i++)
+    for (struct tbl_e *e = t->tab[i]; e;
+      e->key = cp(v, e->key, pool0, top0),
+      e->val = cp(v, e->val, pool0, top0),
+      e = e->next); }
+
+void wk_sym(li v, ob x, ob *pool0, ob *top0) {
+  v->cp += Width(struct sym) - (((sym) x)->nom ? 0 : 2); }
+
+void wk_str(li v, ob x, ob *pool0, ob *top0) {
+  v->cp += Width(struct str) + b2w(((str) x)->len); }
+
+void wk_two(li v, ob x, ob *pool0, ob *top0) {
+  v->cp += Width(struct two);
+  A(x) = cp(v, A(x), pool0, top0);
+  B(x) = cp(v, B(x), pool0, top0); }

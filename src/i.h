@@ -8,18 +8,20 @@
 #include <errno.h>
 #include "li.h"
 
+_Static_assert(-1 >> 1 == -1, "signed shift");
+_Static_assert(sizeof(size_t) == sizeof(void*), "size_t");
+
 // thanks !!
 //
 typedef struct V *la, *li;
-typedef intptr_t I, ob;
-typedef uintptr_t U;
+typedef intptr_t ob;
 typedef struct mo *mo; // procedures
                        //
 typedef struct frame { // stack frame
   ob *clos; // closure pointer FIXME // use stack
   mo retp; // thread return address
   struct frame *subd; // stack frame of caller
-  U argc; // argument count
+  uintptr_t argc; // argument count
   ob argv[]; } *sf, *frame;;
 
 // interpreter type
@@ -28,34 +30,34 @@ typedef enum status vm(li, ob, mo, ob*, ob*, frame);
 struct mo { vm *ap; };
 struct tag { struct mo *null, *head, end[]; };
 
+typedef void emitter(li, FILE*, ob), gc_walk(li, ob, ob*, ob*);
+typedef ob gc_evac(li, ob, ob*, ob*);
+typedef uintptr_t hasher(li, ob);
+typedef bool equator(li, ob, ob);
+
 typedef const struct typ {
   vm *does;
-  bool (*equi)(li, ob, ob);
-  uintptr_t (*hash)(li, ob);
-  ob (*evac)(li, ob, ob*, ob*);
-  void (*walk)(li, ob, ob*, ob*);
-  void (*emit)(li, FILE*, ob); } *typ;
+  equator *equi;
+  hasher *hash;
+  gc_evac *evac;
+  gc_walk *walk;
+  emitter *emit; } *typ;
 
 typedef struct two {
-  vm *act;
-  const struct typ *typ;
+  vm *act; const struct typ *typ;
   ob a, b; } *two;
 typedef struct str {
-  vm *act;
-  const struct typ *typ;
+  vm *act; const struct typ *typ;
   uintptr_t len; char text[]; } *str;
 typedef struct tbl { // hash tables
-  vm *act;
-  const struct typ *typ;
+  vm *act; const struct typ *typ;
   uintptr_t len, cap;
   struct tbl_e {
     ob key, val;
     struct tbl_e *next; } **tab; } *tbl;
 typedef struct sym {
-  vm *act;
-  const struct typ *typ;
-  str nom;
-  uintptr_t code;
+  vm *act; const struct typ *typ;
+  str nom; uintptr_t code;
   // symbols are interned into a binary search tree.
   // anonymous symbols (nom == 0) don't have branches.
   struct sym *l, *r; } *sym;
@@ -79,42 +81,32 @@ struct V {
 
 vm act, yield_status, gc, xok, setclo, genclo0, genclo1;
 
-void
-  transmit(li, FILE*, ob), // write to output
-  report(li, enum status); // show error message
+void transmit(li, FILE*, ob), // write to output
+     report(li, enum status); // show error message
 
-bool
-  please(li, size_t),
-  pushs(li, ...), // push args onto stack; true on success
-  _eql(li, ob, ob),
-  neql(li, ob, ob); // always returns false
+bool please(li, size_t),
+     pushs(li, ...); // push args onto stack; true on success
 
 enum status li_go(li), receive(li, FILE*);
 
 uintptr_t llen(ob), hash(li, ob), liprng(li);
 
 vm do_id, do_tbl, do_two;
-typedef void emitter(li, FILE*, ob), gc_walk(li, ob, ob*, ob*);
-typedef ob gc_evac(li, ob, ob*, ob*);
-typedef uintptr_t hasher(li, ob);
-typedef bool equator(li, ob, ob);
 emitter tx_two, tx_tbl, tx_str, tx_sym;
 gc_walk wk_tbl, wk_str, wk_sym, wk_two;
 gc_evac cp_str, cp_sym, cp_tbl, cp_two;
 hasher hx_two, hx_sym, hx_typ, hx_str;
-equator eq_two, eq_str;
+equator _eql, neql, eq_two, eq_str;
 
 mo thd(li, ...), ana(li, ob), mo_n(li, size_t);
 tbl tbl_new(li), tbl_set(li, tbl, ob, ob);
 two pair(li, ob, ob);
 str strof(li, const char*);
 sym symof(li, str), intern(li, sym*, str);
-ob hnom(li, mo),
-   *new_pool(size_t),
-   cp(li, ob, ob*, ob*),
-   tbl_get(li, tbl, ob, ob);
+ob hnom(li, mo), *new_pool(size_t),
+   cp(li, ob, ob*, ob*), tbl_get(li, tbl, ob, ob);
 
-extern const uintptr_t mix;
+#define mix ((uintptr_t) 2708237354241864315)
 extern const struct typ two_typ, str_typ, tbl_typ, sym_typ;
 
 #define Gc(n) ob n(li v, ob x, ob *pool0, ob *top0)
@@ -145,7 +137,6 @@ extern const struct typ two_typ, str_typ, tbl_typ, sym_typ;
 #define BA(o) B(A(o))
 #define BB(o) B(B(o))
 
-
 #define Inline inline __attribute__((always_inline))
 #define NoInline __attribute__((noinline))
 
@@ -157,11 +148,11 @@ static Inline void *cells(li v, size_t n) {
   return Avail < n && !please(v, n) ? 0 : bump(v, n); }
 
 static Inline void *cpyw_r2l(void *dst, const void *src, size_t n) {
-  while (n--) ((U*)dst)[n] = ((U*)src)[n];
+  while (n--) ((intptr_t*)dst)[n] = ((intptr_t*)src)[n];
   return dst; }
 
 static Inline void *cpyw_l2r(void *dst, const void *src, size_t n) {
-  for (size_t i = 0; i < n; i++) ((U*)dst)[i] = ((U*)src)[i];
+  for (size_t i = 0; i < n; i++) ((intptr_t*)dst)[i] = ((intptr_t*)src)[i];
   return dst; }
 
 static Inline void *setw(void *d, intptr_t w, size_t n) {
@@ -191,40 +182,29 @@ static Inline bool livep(la v, ob x) {
 static Inline intptr_t ror(intptr_t x, uintptr_t n) {
   return (x << ((8 * sizeof(intptr_t)) - n)) | (x >> n); }
 
-
 static Inline mo mo_ini(void *_, size_t len) {
   struct tag *t = (struct tag*) ((mo) _ + len);
   return t->null = NULL, t->head = _; }
 
 static Inline two two_ini(void *_, ob a, ob b) {
   two w = _; return
-    w->act = act,
-    w->typ = &two_typ,
-    w->a = a, w->b = b,
-    w; }
+    w->act = act, w->typ = &two_typ,
+    w->a = a, w->b = b, w; }
 
 static Inline str str_ini(void *_, size_t len) {
   str s = _; return
     s->act = act, s->typ = &str_typ,
-    s->len = len,
-    s; }
+    s->len = len, s; }
 
 static Inline tbl ini_tbl(void *_, size_t len, size_t cap, struct tbl_e **tab) {
   tbl t = _; return
-    t->act = act,
-    t->typ = &tbl_typ,
-    t->len = len,
-    t->cap = cap,
-    t->tab = tab,
-    t; }
+    t->act = act, t->typ = &tbl_typ,
+    t->len = len, t->cap = cap, t->tab = tab, t; }
 
-static Inline sym ini_anon(void *_, U code) {
-  sym y = _;
-  y->act = act;
-  y->typ = &sym_typ;
-  y->nom = 0;
-  y->code = code;
-  return y; }
+static Inline sym ini_anon(void *_, uintptr_t code) {
+  sym y = _; return
+    y->act = act, y->typ = &sym_typ,
+    y->nom = 0, y->code = code, y; }
 
 static Inline bool eql(li v, ob a, ob b) {
   return a == b || _eql(v, a, b); }
@@ -258,7 +238,7 @@ static Inline bool eql(li v, ob a, ob b) {
 
 #define Pack() (v->ip=ip,v->sp=sp,v->hp=hp,v->fp=fp,v->xp=xp)
 #define Unpack() (fp=v->fp,hp=v->hp,sp=v->sp,ip=v->ip,xp=v->xp)
-#define CallOut(...) (Pack(), __VA_ARGS__, Unpack())
+#define CallOut(...) ((void)(Pack(),__VA_ARGS__,Unpack()))
 
 #define ApC(f, x) (f)(v, (x), ip, hp, sp, fp)
 #define ApY(f, x) (ip = (mo) (f), ApC(G(ip), (x)))

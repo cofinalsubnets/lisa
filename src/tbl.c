@@ -3,130 +3,6 @@
 const struct typ tbl_typ = {
   .does = do_tbl, .emit = tx_tbl, .evac = cp_tbl,
   .hash = hx_typ, .equi = neql, .walk = wk_tbl, };
-const struct typ sym_typ = {
-  .does = do_id, .emit = tx_sym, .evac = cp_sym,
-  .hash = hx_sym, .walk = wk_sym, .equi = neql, };
-const struct typ str_typ = {
-  .does = do_id, .emit = tx_str, .evac = cp_str,
-  .hash = hx_str, .walk = wk_str, .equi = eq_str, };
-const struct typ two_typ = {
-  .does = do_two, .emit = tx_two, .evac = cp_two,
-  .hash = hx_two, .walk = wk_two, .equi = eq_two, };
-
-// function functions
-//
-// functions are laid out in memory like this
-//
-// *|*|*|*|*|*|?|0|^
-// * = function pointer or inline value
-// ? = function name / metadata (optional)
-// 0 = null
-// ^ = pointer to head of function
-//
-// this way we can support internal pointers for branch
-// destinations, return addresses, etc, while letting
-// the garbage collector always find the head.
-
-// try to get the name of a function
-ob hnom(li v, mo x) {
-  if (!livep(v, (ob) x)) return nil;
-  vm *k = G(x);
-
-  if (k == setclo || k == genclo0 || k == genclo1) // closure?
-    return hnom(v, (mo) G(FF(x)));
-
-  ob n = ((ob*) mo_tag(x))[-1];
-  return homp(n) && livep(v, n) && G(n) == act ? n : nil; }
-//symbols
-
-// FIXME this should probably change at some point.
-// symbols are interned into a binary search tree. we make no
-// attempt to keep it balanced but it gets rebuilt in somewhat
-// unpredictable order every gc cycle which seems to keep it
-// from getting too bad. this is much more performant than a
-// list & uses less memory than a hash table, but maybe we
-// should use a table anyway.
-//
-static Inline sym ini_sym(void *_, str nom, U code) {
-  sym y = _; return
-    y->act = act,
-    y->typ = &sym_typ,
-    y->nom = nom,
-    y->code = code,
-    y->l = y->r = 0,
-    y; }
-
-// FIXME the caller must ensure Avail >= Width(struct sym)
-// (because GC here would void the tree)
-sym intern(la v, sym *y, str b) {
-  if (*y) {
-    sym z = *y;
-    str a = z->nom;
-    int i = strncmp(a->text, b->text,
-      a->len < b->len ? a->len : b->len);
-    if (i == 0) {
-      if (a->len == b->len) return z;
-      i = a->len < b->len ? -1 : 1; }
-    return intern(v, i < 0 ? &z->l : &z->r, b); }
-  return *y = ini_sym(bump(v, Width(struct sym)), b,
-    hash(v, putnum(hash(v, (ob) b)))); }
-
-sym symof(la v, str s) {
-  if (Avail < Width(struct sym)) {
-    bool _; with(s, _ = please(v, Width(struct sym)));
-    if (!_) return 0; }
-  return intern(v, &v->syms, s); }
-
-void wk_sym(li v, ob x, ob *pool0, ob *top0) {
-  v->cp += Width(struct sym) - (((sym) x)->nom ? 0 : 2); }
-
-Vm(ynom_f) {
-  if (fp->argc && symp(fp->argv[0]))
-    xp = (ob) ((sym) fp->argv[0])->nom,
-    xp = xp ? xp : nil;
-  return ApC(ret, xp); }
-
-Vm(sym_f) {
-  Have(Width(struct sym));
-  str i = fp->argc && strp(fp->argv[0]) ? (str) fp->argv[0] : 0;
-  sym y;
-  CallOut(y = i ?
-    intern(v, &v->syms, i) :
-    ini_anon(bump(v, Width(struct sym) - 2),
-      v->rand = liprng(v)));
-  return ApC(ret, (ob) y); }
-
-str strof(la v, const char* c) {
-  size_t bs = strlen(c);
-  str o = cells(v, Width(struct str) + b2w(bs));
-  if (!o) return 0;
-  memcpy(o->text, c, bs);
-  return str_ini(o, bs); }
-
-void wk_str(li v, ob x, ob *pool0, ob *top0) {
-  v->cp += Width(struct str) + b2w(((str) x)->len); }
-
-bool eq_str(li v, ob x, ob y) {
-  if (!strp(y)) return false;
-  str a = (str) x, b = (str) y;
-  return a->len == b->len && !strncmp(a->text, b->text, a->len); }
-
-// pairs and lists
-static size_t llenr(ob l, size_t n) {
-  return twop(l) ? llenr(B(l), n + 1) : n; }
-size_t llen(ob l) { return llenr(l, 0); }
-
-void wk_two(li v, ob x, ob *pool0, ob *top0) {
-  v->cp += Width(struct two);
-  A(x) = cp(v, A(x), pool0, top0);
-  B(x) = cp(v, B(x), pool0, top0); }
-
-bool eq_two(la v, ob x, ob y) {
-  return gettyp(y) == &two_typ &&
-    eql(v, A(x), A(y)) &&
-    eql(v, B(x), B(y)); }
-
-Vm(do_two) { return ApC(ret, fp->argc ? B(ip) : A(ip)); }
 
 static Inline size_t tbl_load(tbl t) {
   return t->len / t->cap; }
@@ -237,7 +113,7 @@ static void tbl_shrink(la v, tbl t) {
 
 // do a bunch of table assignments.
 // XXX calling convention: table in v->xp
-static NoInline bool tblss(la v, I i, I l) {
+static NoInline bool tblss(li v, intptr_t i, intptr_t l) {
   return i > l - 2 ||
     (tbl_set(v, (tbl) v->xp, v->fp->argv[i], v->fp->argv[i + 1]) &&
      tblss(v, i + 2, l)); }
@@ -327,13 +203,3 @@ Vm(do_tbl) {
       xp = (ob) ip,
       CallOut(_ = tblss(v, 1, a)),
       _ ? ApC(ret, fp->argv[a-1]) : Yield(OomError, nil); } }
-
-void wk_tbl(li v, ob x, ob *pool0, ob *top0) {
-  tbl t = (tbl) x;
-  v->cp += Width(struct tbl) + t->cap +
-           t->len * Width(struct tbl_e);
-  for (size_t i = 0, lim = t->cap; i < lim; i++)
-    for (struct tbl_e *e = t->tab[i]; e;
-      e->key = cp(v, e->key, pool0, top0),
-      e->val = cp(v, e->val, pool0, top0),
-      e = e->next); }
