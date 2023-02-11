@@ -42,3 +42,19 @@ void tx_two(la v, FILE* o, ob x) {
     if (!twop(x = B(x))) break;
     putc(' ', o); }
   putc(')', o); }
+
+Vm(txc_f) { return
+  !fp->argc ?  Yield(ArityError, putnum(1)) :
+  ApC(ret, putnum(putc(getnum(fp->argv[0]), stdout))); }
+
+Vm(tx_f) {
+  size_t i = 0, l = fp->argc;
+  if (l) {
+    while (i < l - 1)
+      transmit(v, stdout, fp->argv[i++]),
+      putc(' ', stdout);
+    xp = fp->argv[i];
+    transmit(v, stdout, xp); }
+  return
+    putc('\n', stdout),
+    ApC(ret, xp); }

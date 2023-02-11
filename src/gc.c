@@ -1,5 +1,9 @@
 #include "i.h"
 
+Vm(gc) { size_t req = v->xp; return
+  CallOut(req = please(v, req)),
+  req ? ApY(ip, xp) : Yield(OomError, xp); }
+
 static void copy_from(li, ob*, ob*);
 
 ////

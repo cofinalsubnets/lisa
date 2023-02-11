@@ -128,3 +128,5 @@ static NoInline ob rx_atom(la v, str b) {
         if (*r == c) return rx_atom_n(v, b, i+2, sign, r[1]); }
     default: goto out; } out:
   return rx_atom_n(v, b, i, sign, 10); }
+
+Vm(rxc_f) { return ApC(ret, putnum(getc(stdin))); }

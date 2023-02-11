@@ -1,4 +1,24 @@
 #include "i.h"
+// type/arity checking
+Vm(idno) { return nump(xp) ? ApN(1, xp) : ApC(xdom, xp); }
+Vm(idmo) { return homp(xp) ? ApN(1, xp) : ApC(xdom, xp); }
+Vm(idtbl) { return tblp(xp) ? ApN(1, xp) : ApC(xdom, xp); }
+Vm(idtwo) { return twop(xp) ? ApN(1, xp) : ApC(xdom, xp); }
+Vm(arity) { return
+  fp->argc >= getnum(GF(ip)) ? ApN(2, xp) :
+    Yield(ArityError, (ob) GF(ip)); }
+Vm(ary1) { return
+  fp->argc ? ApN(1, xp) :
+    Yield(ArityError, putnum(1)); }
+Vm(ary2) { return
+  fp->argc >= 2 ? ApN(1, xp) :
+    Yield(ArityError, putnum(2)); }
+Vm(ary3) { return
+  fp->argc >= 3 ? ApN(1, xp) :
+    Yield(ArityError, putnum(3)); }
+Vm(ary4) { return
+  fp->argc >= 4 ? ApN(1, xp) :
+    Yield(ArityError, putnum(4)); }
 
 
 static NoInline void errp(li, const char*, ...);
