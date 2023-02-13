@@ -114,7 +114,6 @@ static NoInline void copy_from(li v, ob *pool0, ob *top0) {
       for (; G(k); k++) G(k) = (vm*) cp(v, (ob) G(k), pool0, top0);
       v->cp = (ob*) k + 2; } } }
 
-
 static NoInline ob cp_mo(li v, mo src, ob *pool0, ob *top0) {
   struct tag *fin = mo_tag(src);
   mo ini = fin->head,
@@ -157,15 +156,15 @@ Gc(cp_sym) {
 Gc(cp_str) {
   str src = (str) x,
       dst = bump(v, Width(struct str) + b2w(src->len));
-  memcpy(dst, src, sizeof(struct str) + src->len);
-  src->act = (vm*) dst;
-  return (ob) dst; }
+  return memcpy(dst, src, sizeof(struct str) + src->len),
+         src->act = (vm*) dst,
+         (ob) dst; }
 
 Gc(cp_two) {
   two src = (two) x,
       dst = bump(v, Width(struct two));
-  src->act = (vm*) dst;
-  return (ob) two_ini(dst, src->a, src->b); }
+  return src->act = (vm*) dst,
+         (ob) two_ini(dst, src->a, src->b); }
 
 void wk_tbl(li v, ob x, ob *pool0, ob *top0) {
   tbl t = (tbl) x;
