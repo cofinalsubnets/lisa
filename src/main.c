@@ -2,11 +2,6 @@
 #include <getopt.h>
 #include <unistd.h>
 
-static FILE *boot_src(void);
-static vm vm_repl;
-static enum status enproc(li, char**, vm*),
-                   enprocf(li, FILE*);
-
 static const char *help =
   "usage: %s [options] [scripts]\n"
   "with no arguments, interact\n"
@@ -14,6 +9,11 @@ static const char *help =
   "  -h show this message\n"
   "  -i interact\n"
   "  -_ don't bootstrap\n";
+
+static FILE *boot_src(void);
+static vm vm_repl;
+static enum status enproc(li, char**, vm*),
+                   enprocf(li, FILE*);
 
 int main(int ac, char **av) {
   for (bool boot = true,
@@ -85,6 +85,7 @@ static Vm(vm_repl) {
 #ifndef SUFF
 #define SUFF "la"
 #endif
+
 static FILE *boot_src(void) {
   FILE *b;
   char buf[256], *home = getenv("HOME");

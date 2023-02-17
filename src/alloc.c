@@ -34,10 +34,8 @@ NoInline mo thd(li v, ...) {
     va_end(xs),
     k; }
 
-static NoInline two pair_gc(li v, ob a, ob b) {
-  bool ok; with(a, with(b, ok = please(v, Width(struct two))));
-  return ok ? pair(v, a, b) : 0; }
-
-NoInline two pair(la v, ob a, ob b) {
-  if (Avail < Width(struct two)) return pair_gc(v, a, b);
+NoInline two pair(li v, ob a, ob b) {
+  if (Avail < Width(struct two)) {
+    bool ok; with(a, with(b, ok = please(v, Width(struct two))));
+    if (!ok) return NULL; }
   return two_ini(bump(v, Width(struct two)), a, b); }

@@ -14,20 +14,19 @@
 // a unique identifier when it's created & hash using that,
 // or use the address but rehash as part of garbage collection.
 
-uintptr_t hash(la v, ob x) {
-  if (nump(x)) return ror(mix * x, sizeof(uintptr_t) * 2);
-  if (G(x) == act) return gettyp(x)->hash(v, x);
-  if (!livep(v, x)) return mix ^ (x * mix);
-  return mix ^ hash(v, hnom(v, (mo) x)); }
+uintptr_t hash(li v, ob x) { return
+  nump(x)      ? ror(mix * x, sizeof(uintptr_t) * 2) :
+  G(x) == act  ? gettyp(x)->hash(v, x) :
+  !livep(v, x) ? mix ^ (x * mix) :
+                 mix ^ hash(v, hnom(v, (mo) x)); }
 
-uintptr_t hx_two(la v, ob x) {
+uintptr_t hx_two(li v, ob x) {
   uintptr_t hc = hash(v, A(x)) * hash(v, B(x));
   return ror(hc, 4 * sizeof(uintptr_t)); }
 
-uintptr_t hx_sym(la v, ob _) {
-  return ((sym) _)->code; }
+uintptr_t hx_sym(li v, ob _) { return ((sym) _)->code; }
 
-uintptr_t hx_str(la v, ob _) {
+uintptr_t hx_str(li v, ob _) {
   str s = (str) _;
   uintptr_t h = 1;
   size_t words = s->len / sizeof(ob),
@@ -38,6 +37,5 @@ uintptr_t hx_str(la v, ob _) {
   while (words--) h = mix * (h ^ (mix * ws[words]));
   return h; }
 
-// hash tables are hashed by their type
-uintptr_t hx_typ(la v, ob _) {
+uintptr_t hx_typ(li v, ob _) {
   return ror(mix * (uintptr_t) GF(_), 16); }

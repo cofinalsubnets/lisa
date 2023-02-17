@@ -1,12 +1,17 @@
 #include "i.h"
-#include <ctype.h>
 
-// code parser
+Vm(rxc_f) { return ApC(ret, putnum(getc(stdin))); }
 
-static ob rx_atom(la, str), rxr(la, FILE*), rx_two(la, FILE*);
-static str rx_atom_str(la, FILE*), rx_str(la, FILE*);
+// get the next token character from the stream
+static NoInline int rx_char(FILE* i) {
+  for (int c;;) switch (c = getc(i)) {
+    default: return c;
+    case ' ': case '\t': case '\n': continue;
+    case '#': case ';': for (;;) switch (getc(i)) {
+      case '\n': case EOF: return rx_char(i); } } }
 
-static ob rx_ret(la v, FILE* i, ob x) { return x; }
+static ob rx_ret(li v, FILE* i, ob x) { return x; }
+static ob rxr(li, FILE*);
 
 // should distinguish between OOM and parse error
 enum status receive(la v, FILE* i) { ob x; return
@@ -19,54 +24,49 @@ enum status receive(la v, FILE* i) { ob x; return
 //
 // simple except it uses the managed stack for recursion.
 
-// get the next token character from the stream
-static NoInline int rx_char(FILE* i) {
-  for (int c;;) switch (c = getc(i)) {
-    default: return c;
-    case ' ': case '\t': case '\n': continue;
-    case '#': case ';': for (;;) switch (getc(i)) {
-      case '\n': case EOF: return rx_char(i); } } }
-
-static ob rx_pull(li v, FILE *i, ob x) { return
+static Inline ob pull(li v, FILE *i, ob x) { return
   ((ob (*)(la, FILE*, ob))(*v->sp++))(v, i, x); }
 
 static ob rx_two_cons(li v, FILE* i, ob x) {
   ob y = *v->sp++; return
     x = x ? (ob) pair(v, y, x) : x,
-    rx_pull(v, i, x); }
+    pull(v, i, x); }
 
+static ob rx_two(la, FILE*);
 static ob rx_two_cont(li v, FILE* i, ob x) { return
   !x || !pushs(v, rx_two_cons, x, End) ?
-    rx_pull(v, i, 0) :
+    pull(v, i, 0) :
     rx_two(v, i); }
 
 static ob rx_q(li v, FILE* i, ob x) { return
   x = x ? (ob) pair(v, x, nil) : x,
   x = x ? (ob) pair(v, (ob) v->lex->quote, x) : x,
-  rx_pull(v, i, x); }
+  pull(v, i, x); }
 
+static ob rx_atom(li, str);
+static str rx_atom_chars(li, FILE*), rx_str(li, FILE*);
 static NoInline ob rxr(li v, FILE* i) {
   int c = rx_char(i);
   switch (c) {
-    case ')': case EOF: return rx_pull(v, i, 0);
+    case ')': case EOF: return pull(v, i, 0);
     case '(': return rx_two(v, i);
-    case '"': return rx_pull(v, i, (ob) rx_str(v, i));
+    case '"': return pull(v, i, (ob) rx_str(v, i));
     case '\'': return
       pushs(v, rx_q, End) ? rxr(v, i) :
-                            rx_pull(v, i, 0); }
+                            pull(v, i, 0); }
   ungetc(c, i);
-  str a = rx_atom_str(v, i);
+  str a = rx_atom_chars(v, i);
   ob x = a ? rx_atom(v, a) : 0;
-  return rx_pull(v, i, x); }
+  return pull(v, i, x); }
 
 static NoInline ob rx_two(li v, FILE* i) {
   int c = rx_char(i);
   switch (c) {
-    case ')': case EOF: return rx_pull(v, i, nil);
+    case ')': case EOF: return pull(v, i, nil);
     default: return ungetc(c, i),
       pushs(v, rx_two_cont, End) ?
         rxr(v, i) :
-        rx_pull(v, i, 0); } }
+        pull(v, i, 0); } }
 
 static str mkbuf(li v) {
   str s = cells(v, Width(struct str) + 1);
@@ -92,7 +92,7 @@ static NoInline str rx_str(la v, FILE* p) {
 
 // read the characters of an atom (number or symbol)
 // into a string
-static NoInline str rx_atom_str(li v, FILE* p) {
+static NoInline str rx_atom_chars(li v, FILE* p) {
   str o = mkbuf(v);
   for (size_t n = 0, lim = sizeof(ob); o; o = buf_grow(v, o), lim *= 2)
     for (int x; n < lim;) switch (x = getc(p)) {
@@ -103,6 +103,7 @@ static NoInline str rx_atom_str(li v, FILE* p) {
       case EOF: return o->len = n, o; }
   return 0; }
 
+#include <ctype.h>
 static NoInline ob rx_atom_n(li v, str b, size_t inset, int sign, int rad) {
   static const char *digits = "0123456789abcdefghijklmnopqrstuvwxyz";
   size_t len = b->len;
@@ -128,5 +129,3 @@ static NoInline ob rx_atom(la v, str b) {
         if (*r == c) return rx_atom_n(v, b, i+2, sign, r[1]); }
     default: goto out; } out:
   return rx_atom_n(v, b, i, sign, 10); }
-
-Vm(rxc_f) { return ApC(ret, putnum(getc(stdin))); }

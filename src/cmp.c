@@ -1,7 +1,7 @@
 #include "i.h"
 
-bool neql(la v, ob x, ob y) { return false; }
-bool _eql(la v, ob a, ob b) { return
+bool neql(li v, ob x, ob y) { return false; }
+bool _eql(li v, ob a, ob b) { return
   (!nump(a|b) && G(a) == act &&
    gettyp(a)->equi(v, a, b)); }
 
@@ -32,4 +32,3 @@ cmp(LT, lt) cmp(LE, lteq) cmp(GE, gteq) cmp(GT, gt) cmp(EQ, eq)
       if (!t##p(fp->argv[--i])) return ApC(ret, nil);\
     return ApC(ret, T); }
 Tp(num) Tp(hom) Tp(two) Tp(sym) Tp(str) Tp(tbl) Tp(nil)
-
