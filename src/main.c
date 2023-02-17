@@ -86,10 +86,11 @@ static Vm(vm_repl) {
 #define SUFF "la"
 #endif
 static FILE *boot_src(void) {
-  FILE *b; char *home, buf[256]; return
-  (home = getenv("HOME")) &&
-  snprintf(buf, sizeof(buf), "%s/.local/lib/" NOM "/boot." SUFF, home) < sizeof(buf) &&
-  ((b = fopen(buf, "r")) ||
-   (b = fopen("/usr/local/lib/" NOM "/boot." SUFF, "r")) ||
-   (b = fopen("/usr/lib/" NOM "/boot." SUFF, "r"))) ? b :
-   fopen("/lib/" NOM "/boot." SUFF, "r"); }
+  FILE *b;
+  char buf[256], *home = getenv("HOME");
+  return home &&
+    snprintf(buf, sizeof(buf), "%s/.local/lib/" NOM "/boot." SUFF, home) < sizeof(buf) &&
+    ((b = fopen(buf, "r")) ||
+     (b = fopen("/usr/local/lib/" NOM "/boot." SUFF, "r")) ||
+     (b = fopen("/usr/lib/" NOM "/boot." SUFF, "r"))) ? b :
+     fopen("/lib/" NOM "/boot." SUFF, "r"); }
