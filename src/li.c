@@ -1,6 +1,6 @@
 #include "i.h"
 
-NoInline enum status li_go(li v) {
+enum status li_go(li v) {
   mo ip; frame fp; ob xp, *hp, *sp;
   return Unpack(), ApY(ip, xp); }
 
