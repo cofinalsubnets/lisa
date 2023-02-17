@@ -1,7 +1,6 @@
-(:
- (each f) (: (g l) (? l (, (f (A l)) (g (B l)))))
+(: egg '(,
 
- prelude-defns '(: ; data constructors
+  (ev '(: ; prelude fns
   true -1 ~~ '(()) ~ nilp
   (L . .) .
   (Q x) (L '` x)
@@ -24,7 +23,6 @@
   ; logic
   (all l p) (? l (? (p (A l)) (all (B l) p)) true)
   (any l p) (? l (? (p (A l)) true (any (B l) p)))
-  ; && and || are also macros
   (&& l .) (all l id)
   (|| l .) (any l id)
 
@@ -60,9 +58,9 @@
   (idx l x)
    (: (loop l x n)
        (? l (? (= x (A l)) n (loop (B l) x (+ n 1))))
-    (loop l x 0)))
+    (loop l x 0))))
 
- prelude-macros '(tset macros
+ (ev '(tset macros
   '::: (:
    (defm n x .) (X ',
     (X (L tset macros (L '` n) (A x))
@@ -79,13 +77,9 @@
   '&& (\ x . (? x ((: (& x) (? (B x) (L '? (A x) (& (B x))) (A x))) x) true))
   '|| (\ x . (: q (sym) (foldr x 0 (\ x m (L (L '\ q (L '? q q m)) x)))))
   '>>= (\ x . (X (last x) (init x)))
-  'where: (\ x dfns . (X ': (snoc dfns x))))
+  'where: (\ x dfns . (X ': (snoc dfns x)))))
 
-; this is the compiler source that's eval'd by stage 1, then
-; again by itself to produce the final eval function. you can't
-; use any macros in here, because stage 1 doesn't know about
-; macros.
- compiler-data '(:
+(ev '(: ; compiler data
   ; XXX be systematic about this!
   ; obviously we should be able to tell a function is pure
   ; if it's composed of pure functions/operations ...
@@ -167,8 +161,8 @@
     (fold f m x) (? (nilp x) (L m)
      (? (quoted? (A x)) (fold f (f m (unquote (A x))) (B x))
       (: z (fold f m (B x)) (X (A z) (X (A x) (B z))))))
-    (: j (fold f m x)
-     (? (= (f) (A j)) (B j) j)))
+    j (fold f m x)
+     (? (= (f) (A j)) (B j) j))
 
    ; for comparison operators
    ((compar f i) x k) (?
@@ -248,9 +242,9 @@
     nump (typed i-nump_ 'num 0)
     symp (typed i-symp_ 'num 0)
     strp (typed i-strp_ 'num 0)
-    tblp (typed i-tblp_ 'num 0)))) ; end inliners
+    tblp (typed i-tblp_ 'num 0))))) ; end inliners
 
- compiler-source '(:
+ (ev '(: ; compiler source
   (pokef i h) (>>= i h (fuse i) (\ i h q ((? q q poke) i h)))
   ((emc i k) m e) (pokef i (k (+ m 1) e))
   ((emd x k) m e) (poke x (k (+ m 1) e))
@@ -346,10 +340,7 @@
       ; is it a macro ?
       (macros a) (wev e (ap (macros a) (B x)))
       ; nope, it's a function call.
-      (: z (map x (\ x (wev e x)))
-         q (A z)
-         r (B z)
-       (?
+      (: z (map x (\ x (wev e x))) q (A z) r (B z) (?
         ; if it's pure & its arguments are all here then we can call it now.
         (&& (pure q) (all r quoted?))
          (quote (ap q (map r unquote)))
@@ -675,17 +666,10 @@
 
    ((? (twop x) co-list (symp x) co-sym imm) x k))
 
-  (ev x) ((ltu 0 0 0 x) x)) ; end sources
+  (ev x) ((ltu 0 0 0 x) x))))
 
- code-blocks (X
-  prelude-defns
-  prelude-macros
-  compiler-data
-  compiler-source
-  0)
-
- (, ((each ev) code-blocks)
-    ((each (ev 'ev)) code-blocks)
+ (, (ev egg)
+    ((ev 'ev) egg)
     (tdel _ns 'inliners 'fuse 'pure 'abelians 'monoids)))
 
 ; " drop privileges "
