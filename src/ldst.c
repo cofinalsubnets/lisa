@@ -11,9 +11,8 @@ Vm(imm) { return ApN(2, (ob) GF(ip)); }
 Vm(imm0) { return ApN(1, putnum(0)); }
 Vm(imm1) { return ApN(1, putnum(1)); }
 Vm(immn1) { return ApN(1, putnum(-1)); }
-Vm(immp) { Have1(); return
-  xp = *--sp = (ob) GF(ip),
-  ApN(2, xp); }
+Vm(immp) { Have1(); return xp = *--sp = (ob) GF(ip),
+                           ApN(2, xp); }
 
 Vm(imm0p) { return ApC(push, putnum(0)); }
 Vm(imm1p) { return ApC(push, putnum(1)); }
@@ -60,14 +59,10 @@ Vm(clo3p) { return ApC(push, fp->clos[3]); }
 ////
 /// Store Instructions
 // // stack push
-Vm(push) { Have1(); return
-  *--sp = xp,
-  ApN(1, xp); }
+Vm(push) { Have1(); return *--sp = xp, ApN(1, xp); }
 
 // set a local variable
-Vm(defsl1) { return
-  Slot1[getnum(GF(ip))] = xp,
-  ApN(2, xp); }
+Vm(defsl1) { return Slot1[getnum(GF(ip))] = xp, ApN(2, xp); }
 
 // set a module variable
 Vm(deftop) { bool _; return
@@ -80,10 +75,9 @@ Vm(setloc) {
   // + 1 for the stack slot
   Have(n + Width(struct tag) + 1);
   mo t = setw(mo_ini(hp, n), nil, n);
-  return
-    hp += n + Width(struct tag),
-    *--sp = (ob) t,
-    ApN(2, xp); }
+  return hp += n + Width(struct tag),
+         *--sp = (ob) t,
+         ApN(2, xp); }
 
 // late binding
 // TODO dynamic type checking here
@@ -99,15 +93,13 @@ Vm(late) {
       G(xp) == arity &&
       (ob) GF(FF(ip)) >= (ob) GF(xp))
     xp = (ob) FF(ip);
-  return
-    G(ip) = imm,
-    GF(ip) = (vm*) xp,
-    ApN(2, xp); }
+  return G(ip) = imm,
+         GF(ip) = (vm*) xp,
+         ApN(2, xp); }
 
 // varargs
 Vm(varg0) {
-  Have1();
-  return
+  Have1(); return
     fp = cpyw_l2r((ob*) fp - 1, fp, Width(struct frame) + fp->argc),
     sp = (ob*) fp,
     fp->argv[fp->argc++] = nil,

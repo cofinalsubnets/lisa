@@ -40,6 +40,12 @@ sym symof(la v, str s) {
     if (!_) return 0; }
   return intern(v, &v->syms, s); }
 
+NoInline sym nym(li v) { return
+  Avail < Width(struct sym) - 2 &&
+  !please(v, Width(struct sym) - 2) ? 0 :
+    ini_anon(bump(v, Width(struct sym) - 2),
+             v->rand = liprng(v)); }
+
 Vm(ynom_f) {
   if (fp->argc && symp(fp->argv[0]))
     xp = (ob) ((sym) fp->argv[0])->nom,
@@ -52,6 +58,5 @@ Vm(sym_f) {
   sym y; return
     CallOut(y = i ?
       intern(v, &v->syms, i) :
-      ini_anon(bump(v, Width(struct sym) - 2),
-               v->rand = liprng(v))),
+      nym(v)),
     ApC(ret, (ob) y); }

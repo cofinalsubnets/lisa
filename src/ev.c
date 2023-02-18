@@ -1,12 +1,45 @@
 #include "i.h"
 
-Vm(ev_f) {
-  mo k = (mo) tbl_get(v, v->lex->topl, (ob) v->lex->eval, 0);
-  return
-    k && G(k) != ev_f ? ApY(k, xp) :
-    !fp->argc ? ApC(ret, xp) :
-    (CallOut(k = ana(v, fp->argv[0])), !k) ? Yield(OomError, xp) :
-    ApY(k, xp); }
+////
+///  the thread compiler
+//
+// this is the most complicated part of the C code but it
+// normally only gets used during initialization to bootstrap the
+// self-hosted compiler.
+//
+// " compilation environments "
+typedef struct env {
+  ob arg, loc, clo, name, asig, s1, s2, s3;
+  struct env *par; } *env;
+//
+// if a function is not variadic its arity signature is
+// n = number of required arguments; otherwise it is -n-1
+static NoInline ob asign(li v, ob a, intptr_t i, ob *m) {
+  if (!twop(a)) return *m = i, a;
+  if (twop(B(a)) && AB(a) == (ob) v->lex->splat)
+    return *m = -i - 1, (ob) pair(v, A(a), nil);
+  ob x; return with(a, x = asign(v, B(a), i + 1, m)),
+               !x ? 0 : (ob) pair(v, A(a), x); }
+
+static Inline bool toplp(env e) { return nilp((ob) e->par); }
+static mo p_alloc(li, env*, size_t),
+          ana_if(li, env*, size_t, ob),
+          ana_fn(li, env*, size_t, ob),
+          ana_let(li, env*, size_t, ob),
+          ana_seq(li, env*, size_t, ob),
+          ana_mac(li, env*, size_t, ob, ob),
+          ana_ap(li, env*, size_t, ob, ob),
+          ana_sym(li, env*, size_t, ob),
+          ana_two(li, env*, size_t, ob, ob);
+
+static Inline mo pull(li v, env *e, size_t m) { return
+  ((mo (*)(li, env*, size_t)) (*v->sp++))(v, e, m); }
+
+static Inline mo pulli(vm *i, mo k) {
+  return k--, G(k) = i, k; }
+
+static Inline mo pullix(vm *i, ob x, mo k) {
+  return G(k -= 2) = i, GF(k) = (vm*) x, k; }
 
 // supplemental list functions
 //
@@ -29,48 +62,6 @@ static NoInline ob linitp(li v, ob x, ob *d) {
     (with(x, y = linitp(v, B(x), d)),
      y ? (ob) pair(v, A(x), y) : 0); }
 
-////
-///  the thread compiler
-//
-// this is the most complicated part of the C code but it
-// normally only gets used during initialization to bootstrap the
-// self-hosted compiler.
-//
-// " compilation environments "
-typedef struct env {
-  ob arg, loc, clo, name, asig, s1, s2, s3;
-  struct env *par; } *env;
-//
-// if a function is not variadic its arity signature is
-// n = number of required arguments; otherwise it is -n-1
-static NoInline ob asign(li v, ob a, intptr_t i, ob *m) {
-  if (!twop(a)) return *m = i, a;
-  if (twop(B(a)) && AB(a) == (ob) v->lex->splat)
-    return *m = -i - 1, (ob) pair(v, A(a), nil);
-  ob x; return with(a, x = asign(v, B(a), i + 1, m)),
-               !x ? 0 : (ob) pair(v, A(a), x); }
-
-static Inline bool toplp(env *e) { return !e; }
-static mo
-  p_ana_alloc(li, env*, size_t),
-  ana_cond(li, env*, size_t, ob),
-  ana_lambda(li, env*, size_t, ob),
-  ana_let(li, env*, size_t, ob),
-  ana_begin(li, env*, size_t, ob),
-  ana_macro(li, env*, size_t, ob, ob),
-  ana_ap(li, env*, size_t, ob, ob),
-  ana_sym(li, env*, size_t, ob),
-  ana_two(li, env*, size_t, ob);
-
-static Inline mo pull(li v, env *e, size_t m) { return
-  ((mo (*)(li, env*, size_t)) (*v->sp++))(v, e, m); }
-
-static Inline mo pulli(vm *i, mo k) {
-  return k--, G(k) = i, k; }
-
-static Inline mo pullix(vm *i, ob x, mo k) {
-  return G(k -= 2) = i, GF(k) = (vm*) x, k; }
-
 static mo emi(li v, env *e, size_t m) {
   vm *i = (vm*) *v->sp++;
   mo k = pull(v, e, m + 1);
@@ -87,14 +78,25 @@ static NoInline mo ana_i_x(li v, env *e, size_t m, vm *i, ob x) {
   return pullix(i, x, k); }
 
 static mo p_ana_x(li v, env *e, size_t m) {
-  ob x = *v->sp++;
-  return symp(x) ? ana_sym(v, e, m, x) :
-         twop(x) ? ana_two(v, e, m, x) :
-         ana_i_x(v, e, m, imm, x); }
+  ob x = *v->sp++; return
+    symp(x) ? ana_sym(v, e, m, x) :
+    twop(x) ? ana_two(v, e, m, A(x), B(x)) :
+              ana_i_x(v, e, m, imm, x); }
 
-mo ana(li v, ob x) { return
-  pushs(v, x, emi, ret, p_ana_alloc, End) ?
-    p_ana_x(v, NULL, 0) : 0; }
+static mo ana(li v, ob x) {
+  if (!pushs(v, x, emi, ret, p_alloc, End)) return 0;
+  env e = (env) mo_n(v, Width(struct env));
+  if (e) setw(e, nil, Width(struct env));
+  mo k; with(e, k = p_ana_x(v, &e, 0));
+  return k; }
+
+Vm(ev_f) {
+  mo k = (mo) tbl_get(v, v->lex->topl, (ob) v->lex->eval, 0);
+  return k && G(k) != ev_f ? ApY(k, xp) :
+         !fp->argc ? ApC(ret, xp) :
+         (CallOut(k = ana(v, fp->argv[0])), !k) ?
+           Yield(OomError, xp) :
+         ApY(k, xp); }
 
 // (: (((a b) c) d) x) => (: a (\ b (\ c (\ d x))))
 static NoInline ob rw_let_fn(li v, ob x) {
@@ -106,17 +108,18 @@ static NoInline ob rw_let_fn(li v, ob x) {
       (ob) pair(v, AA(x), (ob) w) : 0);
   return um, x; }
 
-static NoInline mo ana_lambda_enclose(li v, env *e, ob vars, ob code, mo k) {
-  size_t i = llen(vars);
-  mm(&vars); mm(&code); mm(&k);
-  vars = pushs(v, emix, take, putnum(i), p_ana_alloc, End) ? vars : 0;
-  while (vars && i--) vars =
-    pushs(v, p_ana_x, A(vars), emi, push, End) ?
-      B(vars) : 0;
-  vars = vars ? (ob) pull(v, e, 0) : vars;
-  vars = vars ? (ob) pair(v, code, vars) : vars;
-  vm *j = e && !nilp((*e)->loc) ? encl1 : encl0;
-  return um, um, um, vars ? pullix(j, vars, k) : 0; }
+static NoInline mo ana_fn_clo(li v, env *e, ob vars, ob code, mo k) {
+  for (mm(&k), mm(&code), mm(&vars),
+       vars = pushs(v, emix, take, putnum(llen(vars)),
+                       p_alloc, End) ? vars : 0;
+       vars && twop(vars);
+       vars = pushs(v, p_ana_x, A(vars),
+                       emi, push, End) ?  B(vars) : 0);
+  return
+    um, vars = vars ? (ob) pull(v, e, 0) : vars,
+    um, vars = vars ? (ob) pair(v, code, vars) : vars,
+    um, !vars ? 0 :
+      pullix(e && !nilp((*e)->loc) ? encl1 : encl0, vars, k); }
 
 static NoInline mo ana_let_bind_top(li v, env *e, size_t m, ob _) {
   return _ = (ob) pair(v, (ob) v->lex->topl, _),
@@ -124,14 +127,14 @@ static NoInline mo ana_let_bind_top(li v, env *e, size_t m, ob _) {
 
 static NoInline mo ana_let_bind_inner(li v, env *e, size_t m, ob _) {
   ob y; mo k; with(_, k =
-    toplp(e) || lidx((*e)->loc, _) > -1 ||
+    toplp(*e) || lidx((*e)->loc, _) > -1 ||
     (y = (ob) pair(v, _, (*e)->loc),
      (*e)->loc = y) ? pull(v, e, m + 2) : 0);
   intptr_t i = lidx((*e)->loc, _);
   return !k ? k : pullix(defsl1, putnum(i), k); }
 
 static mo p_ana_let_bind(li v, env *e, size_t m) {
-  ob _ = *v->sp++; return toplp(e) ?
+  ob _ = *v->sp++; return toplp(*e) ?
     ana_let_bind_top(v, e, m, _) :
     ana_let_bind_inner(v, e, m, _); }
 
@@ -140,7 +143,7 @@ static mo p_ana_let_bind(li v, env *e, size_t m) {
 // (in the former case the car is the list of free variables
 // and the cdr is a hom that assumes the missing variables
 // are available in the closure).
-static NoInline mo ana_lambda(li v, env *e, size_t m, ob x) {
+static NoInline mo ana_fn(li v, env *e, size_t m, ob x) {
   intptr_t i = 0; mo k;
   ob y = nil,
      n = v->sp[0] == (ob) p_ana_let_bind ? v->sp[1] : nil;
@@ -150,13 +153,13 @@ static NoInline mo ana_lambda(li v, env *e, size_t m, ob x) {
       with(k, with(y, x = k &&
         (x = twop(x) ? x : (ob) pair(v, x, nil)) &&
         (x = linitp(v, x, &y)) &&
-        (n = (ob) pair(v, n, toplp(e) ? nil : (*e)->name)) &&
-        pushs(v, p_ana_x, A(y), emi, ret, p_ana_alloc, End) &&
+        (n = (ob) pair(v, n, (*e)->name)) &&
+        pushs(v, p_ana_x, A(y), emi, ret, p_alloc, End) &&
         (x = asign(v, x, 0, &i)) &&
         (n = (ob) thd(v, x, nil, nil, // arg loc clo
                          n, putnum(i), // nom asig
                          nil, nil, nil, // s1 s2 s3
-                         toplp(e) ? (env) nil : *e, // par
+                         *e, // par
                          End)) &&
         (x = (ob) pull(v, (env*) &n, 4)) ?
         (x = !(i = llen(((env)n)->loc)) ? x :
@@ -168,7 +171,7 @@ static NoInline mo ana_lambda(li v, env *e, size_t m, ob x) {
              x,
          mo_tag((mo) x)->head = (mo) x,
          !twop(((env)n)->clo) ? x : (ob) pair(v, ((env)n)->clo, x)) : 0)))),
-    !x ? 0 : twop(x) ? ana_lambda_enclose(v, e, A(x), B(x), k) :
+    !x ? 0 : twop(x) ? ana_fn_clo(v, e, A(x), B(x), k) :
                        pullix(imm, x, k); }
 
 static NoInline bool ana_let_b_even(li v, env *e, ob x) {
@@ -178,19 +181,29 @@ static NoInline bool ana_let_b_even(li v, env *e, ob x) {
      pushs(v, p_ana_x, AB(x), p_ana_let_bind, A(x), End)); }
 
 static mo p_ana_let_right(li v, env *e, size_t m) {
-  return pull(v, e, m); }
+  ob x = *v->sp++, nyms = nil;
+  mm(&nyms); mm(&x);
+  for (ob y; nyms && twop(x); nyms = y, x = B(x))
+    y = (ob) nym(v),
+    y = y ? (ob) pair(v, A(x), y) : y,
+    y = y ? (ob) pair(v, y, nyms) : y;
+  um, nyms = nyms ? (ob) pair(v, nyms, (*e)->s3) : nyms;
+  mo k = pull(v, e, m);
+  return um, ((*e)->s3 = nyms) ? k : 0; }
 
 static mo p_ana_let_left(li v, env *e, size_t m) {
-  return pull(v, e, m); }
+  mo k = pull(v, e, m);
+  if (k) (*e)->s3 = B((*e)->s3);
+  return k; }
 
 // (: a b c) => (, (: a b) c)
 static NoInline bool ana_let_b_odd(li v, env *e, ob x) {
   ob _ = nil; return
-    pushs(v, x, p_ana_let_right, End) &&
-    (with(_,
-       x = linitp(v, *v->sp++, &_),
-       x = x ? (ob) pair(v, (ob) v->lex->define, x) : x),
-     x) &&
+    with(_, x =
+      (x = linitp(v, x, &_)) &&
+      pushs(v, p_ana_let_right, x, End) ?
+        (ob) pair(v, (ob) v->lex->define, v->sp[1]) : 0),
+    x &&
     (x = (ob) pair(v, x, _)) &&
     (x = (ob) pair(v, (ob) v->lex->begin, x)) &&
     (x = (ob) pair(v, x, nil)) &&
@@ -211,14 +224,14 @@ static NoInline mo ana_let(li v, env *e, size_t m, ob x) {
 
 // before generating anything, store the
 // exit address in stack 2
-static NoInline mo p_ana_cond_pre(li v, env *e, size_t m) {
+static NoInline mo p_ana_if_push_out(li v, env *e, size_t m) {
   ob x = (ob) pull(v, e, m); return
     x = x ? (ob) pair(v, x, (*e)->s2) : x,
     x ? (mo) A((*e)->s2 = x) : 0; }
 
 // before generating a branch emit a jump to
 // the top of stack 2
-static mo p_ana_cond_pre_con(li v, env *e, size_t m) {
+static mo p_ana_if_peek_out(li v, env *e, size_t m) {
   mo x = pull(v, e, m + 2), k; return !x ? x :
     G(k = (mo) A((*e)->s2)) == ret ?
       pulli(ret, x) :
@@ -226,43 +239,41 @@ static mo p_ana_cond_pre_con(li v, env *e, size_t m) {
 
 // after generating a branch store its address
 // in stack 1
-static mo p_ana_cond_post_con(li v, env *e, size_t m) {
+static mo p_ana_if_push_con(li v, env *e, size_t m) {
   ob x = (ob) pull(v, e, m); return
     x = x ? (ob) pair(v, x, (*e)->s1) : x,
     x ? (mo) A((*e)->s1 = x) : 0; }
 
 // before generating an antecedent emit a branch to
 // the top of stack 1
-static mo p_ana_cond_pre_ant(li v, env *e, size_t m) {
+static mo p_ana_if_pop_con(li v, env *e, size_t m) {
   mo x = pull(v, e, m + 2);
-  return x = x ? pullix(br1, A((*e)->s1), x) : x,
-         (*e)->s1 = B((*e)->s1),
-         x; }
+  if (x) x = pullix(br1, A((*e)->s1), x),
+         (*e)->s1 = B((*e)->s1);
+  return x; }
 
-static NoInline bool ana_cond_loop_b(la v, env *e, ob x) {
-  x = twop(x) ? x : (ob) pair(v, nil, nil);
-  if (!x) return false;
-  if (!twop(B(x))) return
-    pushs(v, p_ana_x, A(x), p_ana_cond_pre_con, End);
-  bool _; with(x,
-    _ = pushs(v,
-      p_ana_cond_post_con,
-      p_ana_x, AB(x),
-      p_ana_cond_pre_con,
-      End),
-    _ = _ ? ana_cond_loop_b(v, e, BB(x)) : _);
-  return _ &&
-    pushs(v, p_ana_x, A(x), p_ana_cond_pre_ant, End); }
+static NoInline bool ana_if_loop(la v, env *e, ob x) { return
+  !twop(x) && !(x = (ob) pair(v, nil, nil)) ? false :
+  !twop(B(x)) ?
+    pushs(v, p_ana_x, A(x), p_ana_if_peek_out, End) :
+  pushs(v, BB(x),
+           p_ana_if_push_con,
+           p_ana_x, AB(x),
+           p_ana_if_peek_out,
+           End) &&
+  ana_if_loop(v, e, *v->sp++) &&
+  pushs(v, p_ana_x, A(x), p_ana_if_pop_con, End); }
 
-static mo p_ana_cond_post(li v, env *e, size_t m) {
+static mo p_ana_if_pop_out(li v, env *e, size_t m) {
   mo k = pull(v, e, m);
-  return (*e)->s2 = B((*e)->s2), k; }
+  if (k) (*e)->s2 = B((*e)->s2);
+  return k; }
 
-static NoInline mo ana_cond(li v, env *e, size_t m, ob x) {
-  bool _; return
-    with(x, _ = pushs(v, p_ana_cond_pre, End)),
-    _ && ana_cond_loop_b(v, e, x) &&
-         pushs(v, p_ana_cond_post, End) ? pull(v, e, m) : 0; }
+static NoInline mo ana_if(li v, env *e, size_t m, ob x) {
+  return pushs(v, x, p_ana_if_push_out, End) &&
+         ana_if_loop(v, e, *v->sp++) &&
+         pushs(v, p_ana_if_pop_out, End) ?
+         pull(v, e, m) : 0; }
 
          /*
 static ob getnym(env e, ob y) {
@@ -273,39 +284,36 @@ static ob getnym(env e, ob y) {
   */
 
 enum where { Arg, Loc, Clo, Here, Wait };
-static NoInline enum where ana_sym_look(li v, env e, ob y, ob *p) {
-  if (nilp((ob) e)) return // toplevel
-    (y = tbl_get(v, v->lex->topl, y, 0)) ?
-      (*p = y, Here) :
-      (*p = (ob) v->lex->topl, Wait);
 
-//  ob nym = getnym(e, y);
-//  if (nym && lidx(e->loc, y) >= 0) return (*p = (ob) e, Loc);
+static NoInline mo ana_sym_look_top(li v, ob y, mo k) {
+  ob x = tbl_get(v, v->lex->topl, y, 0);
+  return x ? pullix(imm, x, k) :
+    (with(k, x = (ob) pair(v, (ob) v->lex->topl, y)),
+     x ? pullix(late, x, k) : 0); }
 
-  return
-    lidx(e->loc, y) >= 0 ? (*p = (ob) e, Loc) :
-    lidx(e->arg, y) >= 0 ? (*p = (ob) e, Arg) :
-    lidx(e->clo, y) >= 0 ? (*p = (ob) e, Clo) :
-    ana_sym_look(v, (env) e->par, y, p); }
+static NoInline mo ana_sym_look1(li v, env *f, ob y, mo k, env e) {
+  size_t n; return
+    toplp(e) ? ana_sym_look_top(v, y, k) :
+    (lidx(e->loc, y) < 0 &&
+     lidx(e->arg, y) < 0 &&
+     lidx(e->clo, y) < 0) ?
+      ana_sym_look1(v, f, y, k, e->par) :
+    (n = llen((*f)->clo),
+     with(k, y = (ob) snoc(v, (*f)->clo, y)),
+     !y ? 0 : ((*f)->clo = y,
+                pullix(clon, putnum(n), k))); }
+
+static NoInline mo ana_sym_look0(li v, env *f, ob y, mo k) {
+  ob x; env e = *f; return
+    toplp(e) ? ana_sym_look_top(v, y, k) :
+    (x = lidx(e->loc, y)) > -1 ? pullix(sl1n, putnum(x), k) :
+    (x = lidx(e->arg, y)) > -1 ? pullix(argn, putnum(x), k) :
+    (x = lidx(e->clo, y)) > -1 ? pullix(clon, putnum(x), k) :
+    ana_sym_look1(v, f, y, k, e->par); }
 
 static NoInline mo ana_sym(li v, env *e, size_t m, ob x) {
   mo k; with(x, k = pull(v, e, m + 2));
-  if (!k) return k;
-  ob b; enum where a =
-    ana_sym_look(v, !toplp(e) ? *e : (env) nil, x, &b);
-  if (a == Here)
-    return pullix(imm, b, k);
-  if (a == Wait) return
-    with(k, x = (ob) pair(v, b, x)),
-    x ? pullix(late, x, k) : 0;
-  if (b == (ob) *e) return pullix(
-    a == Arg ? argn : a == Clo ? clon : sl1n,
-    putnum(lidx(((ob*)(*e))[a], x)),
-    k);
-  size_t y = llen((*e)->clo);
-  return with(k, x = (ob) snoc(v, (*e)->clo, x)),
-    !x ? 0 : ((*e)->clo = x,
-              pullix(clon, putnum(y), k)); }
+  return !k ? k : ana_sym_look0(v, e, x, k); }
 
 static mo p_ana_ap_call(li v, env *e, size_t m) {
   ob ary = *v->sp++;
@@ -324,14 +332,14 @@ static NoInline mo ana_ap(li v, env *e, size_t m, ob f, ob x) {
     ok = pushs(v, p_ana_x, A(x), emi, push, End);
   return um, ok ? pull(v, e, m) : 0; }
 
-static NoInline bool ana_begin_b_loop(la v, env *e, ob x) {
+static NoInline bool ana_seq_b_loop(la v, env *e, ob x) {
   bool _; return !twop(x) ||
-    (with(x, _ = ana_begin_b_loop(v, e, B(x))),
+    (with(x, _ = ana_seq_b_loop(v, e, B(x))),
      _ && pushs(v, p_ana_x, A(x), End)); }
 
-static NoInline mo ana_begin(li v, env *e, size_t m, ob x) {
+static NoInline mo ana_seq(li v, env *e, size_t m, ob x) {
   return x = twop(x) ? x : (ob) pair(v, x, nil),
-         x && ana_begin_b_loop(v, e, x) ?
+         x && ana_seq_b_loop(v, e, x) ?
            pull(v, e, m) : 0; }
 
 static enum status li_ap(la v, mo f, ob x) {
@@ -342,11 +350,9 @@ static enum status li_ap(la v, mo f, ob x) {
                 xok, ap_f, // source idx=9
                 End);
   return !k ? OomError :
-    (k[5].ap = (vm*) (k + 9),
-     v->ip = k,
-     li_go(v)); }
+    (k[5].ap = (vm*) (k + 9), v->ip = k, li_go(v)); }
 
-static NoInline mo ana_macro(li v, env *e, size_t m, ob mac, ob x) {
+static NoInline mo ana_mac(li v, env *e, size_t m, ob mac, ob x) {
   ob xp = v->xp;
   mo ip = v->ip;
   enum status s;
@@ -355,22 +361,19 @@ static NoInline mo ana_macro(li v, env *e, size_t m, ob mac, ob x) {
   return x = v->xp, v->xp = xp, v->ip = ip,
          pushs(v, p_ana_x, x, End) ? pull(v, e, m) : 0; }
 
-static NoInline mo ana_two(li v, env *e, size_t m, ob x) {
-  ob a = A(x), b = B(x);
+static NoInline mo ana_two(li v, env *e, size_t m, ob a, ob b) {
   if (symp(a)) {
-    sym y = (sym) a;
-    if (y == v->lex->quote) return
+    if (a == (ob) v->lex->quote) return
       ana_i_x(v, e, m, imm, twop(b) ? A(b) : b);
-    if (y == v->lex->cond)   return ana_cond(v, e, m, b);
-    if (y == v->lex->lambda) return ana_lambda(v, e, m, b);
-    if (y == v->lex->define) return ana_let(v, e, m, b);
-    if (y == v->lex->begin)  return ana_begin(v, e, m, b);
-    if ((x = tbl_get(v, v->lex->macros, a, 0)))
-      return ana_macro(v, e, m, x, b); }
+    if (a == (ob) v->lex->cond)   return ana_if(v, e, m, b);
+    if (a == (ob) v->lex->lambda) return ana_fn(v, e, m, b);
+    if (a == (ob) v->lex->define) return ana_let(v, e, m, b);
+    if (a == (ob) v->lex->begin)  return ana_seq(v, e, m, b);
+    ob z = tbl_get(v, v->lex->macros, a, 0);
+    if (z) return ana_mac(v, e, m, z, b); }
   return ana_ap(v, e, m, a, b); }
 
-static mo p_ana_alloc(li v, env *e, size_t m) {
+static mo p_alloc(li v, env *e, size_t m) {
   mo k = mo_n(v, m + 1);
-  if (k) setw(k, nil, m),
-         G(k += m) = (vm*) (toplp(e) ? nil : (*e)->name);
+  if (k) setw(k, nil, m), G(k += m) = (vm*) (*e)->name;
   return k; }

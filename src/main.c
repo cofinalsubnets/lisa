@@ -12,8 +12,7 @@ static const char *help =
 
 static FILE *boot_src(void);
 static vm vm_repl;
-static enum status enproc(li, char**, vm*),
-                   enprocf(li, FILE*);
+static enum status enproc(li, char**, vm*), enprocf(li, FILE*);
 
 int main(int ac, char **av) {
   for (bool boot = true,
@@ -37,28 +36,25 @@ int main(int ac, char **av) {
 static enum status enprocf(li v, FILE *f) {
   if (!f) return SystemError;
   enum status r = receive(v, f);
-  if (r != Ok) return fclose(f),
-                      r == Eof ? Ok : r;
+  if (r != Ok) return fclose(f), r == Eof ? Ok : r;
   ob x = v->xp;
   with(x, r = enprocf(v, f));
   if (r != Ok) return r;
   mo k = thd(v, immp, x,
-                imm, ev_f, // assign target idx=3
+                imm, nil, // assign target idx=3
                 call, putnum(1),
                 jump, v->ip, ev_f, // assign src idx=8
                 End);
   if (!k) return OomError;
-  return k[3].ap = (vm*) (k+8),
-         v->ip = k,
-         Ok; }
+  return k[3].ap = (vm*) (k + 8), v->ip = k, Ok; }
 
 static enum status enproc(li v, char **av, vm *j) {
   const char *p = *av;
   if (!p) {
     mo k = thd(v, j, End);
     return !k ? OomError : (v->ip = k, Ok); }
-  enum status r = enproc(v, av+1, j);
-  return r == Ok ? enprocf(v, fopen(p, "r")) : r; }
+  enum status r = enproc(v, av + 1, j);
+  return r != Ok ? r : enprocf(v, fopen(p, "r")); }
 
 static enum status li_ev(li v, ob x) {
   mo k = thd(v, immp, x,
@@ -67,9 +63,7 @@ static enum status li_ev(li v, ob x) {
                 xok, ev_f, // source idx=7
                 End);
   if (!k) return OomError;
-  return k[3].ap = (vm*) (k + 7),
-         v->ip = k,
-         li_go(v); }
+  return k[3].ap = (vm*) (k + 7), v->ip = k, li_go(v); }
 
 static Vm(vm_repl) {
   Pack();

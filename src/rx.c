@@ -2,17 +2,9 @@
 
 Vm(rxc_f) { return ApC(ret, putnum(getc(stdin))); }
 
-// get the next token character from the stream
-static NoInline int rx_char(FILE* i) {
-  for (int c;;) switch (c = getc(i)) {
-    default: return c;
-    case ' ': case '\t': case '\n': continue;
-    case '#': case ';': for (;;) switch (getc(i)) {
-      case '\n': case EOF: return rx_char(i); } } }
-
-static ob rx_ret(li v, FILE* i, ob x) { return x; }
-static ob rxr(li, FILE*);
-
+static ob
+  rx_ret(li, FILE*, ob), rxr(li, FILE*),
+  rx_two(la, FILE*), rx_atom(li, str);
 // should distinguish between OOM and parse error
 enum status receive(la v, FILE* i) { ob x; return
   !pushs(v, rx_ret, End) ? OomError :
@@ -27,60 +19,64 @@ enum status receive(la v, FILE* i) { ob x; return
 static Inline ob pull(li v, FILE *i, ob x) { return
   ((ob (*)(la, FILE*, ob))(*v->sp++))(v, i, x); }
 
+// get the next token character from the stream
+static NoInline int rx_char(FILE *i) {
+  for (int c;;) switch (c = getc(i)) {
+    default: return c;
+    case ' ': case '\t': case '\n': continue;
+    case '#': case ';': for (;;) switch (getc(i)) {
+      case '\n': case EOF: return rx_char(i); } } }
+
+static ob rx_ret(li v, FILE* i, ob x) { return x; }
+
 static ob rx_two_cons(li v, FILE* i, ob x) {
   ob y = *v->sp++; return
     x = x ? (ob) pair(v, y, x) : x,
     pull(v, i, x); }
 
-static ob rx_two(la, FILE*);
 static ob rx_two_cont(li v, FILE* i, ob x) { return
-  !x || !pushs(v, rx_two_cons, x, End) ?
-    pull(v, i, 0) :
-    rx_two(v, i); }
+  !x || !pushs(v, rx_two_cons, x, End) ? pull(v, i, 0) :
+                                         rx_two(v, i); }
 
 static ob rx_q(li v, FILE* i, ob x) { return
   x = x ? (ob) pair(v, x, nil) : x,
   x = x ? (ob) pair(v, (ob) v->lex->quote, x) : x,
   pull(v, i, x); }
 
-static ob rx_atom(li, str);
 static str rx_atom_chars(li, FILE*), rx_str(li, FILE*);
 static NoInline ob rxr(li v, FILE* i) {
-  int c = rx_char(i);
-  switch (c) {
+  int c = rx_char(i); switch (c) {
     case ')': case EOF: return pull(v, i, 0);
     case '(': return rx_two(v, i);
     case '"': return pull(v, i, (ob) rx_str(v, i));
     case '\'': return
-      pushs(v, rx_q, End) ? rxr(v, i) :
-                            pull(v, i, 0); }
-  ungetc(c, i);
-  str a = rx_atom_chars(v, i);
-  ob x = a ? rx_atom(v, a) : 0;
-  return pull(v, i, x); }
+      pushs(v, rx_q, End) ? rxr(v, i) : pull(v, i, 0);
+    default:
+      ungetc(c, i);
+      str a = rx_atom_chars(v, i);
+      ob x = a ? rx_atom(v, a) : 0;
+      return pull(v, i, x); } }
 
 static NoInline ob rx_two(li v, FILE* i) {
-  int c = rx_char(i);
-  switch (c) {
+  int c = rx_char(i); switch (c) {
     case ')': case EOF: return pull(v, i, nil);
     default: return ungetc(c, i),
-      pushs(v, rx_two_cont, End) ?
-        rxr(v, i) :
-        pull(v, i, 0); } }
+      pushs(v, rx_two_cont, End) ? rxr(v, i) :
+                                   pull(v, i, 0); } }
 
-static str mkbuf(li v) {
+static str buf_new(li v) {
   str s = cells(v, Width(struct str) + 1);
   return s ? str_ini(s, sizeof(ob)) : s; }
 
 static NoInline str buf_grow(li v, str s) {
-  str t; size_t len = s->len;
-  with(s, t = cells(v, Width(struct str) + 2 * b2w(len)));
-  return !t ? t : (memcpy(t->text, s->text, len),
-                   str_ini(t, 2 * len)); }
+  str t; size_t len = s->len; return
+    with(s, t = cells(v, Width(struct str) + 2 * b2w(len))),
+    !t ? t : (memcpy(t->text, s->text, len),
+              str_ini(t, 2 * len)); }
 
 // read the contents of a string literal into a string
 static NoInline str rx_str(la v, FILE* p) {
-  str o = mkbuf(v);
+  str o = buf_new(v);
   for (size_t n = 0, lim = sizeof(ob); o; o = buf_grow(v, o), lim *= 2)
     for (int x; n < lim;) switch (x = getc(p)) {
       // backslash causes the next character
@@ -93,7 +89,7 @@ static NoInline str rx_str(la v, FILE* p) {
 // read the characters of an atom (number or symbol)
 // into a string
 static NoInline str rx_atom_chars(li v, FILE* p) {
-  str o = mkbuf(v);
+  str o = buf_new(v);
   for (size_t n = 0, lim = sizeof(ob); o; o = buf_grow(v, o), lim *= 2)
     for (int x; n < lim;) switch (x = getc(p)) {
       default: o->text[n++] = x; continue;

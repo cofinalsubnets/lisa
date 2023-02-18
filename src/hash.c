@@ -14,6 +14,8 @@
 // a unique identifier when it's created & hash using that,
 // or use the address but rehash as part of garbage collection.
 
+static const uintptr_t mix = 2708237354241864315;
+
 uintptr_t hash(li v, ob x) { return
   nump(x)      ? ror(mix * x, sizeof(uintptr_t) * 2) :
   G(x) == act  ? gettyp(x)->hash(v, x) :

@@ -4,8 +4,8 @@ enum status li_go(li v) {
   mo ip; frame fp; ob xp, *hp, *sp;
   return Unpack(), ApY(ip, xp); }
 
+// reset the stack
 void li_unwind(li v) {
-  // reset the stack
   v->fp = (frame) (v->pool + v->len);
   v->sp = (ob*) v->fp; }
 
@@ -34,7 +34,7 @@ static NoInline bool inst(li v, const char *a, vm *b) {
 #define RegisterInstruction(a) && inst(v, "i-"#a, a)
 NoInline enum status li_ini(li v) {
   memset(v, 0, sizeof(struct V));
-  const size_t len = 1 << 10; // expected to be a power of 2
+  const size_t len = 1 << 10; // a power of 2
   ob _, *pool = new_pool(len);
   struct glob *l; struct sym *y;
   return !pool ? OomError :

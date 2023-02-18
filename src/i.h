@@ -98,15 +98,14 @@ gc_evac cp_str, cp_sym, cp_tbl, cp_two;
 hasher hx_two, hx_sym, hx_typ, hx_str;
 equator _eql, neql, eq_two, eq_str;
 
-mo thd(li, ...), ana(li, ob), mo_n(li, size_t);
+mo thd(li, ...), mo_n(li, size_t);
 tbl tbl_new(li), tbl_set(li, tbl, ob, ob);
 two pair(li, ob, ob);
 str strof(li, const char*);
-sym symof(li, str), intern(li, sym*, str);
+sym nym(li), symof(li, str), intern(li, sym*, str);
 ob hnom(li, mo), *new_pool(size_t),
    cp(li, ob, ob*, ob*), tbl_get(li, tbl, ob, ob);
 
-#define mix ((uintptr_t) 2708237354241864315)
 extern const struct typ two_typ, str_typ, tbl_typ, sym_typ;
 
 #define Gc(n) ob n(li v, ob x, ob *pool0, ob *top0)
