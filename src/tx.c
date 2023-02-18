@@ -1,24 +1,18 @@
 #include "i.h"
 
-static NoInline void tx_mo_nom(la v, FILE* o, ob x) {
-  if (symp(x)) putc('\\', o), transmit(v, o, x);
-  else if (!twop(x)) putc('\\', o);
-  else {
-    if (symp(A(x)) || twop(A(x))) tx_mo_nom(v, o, A(x));
-    if (symp(B(x)) || twop(B(x))) tx_mo_nom(v, o, B(x)); } }
-
-void transmit(la v, FILE* o, ob x) {
+static void tx_mo_nom(li, FILE*, ob);
+void transmit(li v, FILE* o, ob x) {
   if (nump(x)) fprintf(o, "%ld", getnum(x));
   else if (G(x) == act) gettyp(x)->emit(v, o, x);
   else tx_mo_nom(v, o, hnom(v, (mo) x)); }
 
-void tx_tbl(la v, FILE* o, ob _) {
-  fprintf(o, "#tbl:%ld/%ld", ((tbl)_)->len, ((tbl)_)->cap); }
+void tx_tbl(li v, FILE *o, ob x) {
+  fprintf(o, "#tbl:%ld/%ld", ((tbl)x)->len, ((tbl)x)->cap); }
 
-void tx_sym(la v, FILE* o, ob _) {
+void tx_sym(li v, FILE *o, ob _) {
   str s = ((sym) _)->nom;
-  if (!s) fputs("#sym", o);
-  else fwrite(s->text, 1, s->len, o); }
+  if (s) fwrite(s->text, 1, s->len, o);
+  else fputs("#sym", o); }
 
 void tx_str(li v, FILE *o, ob _) {
   str s = (str) _;
@@ -29,7 +23,7 @@ void tx_str(li v, FILE *o, ob _) {
     if ((c = *text++) == '\\' || c == '"') putc('\\', o);
   putc('"', o); }
 
-void tx_two(la v, FILE* o, ob x) {
+void tx_two(li v, FILE *o, ob x) {
   for (putc('(', o);; putc(' ', o)) {
     transmit(v, o, A(x));
     if (!twop(x = B(x))) { putc(')', o); break; } } }
@@ -48,3 +42,10 @@ Vm(tx_f) {
     transmit(v, stdout, xp); }
   return putc('\n', stdout),
          ApC(ret, xp); }
+
+static NoInline void tx_mo_nom(li v, FILE *o, ob x) {
+  if (symp(x)) putc('\\', o), transmit(v, o, x);
+  else if (!twop(x)) putc('\\', o);
+  else {
+    if (symp(A(x)) || twop(A(x))) tx_mo_nom(v, o, A(x));
+    if (symp(B(x)) || twop(B(x))) tx_mo_nom(v, o, B(x)); } }

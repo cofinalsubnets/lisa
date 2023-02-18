@@ -17,5 +17,5 @@
  (= "asdf" (str 97 115 100 102))
  (: (printable-char) (+ 32 (randn (- 126 32)))
     (randw) (ap str (map (iota (+ 4 (randn 12))) printable-char))
-    words (map (iota 0z100) randw)
+    words (map (iota 144) randw)
   (all words (\ word (= word (ap str (chars word)))))))

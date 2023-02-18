@@ -20,11 +20,8 @@ static NoInline struct tbl_e *tbl_ent_hc(li v, tbl t, ob k, uintptr_t hc) {
   while (e && !eql(v, e->key, k)) e = e->next;
   return e; }
 
-static struct tbl_e *tbl_ent(li v, tbl t, ob k) {
-  return tbl_ent_hc(v, t, k, hash(v, k)); }
-
-NoInline ob tbl_get(la v, tbl t, ob k, ob d) {
-  struct tbl_e *e = tbl_ent(v, t, k);
+ob tbl_get(li v, tbl t, ob k, ob d) {
+  struct tbl_e *e = tbl_ent_hc(v, t, k, hash(v, k));
   return e ? e->val : d; }
 
 static NoInline tbl tbl_grow(li v, tbl t, size_t cap0, size_t cap1);
@@ -43,15 +40,16 @@ NoInline tbl tbl_set(li v, tbl t, ob k, ob x) {
   size_t cap1 = cap0,
          load = ++t->len / cap0;
   while (load > 1) cap1 <<= 1, load >>= 1;
-  return cap0 == cap1 ? t :
-    tbl_grow(v, t, cap0, cap1); }
+  return cap0 == cap1 ? t : tbl_grow(v, t, cap0, cap1); }
 
 static NoInline tbl tbl_grow(li v, tbl t, size_t cap0, size_t cap1) {
   struct tbl_e **tab0, **tab1;
   with(t, tab1 = (struct tbl_e**) cells(v, cap1));
   if (!tab1) return 0;
-  setw(tab1, 0, cap1);
-  tab0 = t->tab;
+  else setw(tab1, 0, cap1),
+       tab0 = t->tab,
+       t->cap = cap1,
+       t->tab = tab1;
 
   for (size_t i; cap0--;)
     for (struct tbl_e *e, *es = tab0[cap0]; es;
@@ -61,14 +59,12 @@ static NoInline tbl tbl_grow(li v, tbl t, size_t cap0, size_t cap1) {
       e->next = tab1[i],
       tab1[i] = e);
 
-  return t->cap = cap1,
-         t->tab = tab1,
-         t; }
+  return t; }
 
 static ob tbl_del_s(la, tbl, ob, ob), tbl_keys(la);
 // get table keys
 // XXX calling convention: table in v->xp
-static ob tbl_keys(la v) {
+static ob tbl_keys(li v) {
   size_t len = ((tbl) v->xp)->len;
   two ks = cells(v, Width(struct two) * len);
   if (!ks) return 0;
@@ -83,9 +79,9 @@ static ob tbl_keys(la v) {
 
 // shrinking a table never allocates memory, so it's safe
 // to do at any time.
-static void tbl_shrink(la v, tbl t) {
-  struct tbl_e *e = NULL, *f, *g;
+static void tbl_shrink(li v, tbl t) {
   size_t i = t->cap;
+  struct tbl_e *e = NULL, *f, *g;
 
   // collect all entries
   while (i--) for (f = t->tab[i], t->tab[i] = 0; f;
@@ -95,12 +91,11 @@ static void tbl_shrink(la v, tbl t) {
   while (t->cap > 1 && t->len < t->cap) t->cap >>= 1;
 
   // reinsert
-  while (e)
-    i = tbl_idx(t->cap, hash(v, e->key)),
-    f = e->next,
-    e->next = t->tab[i],
-    t->tab[i] = e,
-    e = f; }
+  while (e) i = tbl_idx(t->cap, hash(v, e->key)),
+            f = e->next,
+            e->next = t->tab[i],
+            t->tab[i] = e,
+            e = f; }
 
 // do a bunch of table assignments.
 // XXX calling convention: table in v->xp
@@ -109,7 +104,7 @@ static NoInline bool tblss(li v, intptr_t i, intptr_t l) {
     (tbl_set(v, (tbl) v->xp, v->fp->argv[i], v->fp->argv[i + 1]) &&
      tblss(v, i + 2, l)); }
 
-static NoInline ob tbl_del_s(la v, tbl y, ob key, ob val) {
+static NoInline ob tbl_del_s(li v, tbl y, ob key, ob val) {
   size_t b = tbl_idx(y->cap, hash(v, key));
   struct tbl_e *e = y->tab[b], prev = {0,0,e};
 

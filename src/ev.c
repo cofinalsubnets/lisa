@@ -192,9 +192,8 @@ static mo p_ana_let_right(li v, env *e, size_t m) {
   return um, ((*e)->s3 = nyms) ? k : 0; }
 
 static mo p_ana_let_left(li v, env *e, size_t m) {
-  mo k = pull(v, e, m);
-  if (k) (*e)->s3 = B((*e)->s3);
-  return k; }
+  mo k = pull(v, e, m); return !k ? k :
+    ((*e)->s3 = B((*e)->s3), k); }
 
 // (: a b c) => (, (: a b) c)
 static NoInline bool ana_let_b_odd(li v, env *e, ob x) {
@@ -233,9 +232,8 @@ static NoInline mo p_ana_if_push_out(li v, env *e, size_t m) {
 // the top of stack 2
 static mo p_ana_if_peek_out(li v, env *e, size_t m) {
   mo x = pull(v, e, m + 2), k; return !x ? x :
-    G(k = (mo) A((*e)->s2)) == ret ?
-      pulli(ret, x) :
-      pullix(jump, (ob) k, x); }
+    G(k = (mo) A((*e)->s2)) == ret ? pulli(ret, x) :
+                                     pullix(jump, (ob) k, x); }
 
 // after generating a branch store its address
 // in stack 1
@@ -247,12 +245,12 @@ static mo p_ana_if_push_con(li v, env *e, size_t m) {
 // before generating an antecedent emit a branch to
 // the top of stack 1
 static mo p_ana_if_pop_con(li v, env *e, size_t m) {
-  mo x = pull(v, e, m + 2);
-  if (x) x = pullix(br1, A((*e)->s1), x),
-         (*e)->s1 = B((*e)->s1);
-  return x; }
+  mo x = pull(v, e, m + 2); return !x ? x :
+    (x = pullix(br1, A((*e)->s1), x),
+     (*e)->s1 = B((*e)->s1),
+     x); }
 
-static NoInline bool ana_if_loop(la v, env *e, ob x) { return
+static NoInline bool ana_if_loop(li v, env *e, ob x) { return
   !twop(x) && !(x = (ob) pair(v, nil, nil)) ? false :
   !twop(B(x)) ?
     pushs(v, p_ana_x, A(x), p_ana_if_peek_out, End) :
@@ -265,9 +263,8 @@ static NoInline bool ana_if_loop(la v, env *e, ob x) { return
   pushs(v, p_ana_x, A(x), p_ana_if_pop_con, End); }
 
 static mo p_ana_if_pop_out(li v, env *e, size_t m) {
-  mo k = pull(v, e, m);
-  if (k) (*e)->s2 = B((*e)->s2);
-  return k; }
+  mo k = pull(v, e, m); return !k ? k :
+    ((*e)->s2 = B((*e)->s2), k); }
 
 static NoInline mo ana_if(li v, env *e, size_t m, ob x) {
   return pushs(v, x, p_ana_if_push_out, End) &&
@@ -332,17 +329,16 @@ static NoInline mo ana_ap(li v, env *e, size_t m, ob f, ob x) {
     ok = pushs(v, p_ana_x, A(x), emi, push, End);
   return um, ok ? pull(v, e, m) : 0; }
 
-static NoInline bool ana_seq_b_loop(la v, env *e, ob x) {
+static NoInline bool ana_seq_b_loop(li v, env *e, ob x) {
   bool _; return !twop(x) ||
     (with(x, _ = ana_seq_b_loop(v, e, B(x))),
      _ && pushs(v, p_ana_x, A(x), End)); }
 
 static NoInline mo ana_seq(li v, env *e, size_t m, ob x) {
   return x = twop(x) ? x : (ob) pair(v, x, nil),
-         x && ana_seq_b_loop(v, e, x) ?
-           pull(v, e, m) : 0; }
+         x && ana_seq_b_loop(v, e, x) ? pull(v, e, m) : 0; }
 
-static enum status li_ap(la v, mo f, ob x) {
+static enum status li_ap(li v, mo f, ob x) {
   mo k = thd(v, immp, x,
                 immp, f,
                 imm, nil, // assignment target idx=5
@@ -353,13 +349,11 @@ static enum status li_ap(la v, mo f, ob x) {
     (k[5].ap = (vm*) (k + 9), v->ip = k, li_go(v)); }
 
 static NoInline mo ana_mac(li v, env *e, size_t m, ob mac, ob x) {
-  ob xp = v->xp;
-  mo ip = v->ip;
-  enum status s;
-  with(xp, with(ip, s = li_ap(v, (mo) mac, x)));
-  if (s != Ok) return report(v, s), NULL;
-  return x = v->xp, v->xp = xp, v->ip = ip,
-         pushs(v, p_ana_x, x, End) ? pull(v, e, m) : 0; }
+  ob xp = v->xp; mo ip = v->ip; enum status s; return
+    with(xp, with(ip, s = li_ap(v, (mo) mac, x))),
+    s != Ok ? (report(v, s), NULL) :
+    (x = v->xp, v->xp = xp, v->ip = ip,
+     pushs(v, p_ana_x, x, End) ? pull(v, e, m) : 0); }
 
 static NoInline mo ana_two(li v, env *e, size_t m, ob a, ob b) {
   if (symp(a)) {
@@ -374,6 +368,5 @@ static NoInline mo ana_two(li v, env *e, size_t m, ob a, ob b) {
   return ana_ap(v, e, m, a, b); }
 
 static mo p_alloc(li v, env *e, size_t m) {
-  mo k = mo_n(v, m + 1);
-  if (k) setw(k, nil, m), G(k += m) = (vm*) (*e)->name;
-  return k; }
+  mo k = mo_n(v, m + 1); return !k ? k :
+    (setw(k, nil, m), G(k += m) = (vm*) (*e)->name, k); }

@@ -18,7 +18,7 @@ typedef intptr_t ob;
 typedef struct mo *mo; // procedures
                        //
 typedef struct frame { // stack frame
-  ob *clos; // closure pointer FIXME // use stack
+  ob *clos; // closure pointer
   mo retp; // thread return address
   struct frame *subd; // stack frame of caller
   uintptr_t argc; // argument count
@@ -75,7 +75,7 @@ struct V {
 
   // memory manager state
   uintptr_t len;
-  intptr_t *pool, *loop;
+  ob *pool, *loop;
   struct ll { ob *addr; struct ll *next; } *safe;
   union { ob *cp; size_t t0; }; };
 
@@ -84,8 +84,7 @@ vm act, yield_status, gc, xok, setclo, genclo0, genclo1;
 void transmit(li, FILE*, ob), // write to output
      report(li, enum status); // show error message
 
-bool please(li, size_t),
-     pushs(li, ...); // push args onto stack; true on success
+bool please(li, size_t), pushs(li, ...); // push args onto stack; true on success
 
 enum status li_go(li), receive(li, FILE*);
 
@@ -103,14 +102,12 @@ tbl tbl_new(li), tbl_set(li, tbl, ob, ob);
 two pair(li, ob, ob);
 str strof(li, const char*);
 sym nym(li), symof(li, str), intern(li, sym*, str);
-ob hnom(li, mo), *new_pool(size_t),
-   cp(li, ob, ob*, ob*), tbl_get(li, tbl, ob, ob);
+ob hnom(li, mo), *new_pool(size_t), tbl_get(li, tbl, ob, ob);
 
 extern const struct typ two_typ, str_typ, tbl_typ, sym_typ;
 
 #define Gc(n) ob n(li v, ob x, ob *pool0, ob *top0)
-#define End ((intptr_t)0)
-#define EndArgs End
+#define End ((ob)0)
 #define Width(_) b2w(sizeof(_))
 
 #define getnum(_) ((ob)(_)>>1)
@@ -175,7 +172,7 @@ static Inline size_t b2w(size_t b) {
   return r ? q + 1 : q; }
 
 // this can give a false positive if x is a fixnum
-static Inline bool livep(la v, ob x) {
+static Inline bool livep(li v, ob x) {
   return (ob*) x >= v->pool && (ob*) x < v->pool + v->len; }
 
 static Inline intptr_t ror(intptr_t x, uintptr_t n) {
@@ -212,7 +209,7 @@ static Inline bool eql(li v, ob a, ob b) {
 
 // " the interpreter "
 #define Vm(n, ...) NoInline enum status\
-  n(la v, ob xp, mo ip, ob *hp, ob *sp, frame fp, ##__VA_ARGS__)
+  n(li v, ob xp, mo ip, ob *hp, ob *sp, frame fp, ##__VA_ARGS__)
 // the arguments to a terp function collectively represent the
 // runtime state, and the  return value is the result of the
 // program. there are six arguments because that's the number

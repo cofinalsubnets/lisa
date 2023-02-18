@@ -4,8 +4,6 @@ Vm(gc) { size_t req = v->xp; return
   CallOut(req = please(v, req)),
   req ? ApY(ip, xp) : Yield(OomError, xp); }
 
-static void copy_from(li, ob*, ob*);
-
 ////
 /// garbage collector
 //
@@ -30,6 +28,7 @@ static void copy_from(li, ob*, ob*);
 //   -----------------------------------
 //   |                          `------'
 //   t0                  gc time (this cycle)
+static void copy_from(li, ob*, ob*);
 NoInline bool please(li v, size_t req) {
   size_t t1 = clock(), t0 = v->t0, have = v->len;
   ob *pool = v->pool, *loop = v->loop;
@@ -68,6 +67,7 @@ NoInline bool please(li v, size_t req) {
          v->t0 = clock(),
          true; }
 
+static ob cp(li, ob, ob*, ob*);
 static NoInline void copy_from(li v, ob *pool0, ob *top0) {
   size_t len1 = v->len;
   ob *sp0 = v->sp,
@@ -123,7 +123,7 @@ static NoInline ob cp_mo(li v, mo src, ob *pool0, ob *top0) {
   return GF(d) = (vm*) dst,
          (ob) (src - ini + dst); }
 
-NoInline ob cp(la v, ob x, ob *pool0, ob *top0) {
+static NoInline ob cp(li v, ob x, ob *pool0, ob *top0) {
   if (nump(x) || (ob*) x < pool0 || (ob*) x >= top0) return x;
   mo src = (mo) x;
   x = (ob) G(src);
@@ -168,8 +168,7 @@ Gc(cp_two) {
 
 void wk_tbl(li v, ob x, ob *pool0, ob *top0) {
   tbl t = (tbl) x;
-  v->cp += Width(struct tbl) + t->cap +
-           t->len * Width(struct tbl_e);
+  v->cp += Width(struct tbl) + t->cap + t->len * Width(struct tbl_e);
   for (size_t i = 0, lim = t->cap; i < lim; i++)
     for (struct tbl_e *e = t->tab[i]; e;
       e->key = cp(v, e->key, pool0, top0),
