@@ -4,9 +4,6 @@ const struct typ tbl_typ = {
   .does = do_tbl, .emit = tx_tbl, .evac = cp_tbl,
   .hash = hx_typ, .equi = neql, .walk = wk_tbl, };
 
-static Inline size_t tbl_load(tbl t) {
-  return t->len / t->cap; }
-
 static Inline size_t tbl_idx(size_t cap, size_t co) {
   return (cap - 1) & co; }
 
@@ -18,44 +15,38 @@ tbl tbl_new(li v) {
 // hash tables
 // some of the worst code is here :(
 
-static NoInline struct tbl_e *tbl_ent_hc(la v, tbl t, ob k, uintptr_t hc) {
+static NoInline struct tbl_e *tbl_ent_hc(li v, tbl t, ob k, uintptr_t hc) {
   struct tbl_e *e = t->tab[tbl_idx(t->cap, hc)];
   while (e && !eql(v, e->key, k)) e = e->next;
   return e; }
 
-static struct tbl_e *tbl_ent(la v, tbl t, ob k) {
+static struct tbl_e *tbl_ent(li v, tbl t, ob k) {
   return tbl_ent_hc(v, t, k, hash(v, k)); }
 
 NoInline ob tbl_get(la v, tbl t, ob k, ob d) {
   struct tbl_e *e = tbl_ent(v, t, k);
   return e ? e->val : d; }
 
-static tbl tbl_grow(la, tbl);
-
-tbl tbl_set(la v, tbl t, ob k, ob x) {
+static NoInline tbl tbl_grow(li v, tbl t, size_t cap0, size_t cap1);
+NoInline tbl tbl_set(li v, tbl t, ob k, ob x) {
   uintptr_t hc = hash(v, k);
   struct tbl_e *e = tbl_ent_hc(v, t, k, hc);
   if (e) return e->val = x, t;
 
-  uintptr_t i = tbl_idx(t->cap, hc);
+  uintptr_t cap0 = t->cap,
+            i = tbl_idx(cap0, hc);
   with(t, with(k, with(x, e = cells(v, Width(struct tbl_e)))));
   if (!e) return 0;
 
   e->key = k, e->val = x, e->next = t->tab[i];
   t->tab[i] = e;
-  t->len++;
-  return tbl_grow(v, t); }
-
-// tbl_grow(vm, tbl, new_size): destructively resize a hash table.
-// new_size words of memory are allocated for the new bucket array.
-// the old table entries are reused to populate the modified table.
-static NoInline tbl tbl_grow(la v, tbl t) {
-  size_t cap0 = t->cap,
-         cap1 = cap0,
-         load = tbl_load(t);
+  size_t cap1 = cap0,
+         load = ++t->len / cap0;
   while (load > 1) cap1 <<= 1, load >>= 1;
-  if (cap0 == cap1) return t;
+  return cap0 == cap1 ? t :
+    tbl_grow(v, t, cap0, cap1); }
 
+static NoInline tbl tbl_grow(li v, tbl t, size_t cap0, size_t cap1) {
   struct tbl_e **tab0, **tab1;
   with(t, tab1 = (struct tbl_e**) cells(v, cap1));
   if (!tab1) return 0;
@@ -101,7 +92,7 @@ static void tbl_shrink(la v, tbl t) {
     g = f->next, f->next = e, e = f, f = g);
 
   // shrink bucket array
-  while (t->cap > 1 && !tbl_load(t)) t->cap >>= 1;
+  while (t->cap > 1 && t->len < t->cap) t->cap >>= 1;
 
   // reinsert
   while (e)
@@ -143,7 +134,7 @@ Vm(tdel_f) {
   tbl t = (tbl) fp->argv[0];
   for (size_t i = 1, l = fp->argc; i < l; i++)
     xp = tbl_del_s(v, t, fp->argv[i], xp);
-  if (!tbl_load(t)) tbl_shrink(v, t);
+  if (t->len < t->cap) tbl_shrink(v, t);
   return ApC(ret, xp); }
 
 Vm(tget) { return

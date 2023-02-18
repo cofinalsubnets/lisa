@@ -18,30 +18,21 @@ void tx_tbl(la v, FILE* o, ob _) {
 void tx_sym(la v, FILE* o, ob _) {
   str s = ((sym) _)->nom;
   if (!s) fputs("#sym", o);
-  else {
-    size_t n = s->len;
-    const char *c = s->text;
-    while (n--) putc(*c++, o); } }
+  else fwrite(s->text, 1, s->len, o); }
 
-static Inline bool escapep(char c) {
-  return c == '\\' || c == '"'; }
-
-void tx_str(struct V *v, FILE *o, ob _) {
+void tx_str(li v, FILE *o, ob _) {
   str s = (str) _;
   size_t len = s->len;
   const char *text = s->text;
   putc('"', o);
   for (char c; len--; putc(c, o))
-    if (escapep(c = *text++)) putc('\\', o);
+    if ((c = *text++) == '\\' || c == '"') putc('\\', o);
   putc('"', o); }
 
 void tx_two(la v, FILE* o, ob x) {
-  putc('(', o);
-  for (;;) {
+  for (putc('(', o);; putc(' ', o)) {
     transmit(v, o, A(x));
-    if (!twop(x = B(x))) break;
-    putc(' ', o); }
-  putc(')', o); }
+    if (!twop(x = B(x))) { putc(')', o); break; } } }
 
 Vm(txc_f) { return
   !fp->argc ?  Yield(ArityError, putnum(1)) :
@@ -55,6 +46,5 @@ Vm(tx_f) {
       putc(' ', stdout);
     xp = fp->argv[i];
     transmit(v, stdout, xp); }
-  return
-    putc('\n', stdout),
-    ApC(ret, xp); }
+  return putc('\n', stdout),
+         ApC(ret, xp); }
