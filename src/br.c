@@ -4,8 +4,8 @@ Vm(yield_status) {
   enum status r = v->xp;
   return Pack(), r; }
 
-Vm(xok) { return Pack(), Ok; }
-Vm(xdom) { return Pack(), DomainError; }
+Vm(xok) { return Yield(Ok, xp); }
+Vm(xdom) { return Yield(DomainError, xp); }
 ////
 /// Branch Instructions
 //

@@ -25,9 +25,9 @@ static NoInline two snoc(li v, ob l, ob x) {
 
 // return the init of a list and store a pointer to its last pair.
 static NoInline ob linitp(li v, ob x, ob *d) {
-  ob y; return !twop(B(x)) ? (*d = x, nil) :
-    (with(x, y = linitp(v, B(x), d)),
-     y ? (ob) pair(v, A(x), y) : 0); }
+  if (!twop(B(x))) return *d = x, nil;
+  ob y; with(x, y = linitp(v, B(x), d));
+  return y ? (ob) pair(v, A(x), y) : 0; }
 
 ////
 ///  the thread compiler
@@ -50,18 +50,6 @@ static NoInline ob asign(li v, ob a, intptr_t i, ob *m) {
   ob x; return with(a, x = asign(v, B(a), i + 1, m)),
                !x ? 0 : (ob) pair(v, A(a), x); }
 
-static Inline bool toplp(env *e) { return !e; }
-static mo
-  p_ana_alloc(li, env*, size_t),
-  ana_cond(li, env*, size_t, ob),
-  ana_lambda(li, env*, size_t, ob),
-  ana_let(li, env*, size_t, ob),
-  ana_begin(li, env*, size_t, ob),
-  ana_macro(li, env*, size_t, ob, ob),
-  ana_ap(li, env*, size_t, ob, ob),
-  ana_sym(li, env*, size_t, ob),
-  ana_two(li, env*, size_t, ob);
-
 static Inline mo pull(li v, env *e, size_t m) { return
   ((mo (*)(li, env*, size_t)) (*v->sp++))(v, e, m); }
 
@@ -81,6 +69,18 @@ static mo emix(li v, env *e, size_t m) {
   ob x = *v->sp++;
   mo k; with(x, k = pull(v, e, m + 2));
   return k ? pullix(i, x, k) : 0; }
+
+static Inline bool toplp(env *e) { return !e; }
+static mo
+  p_ana_alloc(li, env*, size_t),
+  ana_cond(li, env*, size_t, ob),
+  ana_lambda(li, env*, size_t, ob),
+  ana_let(li, env*, size_t, ob),
+  ana_begin(li, env*, size_t, ob),
+  ana_macro(li, env*, size_t, ob, ob),
+  ana_ap(li, env*, size_t, ob, ob),
+  ana_sym(li, env*, size_t, ob),
+  ana_two(li, env*, size_t, ob);
 
 static NoInline mo ana_i_x(li v, env *e, size_t m, vm *i, ob x) {
   mo k; with(x, k = pull(v, e, m + 2));
@@ -293,15 +293,13 @@ static NoInline mo ana_sym(li v, env *e, size_t m, ob x) {
   if (!k) return k;
   ob b; enum where a =
     ana_sym_look(v, !toplp(e) ? *e : (env) nil, x, &b);
-  if (a == Here)
-    return pullix(imm, b, k);
-  if (a == Wait) return
-    with(k, x = (ob) pair(v, b, x)),
-    x ? pullix(late, x, k) : 0;
-  if (b == (ob) *e) return pullix(
-    a == Arg ? argn : a == Clo ? clon : sl1n,
-    putnum(lidx(((ob*)(*e))[a], x)),
-    k);
+  if (a == Here) return pullix(imm, b, k);
+  if (a == Wait) return with(k, x = (ob) pair(v, b, x)),
+                        x ? pullix(late, x, k) : 0;
+  if (b == (ob) *e) return
+    pullix(a == Arg ? argn : a == Clo ? clon : sl1n,
+           putnum(lidx(((ob*)(*e))[a], x)),
+           k);
   size_t y = llen((*e)->clo);
   return with(k, x = (ob) snoc(v, (*e)->clo, x)),
     !x ? 0 : ((*e)->clo = x,
