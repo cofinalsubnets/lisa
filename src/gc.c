@@ -1,4 +1,5 @@
 #include "i.h"
+ob *new_pool(size_t n) { return malloc(n * 2 * sizeof(ob)); }
 
 Vm(gc) { size_t req = v->xp; return
   CallOut(req = please(v, req)),
@@ -78,30 +79,25 @@ static NoInline void copy_from(li v, ob *pool0, ob *top0) {
   // reset state
   v->syms = 0;
   v->hp = v->cp = v->pool = pool1;
-  v->sp = sp0 + shift;
-  v->fp = (sf) ((ob*) v->fp + shift);
 
   v->xp = cp(v, v->xp, pool0, top0);
   v->ip = (mo) cp(v, (ob) v->ip, pool0, top0);
-
-  // copy the stack
-  ob *sp = v->sp;
-  frame fp = v->fp;
-  for (;;) {
-    while (sp < (ob*) fp) *sp++ = cp(v, *sp0++, pool0, top0);
-    if (sp0 == top0) break;
-    sf fp0 = (sf) sp0;
-    fp->argc = fp0->argc;
-    fp->subd = (sf) ((ob*) fp0->subd + shift);
-    fp->clos = (ob*) cp(v, (ob) fp0->clos, pool0, top0);
-    fp->retp = (mo) cp(v, (ob) fp0->retp, pool0, top0);
-    sp = fp->argv;
-    sp0 = fp0->argv;
-    fp = fp->subd; }
-
   // copy saved values
   for (struct ll *r = v->safe; r; r = r->next)
     *r->addr = cp(v, *r->addr, pool0, top0);
+
+  // copy the stack
+  ob *sp1 = v->sp = sp0 + shift;
+  frame fp1 = v->fp = (sf) ((ob*) v->fp + shift);
+  for (;;) {
+    while (sp1 < (ob*) fp1) *sp1++ = cp(v, *sp0++, pool0, top0);
+    if (sp0 == top0) break;
+    frame fp0 = (frame) sp0;
+    fp1->argc = fp0->argc,
+    fp1->subd = (frame) ((ob*) fp0->subd + shift),
+    fp1->clos = (ob*) cp(v, (ob) fp0->clos, pool0, top0),
+    fp1->retp = (mo) cp(v, (ob) fp0->retp, pool0, top0),
+    sp0 = fp0->argv, sp1 = fp1->argv, fp1 = fp1->subd; }
 
   // copy globals
   v->lex = (struct glob*) cp(v, (ob) v->lex, pool0, top0);
@@ -120,8 +116,7 @@ static NoInline ob cp_mo(li v, mo src, ob *pool0, ob *top0) {
      dst = bump(v, fin->end - ini),
      d = dst;
   for (mo s = ini; (G(d) = G(s)); G(s++) = (vm*) d++);
-  return GF(d) = (vm*) dst,
-         (ob) (src - ini + dst); }
+  return GF(d) = (vm*) dst, (ob) (src - ini + dst); }
 
 static NoInline ob cp(li v, ob x, ob *pool0, ob *top0) {
   if (nump(x) || (ob*) x < pool0 || (ob*) x >= top0) return x;
@@ -147,10 +142,9 @@ Gc(cp_tbl) {
   return (ob) dst; }
 
 Gc(cp_sym) {
-  sym src = (sym) x,
-      dst = src->nom ?
-        intern(v, &v->syms, (str) cp(v, (ob) src->nom, pool0, top0)) :
-        ini_anon(bump(v, Width(struct sym) - 2), src->code);
+  sym src = (sym) x, dst = src->nom ?
+    intern(v, &v->syms, (str) cp(v, (ob) src->nom, pool0, top0)) :
+    ini_anon(bump(v, Width(struct sym) - 2), src->code);
   return (ob) (src->act = (vm*) dst); }
 
 Gc(cp_str) {
@@ -161,8 +155,7 @@ Gc(cp_str) {
          (ob) dst; }
 
 Gc(cp_two) {
-  two src = (two) x,
-      dst = bump(v, Width(struct two));
+  two src = (two) x, dst = bump(v, Width(struct two));
   return src->act = (vm*) dst,
          (ob) two_ini(dst, src->a, src->b); }
 

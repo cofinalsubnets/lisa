@@ -86,7 +86,11 @@ void transmit(li, FILE*, ob), // write to output
 
 bool please(li, size_t), pushs(li, ...); // push args onto stack; true on success
 
-enum status li_go(li), receive(li, FILE*);
+enum status
+  rxs(li, char**),
+  li_go(li),
+  receive(li, FILE*);
+
 
 uintptr_t llen(ob), hash(li, ob), liprng(li);
 

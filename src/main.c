@@ -31,6 +31,7 @@ int main(int ac, char **av) {
         if (s == Ok) s = enproc(&v, av, j);
         if (s == Ok && boot) s = enprocf(&v, boot_src());
         if (s == Ok) s = li_go(&v);
+
         return report(&v, s), li_fin(&v), s; } }
 
 static enum status enprocf(li v, FILE *f) {

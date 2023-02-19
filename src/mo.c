@@ -1,5 +1,49 @@
 #include "i.h"
 
+// function functions
+//
+// functions are laid out in memory like this
+//
+// *|*|*|*|*|*|?|0|^
+// * = function pointer or inline value
+// ? = function name / metadata (optional)
+// 0 = null
+// ^ = pointer to head of function
+//
+// this way we can support internal pointers for branch
+// destinations, return addresses, etc, while letting
+// the garbage collector always find the head.
+
+// try to get the name of a function
+ob hnom(li v, mo x) {
+  if (!livep(v, (ob) x)) return nil;
+  vm *k = G(x);
+
+  if (k == setclo || k == genclo0 || k == genclo1) // closure?
+    return hnom(v, (mo) G(FF(x)));
+
+  ob n = ((ob*) mo_tag(x))[-1];
+  return homp(n) && livep(v, n) && G(n) == act ? n : nil; }
+
+// allocate a thread
+mo mo_n(li v, size_t n) {
+  mo k = cells(v, n + Width(struct tag));
+  return !k ? k : mo_ini(k, n); }
+
+static NoInline mo thdr(li v, size_t n, va_list xs) {
+  vm *x = va_arg(xs, vm*);
+  if (!x) return mo_n(v, n);
+  mo k; with(x, k = thdr(v, n + 1, xs));
+  if (k) k[n].ap = x;
+  return k; }
+
+NoInline mo thd(li v, ...) {
+  mo k; va_list xs; return
+    va_start(xs, v),
+    k = thdr(v, 0, xs),
+    va_end(xs),
+    k; }
+
 // instructions for the internal compiler
 //
 // vm interface to mo_n
@@ -86,8 +130,8 @@ Vm(genclo0) {
 // lexical environments.
 Vm(enclose) {
   size_t thd_len = 3 + Width(struct tag),
-         env_len = fp->argc + Width(struct tag) +
-                              Width(struct clo_env);
+         env_len = fp->argc + Width(struct tag)
+                            + Width(struct clo_env);
   Have(env_len + thd_len);
   ob codeXcons = (ob) GF(ip), // pair of the compiled thread & closure constructor
      *block = hp;

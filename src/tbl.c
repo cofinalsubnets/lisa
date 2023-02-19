@@ -30,15 +30,13 @@ NoInline tbl tbl_set(li v, tbl t, ob k, ob x) {
   struct tbl_e *e = tbl_ent_hc(v, t, k, hc);
   if (e) return e->val = x, t;
 
-  uintptr_t cap0 = t->cap,
-            i = tbl_idx(cap0, hc);
+  uintptr_t cap0 = t->cap, i = tbl_idx(cap0, hc);
   with(t, with(k, with(x, e = cells(v, Width(struct tbl_e)))));
   if (!e) return 0;
 
   e->key = k, e->val = x, e->next = t->tab[i];
   t->tab[i] = e;
-  size_t cap1 = cap0,
-         load = ++t->len / cap0;
+  size_t cap1 = cap0, load = ++t->len / cap0;
   while (load > 1) cap1 <<= 1, load >>= 1;
   return cap0 == cap1 ? t : tbl_grow(v, t, cap0, cap1); }
 
@@ -47,9 +45,7 @@ static NoInline tbl tbl_grow(li v, tbl t, size_t cap0, size_t cap1) {
   with(t, tab1 = (struct tbl_e**) cells(v, cap1));
   if (!tab1) return 0;
   else setw(tab1, 0, cap1),
-       tab0 = t->tab,
-       t->cap = cap1,
-       t->tab = tab1;
+       tab0 = t->tab, t->cap = cap1, t->tab = tab1;
 
   for (size_t i; cap0--;)
     for (struct tbl_e *e, *es = tab0[cap0]; es;
@@ -115,8 +111,7 @@ static NoInline ob tbl_del_s(li v, tbl y, ob key, ob val) {
       y->len--;
       break; }
 
-  return y->tab[b] = prev.next,
-         val; }
+  return y->tab[b] = prev.next, val; }
 
 Vm(tget_f) { return
   fp->argc < 2 ? Yield(ArityError, putnum(2)) :
@@ -172,10 +167,9 @@ Vm(tlen_f) { return
   !tblp(xp = fp->argv[0]) ? Yield(DomainError, xp) :
   ApC(ret, putnum(((tbl) xp)->len)); }
 
-Vm(tset) {
-  ob x = *sp++;
-  CallOut(x = (ob) tbl_set(v, (tbl) xp, x, *sp));
-  return x ? ApN(1, *sp++) : Yield(OomError, xp); }
+Vm(tset) { ob x = *sp++; return
+  CallOut(x = (ob) tbl_set(v, (tbl) xp, x, *sp)),
+  x ? ApN(1, *sp++) : Yield(OomError, xp); }
 
 Vm(do_tbl) {
   bool _;
