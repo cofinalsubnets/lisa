@@ -50,9 +50,8 @@ Vm(call) {
     fp->clos = (ob*) nil,
     ApY(xp, nil); }
 
-// tail calls
-Vm(rec) {
-  size_t adic = getnum(GF(ip));
+static Vm(recne) {
+  size_t adic = xp;
   // save return address
   sf subd = fp->subd;
   mo retp = fp->retp;
@@ -64,7 +63,17 @@ Vm(rec) {
     fp->subd = subd,
     fp->argc = adic,
     fp->clos = (ob*) nil,
-    ApY((mo) xp, nil); }
+    ApY(ip, nil); }
+
+// tail calls
+Vm(rec) {
+  size_t adic = getnum(GF(ip));
+  ip = (mo) xp;
+  if (adic != fp->argc) return ApC(recne, adic);
+  return
+    cpyw_r2l(fp->argv, sp, adic),
+    sp = (ob*) fp,
+    ApY(ip, nil); }
 
 Vm(ap_f) {
   if (fp->argc < 2) return Yield(ArityError, putnum(2));

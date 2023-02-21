@@ -53,7 +53,7 @@ static NoInline tbl tbl_grow(li v, tbl t, size_t cap0, size_t cap1) {
 
   return t; }
 
-static ob tbl_del_s(la, tbl, ob, ob), tbl_keys(la);
+static ob tbl_del_s(li, tbl, ob, ob), tbl_keys(li);
 // get table keys
 // XXX calling convention: table in v->xp
 static ob tbl_keys(li v) {
@@ -166,16 +166,3 @@ Vm(tlen_f) { return
 Vm(tset) { ob x = *sp++; return
   CallOut(x = (ob) tbl_set(v, (tbl) xp, x, *sp)),
   x ? ApN(1, *sp++) : Yield(OomError, xp); }
-
-Vm(do_tbl) {
-  bool _;
-  ob a = fp->argc;
-  switch (a) {
-    case 0: return ApC(ret, putnum(((tbl) ip)->len));
-    case 1: return
-      xp = tbl_get(v, (tbl) ip, fp->argv[0], nil),
-      ApC(ret, xp);
-    default: return
-      xp = (ob) ip,
-      CallOut(_ = tblss(v, 1, a)),
-      _ ? ApC(ret, fp->argv[a-1]) : Yield(OomError, nil); } }

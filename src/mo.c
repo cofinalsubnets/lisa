@@ -85,10 +85,13 @@ Vm(seek_f) {
     xp = (ob) ((mo) fp->argv[0] + getnum(fp->argv[1]));
   return ApC(ret, xp); }
 
-Vm(act) {
-  static vm *do_data[] = {
-    [Sym] = do_id, [Str] = do_id, [Tbl] = do_tbl, [Two] = do_two, };
-  return ApC(do_data[gettyp(ip)], xp); }
+static Vm(do_id) { return ApC(ret, (ob) ip); }
+static Vm(do_two) { return ApC(ret, fp->argc ? B(ip) : A(ip)); }
+static Vm(do_tbl) { return ApC(ret, fp->argc != 1 ? (ob) ip :
+  tbl_get(v, (tbl) ip, fp->argv[0], nil)); }
+static vm *const do_data[] = { [Sym] = do_id,  [Str] = do_id,
+                               [Tbl] = do_tbl, [Two] = do_two, };
+Vm(act) { return ApC(do_data[gettyp(ip)], xp); }
 
 // closure functions
 //

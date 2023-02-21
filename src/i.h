@@ -93,8 +93,7 @@ enum status
 
 uintptr_t llen(ob), hash(li, ob), liprng(li);
 
-vm do_id, do_tbl, do_two;
-bool _eql(li, ob, ob), neql(li, ob, ob);
+bool _eql(li, ob, ob);
 
 mo thd(li, ...), mo_n(li, size_t);
 tbl tbl_new(li), tbl_set(li, tbl, ob, ob);
@@ -184,33 +183,29 @@ static Inline mo mo_ini(void *_, size_t len) {
   return t->null = NULL, t->head = _; }
 
 static Inline two two_ini(void *_, ob a, ob b) {
-  two w = _; return
-    w->act = act, w->typ = Two,
-    w->a = a, w->b = b, w; }
+  two w = _; return w->act = act, w->typ = Two,
+                    w->a = a, w->b = b, w; }
 
 static Inline str str_ini(void *_, size_t len) {
-  str s = _; return
-    s->act = act, s->typ = Str,
-    s->len = len, s; }
+  str s = _; return s->act = act, s->typ = Str,
+                    s->len = len, s; }
 
 static Inline tbl ini_tbl(void *_, size_t len, size_t cap, struct tbl_e **tab) {
-  tbl t = _; return
-    t->act = act, t->typ = Tbl,
-    t->len = len, t->cap = cap, t->tab = tab, t; }
+  tbl t = _; return t->act = act, t->typ = Tbl,
+                    t->len = len, t->cap = cap,
+                    t->tab = tab, t; }
 
 static Inline sym ini_anon(void *_, uintptr_t code) {
-  sym y = _; return
-    y->act = act, y->typ = Sym,
-    y->nom = 0, y->code = code, y; }
+  sym y = _; return y->act = act, y->typ = Sym,
+                    y->nom = 0, y->code = code, y; }
 
 static Inline sym ini_sym(void *_, str nom, uintptr_t code) {
-  sym y = _; return
-    y->act = act, y->typ = Sym,
-    y->nom = nom, y->code = code,
-    y->l = y->r = 0, y; }
+  sym y = _; return y->act = act, y->typ = Sym,
+                    y->nom = nom, y->code = code,
+                    y->l = y->r = 0, y; }
 
-static Inline bool eql(li v, ob a, ob b) {
-  return a == b || _eql(v, a, b); }
+static Inline bool eql(li v, ob a, ob b) { return
+  a == b || _eql(v, a, b); }
 
 #define gettyp(x) ((ob)GF((x)))
 
@@ -256,9 +251,7 @@ static Inline bool eql(li v, ob a, ob b) {
 
 // used by the compiler but not exposed as primitives
 #define ForEachInstruction(_)\
- _(call) _(ret) _(rec) _(jump) _(varg)\
- _(arity) _(ary1) _(ary2) _(ary3) _(ary4)\
- _(idno) _(idmo) _(idtwo) _(idtbl)\
+ _(push) _(call) _(ret) _(rec) _(jump) _(varg)\
  _(imm) _(immn1) _(imm0) _(imm1)\
  _(immn1p) _(imm0p) _(imm1p) _(immp)\
  _(argn) _(arg0) _(arg1) _(arg2) _(arg3)\
@@ -267,19 +260,17 @@ static Inline bool eql(li v, ob a, ob b) {
  _(clo0p) _(clo1p) _(clo2p) _(clo3p)\
  _(sl1n) _(sl10) _(sl11) _(sl12) _(sl13)\
  _(sl10p) _(sl11p) _(sl12p) _(sl13p)\
- _(deftop) _(late)\
- _(setloc) _(defsl1)\
+ _(br1) _(br0) _(bre) _(brn) _(brl) _(brle) _(brge) _(brg)\
+ _(arity) _(ary1) _(ary2) _(ary3) _(ary4)\
+ _(idno) _(idmo) _(idtwo) _(idtbl)\
+ _(twop_) _(nump_) _(nilp_) _(strp_) _(tblp_) _(symp_) _(homp_)\
+ _(deftop) _(late) _(setloc) _(defsl1)\
  _(take) _(encl1) _(encl0)\
- _(twop_) _(nump_) _(nilp_) _(strp_)\
- _(tblp_) _(symp_) _(homp_)\
+ _(lt) _(lteq) _(eq) _(gteq) _(gt)\
  _(add) _(sub) _(mul) _(quot) _(rem) _(neg)\
  _(sar) _(sal) _(band) _(bor) _(bxor) _(bnot)\
- _(lt) _(lteq) _(eq) _(gteq) _(gt)\
- _(tget) _(tset) _(thas) _(tlen)\
  _(cons) _(car) _(cdr)\
- _(br1) _(br0) _(bre) _(brn)\
- _(brl) _(brle) _(brge) _(brg)\
- _(push)
+ _(tget) _(tset) _(thas) _(tlen)
 
 // primitive functions
 #define ForEachFunction(_)\

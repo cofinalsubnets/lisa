@@ -5,8 +5,6 @@
 
 // immediate values
 
-Vm(do_id) { return ApC(ret, (ob) ip); }
-
 Vm(imm) { return ApN(2, (ob) GF(ip)); }
 Vm(imm0) { return ApN(1, putnum(0)); }
 Vm(imm1) { return ApN(1, putnum(1)); }

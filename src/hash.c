@@ -16,24 +16,27 @@
 // or use the address but rehash as part of garbage collection.
 
 typedef uintptr_t hasher(li, ob);
-static hasher hx_two, hx_sym, hx_typ, hx_str;
+static hasher hx_two, hx_str, hx_sym, hx_typ,
+  *const hash_data[] = {
+    [Two] = hx_two, [Str] = hx_str,
+    [Sym] = hx_sym, [Tbl] = hx_typ, };
+
 static const uintptr_t mix = 2708237354241864315;
-static uintptr_t (*const data_hash[])(li, ob) = {
-  [Two] = hx_two, [Str] = hx_str, [Sym] = hx_sym, [Tbl] = hx_typ, };
 
 uintptr_t hash(li v, ob x) { return
   nump(x)      ? ror(mix * x, sizeof(uintptr_t) * 2) :
-  G(x) == act  ? data_hash[gettyp(x)](v, x) :
+  G(x) == act  ? hash_data[gettyp(x)](v, x) :
   !livep(v, x) ? mix ^ (x * mix) :
                  mix ^ hash(v, hnom(v, (mo) x)); }
 
-uintptr_t hx_two(li v, ob x) {
+static uintptr_t hx_sym(li v, ob _) { return ((sym) _)->code; }
+static uintptr_t hx_typ(li v, ob _) {
+  return ror(mix * (uintptr_t) GF(_), 16); }
+static uintptr_t hx_two(li v, ob x) {
   uintptr_t hc = hash(v, A(x)) * hash(v, B(x));
   return ror(hc, 4 * sizeof(uintptr_t)); }
 
-uintptr_t hx_sym(li v, ob _) { return ((sym) _)->code; }
-
-uintptr_t hx_str(li v, ob _) {
+static uintptr_t hx_str(li v, ob _) {
   str s = (str) _;
   uintptr_t h = 1;
   size_t words = s->len / sizeof(ob),
@@ -43,6 +46,3 @@ uintptr_t hx_str(li v, ob _) {
   const intptr_t *ws = (intptr_t*) s->text;
   while (words--) h = mix * (h ^ (mix * ws[words]));
   return h; }
-
-uintptr_t hx_typ(li v, ob _) {
-  return ror(mix * (uintptr_t) GF(_), 16); }

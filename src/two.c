@@ -11,8 +11,6 @@ static size_t llenr(ob l, size_t n) {
   return twop(l) ? llenr(B(l), n + 1) : n; }
 size_t llen(ob l) { return llenr(l, 0); }
 
-Vm(do_two) { return ApC(ret, fp->argc ? B(ip) : A(ip)); }
-
   // pairs
 Vm(car) { return ApN(1, A(xp)); }
 Vm(cdr) { return ApN(1, B(xp)); }

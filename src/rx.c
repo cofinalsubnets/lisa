@@ -199,9 +199,10 @@ static NoInline enum status rxs1(li v, char **in) {
         if (*r == c) {
           ob x = rx_atom_n(v, b, i+2, sign, r[1]);
           return x ? (v->xp = x, Ok) : OomError; } }
-    default: goto out; } out:
-  ob x = rx_atom_n(v, b, i, sign, 10);
-  return x ? (v->xp = x, Ok) : OomError; }
+    default: goto out; }
+  ob x; out: return
+    (x = rx_atom_n(v, b, i, sign, 10)) ?
+    (v->xp = x, Ok) : OomError; }
 
 static NoInline ob rx_atom(li v, str b) {
   size_t i = 0, len = b->len;

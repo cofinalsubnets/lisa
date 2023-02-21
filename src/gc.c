@@ -1,12 +1,16 @@
 #include "i.h"
-typedef void gc_walk(li, ob, ob*, ob*);
+
 typedef ob gc_evac(li, ob, ob*, ob*);
-static gc_walk wk_tbl, wk_str, wk_sym, wk_two;
-static gc_evac cp_str, cp_sym, cp_tbl, cp_two;
-static ob (*const data_evac[])(li, ob, ob*, ob*) = {
-  [Two] = cp_two, [Sym] = cp_sym, [Str] = cp_str, [Tbl] = cp_tbl, };
-static void (*const data_walk[])(li, ob, ob*, ob*) = {
-  [Two] = wk_two, [Sym] = wk_sym, [Str] = wk_str, [Tbl] = wk_tbl, };
+static gc_evac cp_str, cp_sym, cp_tbl, cp_two,
+  *const data_evac[] = {
+    [Two] = cp_two, [Sym] = cp_sym,
+    [Str] = cp_str, [Tbl] = cp_tbl, };
+
+typedef void gc_walk(li, ob, ob*, ob*);
+static gc_walk wk_tbl, wk_str, wk_sym, wk_two,
+  *const data_walk[] = {
+    [Two] = wk_two, [Sym] = wk_sym,
+    [Str] = wk_str, [Tbl] = wk_tbl, };
 
 ob *new_pool(size_t n) { return malloc(n * 2 * sizeof(ob)); }
 
