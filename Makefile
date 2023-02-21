@@ -82,5 +82,8 @@ flame: flamegraph.svg
 disasm: $(nom)
 	rizin -A $^
 
-.PHONY: test test-lots repl clean sloc bits valg perf\
+bench: $(nom)
+	ruby bench/bench.rb "./$(nom) -_ $(boot)"
+
+.PHONY: test test-lots repl clean sloc bits valg perf bench\
 	install uninstall install-vim uninstall-vim flame disasm
