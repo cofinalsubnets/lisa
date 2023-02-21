@@ -1,7 +1,4 @@
 #include "i.h"
-const struct typ sym_typ = {
-  .does = do_id, .emit = tx_sym, .evac = cp_sym,
-  .hash = hx_sym, .walk = wk_sym, .equi = neql, };
 
 //symbols
 
@@ -13,11 +10,6 @@ const struct typ sym_typ = {
 // list & uses less memory than a hash table, but maybe we
 // should use a table anyway.
 //
-static Inline sym ini_sym(void *_, str nom, uintptr_t code) {
-  sym y = _; return
-    y->act = act, y->typ = &sym_typ,
-    y->nom = nom, y->code = code,
-    y->l = y->r = 0, y; }
 
 // FIXME the caller must ensure Avail >= Width(struct sym)
 // (because GC here would void the tree)

@@ -6,19 +6,10 @@ NoInline two pair(li v, ob a, ob b) {
     if (!ok) return NULL; }
   return two_ini(bump(v, Width(struct two)), a, b); }
 
-const struct typ two_typ = {
-  .does = do_two, .emit = tx_two, .evac = cp_two,
-  .hash = hx_two, .walk = wk_two, .equi = eq_two, };
-
 // pairs and lists
 static size_t llenr(ob l, size_t n) {
   return twop(l) ? llenr(B(l), n + 1) : n; }
 size_t llen(ob l) { return llenr(l, 0); }
-
-bool eq_two(la v, ob x, ob y) {
-  return gettyp(y) == &two_typ &&
-    eql(v, A(x), A(y)) &&
-    eql(v, B(x), B(y)); }
 
 Vm(do_two) { return ApC(ret, fp->argc ? B(ip) : A(ip)); }
 

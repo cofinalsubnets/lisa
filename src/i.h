@@ -39,35 +39,23 @@ typedef enum status vm(li, ob, mo, ob*, ob*, frame);
 struct mo { vm *ap; };
 struct tag { struct mo *null, *head, end[]; };
 
-typedef void emitter(li, FILE*, ob), gc_walk(li, ob, ob*, ob*);
-typedef ob gc_evac(li, ob, ob*, ob*);
-typedef uintptr_t hasher(li, ob);
-typedef bool equator(li, ob, ob);
 
-enum builtin_type { Sym, Two, Str, Tbl, };
-
-typedef const struct typ {
-  vm *does;
-  equator *equi;
-  hasher *hash;
-  gc_evac *evac;
-  gc_walk *walk;
-  emitter *emit; } *typ;
+enum data_type { Str, Sym, Two, Tbl, };
 
 typedef struct two {
-  vm *act; const struct typ *typ;
+  vm *act; intptr_t typ;
   ob a, b; } *two;
 typedef struct str {
-  vm *act; const struct typ *typ;
+  vm *act; intptr_t typ;
   uintptr_t len; char text[]; } *str;
 typedef struct tbl { // hash tables
-  vm *act; const struct typ *typ;
+  vm *act; intptr_t typ;
   uintptr_t len, cap;
   struct tbl_e {
     ob key, val;
     struct tbl_e *next; } **tab; } *tbl;
 typedef struct sym {
-  vm *act; const struct typ *typ;
+  vm *act; intptr_t typ;
   str nom; uintptr_t code;
   // symbols are interned into a binary search tree.
   // anonymous symbols (nom == 0) don't have branches.
@@ -106,11 +94,7 @@ enum status
 uintptr_t llen(ob), hash(li, ob), liprng(li);
 
 vm do_id, do_tbl, do_two;
-emitter tx_two, tx_tbl, tx_str, tx_sym;
-gc_walk wk_tbl, wk_str, wk_sym, wk_two;
-gc_evac cp_str, cp_sym, cp_tbl, cp_two;
-hasher hx_two, hx_sym, hx_typ, hx_str;
-equator _eql, neql, eq_two, eq_str;
+bool _eql(li, ob, ob), neql(li, ob, ob);
 
 mo thd(li, ...), mo_n(li, size_t);
 tbl tbl_new(li), tbl_set(li, tbl, ob, ob);
@@ -118,8 +102,6 @@ two pair(li, ob, ob);
 str strof(li, const char*);
 sym nym(li), symof(li, str), intern(li, sym*, str);
 ob hnom(li, mo), *new_pool(size_t), tbl_get(li, tbl, ob, ob);
-
-extern const struct typ two_typ, str_typ, tbl_typ, sym_typ;
 
 #define Gc(n) ob n(li v, ob x, ob *pool0, ob *top0)
 #define End ((ob)0)
@@ -177,10 +159,10 @@ static Inline bool nilp(ob _) { return _ == nil; }
 static Inline bool nump(ob _) { return _ & 1; }
 static Inline bool homp(ob _) { return !nump(_); }
 
-static Inline bool htblp(mo h) { return G(h) == act && (typ) GF(h) == &tbl_typ; }
-static Inline bool hstrp(mo h) { return G(h) == act && (typ) GF(h) == &str_typ; }
-static Inline bool htwop(mo h) { return G(h) == act && (typ) GF(h) == &two_typ; }
-static Inline bool hsymp(mo h) { return G(h) == act && (typ) GF(h) == &sym_typ; }
+static Inline bool htblp(mo h) { return G(h) == act && (ob) GF(h) == Tbl; }
+static Inline bool hstrp(mo h) { return G(h) == act && (ob) GF(h) == Str; }
+static Inline bool htwop(mo h) { return G(h) == act && (ob) GF(h) == Two; }
+static Inline bool hsymp(mo h) { return G(h) == act && (ob) GF(h) == Sym; }
 static Inline bool tblp(ob _) { return homp(_) && htblp((mo) _); }
 static Inline bool strp(ob _) { return homp(_) && hstrp((mo) _); }
 static Inline bool twop(ob _) { return homp(_) && htwop((mo) _); }
@@ -203,28 +185,34 @@ static Inline mo mo_ini(void *_, size_t len) {
 
 static Inline two two_ini(void *_, ob a, ob b) {
   two w = _; return
-    w->act = act, w->typ = &two_typ,
+    w->act = act, w->typ = Two,
     w->a = a, w->b = b, w; }
 
 static Inline str str_ini(void *_, size_t len) {
   str s = _; return
-    s->act = act, s->typ = &str_typ,
+    s->act = act, s->typ = Str,
     s->len = len, s; }
 
 static Inline tbl ini_tbl(void *_, size_t len, size_t cap, struct tbl_e **tab) {
   tbl t = _; return
-    t->act = act, t->typ = &tbl_typ,
+    t->act = act, t->typ = Tbl,
     t->len = len, t->cap = cap, t->tab = tab, t; }
 
 static Inline sym ini_anon(void *_, uintptr_t code) {
   sym y = _; return
-    y->act = act, y->typ = &sym_typ,
+    y->act = act, y->typ = Sym,
     y->nom = 0, y->code = code, y; }
+
+static Inline sym ini_sym(void *_, str nom, uintptr_t code) {
+  sym y = _; return
+    y->act = act, y->typ = Sym,
+    y->nom = nom, y->code = code,
+    y->l = y->r = 0, y; }
 
 static Inline bool eql(li v, ob a, ob b) {
   return a == b || _eql(v, a, b); }
 
-#define gettyp(x) ((typ)GF((x)))
+#define gettyp(x) ((ob)GF((x)))
 
 // " the interpreter "
 #define Vm(n, ...) NoInline enum status\

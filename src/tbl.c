@@ -1,9 +1,5 @@
 #include "i.h"
 
-const struct typ tbl_typ = {
-  .does = do_tbl, .emit = tx_tbl, .evac = cp_tbl,
-  .hash = hx_typ, .equi = neql, .walk = wk_tbl, };
-
 static Inline size_t tbl_idx(size_t cap, size_t co) {
   return (cap - 1) & co; }
 

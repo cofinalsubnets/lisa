@@ -1,12 +1,19 @@
 #include "i.h"
 
+static bool eq_str(li, ob, ob);
+
+static bool eq_two(la v, ob x, ob y) {
+  return gettyp(y) == Two &&
+    eql(v, A(x), A(y)) &&
+    eql(v, B(x), B(y)); }
+
 static bool (*const data_equi[])(li, ob, ob) = {
   [Sym] = neql, [Tbl] = neql, [Two] = eq_two, [Str] = eq_str, };
 
 bool neql(li v, ob x, ob y) { return false; }
 bool _eql(li v, ob a, ob b) { return
   (!nump(a|b) && G(a) == act &&
-   gettyp(a)->equi(v, a, b)); }
+   data_equi[gettyp(a)](v, a, b)); }
 
 bool eq_str(li v, ob x, ob y) {
   if (!strp(y)) return false;

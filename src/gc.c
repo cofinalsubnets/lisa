@@ -1,4 +1,8 @@
 #include "i.h"
+typedef void gc_walk(li, ob, ob*, ob*);
+typedef ob gc_evac(li, ob, ob*, ob*);
+static gc_walk wk_tbl, wk_str, wk_sym, wk_two;
+static gc_evac cp_str, cp_sym, cp_tbl, cp_two;
 static ob (*const data_evac[])(li, ob, ob*, ob*) = {
   [Two] = cp_two, [Sym] = cp_sym, [Str] = cp_str, [Tbl] = cp_tbl, };
 static void (*const data_walk[])(li, ob, ob*, ob*) = {
@@ -110,7 +114,7 @@ static NoInline void copy_from(li v, ob *pool0, ob *top0) {
   // cheney's algorithm
   while (v->cp < v->hp) {
     mo k = (mo) v->cp;
-    if (G(k) == act) gettyp(k)->walk(v, (ob) k, pool0, top0);
+    if (G(k) == act) data_walk[gettyp(k)](v, (ob) k, pool0, top0);
     else { // it's a function thread
       for (; G(k); k++) G(k) = (vm*) cp(v, (ob) G(k), pool0, top0);
       v->cp = (ob*) k + 2; } } }
@@ -129,7 +133,7 @@ static NoInline ob cp(li v, ob x, ob *pool0, ob *top0) {
   x = (ob) G(src);
   if (!nump(x) && livep(v, x)) return x;
   if ((vm*) x == act) return
-    gettyp(src)->evac(v, (ob) src, pool0, top0);
+    data_evac[gettyp(src)](v, (ob) src, pool0, top0);
   return cp_mo(v, src, pool0, top0); }
 
 Gc(cp_tbl) {

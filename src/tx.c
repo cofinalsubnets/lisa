@@ -1,12 +1,14 @@
 #include "i.h"
 
-static void (*const data_emit[])(li, FILE*, ob) = {
+typedef void emitter(li, FILE*, ob);
+static emitter tx_two, tx_tbl, tx_str, tx_sym;
+static void (*const emit_data[])(li, FILE*, ob) = {
   [Two] = tx_two, [Str] = tx_str, [Sym] = tx_sym, [Tbl] = tx_tbl, };
 
 static void tx_mo_nom(li, FILE*, ob);
 void transmit(li v, FILE* o, ob x) {
   if (nump(x)) fprintf(o, "%ld", getnum(x));
-  else if (G(x) == act) gettyp(x)->emit(v, o, x);
+  else if (G(x) == act) emit_data[gettyp(x)](v, o, x);
   else tx_mo_nom(v, o, hnom(v, (mo) x)); }
 
 void tx_tbl(li v, FILE *o, ob x) {

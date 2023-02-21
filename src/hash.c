@@ -15,13 +15,15 @@
 // a unique identifier when it's created & hash using that,
 // or use the address but rehash as part of garbage collection.
 
+typedef uintptr_t hasher(li, ob);
+static hasher hx_two, hx_sym, hx_typ, hx_str;
 static const uintptr_t mix = 2708237354241864315;
 static uintptr_t (*const data_hash[])(li, ob) = {
   [Two] = hx_two, [Str] = hx_str, [Sym] = hx_sym, [Tbl] = hx_typ, };
 
 uintptr_t hash(li v, ob x) { return
   nump(x)      ? ror(mix * x, sizeof(uintptr_t) * 2) :
-  G(x) == act  ? gettyp(x)->hash(v, x) :
+  G(x) == act  ? data_hash[gettyp(x)](v, x) :
   !livep(v, x) ? mix ^ (x * mix) :
                  mix ^ hash(v, hnom(v, (mo) x)); }
 

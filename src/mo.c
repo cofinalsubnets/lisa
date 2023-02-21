@@ -85,7 +85,10 @@ Vm(seek_f) {
     xp = (ob) ((mo) fp->argv[0] + getnum(fp->argv[1]));
   return ApC(ret, xp); }
 
-Vm(act) { return ApC(gettyp(ip)->does, xp); }
+Vm(act) {
+  static vm *do_data[] = {
+    [Sym] = do_id, [Str] = do_id, [Tbl] = do_tbl, [Two] = do_two, };
+  return ApC(do_data[gettyp(ip)], xp); }
 
 // closure functions
 //

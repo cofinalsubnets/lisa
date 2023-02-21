@@ -1,7 +1,4 @@
 #include "i.h"
-const struct typ str_typ = {
-  .does = do_id, .emit = tx_str, .evac = cp_str,
-  .hash = hx_str, .walk = wk_str, .equi = eq_str, };
 
 str strof(la v, const char* c) {
   size_t bs = strlen(c);
