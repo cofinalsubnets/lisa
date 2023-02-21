@@ -1,9 +1,17 @@
 #include "i.h"
 
+static bool (*const data_equi[])(li, ob, ob) = {
+  [Sym] = neql, [Tbl] = neql, [Two] = eq_two, [Str] = eq_str, };
+
 bool neql(li v, ob x, ob y) { return false; }
 bool _eql(li v, ob a, ob b) { return
   (!nump(a|b) && G(a) == act &&
    gettyp(a)->equi(v, a, b)); }
+
+bool eq_str(li v, ob x, ob y) {
+  if (!strp(y)) return false;
+  str a = (str) x, b = (str) y;
+  return a->len == b->len && !strncmp(a->text, b->text, a->len); }
 
 // comparison operators
 Vm(lt) { return ApN(1, *sp++ < xp ? T : nil); }

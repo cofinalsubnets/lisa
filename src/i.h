@@ -177,10 +177,14 @@ static Inline bool nilp(ob _) { return _ == nil; }
 static Inline bool nump(ob _) { return _ & 1; }
 static Inline bool homp(ob _) { return !nump(_); }
 
-static Inline bool tblp(ob _) { return homp(_) && (typ) GF(_) == &tbl_typ; }
-static Inline bool strp(ob _) { return homp(_) && (typ) GF(_) == &str_typ; }
-static Inline bool twop(ob _) { return homp(_) && (typ) GF(_) == &two_typ; }
-static Inline bool symp(ob _) { return homp(_) && (typ) GF(_) == &sym_typ; }
+static Inline bool htblp(mo h) { return G(h) == act && (typ) GF(h) == &tbl_typ; }
+static Inline bool hstrp(mo h) { return G(h) == act && (typ) GF(h) == &str_typ; }
+static Inline bool htwop(mo h) { return G(h) == act && (typ) GF(h) == &two_typ; }
+static Inline bool hsymp(mo h) { return G(h) == act && (typ) GF(h) == &sym_typ; }
+static Inline bool tblp(ob _) { return homp(_) && htblp((mo) _); }
+static Inline bool strp(ob _) { return homp(_) && hstrp((mo) _); }
+static Inline bool twop(ob _) { return homp(_) && htwop((mo) _); }
+static Inline bool symp(ob _) { return homp(_) && hsymp((mo) _); }
 
 static Inline size_t b2w(size_t b) {
   size_t q = b / sizeof(ob), r = b % sizeof(ob);

@@ -1,5 +1,8 @@
 #include "i.h"
 
+static void (*const data_emit[])(li, FILE*, ob) = {
+  [Two] = tx_two, [Str] = tx_str, [Sym] = tx_sym, [Tbl] = tx_tbl, };
+
 static void tx_mo_nom(li, FILE*, ob);
 void transmit(li v, FILE* o, ob x) {
   if (nump(x)) fprintf(o, "%ld", getnum(x));

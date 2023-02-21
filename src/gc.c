@@ -1,4 +1,9 @@
 #include "i.h"
+static ob (*const data_evac[])(li, ob, ob*, ob*) = {
+  [Two] = cp_two, [Sym] = cp_sym, [Str] = cp_str, [Tbl] = cp_tbl, };
+static void (*const data_walk[])(li, ob, ob*, ob*) = {
+  [Two] = wk_two, [Sym] = wk_sym, [Str] = wk_str, [Tbl] = wk_tbl, };
+
 ob *new_pool(size_t n) { return malloc(n * 2 * sizeof(ob)); }
 
 Vm(gc) { size_t req = v->xp; return

@@ -9,11 +9,6 @@ str strof(la v, const char* c) {
   if (o) memcpy(str_ini(o, bs)->text, c, bs);
   return o; }
 
-bool eq_str(li v, ob x, ob y) {
-  if (!strp(y)) return false;
-  str a = (str) x, b = (str) y;
-  return a->len == b->len && !strncmp(a->text, b->text, a->len); }
-
 // string instructions
 Vm(slen_f) { return
   fp->argc == 0 ? Yield(ArityError, putnum(1)) :
