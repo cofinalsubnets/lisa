@@ -68,7 +68,8 @@ static NoInline enum status rxsq(li v, char **i) {
 
 enum status rxs(li v, char **i) {
   char c; switch (c = rxsch(i)) {
-    case ')': case 0: return v->xp = nil, Ok;
+    case 0: return Eof;
+    case ')': return SyntaxError;
     case '(': return rxs2(v, i);
     case '"': return rxstr(v, i);
     case '\'': return rxsq(v, i);
@@ -91,7 +92,8 @@ static enum status rxs1chs(li, char**);
 
 static enum status rxs2(li v, char **i) {
   char c = rxsch(i); switch (c) {
-    case ')': case EOF: return v->xp = nil, Ok;
+    case 0: return Eof;
+    case ')': return v->xp = nil, Ok;
     default:
       --(*i);
       enum status r = rxs(v, i);

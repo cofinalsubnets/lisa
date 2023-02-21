@@ -6,7 +6,16 @@
 #include <string.h>
 #include <stdarg.h>
 #include <errno.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
 #include "li.h"
+
+enum status {
+  More = -2, Eof = -1, Ok,
+  DomainError, ArityError,
+  NameError, SyntaxError,
+  SystemError, OomError };
 
 _Static_assert(-1 >> 1 == -1, "signed shift");
 _Static_assert(sizeof(size_t) == sizeof(void*), "size_t");
@@ -34,6 +43,8 @@ typedef void emitter(li, FILE*, ob), gc_walk(li, ob, ob*, ob*);
 typedef ob gc_evac(li, ob, ob*, ob*);
 typedef uintptr_t hasher(li, ob);
 typedef bool equator(li, ob, ob);
+
+enum builtin_type { Sym, Two, Str, Tbl, };
 
 typedef const struct typ {
   vm *does;
