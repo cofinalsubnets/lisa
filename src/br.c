@@ -79,7 +79,8 @@ Vm(ap_f) {
   if (fp->argc < 2) return Yield(ArityError, putnum(2));
   if (!homp(fp->argv[0])) return Yield(DomainError, xp);
   xp = fp->argv[1];
-  size_t adic = llen(xp);
+  size_t adic = 0;
+  for (ob x = xp; twop(x); adic++, x = B(x));
   Have(adic);
   ip = (mo) fp->argv[0];
   frame subd = fp->subd;

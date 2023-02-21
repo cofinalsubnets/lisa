@@ -6,11 +6,6 @@ NoInline two pair(li v, ob a, ob b) {
     if (!ok) return NULL; }
   return two_ini(bump(v, Width(struct two)), a, b); }
 
-// pairs and lists
-static size_t llenr(ob l, size_t n) {
-  return twop(l) ? llenr(B(l), n + 1) : n; }
-size_t llen(ob l) { return llenr(l, 0); }
-
   // pairs
 Vm(car) { return ApN(1, A(xp)); }
 Vm(cdr) { return ApN(1, B(xp)); }

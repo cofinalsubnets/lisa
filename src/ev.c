@@ -50,6 +50,10 @@ static NoInline intptr_t lidx(ob l, ob x) {
     if (x == A(l)) return i;
   return -1; }
 
+static size_t llenr(ob l, size_t n) {
+  return twop(l) ? llenr(B(l), n + 1) : n; }
+static size_t llen(ob l) { return llenr(l, 0); }
+
 // append to tail
 static NoInline two snoc(li v, ob l, ob x) {
   return !twop(l) ? pair(v, x, l) :

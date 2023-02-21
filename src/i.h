@@ -91,9 +91,9 @@ enum status
   receive(li, FILE*);
 
 
-uintptr_t llen(ob), hash(li, ob), liprng(li);
+uintptr_t hash(li, ob), liprng(li);
 
-bool _eql(li, ob, ob);
+bool eql(li, ob, ob);
 
 mo thd(li, ...), mo_n(li, size_t);
 tbl tbl_new(li), tbl_set(li, tbl, ob, ob);
@@ -203,9 +203,6 @@ static Inline sym ini_sym(void *_, str nom, uintptr_t code) {
   sym y = _; return y->act = act, y->typ = Sym,
                     y->nom = nom, y->code = code,
                     y->l = y->r = 0, y; }
-
-static Inline bool eql(li v, ob a, ob b) { return
-  a == b || _eql(v, a, b); }
 
 #define gettyp(x) ((ob)GF((x)))
 

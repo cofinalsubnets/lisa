@@ -53,7 +53,7 @@ $(VIMPREFIX)/%: vim/%
 # other tasks
 #
 clean:
-	rm -f `git check-ignore * */*`
+	rm -r `git check-ignore * */*`
 repl: $(nom)
 	which rlwrap && rlwrap $(test) -i || $(test) -i
 # profile on linux with perf
