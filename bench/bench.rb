@@ -88,6 +88,8 @@ Bench.mark("start/stop", 8, 4) do |bye|
   bye.add cpy, "bye.py"
   bye.add bash, "bye.sh"
   bye.add lua, "bye.lua"
+  bye.add ghc, "bye.hs"
+  bye.add hugs, "bye.hs"
 end
 #
 Bench.mark("fib(32)") do |fib|
