@@ -79,21 +79,10 @@ struct V {
   union { ob *cp; size_t t0; }; };
 
 vm act, yield_status, gc, xok, setclo, genclo0, genclo1;
-
-void transmit(li, FILE*, ob), // write to output
-     report(li, enum status); // show error message
-
-bool please(li, size_t), pushs(li, ...); // push args onto stack; true on success
-
-enum status
-  rxs(li, char**),
-  li_go(li),
-  receive(li, FILE*);
-
-
+void transmit(li, FILE*, ob), report(li, enum status);
+bool eql(li, ob, ob), please(li, size_t), pushs(li, ...);
+enum status rxs(li, char**), li_go(li), receive(li, FILE*);
 uintptr_t hash(li, ob), liprng(li);
-
-bool eql(li, ob, ob);
 
 mo thd(li, ...), mo_n(li, size_t);
 tbl tbl_new(li), tbl_set(li, tbl, ob, ob);
