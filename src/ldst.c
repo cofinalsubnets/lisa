@@ -31,6 +31,18 @@ Vm(arg3p) { return ApC(push, fp->argv[3]); }
 // may hold extra call data.
 #define Slot1 ((ob**)fp)[-1]
 #define Slot2 ((ob**)fp)[-2]
+#define Local(n) (((ob*)fp)[-(n)-1])
+
+Vm(iniclocn) {
+  Have(3 + Width(struct tag));
+  mo k = mo_ini(hp, 3);
+  hp += 3 + Width(struct tag);
+  k[0].ap = setclo;
+  k[1].ap = (vm*) nil;
+  k[2].ap = (vm*) nil;
+  intptr_t i = getnum(GF(ip));
+  Local(i) = (ob) k;
+  return ApN(2, xp); }
 
 // local variables
 Vm(sl1n) { return ApN(2, Slot1[getnum(GF(ip))]); }
@@ -42,6 +54,16 @@ Vm(sl10p) { return ApC(push, Slot1[0]); }
 Vm(sl11p) { return ApC(push, Slot1[1]); }
 Vm(sl12p) { return ApC(push, Slot1[2]); }
 Vm(sl13p) { return ApC(push, Slot1[3]); }
+
+Vm(stkn) { return ApN(2, Local(getnum(GF(ip)))); }
+Vm(stk0) { return ApN(1, Local(0)); }
+Vm(stk1) { return ApN(1, Local(1)); }
+Vm(stk2) { return ApN(1, Local(2)); }
+Vm(stk3) { return ApN(1, Local(3)); }
+Vm(stk0p) { return ApC(push, Local(0)); }
+Vm(stk1p) { return ApC(push, Local(1)); }
+Vm(stk2p) { return ApC(push, Local(2)); }
+Vm(stk3p) { return ApC(push, Local(3)); }
 
 // closure variables
 Vm(clon) { return ApN(2, fp->clos[getnum(GF(ip))]); }
@@ -61,6 +83,7 @@ Vm(push) { Have1(); return *--sp = xp, ApN(1, xp); }
 
 // set a local variable
 Vm(defsl1) { return Slot1[getnum(GF(ip))] = xp, ApN(2, xp); }
+Vm(defstk) { return Local(getnum(GF(ip))) = xp, ApN(2, xp); }
 
 // set a module variable
 Vm(deftop) { bool _; return
@@ -76,6 +99,13 @@ Vm(setloc) {
   return hp += n + Width(struct tag),
          *--sp = (ob) t,
          ApN(2, xp); }
+
+Vm(pushls) {
+  size_t n = getnum((ob) GF(ip));
+  Have(n);
+  sp -= n;
+  while (n--) sp[n] = nil;
+  return ApN(2, xp); }
 
 // late binding
 // TODO dynamic type checking here

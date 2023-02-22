@@ -9,7 +9,7 @@
 //
 // " compilation environments "
 typedef struct env {
-  ob arg, loc, clo, name, asig, s1, s2, s3;
+  ob arg, loc, clo, name, asig, lams, s1, s2, s3;
   struct env *par; } *env;
 //
 // if a function is not variadic its arity signature is
@@ -23,6 +23,7 @@ static NoInline ob asign(li v, ob a, intptr_t i, ob *m) {
 
 static Inline bool toplp(env e) { return nilp((ob) e->par); }
 static mo p_alloc(li, env*, size_t),
+          p_fin(li, env*, size_t),
           ana_if(li, env*, size_t, ob),
           ana_fn(li, env*, size_t, ob),
           ana_let(li, env*, size_t, ob),
@@ -88,7 +89,7 @@ static mo p_ana_x(li v, env *e, size_t m) {
               ana_i_x(v, e, m, imm, x); }
 
 static mo ana(li v, ob x) {
-  if (!pushs(v, x, emi, ret, p_alloc, End)) return 0;
+  if (!pushs(v, x, emi, ret, p_fin, End)) return 0;
   env e = (env) mo_n(v, Width(struct env));
   if (e) setw(e, nil, Width(struct env));
   mo k; with(e, k = p_ana_x(v, &e, 0));
@@ -119,11 +120,11 @@ static NoInline mo ana_fn_clo(li v, env *e, ob vars, ob code, mo k) {
        vars && twop(vars);
        vars = pushs(v, p_ana_x, A(vars),
                        emi, push, End) ?  B(vars) : 0);
-  return
-    um, vars = vars ? (ob) pull(v, e, 0) : vars,
-    um, vars = vars ? (ob) pair(v, code, vars) : vars,
-    um, !vars ? 0 :
-      pullix(e && !nilp((*e)->loc) ? encl1 : encl0, vars, k); }
+  um, vars = vars ? (ob) pull(v, e, 0) : vars,
+  um, vars = vars ? (ob) pair(v, code, vars) : vars;
+  k = !vars ? 0 :
+    pullix(e && !nilp((*e)->loc) ? encl1 : encl0, vars, k);
+  return um, k; }
 
 static NoInline mo ana_let_bind_top(li v, env *e, size_t m, ob _) {
   return _ = (ob) pair(v, (ob) v->lex->topl, _),
@@ -142,41 +143,51 @@ static mo p_ana_let_bind(li v, env *e, size_t m) {
     ana_let_bind_top(v, e, m, _) :
     ana_let_bind_inner(v, e, m, _); }
 
+static ob ana_fn_inner_inner(li v, env *e, ob x, ob n) {
+  intptr_t i = 0;
+  ob y = nil;
+  with(x, with(n, with(y, x =
+    (x = twop(x) ? x : (ob) pair(v, nil, nil)) &&
+    (x = linitp(v, x, &y)) &&
+    (n = (ob) pair(v, n, (*e)->name)) &&
+    pushs(v, p_ana_x, A(y), emi, ret, p_fin, End) &&
+    (x = asign(v, x, 0, &i)) &&
+    (n = (ob) thd(v, x, nil, nil, // arg loc clo
+                     n, putnum(i), // nom asig
+                     nil, // lams
+                     nil, nil, nil, // s1 s2 s3
+                     *e, // par
+                     End)) &&
+    (x = (ob) pull(v, (env*) &n, 4)) ?
+    (x = !(i = llen(((env)n)->loc)) ? x :
+       (ob) pullix(setloc, putnum(i), (mo) x),
+     x = (i = getnum(((env)n)->asig)) > 0 ?
+           (ob) pullix(arity, putnum(i), (mo) x) :
+         i < 0 ?
+           (ob) pullix(varg, putnum(-i-1), (mo) x) :
+         x,
+     mo_tag((mo) x)->head = (mo) x,
+     !twop(((env)n)->clo) ? x : (ob) pair(v, ((env)n)->clo, x)) : 0)));
+  return x; }
+
 // takes a lambda expr, returns either a pair or or a
 // hom depending on if the function has free variables
 // (in the former case the car is the list of free variables
 // and the cdr is a hom that assumes the missing variables
 // are available in the closure).
 static NoInline mo ana_fn(li v, env *e, size_t m, ob x) {
-  intptr_t i = 0; mo k;
+  mo k;
   ob y = nil,
      n = v->sp[0] == (ob) p_ana_let_bind ? v->sp[1] : nil;
-  return
-    with(x, with(n,
-      k = pull(v, e, m + 2),
-      with(k, with(y, x = k &&
-        (x = twop(x) ? x : (ob) pair(v, x, nil)) &&
-        (x = linitp(v, x, &y)) &&
-        (n = (ob) pair(v, n, (*e)->name)) &&
-        pushs(v, p_ana_x, A(y), emi, ret, p_alloc, End) &&
-        (x = asign(v, x, 0, &i)) &&
-        (n = (ob) thd(v, x, nil, nil, // arg loc clo
-                         n, putnum(i), // nom asig
-                         nil, nil, nil, // s1 s2 s3
-                         *e, // par
-                         End)) &&
-        (x = (ob) pull(v, (env*) &n, 4)) ?
-        (x = !(i = llen(((env)n)->loc)) ? x :
-           (ob) pullix(setloc, putnum(i), (mo) x),
-         x = (i = getnum(((env)n)->asig)) > 0 ?
-               (ob) pullix(arity, putnum(i), (mo) x) :
-             i < 0 ?
-               (ob) pullix(varg, putnum(-i-1), (mo) x) :
-             x,
-         mo_tag((mo) x)->head = (mo) x,
-         !twop(((env)n)->clo) ? x : (ob) pair(v, ((env)n)->clo, x)) : 0)))),
-    !x ? 0 : twop(x) ? ana_fn_clo(v, e, A(x), B(x), k) :
-                       pullix(imm, x, k); }
+  with(x, with(n,
+    y = (ob) pair(v, x, n),
+    y = y ? (ob) pair(v, y, (*e)->lams) : y,
+    k = y ? ((*e)->lams = y, pull(v, e, m + 2)) : 0));
+  if (!k) return k;
+  y = A((*e)->lams), (*e)->lams = B((*e)->lams);
+  return // XXX
+    twop(y) ? ana_fn_clo(v, e, A(y), B(y), k) : pullix(imm, y, k)
+    ; }
 
 static NoInline bool ana_let_b_even(li v, env *e, ob x) {
   bool _; return !twop(x) ||
@@ -371,6 +382,17 @@ static NoInline mo ana_two(li v, env *e, size_t m, ob a, ob b) {
     if (z) return ana_mac(v, e, m, z, b); }
   return ana_ap(v, e, m, a, b); }
 
-static mo p_alloc(li v, env *e, size_t m) {
-  mo k = mo_n(v, m + 1); return !k ? k :
-    (setw(k, nil, m), G(k += m) = (vm*) (*e)->name, k); }
+
+static NoInline mo p_alloc(li v, env *e, size_t m) {
+  mo k = mo_n(v, m + 1);
+  if (k) setw(k, nil, m), G(k += m) = (vm*) (*e)->name;
+  return k; }
+
+static mo p_fin(li v, env *e, size_t m) {
+  ob lams = (*e)->lams;
+  mm(&lams);
+  for (ob y; twop(lams); A(lams) = y, lams = B(lams)) {
+    if (!(y = ana_fn_inner_inner(v, e, AA(lams), BA(lams))))
+      return um, NULL;}
+  um;
+  return p_alloc(v, e, m); }
