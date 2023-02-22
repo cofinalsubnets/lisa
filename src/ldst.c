@@ -37,12 +37,12 @@ Vm(iniclocn) {
   Have(3 + Width(struct tag));
   mo k = mo_ini(hp, 3);
   hp += 3 + Width(struct tag);
+  intptr_t i = getnum(GF(ip));
   k[0].ap = setclo;
   k[1].ap = (vm*) nil;
-  k[2].ap = (vm*) nil;
-  intptr_t i = getnum(GF(ip));
-  Local(i) = (ob) k;
-  return ApN(2, xp); }
+  k[2].ap = (vm*) G(FF(ip));
+  Slot1[i] = (ob) k;
+  return ApN(3, xp); }
 
 // local variables
 Vm(sl1n) { return ApN(2, Slot1[getnum(GF(ip))]); }

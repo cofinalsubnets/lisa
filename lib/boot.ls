@@ -622,7 +622,7 @@
        (= i i-defsl1) (at (e 'loc) (peek (seek k 1))))) ; or a local
 
      (clo-thd e x)
-      ((foldl (emc i-take (emd (len x) hom)) x
+      ((foldl (emc i-take (emd (len x) (emc i-ret hom))) x
         (\ k x (co-ev x (emc i-push k)))) 0 e)
       (\ m e (:
        l ((produces 'hom k) (+ m 2) e)

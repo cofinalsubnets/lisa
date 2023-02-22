@@ -252,6 +252,7 @@ static Inline sym ini_sym(void *_, str nom, uintptr_t code) {
  _(arity) _(ary1) _(ary2) _(ary3) _(ary4)\
  _(idno) _(idmo) _(idtwo) _(idtbl)\
  _(twop_) _(nump_) _(nilp_) _(strp_) _(tblp_) _(symp_) _(homp_)\
+ _(iniclocn) _(pushls)\
  _(deftop) _(late) _(setloc) _(defsl1)\
  _(take) _(encl1) _(encl0)\
  _(lt) _(lteq) _(eq) _(gteq) _(gt)\

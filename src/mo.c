@@ -101,7 +101,7 @@ Vm(take) {
   Have(n + Width(struct tag));
   mo k = mo_ini(cpyw_r2l(hp, sp, n), n);
   hp += n + Width(struct tag);
-  return ApC(ret, (ob) k); }
+  return ApN(2, (ob) k); }
 
 // set the closure for this frame
 Vm(setclo) { return

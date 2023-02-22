@@ -9,7 +9,7 @@
 //
 // " compilation environments "
 typedef struct env {
-  ob arg, loc, clo, name, asig, lams, s1, s2, s3;
+  ob arg, loc, clo, name, asig, lams, inis, s1, s2, s3;
   struct env *par; } *env;
 //
 // if a function is not variadic its arity signature is
@@ -113,10 +113,11 @@ static NoInline ob rw_let_fn(li v, ob x) {
       (ob) pair(v, AA(x), (ob) w) : 0);
   return um, x; }
 
-static NoInline mo ana_fn_clo(li v, env *e, ob vars, ob code, mo k) {
-  for (mm(&k), mm(&code), mm(&vars),
-       vars = pushs(v, emix, take, putnum(llen(vars)),
-                       p_alloc, End) ? vars : 0;
+static NoInline mo ana_fn_clo(li v, env *e, ob x, mo k) {
+  ob vars = AB(x), code = BB(x);
+  mm(&k), mm(&code), mm(&vars);
+  for (vars = pushs(v, emix, take, putnum(llen(vars)),
+                       emi, ret, p_alloc, End) ? vars : 0;
        vars && twop(vars);
        vars = pushs(v, p_ana_x, A(vars),
                        emi, push, End) ?  B(vars) : 0);
@@ -143,6 +144,15 @@ static mo p_ana_let_bind(li v, env *e, size_t m) {
     ana_let_bind_top(v, e, m, _) :
     ana_let_bind_inner(v, e, m, _); }
 
+static mo iniclocns(li v, env *e, mo k) {
+  for (ob inis = (*e)->inis; twop(inis); inis = B(inis)) {
+    intptr_t i = lidx((*e)->loc, AA(inis));
+    k -= 3;
+    k[0].ap = iniclocn;
+    k[1].ap = (vm*) putnum(i);
+    k[2].ap = (vm*) BB(A(inis)); }
+  return k; }
+
 static ob ana_fn_inner_inner(li v, env *e, ob x, ob n) {
   intptr_t i = 0;
   ob y = nil;
@@ -154,12 +164,14 @@ static ob ana_fn_inner_inner(li v, env *e, ob x, ob n) {
     (x = asign(v, x, 0, &i)) &&
     (n = (ob) thd(v, x, nil, nil, // arg loc clo
                      n, putnum(i), // nom asig
-                     nil, // lams
+                     nil, nil, // lams inis
                      nil, nil, nil, // s1 s2 s3
                      *e, // par
                      End)) &&
     (x = (ob) pull(v, (env*) &n, 4)) ?
-    (x = !(i = llen(((env)n)->loc)) ? x :
+    (
+     x = (ob) iniclocns(v, (env*) &n, (mo) x),
+     x = !(i = llen(((env)n)->loc)) ? x :
        (ob) pullix(setloc, putnum(i), (mo) x),
      x = (i = getnum(((env)n)->asig)) > 0 ?
            (ob) pullix(arity, putnum(i), (mo) x) :
@@ -182,10 +194,11 @@ static NoInline mo ana_fn(li v, env *e, size_t m, ob x) {
   with(x, with(n,
     y = (ob) pair(v, x, n),
     y = y ? (ob) pair(v, y, (*e)->lams) : y,
-    k = y ? ((*e)->lams = y, pull(v, e, m + 2)) : 0));
+    k = y ? ((*e)->lams = y, pull(v, e, m + 5)) : 0));
   if (!k) return k;
   y = A((*e)->lams), (*e)->lams = B((*e)->lams);
-  return twop(y) ? ana_fn_clo(v, e, A(y), B(y), k) : pullix(imm, y, k); }
+  if (!twop(y)) return pullix(imm, y, k);
+  return ana_fn_clo(v, e, y, k); }
 
 static NoInline bool ana_let_b_even(li v, env *e, ob x) {
   bool _; return !twop(x) ||
@@ -387,10 +400,18 @@ static NoInline mo p_alloc(li v, env *e, size_t m) {
   return k; }
 
 static mo p_fin(li v, env *e, size_t m) {
-  ob lams = (*e)->lams;
+  ob q, y, lams = (*e)->lams;
   mm(&lams);
-  for (ob y; twop(lams); A(lams) = y, lams = B(lams)) {
-    if (!(y = ana_fn_inner_inner(v, e, AA(lams), BA(lams))))
-      return um, NULL;}
+  for (; twop(lams); A(lams) = y, lams = B(lams)) {
+    y = ana_fn_inner_inner(v, e, AA(lams), BA(lams));
+    if (y && twop(y))
+      with(y,
+        q = (ob) nym(v),
+        q = q ? (ob) pair(v, q, (*e)->loc) : q,
+        q = q ? A((*e)->loc = q) : q),
+      y = q ? (ob) pair(v, q, y) : q,
+      y = y ? (ob) pair(v, y, (*e)->inis) : y,
+      y = y ? A((*e)->inis = y) : y;
+    if (!y) return um, NULL; }
   um;
   return p_alloc(v, e, m); }
