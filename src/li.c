@@ -55,7 +55,8 @@ NoInline enum status li_ini(li v) {
     (v->len = len,
      v->pool = v->hp = pool,
      v->loop = pool + len,
-     v->fp = (sf) (v->sp = pool + len),
+     v->sp = pool + len,
+     v->fp = (frame) v->sp,
      v->rand = v->t0 = clock(),
      (l = (struct glob*) mo_n(v, Width(struct glob))) &&
      (v->lex = setw(l, nil, Width(struct glob)),

@@ -22,16 +22,16 @@ _Static_assert(sizeof(size_t) == sizeof(void*), "size_t");
 
 // thanks !!
 //
-typedef struct V *la, *li;
+typedef struct V *li;
 typedef intptr_t ob;
 typedef struct mo *mo; // procedures
-                       //
+
 typedef struct frame { // stack frame
   ob *clos; // closure pointer
   mo retp; // thread return address
   struct frame *subd; // stack frame of caller
   uintptr_t argc; // argument count
-  ob argv[]; } *sf, *frame;;
+  ob argv[]; } *frame;
 
 // interpreter type
 typedef enum status vm(li, ob, mo, ob*, ob*, frame);
@@ -45,15 +45,18 @@ enum data_type { Str, Sym, Two, Tbl, };
 typedef struct two {
   vm *act; intptr_t typ;
   ob a, b; } *two;
+
 typedef struct str {
   vm *act; intptr_t typ;
   uintptr_t len; char text[]; } *str;
+
 typedef struct tbl { // hash tables
   vm *act; intptr_t typ;
   uintptr_t len, cap;
   struct tbl_e {
     ob key, val;
     struct tbl_e *next; } **tab; } *tbl;
+
 typedef struct sym {
   vm *act; intptr_t typ;
   str nom; uintptr_t code;
@@ -62,21 +65,21 @@ typedef struct sym {
   struct sym *l, *r; } *sym;
 
 struct V {
-  mo ip; frame fp; ob xp, *hp, *sp;
+  ob xp; mo ip; ob *hp, *sp; frame fp;
 
   // global variables & state
+  sym syms; // internal symbols
+  uintptr_t rand;
   struct glob {
     tbl topl, macros; // global scope
     sym define, cond, lambda, quote,
         begin, splat, eval; } *lex;
-  sym syms; // internal symbols
-  uintptr_t rand;
 
   // memory manager state
   uintptr_t len;
   ob *pool, *loop;
-  struct ll { ob *addr; struct ll *next; } *safe;
-  union { ob *cp; size_t t0; }; };
+  union { ob *cp; uintptr_t t0; };
+  struct ll { ob *addr; struct ll *next; } *safe; };
 
 vm act, yield_status, gc, xok, setclo, genclo0, genclo1;
 void transmit(li, FILE*, ob), report(li, enum status);
@@ -88,10 +91,9 @@ mo thd(li, ...), mo_n(li, size_t);
 tbl tbl_new(li), tbl_set(li, tbl, ob, ob);
 two pair(li, ob, ob);
 str strof(li, const char*);
-sym nym(li), symof(li, str), intern(li, sym*, str);
+sym nym(li), symof(li, str);
 ob hnom(li, mo), *new_pool(size_t), tbl_get(li, tbl, ob, ob);
 
-#define Gc(n) ob n(li v, ob x, ob *pool0, ob *top0)
 #define End ((ob)0)
 #define Width(_) b2w(sizeof(_))
 
@@ -101,10 +103,10 @@ ob hnom(li, mo), *new_pool(size_t), tbl_get(li, tbl, ob, ob);
 #define nil putnum(0)
 #define T putnum(-1)
 
-#define Avail (v->sp - v->hp)
-#define mm(r) ((v->safe = &((struct ll){(ob*)(r), v->safe})))
-#define um (v->safe = v->safe->next)
-#define with(y,...) (mm(&(y)), (__VA_ARGS__), um)
+#define Avail (v->sp-v->hp)
+#define mm(r) ((v->safe=&((struct ll){(ob*)(r),v->safe})))
+#define um (v->safe=v->safe->next)
+#define with(y,...) (mm(&(y)),(__VA_ARGS__),um)
 
 #define F(_) ((mo)(_)+1)
 #define G(_) ((mo)(_))->ap
@@ -140,6 +142,7 @@ static Inline void *setw(void *d, intptr_t w, size_t n) {
   while (n) ((intptr_t*)d)[--n] = w;
   return d; }
 
+
 static Inline struct tag *mo_tag(mo k) {
   for (;; k++) if (!G(k)) return (struct tag*) k; }
 
@@ -147,10 +150,11 @@ static Inline bool nilp(ob _) { return _ == nil; }
 static Inline bool nump(ob _) { return _ & 1; }
 static Inline bool homp(ob _) { return !nump(_); }
 
-static Inline bool htblp(mo h) { return G(h) == act && (ob) GF(h) == Tbl; }
-static Inline bool hstrp(mo h) { return G(h) == act && (ob) GF(h) == Str; }
-static Inline bool htwop(mo h) { return G(h) == act && (ob) GF(h) == Two; }
-static Inline bool hsymp(mo h) { return G(h) == act && (ob) GF(h) == Sym; }
+#define gettyp(x) ((ob)GF((x)))
+static Inline bool htblp(mo h) { return G(h) == act && gettyp(h) == Tbl; }
+static Inline bool hstrp(mo h) { return G(h) == act && gettyp(h) == Str; }
+static Inline bool htwop(mo h) { return G(h) == act && gettyp(h) == Two; }
+static Inline bool hsymp(mo h) { return G(h) == act && gettyp(h) == Sym; }
 static Inline bool tblp(ob _) { return homp(_) && htblp((mo) _); }
 static Inline bool strp(ob _) { return homp(_) && hstrp((mo) _); }
 static Inline bool twop(ob _) { return homp(_) && htwop((mo) _); }
@@ -192,8 +196,6 @@ static Inline sym ini_sym(void *_, str nom, uintptr_t code) {
   sym y = _; return y->act = act, y->typ = Sym,
                     y->nom = nom, y->code = code,
                     y->l = y->r = 0, y; }
-
-#define gettyp(x) ((ob)GF((x)))
 
 // " the interpreter "
 #define Vm(n, ...) NoInline enum status\

@@ -4,9 +4,9 @@ Vm(rxc_f) { return ApC(ret, putnum(getc(stdin))); }
 
 static ob
   rx_ret(li, FILE*, ob), rxr(li, FILE*),
-  rx_two(la, FILE*), rx_atom(li, str);
+  rx_two(li, FILE*), rx_atom(li, str);
 // should distinguish between OOM and parse error
-enum status receive(la v, FILE* i) { ob x; return
+enum status receive(li v, FILE* i) { ob x; return
   !pushs(v, rx_ret, End) ? OomError :
   !(x = rxr(v, i)) ? feof(i) ? Eof : SyntaxError :
   (v->xp = x, Ok); }
@@ -24,7 +24,7 @@ static NoInline int rxsch(char **i) {
 // simple except it uses the managed stack for recursion.
 
 static Inline ob pull(li v, FILE *i, ob x) { return
-  ((ob (*)(la, FILE*, ob))(*v->sp++))(v, i, x); }
+  ((ob (*)(li, FILE*, ob))(*v->sp++))(v, i, x); }
 
 // get the next token character from the stream
 static NoInline int rx_char(FILE *i) {

@@ -42,7 +42,7 @@ Vm(call) {
   Have(Width(struct frame));
   frame subd = fp;
   return
-    fp = (sf) sp - 1,
+    fp = (frame) sp - 1,
     sp = (ob*) fp,
     fp->argc = getnum(ip[1].ap),
     fp->retp = ip + 2,
@@ -53,7 +53,7 @@ Vm(call) {
 static Vm(recne) {
   size_t adic = xp;
   // save return address
-  sf subd = fp->subd;
+  frame subd = fp->subd;
   mo retp = fp->retp;
   return
     fp = (frame) (fp->argv + fp->argc - adic) - 1,

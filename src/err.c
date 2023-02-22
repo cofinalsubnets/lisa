@@ -44,10 +44,10 @@ static NoInline void show_call(li v, mo ip, frame fp) {
   putc(')', stderr); }
 
 #define ErrPrefix ";;"
-#define aubas (fp == (sf) (v->pool + v->len))
+#define aubas (fp == (frame) (v->pool + v->len))
 // this prints a backtrace.
 static NoInline void errp(li v, const char *msg, ...) {
-  mo ip = v->ip; sf fp = v->fp;
+  mo ip = v->ip; frame fp = v->fp;
   fputs(ErrPrefix " ", stderr);
 
   // show the function if there is one

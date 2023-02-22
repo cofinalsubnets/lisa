@@ -185,9 +185,7 @@ static NoInline mo ana_fn(li v, env *e, size_t m, ob x) {
     k = y ? ((*e)->lams = y, pull(v, e, m + 2)) : 0));
   if (!k) return k;
   y = A((*e)->lams), (*e)->lams = B((*e)->lams);
-  return // XXX
-    twop(y) ? ana_fn_clo(v, e, A(y), B(y), k) : pullix(imm, y, k)
-    ; }
+  return twop(y) ? ana_fn_clo(v, e, A(y), B(y), k) : pullix(imm, y, k); }
 
 static NoInline bool ana_let_b_even(li v, env *e, ob x) {
   bool _; return !twop(x) ||

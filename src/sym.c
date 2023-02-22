@@ -13,7 +13,7 @@
 
 // FIXME the caller must ensure Avail >= Width(struct sym)
 // (because GC here would void the tree)
-sym intern(li v, sym *y, str b) {
+static sym intern(li v, sym *y, str b) {
   if (*y) {
     sym z = *y;
     str a = z->nom;
@@ -26,7 +26,7 @@ sym intern(li v, sym *y, str b) {
   return *y = ini_sym(bump(v, Width(struct sym)), b,
     hash(v, putnum(hash(v, (ob) b)))); }
 
-sym symof(li v, str s) {
+NoInline sym symof(li v, str s) {
   if (Avail < Width(struct sym)) {
     bool _; with(s, _ = please(v, Width(struct sym)));
     if (!_) return 0; }

@@ -123,7 +123,8 @@ Vm(genclo0) {
   frame subd = fp;
   return
     G(ip) = genclo1,
-    sp = (ob*) (fp = (sf) (sp - adic) - 1),
+    fp = (frame) (sp - adic) - 1,
+    sp = (ob*) fp,
     cpyw_r2l(fp->argv, ec->argv, adic),
     fp->retp = ip,
     fp->subd = subd,

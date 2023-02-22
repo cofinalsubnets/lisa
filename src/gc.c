@@ -101,7 +101,7 @@ static NoInline void copy_from(li v, ob *pool0, ob *top0) {
 
   // copy the stack
   ob *sp1 = v->sp = sp0 + shift;
-  frame fp1 = v->fp = (sf) ((ob*) v->fp + shift);
+  frame fp1 = v->fp = (frame) ((ob*) v->fp + shift);
   for (;;) {
     while (sp1 < (ob*) fp1) *sp1++ = cp(v, *sp0++, pool0, top0);
     if (sp0 == top0) break;
@@ -140,7 +140,7 @@ static NoInline ob cp(li v, ob x, ob *pool0, ob *top0) {
     data_evac[gettyp(src)](v, (ob) src, pool0, top0);
   return cp_mo(v, src, pool0, top0); }
 
-Gc(cp_tbl) {
+static ob cp_tbl(li v, ob x, ob *pool0, ob *top0) {
   tbl src = (tbl) x;
   size_t i = src->cap;
   tbl dst = bump(v, Width(struct tbl) + i);
@@ -154,20 +154,20 @@ Gc(cp_tbl) {
       s = s->next);
   return (ob) dst; }
 
-Gc(cp_sym) {
+static ob cp_sym(li v, ob x, ob *pool0, ob *top0) {
   sym src = (sym) x, dst = src->nom ?
-    intern(v, &v->syms, (str) cp(v, (ob) src->nom, pool0, top0)) :
+    symof(v, (str) cp(v, (ob) src->nom, pool0, top0)) :
     ini_anon(bump(v, Width(struct sym) - 2), src->code);
   return (ob) (src->act = (vm*) dst); }
 
-Gc(cp_str) {
+static ob cp_str(li v, ob x, ob *pool0, ob *top0) {
   str src = (str) x,
       dst = bump(v, Width(struct str) + b2w(src->len));
   return memcpy(dst, src, sizeof(struct str) + src->len),
          src->act = (vm*) dst,
          (ob) dst; }
 
-Gc(cp_two) {
+static ob cp_two(li v, ob x, ob *pool0, ob *top0) {
   two src = (two) x, dst = bump(v, Width(struct two));
   return src->act = (vm*) dst,
          (ob) two_ini(dst, src->a, src->b); }

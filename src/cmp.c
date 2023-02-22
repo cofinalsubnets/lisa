@@ -2,7 +2,7 @@
 
 static bool neql(li v, ob x, ob y) { return false; }
 
-static bool eq_two(la v, ob x, ob y) {
+static bool eq_two(li v, ob x, ob y) {
   return htwop((mo) y) &&
     eql(v, A(x), A(y)) &&
     eql(v, B(x), B(y)); }
