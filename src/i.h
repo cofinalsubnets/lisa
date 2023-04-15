@@ -236,7 +236,6 @@ static Inline sym ini_sym(void *_, str nom, uintptr_t code) {
 #define Have(n) if (sp - hp < n) return (v->xp = n, ApC(gc, xp))
 // sp is at least hp so this is a safe check for 1 word
 #define Have1() if (sp == hp) return (v->xp = 1, ApC(gc, xp))
-
 // used by the compiler but not exposed as primitives
 #define ForEachInstruction(_)\
  _(push) _(call) _(ret) _(rec) _(jump) _(varg)\
@@ -252,7 +251,6 @@ static Inline sym ini_sym(void *_, str nom, uintptr_t code) {
  _(arity) _(ary1) _(ary2) _(ary3) _(ary4)\
  _(idno) _(idmo) _(idtwo) _(idtbl)\
  _(twop_) _(nump_) _(nilp_) _(strp_) _(tblp_) _(symp_) _(homp_)\
- _(iniclocn) _(pushls)\
  _(deftop) _(late) _(setloc) _(defsl1)\
  _(take) _(encl1) _(encl0)\
  _(lt) _(lteq) _(eq) _(gteq) _(gt)\
@@ -260,6 +258,7 @@ static Inline sym ini_sym(void *_, str nom, uintptr_t code) {
  _(sar) _(sal) _(band) _(bor) _(bxor) _(bnot)\
  _(cons) _(car) _(cdr)\
  _(tget) _(tset) _(thas) _(tlen)
+// _(iniclocn) _(pushls) _(take2)
 
 // primitive functions
 #define ForEachFunction(_)\

@@ -99,9 +99,9 @@ Vm(act) { return ApC(do_data[gettyp(ip)], xp); }
 Vm(take) {
   ob n = getnum((ob) GF(ip));
   Have(n + Width(struct tag));
-  mo k = mo_ini(cpyw_r2l(hp, sp, n), n);
+  mo k = mo_ini(cpyw_l2r(hp, sp, n), n);
   hp += n + Width(struct tag);
-  return ApN(2, (ob) k); }
+  return ApC(ret, (ob) k); }
 
 // set the closure for this frame
 Vm(setclo) { return
