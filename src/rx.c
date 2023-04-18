@@ -1,7 +1,5 @@
 #include "i.h"
 
-Vm(rxc_f) { return ApC(ret, putnum(getc(stdin))); }
-
 static ob
   rx_ret(li, FILE*, ob), rxr(li, FILE*),
   rx_two(li, FILE*), rx_atom(li, str);
@@ -9,7 +7,7 @@ static ob
 enum status receive(li v, FILE* i) { ob x; return
   !pushs(v, rx_ret, End) ? OomError :
   !(x = rxr(v, i)) ? feof(i) ? Eof : SyntaxError :
-  (v->xp = x, Ok); }
+  (push1(v, x) ? Ok : OomError); }
 
 static NoInline int rxsch(char **i) {
   for (int c;;) loop: switch (c = *((*i)++)) {
@@ -24,7 +22,7 @@ static NoInline int rxsch(char **i) {
 // simple except it uses the managed stack for recursion.
 
 static Inline ob pull(li v, FILE *i, ob x) { return
-  ((ob (*)(li, FILE*, ob))(*v->sp++))(v, i, x); }
+  ((ob (*)(li, FILE*, ob))pop1(v))(v, i, x); }
 
 // get the next token character from the stream
 static NoInline int rx_char(FILE *i) {
@@ -37,7 +35,7 @@ static NoInline int rx_char(FILE *i) {
 static ob rx_ret(li v, FILE* i, ob x) { return x; }
 
 static ob rx_two_cons(li v, FILE* i, ob x) {
-  ob y = *v->sp++; return
+  ob y = pop1(v); return
     x = x ? (ob) pair(v, y, x) : x,
     pull(v, i, x); }
 
@@ -45,25 +43,12 @@ static ob rx_two_cont(li v, FILE* i, ob x) { return
   !x || !pushs(v, rx_two_cons, x, End) ? pull(v, i, 0) :
                                          rx_two(v, i); }
 
-static ob rx_q(li v, FILE* i, ob x) { return
-  x = x ? (ob) pair(v, x, nil) : x,
-  x = x ? (ob) pair(v, (ob) v->lex->quote, x) : x,
-  pull(v, i, x); }
-
 static str rx_atom_chars(li, FILE*), rx_str(li, FILE*);
 
 static enum status
   rxs2(li, char**),
   rxs1(li, char**),
-  rxstr(li, char**),
-  rxsq(li, char**);
-
-static NoInline enum status rxsq(li v, char **i) {
-  enum status r = rxs(v, i);
-  if (r != Ok) return r;
-  ob x = (ob) pair(v, v->xp, nil);
-  x = x ? (ob) pair(v, (ob) v->lex->quote, x) : x;
-  return !x ? OomError : (v->xp = x, Ok); }
+  rxstr(li, char**);
 
 
 enum status rxs(li v, char **i) {
@@ -72,7 +57,6 @@ enum status rxs(li v, char **i) {
     case ')': return SyntaxError;
     case '(': return rxs2(v, i);
     case '"': return rxstr(v, i);
-    case '\'': return rxsq(v, i);
     default: return --(*i), rxs1(v, i); } }
 
 static NoInline ob rxr(li v, FILE* i) {
@@ -80,8 +64,6 @@ static NoInline ob rxr(li v, FILE* i) {
     case ')': case EOF: return pull(v, i, 0);
     case '(': return rx_two(v, i);
     case '"': return pull(v, i, (ob) rx_str(v, i));
-    case '\'': return
-      pushs(v, rx_q, End) ? rxr(v, i) : pull(v, i, 0);
     default:
       ungetc(c, i);
       str a = rx_atom_chars(v, i);
@@ -93,15 +75,15 @@ static enum status rxs1chs(li, char**);
 static enum status rxs2(li v, char **i) {
   char c = rxsch(i); switch (c) {
     case 0: return Eof;
-    case ')': return v->xp = nil, Ok;
+    case ')': return push1(v, nil) ? Ok : OomError;
     default:
       --(*i);
       enum status r = rxs(v, i);
       if (r != Ok) return r;
-      ob x = v->xp; with(x, r = rxs2(v, i));
+      ob x = pop1(v); with(x, r = rxs2(v, i));
       if (r != Ok) return r;
-      x = (ob) pair(v, x, v->xp);
-      return x ? (v->xp = x, Ok) : OomError; } }
+      x = (ob) pair(v, x, pop1(v));
+      return x && push1(v, x) ? Ok : OomError; } }
 
 static NoInline ob rx_two(li v, FILE* i) {
   int c = rx_char(i); switch (c) {
@@ -130,8 +112,7 @@ static NoInline enum status rxstr(li v, char **i) {
       default: o->text[n++] = x; continue;
       case 0: --(*i); case '"': fin:
         o->len = n;
-        v->xp = (ob) o;
-        return Ok; }
+        return push1(v, (ob) o) ? Ok : OomError; }
   return OomError; }
   
 // read the contents of a string literal into a string
@@ -153,8 +134,10 @@ static NoInline enum status rxs1chs(li v, char **i) {
       default: o->text[n++] = x; continue;
       // these characters terminate an atom
       case ' ': case '\n': case '\t': case ';': case '#':
-      case '(': case ')': case '\'': case '"': case 0: --(*i);
-        return o->len = n, v->xp = (ob) o, Ok; }
+      case '(': case ')': case '\'': case '"': case 0:
+         --(*i);
+         o->len = n;
+         return push1(v, (ob) o) ? Ok : OomError; }
   return OomError; }
 
 // read the characters of an atom (number or symbol)
@@ -174,7 +157,7 @@ static NoInline str rx_atom_chars(li v, FILE* p) {
 static NoInline ob rx_atom_n(li v, str b, size_t inset, int sign, int rad) {
   static const char *digits = "0123456789abcdefghijklmnopqrstuvwxyz";
   size_t len = b->len;
-  if (inset >= len) fail: return (ob) symof(v, b);
+  if (inset >= len) fail: return nil;
   intptr_t out = 0;
   do {
     int dig = 0, c = tolower(b->text[inset++]);
@@ -187,7 +170,7 @@ static NoInline ob rx_atom_n(li v, str b, size_t inset, int sign, int rad) {
 static NoInline enum status rxs1(li v, char **in) {
   enum status r = rxs1chs(v, in);
   if (r != Ok) return r;
-  str b = (str) v->xp;
+  str b = (str) pop1(v);
   size_t i = 0, len = b->len;
   int sign = 1;
   while (i < len) switch (b->text[i]) {
@@ -198,11 +181,11 @@ static NoInline enum status rxs1(li v, char **in) {
       for (char c = tolower(b->text[i+1]); *r; r += 2)
         if (*r == c) {
           ob x = rx_atom_n(v, b, i+2, sign, r[1]);
-          return x ? (v->xp = x, Ok) : OomError; } }
+          return x && push1(v, x) ? Ok : OomError; } }
     default: goto out; }
   ob x; out: return
-    (x = rx_atom_n(v, b, i, sign, 10)) ?
-    (v->xp = x, Ok) : OomError; }
+    (x = rx_atom_n(v, b, i, sign, 10)) &&
+    push1(v, x) ? Ok : OomError; }
 
 static NoInline ob rx_atom(li v, str b) {
   size_t i = 0, len = b->len;

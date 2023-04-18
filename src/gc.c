@@ -1,22 +1,18 @@
 #include "i.h"
 
 typedef ob gc_evac(li, ob, ob*, ob*);
-static gc_evac cp_str, cp_sym, cp_tbl, cp_two,
+static gc_evac cp_str, cp_two,
   *const data_evac[] = {
-    [Two] = cp_two, [Sym] = cp_sym,
-    [Str] = cp_str, [Tbl] = cp_tbl, };
+    [Two] = cp_two,
+    [Str] = cp_str, };
 
 typedef void gc_walk(li, ob, ob*, ob*);
-static gc_walk wk_tbl, wk_str, wk_sym, wk_two,
+static gc_walk wk_str, wk_two,
   *const data_walk[] = {
-    [Two] = wk_two, [Sym] = wk_sym,
-    [Str] = wk_str, [Tbl] = wk_tbl, };
+    [Two] = wk_two,
+    [Str] = wk_str, };
 
 ob *new_pool(size_t n) { return malloc(n * 2 * sizeof(ob)); }
-
-Vm(gc) { size_t req = v->xp; return
-  CallOut(req = please(v, req)),
-  req ? ApY(ip, xp) : Yield(OomError, xp); }
 
 ////
 /// garbage collector
@@ -90,30 +86,15 @@ static NoInline void copy_from(li v, ob *pool0, ob *top0) {
      shift = top1 - top0;
 
   // reset state
-  v->syms = 0;
   v->hp = v->cp = v->pool = pool1;
 
-  v->xp = cp(v, v->xp, pool0, top0);
-  v->ip = (mo) cp(v, (ob) v->ip, pool0, top0);
   // copy saved values
   for (struct ll *r = v->safe; r; r = r->next)
     *r->addr = cp(v, *r->addr, pool0, top0);
 
   // copy the stack
   ob *sp1 = v->sp = sp0 + shift;
-  frame fp1 = v->fp = (frame) ((ob*) v->fp + shift);
-  for (;;) {
-    while (sp1 < (ob*) fp1) *sp1++ = cp(v, *sp0++, pool0, top0);
-    if (sp0 == top0) break;
-    frame fp0 = (frame) sp0;
-    fp1->argc = fp0->argc,
-    fp1->subd = (frame) ((ob*) fp0->subd + shift),
-    fp1->clos = (ob*) cp(v, (ob) fp0->clos, pool0, top0),
-    fp1->retp = (mo) cp(v, (ob) fp0->retp, pool0, top0),
-    sp0 = fp0->argv, sp1 = fp1->argv, fp1 = fp1->subd; }
-
-  // copy globals
-  v->lex = (struct glob*) cp(v, (ob) v->lex, pool0, top0);
+  while (sp0 < top0) *sp1++ = cp(v, *sp0++, pool0, top0);
 
   // cheney's algorithm
   while (v->cp < v->hp) {
@@ -140,25 +121,7 @@ static NoInline ob cp(li v, ob x, ob *pool0, ob *top0) {
     data_evac[gettyp(src)](v, (ob) src, pool0, top0);
   return cp_mo(v, src, pool0, top0); }
 
-static ob cp_tbl(li v, ob x, ob *pool0, ob *top0) {
-  tbl src = (tbl) x;
-  size_t i = src->cap;
-  tbl dst = bump(v, Width(struct tbl) + i);
-  src->act = (vm*) dst;
-  ini_tbl(dst, src->len, i, (struct tbl_e**) (dst+1));
-  for (struct tbl_e *s, *e, *d; i--; dst->tab[i] = e)
-    for (s = src->tab[i], e = NULL; s;
-      d = bump(v, Width(struct tbl_e)),
-      d->key = s->key, d->val = s->val,
-      d->next = e, e = d,
-      s = s->next);
-  return (ob) dst; }
 
-static ob cp_sym(li v, ob x, ob *pool0, ob *top0) {
-  sym src = (sym) x, dst = src->nom ?
-    symof(v, (str) cp(v, (ob) src->nom, pool0, top0)) :
-    ini_anon(bump(v, Width(struct sym) - 2), src->code);
-  return (ob) (src->act = (vm*) dst); }
 
 static ob cp_str(li v, ob x, ob *pool0, ob *top0) {
   str src = (str) x,
@@ -171,18 +134,6 @@ static ob cp_two(li v, ob x, ob *pool0, ob *top0) {
   two src = (two) x, dst = bump(v, Width(struct two));
   return src->act = (vm*) dst,
          (ob) two_ini(dst, src->a, src->b); }
-
-void wk_tbl(li v, ob x, ob *pool0, ob *top0) {
-  tbl t = (tbl) x;
-  v->cp += Width(struct tbl) + t->cap + t->len * Width(struct tbl_e);
-  for (size_t i = 0, lim = t->cap; i < lim; i++)
-    for (struct tbl_e *e = t->tab[i]; e;
-      e->key = cp(v, e->key, pool0, top0),
-      e->val = cp(v, e->val, pool0, top0),
-      e = e->next); }
-
-void wk_sym(li v, ob x, ob *pool0, ob *top0) {
-  v->cp += Width(struct sym) - (((sym) x)->nom ? 0 : 2); }
 
 void wk_str(li v, ob x, ob *pool0, ob *top0) {
   v->cp += Width(struct str) + b2w(((str) x)->len); }

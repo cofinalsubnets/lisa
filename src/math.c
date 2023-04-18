@@ -1,106 +1,18 @@
 #include "i.h"
 
+static bool eq_two(li v, ob x, ob y) { // FIXME can overflow
+  return htwop((mo) y) && eql(v, A(x), A(y)) && eql(v, B(x), B(y)); }
+static bool eq_str(li v, ob x, ob y) {
+  if (!hstrp((mo) y)) return false;
+      str a = (str) x, b = (str) y;
+      return a->len == b->len && !strncmp(a->text, b->text, a->len); }
+static bool (*const data_equi[])(li, ob, ob) = {
+ [Two] = eq_two, [Str] = eq_str, };
+bool eql(li v, ob a, ob b) { return a == b ||
+  (!nump(a|b) && datp((mo) a) &&
+   data_equi[gettyp(a)](v, a, b)); }
+
 // rng
-uintptr_t liprng(li v) {
+intptr_t liprng(intptr_t in) {
   const intptr_t steele_vigna_2021 = 0xaf251af3b0f025b5;
-  uintptr_t r = (steele_vigna_2021 * v->rand + 1) >> 8;
-  return v->rand = r; }
-
-Vm(rand_f) { return ApC(ret, putnum(liprng(v))); }
-
-// fixnum arithmetic
-// frameless
-Vm(add) { return ApN(1, xp + *sp++ - 1); }
-Vm(sub) { return ApN(1, *sp++ - xp + 1); }
-Vm(mul) { return ApN(1, putnum(getnum(*sp++) * getnum(xp))); }
-Vm(neg) { return ApN(1, ~xp+3); }
-
-Vm(quot) { return xp == putnum(0) ? Yield(DomainError, xp) :
-  ApN(1, putnum(getnum(*sp++) / getnum(xp))); }
-
-Vm(rem) { return xp == putnum(0) ? Yield(DomainError, xp) :
-  ApN(1, putnum(getnum(*sp++) % getnum(xp))); }
-
-Vm(sar) { return ApN(1, putnum(getnum(*sp++) >> getnum(xp))); }
-Vm(sal) { return ApN(1, putnum(getnum(*sp++) << getnum(xp))); }
-Vm(bor) { return ApN(1, xp | *sp++); }
-Vm(band) { return ApN(1, xp & *sp++); }
-Vm(bxor) { return ApN(1, (xp ^ *sp++) | 1); }
-Vm(bnot) { return ApN(1, ~xp | 1); }
-
-// framed
-// FIXME do type checks
-Vm(add_f) {
-  xp = 0;
-  for (size_t i = 0; i < fp->argc; xp += getnum(fp->argv[i++]));
-  return ApC(ret, putnum(xp)); }
-
-Vm(mul_f) {
-  xp = 1;
-  for (size_t i = 0; i < fp->argc; xp *= getnum(fp->argv[i++]));
-  return ApC(ret, putnum(xp)); }
-
-Vm(sub_f) {
-  if (fp->argc == 0) return ApC(ret, xp);
-  if (fp->argc == 1) return ApC(ret, putnum(-getnum(fp->argv[0])));
-  xp = getnum(fp->argv[0]);
-  size_t i = 1;
-  do xp -= getnum(fp->argv[i++]); while (i < fp->argc);
-  return ApC(ret, putnum(xp)); }
-
-Vm(quot_f) {
-  if (fp->argc == 0) return ApC(ret, putnum(1));
-  xp = getnum(fp->argv[0]);
-  for (size_t i = 1; i < fp->argc; i++) {
-    intptr_t n = getnum(fp->argv[i]);
-    Check(n);
-    xp /= n; }
-  return ApC(ret, putnum(xp)); }
-
-Vm(rem_f) {
-  if (fp->argc == 0) return ApC(ret, putnum(1));
-  xp = getnum(fp->argv[0]);
-  for (size_t i = 1; i < fp->argc; i++) {
-    intptr_t n = getnum(fp->argv[i]);
-    Check(n);
-    xp %= n; }
-  return ApC(ret, putnum(xp)); }
-
-Vm(bor_f) {
-  xp = 0;
-  for (size_t i = 0; i < fp->argc; xp |= getnum(fp->argv[i++]));
-  return ApC(ret, putnum(xp)); }
-
-Vm(bxor_f) {
-  xp = 0;
-  for (size_t i = 0; i < fp->argc; xp ^= getnum(fp->argv[i++]));
-  return ApC(ret, putnum(xp)); }
-
-Vm(band_f) {
-  xp = -1;
-  for (size_t i = 0; i < fp->argc; xp &= getnum(fp->argv[i++]));
-  return ApC(ret, putnum(xp)); }
-
-Vm(bnot_f) { return
-  xp = fp->argc ? *fp->argv : 0,
-  ApC(ret, ~xp|1); }
-
-Vm(sar_f) {
-  if (fp->argc == 0)
-    return ApC(ret, xp);
-  if (fp->argc == 1)
-    return ApC(ret, putnum(getnum(fp->argv[0])>>1));
-  xp = getnum(fp->argv[0]);
-  size_t i = 1;
-  do xp >>= getnum(fp->argv[i++]);
-  while (i < fp->argc);
-  return ApC(ret, putnum(xp)); }
-
-Vm(sal_f) {
-  if (fp->argc == 0) return ApC(ret, xp);
-  if (fp->argc == 1) return ApC(ret, putnum(getnum(fp->argv[0])<<1));
-  xp = getnum(fp->argv[0]);
-  size_t i = 1;
-  do xp <<= getnum(fp->argv[i++]); while (i < fp->argc);
-  return ApC(ret, putnum(xp)); }
-
+  return (steele_vigna_2021 * in + 1) >> 8; }
