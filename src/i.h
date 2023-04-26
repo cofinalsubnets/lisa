@@ -3,22 +3,31 @@
 #include <stdint.h>
 
 typedef intptr_t ob;
-typedef struct V {
-  ob *hp, *sp;
+
+typedef struct carrier {
+  intptr_t *hp, *sp, ip;
   // memory state
   uintptr_t len;
-  ob *pool, *loop;
-  union { ob *cp; uintptr_t t0; };
-  struct ll { ob *addr; struct ll *next; } *safe; } *li, *O;
-typedef enum status {
-  More = -2, Eof = -1, Ok,
-  DomainError, ArityError,
-  NameError, SyntaxError,
-  SystemError, OomError,
-} vm(O), (**mo)(O);
+  intptr_t *pool, *loop;
+  union { intptr_t *cp; uintptr_t t0; };
+  struct ll { intptr_t *addr; struct ll *next; } *safe;
+} *li, *O;
+
+typedef union mo {
+  intptr_t x, *ptr;
+  enum status {
+    Eof = -1, Ok,
+    DomainError, ArityError,
+    NameError, SyntaxError,
+    SystemError, OomError,
+  } (*m0)(O);
+} *mo;
+_Static_assert(sizeof(union mo) == sizeof(intptr_t), "union size");
+
+typedef enum status vm(O);
 
 void li_fin(li);
-enum status li_ini(li);
+enum status li_ini(li), li_go(li);
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -28,9 +37,15 @@ enum status li_ini(li);
 #include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <assert.h>
 
-_Static_assert(-1 >> 1 == -1, "signed shift");
-_Static_assert(sizeof(size_t) == sizeof(void*), "size_t");
+#ifdef testing
+#define li_assert assert
+#else
+#define li_assert(...)
+#endif
+
+enum status self_test(O);
 
 // thanks !!
 //
@@ -39,7 +54,10 @@ enum data_type {
   Str = 1,
   Two, };
 
-struct tag { vm **null, **head, *end[]; };
+struct tag {
+  void **null;
+  mo head;
+  union mo end[]; };
 typedef struct two {
   vm *act; intptr_t typ;
   ob a, b; } *two;
@@ -50,7 +68,7 @@ typedef struct str {
 vm act;
 void transmit(li, FILE*, ob);
 bool eql(li, ob, ob), please(li, size_t), pushs(li, ...);
-enum status li_go(li), receive(li, FILE*);
+enum status receive(li, FILE*);
 mo thd(li, ...), mo_n(li, size_t);
 two pair(li, ob, ob);
 str strof(li, const char*);
@@ -61,15 +79,15 @@ ob *new_pool(size_t);
 
 #define getnum(_) ((ob)(_)>>1)
 #define putnum(_) (((ob)(_)<<1)|1)
+_Static_assert(-1 >> 1 == -1, "signed shift");
 
 #define nil putnum(0)
 #define T putnum(-1)
 
-#define Avail (v->sp-v->hp)
 #define mm(r) ((v->safe=&((struct ll){(ob*)(r),v->safe})))
 #define um (v->safe=v->safe->next)
 #define with(y,...) (mm(&(y)),(__VA_ARGS__),um)
-
+#define avec(f, y, ...) ((f->safe=&((struct ll){(ob*)&(y),f->safe})),(__VA_ARGS__),f->safe=f->safe->next)
 #define F(_) ((mo)(_)+1)
 #define G(_) (*(mo)(_))
 
@@ -83,19 +101,28 @@ static Inline void *bump(li v, size_t n) {
   void *x = v->hp;
   return v->hp += n, x; }
 
-ob pop1(li), push1(li, ob);
+
+static Inline intptr_t pop1(O v) { return *v->sp++; }
+ob push1(li, ob);
+static Inline intptr_t avail(O v) {
+  li_assert(v->sp >= v->hp);
+  const size_t free_min = 0;
+  return v->sp - v->hp - free_min; }
+
+static Inline intptr_t height(O v) {
+  return v->pool + v->len - v->sp; }
 
 static Inline void *cells(li v, size_t n) {
-  return Avail < n && !please(v, n) ? 0 : bump(v, n); }
+  return avail(v) < n && !please(v, n) ? 0 : bump(v, n); }
 
 static Inline struct tag *mo_tag(mo k) {
-  for (;; k++) if (!G(k)) return (struct tag*) k; }
+  for (;; k++) if (!k->m0) return (struct tag*) k; }
 
 static Inline bool nilp(ob _) { return _ == nil; }
 static Inline bool nump(ob _) { return _ & 1; }
 static Inline bool homp(ob _) { return !nump(_); }
 
-static Inline bool datp(mo h) { return G(h) == act; }
+static Inline bool datp(mo h) { return (void*) h->m0 == act; }
 #define gettyp(x) (((ob*)((x)))[1])
 static Inline bool hstrp(mo h) { return datp(h) && gettyp(h) == Str; }
 static Inline bool htwop(mo h) { return datp(h) && gettyp(h) == Two; }

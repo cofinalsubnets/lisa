@@ -4,10 +4,11 @@ static ob
   rx_ret(li, FILE*, ob), rxr(li, FILE*),
   rx_two(li, FILE*), rx_atom(li, str);
 // should distinguish between OOM and parse error
-enum status receive(li v, FILE* i) { ob x; return
-  !pushs(v, rx_ret, End) ? OomError :
-  !(x = rxr(v, i)) ? feof(i) ? Eof : SyntaxError :
-  (push1(v, x) ? Ok : OomError); }
+enum status receive(O v, FILE *i) {
+  ob x; return
+    !pushs(v, rx_ret, End) ? OomError :
+    !(x = rxr(v, i)) ? feof(i) ? Eof : SyntaxError :
+    push1(v, x) ? Ok : OomError; }
 
 static NoInline int rxsch(char **i) {
   for (int c;;) loop: switch (c = *((*i)++)) {
@@ -157,7 +158,7 @@ static NoInline str rx_atom_chars(li v, FILE* p) {
 static NoInline ob rx_atom_n(li v, str b, size_t inset, int sign, int rad) {
   static const char *digits = "0123456789abcdefghijklmnopqrstuvwxyz";
   size_t len = b->len;
-  if (inset >= len) fail: return nil;
+  if (inset >= len) fail: return (ob) b;
   intptr_t out = 0;
   do {
     int dig = 0, c = tolower(b->text[inset++]);
@@ -208,7 +209,7 @@ static emitter
 
 void transmit(li v, FILE* o, ob x) {
   if (nump(x)) fprintf(o, "%ld", getnum(x));
-  else if (G(x) == act) emit_data[gettyp(x)](v, o, x);
+  else if ((void*)((mo)x)->m0 == act) emit_data[gettyp(x)](v, o, x);
   else fprintf(o, "#ob@0x%lx", x); }
 
 
