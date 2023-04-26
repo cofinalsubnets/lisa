@@ -1,8 +1,8 @@
 #include "i.h"
 
-static bool eq_two(li v, ob x, ob y) { // FIXME can overflow
+bool eq_two(li v, ob x, ob y) { // FIXME can overflow
   return htwop((mo) y) && eql(v, A(x), A(y)) && eql(v, B(x), B(y)); }
-static bool eq_str(li v, ob x, ob y) {
+bool eq_str(li v, ob x, ob y) {
   if (!hstrp((mo) y)) return false;
       str a = (str) x, b = (str) y;
       return a->len == b->len && !strncmp(a->text, b->text, a->len); }

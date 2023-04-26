@@ -7,7 +7,7 @@ static ob
 enum status receive(O v, FILE *i) {
   ob x; return
     !pushs(v, rx_ret, End) ? OomError :
-    !(x = rxr(v, i)) ? feof(i) ? Eof : SyntaxError :
+    !(x = rxr(v, i)) ? feof(i) ? Eof : DomainError :
     push1(v, x) ? Ok : OomError; }
 
 static NoInline int rxsch(char **i) {
@@ -55,7 +55,7 @@ static enum status
 enum status rxs(li v, char **i) {
   char c; switch (c = rxsch(i)) {
     case 0: return Eof;
-    case ')': return SyntaxError;
+    case ')': return DomainError;
     case '(': return rxs2(v, i);
     case '"': return rxstr(v, i);
     default: return --(*i), rxs1(v, i); } }
@@ -203,7 +203,6 @@ static NoInline ob rx_atom(li v, str b) {
 
 typedef void emitter(li, FILE*, ob);
 static emitter
-  tx_two, tx_str,
   *const emit_data[] = {
     [Two] = tx_two, [Str] = tx_str, };
 
@@ -213,7 +212,7 @@ void transmit(li v, FILE* o, ob x) {
   else fprintf(o, "#ob@0x%lx", x); }
 
 
-static void tx_str(li v, FILE *o, ob _) {
+void tx_str(li v, FILE *o, ob _) {
   str s = (str) _;
   size_t len = s->len;
   const char *text = s->text;
@@ -222,7 +221,7 @@ static void tx_str(li v, FILE *o, ob _) {
     if ((c = *text++) == '\\' || c == '"') putc('\\', o);
   putc('"', o); }
 
-static void tx_two(li v, FILE *o, ob x) {
+void tx_two(li v, FILE *o, ob x) {
   for (putc('(', o);; putc(' ', o)) {
     transmit(v, o, A(x));
     if (!twop(x = B(x))) { putc(')', o); break; } } }

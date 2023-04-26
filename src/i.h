@@ -13,14 +13,14 @@ typedef struct carrier {
   struct ll { intptr_t *addr; struct ll *next; } *safe;
 } *li, *O;
 
+enum status {
+  Eof = -1, Ok,
+  DomainError,
+  OomError, };
+
 typedef union mo {
   intptr_t x, *ptr;
-  enum status {
-    Eof = -1, Ok,
-    DomainError, ArityError,
-    NameError, SyntaxError,
-    SystemError, OomError,
-  } (*m0)(O);
+  enum status (*m0)(O);
 } *mo;
 _Static_assert(sizeof(union mo) == sizeof(intptr_t), "union size");
 
@@ -53,6 +53,25 @@ enum status self_test(O);
 enum data_type {
   Str = 1,
   Two, };
+
+struct methods {
+  ob (*evac)(O, ob, ob*, ob*);
+  void (*walk)(O, ob, ob*, ob*),
+       (*emit)(O, FILE*, ob);
+  bool (*equi)(O, ob, ob); };
+
+extern struct methods two_methods, str_methods;
+
+bool nequi(O, ob, ob),
+     eq_two(O, ob, ob),
+     eq_str(O, ob, ob);
+ob cp_two(O, ob, ob*, ob*),
+   cp_str(O, ob, ob*, ob*);
+void wk_two(O, ob, ob*, ob*),
+     wk_str(O, ob, ob*, ob*),
+     tx_two(O, FILE*, ob),
+     tx_str(O, FILE*, ob)
+     ;
 
 struct tag {
   void **null;

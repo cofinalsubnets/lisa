@@ -12,7 +12,7 @@ test: $(nom)
 LC_COLLATE=C
 c=$(sort $(wildcard src/*.c))
 h=$(sort $(wildcard src/*.h))
-CPPFLAGS += -DNOM='"$(nom)"' -DSUFF='"$(suff)"'
+CPPFLAGS += -Dtesting
 o=$(c:.c=.o)
 CFLAGS ?=\
 	-std=c99 -g -O2 -Wall\

@@ -1,12 +1,12 @@
 #include "i.h"
 
 typedef ob gc_evac(li, ob, ob*, ob*);
-static gc_evac cp_str, cp_two,
+static gc_evac
   *const evac_data[] = {
     [Two] = cp_two, [Str] = cp_str, };
 
 typedef void gc_walk(li, ob, ob*, ob*);
-static gc_walk wk_str, wk_two,
+static gc_walk
   *const walk_data[] = {
     [Two] = wk_two, [Str] = wk_str, };
 
@@ -112,22 +112,22 @@ static NoInline ob cp(li v, ob x, ob *pool0, ob *top0) {
   return cp_mo(v, src, pool0, top0); }
 
 
-static ob cp_str(li v, ob x, ob *pool0, ob *top0) {
+ob cp_str(li v, ob x, ob *pool0, ob *top0) {
   str src = (str) x,
       dst = bump(v, Width(struct str) + b2w(src->len));
   return memcpy(dst, src, sizeof(struct str) + src->len),
          src->act = (vm*) dst,
          (ob) dst; }
 
-static ob cp_two(li v, ob x, ob *pool0, ob *top0) {
+ob cp_two(li v, ob x, ob *pool0, ob *top0) {
   two src = (two) x, dst = bump(v, Width(struct two));
   return src->act = (vm*) dst,
          (ob) two_ini(dst, src->a, src->b); }
 
-static void wk_str(li v, ob x, ob *pool0, ob *top0) {
+void wk_str(li v, ob x, ob *pool0, ob *top0) {
   v->cp += Width(struct str) + b2w(((str) x)->len); }
 
-static void wk_two(li v, ob x, ob *pool0, ob *top0) {
+void wk_two(li v, ob x, ob *pool0, ob *top0) {
   v->cp += Width(struct two);
   A(x) = cp(v, A(x), pool0, top0);
   B(x) = cp(v, B(x), pool0, top0); }
