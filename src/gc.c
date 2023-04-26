@@ -1,15 +1,5 @@
 #include "i.h"
 
-typedef ob gc_evac(li, ob, ob*, ob*);
-static gc_evac
-  *const evac_data[] = {
-    [Two] = cp_two, [Str] = cp_str, };
-
-typedef void gc_walk(li, ob, ob*, ob*);
-static gc_walk
-  *const walk_data[] = {
-    [Two] = wk_two, [Str] = wk_str, };
-
 ////
 /// a simple copying garbage collector
 //
@@ -87,10 +77,9 @@ static NoInline void copy_from(O v, ob *pool0, ob *top0) {
     *r->addr = cp(v, *r->addr, pool0, top0);
   // cheney's algorithm
   for (mo k; (k = (mo) v->cp) < (mo) v->hp;)
-    if (datp(k)) walk_data[gettyp(k)](v, (ob) k, pool0, top0);
+    if (datp(k)) gettyp(k)->walk(v, (ob) k, pool0, top0);
     else {
-      for (; k->m0; k++)
-        k->m0 = (void*) cp(v, (ob) k->m0, pool0, top0);
+      for (; k->ap0; k++) k->x = cp(v, k->x, pool0, top0);
       v->cp = (ob*) k + 2; } }
 
 static NoInline ob cp_mo(li v, mo src, ob *pool0, ob *top0) {
@@ -98,17 +87,17 @@ static NoInline ob cp_mo(li v, mo src, ob *pool0, ob *top0) {
   mo ini = fin->head,
      dst = bump(v, fin->end - ini),
      d = dst;
-  for (mo s = ini; (d->m0 = s->m0); s++->m0 = (void*) d++);
-  return (d+1)->m0 = (void*) dst,
+  for (mo s = ini; (d->x = s->x); s++->x = (ob) d++);
+  return (d+1)->ap0 = (void*) dst,
          (ob) (src - ini + dst); }
 
 static NoInline ob cp(li v, ob x, ob *pool0, ob *top0) {
   if (nump(x) || (ob*) x < pool0 || (ob*) x >= top0) return x;
   mo src = (mo) x;
-  x = (ob) src->m0;
+  x = (ob) src->ap0;
   if (!nump(x) && livep(v, x)) return x;
   if ((vm*) x == act) return
-    evac_data[gettyp(src)](v, (ob) src, pool0, top0);
+    gettyp(src)->evac(v, (ob) src, pool0, top0);
   return cp_mo(v, src, pool0, top0); }
 
 

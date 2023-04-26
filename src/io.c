@@ -3,6 +3,7 @@
 static ob
   rx_ret(li, FILE*, ob), rxr(li, FILE*),
   rx_two(li, FILE*), rx_atom(li, str);
+
 // should distinguish between OOM and parse error
 enum status receive(O v, FILE *i) {
   ob x; return
@@ -81,7 +82,7 @@ static enum status rxs2(li v, char **i) {
       --(*i);
       enum status r = rxs(v, i);
       if (r != Ok) return r;
-      ob x = pop1(v); with(x, r = rxs2(v, i));
+      ob x = pop1(v); avec(v, x, r = rxs2(v, i));
       if (r != Ok) return r;
       x = (ob) pair(v, x, pop1(v));
       return x && push1(v, x) ? Ok : OomError; } }
@@ -99,7 +100,7 @@ static str buf_new(li v) {
 
 static NoInline str buf_grow(li v, str s) {
   str t; size_t len = s->len; return
-    with(s, t = cells(v, Width(struct str) + 2 * b2w(len))),
+    avec(v, s, t = cells(v, Width(struct str) + 2 * b2w(len))),
     !t ? t : (memcpy(t->text, s->text, len),
               str_ini(t, 2 * len)); }
 
@@ -201,14 +202,9 @@ static NoInline ob rx_atom(li v, str b) {
     default: goto out; } out:
   return rx_atom_n(v, b, i, sign, 10); }
 
-typedef void emitter(li, FILE*, ob);
-static emitter
-  *const emit_data[] = {
-    [Two] = tx_two, [Str] = tx_str, };
-
 void transmit(li v, FILE* o, ob x) {
   if (nump(x)) fprintf(o, "%ld", getnum(x));
-  else if ((void*)((mo)x)->m0 == act) emit_data[gettyp(x)](v, o, x);
+  else if (((mo)x)->ap0 == act) gettyp(x)->emit(v, o, x);
   else fprintf(o, "#ob@0x%lx", x); }
 
 

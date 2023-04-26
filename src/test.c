@@ -12,8 +12,10 @@ static void test_big_list(O f) {
 #define Pack(f) (f->ip = ip, f->hp = hp, f->sp = sp)
 #define Unpack(f) (ip = f->ip, hp = f->hp, sp = f->sp)
 #define Have(f, n) if (avail(f) < n) return (f->ip = n, gc(f, VmData))
+    /*
 static enum status yield(O f) {
   return Ok; }
+  */
 
 enum status self_test(O f) {
   test_big_list(f);

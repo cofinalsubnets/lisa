@@ -1,9 +1,11 @@
 #ifndef _l_i_h
 #define _l_i_h
+
+// thanks !!
+//
 #include <stdint.h>
 
 typedef intptr_t ob;
-
 typedef struct carrier {
   intptr_t *hp, *sp, ip;
   // memory state
@@ -20,7 +22,7 @@ enum status {
 
 typedef union mo {
   intptr_t x, *ptr;
-  enum status (*m0)(O);
+  enum status (*ap0)(O);
 } *mo;
 _Static_assert(sizeof(union mo) == sizeof(intptr_t), "union size");
 
@@ -47,12 +49,19 @@ enum status li_ini(li), li_go(li);
 
 enum status self_test(O);
 
-// thanks !!
-//
 
-enum data_type {
-  Str = 1,
-  Two, };
+struct tag {
+  void **null;
+  mo head;
+  union mo end[]; };
+
+typedef struct two {
+  vm *act; struct methods *typ;
+  ob a, b; } *two;
+
+typedef struct str {
+  vm *act; struct methods *typ;
+  uintptr_t len; char text[]; } *str;
 
 struct methods {
   ob (*evac)(O, ob, ob*, ob*);
@@ -70,28 +79,16 @@ ob cp_two(O, ob, ob*, ob*),
 void wk_two(O, ob, ob*, ob*),
      wk_str(O, ob, ob*, ob*),
      tx_two(O, FILE*, ob),
-     tx_str(O, FILE*, ob)
-     ;
-
-struct tag {
-  void **null;
-  mo head;
-  union mo end[]; };
-typedef struct two {
-  vm *act; intptr_t typ;
-  ob a, b; } *two;
-
-typedef struct str {
-  vm *act; intptr_t typ;
-  uintptr_t len; char text[]; } *str;
+     tx_str(O, FILE*, ob);
 vm act;
 void transmit(li, FILE*, ob);
-bool eql(li, ob, ob), please(li, size_t), pushs(li, ...);
+bool eql(li, ob, ob),
+     please(li, size_t),
+     pushs(li, ...);
 enum status receive(li, FILE*);
 mo thd(li, ...), mo_n(li, size_t);
 two pair(li, ob, ob);
 str strof(li, const char*);
-ob *new_pool(size_t);
 
 #define End ((ob)0)
 #define Width(_) b2w(sizeof(_))
@@ -120,7 +117,6 @@ static Inline void *bump(li v, size_t n) {
   void *x = v->hp;
   return v->hp += n, x; }
 
-
 static Inline intptr_t pop1(O v) { return *v->sp++; }
 ob push1(li, ob);
 static Inline intptr_t avail(O v) {
@@ -131,20 +127,20 @@ static Inline intptr_t avail(O v) {
 static Inline intptr_t height(O v) {
   return v->pool + v->len - v->sp; }
 
-static Inline void *cells(li v, size_t n) {
+static Inline void *cells(O v, size_t n) {
   return avail(v) < n && !please(v, n) ? 0 : bump(v, n); }
 
 static Inline struct tag *mo_tag(mo k) {
-  for (;; k++) if (!k->m0) return (struct tag*) k; }
+  for (;; k++) if (!k->x) return (struct tag*) k; }
 
 static Inline bool nilp(ob _) { return _ == nil; }
 static Inline bool nump(ob _) { return _ & 1; }
 static Inline bool homp(ob _) { return !nump(_); }
 
-static Inline bool datp(mo h) { return (void*) h->m0 == act; }
-#define gettyp(x) (((ob*)((x)))[1])
-static Inline bool hstrp(mo h) { return datp(h) && gettyp(h) == Str; }
-static Inline bool htwop(mo h) { return datp(h) && gettyp(h) == Two; }
+static Inline bool datp(mo h) { return h->ap0 == act; }
+#define gettyp(x) ((struct methods*)(((ob*)((x)))[1]))
+static Inline bool hstrp(mo h) { return datp(h) && gettyp(h) == &str_methods; }
+static Inline bool htwop(mo h) { return datp(h) && gettyp(h) == &two_methods; }
 static Inline bool strp(ob _) { return homp(_) && hstrp((mo) _); }
 static Inline bool twop(ob _) { return homp(_) && htwop((mo) _); }
 
@@ -153,18 +149,18 @@ static Inline size_t b2w(size_t b) {
   return r ? q + 1 : q; }
 
 // this can give a false positive if x is a fixnum
-static Inline bool livep(li v, ob x) {
+static Inline bool livep(O v, ob x) {
   return (ob*) x >= v->pool && (ob*) x < v->pool + v->len; }
 
-static Inline mo mo_ini(void *_, size_t len) {
+static Inline mo mo_ini(void *_, uintptr_t len) {
   struct tag *t = (struct tag*) ((mo) _ + len);
   return t->null = NULL, t->head = _; }
 
 static Inline two two_ini(void *_, ob a, ob b) {
-  two w = _; return w->act = act, w->typ = Two,
+  two w = _; return w->act = act, w->typ = &two_methods,
                     w->a = a, w->b = b, w; }
 
-static Inline str str_ini(void *_, size_t len) {
-  str s = _; return s->act = act, s->typ = Str,
+static Inline str str_ini(void *_, uintptr_t len) {
+  str s = _; return s->act = act, s->typ = &str_methods,
                     s->len = len, s; }
 #endif
