@@ -11,13 +11,6 @@ enum status receive(O v, FILE *i) {
     !(x = rxr(v, i)) ? feof(i) ? Eof : DomainError :
     push1(v, x) ? Ok : OomError; }
 
-static NoInline int rxsch(char **i) {
-  for (int c;;) loop: switch (c = *((*i)++)) {
-    case 0: --(*i); default: return c;
-    case ' ': case '\t': case '\n': continue;
-    case '#': case ';': for (;;) switch (*((*i)++)) {
-      case 0: --(*i); case '\n': goto loop; } } }
-
 ////
 /// " the parser "
 //
@@ -35,6 +28,10 @@ static NoInline int rx_char(FILE *i) {
       case '\n': case EOF: return rx_char(i); } } };
 
 static ob rx_ret(li v, FILE* i, ob x) { return x; }
+static enum status pull_string(O f, char **i, enum status s, ob x) {
+  return ((enum status (*)(O, char**, enum status, ob)) *f->sp++)(f, i, s, x); }
+static enum status parse_ret(O f, char **i, enum status s, ob x) {
+  return s != Ok ? s : !push1(f, x) ? OomError : Ok; }
 
 static ob rx_two_cons(li v, FILE* i, ob x) {
   ob y = pop1(v); return
@@ -52,15 +49,6 @@ static enum status
   rxs1(li, char**),
   rxstr(li, char**);
 
-
-enum status rxs(li v, char **i) {
-  char c; switch (c = rxsch(i)) {
-    case 0: return Eof;
-    case ')': return DomainError;
-    case '(': return rxs2(v, i);
-    case '"': return rxstr(v, i);
-    default: return --(*i), rxs1(v, i); } }
-
 static NoInline ob rxr(li v, FILE* i) {
   int c = rx_char(i); switch (c) {
     case ')': case EOF: return pull(v, i, 0);
@@ -71,21 +59,6 @@ static NoInline ob rxr(li v, FILE* i) {
       str a = rx_atom_chars(v, i);
       ob x = a ? rx_atom(v, a) : 0;
       return pull(v, i, x); } }
-
-static enum status rxs1chs(li, char**);
-
-static enum status rxs2(li v, char **i) {
-  char c = rxsch(i); switch (c) {
-    case 0: return Eof;
-    case ')': return push1(v, nil) ? Ok : OomError;
-    default:
-      --(*i);
-      enum status r = rxs(v, i);
-      if (r != Ok) return r;
-      ob x = pop1(v); avec(v, x, r = rxs2(v, i));
-      if (r != Ok) return r;
-      x = (ob) pair(v, x, pop1(v));
-      return x && push1(v, x) ? Ok : OomError; } }
 
 static NoInline ob rx_two(li v, FILE* i) {
   int c = rx_char(i); switch (c) {
@@ -103,19 +76,6 @@ static NoInline str buf_grow(li v, str s) {
     avec(v, s, t = cells(v, Width(struct str) + 2 * b2w(len))),
     !t ? t : (memcpy(t->text, s->text, len),
               str_ini(t, 2 * len)); }
-
-static NoInline enum status rxstr(li v, char **i) {
-  str o = buf_new(v);
-  for (size_t n = 0, lim = sizeof(ob); o; o = buf_grow(v, o), lim *= 2)
-    for (char x; n < lim;) switch (x = *((*i)++)) {
-      // backslash causes the next character
-      // to be read literally // TODO more escape sequences
-      case '\\': if (!(x = rxsch(i))) goto fin;
-      default: o->text[n++] = x; continue;
-      case 0: --(*i); case '"': fin:
-        o->len = n;
-        return push1(v, (ob) o) ? Ok : OomError; }
-  return OomError; }
   
 // read the contents of a string literal into a string
 static NoInline str rx_str(li v, FILE* p) {
@@ -220,3 +180,46 @@ void tx_two(li v, FILE *o, ob x) {
   for (putc('(', o);; putc(' ', o)) {
     transmit(v, o, A(x));
     if (!twop(x = B(x))) { putc(')', o); break; } } }
+
+static enum status rxs1chs(li, char**);
+
+static NoInline int rxsch(char **i) {
+  for (int c;;) loop: switch (c = *((*i)++)) {
+    case 0: --(*i); default: return c;
+    case ' ': case '\t': case '\n': continue;
+    case '#': case ';': for (;;) switch (*((*i)++)) {
+      case 0: --(*i); case '\n': goto loop; } } }
+
+enum status rxs(li v, char **i) {
+  char c; switch (c = rxsch(i)) {
+    case 0: return Eof;
+    case ')': return DomainError;
+    case '(': return rxs2(v, i);
+    case '"': return rxstr(v, i);
+    default: return --(*i), rxs1(v, i); } }
+
+static enum status rxs2(li v, char **i) {
+  char c = rxsch(i); switch (c) {
+    case 0: return Eof;
+    case ')': return push1(v, nil) ? Ok : OomError;
+    default:
+      --(*i);
+      enum status r = rxs(v, i);
+      if (r != Ok) return r;
+      ob x = pop1(v); avec(v, x, r = rxs2(v, i));
+      if (r != Ok) return r;
+      x = (ob) pair(v, x, pop1(v));
+      return x && push1(v, x) ? Ok : OomError; } }
+
+static NoInline enum status rxstr(li v, char **i) {
+  str o = buf_new(v);
+  for (size_t n = 0, lim = sizeof(ob); o; o = buf_grow(v, o), lim *= 2)
+    for (char x; n < lim;) switch (x = *((*i)++)) {
+      // backslash causes the next character
+      // to be read literally // TODO more escape sequences
+      case '\\': if (!(x = rxsch(i))) goto fin;
+      default: o->text[n++] = x; continue;
+      case 0: --(*i); case '"': fin:
+        o->len = n;
+        return push1(v, (ob) o) ? Ok : OomError; }
+  return OomError; }

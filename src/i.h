@@ -5,7 +5,7 @@
 //
 #include <stdint.h>
 
-typedef intptr_t ob;
+typedef intptr_t ob, word;
 typedef struct carrier {
   intptr_t *hp, *sp;
   union mo *ip;
@@ -14,7 +14,7 @@ typedef struct carrier {
   intptr_t *pool, *loop;
   union { intptr_t *cp; uintptr_t t0; };
   struct ll { intptr_t *addr; struct ll *next; } *safe;
-} *li, *O;
+} *li, *O, *state;
 
 enum status {
   Eof = -1, Ok,
@@ -22,16 +22,16 @@ enum status {
   OomError, };
 
 typedef union mo {
-  enum status (*ap)(O, union mo*, ob*, ob*);
+  enum status (*ap)(state, union mo*, word*, word*);
   union mo *m;
-  intptr_t x, *ptr;
-} *mo;
-_Static_assert(sizeof(union mo) == sizeof(intptr_t), "union size");
+  word x;
+} *mo, *verb;
+_Static_assert(sizeof(union mo) == sizeof(word), "union size");
 
-typedef enum status vm(O, mo, ob*, ob*);
+typedef enum status vm(state, verb, word*, word*);
 
-void li_fin(O);
-enum status li_ini(O), li_go(O);
+void li_fin(state);
+enum status li_ini(state), li_go(state);
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -70,7 +70,7 @@ struct methods {
   void (*walk)(O, ob, ob*, ob*),
        (*emit)(O, FILE*, ob);
   bool (*equi)(O, ob, ob);
-  enum status (*does)(O, mo, ob*, ob*); };
+  enum status (*does)(O, verb, ob*, ob*); };
 
 extern struct methods two_methods, str_methods;
 

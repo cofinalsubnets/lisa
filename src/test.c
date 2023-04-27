@@ -31,16 +31,15 @@ static enum status Kj(O f, mo ip, ob *hp, ob *sp) {
   ip = (mo) ip[2].x;
   return ip->ap(f, ip, hp, sp); }
 
-static enum status drop(O f, mo ip, ob *hp, ob *sp) {
-  sp += getnum(ip[1].x);
-  ip += 2;
+static enum status ret0(state f, verb ip, word *hp, word *sp) {
+  ob r = *sp++;
+  ip = (verb) *sp, *sp = r;
   return ip->ap(f, ip, hp, sp); }
 
 static enum status retn(O f, mo ip, ob *hp, ob *sp) {
-  ob r = *sp;
+  ob r = *sp++;
   sp += getnum(ip[1].x);
-  ip = (mo) *sp;
-  *sp = r;
+  ip = (mo) *sp, *sp = r;
   return ip->ap(f, ip, hp, sp); }
 
 static enum status apply(O f, mo ip, ob *hp, ob *sp) {
@@ -117,13 +116,12 @@ static mo cata(O f, struct cctx *c, intptr_t m) {
   mo k = mo_n(f, m);
   return !k ? k : pull_thread(f, c, k + m); }
 
-static mo test_ana_cata(O f) {
-  assert(pushs(f, yield_thread, End));
+static void test_ana_cata(O f) {
+  intptr_t m, x;
   union mo
-    j[] = { add2, add2, show1, yield },
-    k[] = { curry, {.x = putnum(3)}, {.m = j} };
-  ob x;
-  intptr_t m;
+    j[] = { {add2}, {add2}, {show1}, {yield} },
+    k[] = { {curry}, {.x = putnum(3)}, {.m = j} };
+  assert(pushs(f, yield_thread, End));
   assert(x = list(f, k, putnum(3), putnum(2), putnum(1), End));
   assert(m = ana(f, NULL, 0, x));
   assert(f->ip = cata(f, NULL, m));

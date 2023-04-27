@@ -100,7 +100,6 @@ static NoInline ob cp(li v, ob x, ob *pool0, ob *top0) {
     gettyp(src)->evac(v, (ob) src, pool0, top0);
   return cp_mo(v, src, pool0, top0); }
 
-
 ob cp_str(li v, ob x, ob *pool0, ob *top0) {
   str src = (str) x,
       dst = bump(v, Width(struct str) + b2w(src->len));
