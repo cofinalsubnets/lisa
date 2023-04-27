@@ -7,7 +7,8 @@
 
 typedef intptr_t ob;
 typedef struct carrier {
-  intptr_t *hp, *sp, ip;
+  intptr_t *hp, *sp;
+  union mo *ip;
   // memory state
   uintptr_t len;
   intptr_t *pool, *loop;
@@ -21,15 +22,16 @@ enum status {
   OomError, };
 
 typedef union mo {
+  enum status (*ap)(O, union mo*, ob*, ob*);
+  union mo *m;
   intptr_t x, *ptr;
-  enum status (*ap0)(O);
 } *mo;
 _Static_assert(sizeof(union mo) == sizeof(intptr_t), "union size");
 
-typedef enum status vm(O);
+typedef enum status vm(O, mo, ob*, ob*);
 
-void li_fin(li);
-enum status li_ini(li), li_go(li);
+void li_fin(O);
+enum status li_ini(O), li_go(O);
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -67,7 +69,8 @@ struct methods {
   ob (*evac)(O, ob, ob*, ob*);
   void (*walk)(O, ob, ob*, ob*),
        (*emit)(O, FILE*, ob);
-  bool (*equi)(O, ob, ob); };
+  bool (*equi)(O, ob, ob);
+  enum status (*does)(O, mo, ob*, ob*); };
 
 extern struct methods two_methods, str_methods;
 
@@ -81,16 +84,18 @@ void wk_two(O, ob, ob*, ob*),
      tx_two(O, FILE*, ob),
      tx_str(O, FILE*, ob);
 vm act;
-void transmit(li, FILE*, ob);
-bool eql(li, ob, ob),
-     please(li, size_t),
-     pushs(li, ...);
-enum status receive(li, FILE*);
-mo thd(li, ...), mo_n(li, size_t);
-two pair(li, ob, ob);
-str strof(li, const char*);
+enum status gc(O, mo, ob*, ob*, uintptr_t);
+void transmit(O, FILE*, ob);
+bool eql(O, ob, ob),
+     please(O, uintptr_t),
+     pushs(O, ...);
+enum status receive(O, FILE*);
+mo thd(O, ...), mo_n(O, uintptr_t);
+ob list(O, ...);
+two pair(O, ob, ob);
+str strof(O, const char*);
 
-#define End ((ob)0)
+#define End ((intptr_t)0)
 #define Width(_) b2w(sizeof(_))
 
 #define getnum(_) ((ob)(_)>>1)
@@ -102,8 +107,10 @@ _Static_assert(-1 >> 1 == -1, "signed shift");
 
 #define mm(r) ((v->safe=&((struct ll){(ob*)(r),v->safe})))
 #define um (v->safe=v->safe->next)
+#define MM(f,r) ((f->safe=&((struct ll){(ob*)(r),f->safe})))
+#define UM(f) (f->safe=f->safe->next)
 #define with(y,...) (mm(&(y)),(__VA_ARGS__),um)
-#define avec(f, y, ...) ((f->safe=&((struct ll){(ob*)&(y),f->safe})),(__VA_ARGS__),f->safe=f->safe->next)
+#define avec(f, y, ...) (MM(f,&(y)),(__VA_ARGS__),UM(f))
 #define F(_) ((mo)(_)+1)
 #define G(_) (*(mo)(_))
 
@@ -113,22 +120,21 @@ _Static_assert(-1 >> 1 == -1, "signed shift");
 #define Inline inline __attribute__((always_inline))
 #define NoInline __attribute__((noinline))
 
-static Inline void *bump(li v, size_t n) {
-  void *x = v->hp;
-  return v->hp += n, x; }
+static Inline void *bump(O f, uintptr_t n) {
+  void *x = f->hp;
+  return f->hp += n, x; }
 
-static Inline intptr_t pop1(O v) { return *v->sp++; }
-ob push1(li, ob);
-static Inline intptr_t avail(O v) {
-  li_assert(v->sp >= v->hp);
-  const size_t free_min = 0;
-  return v->sp - v->hp - free_min; }
+static Inline intptr_t pop1(O f) { return *f->sp++; }
+ob push1(O, ob);
+static Inline intptr_t avail(O f) {
+  li_assert(f->sp >= f->hp);
+  return f->sp - f->hp; }
 
-static Inline intptr_t height(O v) {
-  return v->pool + v->len - v->sp; }
+static Inline intptr_t height(O f) {
+  return f->pool + f->len - f->sp; }
 
-static Inline void *cells(O v, size_t n) {
-  return avail(v) < n && !please(v, n) ? 0 : bump(v, n); }
+static Inline void *cells(O f, uintptr_t n) {
+  return avail(f) < n && !please(f, n) ? 0 : bump(f, n); }
 
 static Inline struct tag *mo_tag(mo k) {
   for (;; k++) if (!k->x) return (struct tag*) k; }
@@ -137,7 +143,7 @@ static Inline bool nilp(ob _) { return _ == nil; }
 static Inline bool nump(ob _) { return _ & 1; }
 static Inline bool homp(ob _) { return !nump(_); }
 
-static Inline bool datp(mo h) { return h->ap0 == act; }
+static Inline bool datp(mo h) { return h->ap == act; }
 #define gettyp(x) ((struct methods*)(((ob*)((x)))[1]))
 static Inline bool hstrp(mo h) { return datp(h) && gettyp(h) == &str_methods; }
 static Inline bool htwop(mo h) { return datp(h) && gettyp(h) == &two_methods; }
@@ -163,4 +169,9 @@ static Inline two two_ini(void *_, ob a, ob b) {
 static Inline str str_ini(void *_, uintptr_t len) {
   str s = _; return s->act = act, s->typ = &str_methods,
                     s->len = len, s; }
+
+#define Pack() (f->ip = ip, f->hp = hp, f->sp = sp)
+#define Unpack() (ip = f->ip, hp = f->hp, sp = f->sp)
+#define Have(n) if (sp - hp < n) return gc(f, ip, hp, sp, n)
+#define Have1() if (sp == hp) return gc(f, ip, hp, sp, 1)
 #endif

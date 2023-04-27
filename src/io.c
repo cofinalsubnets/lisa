@@ -204,9 +204,8 @@ static NoInline ob rx_atom(li v, str b) {
 
 void transmit(li v, FILE* o, ob x) {
   if (nump(x)) fprintf(o, "%ld", getnum(x));
-  else if (((mo)x)->ap0 == act) gettyp(x)->emit(v, o, x);
+  else if (datp((mo)x)) gettyp(x)->emit(v, o, x);
   else fprintf(o, "#ob@0x%lx", x); }
-
 
 void tx_str(li v, FILE *o, ob _) {
   str s = (str) _;

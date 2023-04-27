@@ -71,7 +71,7 @@ static NoInline void copy_from(O v, ob *pool0, ob *top0) {
   for (ob *sp1 = v->sp = sp0 + shift; sp0 < top0;)
     *sp1++ = cp(v, *sp0++, pool0, top0);
   // copy registers
-  v->ip = cp(v, v->ip, pool0, top0);
+  v->ip = (mo) cp(v, (ob) v->ip, pool0, top0);
   // copy user values
   for (struct ll *r = v->safe; r; r = r->next)
     *r->addr = cp(v, *r->addr, pool0, top0);
@@ -79,7 +79,7 @@ static NoInline void copy_from(O v, ob *pool0, ob *top0) {
   for (mo k; (k = (mo) v->cp) < (mo) v->hp;)
     if (datp(k)) gettyp(k)->walk(v, (ob) k, pool0, top0);
     else {
-      for (; k->ap0; k++) k->x = cp(v, k->x, pool0, top0);
+      for (; k->ap; k++) k->x = cp(v, k->x, pool0, top0);
       v->cp = (ob*) k + 2; } }
 
 static NoInline ob cp_mo(li v, mo src, ob *pool0, ob *top0) {
@@ -88,13 +88,13 @@ static NoInline ob cp_mo(li v, mo src, ob *pool0, ob *top0) {
      dst = bump(v, fin->end - ini),
      d = dst;
   for (mo s = ini; (d->x = s->x); s++->x = (ob) d++);
-  return (d+1)->ap0 = (void*) dst,
+  return (d+1)->ap = (void*) dst,
          (ob) (src - ini + dst); }
 
 static NoInline ob cp(li v, ob x, ob *pool0, ob *top0) {
   if (nump(x) || (ob*) x < pool0 || (ob*) x >= top0) return x;
   mo src = (mo) x;
-  x = (ob) src->ap0;
+  x = (ob) src->ap;
   if (!nump(x) && livep(v, x)) return x;
   if ((vm*) x == act) return
     gettyp(src)->evac(v, (ob) src, pool0, top0);

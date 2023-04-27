@@ -19,3 +19,16 @@ NoInline bool pushs(O v, ...) {
     _ = pushsr(v, 0, xs),
     va_end(xs),
     _; }
+
+static NoInline ob listr(O f, va_list xs) {
+  ob x = va_arg(xs, ob);
+  if (!x) return nil;
+  ob y; avec(f, x, y = listr(f, xs));
+  return y ? (ob) pair(f, x, y) : y; }
+
+NoInline ob list(O f, ...) {
+  ob x; va_list xs; return
+    va_start(xs, f),
+    x = listr(f, xs),
+    va_end(xs),
+    x; }

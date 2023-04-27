@@ -1,12 +1,13 @@
 #include "i.h"
 
-enum status act(li v) {
-  ob t = v->sp[1];
-  v->sp[1] = v->sp[0];
-  v->sp[0] = t;
-  return Ok; }
+NoInline enum status gc(O f, mo ip, ob *hp, ob *sp, uintptr_t n) {
+  return Pack(), please(f, n) ? li_go(f) : OomError; }
+
+enum status act(O f, mo ip, ob *hp, ob *sp) {
+  return gettyp(ip)->does(f, ip, hp, sp); }
+
 enum status li_go(O f) { return
-  ((enum status (*)(O)) pop1(f))(f); }
+  f->ip->ap(f, f->ip, f->hp, f->sp); }
 
 void li_fin(O f) { if (f)
   free(f->pool < f->loop ? f->pool : f->loop),
