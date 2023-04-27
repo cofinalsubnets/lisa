@@ -1,10 +1,11 @@
 #include "i.h"
 
+// internal parser functions
 static ob
   rx_ret(li, FILE*, ob), rxr(li, FILE*),
   rx_two(li, FILE*), rx_atom(li, str);
 
-// should distinguish between OOM and parse error
+// FIXME should distinguish between OOM and parse error
 enum status receive(O v, FILE *i) {
   ob x; return
     !pushs(v, rx_ret, End) ? OomError :
@@ -162,24 +163,7 @@ static NoInline ob rx_atom(li v, str b) {
     default: goto out; } out:
   return rx_atom_n(v, b, i, sign, 10); }
 
-void transmit(li v, FILE* o, ob x) {
-  if (nump(x)) fprintf(o, "%ld", getnum(x));
-  else if (datp((mo)x)) gettyp(x)->emit(v, o, x);
-  else fprintf(o, "#ob@0x%lx", x); }
-
-void tx_str(li v, FILE *o, ob _) {
-  str s = (str) _;
-  size_t len = s->len;
-  const char *text = s->text;
-  putc('"', o);
-  for (char c; len--; putc(c, o))
-    if ((c = *text++) == '\\' || c == '"') putc('\\', o);
-  putc('"', o); }
-
-void tx_two(li v, FILE *o, ob x) {
-  for (putc('(', o);; putc(' ', o)) {
-    transmit(v, o, A(x));
-    if (!twop(x = B(x))) { putc(')', o); break; } } }
+// NEW PARSER
 
 static enum status rxs1chs(li, char**);
 

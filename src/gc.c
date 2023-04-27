@@ -110,7 +110,7 @@ ob cp_str(li v, ob x, ob *pool0, ob *top0) {
 ob cp_two(li v, ob x, ob *pool0, ob *top0) {
   two src = (two) x, dst = bump(v, Width(struct two));
   return src->act = (vm*) dst,
-         (ob) two_ini(dst, src->a, src->b); }
+         (ob) two_ini(dst, src->_[0], src->_[1]); }
 
 void wk_str(li v, ob x, ob *pool0, ob *top0) {
   v->cp += Width(struct str) + b2w(((str) x)->len); }

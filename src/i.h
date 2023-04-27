@@ -5,7 +5,8 @@
 //
 #include <stdint.h>
 
-typedef intptr_t ob, word;
+typedef intptr_t ob, word, Z;
+typedef uintptr_t size, N;
 typedef struct carrier {
   intptr_t *hp, *sp;
   union mo *ip;
@@ -16,10 +17,10 @@ typedef struct carrier {
   struct ll { intptr_t *addr; struct ll *next; } *safe;
 } *li, *O, *state;
 
-enum status {
+typedef enum status {
   Eof = -1, Ok,
   DomainError,
-  OomError, };
+  OomError, } status;
 
 typedef union mo {
   enum status (*ap)(state, union mo*, word*, word*);
@@ -59,7 +60,7 @@ struct tag {
 
 typedef struct two {
   vm *act; struct methods *typ;
-  ob a, b; } *two;
+  ob _[2]; } *two;
 
 typedef struct str {
   vm *act; struct methods *typ;
@@ -114,8 +115,8 @@ _Static_assert(-1 >> 1 == -1, "signed shift");
 #define F(_) ((mo)(_)+1)
 #define G(_) (*(mo)(_))
 
-#define A(o) ((two)(o))->a
-#define B(o) ((two)(o))->b
+#define A(o) ((two)(o))->_[0]
+#define B(o) ((two)(o))->_[1]
 
 #define Inline inline __attribute__((always_inline))
 #define NoInline __attribute__((noinline))
@@ -164,7 +165,7 @@ static Inline mo mo_ini(void *_, uintptr_t len) {
 
 static Inline two two_ini(void *_, ob a, ob b) {
   two w = _; return w->act = act, w->typ = &two_methods,
-                    w->a = a, w->b = b, w; }
+                    w->_[0] = a, w->_[1] = b, w; }
 
 static Inline str str_ini(void *_, uintptr_t len) {
   str s = _; return s->act = act, s->typ = &str_methods,
