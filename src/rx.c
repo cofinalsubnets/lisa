@@ -26,7 +26,7 @@ static NoInline int rx_char(FILE *i) {
     default: return c;
     case ' ': case '\t': case '\n': continue;
     case '#': case ';': for (;;) switch (getc(i)) {
-      case '\n': case EOF: return rx_char(i); } } };
+      case '\n': case EOF: return rx_char(i); } } }
 
 static ob rx_ret(li v, FILE* i, ob x) { return x; }
 static enum status pull_string(O f, char **i, enum status s, ob x) {

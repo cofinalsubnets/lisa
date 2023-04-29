@@ -23,16 +23,16 @@ typedef enum status {
   OomError, } status;
 
 typedef union mo {
-  enum status (*ap)(state, union mo*, word*, word*);
+  status (*ap)(state, union mo*, word*, word*);
   union mo *m;
   word x;
 } *mo, *verb;
 _Static_assert(sizeof(union mo) == sizeof(word), "union size");
 
-typedef enum status vm(state, verb, word*, word*);
+status act(state, verb, word*, word*);
 
 void li_fin(state);
-enum status li_ini(state), li_go(state);
+status li_ini(state), li_go(state);
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -59,12 +59,15 @@ struct tag {
   union mo end[]; };
 
 typedef struct two {
-  vm *act; struct methods *typ;
+  status (*act)(state, verb, word*, word*);
+  struct methods *typ;
   ob _[2]; } *two;
 
 typedef struct str {
-  vm *act; struct methods *typ;
-  uintptr_t len; char text[]; } *str;
+  status (*act)(state, verb, word*, word*);
+  struct methods *typ;
+  uintptr_t len;
+  char text[]; } *str;
 
 struct methods {
   ob (*evac)(O, ob, ob*, ob*);
@@ -84,7 +87,6 @@ void wk_two(O, ob, ob*, ob*),
      wk_str(O, ob, ob*, ob*),
      tx_two(O, FILE*, ob),
      tx_str(O, FILE*, ob);
-vm act;
 enum status gc(O, mo, ob*, ob*, uintptr_t);
 void transmit(O, FILE*, ob);
 bool eql(O, ob, ob),
@@ -121,53 +123,53 @@ _Static_assert(-1 >> 1 == -1, "signed shift");
 #define Inline inline __attribute__((always_inline))
 #define NoInline __attribute__((noinline))
 
-static Inline void *bump(O f, uintptr_t n) {
+static Inline void *bump(state f, size n) {
   void *x = f->hp;
   return f->hp += n, x; }
 
-static Inline intptr_t pop1(O f) { return *f->sp++; }
-ob push1(O, ob);
-static Inline intptr_t avail(O f) {
+static Inline word pop1(state f) { return *f->sp++; }
+word push1(state, word);
+static Inline size avail(state f) {
   li_assert(f->sp >= f->hp);
   return f->sp - f->hp; }
 
-static Inline intptr_t height(O f) {
+static Inline size height(state f) {
   return f->pool + f->len - f->sp; }
 
-static Inline void *cells(O f, uintptr_t n) {
+static Inline void *cells(state f, size n) {
   return avail(f) < n && !please(f, n) ? 0 : bump(f, n); }
 
-static Inline struct tag *mo_tag(mo k) {
+static Inline struct tag *mo_tag(verb k) {
   for (;; k++) if (!k->x) return (struct tag*) k; }
 
-static Inline bool nilp(ob _) { return _ == nil; }
-static Inline bool nump(ob _) { return _ & 1; }
-static Inline bool homp(ob _) { return !nump(_); }
+static Inline bool nilp(word _) { return _ == nil; }
+static Inline bool nump(word _) { return _ & 1; }
+static Inline bool homp(word _) { return !nump(_); }
 
-static Inline bool datp(mo h) { return h->ap == act; }
+static Inline bool datp(verb h) { return h->ap == act; }
 #define gettyp(x) ((struct methods*)(((ob*)((x)))[1]))
-static Inline bool hstrp(mo h) { return datp(h) && gettyp(h) == &str_methods; }
-static Inline bool htwop(mo h) { return datp(h) && gettyp(h) == &two_methods; }
-static Inline bool strp(ob _) { return homp(_) && hstrp((mo) _); }
-static Inline bool twop(ob _) { return homp(_) && htwop((mo) _); }
+static Inline bool hstrp(verb h) { return datp(h) && gettyp(h) == &str_methods; }
+static Inline bool htwop(verb h) { return datp(h) && gettyp(h) == &two_methods; }
+static Inline bool strp(word _) { return homp(_) && hstrp((mo) _); }
+static Inline bool twop(word _) { return homp(_) && htwop((mo) _); }
 
-static Inline size_t b2w(size_t b) {
+static Inline size b2w(size b) {
   size_t q = b / sizeof(ob), r = b % sizeof(ob);
   return r ? q + 1 : q; }
 
 // this can give a false positive if x is a fixnum
-static Inline bool livep(O v, ob x) {
+static Inline bool livep(state v, word x) {
   return (ob*) x >= v->pool && (ob*) x < v->pool + v->len; }
 
-static Inline mo mo_ini(void *_, uintptr_t len) {
-  struct tag *t = (struct tag*) ((mo) _ + len);
+static Inline verb mo_ini(void *_, size len) {
+  struct tag *t = (struct tag*) ((verb) _ + len);
   return t->null = NULL, t->head = _; }
 
-static Inline two two_ini(void *_, ob a, ob b) {
+static Inline two two_ini(void *_, word a, word b) {
   two w = _; return w->act = act, w->typ = &two_methods,
                     w->_[0] = a, w->_[1] = b, w; }
 
-static Inline str str_ini(void *_, uintptr_t len) {
+static Inline str str_ini(void *_, size len) {
   str s = _; return s->act = act, s->typ = &str_methods,
                     s->len = len, s; }
 
