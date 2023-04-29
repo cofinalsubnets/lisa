@@ -92,7 +92,7 @@ void transmit(O, FILE*, ob);
 bool eql(O, ob, ob),
      please(O, uintptr_t),
      pushs(O, ...);
-enum status receive(O, FILE*);
+enum status receive(O, FILE*), receive2(state, char*, uintptr_t);
 mo thd(O, ...), mo_n(O, uintptr_t);
 ob list(O, ...);
 two pair(O, ob, ob);

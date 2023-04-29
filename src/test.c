@@ -164,14 +164,19 @@ static void test_quote(state f) {
 static void test_cond(state f) {
 }
 
-status self_test(O f) { return
-  test_big_list(f),
-  test_print_number(f, 9),
-  test_currying(f),
-  test_ana_cata(f),
-  test_quote(f),
-  test_cond(f),
-  Ok; }
+static void test_receive2(state f) {
+  assert(receive2(f, "99", 2) == Ok);
+  assert(pop1(f) == putnum(99)); }
+
+status self_test(O f) {
+  test_big_list(f);
+  test_print_number(f, 9);
+  test_currying(f);
+  test_ana_cata(f);
+  test_quote(f);
+  test_cond(f);
+  test_receive2(f);
+  return Ok; }
 
 static uintptr_t value(state f, struct cctx**c, uintptr_t m, word x) {
   return pushs(f, e2, K, x, End) ? m + 2 : 0; }

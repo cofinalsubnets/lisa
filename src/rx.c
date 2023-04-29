@@ -12,6 +12,18 @@ enum status receive(O v, FILE *i) {
     !(x = rxr(v, i)) ? feof(i) ? Eof : DomainError :
     push1(v, x) ? Ok : OomError; }
 
+status receive2(state f, char *_i, size_t len) {
+  char *i = malloc(len + 1);
+  if (!i) return OomError;
+  memcpy(i, _i, len);
+  i[len] = 0;
+  FILE *in = fmemopen(i, len, "r");
+  if (!in) return OomError;
+  enum status s = receive(f, in);
+  fclose(in);
+  free(i);
+  return s; }
+
 ////
 /// " the parser "
 //
