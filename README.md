@@ -1,5 +1,9 @@
-# lisa
-LISt Action
+# another programming language
+a.k.a
+- lips
+- lisa
+- rat
+- y(L)
 
 ## build / install
 are you on linux? `make` will probably work. otherwise, see
