@@ -165,8 +165,14 @@ static void test_cond(state f) {
 }
 
 static void test_receive2(state f) {
-  assert(receive2(f, "99", 2) == Ok);
-  assert(pop1(f) == putnum(99)); }
+  assert(receive2(f, "99") == Ok);
+  assert(pop1(f) == putnum(99));
+  assert(receive2(f, "((9 a) 2)") == Ok);
+  word x = pop1(f);
+  assert(twop(x) && twop(B(x)) && nilp(B(B(x))));
+  assert(twop(A(x)) && A(A(x)) == putnum(9));
+  assert(twop(B(A(x))) && nilp(B(B(A(x)))) && strp(A(B(A(x)))));
+  assert(A(B(x)) == putnum(2)); }
 
 status self_test(O f) {
   test_big_list(f);

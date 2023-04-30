@@ -17,10 +17,21 @@ typedef struct carrier {
   struct ll { intptr_t *addr; struct ll *next; } *safe;
 } *li, *O, *state;
 
+#include <errno.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <time.h>
+#include <string.h>
+#include <stdarg.h>
+#include <errno.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include <assert.h>
+
 typedef enum status {
-  Eof = -1, Ok,
-  DomainError,
-  OomError, } status;
+  Eof = -1, Ok = 0,
+  DomainError = EDOM,
+  OomError = ENOMEM, } status;
 
 typedef union mo {
   status (*ap)(state, union mo*, word*, word*);
@@ -33,16 +44,6 @@ status act(state, verb, word*, word*);
 
 void li_fin(state);
 status li_ini(state), li_go(state);
-
-#include <stdlib.h>
-#include <stdio.h>
-#include <time.h>
-#include <string.h>
-#include <stdarg.h>
-#include <errno.h>
-#include <stdbool.h>
-#include <stddef.h>
-#include <assert.h>
 
 #ifdef testing
 #define li_assert assert
@@ -92,7 +93,7 @@ void transmit(O, FILE*, ob);
 bool eql(O, ob, ob),
      please(O, uintptr_t),
      pushs(O, ...);
-enum status receive(O, FILE*), receive2(state, char*, uintptr_t);
+enum status receive(O, FILE*), receive2(state, char*);
 mo thd(O, ...), mo_n(O, uintptr_t);
 ob list(O, ...);
 two pair(O, ob, ob);

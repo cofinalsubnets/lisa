@@ -12,7 +12,8 @@ enum status receive(O v, FILE *i) {
     !(x = rxr(v, i)) ? feof(i) ? Eof : DomainError :
     push1(v, x) ? Ok : OomError; }
 
-status receive2(state f, char *_i, size_t len) {
+status receive2(state f, char *_i) {
+  size_t len = strlen(_i);
   char *i = malloc(len + 1);
   if (!i) return OomError;
   memcpy(i, _i, len);
