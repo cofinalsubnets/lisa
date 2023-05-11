@@ -1,5 +1,11 @@
 #include "i.h"
 
+#define Quote "`"
+#define Cond "?"
+#define Lambda "\\"
+static verb compile_expression(state f, word x);
+static bool kstrq(str, const char*);
+
 static void test_big_list(state f) {
   size n = 1 << 20;
   for (size i = 0; i < n; i++)
@@ -53,9 +59,12 @@ static status retn(state f, verb ip, word *hp, word *sp) {
   return ip->ap(f, ip, hp, sp); }
 
 static status apply(state f, verb ip, word *hp, word *sp) {
-  mo j = (mo) sp[1];
-  sp[1] = (ob) (ip + 1);
-  return j->ap(f, j, hp, sp); }
+  if (nump(sp[1])) ip++;
+  else {
+    mo j = (mo) sp[1];
+    sp[1] = (ob) (ip + 1);
+    ip = j; }
+  return ip->ap(f, ip, hp, sp); }
 
 static status add2(state f, verb ip, word *hp, word *sp) {
   return sp[1] += sp[0] - 1,
@@ -65,7 +74,7 @@ static status curry(state f, verb ip, word *hp, word *sp) {
   const size S = 3 + Width(struct tag);
   Have(2 * S);
   intptr_t n = getnum(ip[1].x);
-  mo c0 = (mo) hp, c1;
+  verb c0 = (mo) hp, c1;
   hp += S;
   c0[0].ap = Kj;
   c0[1].x = *sp++;
@@ -87,7 +96,7 @@ static void test_print_number(state f, int n) {
   assert(pop1(f) == putnum(9)); }
 
 static void test_currying(state f) {
-  mo k;
+  verb k;
   assert(k = thd(f, add2, add2, yield, End));
   assert(k = thd(f, curry, putnum(3), k, End));
   assert(f->ip = thd(f, K, k, K, putnum(1), apply, K, putnum(2), apply, K, putnum(3), apply, End));
@@ -107,15 +116,14 @@ static status expect(state f, verb ip, word *hp, word *sp) {
 
 
 struct cctx {
-  word dict, s1, s2;
+  word s1, s2, eb, ib, sb;
   struct cctx *par; };
 
 static struct cctx *scope(state f, struct cctx **par) {
   struct cctx *sc = (void*) mo_n(f, Width(struct cctx));
-  if (sc) {
-    sc->s1 = sc->s2 = nil;
-    if (par) sc->par = *par, sc->dict = (*par)->dict;
-    else sc->par = (void*) (sc->dict = nil); }
+  if (sc)
+    sc->s1 = sc->s2 = sc->eb = sc->ib = sc->sb = nil,
+    sc->par = par ? *par : (void*) nil;
   return sc; }
 
 static verb yield_thread(state f, struct cctx **c, verb k) { return k; }
@@ -123,21 +131,15 @@ static verb pull_thread(state f, struct cctx **c, verb k) { return
   ((mo (*)(state, struct cctx**, mo)) (*f->sp++))(f, c, k); }
 static verb e1(state f, struct cctx **c, verb k) { return
   (--k)->x = *f->sp++, pull_thread(f, c, k); }
-static verb e2(O f, struct cctx **c, verb k) { return
+static verb e2(state f, struct cctx **c, verb k) { return
   k[-2].x = *f->sp++, k[-1].x = *f->sp++, pull_thread(f, c, k - 2); }
+
+static verb var(state f, struct cctx **c, verb k) {
+  k[-2].ap = K, k[-1].x = *f->sp++, pull_thread(f, c, k - 2); }
 
 static size ana(state, struct cctx**, size, word);
 static verb cata(O f, struct cctx **c, size m) { mo k; return
   !(k = mo_n(f, m)) ? k : pull_thread(f, c, k + m); }
-
-static verb compile_expression(state f, word x) {
-  if (!pushs(f, x, yield_thread, End)) return 0;
-  struct cctx *sc = scope(f, NULL);
-  if (!sc) return 0;
-  avec(f, sc,
-    x = ana(f, &sc, 0, pop1(f)),
-    x = x ? (ob) cata(f, &sc, x) : x);
-  return (verb) x; }
 
 static void test_ana_cata(state f) {
   intptr_t m, x;
@@ -150,28 +152,22 @@ static void test_ana_cata(state f) {
   assert(li_go(f) == Ok),
   assert(pop1(f) == putnum(6)); }
 
-#define Quote "`"
-#define Cond "?"
-
-static bool kstrq(str s0, const char *s1) { return
-  strlen(s1) == s0->len && strncmp(s0->text, s1, s0->len) == 0; }
-
-static union mo y[] = { {yield} };
 static void test_quote(state f) {
+  union mo y[] = { {yield} };
   ob x;
   assert(x = (ob) strof(f, Quote));
   assert(x = list(f, x, x, End));
   assert(x = list(f, y, x, End));
-  assert(pushs(f, x, yield_thread, End));
-  assert(x = ana(f, NULL, 0, pop1(f)));
-  assert(f->ip = cata(f, NULL, x));
+  assert(f->ip = compile_expression(f, x));
   assert(li_go(f) == Ok);
   assert(kstrq((str) pop1(f), Quote)); }
 
+
 static void test_cond(state f) {
+  union mo y[] = { {yield} };
   assert(Ok == receive2(f, "(? 0 1 2 3 4)"));
   word x;
-  assert(x = (word) list(f, (ob) y, pop1(f), End));
+  assert(x = list(f, y, pop1(f), End));
   assert(f->ip = compile_expression(f, x));
   assert(li_go(f) == Ok);
   assert(pop1(f) == putnum(3)); }
@@ -186,6 +182,9 @@ static void test_receive2(state f) {
   assert(twop(B(A(x))) && nilp(B(B(A(x)))) && strp(A(B(A(x)))));
   assert(A(B(x)) == putnum(2)); }
 
+static void test_lambda(state f) {
+}
+
 status self_test(O f) {
   test_big_list(f);
   test_print_number(f, 9);
@@ -194,23 +193,43 @@ status self_test(O f) {
   test_quote(f);
   test_cond(f);
   test_receive2(f);
+  test_lambda(f);
   return Ok; }
 
-static uintptr_t value(state f, struct cctx**c, uintptr_t m, word x) {
+
+static verb action_of(state f, struct cctx **c, word x) {
+  return (x = pushs(f, x, yield_thread, End)) &&
+         (x = ana(f, c, 0, pop1(f))) ?
+           cata(f, c, x) :
+           0; }
+
+static verb compile_expression(state f, word x) {
+  verb k = 0;
+  struct cctx *c = push1(f, x) ? scope(f, NULL) : NULL;
+  if (c) avec(f, c, k = action_of(f, &c, pop1(f)));
+  return k; }
+
+static bool kstrq(str s0, const char *s1) { return
+  strlen(s1) == s0->len && strncmp(s0->text, s1, s0->len) == 0; }
+
+static size value(state f, struct cctx**c, size m, word x) {
   return pushs(f, e2, K, x, End) ? m + 2 : 0; }
+static size ana_str(state f, struct cctx **c, size m, word x) {
+  return pushs(f, var, x, End) ? m + 2 : 0; }
 
-static uintptr_t ana_two(state, struct cctx**, uintptr_t, word);
+static size ana_two(state, struct cctx**, size, word);
 
-static uintptr_t ana(state f, struct cctx **c, uintptr_t m, word x) {
-  return twop(x) ? ana_two(f, c, m, x) : value(f, c, m, x); }
+static size ana(state f, struct cctx **c, size m, word x) {
+  return twop(x) ? ana_two(f, c, m, x) :
+         strp(x) ? ana_str(f, c, m, x) :
+                   value(f, c, m, x); }
 
 static verb
-  ana_cond_peek_continuation(state, struct cctx **, verb),
   ana_cond_push_continuation(state, struct cctx **, verb),
   ana_cond_push_alternative(state, struct cctx**, verb),
   ana_cond_pop_alternative(state, struct cctx**, verb),
   ana_cond_pop_continuation(state, struct cctx**, verb);
-static uintptr_t
+static size
   ana_cond_loop(state, struct cctx**, size, word);
 
 static verb ana_cond_pop_alternative(state f, struct cctx**c, verb k) {
@@ -218,10 +237,6 @@ static verb ana_cond_pop_alternative(state f, struct cctx**c, verb k) {
   (--k)->ap = barnch;
   (*c)->s1 = B((*c)->s1);
   return pull_thread(f, c, k); }
-
-static verb ana_cond_push_alternative(state f, struct cctx**c, verb k) {
-  two w = pair(f, (ob) k, (*c)->s1);
-  return !w ? (verb) w : pull_thread(f, c, (verb) A((*c)->s1 = (ob) w)); }
 
 static size ana_cond(state f, struct cctx **c, uintptr_t m, word x) {
   if (!pushs(f, x, ana_cond_pop_continuation, End)) return 0;
@@ -237,15 +252,35 @@ static size ana_cond(state f, struct cctx **c, uintptr_t m, word x) {
     m = ana(f, c, m + 2, A(x));
     m = m && pushs(f, ana_cond_pop_alternative, End) ? m : 0;
     m = ana(f, c, m + 2, A(B(x)));
-    m = m && pushs(f, ana_cond_push_alternative, ana_cond_peek_continuation, End) ? m + 2 : 0; }
+    m = m && pushs(f, ana_cond_push_alternative, End) ? m + 2 : 0; }
   UM(f);
   return m && pushs(f, ana_cond_push_continuation, End) ? m : 0; }
+
+// reverse decons: pushes last list item to stack, returns init of list.
+static word snoced(state f, word x) {
+  if (!twop(x)) return push1(f, nil) ? nil : 0;
+  if (!twop(B(x))) return push1(f, A(x)) ? nil : 0;
+  ob y = A(x);
+  avec(f, y, x = snoced(f, B(x)));
+  return x ? (word) pair(f, y, x) : x; }
+
+static size ana_lambda(state f, struct cctx **c, size m, word x) {
+  x = snoced(f, x);
+  if (!x || !push1(f, x)) return 0;
+  struct cctx *d = scope(f, c);
+  if (!d) return 0;
+  d->eb = d->sb = pop1(f);
+  avec(f, d,
+    x = (word) action_of(f, &d, pop1(f)),
+    x = x && twop(d->ib) ? (word) pair(f, x, d->ib) : x);
+  return x ? ana(f, c, m, x) : x; }
 
 static size ana_two(state f, struct cctx **c, size m, word x) {
   if (strp(A(x))) {
     str s = (str) A(x);
     if (kstrq(s, Quote)) return value(f, c, m, twop(B(x)) ? A(B(x)) : B(x));
-    if (kstrq(s, Cond)) return ana_cond(f, c, m, B(x)); }
+    if (kstrq(s, Cond)) return ana_cond(f, c, m, B(x));
+    if (kstrq(s, Lambda)) return ana_lambda(f, c, m, B(x)); }
   for (MM(f, &x), m = ana(f, c, m, A(x)), x = B(x); m && twop(x); x = B(x))
     m = ana(f, c, m + 1, A(x)),
     m = pushs(f, e1, apply, End) ? m : 0;
@@ -254,7 +289,11 @@ static size ana_two(state f, struct cctx **c, size m, word x) {
 static verb ana_cond_push_continuation(state f, struct cctx **c, verb k) {
   two w = pair(f, (ob) k, (*c)->s2);
   return !w ? (verb) w : pull_thread(f, c, (verb) A((*c)->s2 = (ob) w)); }
-static verb ana_cond_peek_continuation(state f, struct cctx **c, verb k) {
+
+static verb ana_cond_push_alternative(state f, struct cctx**c, verb k) {
+  two w = pair(f, (ob) k, (*c)->s1);
+  if (!w) return (verb) w;
+  k = (verb) A((*c)->s1 = (ob) w);
   verb kk = (verb) A((*c)->s2);
   if (kk->ap == ret0) (--k)->ap = kk->ap;
   else (--k)->m = kk, (--k)->ap = jump;
