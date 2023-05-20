@@ -134,4 +134,3 @@ static NoInline ob rx_atom(li v, str b) {
         if (*r == c) return rx_atom_n(v, b, i+2, sign, r[1]); }
     default: goto out; } out:
   return rx_atom_n(v, b, i, sign, 10); }
-
