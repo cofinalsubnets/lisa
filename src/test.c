@@ -1,4 +1,5 @@
 #include "i.h"
+#define println(x) (transmit(f,stdout,x),puts(""))
 
 static void
   test_big_list(state),
@@ -8,7 +9,8 @@ static void
   test_quote(state),
   test_cond(state),
   test_receive2(state),
-  test_lambda(state);
+  test_lambda(state),
+  test_lambda2(state);
 
 status self_test(O f) {
   test_big_list(f);
@@ -19,6 +21,7 @@ status self_test(O f) {
   test_cond(f);
   test_receive2(f);
   test_lambda(f);
+  test_lambda2(f);
   return Ok; }
 
 static void test_big_list(state f) {
@@ -96,21 +99,22 @@ static status add2(state f, verb ip, word *hp, word *sp) {
          ip[1].ap(f, ip+1, hp, sp+1); }
 
 static status curry(state f, verb ip, word *hp, word *sp) {
+  intptr_t n = getnum(ip[1].x);
+  if (n == 1) return 
+    ip = ip[2].m, ip->ap(f, ip, hp, sp);
   const size S = 3 + Width(struct tag);
   Have(2 * S);
-  intptr_t n = getnum(ip[1].x);
   verb c0 = (mo) hp, c1;
   hp += S;
   c0[0].ap = Kj;
   c0[1].x = *sp++;
   c0[2].x = ip[2].x;
-  if (n > 2)
-    c1 = c0 + S,
-    hp += S,
-    c1[0].ap = curry,
-    c1[1].x = putnum(n - 1),
-    c1[2].x = (ob) c0,
-    c0 = c1;
+  c1 = c0 + S,
+  hp += S,
+  c1[0].ap = curry,
+  c1[1].x = putnum(n - 1),
+  c1[2].x = (ob) c0,
+  c0 = c1;
   ip = (mo) *sp;
   *sp = (ob) c0;
   return ip->ap(f, ip, hp, sp); }
@@ -143,7 +147,7 @@ struct cctx {
   word s1, s2, eb, ib, sb, sn;
   struct cctx *par; };
 
-#define One sizeof(word)
+#define One 2
 static struct cctx *scope(state f, struct cctx **par) {
   struct cctx *sc = (void*) mo_n(f, Width(struct cctx));
   if (sc)
@@ -176,13 +180,14 @@ static word lidx(state f, ob l, ob x) {
 
 static verb var(state f, struct cctx **c, verb k) {
   word sym = *f->sp++,
-       idx = *f->sp++;
+       off = getnum(*f->sp++),
+       ldx = lidx(f, (*c)->sb, sym),
+       idx = ldx + off;
   return
     k[-2].ap = ref,
-    k[-1].x = putnum(lidx(f, (*c)->sb, sym) + getnum(idx)),
+    k[-1].x = putnum(idx),
     pull_thread(f, c, k - 2); }
 
-#define println(x) (transmit(f,stdout,x),puts(""))
 static size ana(state, struct cctx**, size, word);
 static verb cata(O f, struct cctx **c, size m) {
   assert((*c)->sn == nil);
@@ -229,7 +234,6 @@ static void test_receive2(state f) {
   assert(A(B(x)) == putnum(2)); }
 
 static void test_lambda(state f) {
-  union mo y[] = {{yield}};
   char prog1[] = "(\\ a b a)",
        prog2[] = "((\\ a b a) 2 3)";
 
@@ -244,7 +248,12 @@ static void test_lambda(state f) {
   assert(pop1(f) == putnum(2)); }
 
 static void test_lambda2(state f) {
-}
+  char prog[] = "((\\ f g (f g 1 2 3)) (\\ g a b c (g c b)) (\\ a b a))";
+  assert(Ok == receive2(f, prog));
+  assert((f->ip = compile_expression(f, pop1(f))));
+  assert(li_go(f) == Ok);
+  assert(pop1(f) == putnum(3)); }
+
 
 static size yld(state f, size m) {
   return pushs(f, e1, yield, End) ? m + 1 : 0; }
