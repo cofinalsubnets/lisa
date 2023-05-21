@@ -29,7 +29,8 @@ typedef struct carrier {
 #include <assert.h>
 
 typedef enum status {
-  Eof = -1, Ok = 0,
+  Eof = EOF,
+  Ok = 0,
   DomainError = EDOM,
   OomError = ENOMEM, } status;
 

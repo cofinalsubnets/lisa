@@ -10,7 +10,8 @@ static void
   test_cond(state),
   test_receive2(state),
   test_lambda(state),
-  test_lambda2(state);
+  test_lambda2(state),
+  test_closure(state);
 
 status self_test(O f) {
   test_big_list(f);
@@ -22,6 +23,7 @@ status self_test(O f) {
   test_receive2(f);
   test_lambda(f);
   test_lambda2(f);
+  test_closure(f);
   return Ok; }
 
 static void test_big_list(state f) {
@@ -131,17 +133,6 @@ static void test_currying(state f) {
   assert((f->ip = thd(f, K, k, K, putnum(1), apply, K, putnum(2), apply, K, putnum(3), apply, yield, End)));
   assert(li_go(f) == Ok);
   assert(pop1(f) == putnum(6)); }
-
-static status diag(state f, verb ip, word *hp, word *sp) {
-  Have1();
-  sp[-1] = sp[0];
-  ip++, sp--;
-  return ip->ap(f, ip, hp, sp); }
-
-static status expect(state f, verb ip, word *hp, word *sp) {
-  word want = ip++->x, got = *sp++;
-  assert(eql(f, want, got));
-  return ip->ap(f, ip, hp, sp); }
 
 struct cctx {
   word s1, s2, eb, ib, sb, sn;
@@ -254,6 +245,12 @@ static void test_lambda2(state f) {
   assert(li_go(f) == Ok);
   assert(pop1(f) == putnum(3)); }
 
+static void test_closure(state f) {
+  char prog[] = "((\\ f ((\\ a b (f a b)) 2 3)) (\\ a b a))";
+  assert(Ok == receive2(f, prog));
+  assert((f->ip = compile_expression(f, pop1(f))));
+  assert(li_go(f) == Ok);
+  assert(pop1(f) == putnum(2)); }
 
 static size yld(state f, size m) {
   return pushs(f, e1, yield, End) ? m + 1 : 0; }
@@ -344,7 +341,8 @@ static size ana_lambda(state f, struct cctx **c, size m, word x) {
     n = pushs(f, pop1(f), yield_thread, End) ? ana(f, &d, 2, pop1(f)) : 0,
     d->sn -= One,
     k = n && pushs(f, e2, retn, putnum(llen(d->sb)), End) ? cata(f, &d, n) : 0,
-    k = k ? thd(f, curry, putnum(llen(d->sb)), k, End) : k,
+    n = llen(d->sb),
+    k = k && n > 1 ? thd(f, curry, putnum(n), k, End) : k,
     x = k && twop(d->ib) ? (word) pair(f, (word) k, d->ib) : (word) k);
   if (!x) return x;
   x = x ? ana(f, c, m, x) : x;
