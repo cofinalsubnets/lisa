@@ -93,12 +93,23 @@ enum status gc(O, mo, ob*, ob*, uintptr_t);
 void transmit(O, FILE*, ob);
 bool eql(O, ob, ob),
      please(O, uintptr_t),
+     kstrq(str, const char*),
      pushs(O, ...);
 enum status receive(O, FILE*), receive2(state, char*);
 mo thd(O, ...), mo_n(O, uintptr_t);
 ob list(O, ...);
 two pair(O, ob, ob);
 str strof(O, const char*);
+verb compile_expression(state f, word x);
+status curry(state, verb, word*, word*),
+       apply(state, verb, word*, word*),
+       branch(state, verb, word*, word*),
+       Kj(state, verb, word*, word*),
+       K(state, verb, word*, word*),
+       ref(state, verb, word*, word*),
+       yield(state, verb, word*, word*),
+       jump(state, verb, word*, word*),
+       retn(state, verb, word*, word*);
 
 #define End ((intptr_t)0)
 #define Width(_) b2w(sizeof(_))
@@ -179,4 +190,8 @@ static Inline str str_ini(void *_, size len) {
 #define Unpack() (ip = f->ip, hp = f->hp, sp = f->sp)
 #define Have(n) if (sp - hp < n) return gc(f, ip, hp, sp, n)
 #define Have1() if (sp == hp) return gc(f, ip, hp, sp, 1)
+#define Quote "`"
+#define Cond "?"
+#define Lambda "\\"
+#define println(x) (transmit(f,stdout,x),puts(""))
 #endif
