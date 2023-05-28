@@ -15,7 +15,7 @@ void li_fin(O f) { if (f)
 
 NoInline enum status li_ini(O f) {
   memset(f, 0, sizeof(struct carrier));
-  const size_t len0 = 1 << 10; // a power of 2
+  const size_t len0 = 1; // a power of 2
   ob *pool = malloc(len0 * 2 * sizeof(intptr_t));
   if (!pool) return OomError;
   f->len = len0;

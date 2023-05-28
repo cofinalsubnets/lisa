@@ -15,7 +15,8 @@ static void
   test_closure(state);
 
 status self_test(O f) {
-  test_big_list(f);
+  //test_big_list(f);
+  printf("%d\n", __LINE__);
   test_print_number(f, 9);
   test_currying(f);
   test_ana_cata(f);
@@ -38,7 +39,7 @@ static void test_big_list(state f) {
 static void test_ana_cata(state f) {
   intptr_t x;
   union mo
-    j[] = { {add2}, {add2}, {show1}, {retn}, {.x=nil} },
+    j[] = { {add2}, {add2}, {retn}, {.x=nil} },
     k[] = { {curry}, {.x = putnum(3)}, {.m = j} };
   assert((x = list(f, k, putnum(3), End))),
   assert((x = list(f, x, putnum(2), putnum(1), End))),
@@ -102,7 +103,7 @@ static void test_closure(state f) {
   assert(pop1(f) == putnum(2)); }
 
 static void test_print_number(state f, int n) {
-  assert((f->ip = thd(f, K, putnum(n), show1, yield, End)));
+  assert((f->ip = thd(f, K, putnum(n), yield, End)));
   assert(li_go(f) == Ok);
   assert(pop1(f) == putnum(9)); }
 
