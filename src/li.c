@@ -33,5 +33,6 @@ NoInline two pair(O f, ob a, ob b) {
 str strof(li v, const char* c) {
   size_t bs = strlen(c);
   str o = cells(v, Width(struct str) + b2w(bs));
-  if (o) memcpy(str_ini(o, bs)->text, c, bs);
+  if (o) str_ini(o, bs),
+         memcpy(o->text, c, bs);
   return o; }

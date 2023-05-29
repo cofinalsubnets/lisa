@@ -32,14 +32,14 @@ NoInline verb thd(state f, ...) {
     k; }
 
 struct cctx {
-  word s1, s2, eb, ib, sb, sn;
+  word s1, s2, ib, sb, sn;
   struct cctx *par; };
 
 #define One 2
 static struct cctx *scope(state f, struct cctx **par) {
   struct cctx *sc = (void*) mo_n(f, Width(struct cctx));
   if (sc)
-    sc->s1 = sc->s2 = sc->eb = sc->ib = sc->sb = sc->sn = nil,
+    sc->s1 = sc->s2 = sc->ib = sc->sb = sc->sn = nil,
     sc->par = par ? *par : (void*) nil;
   return sc; }
 
@@ -49,7 +49,7 @@ static size llen(ob l) {
   return n; }
 
 static verb yield_thread(state f, struct cctx **c, verb k) {
-  return k; }
+  return mo_tag(k)->head = k; }
 
 static verb pull_thread(state f, struct cctx **c, verb k) { return
   ((mo (*)(state, struct cctx**, mo)) (*f->sp++))(f, c, k); }
@@ -81,6 +81,7 @@ static verb cata(O f, struct cctx **c, size m) {
   assert((*c)->sn == nil);
   verb k = mo_n(f, m);
   if (!k) return k;
+  memset(k, -1, m * sizeof(word));
   return pull_thread(f, c, k + m); }
 
 static size yld(state f, size m) {
@@ -88,16 +89,21 @@ static size yld(state f, size m) {
 
 verb compile_expression(state f, word x) {
   verb k = 0;
-  struct cctx *c = pushs(f, x, yield_thread, End) ? scope(f, NULL) : NULL;
+  struct cctx *c = NULL;
+  if (pushs(f, x, yield_thread, End)) {
+    c = scope(f, NULL);
+  }
   if (c) avec(f, c,
-    x = ana(f, &c, 0, pop1(f)),
+    x = pop1(f),
+    x = ana(f, &c, 0, x),
     x = x ? yld(f, x) : x,
     c->sn -= One,
     k = x ? cata(f, &c, x) : k);
   return k; }
 
 bool kstrq(str s0, const char *s1) { return
-  strlen(s1) == s0->len && strncmp(s0->text, s1, s0->len) == 0; }
+  strlen(s1) == s0->len &&
+  0 == strncmp(s0->text, s1, s0->len); }
 
 static size value(state f, struct cctx**c, size m, word x) {
   return pushs(f, e2, K, x, End) ? m + 2 : 0; }
@@ -165,7 +171,7 @@ static size ana_lambda(state f, struct cctx **c, size m, word x) {
   if (!x || !push1(f, x)) return 0;
   struct cctx *d = scope(f, c);
   if (!d) return 0;
-  d->eb = d->sb = pop1(f);
+  d->sb = pop1(f);
   size n;
   verb k;
   avec(f, d,
@@ -185,10 +191,12 @@ static size ap(state f, struct cctx **c, size m) {
   (*c)->sn -= One;
   return m + 1; }
 
+static size ana_quote(state f, struct cctx **c, size m, word x) {
+  return value(f, c, m, twop(x) ? A(x) : x); }
 static size ana_two(state f, struct cctx **c, size m, word x) {
   if (strp(A(x))) {
     str s = (str) A(x);
-    if (kstrq(s, Quote)) return value(f, c, m, twop(B(x)) ? A(B(x)) : B(x));
+    if (kstrq(s, Quote)) return ana_quote(f, c, m, B(x));
     if (kstrq(s, Cond)) return ana_cond(f, c, m, B(x));
     if (kstrq(s, Lambda)) return ana_lambda(f, c, m, B(x)); }
   for (MM(f, &x), m = ana(f, c, m, A(x)), x = B(x); m && twop(x); x = B(x))

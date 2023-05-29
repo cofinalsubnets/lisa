@@ -52,23 +52,25 @@ NoInline bool please(state v, size req) {
 
   // we got a new pool.
   // copy again, free the old pool, return ok
-  return v->loop = (v->pool = new) + (v->len = want),
-         copy_from(v, loop, loop + have),
-         free(pool < loop ? pool : loop),
-         v->t0 = clock(),
-         true; }
+  v->loop = (v->pool = new) + (v->len = want),
+  copy_from(v, loop, loop + have),
+  free(pool < loop ? pool : loop),
+  v->t0 = clock();
+  return true; }
 
 static word cp(state, word, word*, word*);
 static NoInline void copy_from(state v, word *pool0, word *top0) {
   size len1 = v->len;
   word *sp0 = v->sp,
        *pool1 = v->pool,
-       shift = pool1 + len1 - top0;
+       *top1 = pool1 + len1;
+  size slen = top0 - sp0;
   // reset heap
-  v->hp = v->cp = v->pool = pool1;
+  v->hp = v->cp = pool1;
   // copy stack
-  for (ob *sp1 = v->sp = sp0 + shift; sp0 < top0;)
-    *sp1++ = cp(v, *sp0++, pool0, top0);
+  word *sp1 = v->sp = top1 - slen;
+  for (size i = 0; i < slen; i++)
+    sp1[i] = cp(v, sp0[i], pool0, top0);
   // copy registers
   v->ip = (verb) cp(v, (word) v->ip, pool0, top0);
   // copy user values
@@ -92,7 +94,7 @@ static NoInline word cp_mo(state v, verb src, word *pool0, word *top0) {
 static NoInline word cp(state v, word x, word *pool0, word *top0) {
   if (nump(x) || (ob*) x < pool0 || (ob*) x >= top0) return x;
   verb src = (mo) x;
-  if (!nump(src->x) && livep(v, src->x)) return x;
+  if (homp(src->x) && livep(v, src->x)) return src->x;
   if (src->ap == act) return gettyp(src)->evac(v, (ob) src, pool0, top0);
   return cp_mo(v, src, pool0, top0); }
 

@@ -1,6 +1,5 @@
 #include "i.h"
-static status add2(state, verb, word*, word*),
-              show1(state, verb, word*, word*);
+static status add2(state, verb, word*, word*);
 
 static void
   test_big_list(state),
@@ -15,17 +14,27 @@ static void
   test_closure(state);
 
 status self_test(O f) {
-  //test_big_list(f);
-  printf("%d\n", __LINE__);
+  printf("%s:%d\n", __FILE__, __LINE__);
   test_print_number(f, 9);
+  printf("%s:%d\n", __FILE__, __LINE__);
   test_currying(f);
+  printf("%s:%d\n", __FILE__, __LINE__);
   test_ana_cata(f);
-  test_quote(f);
+  printf("%s:%d\n", __FILE__, __LINE__);
+  test_big_list(f);
+  printf("%s:%d\n", __FILE__, __LINE__);
   test_cond(f);
+  printf("%s:%d\n", __FILE__, __LINE__);
   test_receive2(f);
+  printf("%s:%d\n", __FILE__, __LINE__);
   test_lambda(f);
+  printf("%s:%d\n", __FILE__, __LINE__);
   test_lambda2(f);
+  printf("%s:%d\n", __FILE__, __LINE__);
   test_closure(f);
+  printf("%s:%d\n", __FILE__, __LINE__);
+  test_quote(f);
+  printf("%s:%d\n", __FILE__, __LINE__);
   return Ok; }
 
 static void test_big_list(state f) {
@@ -53,7 +62,8 @@ static void test_quote(state f) {
   assert((x = list(f, x, x, End)));
   assert((f->ip = compile_expression(f, x)));
   assert(li_go(f) == Ok);
-  assert(kstrq((str) pop1(f), Quote)); }
+  assert(kstrq((str) pop1(f), Quote));
+}
 
 static void test_cond(state f) {
   union mo y[] = { {yield} };
@@ -80,9 +90,9 @@ static void test_lambda(state f) {
 
   assert(Ok == receive2(f, prog1));
   assert((f->ip = compile_expression(f, pop1(f))));
+
   assert(li_go(f) == Ok);
   assert(homp(pop1(f)));
-
   assert(Ok == receive2(f, prog2));
   assert((f->ip = compile_expression(f, pop1(f))));
   assert(li_go(f) == Ok);
@@ -118,9 +128,3 @@ static void test_currying(state f) {
 static status add2(state f, verb ip, word *hp, word *sp) {
   return sp[1] += sp[0] - 1,
          ip[1].ap(f, ip+1, hp, sp+1); }
-
-static status show1(state f, verb ip, word *hp, word *sp) {
-  return transmit(f, stdout, *sp),
-         fputc('\n', stdout),
-         ip++,
-         ip->ap(f, ip, hp, sp); }

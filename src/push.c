@@ -20,11 +20,11 @@ NoInline bool pushs(O v, ...) {
     va_end(xs),
     _; }
 
-static NoInline ob listr(O f, va_list xs) {
-  ob x = va_arg(xs, ob);
+static NoInline word listr(state f, va_list xs) {
+  word x = va_arg(xs, word);
   if (!x) return nil;
-  ob y; avec(f, x, y = listr(f, xs));
-  return y ? (ob) pair(f, x, y) : y; }
+  word y; avec(f, x, y = listr(f, xs));
+  return y ? (word) pair(f, x, y) : y; }
 
 NoInline ob list(O f, ...) {
   ob x; va_list xs; return

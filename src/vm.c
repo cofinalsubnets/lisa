@@ -46,21 +46,23 @@ status apply(state f, verb ip, word *hp, word *sp) {
 
 status curry(state f, verb ip, word *hp, word *sp) {
   intptr_t n = getnum(ip[1].x);
-  if (n == 1) return
-    ip = ip[2].m, ip->ap(f, ip, hp, sp);
+  if (n == 1) return ip = ip[2].m, ip->ap(f, ip, hp, sp);
   const size S = 3 + Width(struct tag);
   Have(2 * S);
-  verb c0 = (mo) hp, c1;
-  hp += S;
+  verb c0 = (mo) hp, c1 = c0 + S;
+  hp += 2 * S;
+
   c0[0].ap = Kj;
   c0[1].x = *sp++;
   c0[2].x = ip[2].x;
-  c1 = c0 + S,
-  hp += S,
-  c1[0].ap = curry,
-  c1[1].x = putnum(n - 1),
-  c1[2].x = (ob) c0,
-  c0 = c1;
+  c0[3].x = 0;
+  c0[4].m = c0;
+
+  c1[0].ap = curry;
+  c1[1].x = putnum(n - 1);
+  c1[2].x = (ob) c0;
+  c1[3].x = 0;
+  c1[4].m = c1;
   ip = (mo) *sp;
-  *sp = (ob) c0;
+  *sp = (ob) c1;
   return ip->ap(f, ip, hp, sp); }

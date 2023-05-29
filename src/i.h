@@ -138,13 +138,12 @@ _Static_assert(-1 >> 1 == -1, "signed shift");
 
 static Inline void *bump(state f, size n) {
   void *x = f->hp;
-  return f->hp += n, x; }
+  f->hp += n;
+  return x; }
 
 static Inline word pop1(state f) { return *f->sp++; }
 word push1(state, word);
-static Inline size avail(state f) {
-  li_assert(f->sp >= f->hp);
-  return f->sp - f->hp; }
+static Inline size avail(state f) { return f->sp - f->hp; }
 
 static Inline size height(state f) {
   return f->pool + f->len - f->sp; }
