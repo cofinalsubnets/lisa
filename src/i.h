@@ -173,17 +173,9 @@ static Inline size b2w(size b) {
 static Inline bool livep(state v, word x) {
   return (ob*) x >= v->pool && (ob*) x < v->pool + v->len; }
 
-static Inline verb mo_ini(void *_, size len) {
-  struct tag *t = (struct tag*) ((verb) _ + len);
-  return t->null = NULL, t->head = _; }
-
-static Inline two two_ini(void *_, word a, word b) {
-  two w = _; return w->act = act, w->typ = &two_methods,
-                    w->_[0] = a, w->_[1] = b, w; }
-
-static Inline str str_ini(void *_, size len) {
-  str s = _; return s->act = act, s->typ = &str_methods,
-                    s->len = len, s; }
+two two_ini(void*, word, word);
+str str_ini(void*, size);
+verb mo_ini(void*, size);
 
 #define Pack() (f->ip = ip, f->hp = hp, f->sp = sp)
 #define Unpack() (ip = f->ip, hp = f->hp, sp = f->sp)

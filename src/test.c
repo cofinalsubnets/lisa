@@ -1,9 +1,8 @@
 #include "i.h"
 static status add2(state, verb, word*, word*);
-
 static void
   test_big_list(state),
-  test_print_number(state, int),
+  test_number(state),
   test_currying(state),
   test_ana_cata(state),
   test_quote(state),
@@ -15,7 +14,7 @@ static void
 
 status self_test(O f) {
   printf("%s:%d\n", __FILE__, __LINE__);
-  test_print_number(f, 9);
+  test_number(f);
   printf("%s:%d\n", __FILE__, __LINE__);
   test_currying(f);
   printf("%s:%d\n", __FILE__, __LINE__);
@@ -68,8 +67,8 @@ static void test_quote(state f) {
 static void test_cond(state f) {
   union mo y[] = { {yield} };
   assert(Ok == receive2(f, "(? 0 1 2 3 4)"));
-  word x;
-  assert((x = list(f, y, pop1(f), End)));
+  word x = pop1(f);
+  assert((x = list(f, y, x, End)));
   assert((f->ip = compile_expression(f, x)));
   assert(li_go(f) == Ok);
   assert(pop1(f) == putnum(3)); }
@@ -112,10 +111,11 @@ static void test_closure(state f) {
   assert(li_go(f) == Ok);
   assert(pop1(f) == putnum(2)); }
 
-static void test_print_number(state f, int n) {
-  assert((f->ip = thd(f, K, putnum(n), yield, End)));
+static void test_number(state f) {
+  word n = putnum(9);
+  assert((f->ip = thd(f, K, n, yield, End)));
   assert(li_go(f) == Ok);
-  assert(pop1(f) == putnum(9)); }
+  assert(pop1(f) == n); }
 
 static void test_currying(state f) {
   verb k;

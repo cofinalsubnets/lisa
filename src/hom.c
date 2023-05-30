@@ -35,7 +35,6 @@ struct cctx {
   word s1, s2, ib, sb, sn;
   struct cctx *par; };
 
-#define One 2
 static struct cctx *scope(state f, struct cctx **par) {
   struct cctx *sc = (void*) mo_n(f, Width(struct cctx));
   if (sc)
@@ -49,21 +48,22 @@ static size llen(ob l) {
   return n; }
 
 static verb yield_thread(state f, struct cctx **c, verb k) {
-  return mo_tag(k)->head = k; }
+  struct tag *t = mo_tag(k);
+  li_assert(t->head <= k);
+  return t->head = k; }
 
 static verb pull_thread(state f, struct cctx **c, verb k) { return
   ((mo (*)(state, struct cctx**, mo)) (*f->sp++))(f, c, k); }
 static verb e1(state f, struct cctx **c, verb k) {
-  return (--k)->x = *f->sp++,
-         pull_thread(f, c, k); }
+  (--k)->x = *f->sp++;
+  return pull_thread(f, c, k); }
 static verb e2(state f, struct cctx **c, verb k) {
-  return k[-2].x = *f->sp++,
-         k[-1].x = *f->sp++,
-         pull_thread(f, c, k - 2); }
+  k[-2].x = *f->sp++;
+  k[-1].x = *f->sp++;
+  return pull_thread(f, c, k - 2); }
 
 static word lidx(state f, ob l, ob x) {
-  for (word i = 0; twop(l); l = B(l), i++)
-    if (eql(f, A(l), x)) return i;
+  for (word i = 0; twop(l); l = B(l), i++) if (eql(f, A(l), x)) return i;
   return -1; }
 
 static verb var(state f, struct cctx **c, verb k) {
@@ -71,34 +71,25 @@ static verb var(state f, struct cctx **c, verb k) {
        off = getnum(*f->sp++),
        ldx = lidx(f, (*c)->sb, sym),
        idx = ldx + off;
-  return
-    k[-2].ap = ref,
-    k[-1].x = putnum(idx),
-    pull_thread(f, c, k - 2); }
+  k[-2].ap = ref;
+  k[-1].x = putnum(idx);
+  return pull_thread(f, c, k - 2); }
 
 static size ana(state, struct cctx**, size, word);
 static verb cata(O f, struct cctx **c, size m) {
   assert((*c)->sn == nil);
   verb k = mo_n(f, m);
-  if (!k) return k;
-  memset(k, -1, m * sizeof(word));
-  return pull_thread(f, c, k + m); }
-
-static size yld(state f, size m) {
-  return pushs(f, e1, yield, End) ? m + 1 : 0; }
+  if (k) memset(k, -1, m * sizeof(word));
+  return !k ? k : pull_thread(f, c, k + m); }
 
 verb compile_expression(state f, word x) {
+  size m;
   verb k = 0;
-  struct cctx *c = NULL;
-  if (pushs(f, x, yield_thread, End)) {
-    c = scope(f, NULL);
-  }
+  struct cctx *c = pushs(f, x, yield_thread, End) ? scope(f, NULL) : NULL;
   if (c) avec(f, c,
-    x = pop1(f),
-    x = ana(f, &c, 0, x),
-    x = x ? yld(f, x) : x,
-    c->sn -= One,
-    k = x ? cata(f, &c, x) : k);
+    m = ana(f, &c, 0, pop1(f)),
+    m = m && pushs(f, e1, yield, End) ? m + 1 : 0,
+    k = m ? cata(f, &c, m) : 0);
   return k; }
 
 bool kstrq(str s0, const char *s1) { return
@@ -120,13 +111,10 @@ static size ana_str(state f, struct cctx **c, size m, word x) {
   return pushs(f, var, x, (*c)->sn, End) ? m + 2 : 0; }
 
 static size ana_two(state, struct cctx**, size, word);
-
 static size ana(state f, struct cctx **c, size m, word x) {
-  m = twop(x) ? ana_two(f, c, m, x) :
-      strp(x) ? ana_str(f, c, m, x) :
-                value(f, c, m, x);
-  (*c)->sn += One; // caller should do this instead
-  return m; }
+  return twop(x) ? ana_two(f, c, m, x) :
+         strp(x) ? ana_str(f, c, m, x) :
+                   value(f, c, m, x); }
 
 static verb
   ana_cond_push_continuation(state, struct cctx **, verb),
@@ -149,11 +137,11 @@ static size ana_cond(state f, struct cctx **c, uintptr_t m, word x) {
       x = (ob) pair(f, x, nil);
       if (!x) { m = 0; break; } }
     if (!twop(B(x))) {
-      m = ana(f, c, m, A(x)), (*c)->sn -= One;
+      m = ana(f, c, m, A(x));
       break; }
-    m = ana(f, c, m + 2, A(x)), (*c)->sn -= One;
+    m = ana(f, c, m + 2, A(x));
     m = m && pushs(f, ana_cond_pop_alternative, End) ? m : 0;
-    m = m ? ana(f, c, m + 2, A(B(x))): 0, (*c)->sn -= One;
+    m = m ? ana(f, c, m + 2, A(B(x))): 0;
     m = m && pushs(f, ana_cond_push_alternative, End) ? m + 2 : 0; }
   UM(f);
   return m && pushs(f, ana_cond_push_continuation, End) ? m : 0; }
@@ -176,37 +164,41 @@ static size ana_lambda(state f, struct cctx **c, size m, word x) {
   verb k;
   avec(f, d,
     n = pushs(f, pop1(f), yield_thread, End) ? ana(f, &d, 2, pop1(f)) : 0,
-    d->sn -= One,
     k = n && pushs(f, e2, retn, putnum(llen(d->sb)), End) ? cata(f, &d, n) : 0,
     n = llen(d->sb),
     k = k && n > 1 ? thd(f, curry, putnum(n), k, End) : k,
     x = k && twop(d->ib) ? (word) pair(f, (word) k, d->ib) : (word) k);
   if (!x) return x;
   x = x ? ana(f, c, m, x) : x;
-  (*c)->sn -= One;
   return x; }
-
-static size ap(state f, struct cctx **c, size m) {
-  if (!pushs(f, e1, apply, End)) return 0;
-  (*c)->sn -= One;
-  return m + 1; }
 
 static size ana_quote(state f, struct cctx **c, size m, word x) {
   return value(f, c, m, twop(x) ? A(x) : x); }
+
+static size (*special_form(str s))(state, struct cctx**, size, word) {
+  if (kstrq(s, Quote)) return ana_quote;
+  if (kstrq(s, Cond)) return ana_cond;
+  if (kstrq(s, Lambda)) return ana_lambda;
+  return NULL; }
+
 static size ana_two(state f, struct cctx **c, size m, word x) {
-  if (strp(A(x))) {
-    str s = (str) A(x);
-    if (kstrq(s, Quote)) return ana_quote(f, c, m, B(x));
-    if (kstrq(s, Cond)) return ana_cond(f, c, m, B(x));
-    if (kstrq(s, Lambda)) return ana_lambda(f, c, m, B(x)); }
-  for (MM(f, &x), m = ana(f, c, m, A(x)), x = B(x); m && twop(x); x = B(x))
-    m = ana(f, c, m, A(x)), m = ap(f, c, m);
+  size (*form)(state, struct cctx**, size, word);
+  if (strp(A(x)) && (form = special_form((str) A(x))))
+    return form(f, c, m, B(x));
+  const word One = 2;
+  MM(f, &x);
+  m = ana(f, c, m, A(x));
+  (*c)->sn += One;
+  while (m && twop(x = B(x)))
+    m = ana(f, c, m, A(x)),
+    m = m && pushs(f, e1, apply, End) ? m + 1 : 0;
   (*c)->sn -= One;
-  return UM(f), m; }
+  UM(f);
+  return m; }
 
 static verb ana_cond_push_continuation(state f, struct cctx **c, verb k) {
-  two w = pair(f, (ob) k, (*c)->s2);
-  return !w ? (verb) w : pull_thread(f, c, (verb) A((*c)->s2 = (ob) w)); }
+  two w = pair(f, (word) k, (*c)->s2);
+  return !w ? (verb) w : pull_thread(f, c, (verb) A((*c)->s2 = (word) w)); }
 
 static verb ana_cond_push_alternative(state f, struct cctx**c, verb k) {
   two w = pair(f, (ob) k, (*c)->s1);

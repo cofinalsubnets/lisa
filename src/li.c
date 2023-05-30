@@ -24,15 +24,38 @@ NoInline enum status li_ini(O f) {
   f->t0 = clock();
   return Ok; }
 
-NoInline two pair(O f, ob a, ob b) {
-  if (avail(f) < Width(struct two)) {
-    bool ok; avec(f, a, avec(f, b, ok = please(f, Width(struct two))));
-    if (!ok) return NULL; }
+static NoInline two pair_gc(state f, word a, word b) {
+  bool ok;
+  avec(f, a, avec(f, b, ok = please(f, Width(struct two))));
+  return !ok ? 0 : two_ini(bump(f, Width(struct two)), a, b); }
+
+two pair(O f, ob a, ob b) {
+  if (avail(f) < Width(struct two)) return pair_gc(f, a, b);
   return two_ini(bump(f, Width(struct two)), a, b); }
 
-str strof(li v, const char* c) {
+str strof(state f, const char* c) {
   size_t bs = strlen(c);
-  str o = cells(v, Width(struct str) + b2w(bs));
+  str o = cells(f, Width(struct str) + b2w(bs));
   if (o) str_ini(o, bs),
          memcpy(o->text, c, bs);
   return o; }
+
+str str_ini(void *_, size len) {
+  str s = _;
+  s->act = act;
+  s->typ = &str_methods;
+  s->len = len;
+  return s; }
+
+two two_ini(void *_, word a, word b) {
+  two w = _;
+  w->act = act;
+  w->typ = &two_methods;
+  w->_[0] = a;
+  w->_[1] = b;
+  return w; }
+
+verb mo_ini(void *_, size len) {
+  struct tag *t = (struct tag*) ((verb) _ + len);
+  t->null = NULL;
+  return t->head = _; }

@@ -30,14 +30,14 @@ status branch(state f, verb ip, word *hp, word *sp) {
   return ip->ap(f, ip, hp, sp); }
 
 status retn(state f, verb ip, word *hp, word *sp) {
-  ob r = *sp++;
-  sp += getnum(ip[1].x);
+  ob r = *sp;
+  sp += getnum(ip[1].x) + 1;
   ip = (verb) *sp;
   *sp = r;
   return ip->ap(f, ip, hp, sp); }
 
 status apply(state f, verb ip, word *hp, word *sp) {
-  if (nump(sp[1])) ip++;
+  if (nump(sp[1])) ip++, sp++;
   else {
     mo j = (mo) sp[1];
     sp[1] = (ob) (ip + 1);
@@ -48,7 +48,7 @@ status curry(state f, verb ip, word *hp, word *sp) {
   intptr_t n = getnum(ip[1].x);
   if (n == 1) return ip = ip[2].m, ip->ap(f, ip, hp, sp);
   const size S = 3 + Width(struct tag);
-  Have(2 * S);
+  Have(2 * S); // XXX use one thread
   verb c0 = (mo) hp, c1 = c0 + S;
   hp += 2 * S;
 

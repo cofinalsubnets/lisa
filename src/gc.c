@@ -18,6 +18,8 @@
 //   -----------------------------------
 //   |                          `------'
 //   t0                  gc time (this cycle)
+#define big (want < need || vim < vim_inf)
+#define little (want >> 1 > need && vim > vim_sup)
 static void copy_from(state, word*, word*);
 NoInline bool please(state v, size req) {
   size t1 = clock(), t0 = v->t0, have = v->len;
@@ -28,33 +30,17 @@ NoInline bool please(state v, size req) {
        vim = t2 == t1 ? vim_sup : (t2 - t0) / (t2 - t1),
        want = have,
        need = have - (avail(v) - req);
-
-  // if too slow or small then grow
-  if (want < need || vim < vim_inf)
-    do want <<= 1, vim <<= 1;
-    while (want < need || vim < vim_inf);
-
-  // else if too big and fast then shrink
-  else if (want >> 1 > need && vim > vim_sup)
-    do want >>= 1, vim >>= 1;
-    while (want >> 1 > need && vim > vim_sup);
-
-  // else no resize is needed, so return success
-  else return true;
-
+  if         (big) do want <<= 1, vim <<= 1; while (big);
+  else if (little) do want >>= 1, vim >>= 1; while (little);
+  else return true; // else no resize is needed, so return success
   // try and resize
   //
-  // first allocate a new pool
-  ob *new = malloc(want * 2 * sizeof(ob));
-
-  // if that fails, succeed iff the first copy is big enough
-  if (!new) return need <= have;
-
-  // we got a new pool.
-  // copy again, free the old pool, return ok
-  v->loop = (v->pool = new) + (v->len = want),
-  copy_from(v, loop, loop + have),
-  free(pool < loop ? pool : loop),
+  ob *new = malloc(want * 2 * sizeof(ob)); // allocate a new pool
+  if (!new) return need <= have; // if that fails, succeed iff the first copy is big enough
+  // we got a new pool; copy again, free the old pool, return ok
+  v->loop = (v->pool = new) + (v->len = want);
+  copy_from(v, loop, loop + have);
+  free(pool < loop ? pool : loop);
   v->t0 = clock();
   return true; }
 
