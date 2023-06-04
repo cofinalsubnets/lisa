@@ -12,17 +12,18 @@ status ref(state f, verb ip, word *hp, word *sp) {
 
 status K(state f, verb ip, word *hp, word *sp) {
   Have1();
-  return
-    *--sp = ip[1].x,
-    ip += 2,
-    ip->ap(f, ip, hp, sp); }
+  *--sp = ip[1].x;
+  ip += 2;
+  return  ip->ap(f, ip, hp, sp); }
 
 status jump(state f, verb ip, word *hp, word *sp) {
-  return ip = (mo) ip[1].x, ip->ap(f, ip, hp, sp); }
+  ip = ip[1].m;
+  return ip->ap(f, ip, hp, sp); }
+
 status Kj(state f, verb ip, word *hp, word *sp) {
   Have1();
   *--sp = ip[1].x;
-  ip = (mo) ip[2].x;
+  ip = ip[2].m;
   return ip->ap(f, ip, hp, sp); }
 
 status branch(state f, verb ip, word *hp, word *sp) {
@@ -30,39 +31,33 @@ status branch(state f, verb ip, word *hp, word *sp) {
   return ip->ap(f, ip, hp, sp); }
 
 status retn(state f, verb ip, word *hp, word *sp) {
-  ob r = *sp;
+  word r = *sp;
   sp += getnum(ip[1].x) + 1;
   ip = (verb) *sp;
   *sp = r;
   return ip->ap(f, ip, hp, sp); }
 
 status apply(state f, verb ip, word *hp, word *sp) {
-  if (nump(sp[1])) ip++, sp++;
-  else {
-    mo j = (mo) sp[1];
-    sp[1] = (ob) (ip + 1);
-    ip = j; }
-  return ip->ap(f, ip, hp, sp); }
+  if (nump(sp[1])) return ip[1].ap(f, ip + 1, hp, sp + 1);
+  verb k = (verb) sp[1];
+  sp[1] = (word) (ip + 1);
+  return k->ap(f, k, hp, sp); }
 
 status curry(state f, verb ip, word *hp, word *sp) {
   intptr_t n = getnum(ip[1].x);
   if (n == 1) return ip = ip[2].m, ip->ap(f, ip, hp, sp);
-  const size S = 3 + Width(struct tag);
-  Have(2 * S); // XXX use one thread
-  verb c0 = (mo) hp, c1 = c0 + S;
-  hp += 2 * S;
-
-  c0[0].ap = Kj;
-  c0[1].x = *sp++;
-  c0[2].x = ip[2].x;
-  c0[3].x = 0;
-  c0[4].m = c0;
-
-  c1[0].ap = curry;
-  c1[1].x = putnum(n - 1);
-  c1[2].x = (ob) c0;
-  c1[3].x = 0;
-  c1[4].m = c1;
-  ip = (mo) *sp;
-  *sp = (ob) c1;
+  const size S = 6 + Width(struct tag);
+  Have(S);
+  verb k = (verb) hp;
+  hp += S;
+  k[0].ap = curry;
+  k[1].x = putnum(n - 1);
+  k[2].m = k + 3;
+  k[3].ap = Kj;
+  k[4].x = *sp++;
+  k[5].x = ip[2].x;
+  k[6].x = 0;
+  k[7].m = k;
+  ip = (verb) *sp;
+  *sp = (word) k;
   return ip->ap(f, ip, hp, sp); }
