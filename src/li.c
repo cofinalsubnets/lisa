@@ -1,12 +1,12 @@
 #include "i.h"
 
-NoInline enum status gc(O f, mo ip, ob *hp, ob *sp, uintptr_t n) {
+NoInline status gc(state f, verb ip, word *hp, word *sp, size n) {
   return Pack(), please(f, n) ? li_go(f) : OomError; }
 
-enum status act(O f, mo ip, ob *hp, ob *sp) {
+status act(state f, mo ip, ob *hp, ob *sp) {
   return gettyp(ip)->does(f, ip, hp, sp); }
 
-enum status li_go(O f) { return
+status li_go(state f) { return
   f->ip->ap(f, f->ip, f->hp, f->sp); }
 
 void li_fin(O f) { if (f)

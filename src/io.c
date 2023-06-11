@@ -1,26 +1,44 @@
 #include "i.h"
 
+void transmit(state v, FILE* o, word x) {
+  if (nump(x)) fprintf(o, "%ld", getnum(x));
+  else if (datp((verb) x)) gettyp(x)->emit(v, o, x);
+  else fprintf(o, "#%lx", x); }
+
+void tx_str(state v, FILE *o, word _) {
+  str s = (str) _;
+  size len = s->len;
+  const char *text = s->text;
+  putc('"', o);
+  for (char c; len--; putc(c, o))
+    if ((c = *text++) == '\\' || c == '"') putc('\\', o);
+  putc('"', o); }
+
+void tx_two(state v, FILE *o, word x) {
+  for (putc('(', o);; putc(' ', o)) {
+    transmit(v, o, A(x));
+    if (!twop(x = B(x))) { putc(')', o); break; } } }
+
 // internal parser functions
-static ob
-  rx_ret(li, FILE*, ob), rxr(li, FILE*),
-  rx_two(li, FILE*), rx_atom(li, str);
+static word rx_ret(state, FILE*, word), rxr(state, FILE*),
+            rx_two(state, FILE*), rx_atom(state, str);
 
 // FIXME should distinguish between OOM and parse error
-enum status receive(O v, FILE *i) {
-  ob x; return
+status receive(state v, FILE *i) {
+  word x; return
     !pushs(v, rx_ret, End) ? OomError :
     !(x = rxr(v, i)) ? feof(i) ? Eof : DomainError :
     push1(v, x) ? Ok : OomError; }
 
 status receive2(state f, char *_i) {
-  size_t len = strlen(_i);
+  size len = strlen(_i);
   char *i = malloc(len + 1);
   if (!i) return OomError;
   memcpy(i, _i, len);
   i[len] = 0;
   FILE *in = fmemopen(i, len, "r");
   if (!in) return free(i), OomError;
-  enum status s = receive(f, in);
+  status s = receive(f, in);
   return fclose(in), free(i), s; }
 
 ////
@@ -28,8 +46,8 @@ status receive2(state f, char *_i) {
 //
 // simple except it uses the managed stack for recursion.
 
-static Inline ob pull(li v, FILE *i, ob x) { return
-  ((ob (*)(li, FILE*, ob))pop1(v))(v, i, x); }
+static Inline word pull(state v, FILE *i, word x) { return
+  ((word (*)(state, FILE*, word)) pop1(v))(v, i, x); }
 
 // get the next token character from the stream
 static NoInline int rx_char(FILE *i) {
@@ -39,24 +57,21 @@ static NoInline int rx_char(FILE *i) {
     case '#': case ';': for (;;) switch (getc(i)) {
       case '\n': case EOF: return rx_char(i); } } }
 
-static ob rx_ret(li v, FILE* i, ob x) { return x; }
+static word rx_ret(state v, FILE* i, word x) { return x; }
 
-static ob rx_two_cons(li v, FILE* i, ob x) {
+static word rx_two_cons(state v, FILE* i, word x) {
   ob y = pop1(v); return
     x = x ? (ob) pair(v, y, x) : x,
     pull(v, i, x); }
 
-static ob rx_two_cont(li v, FILE* i, ob x) { return
+static word rx_two_cont(state v, FILE* i, word x) { return
   !x || !pushs(v, rx_two_cons, x, End) ? pull(v, i, 0) :
                                          rx_two(v, i); }
 
-static str rx_atom_chars(li, FILE*), rx_str(li, FILE*);
+static str rx_atom_chars(state, FILE*), rx_str(state, FILE*);
+static status rxs2(li, char**), rxstr(li, char**);
 
-static enum status
-  rxs2(li, char**),
-  rxstr(li, char**);
-
-static NoInline ob rxr(li v, FILE* i) {
+static NoInline word rxr(state v, FILE* i) {
   int c = rx_char(i); switch (c) {
     case ')': case EOF: return pull(v, i, 0);
     case '(': return rx_two(v, i);
@@ -97,9 +112,9 @@ static NoInline str rx_str(li v, FILE* p) {
   return 0; }
 // read the characters of an atom (number or symbol)
 // into a string
-static NoInline str rx_atom_chars(li v, FILE* p) {
+static NoInline str rx_atom_chars(state v, FILE* p) {
   str o = buf_new(v);
-  for (size_t n = 0, lim = sizeof(ob); o; o = buf_grow(v, o), lim *= 2)
+  for (size_t n = 0, lim = sizeof(word); o; o = buf_grow(v, o), lim *= 2)
     for (int x; n < lim;) switch (x = getc(p)) {
       default: o->text[n++] = x; continue;
       // these characters terminate an atom
@@ -109,9 +124,9 @@ static NoInline str rx_atom_chars(li v, FILE* p) {
   return 0; }
 
 #include <ctype.h>
-static NoInline ob rx_atom_n(li v, str b, size_t inset, int sign, int rad) {
+static NoInline word rx_atom_n(state v, str b, size inset, int sign, int rad) {
   static const char *digits = "0123456789abcdefghijklmnopqrstuvwxyz";
-  size_t len = b->len;
+  size len = b->len;
   if (inset >= len) fail: return (ob) b;
   intptr_t out = 0;
   do {
@@ -122,8 +137,8 @@ static NoInline ob rx_atom_n(li v, str b, size_t inset, int sign, int rad) {
   } while (inset < len);
   return putnum(sign * out); }
 
-static NoInline ob rx_atom(li v, str b) {
-  size_t i = 0, len = b->len;
+static NoInline word rx_atom(state v, str b) {
+  size i = 0, len = b->len;
   int sign = 1;
   while (i < len) switch (b->text[i]) {
     case '+': i += 1; continue;
