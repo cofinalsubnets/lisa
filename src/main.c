@@ -1,7 +1,7 @@
 #include "i.h"
 
 // echo loop
-static enum status go(O f) {
+static status go(state f) {
 #ifdef testing
   return self_test(f); }
 #else
@@ -14,10 +14,9 @@ static enum status go(O f) {
 #endif
 
 int main(int ac, char **av) {
-  O f = &((struct carrier){});
-  enum status s = li_ini(f);
+  state f = &((struct carrier){});
+  status s = li_ini(f);
   if (s != Ok) return s;
-  printf("# dim=%ld f@0x%lx[len=%ld]\n", sizeof(void*), (intptr_t)f, f->len);
+  printf("# dim=%ld f@0x%lx[len=%ld]\n", sizeof(word), (word) f, f->len);
   if ((s = go(f)) != Ok) fprintf(stderr, "# status=%d\n", s);
   return li_fin(f), s; }
-

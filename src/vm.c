@@ -7,24 +7,20 @@ status ref(state f, verb ip, word *hp, word *sp) {
   Have1();
   word x = sp[getnum(ip[1].x)];
   *--sp = x;
-  ip += 2;
-  return ip->ap(f, ip, hp, sp); }
+  return ip += 2, ip->ap(f, ip, hp, sp); }
 
 status K(state f, verb ip, word *hp, word *sp) {
   Have1();
   *--sp = ip[1].x;
-  ip += 2;
-  return  ip->ap(f, ip, hp, sp); }
+  return ip += 2, ip->ap(f, ip, hp, sp); }
 
 status jump(state f, verb ip, word *hp, word *sp) {
-  ip = ip[1].m;
-  return ip->ap(f, ip, hp, sp); }
+  return ip = ip[1].m, ip->ap(f, ip, hp, sp); }
 
 status Kj(state f, verb ip, word *hp, word *sp) {
   Have1();
   *--sp = ip[1].x;
-  ip = ip[2].m;
-  return ip->ap(f, ip, hp, sp); }
+  return ip = ip[2].m, ip->ap(f, ip, hp, sp); }
 
 status branch(state f, verb ip, word *hp, word *sp) {
   ip = nilp(*sp++) ? ip[1].m : ip + 2;
@@ -40,8 +36,8 @@ status retn(state f, verb ip, word *hp, word *sp) {
 status recn(state f, verb ip, word *hp, word *sp) {
   word x = sp[0], j = sp[1];
   sp += getnum(ip[1].x) + 1;
-  ip = (verb) (nump(j) ? *++sp : j);
-  *sp = x;
+  if (nump(j)) ip = (verb) *++sp, *sp = j;
+  else ip = (verb) j, *sp = x;
   return ip->ap(f, ip, hp, sp); }
 
 status apply(state f, verb ip, word *hp, word *sp) {
