@@ -37,6 +37,13 @@ status retn(state f, verb ip, word *hp, word *sp) {
   *sp = r;
   return ip->ap(f, ip, hp, sp); }
 
+status recn(state f, verb ip, word *hp, word *sp) {
+  word x = sp[0], j = sp[1];
+  sp += getnum(ip[1].x) + 1;
+  ip = (verb) (nump(j) ? *++sp : j);
+  *sp = x;
+  return ip->ap(f, ip, hp, sp); }
+
 status apply(state f, verb ip, word *hp, word *sp) {
   if (nump(sp[1])) return ip[1].ap(f, ip + 1, hp, sp + 1);
   verb k = (verb) sp[1];
@@ -45,7 +52,7 @@ status apply(state f, verb ip, word *hp, word *sp) {
 
 status curry(state f, verb ip, word *hp, word *sp) {
   intptr_t n = getnum(ip[1].x);
-  if (n == 1) return ip = ip[2].m, ip->ap(f, ip, hp, sp);
+  if (n == 1) return ip += 3, ip->ap(f, ip, hp, sp);
   const size S = 6 + Width(struct tag);
   Have(S);
   verb k = (verb) hp;
@@ -55,7 +62,7 @@ status curry(state f, verb ip, word *hp, word *sp) {
   k[2].m = k + 3;
   k[3].ap = Kj;
   k[4].x = *sp++;
-  k[5].x = ip[2].x;
+  k[5].m = ip[2].m;
   k[6].x = 0;
   k[7].m = k;
   ip = (verb) *sp;

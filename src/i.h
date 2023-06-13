@@ -109,6 +109,7 @@ status curry(state, verb, word*, word*),
        ref(state, verb, word*, word*),
        yield(state, verb, word*, word*),
        jump(state, verb, word*, word*),
+       recn(state, verb, word*, word*),
        retn(state, verb, word*, word*);
 
 #define End ((intptr_t)0)

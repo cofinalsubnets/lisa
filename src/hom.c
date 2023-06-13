@@ -54,6 +54,12 @@ static verb yield_thread(state f, struct cctx **c, verb k) {
 
 static verb pull_thread(state f, struct cctx **c, verb k) { return
   ((mo (*)(state, struct cctx**, mo)) (*f->sp++))(f, c, k); }
+
+static verb apf(state f, struct cctx **c, verb k) {
+  if (k->ap == retn) k->ap = recn;
+  else (--k)->ap = apply;
+  return pull_thread(f, c, k); }
+
 static verb e1(state f, struct cctx **c, verb k) {
   (--k)->x = *f->sp++;
   return pull_thread(f, c, k); }
@@ -191,7 +197,7 @@ static size ana_two(state f, struct cctx **c, size m, word x) {
   (*c)->sn += One;
   while (m && twop(x = B(x)))
     m = ana(f, c, m, A(x)),
-    m = m && pushs(f, e1, apply, End) ? m + 1 : 0;
+    m = m && pushs(f, apf, End) ? m + 1 : 0;
   (*c)->sn -= One;
   UM(f);
   return m; }
