@@ -1,5 +1,3 @@
-#ifndef _l_i_h
-#define _l_i_h
 
 // thanks !!
 //
@@ -75,17 +73,16 @@ struct methods {
   ob (*evac)(O, ob, ob*, ob*);
   void (*walk)(O, ob, ob*, ob*),
        (*emit)(O, FILE*, ob);
-  bool (*equi)(O, ob, ob);
-  enum status (*does)(O, verb, ob*, ob*); };
+  bool (*equi)(O, ob, ob); };
 
 extern struct methods two_methods, str_methods;
 
 bool nequi(O, ob, ob),
      eq_two(O, ob, ob),
      eq_str(O, ob, ob);
-ob cp_two(O, ob, ob*, ob*),
+static ob cp_two(O, ob, ob*, ob*),
    cp_str(O, ob, ob*, ob*);
-void wk_two(O, ob, ob*, ob*),
+static void wk_two(O, ob, ob*, ob*),
      wk_str(O, ob, ob*, ob*),
      tx_two(O, FILE*, ob),
      tx_str(O, FILE*, ob);
@@ -113,7 +110,6 @@ status curry(state, verb, word*, word*),
        retn(state, verb, word*, word*);
 
 #define End ((intptr_t)0)
-#define Width(_) b2w(sizeof(_))
 
 #define getnum(_) ((ob)(_)>>1)
 #define putnum(_) (((ob)(_)<<1)|1)
@@ -146,14 +142,8 @@ static Inline word pop1(state f) { return *f->sp++; }
 word push1(state, word);
 static Inline size avail(state f) { return f->sp - f->hp; }
 
-static Inline size height(state f) {
-  return f->pool + f->len - f->sp; }
-
 static Inline void *cells(state f, size n) {
   return avail(f) < n && !please(f, n) ? 0 : bump(f, n); }
-
-static Inline struct tag *mo_tag(verb k) {
-  for (;; k++) if (!k->x) return (struct tag*) k; }
 
 static Inline bool nilp(word _) { return _ == nil; }
 static Inline bool nump(word _) { return _ & 1; }
@@ -169,21 +159,9 @@ static Inline bool twop(word _) { return homp(_) && htwop((mo) _); }
 static Inline size b2w(size b) {
   size_t q = b / sizeof(ob), r = b % sizeof(ob);
   return r ? q + 1 : q; }
+#define Width(_) b2w(sizeof(_))
 
-// this can give a false positive if x is a fixnum
-static Inline bool livep(state v, word x) {
-  return (ob*) x >= v->pool && (ob*) x < v->pool + v->len; }
-
-two two_ini(void*, word, word);
-str str_ini(void*, size);
-verb mo_ini(void*, size);
-
-#define Pack() (f->ip = ip, f->hp = hp, f->sp = sp)
-#define Unpack() (ip = f->ip, hp = f->hp, sp = f->sp)
-#define Have(n) if (sp - hp < n) return gc(f, ip, hp, sp, n)
-#define Have1() if (sp == hp) return gc(f, ip, hp, sp, 1)
 #define Quote "`"
 #define Cond "?"
 #define Lambda "\\"
 #define println(x) (transmit(f,stdout,x),puts(""))
-#endif
