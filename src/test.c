@@ -1,10 +1,20 @@
 #include "i.h"
+#include <stdio.h>
+static NoInline word listr(state f, va_list xs) {
+  word y, x = va_arg(xs, word);
+  if (!x) return nil;
+  avec(f, x, y = listr(f, xs));
+  return y ? (word) pair(f, x, y) : y; }
+
+NoInline word list(state f, ...) {
+  word x; va_list xs;
+  va_start(xs, f), x = listr(f, xs), va_end(xs);
+  return x; }
+
 static status add2(state, verb, word*, word*);
 static void
   test_big_list(state),
   test_number(state),
-  test_currying(state),
-  test_ana_cata(state),
   test_quote(state),
   test_cond(state),
   test_receive2(state),
@@ -15,10 +25,6 @@ static void
 status self_test(O f) {
   printf("%s:%d\n", __FILE__, __LINE__);
   test_number(f);
-  printf("%s:%d\n", __FILE__, __LINE__);
-  test_currying(f);
-  printf("%s:%d\n", __FILE__, __LINE__);
-  test_ana_cata(f);
   printf("%s:%d\n", __FILE__, __LINE__);
   test_big_list(f);
   printf("%s:%d\n", __FILE__, __LINE__);
@@ -44,33 +50,17 @@ static void test_big_list(state f) {
     assert((l = (ob) pair(f, pop1(f), l))),
     assert((l = (ob) pair(f, l, l))); }
 
-static void test_ana_cata(state f) {
-  intptr_t x;
-  union mo
-    j[] = { {add2}, {add2}, {retn}, {.x=nil} },
-    k[] = { {curry}, {.x = putnum(3)}, {.m = j} };
-  assert((x = list(f, k, putnum(3), End))),
-  assert((x = list(f, x, putnum(2), putnum(1), End))),
-  assert((f->ip = compile_expression(f, x))),
-  assert(li_go(f) == Ok),
-  assert(pop1(f) == putnum(6)); }
-
 static void test_quote(state f) {
   ob x;
   assert((x = (ob) strof(f, Quote)));
   assert((x = list(f, x, x, End)));
-  assert((f->ip = compile_expression(f, x)));
-  assert(li_go(f) == Ok);
-  assert(kstrq((str) pop1(f), Quote));
-}
+  assert(Ok == eval(f, x));
+  assert(kstrq((str) pop1(f), Quote)); }
 
 static void test_cond(state f) {
-  union mo y[] = { {yield} };
   assert(Ok == receive2(f, "(? 0 1 2 3 4)"));
-  word x = pop1(f);
-  assert((x = list(f, y, x, End)));
-  assert((f->ip = compile_expression(f, x)));
-  assert(li_go(f) == Ok);
+  status x = eval(f, pop1(f));
+  assert(Ok == x);
   assert(pop1(f) == putnum(3)); }
 
 static void test_receive2(state f) {
@@ -88,42 +78,27 @@ static void test_lambda(state f) {
        prog2[] = "((\\ a b a) 2 3)";
 
   assert(Ok == receive2(f, prog1));
-  assert((f->ip = compile_expression(f, pop1(f))));
-
-  assert(li_go(f) == Ok);
+  assert(Ok == eval(f, pop1(f)));
   assert(homp(pop1(f)));
   assert(Ok == receive2(f, prog2));
-  assert((f->ip = compile_expression(f, pop1(f))));
-  assert(li_go(f) == Ok);
+  assert(Ok == eval(f, pop1(f)));
   assert(pop1(f) == putnum(2)); }
 
 static void test_lambda2(state f) {
   char prog[] = "((\\ f g (f g 1 2 3)) (\\ g a b c (g c b)) (\\ a b a))";
   assert(Ok == receive2(f, prog));
-  assert((f->ip = compile_expression(f, pop1(f))));
-  assert(li_go(f) == Ok);
+  assert(Ok == eval(f, pop1(f)));
   assert(pop1(f) == putnum(3)); }
 
 static void test_closure(state f) {
   char prog[] = "((\\ f ((\\ a b (f a b)) 2 3)) (\\ a b a))";
   assert(Ok == receive2(f, prog));
-  assert((f->ip = compile_expression(f, pop1(f))));
-  assert(li_go(f) == Ok);
+  assert(Ok == eval(f, pop1(f)));
   assert(pop1(f) == putnum(2)); }
 
 static void test_number(state f) {
-  word n = putnum(9);
-  assert((f->ip = thd(f, K, n, yield, End)));
-  assert(li_go(f) == Ok);
-  assert(pop1(f) == n); }
-
-static void test_currying(state f) {
-  verb k;
-  assert((k = thd(f, add2, add2, retn, nil, End)));
-  assert((k = thd(f, curry, putnum(3), k, End)));
-  assert((f->ip = thd(f, K, k, K, putnum(1), apply, K, putnum(2), apply, K, putnum(3), apply, yield, End)));
-  assert(li_go(f) == Ok);
-  assert(pop1(f) == putnum(6)); }
+  assert(Ok == eval(f, putnum(9)));
+  assert(pop1(f) == putnum(9)); }
 
 static status add2(state f, verb ip, word *hp, word *sp) {
   return sp[1] += sp[0] - 1,

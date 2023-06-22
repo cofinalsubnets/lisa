@@ -1,12 +1,78 @@
 #include "i.h"
-#define Pack() (f->ip = ip, f->hp = hp, f->sp = sp)
-#define Unpack() (ip = f->ip, hp = f->hp, sp = f->sp)
-#define Have(n) if (sp - hp < n) return gc(f, ip, hp, sp, n)
-#define Have1() if (sp == hp) return gc(f, ip, hp, sp, 1)
+#include <stdio.h>
+#include <errno.h>
+static status
+  apply(state, verb, word*, word*),
+  K(state, verb, word*, word*),
+  curry(state, verb, word*, word*),
+  retn(state, verb, word*, word*);
 
-two two_ini(void*, word, word);
-str str_ini(void*, size);
-verb mo_ini(void*, size);
+struct str {
+  status (*act)(state, verb, word*, word*);
+  struct methods *typ;
+  uintptr_t len;
+  char text[]; };
+#define Cond "?"
+#define Lambda "\\"
+static bool eql(state, word, word), please(state, size),
+            eq_two(O, ob, ob), eq_str(O, ob, ob);
+#define avail(f) (f->sp-f->hp)
+#define Width(_) b2w(sizeof(_))
+
+struct tag {
+  void **null;
+  mo head;
+  union mo end[]; };
+
+// align bytes up to the nearest word
+static Inline size b2w(size b) {
+  ldiv_t _ = ldiv(b, sizeof(word));
+  return _.quot + (_.rem ? 1 : 0); }
+
+struct methods {
+  word (*evac)(state, ob, ob*, ob*);
+  void (*walk)(state, ob, ob*, ob*),
+       (*emit)(state, FILE*, ob);
+  bool (*equi)(state, ob, ob); };
+
+
+static Inline void *bump(state f, size n) {
+  void *x = f->hp; f->hp += n; return x; }
+
+static void *cells(state f, size n) {
+  return avail(f) < n && !please(f, n) ? 0 : bump(f, n); }
+
+static status gc(state, verb, word*, word*, size);
+static void wk_two(O, ob, ob*, ob*),
+     wk_str(O, ob, ob*, ob*),
+     tx_two(O, FILE*, ob),
+     tx_str(O, FILE*, ob);
+static ob cp_two(O, ob, ob*, ob*),
+   cp_str(O, ob, ob*, ob*);
+
+// push things onto the stack
+static NoInline bool pushsr(state f, size i, va_list xs) {
+  bool _; word x = va_arg(xs, word);
+  if (!x) return avail(f) >= i || please(f, i);
+  avec(f, x, _ = pushsr(f, i + 1, xs));
+  if (!_) return _;
+  *--f->sp = x;
+  return true; }
+
+static NoInline bool pushs(state f, ...) {
+  bool _; va_list xs;
+  va_start(xs, f), _ = pushsr(f, 0, xs), va_end(xs);
+  return _; }
+
+// list length
+static size llen(ob l) {
+  size n = 0;
+  while (twop(l)) n++, l = B(l);
+  return n; }
+
+static two two_ini(void*, ob, ob);
+static str str_ini(void*, size);
+static verb mo_ini(void*, size);
 //
 // functions are laid out in memory like this
 //
@@ -21,12 +87,12 @@ verb mo_ini(void*, size);
 // the garbage collector always find the head.
 
 // allocate a thread
-verb mo_n(state f, size_t n) {
+static verb mo_n(state f, size n) {
   verb k = cells(f, n + Width(struct tag));
   return !k ? k : mo_ini(k, n); }
 
-static NoInline verb thdr(state f, size_t n, va_list xs) {
-  ob x = va_arg(xs, ob);
+static NoInline verb thdr(state f, size n, va_list xs) {
+  word x = va_arg(xs, ob);
   if (!x) return mo_n(f, n);
   verb k; avec(f, x, k = thdr(f, n + 1, xs));
   if (k) k[n].x = x;
@@ -50,21 +116,24 @@ static struct cctx *scope(state f, struct cctx **par) {
     sc->par = par ? *par : (struct cctx*) nil;
   return sc; }
 
-static size_t llen(word l) {
-  size_t n = 0;
-  while (twop(l)) n++, l = B(l);
-  return n; }
-
 static Inline struct tag *mo_tag(verb k) {
-  for (;; k++) if (!k->x) return (struct tag*) k; }
+  while (k->x) k++;
+  return (void*) k; }
 
 static verb yield_thread(state f, struct cctx **c, verb k) {
   struct tag *t = mo_tag(k);
-  li_assert(t->head <= k);
+  assert(t->head <= k);
   return t->head = k; }
 
 static verb pull_thread(state f, struct cctx **c, verb k) { return
-  ((mo (*)(state, struct cctx**, mo)) (*f->sp++))(f, c, k); }
+  ((verb (*)(state, struct cctx**, verb)) (*f->sp++))(f, c, k); }
+
+static status recn(state f, verb ip, word *hp, word *sp) {
+  word x = sp[0], j = sp[1];
+  sp += getnum(ip[1].x) + 1;
+  if (nump(j)) ip = (verb) *++sp, *sp = j;
+  else ip = (verb) j, *sp = x;
+  return ip->ap(f, ip, hp, sp); }
 
 static verb apf(state f, struct cctx **c, verb k) {
   if (k->ap == retn) k->ap = recn;
@@ -72,40 +141,47 @@ static verb apf(state f, struct cctx **c, verb k) {
   return pull_thread(f, c, k); }
 
 static verb e1(state f, struct cctx **c, verb k) {
-  (--k)->x = *f->sp++;
-  return pull_thread(f, c, k); }
+  return (--k)->x = *f->sp++, pull_thread(f, c, k); }
+
 static verb e2(state f, struct cctx **c, verb k) {
-  k[-2].x = *f->sp++;
-  k[-1].x = *f->sp++;
-  return pull_thread(f, c, k - 2); }
+  return k[-2].x = *f->sp++, k[-1].x = *f->sp++, pull_thread(f, c, k - 2); }
 
 static word lidx(state f, ob l, ob x) {
   for (word i = 0; twop(l); l = B(l), i++) if (eql(f, A(l), x)) return i;
   return -1; }
 
+#define Pack() (f->ip = ip, f->hp = hp, f->sp = sp)
+#define Have(n) if (sp - hp < n) return gc(f, ip, hp, sp, n)
+#define Have1() if (sp == hp) return gc(f, ip, hp, sp, 1)
+
+static status ref(state f, verb ip, word *hp, word *sp) {
+  Have1();
+  word x = sp[getnum(ip[1].x)];
+  *--sp = x;
+  return ip += 2, ip->ap(f, ip, hp, sp); }
+
 static verb var(state f, struct cctx **c, verb k) {
   word sym = *f->sp++,
        idx = getnum(*f->sp++) + lidx(f, (*c)->sb, sym);
-  (--k)->x = putnum(idx);
-  (--k)->ap = ref;
-  return pull_thread(f, c, k); }
+  return (--k)->x = putnum(idx),
+         (--k)->ap = ref,
+         pull_thread(f, c, k); }
 
 static size ana(state, struct cctx**, size, word);
 static verb cata(O f, struct cctx **c, size m) {
   assert((*c)->sn == nil);
   verb k = mo_n(f, m);
-  if (k) memset(k, -1, m * sizeof(word));
-  return !k ? k : pull_thread(f, c, k + m); }
+  return !k ? k : pull_thread(f, c, (verb) memset(k, -1, m * sizeof(word)) + m); }
 
-verb compile_expression(state f, word x) {
-  size m;
-  verb k = 0;
+status eval(state f, word x) {
+  size m; verb k = 0;
   struct cctx *c = pushs(f, x, yield_thread, End) ? scope(f, NULL) : NULL;
   if (c) avec(f, c,
-    m = ana(f, &c, 0, pop1(f)),
-    m = m && pushs(f, e1, yield, End) ? m + 1 : 0,
-    k = m ? cata(f, &c, m) : 0);
-  return k; }
+    m = ana(f, &c, 1, pop1(f)),
+    m = m && pushs(f, e1, yield, End) ? m : 0,
+    k = m ? cata(f, &c, m) : k);
+  return !k ? OomError : (f->ip = k, li_go(f)); }
+
 
 bool kstrq(str s0, const char *s1) { return
   strlen(s1) == s0->len &&
@@ -137,6 +213,10 @@ static verb
   ana_cond_push_alternative(state, struct cctx**, verb),
   ana_cond_pop_alternative(state, struct cctx**, verb),
   ana_cond_pop_continuation(state, struct cctx**, verb);
+
+static status branch(state f, verb ip, word *hp, word *sp) {
+  ip = nilp(*sp++) ? ip[1].m : ip + 2;
+  return ip->ap(f, ip, hp, sp); }
 
 static verb ana_cond_pop_alternative(state f, struct cctx**c, verb k) {
   (--k)->x = A((*c)->s1);
@@ -175,12 +255,11 @@ static size ana_lambda(state f, struct cctx **c, size m, word x) {
   struct cctx *d = scope(f, c);
   if (!d) return 0;
   d->sb = pop1(f);
-  size n; verb k;
+  size l, n; verb k;
   avec(f, d,
-    n = pushs(f, pop1(f), yield_thread, End) ? ana(f, &d, 2, pop1(f)) : 0,
-    k = n && pushs(f, e2, retn, putnum(llen(d->sb)), End) ? cata(f, &d, n) : 0,
-    n = llen(d->sb),
-    k = k && n > 1 ? thd(f, curry, putnum(n), k, End) : k,
+    n = pushs(f, pop1(f), yield_thread, End) ? ana(f, &d, 4, pop1(f)) : 0,
+    k = n && pushs(f, e2, retn, putnum(l = llen(d->sb)), End) ? cata(f, &d, n) : 0,
+    k = k && l > 1 ? (k[-2].ap = curry, k[-1].x = putnum(l), k - 2) : k,
     x = k && twop(d->ib) ? (word) pair(f, (word) k, d->ib) : (word) k);
   return x ? ana(f, c, m, x) : x; }
 
@@ -207,7 +286,12 @@ static size ana_list(state f, struct cctx **c, size m, word x) {
 
 static verb ana_cond_push_continuation(state f, struct cctx **c, verb k) {
   two w = pair(f, (word) k, (*c)->s2);
-  return !w ? (verb) w : pull_thread(f, c, (verb) A((*c)->s2 = (word) w)); }
+  return !w ? (verb) w :
+    pull_thread(f, c, (verb) A((*c)->s2 = (word) w)); }
+
+static status jump(state f, verb ip, word *hp, word *sp) {
+  return ip = ip[1].m,
+         ip->ap(f, ip, hp, sp); }
 
 static verb ana_cond_push_alternative(state f, struct cctx**c, verb k) {
   two w = pair(f, (ob) k, (*c)->s1);
@@ -219,47 +303,29 @@ static verb ana_cond_push_alternative(state f, struct cctx**c, verb k) {
   return pull_thread(f, c, k - 2); }
 
 static verb ana_cond_pop_continuation(state f, struct cctx **c, verb k) {
-  return (*c)->s2 = B((*c)->s2), pull_thread(f, c, k); }
+  return (*c)->s2 = B((*c)->s2),
+         pull_thread(f, c, k); }
 
 status yield(state f, verb ip, word *hp, word *sp) {
   return Pack(), Ok; }
 
-status ref(state f, verb ip, word *hp, word *sp) {
-  Have1();
-  word x = sp[getnum(ip[1].x)];
-  *--sp = x;
-  return ip += 2, ip->ap(f, ip, hp, sp); }
-
 status K(state f, verb ip, word *hp, word *sp) {
   Have1();
   *--sp = ip[1].x;
-  return ip += 2, ip->ap(f, ip, hp, sp); }
+  ip += 2;
+  return ip->ap(f, ip, hp, sp); }
 
-status jump(state f, verb ip, word *hp, word *sp) {
-  return ip = ip[1].m, ip->ap(f, ip, hp, sp); }
-
-status Kj(state f, verb ip, word *hp, word *sp) {
+static status Kj(state f, verb ip, word *hp, word *sp) {
   Have1();
   *--sp = ip[1].x;
-  return ip = ip[2].m, ip->ap(f, ip, hp, sp); }
-
-status branch(state f, verb ip, word *hp, word *sp) {
-  ip = nilp(*sp++) ? ip[1].m : ip + 2;
+  ip = ip[2].m;
   return ip->ap(f, ip, hp, sp); }
 
 status retn(state f, verb ip, word *hp, word *sp) {
-  word r = *sp;
-  sp += getnum(ip[1].x) + 1;
-  ip = (verb) *sp;
-  *sp = r;
-  return ip->ap(f, ip, hp, sp); }
-
-status recn(state f, verb ip, word *hp, word *sp) {
-  word x = sp[0], j = sp[1];
-  sp += getnum(ip[1].x) + 1;
-  if (nump(j)) ip = (verb) *++sp, *sp = j;
-  else ip = (verb) j, *sp = x;
-  return ip->ap(f, ip, hp, sp); }
+  word r = *sp; return sp += getnum(ip[1].x) + 1,
+                       ip = (verb) *sp,
+                       *sp = r,
+                       ip->ap(f, ip, hp, sp); }
 
 status apply(state f, verb ip, word *hp, word *sp) {
   if (nump(sp[1])) return ip[1].ap(f, ip + 1, hp, sp + 1);
@@ -267,106 +333,69 @@ status apply(state f, verb ip, word *hp, word *sp) {
   sp[1] = (word) (ip + 1);
   return k->ap(f, k, hp, sp); }
 
-status curry(state f, verb ip, word *hp, word *sp) {
+static status curry(state f, verb ip, word *hp, word *sp) {
   intptr_t n = getnum(ip[1].x);
-  if (n == 1) return ip += 3, ip->ap(f, ip, hp, sp);
-  const size S = 6 + Width(struct tag);
+  // XXX base case of 1 is wasteful
+  if (n == 1) return ip += 2, ip->ap(f, ip, hp, sp);
+  const size S = 5 + Width(struct tag);
   Have(S);
   verb k = (verb) hp;
   hp += S;
   k[0].ap = curry;
   k[1].x = putnum(n - 1);
-  k[2].m = k + 3;
-  k[3].ap = Kj;
-  k[4].x = *sp++;
-  k[5].m = ip[2].m;
-  k[6].x = 0;
-  k[7].m = k;
+  k[2].ap = Kj;
+  k[3].x = *sp++;
+  k[4].m = ip + 2;
+  k[5].x = 0;
+  k[6].m = k;
   ip = (verb) *sp;
   *sp = (word) k;
   return ip->ap(f, ip, hp, sp); }
 
 struct methods
-  two_methods = {
-    .evac = cp_two,
-    .walk = wk_two,
-    .emit = tx_two,
-    .equi = eq_two,
-  },
-  str_methods = {
-    .evac = cp_str,
-    .walk = wk_str,
-    .emit = tx_str,
-    .equi = eq_str,
-  };
+  two_methods = { .evac = cp_two, .walk = wk_two, .emit = tx_two, .equi = eq_two, },
+  str_methods = { .evac = cp_str, .walk = wk_str, .emit = tx_str, .equi = eq_str, };
 
-bool eql(state v, word a, word b) { return a == b ||
-  (!nump(a|b) && datp((verb) a) &&
-   gettyp((verb) a)->equi(v, a, b)); }
+static bool eql(state v, word a, word b) { return a == b ||
+  (!nump(a|b) && datp((verb) a) && gettyp((verb) a)->equi(v, a, b)); }
 
-bool eq_two(state v, word x, word y) { // FIXME can overflow stack
-  return htwop((verb) y) &&
-    eql(v, A(x), A(y)) &&
-    eql(v, B(x), B(y)); }
+static bool eq_two(state v, word x, word y) { // FIXME can overflow stack
+  return htwop((verb) y) && eql(v, A(x), A(y)) && eql(v, B(x), B(y)); }
 
-bool eq_str(state v, word x, word y) {
+static bool eq_str(state v, word x, word y) {
   if (!hstrp((verb) y)) return false;
-      str a = (str) x, b = (str) y;
-      return a->len == b->len && !strncmp(a->text, b->text, a->len); }
+  str a = (str) x, b = (str) y;
+  return a->len == b->len &&
+    !strncmp(a->text, b->text, a->len); }
 
-intptr_t liprng(intptr_t in) {
+intptr_t liprng(intptr_t n) {
   const intptr_t steele_vigna_2021 = 0xaf251af3b0f025b5;
-  return (steele_vigna_2021 * in + 1) >> 8; }
+  return (1 + n * steele_vigna_2021) >> sizeof(intptr_t); }
 
 static NoInline word push1_gc(state f, word x) {
-  bool ok; avec(f, x, ok = please(f, 1));
-  return ok ? (*--f->sp = x) : 0; }
+  bool ok; return avec(f, x, ok = please(f, 1)),
+                  ok ? *--f->sp = x : 0; }
 
 word push1(state f, word x) {
-  return avail(f) ? (*--f->sp = x) : push1_gc(f, x); }
+  return avail(f) ? *--f->sp = x : push1_gc(f, x); }
 
-// push things onto the stack
-static NoInline bool pushsr(state f, size i, va_list xs) {
-  bool _; word x = va_arg(xs, word);
-  if (!x) return avail(f) >= i || please(f, i);
-  avec(f, x, _ = pushsr(f, i + 1, xs));
-  if (!_) return _;
-  *--f->sp = x;
-  return true; }
-
-NoInline bool pushs(state f, ...) {
-  bool _; va_list xs;
-  va_start(xs, f), _ = pushsr(f, 0, xs), va_end(xs);
-  return _; }
-
-static NoInline word listr(state f, va_list xs) {
-  word y, x = va_arg(xs, word);
-  if (!x) return nil;
-  avec(f, x, y = listr(f, xs));
-  return y ? (word) pair(f, x, y) : y; }
-
-NoInline word list(state f, ...) {
-  word x; va_list xs;
-  va_start(xs, f), x = listr(f, xs), va_end(xs);
-  return x; }
-
-NoInline status gc(state f, verb ip, word *hp, word *sp, size n) {
+static NoInline status gc(state f, verb ip, word *hp, word *sp, size n) {
   return Pack(), please(f, n) ? li_go(f) : OomError; }
 
-status act(state f, verb ip, ob *hp, ob *sp) {
+status data(state f, verb ip, ob *hp, ob *sp) {
   word x = (word) ip;
   ip = (verb) *++sp;
   *sp = x;
   return ip->ap(f, ip, hp, sp); }
 
-status li_go(state f) { return
-  f->ip->ap(f, f->ip, f->hp, f->sp); }
+status li_go(state f) {
+  return f->ip->ap(f, f->ip, f->hp, f->sp); }
 
-void li_fin(O f) { if (f)
+void li_fin(state f) { if (f)
   free(f->pool < f->loop ? f->pool : f->loop),
   f->pool = f->loop = NULL; }
 
-NoInline enum status li_ini(O f) {
+NoInline status li_ini(state f) {
   memset(f, 0, sizeof(struct carrier));
   const size_t len0 = 1; // a power of 2
   ob *pool = malloc(len0 * 2 * sizeof(intptr_t));
@@ -382,7 +411,7 @@ static NoInline two pair_gc(state f, word a, word b) {
   avec(f, a, avec(f, b, ok = please(f, Width(struct two))));
   return !ok ? 0 : two_ini(bump(f, Width(struct two)), a, b); }
 
-two pair(O f, ob a, ob b) {
+two pair(state f, ob a, ob b) {
   if (avail(f) < Width(struct two)) return pair_gc(f, a, b);
   return two_ini(bump(f, Width(struct two)), a, b); }
 
@@ -393,26 +422,25 @@ str strof(state f, const char* c) {
          memcpy(o->text, c, bs);
   return o; }
 
-str str_ini(void *_, size len) {
+static str str_ini(void *_, size len) {
   str s = _;
-  s->act = act;
+  s->act = data;
   s->typ = &str_methods;
   s->len = len;
   return s; }
 
-two two_ini(void *_, word a, word b) {
+static two two_ini(void *_, word a, word b) {
   two w = _;
-  w->act = act;
+  w->act = data;
   w->typ = &two_methods;
   w->_[0] = a;
   w->_[1] = b;
   return w; }
 
-verb mo_ini(void *_, size len) {
+static verb mo_ini(void *_, size len) {
   struct tag *t = (struct tag*) ((verb) _ + len);
   t->null = NULL;
   return t->head = _; }
-
 
 ////
 /// a simple copying garbage collector
@@ -435,7 +463,7 @@ verb mo_ini(void *_, size len) {
 #define big (want < need || vim < vim_inf)
 #define little (want >> 1 > need && vim > vim_sup)
 static void copy_from(state, word*, word*);
-NoInline bool please(state v, size req) {
+static NoInline bool please(state v, size req) {
   size t1 = clock(), t0 = v->t0, have = v->len;
   word *pool = v->pool, *loop = v->loop;
   v->pool = loop, v->loop = pool;
@@ -499,24 +527,24 @@ static NoInline word cp(state v, word x, word *pool0, word *top0) {
   if (nump(x) || (ob*) x < pool0 || (ob*) x >= top0) return x;
   verb src = (verb) x;
   if (homp(src->x) && livep(v, src->x)) return src->x;
-  if (src->ap == act) return gettyp(src)->evac(v, (ob) src, pool0, top0);
+  if (datp(src)) return gettyp(src)->evac(v, (word) src, pool0, top0);
   return cp_mo(v, src, pool0, top0); }
 
-word cp_str(state v, word x, word *pool0, word *top0) {
+static word cp_str(state v, word x, word *pool0, word *top0) {
   str src = (str) x,
       dst = bump(v, Width(struct str) + b2w(src->len));
   memcpy(dst, src, sizeof(struct str) + src->len);
   return (word) (src->act = (void*) dst); }
 
-word cp_two(state v, word x, word *pool0, word *top0) {
+static word cp_two(state v, word x, word *pool0, word *top0) {
   two src = (two) x,
       dst = two_ini(bump(v, Width(struct two)), src->_[0], src->_[1]);
   return (word) (src->act = (void*) dst); }
 
-void wk_str(state v, word x, word *pool0, word *top0) {
+static void wk_str(state v, word x, word *pool0, word *top0) {
   v->cp += Width(struct str) + b2w(((str) x)->len); }
 
-void wk_two(state v, word x, word *pool0, word *top0) {
+static void wk_two(state v, word x, word *pool0, word *top0) {
   v->cp += Width(struct two);
   A(x) = cp(v, A(x), pool0, top0);
   B(x) = cp(v, B(x), pool0, top0); }
@@ -545,7 +573,7 @@ static word rx_ret(state, FILE*, word), rxr(state, FILE*),
             rx_two(state, FILE*), rx_atom(state, str);
 
 // FIXME should distinguish between OOM and parse error
-status receive(state v, FILE *i) {
+static status receive(state v, FILE *i) {
   word x; return
     !pushs(v, rx_ret, End) ? OomError :
     !(x = rxr(v, i)) ? feof(i) ? Eof : DomainError :
@@ -581,7 +609,7 @@ static NoInline int rx_char(FILE *i) {
 static word rx_ret(state v, FILE* i, word x) { return x; }
 
 static word rx_two_cons(state v, FILE* i, word x) {
-  ob y = pop1(v); return
+  word y = pop1(v); return
     x = x ? (ob) pair(v, y, x) : x,
     pull(v, i, x); }
 
@@ -669,30 +697,27 @@ static NoInline word rx_atom(state v, str b) {
     default: goto out; } out:
   return rx_atom_n(v, b, i, sign, 10); }
 
-
-static status _eval(state f) {
-  verb k = compile_expression(f, pop1(f));
-  return !k ? OomError : (f->ip = k, li_go(f)); }
-
 // echo loop
-static void go(state f) {
+static enum status go(state f) {
+  printf("# dim=%ld f@0x%lx[len=%ld]\n", sizeof(word), (word) f, f->len);
 #ifdef testing
   self_test(f);
+  assert(f->sp == f->pool + f->len);
 #endif
   // echo loop
   intptr_t s, height = f->pool + f->len - f->sp;
   while ((s = receive(f, stdin)) != Eof)
-    if (s == Ok && (s = _eval(f)) == Ok)
+    if (s == Ok && (s = eval(f, pop1(f))) == Ok)
       transmit(f, stdout, pop1(f)),
-      fputc('\n', stdout);
+      fputc('\n', stdout),
+      assert(f->sp == f->pool + f->len);
     else
       fprintf(stderr, "# status %ld\n", s),
-      f->sp = f->pool + f->len - height; }
+      f->sp = f->pool + f->len - height;
+  return Ok; }
 
 int main(int ac, char **av) {
   state f = &((struct carrier){});
   status s = li_ini(f);
-  if (s != Ok) return s;
-  printf("# dim=%ld f@0x%lx[len=%ld]\n", sizeof(word), (word) f, f->len);
-  go(f);
-  return li_fin(f), s; }
+  if (s == Ok) s = go(f), li_fin(f);
+  return s; }
