@@ -54,7 +54,7 @@ status data(state, verb, word*, word*),
 
 #define nil putnum(0)
 
-#define MM(f,r) ((f->safe=&((struct ll){(ob*)(r),f->safe})))
+#define MM(f,r) ((f->safe=&((struct ll){(word*)(r),f->safe})))
 #define UM(f) (f->safe=f->safe->next)
 #define avec(f, y, ...) (MM(f,&(y)),(__VA_ARGS__),UM(f))
 

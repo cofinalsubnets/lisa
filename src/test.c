@@ -24,21 +24,21 @@ static void
 
 status self_test(O f) {
   printf("%s:%d\n", __FILE__, __LINE__);
-  test_number(f);
+  test_lambda2(f);
   printf("%s:%d\n", __FILE__, __LINE__);
-  test_big_list(f);
+  test_lambda(f);
   printf("%s:%d\n", __FILE__, __LINE__);
   test_cond(f);
   printf("%s:%d\n", __FILE__, __LINE__);
   test_receive2(f);
   printf("%s:%d\n", __FILE__, __LINE__);
-  test_lambda(f);
-  printf("%s:%d\n", __FILE__, __LINE__);
-  test_lambda2(f);
+  test_number(f);
   printf("%s:%d\n", __FILE__, __LINE__);
   test_closure(f);
   printf("%s:%d\n", __FILE__, __LINE__);
   test_quote(f);
+  printf("%s:%d\n", __FILE__, __LINE__);
+  test_big_list(f);
   printf("%s:%d\n", __FILE__, __LINE__);
   return Ok; }
 
@@ -59,8 +59,7 @@ static void test_quote(state f) {
 
 static void test_cond(state f) {
   assert(Ok == receive2(f, "(? 0 1 2 3 4)"));
-  status x = eval(f, pop1(f));
-  assert(Ok == x);
+  assert(Ok == eval(f, pop1(f)));
   assert(pop1(f) == putnum(3)); }
 
 static void test_receive2(state f) {
