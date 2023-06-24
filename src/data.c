@@ -1,10 +1,9 @@
 #include "i.h"
 
-static void
-  wk_two(state, ob, ob*, ob*),
-  wk_str(state, ob, ob*, ob*),
-  tx_two(state, FILE*, ob),
-  tx_str(state, FILE*, ob);
+static void wk_two(state, ob, ob*, ob*), wk_str(state, ob, ob*, ob*),
+            tx_two(state, FILE*, ob), tx_str(state, FILE*, ob);
+static bool eq_two(state, ob, ob), eq_str(state, ob, ob);
+static ob cp_two(state, ob, ob*, ob*), cp_str(state, ob, ob*, ob*), cp(state, ob, ob*, ob*);
 
 static void tx_str(state v, FILE *o, word _) {
   str s = (str) _;
@@ -20,24 +19,17 @@ static void tx_two(state v, FILE *o, word x) {
     transmit(v, o, A(x));
     if (!twop(x = B(x))) { putc(')', o); break; } } }
 
-static bool
-  eq_two(state, ob, ob),
-  eq_str(state, ob, ob);
-static ob
-  cp_two(state, ob, ob*, ob*),
-  cp_str(state, ob, ob*, ob*);
-
 bool eql(state v, word a, word b) { return a == b ||
   (!nump(a|b) && datp((verb) a) && gettyp((verb) a)->equi(v, a, b)); }
 
-static bool eq_two(state v, word x, word y) { // FIXME can overflow stack
-  return htwop((verb) y) && eql(v, A(x), A(y)) && eql(v, B(x), B(y)); }
+// FIXME can overflow the stack
+static bool eq_two(state v, word x, word y) { return
+  htwop((verb) y) && eql(v, A(x), A(y)) && eql(v, B(x), B(y)); }
 
 static bool eq_str(state v, word x, word y) {
   if (!hstrp((verb) y)) return false;
   str a = (str) x, b = (str) y;
-  return a->len == b->len &&
-    !strncmp(a->text, b->text, a->len); }
+  return a->len == b->len && !strncmp(a->text, b->text, a->len); }
 
 struct methods
   two_methods = { .evac = cp_two, .walk = wk_two, .emit = tx_two, .equi = eq_two, },
@@ -45,9 +37,9 @@ struct methods
 
 static NoInline word pushnr(state l, size_t n, size_t m, va_list xs) {
   if (m == 0) return please(l, n);
-  ob x = va_arg(xs, ob), y;
-  avec(l, x, y = pushnr(l, n, m - 1, xs));
-  return y ? *--l->sp = x : y; }
+  ob x = va_arg(xs, ob), y; return
+    avec(l, x, y = pushnr(l, n, m - 1, xs)),
+    y ? *--l->sp = x : y; }
 
 NoInline word pushn(state l, size_t n, ...) {
   word r = 0; va_list xs; va_start(xs, n);
@@ -72,18 +64,33 @@ str strof(state f, const char* c) {
 
 str str_ini(void *_, size_t len) {
   str s = _; return
-    s->act = data,
-    s->typ = &str_methods,
-    s->len = len,
-    s; }
+    s->act = data, s->typ = &str_methods,
+    s->len = len, s; }
 
 two two_ini(void *_, word a, word b) {
   two w = _; return
-    w->act = data,
-    w->typ = &two_methods,
-    w->_[0] = a,
-    w->_[1] = b,
-    w; }
+    w->act = data, w->typ = &two_methods,
+    w->_[0] = a, w->_[1] = b, w; }
+
+static word cp_str(state v, word x, word *p0, word *t0) {
+  str src = (str) x, dst = bump(v, Width(struct str) + b2w(src->len));
+  return (word) (src->act = memcpy(dst, src, sizeof(struct str) + src->len)); }
+
+static word cp_two(state v, word x, word *p0, word *t0) {
+  two src = (two) x, dst = bump(v, Width(struct two));
+  return (word) (src->act = (vm*) two_ini(dst, src->_[0], src->_[1])); }
+
+static void wk_str(state v, word x, word *p0, word *t0) {
+  v->cp += Width(struct str) + b2w(((str) x)->len); }
+
+static void wk_two(state v, word x, word *p0, word *t0) {
+  v->cp += Width(struct two), A(x) = cp(v, A(x), p0, t0), B(x) = cp(v, B(x), p0, t0); }
+
+void *cells(state f, size_t n) {
+  return n <= avail(f) || please(f, n) ? bump(f, n) : 0; }
+
+NoInline Vm(gc, size_t n) { return Pack(),
+  !please(f, n) ? OomError : f->ip->ap(f, f->ip, f->hp, f->sp); }
 
 ////
 /// a simple copying garbage collector
@@ -116,7 +123,7 @@ NoInline bool please(state f, size_t req) {
   size_t t2 = f->t0 = clock(),
        vim = t2 == t1 ? vim_sup : (t2 - t0) / (t2 - t1),
        want = have,
-       need = have - (avail(f) - req);
+       need = have + req - avail(f);
   if   (too_little) do grow(); while (too_little);
   else if (too_big) do shrink(); while (too_big);
   else return true; // no resize is needed, so return success
@@ -132,32 +139,25 @@ NoInline bool please(state f, size_t req) {
   return true; }
 
 static word cp(state, word, word*, word*);
-static NoInline void copy_from(state f, word *pool0, word *top0) {
-  size_t len1 = f->len;
-  word *sp0 = f->sp,
-       *pool1 = f->pool,
-       *top1 = pool1 + len1;
-  size_t slen = top0 - sp0;
-  // reset heap
-  f->hp = f->cp = pool1;
+static NoInline void copy_from(state f, word *p0, word *t0) {
+  size_t len1 = f->len, slen;
+  word *p1 = f->hp = f->cp = f->pool,
+       *t1 = p1 + len1,
+       *sp0 = f->sp,
+       *sp1 = f->sp = t1 - (slen = t0 - sp0);
   // copy stack
-  word *sp1 = f->sp = top1 - slen;
-  for (size_t i = 0; i < slen; i++)
-    sp1[i] = cp(f, sp0[i], pool0, top0);
+  for (size_t i = 0; i < slen; i++) sp1[i] = cp(f, sp0[i], p0, t0);
   // copy registers
-  f->ip = (verb) cp(f, (word) f->ip, pool0, top0);
+  f->ip = (verb) cp(f, (word) f->ip, p0, t0);
   // copy user values
-  for (struct ll *r = f->safe; r; r = r->next)
-    *r->addr = cp(f, *r->addr, pool0, top0);
-
+  for (struct mm *r = f->safe; r; r = r->next) *r->addr = cp(f, *r->addr, p0, t0);
   // cheney's algorithm
   for (mo k; (k = (mo) f->cp) < (mo) f->hp;)
-    if (datp(k)) gettyp(k)->walk(f, (ob) k, pool0, top0);
-    else { for (; k->ap; k++) k->x = cp(f, k->x, pool0, top0);
+    if (datp(k)) gettyp(k)->walk(f, (ob) k, p0, t0);
+    else { for (; k->ap; k++) k->x = cp(f, k->x, p0, t0);
            f->cp = (ob*) k + 2; } }
 
-
-static word cp_mo(state v, verb src, word *pool0, word *top0) {
+static word cp_mo(state v, verb src, word *p0, word *t0) {
   struct tag *t = mo_tag(src);
   verb ini = t->head,
        dst = bump(v, t->end - ini),
@@ -170,34 +170,9 @@ static word cp_mo(state v, verb src, word *pool0, word *top0) {
 static Inline bool livep(state v, word x) {
   return (ob*) x >= v->pool && (ob*) x < v->pool + v->len; }
 
-static NoInline word cp(state v, word x, word *pool0, word *top0) {
-  if (nump(x) || (ob*) x < pool0 || (ob*) x >= top0) return x;
+static NoInline word cp(state v, word x, word *p0, word *t0) {
+  if (nump(x) || (ob*) x < p0 || (ob*) x >= t0) return x;
   verb src = (verb) x;
   if (homp(src->x) && livep(v, src->x)) return src->x;
-  else if (datp(src)) return gettyp(src)->evac(v, (word) src, pool0, top0);
-  else return cp_mo(v, src, pool0, top0); }
-
-word cp_str(state v, word x, word *pool0, word *top0) {
-  str src = (str) x,
-      dst = bump(v, Width(struct str) + b2w(src->len));
-  memcpy(dst, src, sizeof(struct str) + src->len);
-  return (word) (src->act = (vm*) dst); }
-
-word cp_two(state v, word x, word *pool0, word *top0) {
-  two src = (two) x,
-      dst = two_ini(bump(v, Width(struct two)), src->_[0], src->_[1]);
-  return (word) (src->act = (vm*) dst); }
-
-void wk_str(state v, word x, word *pool0, word *top0) {
-  v->cp += Width(struct str) + b2w(((str) x)->len); }
-
-void wk_two(state v, word x, word *pool0, word *top0) {
-  v->cp += Width(struct two);
-  A(x) = cp(v, A(x), pool0, top0);
-  B(x) = cp(v, B(x), pool0, top0); }
-
-void *cells(state f, size_t n) {
-  return n <= avail(f) || please(f, n) ? bump(f, n) : 0; }
-
-NoInline Vm(gc, size_t n) { return Pack(),
-  !please(f, n) ? OomError : f->ip->ap(f, f->ip, f->hp, f->sp); }
+  else if (datp(src)) return gettyp(src)->evac(v, (word) src, p0, t0);
+  else return cp_mo(v, src, p0, t0); }

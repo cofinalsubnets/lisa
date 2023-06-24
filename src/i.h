@@ -22,7 +22,7 @@ typedef struct l_state {
   uintptr_t len;
   intptr_t *pool, *loop;
   union { intptr_t *cp; uintptr_t t0; };
-  struct ll { intptr_t *addr; struct ll *next; } *safe;
+  struct mm { intptr_t *addr; struct mm *next; } *safe;
 } *li, *state;
 
 typedef enum status {
@@ -67,30 +67,25 @@ _Static_assert(sizeof(obj) == sizeof(word), "sizes");
 _Static_assert(sizeof(union mo) == sizeof(word), "union size");
 _Static_assert(-1 >> 1 == -1, "signed shift");
 
-bool
-  eql(state, word, word),
-  please(state, size_t);
-two pair(state, word, word);
-str strof(state, const char*);
+bool eql(state, word, word), please(state, size_t);
+two pair(state, word, word),   two_ini(void*, ob, ob);
+str strof(state, const char*), str_ini(void*, size_t);
+ob pushn(state, size_t, ...);
 enum status
   eval(state, word),
   data(state, verb, word*, word*),
-  self_test(state),
   receive(state, FILE*),
   receive2(state, const char*);
 void
   *cells(state, size_t),
   transmit(state, FILE*, ob);
-ob pushn(state, size_t, ...);
-str str_ini(void*, size_t);
-two two_ini(void*, ob, ob);
 
 #define Width(_) b2w(sizeof(_))
 #define avail(f) (f->sp-f->hp)
 #define getnum(_) ((word)(_)>>1)
 #define putnum(_) (((word)(_)<<1)|1)
 #define nil putnum(0)
-#define MM(f,r) ((f->safe=&((struct ll){(word*)(r),f->safe})))
+#define MM(f,r) ((f->safe=&((struct mm){(word*)(r),f->safe})))
 #define UM(f) (f->safe=f->safe->next)
 #define avec(f, y, ...) (MM(f,&(y)),(__VA_ARGS__),UM(f))
 #define A(o) ((two)(o))->_[0]
