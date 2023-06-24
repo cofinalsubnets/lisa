@@ -15,7 +15,7 @@ h=$(sort $(wildcard src/*.h))
 CPPFLAGS += -Dtesting
 o=$(c:.c=.o)
 CFLAGS ?=\
-	-std=gnu11 -g -O2 -Wall\
+	-std=gnu11 -g -Os -Wall\
  	-Wstrict-prototypes -Wno-shift-negative-value\
 	-fno-stack-protector
 src/%.o: src/%.c $h $(this)
