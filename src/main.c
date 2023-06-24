@@ -1,5 +1,28 @@
 #include "i.h"
-#include <stdio.h>
+#define shew(s,x) (printf(s),transmit(f,stdout,x),puts(""))
+// echo loop
+static enum status go(state f) {
+  printf("# dim=%ld f@0x%lx[len=%ld]\n", sizeof(word), (word) f, f->len);
+#ifdef testing
+  self_test(f);
+#endif
+  // echo loop
+  intptr_t s, height = f->pool + f->len - f->sp;
+  while ((s = receive(f, stdin)) != Eof) {
+    if (s == Ok && (s = eval(f, pop1(f))) == Ok)
+      transmit(f, stdout, pop1(f)),
+      fputc('\n', stdout);
+    else
+      fprintf(stderr, "# status %ld\n", s),
+      f->sp = f->pool + f->len - height; }
+  return Ok; }
+
+int main(int ac, char **av) {
+  state f = &((struct l_state){});
+  status s = l_ini(f);
+  if (s == Ok) s = go(f), l_fin(f);
+  return s; }
+
 #define End ((intptr_t)0)
 static NoInline word listr(state f, va_list xs) {
   word y, x = va_arg(xs, word);
@@ -12,7 +35,6 @@ NoInline word list(state f, ...) {
   va_start(xs, f), x = listr(f, xs), va_end(xs);
   return x; }
 
-static status add2(state, verb, word*, word*);
 static void
   test_big_list(state),
   test_number(state),
@@ -23,7 +45,7 @@ static void
   test_lambda2(state),
   test_closure(state);
 
-status self_test(O f) {
+status self_test(state f) {
   printf("%s:%d\n", __FILE__, __LINE__);
   test_lambda2(f);
   printf("%s:%d\n", __FILE__, __LINE__);
@@ -46,7 +68,7 @@ status self_test(O f) {
 static void test_big_list(state f) {
   long n = 1 << 20;
   for (long i = 0; i < n; i++)
-    assert(push1(f, nil));
+    assert(pushn(f, 1, nil));
   for (ob l = nil; n--;)
     assert((l = (ob) pair(f, pop1(f), l))),
     assert((l = (ob) pair(f, l, l))); }

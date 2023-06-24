@@ -1,4 +1,12 @@
 #include "i.h"
+
+void transmit(state v, FILE* o, word x) {
+  if (nump(x)) fprintf(o, "%ld", getnum(x));
+  else if (datp((verb) x)) gettyp(x)->emit(v, o, x);
+  else fprintf(o, "#%lx", x); }
+
+// parser
+
 // internal parser functions
 static word
   rx_ret(state, FILE*, word),
@@ -9,9 +17,9 @@ static word
 // FIXME should distinguish between OOM and parse error
 status receive(state v, FILE *i) {
   word x; return
-    !push1(v, (word) rx_ret) ? OomError :
+    !pushn(v, 1, (word) rx_ret) ? OomError :
     !(x = rxr(v, i)) ? feof(i) ? Eof : DomainError :
-    push1(v, x) ? Ok : OomError; }
+    pushn(v, 1, x) ? Ok : OomError; }
 
 status NoInline receive2(state f, const char *_i) {
   size_t len = strlen(_i);
@@ -49,10 +57,10 @@ static word rx_two_cons(state v, FILE* i, word x) {
     pull(v, i, x); }
 
 static word rx_two_cont(state v, FILE* i, word x) { return
-  !x || !push2(v, (word) rx_two_cons, x) ? pull(v, i, 0) : rx_two(v, i); }
+  !x || !pushn(v, 2, (word) rx_two_cons, x) ? pull(v, i, 0) : rx_two(v, i); }
 
 static ob rx_q_cont(state f, FILE *i, word x) {
-  if (x && (x = (word) pair(f, x, nil)) && (x = (word) pair(f, nil, x)) && push1(f, x)) {
+  if (x && (x = (word) pair(f, x, nil)) && (x = (word) pair(f, nil, x)) && pushn(f, 1, x)) {
     str s = strof(f, Quote);
     x = pop1(f);
     if (!s) x = 0;
@@ -75,13 +83,13 @@ static NoInline word rxr(state v, FILE* i) {
       return pull(v, i, x); } }
 
 static ob rx_q(state f, FILE *i) {
-  return push1(f, (word) rx_q_cont) ? rxr(f, i) : pull(f, i, 0); }
+  return pushn(f, 1, (word) rx_q_cont) ? rxr(f, i) : pull(f, i, 0); }
 
-static ob rx_two(li v, FILE* i) {
+static ob rx_two(state l, FILE* i) {
   int c = rx_char(i); switch (c) {
-    case ')': case EOF: return pull(v, i, nil);
+    case ')': case EOF: return pull(l, i, nil);
     default: return ungetc(c, i),
-      push1(v, (word) rx_two_cont) ? rxr(v, i) : pull(v, i, 0); } }
+      pushn(l, 1, (word) rx_two_cont) ? rxr(l, i) : pull(l, i, 0); } }
 
 static str buf_new(state f) {
   str s = cells(f, Width(struct str) + 1);
@@ -142,4 +150,3 @@ static NoInline word rx_atom(state v, str b) {
         if (*r == c) return rx_atom_n(v, b, i+2, sign, r[1]); }
     default: goto out; } out:
   return rx_atom_n(v, b, i, sign, 10); }
-
