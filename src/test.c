@@ -44,8 +44,8 @@ status self_test(O f) {
   return Ok; }
 
 static void test_big_list(state f) {
-  size n = 1 << 20;
-  for (size i = 0; i < n; i++)
+  long n = 1 << 20;
+  for (long i = 0; i < n; i++)
     assert(push1(f, nil));
   for (ob l = nil; n--;)
     assert((l = (ob) pair(f, pop1(f), l))),
@@ -54,7 +54,7 @@ static void test_big_list(state f) {
 static void test_quote(state f) {
   ob x;
   assert((x = (ob) strof(f, Quote)));
-  assert((x = list(f, x, x, End)));
+  assert((x = (ob) pair(f, x, x)));
   assert(Ok == eval(f, x));
   x = pop1(f);
   assert(strp(x));
@@ -103,7 +103,3 @@ static void test_closure(state f) {
 static void test_number(state f) {
   assert(Ok == eval(f, putnum(9)));
   assert(pop1(f) == putnum(9)); }
-
-static status add2(state f, verb ip, word *hp, word *sp) {
-  return sp[1] += sp[0] - 1,
-         ip[1].ap(f, ip+1, hp, sp+1); }

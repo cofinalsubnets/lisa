@@ -1,10 +1,8 @@
 #ifndef _ll_h
 #define _ll_h
-#include <stdint.h>
-struct carrier;
-void li_fin(struct carrier*);
+struct l_state;
+void li_fin(struct l_state*);
 enum status
-  eval(struct carrier*, intptr_t),
-  li_ini(struct carrier*),
-  li_go(struct carrier*);
+  l_evals(struct l_state*, const char*),
+  li_ini(struct l_state*);
 #endif
