@@ -38,16 +38,18 @@ typedef struct two {
   struct methods *typ;
   ob _[2]; } *two;
 
-typedef struct str *str;
-bool kstrq(str, const char*);
+typedef struct str {
+  status (*act)(state, verb, word*, word*);
+  struct methods *typ;
+  uintptr_t len;
+  char text[]; } *str;
+
 two pair(state, word, word);
 str strof(state, const char*);
 status data(state, verb, word*, word*),
        self_test(state),
        receive2(state, char*),
        yield(state, verb, word*, word*);
-
-#define End ((intptr_t)0)
 
 #define getnum(_) ((ob)(_)>>1)
 #define putnum(_) (((ob)(_)<<1)|1)

@@ -1,5 +1,6 @@
 #include "i.h"
 #include <stdio.h>
+#define End ((intptr_t)0)
 static NoInline word listr(state f, va_list xs) {
   word y, x = va_arg(xs, word);
   if (!x) return nil;
@@ -55,7 +56,11 @@ static void test_quote(state f) {
   assert((x = (ob) strof(f, Quote)));
   assert((x = list(f, x, x, End)));
   assert(Ok == eval(f, x));
-  assert(kstrq((str) pop1(f), Quote)); }
+  x = pop1(f);
+  assert(strp(x));
+  str s = (str) x;
+  assert(s->len == 1);
+  assert(s->text[0] == Quote[0]); }
 
 static void test_cond(state f) {
   assert(Ok == receive2(f, "(? 0 1 2 3 4)"));

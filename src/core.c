@@ -2,52 +2,60 @@
 #include <stdio.h>
 #include <errno.h>
 
+static void transmit(state, FILE*, word);
+
 typedef enum status vm(state, verb, word*, word*);
 static vm apply, K, curry, retn;
-void transmit(state, FILE*, word);
-
-struct str {
-  status (*act)(state, verb, word*, word*);
-  struct methods *typ;
-  uintptr_t len;
-  char text[]; };
 
 struct tag {
   void **null;
   mo head;
   union mo end[]; };
 
+struct methods {
+  ob (*evac)(state, ob, ob*, ob*);
+  void (*walk)(state, ob, ob*, ob*),
+       (*emit)(state, FILE*, ob);
+  bool (*equi)(state, ob, ob); };
+
+static bool
+  eql(state, word, word),
+  please(state, size),
+  eq_two(state, ob, ob),
+  eq_str(state, ob, ob);
+
+static enum status
+  gc(state, verb, word*, word*, size);
+
+static void
+  wk_two(O, ob, ob*, ob*),
+  wk_str(O, ob, ob*, ob*),
+  tx_two(O, FILE*, ob),
+  tx_str(O, FILE*, ob);
+
+static ob
+  cp_two(O, ob, ob*, ob*),
+  cp_str(O, ob, ob*, ob*);
+
+static bool
+  push2(state, word, word),
+  push3(state, word, word, word);
+
 // align bytes up to the nearest word
 static Inline size b2w(size b) {
   ldiv_t _ = ldiv(b, sizeof(word));
   return _.quot + (_.rem ? 1 : 0); }
 
-struct methods {
-  word (*evac)(state, ob, ob*, ob*);
-  void (*walk)(state, ob, ob*, ob*),
-       (*emit)(state, FILE*, ob);
-  bool (*equi)(state, ob, ob); };
-
 static Inline void *bump(state f, size n) {
   void *x = f->hp;
   f->hp += n;
-  assert(f->hp <= f->sp);
   return x; }
-
-static bool eql(state, word, word), please(state, size),
-            eq_two(O, ob, ob), eq_str(O, ob, ob);
 
 #define avail(f) (f->sp-f->hp)
 #define Width(_) b2w(sizeof(_))
+
 static void *cells(state f, size n) {
   return avail(f) < n && !please(f, n) ? 0 : bump(f, n); }
-
-static enum status gc(state, verb, word*, word*, size);
-static void wk_two(O, ob, ob*, ob*), wk_str(O, ob, ob*, ob*),
-     tx_two(O, FILE*, ob), tx_str(O, FILE*, ob);
-static ob cp_two(O, ob, ob*, ob*), cp_str(O, ob, ob*, ob*);
-
-static bool push2(state, word, word), push3(state, word, word, word);
 
 static NoInline bool push2_gc(state f, word x, word y) {
   bool ok; avec(f, x, avec(f, y, ok = please(f, 2)));
@@ -55,6 +63,7 @@ static NoInline bool push2_gc(state f, word x, word y) {
 static bool push2(state f, word x, word y) {
   return avail(f) < 2 ? push2_gc(f, x, y) :
     (f->sp -= 2, f->sp[0] = x, f->sp[1] = y); }
+
 static NoInline bool push3_gc(state f, word x, word y, word z) {
   bool ok; avec(f, x, avec(f, y, avec(f, z, ok = please(f, 3))));
   return ok && push3(f, x, y, z); }
@@ -194,7 +203,6 @@ static verb em_ref(state f, struct cctx **c, verb k) {
 
 static size ana(state, struct cctx**, size, word);
 static verb cata(O f, struct cctx **c, size m) {
-  assert((*c)->sn == nil);
   verb k = mo_n(f, m);
   if (!k) return k;
   memset(k, -1, m * sizeof(word));
@@ -211,10 +219,6 @@ NoInline status eval(state f, word x) {
       k = m ? cata(f, &c, m) : k); }
   return !k ? OomError : k->ap(f, k, f->hp, f->sp); }
 
-
-bool kstrq(str s0, const char *s1) { return
-  strlen(s1) == s0->len &&
-  0 == strncmp(s0->text, s1, s0->len); }
 
 typedef size ca(state, struct cctx**, size, word);
 typedef verb cc(state, struct cctx**, verb);
@@ -291,13 +295,16 @@ static Ana(ana_lambda) {
     if (k) {
       if (sbn > 1) k -= 2, k[0].ap = curry, k[1].x = putnum(sbn);
       struct tag *t = mo_tag(k);
-      assert(t->head <= k);
       t->head = k; }
     x = k && twop(d->ib) ? (word) pair(f, (word) k, d->ib) : (word) k; }
   UM(f);
   return x ? ana(f, c, m, x) : x; }
 
 static Ana(ana_quote) { return value(f, c, m, twop(x) ? A(x) : x); }
+
+static bool kstrq(str s0, const char *s1) { return
+  strlen(s1) == s0->len &&
+  0 == strncmp(s0->text, s1, s0->len); }
 
 static ca ana_ap;
 #define Cond "?"
@@ -390,9 +397,7 @@ NoInline status li_ini(state f) {
   const size_t len0 = 1; // a power of 2
   ob *pool = malloc(len0 * 2 * sizeof(intptr_t));
   if (!pool) return OomError;
-  f->len = len0;
-  f->pool = f->hp = pool;
-  f->loop = f->sp = pool + len0;
+  f->loop = f->sp = (f->pool = f->hp = pool) + (f->len = len0);
   f->t0 = clock();
   return Ok; }
 
@@ -408,8 +413,7 @@ two pair(state f, ob a, ob b) {
 str strof(state f, const char* c) {
   size_t bs = strlen(c);
   str o = cells(f, Width(struct str) + b2w(bs));
-  if (o) str_ini(o, bs),
-         memcpy(o->text, c, bs);
+  if (o) memcpy(str_ini(o, bs)->text, c, bs);
   return o; }
 
 static str str_ini(void *_, size len) {
@@ -429,8 +433,7 @@ static two two_ini(void *_, word a, word b) {
 
 static verb mo_ini(void *_, size len) {
   struct tag *t = (struct tag*) ((verb) _ + len);
-  t->null = NULL;
-  return t->head = _; }
+  return t->null = NULL, t->head = _; }
 
 ////
 /// a simple copying garbage collector
@@ -450,9 +453,11 @@ static verb mo_ini(void *_, size len) {
 //   -----------------------------------
 //   |                          `------'
 //   t0                  gc time (this cycle)
-#define little (want < need || vim < vim_inf)
-#define big (want >> 1 > need && vim > vim_sup)
 static void copy_from(state, word*, word*);
+#define too_little (want < need || vim < vim_inf)
+#define too_big (want >> 1 > need && vim > vim_sup)
+#define grow() want <<= 1, vim <<= 1
+#define shrink() want >>= 1, vim >>= 1
 static NoInline bool please(state f, size req) {
   size t1 = clock(), t0 = f->t0, have = f->len;
   word *pool = f->pool, *loop = f->loop;
@@ -462,9 +467,9 @@ static NoInline bool please(state f, size req) {
        vim = t2 == t1 ? vim_sup : (t2 - t0) / (t2 - t1),
        want = have,
        need = have - (avail(f) - req);
-  if   (little) do want <<= 1, vim <<= 1; while (little);
-  else if (big) do want >>= 1, vim >>= 1; while (big);
-  else return true; // else no resize is needed, so return success
+  if   (too_little) do grow(); while (too_little);
+  else if (too_big) do shrink(); while (too_big);
+  else return true; // no resize is needed, so return success
   // try and resize
   //
   word *new = malloc(want * 2 * sizeof(word)); // allocate a new pool
@@ -499,17 +504,14 @@ static NoInline void copy_from(state f, word *pool0, word *top0) {
   for (mo k; (k = (mo) f->cp) < (mo) f->hp;)
     if (datp(k)) gettyp(k)->walk(f, (ob) k, pool0, top0);
     else { for (; k->ap; k++) k->x = cp(f, k->x, pool0, top0);
-           f->cp = (ob*) k + 2; }
+           f->cp = (ob*) k + 2; } }
 
-  assert(f->pool + f->len - f->sp == top0 - sp0);
-  assert(f->cp == f->hp); }
 
 static NoInline word cp_mo(state v, verb src, word *pool0, word *top0) {
   struct tag *fin = mo_tag(src);
   verb ini = fin->head,
        dst = bump(v, fin->end - ini),
        d = dst;
-  assert(ini);
   for (verb s = ini; (d->x = s->x); s++->x = (ob) d++);
   return (d+1)->ap = (void*) dst,
          (ob) (src - ini + dst); }
@@ -524,7 +526,6 @@ static NoInline word cp(state v, word x, word *pool0, word *top0) {
   if (homp(src->x) && livep(v, src->x)) x = src->x;
   else if (datp(src)) x = gettyp(src)->evac(v, (word) src, pool0, top0);
   else x = cp_mo(v, src, pool0, top0);
-  assert(livep(v, x)); // XXX
   return x; }
 
 static word cp_str(state v, word x, word *pool0, word *top0) {
@@ -617,7 +618,6 @@ static word rx_two_cont(state v, FILE* i, word x) { return
   !x || !push2(v, (word) rx_two_cons, x) ? pull(v, i, 0) : rx_two(v, i); }
 
 static ob rx_q_cont(state f, FILE *i, word x) {
-  str s;
   if (x && (x = (word) pair(f, x, nil)) && (x = (word) pair(f, nil, x)) && push1(f, x)) {
     str s = strof(f, Quote);
     x = pop1(f);
@@ -715,15 +715,13 @@ static enum status go(state f) {
   printf("# dim=%ld f@0x%lx[len=%ld]\n", sizeof(word), (word) f, f->len);
 #ifdef testing
   self_test(f);
-  assert(f->sp == f->pool + f->len);
 #endif
   // echo loop
   intptr_t s, height = f->pool + f->len - f->sp;
   while ((s = receive(f, stdin)) != Eof) {
     if (s == Ok && (s = eval(f, pop1(f))) == Ok)
       transmit(f, stdout, pop1(f)),
-      fputc('\n', stdout),
-      assert(f->sp == f->pool + f->len);
+      fputc('\n', stdout);
     else
       fprintf(stderr, "# status %ld\n", s),
       f->sp = f->pool + f->len - height; }
