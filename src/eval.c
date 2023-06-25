@@ -35,24 +35,23 @@ static verb mo_n(state f, size_t n) {
   verb k = cells(f, n + Width(struct tag));
   return !k ? k : mo_ini(k, n); }
 
-static vm ap, K, cur, ret, rec, yield, var, br, jump;
 
-struct scope {
+static struct scope {
   word s1, s2, ib, sb, sn;
-  struct scope *par; };
-
-static struct scope *scope(state f, struct scope **par) {
+  struct scope *par;
+} *scope(state f, struct scope **par) {
   struct scope *sc = (struct scope *) mo_n(f, Width(struct scope));
   if (sc) sc->s1 = sc->s2 = sc->ib = sc->sb = sc->sn = nil,
           sc->par = par ? *par : (struct scope*) nil;
   return sc; }
+
+static vm ap, K, cur, ret, rec, yield, var, br, jump;
 #define Ana(n) size_t n(state f, struct scope**c, size_t m, word x)
 #define Cata(n) verb n(state f, struct scope **c, verb k)
 typedef Ana(ca); typedef Cata(cc);
 
 static Cata(yield_thread) { return k; }
 static Cata(pull_thread) { return ((cc*) (*f->sp++))(f, c, k); }
-
 static Cata(cata_ret) { return k[-2].ap = ret, k[-1].x = *f->sp++, pull_thread(f, c, k - 2); }
 static Cata(cata_val) { return k[-2].ap = K, k[-1].x = *f->sp++, pull_thread(f, c, k - 2); }
 static Cata(cata_yield) { return k[-1].ap = yield, pull_thread(f, c, k - 1); }
@@ -69,28 +68,24 @@ static Cata(cata_var) {
          pull_thread(f, c, k); }
 
 static verb cata(state f, struct scope **c, size_t m) {
-  verb k = mo_n(f, m);
-  if (!k) return k;
-  memset(k, -1, m * sizeof(word));
-  return pull_thread(f, c, k + m); }
+  verb k = mo_n(f, m); return !k ? k :
+    (memset(k, -1, m * sizeof(word)),
+     pull_thread(f, c, k + m)); }
 
 static ca ana, ana_list, ana_str, ana_ap;
 NoInline enum status eval(state f, word x) {
   struct scope *c = pushn(f, 2, x, (word) yield_thread) ? scope(f, NULL) : NULL;
-  verb k = 0;
-  if (c) {
-    size_t m;
-    avec(f, c,
-      m = ana(f, &c, 1, pop1(f)),
-      m = m && pushn(f, 1, (word) cata_yield) ? m : 0,
-      k = m ? cata(f, &c, m) : k); }
+  size_t m; verb k = 0;
+  if (c) avec(f, c,
+    m = ana(f, &c, 1, pop1(f)),
+    m = m && pushn(f, 1, (word) cata_yield) ? m : 0,
+    k = m ? cata(f, &c, m) : k);
   return !k ? OomError : k->ap(f, k, f->hp, f->sp); }
 
 static Ana(value) { return pushn(f, 2, (word) cata_val, x) ? m + 2 : 0; }
-static Ana(ana) { return
-  twop(x) ? ana_list(f, c, m, x) :
-  strp(x) ? ana_str(f, c, m, x) :
-            value(f, c, m, x); }
+static Ana(ana) { return twop(x) ? ana_list(f, c, m, x) :
+                         strp(x) ? ana_str(f, c, m, x) :
+                                   value(f, c, m, x); }
 
 static Ana(ana_str) {
   if (nilp((word) (*c)->par)) return value(f, c, m, x);
@@ -100,17 +95,17 @@ static Ana(ana_str) {
     if (x) (*c)->ib = x, x = A(x); }
   return x && pushn(f, 3, (word) cata_var, x, (*c)->sn) ? m + 2 : 0; }
 
-static Cata(cata_cond_pop_alternative) { return
+static Cata(cata_cond_pop_a) { return
   k[-2].ap = br,
   k[-1].x = A((*c)->s1),
   (*c)->s1 = B((*c)->s1),
   pull_thread(f, c, k - 2); }
 
-static Cata(cata_cond_push_continuation) {
+static Cata(cata_cond_push_c) {
   two w = pair(f, (word) k, (*c)->s2);
   return !w ? (verb) w : pull_thread(f, c, (verb) A((*c)->s2 = (word) w)); }
 
-static Cata(cata_cond_push_alternative) {
+static Cata(cata_cond_push_a) {
   two w = pair(f, (word) k, (*c)->s1);
   if (!w) return (verb) w;
   k = (verb) A((*c)->s1 = (word) w) - 2;
@@ -120,26 +115,19 @@ static Cata(cata_cond_push_alternative) {
   else k[0].ap = jump, k[1].m = kk;
   return pull_thread(f, c, k); }
 
-static Cata(cata_cond_pop_continuation) {
+static Cata(cata_cond_pop_c) {
   return (*c)->s2 = B((*c)->s2), pull_thread(f, c, k); }
 
 static Ana(ana_cond) {
-  if (!pushn(f, 2, x, (word) cata_cond_pop_continuation)) return 0;
-  x = pop1(f);
-  MM(f, &x);
-  for (; m; x = B(B(x))) {
-    if (!twop(x)) {
-      x = (ob) pair(f, x, nil);
-      if (!x) { m = 0; break; } }
-    if (!twop(B(x))) {
-      m = ana(f, c, m, A(x));
-      break; }
-    m = ana(f, c, m + 2, A(x));
-    m = m && pushn(f, 1, (word) cata_cond_pop_alternative) ? m : 0;
-    m = m ? ana(f, c, m + 2, A(B(x))): 0;
-    m = m && pushn(f, 1, (word) cata_cond_push_alternative) ? m + 2 : 0; }
-  UM(f);
-  return m && pushn(f, 1, (word) cata_cond_push_continuation) ? m : 0; }
+  if (!pushn(f, 2, x, (word) cata_cond_pop_c)) return 0;
+  for (x = pop1(f), MM(f, &x); m; x = B(B(x))) {
+    if (!twop(x) && !(x = (ob) pair(f, x, nil))) { m = 0; break; }
+    if (!twop(B(x))) { m = ana(f, c, m, A(x)); break; }
+    m = ana(f, c, m + 4, A(x));
+    m = m && pushn(f, 1, (word) cata_cond_pop_a) ? m : 0;
+    m = m ? ana(f, c, m, A(B(x))) : 0;
+    m = m && pushn(f, 1, (word) cata_cond_push_a) ? m : 0; }
+  return UM(f), m && pushn(f, 1, (word) cata_cond_push_c) ? m : 0; }
 
 // reverse decons: pushes last list item to stack, returns init of list.
 static word snoced(state f, word x) {
@@ -154,21 +142,19 @@ static Ana(ana_lambda) {
   if (!d) return 0;
   d->sb = pop1(f);
   MM(f, &d);
-  size_t inner_m = pushn(f, 2, pop1(f), (word) yield_thread) ? ana(f, &d, 4, pop1(f)) : 0;
-  if (inner_m) {
+  size_t m_in = pushn(f, 2, pop1(f), (word) yield_thread) ? ana(f, &d, 4, pop1(f)) : 0;
+  if (m_in) {
     size_t sbn = llen(d->sb);
-    verb k = pushn(f, 2, (word) cata_ret, putnum(sbn)) ? cata(f, &d, inner_m) : 0;
+    verb k = pushn(f, 2, (word) cata_ret, putnum(sbn)) ? cata(f, &d, m_in) : 0;
     if (k) {
       if (sbn > 1) k -= 2, k[0].ap = cur, k[1].x = putnum(sbn);
-      struct tag *t = mo_tag(k);
-      t->head = k; }
+      mo_tag(k)->head = k; }
     x = k && twop(d->ib) ? (word) pair(f, (word) k, d->ib) : (word) k; }
   UM(f);
   return x ? ana(f, c, m, x) : x; }
 
 static bool kstrq(str s0, const char *s1) { return
-  strlen(s1) == s0->len &&
-  0 == strncmp(s0->text, s1, s0->len); }
+  strlen(s1) == s0->len && 0 == strncmp(s0->text, s1, s0->len); }
 
 #define Cond "?"
 #define Lambda "\\"
@@ -227,9 +213,8 @@ static Vm(jump) { return ip[1].m->ap(f, ip[1].m, hp, sp); }
 static Vm(yield) { return Pack(), Ok; }
 
 static Vm(Kj) { Have1(); return
-  *--sp = ip[1].x,
-  ip = ip[2].m,
-  ip->ap(f, ip, hp, sp); }
+  sp[-1] = ip[1].x,
+  ip[2].m->ap(f, ip[2].m, hp, sp - 1); }
 
 static Vm(ret) { word r = *sp; return
   sp += getnum(ip[1].x) + 1,
@@ -245,22 +230,15 @@ static Vm(ap) {
 
 static Vm(cur) {
   intptr_t n = getnum(ip[1].x);
-  // XXX base case of 1 is wasteful
-  if (n == 1) return ip += 2, ip->ap(f, ip, hp, sp);
+  if (n == 1) return ip[2].ap(f, ip + 2, hp, sp); // XXX base case of 1 is wasteful
   const size_t S = 5 + Width(struct tag);
   Have(S);
   verb k = (verb) hp;
-  hp += S;
-  k[0].ap = cur;
-  k[1].x = putnum(n - 1);
-  k[2].ap = Kj;
-  k[3].x = *sp++;
-  k[4].m = ip + 2;
-  k[5].x = 0;
-  k[6].m = k;
-  ip = (verb) *sp;
-  *sp = (word) k;
-  return ip->ap(f, ip, hp, sp); }
+  k[0].ap = cur, k[1].x = putnum(n - 1);
+  k[2].ap = Kj,  k[3].x = *sp++, k[4].m = ip + 2;
+  k[5].x = 0,    k[6].m = k;
+  ip = (verb) *sp, *sp = (word) k;
+  return ip->ap(f, ip, hp + S, sp); }
 
 Vm(data) { word r = (word) ip; return
   ip = (verb) *++sp,

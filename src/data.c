@@ -86,8 +86,8 @@ static void wk_str(state v, word x, word *p0, word *t0) {
 static void wk_two(state v, word x, word *p0, word *t0) {
   v->cp += Width(struct two), A(x) = cp(v, A(x), p0, t0), B(x) = cp(v, B(x), p0, t0); }
 
-void *cells(state f, size_t n) {
-  return n <= avail(f) || please(f, n) ? bump(f, n) : 0; }
+void *cells(state f, size_t n) { return
+  n <= avail(f) || please(f, n) ? bump(f, n) : 0; }
 
 NoInline Vm(gc, size_t n) { return Pack(),
   !please(f, n) ? OomError : f->ip->ap(f, f->ip, f->hp, f->sp); }
@@ -99,72 +99,56 @@ NoInline Vm(gc, size_t n) { return Pack(),
 // try to return with at least req words of available memory.
 // return true on success, false otherwise. governs the heap size
 // as a side effect by trying to keep
-//   vim = (t2 - t0) / (t2 - t1)
+//   v = (t2 - t0) / (t2 - t1)
 // between
-#define vim_inf 8
+#define v_lo 8
 // and
-#define vim_sup (vim_inf << 6)
+#define v_hi (v_lo << 6)
 // where
 //       non-gc running time     t1    t2
 //   ,.........................,/      |
 //   -----------------------------------
 //   |                          `------'
 //   t0                  gc time (this cycle)
-static void copy_from(state, word*, word*);
-#define too_little (want < need || vim < vim_inf)
-#define too_big (want >> 1 > need && vim > vim_sup)
-#define grow() want <<= 1, vim <<= 1
-#define shrink() want >>= 1, vim >>= 1
+static void copy_from(state, word*, size_t);
+#define too_little (len1 < req || v < v_lo)
+#define too_big (len1 >> 1 > req && v > v_hi)
 NoInline bool please(state f, size_t req) {
-  size_t t1 = clock(), t0 = f->t0, have = f->len;
-  word *pool = f->pool, *loop = f->loop;
-  f->pool = loop, f->loop = pool;
-  copy_from(f, pool, pool + have);
+  size_t t1 = clock(), t0 = f->t0, len0 = f->len, len1 = len0;
+  word *p0 = f->pool, *l0 = f->loop;
+  f->pool = l0, f->loop = p0;
+  copy_from(f, p0, len0);
+  req += len0 - avail(f);
   size_t t2 = f->t0 = clock(),
-       vim = t2 == t1 ? vim_sup : (t2 - t0) / (t2 - t1),
-       want = have,
-       need = have + req - avail(f);
-  if   (too_little) do grow(); while (too_little);
-  else if (too_big) do shrink(); while (too_big);
+         v = t2 == t1 ? v_hi : (t2 - t0) / (t2 - t1);
+  if   (too_little) do len1 <<= 1, v <<= 1; while (too_little);
+  else if (too_big) do len1 >>= 1, v >>= 1; while (too_big);
   else return true; // no resize is needed, so return success
-  // try and resize
-  //
-  word *new = malloc(want * 2 * sizeof(word)); // allocate a new pool
-  if (!new) return need <= have; // if that fails, succeed iff the first copy is big enough
-  // we got a new pool; copy again, free the old pool, return ok
-  f->loop = (f->pool = new) + (f->len = want);
-  copy_from(f, loop, loop + have);
-  free(pool < loop ? pool : loop);
-  f->t0 = clock();
-  return true; }
+  word *p1 = malloc(len1 * 2 * sizeof(word)); // else allocate a new pool
+  return !p1 ? req <= len0 : // if that fails, succeed iff the first copy is big enough
+    (f->loop = (f->pool = p1) + (f->len = len1), // else copy again & return success
+     copy_from(f, l0, len0),
+     free(p0 < l0 ? p0 : l0),
+     f->t0 = clock(),
+     true); }
 
-static word cp(state, word, word*, word*);
-static NoInline void copy_from(state f, word *p0, word *t0) {
+static NoInline void copy_from(state f, word *p0, size_t len0) {
   size_t len1 = f->len, slen;
   word *p1 = f->hp = f->cp = f->pool,
+       *t0 = p0 + len0,
        *t1 = p1 + len1,
        *sp0 = f->sp,
        *sp1 = f->sp = t1 - (slen = t0 - sp0);
+  f->ip = (verb) cp(f, (word) f->ip, p0, t0);
   // copy stack
   for (size_t i = 0; i < slen; i++) sp1[i] = cp(f, sp0[i], p0, t0);
-  // copy registers
-  f->ip = (verb) cp(f, (word) f->ip, p0, t0);
-  // copy user values
+  // copy managed values
   for (struct mm *r = f->safe; r; r = r->next) *r->addr = cp(f, *r->addr, p0, t0);
   // cheney's algorithm
   for (mo k; (k = (mo) f->cp) < (mo) f->hp;)
     if (datp(k)) gettyp(k)->walk(f, (ob) k, p0, t0);
     else { for (; k->ap; k++) k->x = cp(f, k->x, p0, t0);
            f->cp = (ob*) k + 2; } }
-
-static word cp_mo(state v, verb src, word *p0, word *t0) {
-  struct tag *t = mo_tag(src);
-  verb ini = t->head,
-       dst = bump(v, t->end - ini),
-       d = dst;
-  for (verb s = ini; (d->x = s->x); s++->x = (ob) d++);
-  return (d+1)->ap = (vm*) dst,
-         (ob) (src - ini + dst); }
 
 // this can give a false positive if x is a fixnum
 static Inline bool livep(state v, word x) {
@@ -174,5 +158,11 @@ static NoInline word cp(state v, word x, word *p0, word *t0) {
   if (nump(x) || (ob*) x < p0 || (ob*) x >= t0) return x;
   verb src = (verb) x;
   if (homp(src->x) && livep(v, src->x)) return src->x;
-  else if (datp(src)) return gettyp(src)->evac(v, (word) src, p0, t0);
-  else return cp_mo(v, src, p0, t0); }
+  if (datp(src)) return gettyp(src)->evac(v, (word) src, p0, t0);
+  struct tag *t = mo_tag(src);
+  verb ini = t->head,
+       dst = bump(v, t->end - ini),
+       d = dst;
+  for (verb s = ini; (d->x = s->x); s++->x = (ob) d++);
+  return (d+1)->ap = (vm*) dst,
+         (ob) (src - ini + dst); }
