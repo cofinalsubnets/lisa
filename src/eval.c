@@ -149,17 +149,13 @@ static Ana(ana_lambda) {
   UM(f);
   return x ? ana(f, c, m, x) : x; }
 
-static bool kstrq(str s0, const char *s1) { return
-  strlen(s1) == s0->len && 0 == strncmp(s0->text, s1, s0->len); }
-
-#define Cond "?"
-#define Lambda "\\"
 static Ana(ana_list) {
   if (strp(A(x))) {
     str s = (str) A(x);
-    if (kstrq(s, Quote)) return x = B(x), value(f, c, m, twop(x) ? A(x) : x);
-    if (kstrq(s, Cond)) return ana_cond(f, c, m, B(x));
-    if (kstrq(s, Lambda)) return ana_lambda(f, c, m, B(x)); }
+    if (s->len == 1) switch (s->text[0]) {
+      case '`': return x = B(x), value(f, c, m, twop(x) ? A(x) : x);
+      case '?': return ana_cond(f, c, m, B(x));
+      case '\\': return ana_lambda(f, c, m, B(x)); } }
   return ana_ap(f, c, m, x); }
 
 static Ana(ana_ap) {

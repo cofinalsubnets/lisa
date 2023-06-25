@@ -104,21 +104,14 @@ static NoInline str rx_lit_str(li v, FILE* p) {
   return 0; }
 
 static NoInline word rx_a(state l, FILE *in) {
-  str a = rx_atom_cs(l, in);
-  if (!a) return pull(l, in, 0);
-  char *e; long n = strtol(a->text, &e, 0);
-  if (*e == 0) return pull(l, in, putnum(n));
-  return pull(l, in, (word) a); }
-
-// read the characters of an atom (number or symbol)
-// into a string
-static NoInline str rx_atom_cs(state v, FILE* p) {
-  str o = buf_new(v);
-  for (size_t n = 0, lim = sizeof(word); o; o = buf_grow(v, o), lim *= 2)
-    for (int x; n < lim;) switch (x = getc(p)) {
+  str a = buf_new(l);
+  for (size_t n = 0, lim = sizeof(word); a; a = buf_grow(l, a), lim *= 2)
+    for (int x; n < lim;) switch (x = getc(in)) {
       // these characters terminate an atom
       case ' ': case '\n': case '\t': case ';': case '#':
-      case '(': case ')': case '\'': case '"': ungetc(x, p);
-      case EOF: return o->text[o->len = n] = 0, o;
-      default: o->text[n++] = x; continue; }
-  return 0; }
+      case '(': case ')': case '\'': case '"': ungetc(x, in);
+      case EOF: a->text[a->len = n] = 0; goto out;
+      default: a->text[n++] = x; continue; } out:
+  if (!a) return pull(l, in, 0);
+  char *e; long n = strtol(a->text, &e, 0);
+  return pull(l, in, *e == 0 ? putnum(n) : (word) a); }
