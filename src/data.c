@@ -35,25 +35,24 @@ struct methods
   two_methods = { .evac = cp_two, .walk = wk_two, .emit = tx_two, .equi = eq_two, },
   str_methods = { .evac = cp_str, .walk = wk_str, .emit = tx_str, .equi = eq_str, };
 
-static NoInline word pushnr(state l, size_t n, size_t m, va_list xs) {
-  if (m == 0) return please(l, n);
-  ob x = va_arg(xs, ob), y; return
-    avec(l, x, y = pushnr(l, n, m - 1, xs)),
-    y ? *--l->sp = x : y; }
-
-NoInline word pushn(state l, size_t n, ...) {
-  word r = 0; va_list xs; va_start(xs, n);
-  if (avail(l) < n) r = pushnr(l, n, n, xs);
-  else for (word *sp = (l->sp -= n); n--; *sp++ = r = va_arg(xs, word));
-  return va_end(xs), r; }
-
+static NoInline ob push1_gc(state l, ob x) {
+  bool ok; avec(l, x, ok = please(l, 1));
+  return ok ? push1(l, x) : 0; }
+static NoInline ob push2_gc(state l, ob x, ob y) {
+  bool ok; avec(l, x, avec(l, y, ok = please(l, 2)));
+  return ok ? push2(l, x, y) : 0; }
 static NoInline two pair_gc(state f, word a, word b) {
-  bool ok; return
-    avec(f, a, avec(f, b, ok = please(f, Width(struct two)))),
-    ok ? pair(f, a, b) : 0; }
+  bool ok; avec(f, a, avec(f, b, ok = please(f, Width(struct two))));
+  return ok ? pair(f, a, b) : 0; }
 
-two pair(state f, ob a, ob b) {
-  return avail(f) < Width(struct two) ? pair_gc(f, a, b) :
+ob push1(state l, ob x) { return
+  avail(l) ? *--l->sp = x : push1_gc(l, x); }
+ob push2(state l, ob x, ob y) {
+  if (avail(l) < 2) return push2_gc(l, x, y);
+  word *sp = l->sp -= 2;
+  return sp[1] = y, sp[0] = x; }
+two pair(state f, ob a, ob b) { return
+  avail(f) < Width(struct two) ? pair_gc(f, a, b) :
     two_ini(bump(f, Width(struct two)), a, b); }
 
 str strof(state f, const char* c) {
@@ -164,5 +163,4 @@ static NoInline word cp(state v, word x, word *p0, word *t0) {
        dst = bump(v, t->end - ini),
        d = dst;
   for (verb s = ini; (d->x = s->x); s++->x = (ob) d++);
-  return (d+1)->ap = (vm*) dst,
-         (ob) (src - ini + dst); }
+  return d[1].ap = (vm*) dst, (ob) (src - ini + dst); }

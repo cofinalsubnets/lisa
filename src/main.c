@@ -46,8 +46,7 @@ static void
 
 static void test_big_list(state f) {
   long n = 1 << 20;
-  for (long i = 0; i < n; i++)
-    assert(pushn(f, 1, nil));
+  for (long i = 0; i < n; i++) assert(push1(f, nil));
   for (ob l = nil; n--;)
     assert((l = (ob) pair(f, pop1(f), l))),
     assert((l = (ob) pair(f, l, l))); }

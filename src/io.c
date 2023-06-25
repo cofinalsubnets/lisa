@@ -8,18 +8,25 @@ void transmit(state v, FILE* o, word x) {
 // parser
 
 // internal parser functions
+static str
+  rx_atom_chars(state, FILE*),
+  rx_str(state, FILE*);
 static word
   rx_ret(state, FILE*, word),
   rxr(state, FILE*),
   rx_two(state, FILE*),
-  rx_atom(state, str);
+  rx_atom(state, str),
+  rx_q(state, FILE*);
+
+static Inline word pull(state v, FILE *i, word x) { return
+  ((word (*)(state, FILE*, word)) pop1(v))(v, i, x); }
 
 // FIXME should distinguish between OOM and parse error
 status receive(state v, FILE *i) {
   word x; return
-    !pushn(v, 1, (word) rx_ret) ? OomError :
+    !push1(v, (word) rx_ret) ? OomError :
     !(x = rxr(v, i)) ? feof(i) ? Eof : DomainError :
-    pushn(v, 1, x) ? Ok : OomError; }
+    push1(v, x) ? Ok : OomError; }
 
 status NoInline receive2(state f, const char *_i) {
   size_t len = strlen(_i);
@@ -32,14 +39,10 @@ status NoInline receive2(state f, const char *_i) {
   status s = receive(f, in);
   return fclose(in), free(i), s; }
 
-
 ////
 /// " the parser "
 //
 // simple except it uses the managed stack for recursion.
-
-static Inline word pull(state v, FILE *i, word x) { return
-  ((word (*)(state, FILE*, word)) pop1(v))(v, i, x); }
 
 // get the next token character from the stream
 static NoInline int rx_char(FILE *i) {
@@ -52,23 +55,19 @@ static NoInline int rx_char(FILE *i) {
 static word rx_ret(state v, FILE* i, word x) { return x; }
 
 static word rx_two_cons(state v, FILE* i, word x) {
-  word y = pop1(v); return
-    x = x ? (ob) pair(v, y, x) : x,
-    pull(v, i, x); }
+  word y = pop1(v);
+  return pull(v, i, x ? (ob) pair(v, y, x) : x); }
 
 static word rx_two_cont(state v, FILE* i, word x) { return
-  !x || !pushn(v, 2, (word) rx_two_cons, x) ? pull(v, i, 0) : rx_two(v, i); }
+  !x || !push2(v, (word) rx_two_cons, x) ? pull(v, i, 0) : rx_two(v, i); }
 
 static ob rx_q_cont(state f, FILE *i, word x) {
-  if (x && (x = (word) pair(f, x, nil)) && (x = (word) pair(f, nil, x)) && pushn(f, 1, x)) {
+  if (x && (x = (word) pair(f, x, nil)) && (x = (word) pair(f, nil, x)) && push1(f, x)) {
     str s = strof(f, Quote);
     x = pop1(f);
     if (!s) x = 0;
     else A(x) = (ob) s; }
   return pull(f, i, x); }
-
-static str rx_atom_chars(state, FILE*), rx_str(state, FILE*);
-static word rx_q(state, FILE*);
 
 static NoInline word rxr(state v, FILE* i) {
   int c = rx_char(i); switch (c) {
@@ -76,20 +75,19 @@ static NoInline word rxr(state v, FILE* i) {
     case '(': return rx_two(v, i);
     case '"': return pull(v, i, (word) rx_str(v, i));
     case '\'': return rx_q(v, i);
-    default:
-      ungetc(c, i);
-      str a = rx_atom_chars(v, i);
-      word x = a ? rx_atom(v, a) : 0;
-      return pull(v, i, x); } }
+    default: ungetc(c, i);
+             str a = rx_atom_chars(v, i);
+             word x = a ? rx_atom(v, a) : 0;
+             return pull(v, i, x); } }
 
 static ob rx_q(state f, FILE *i) {
-  return pushn(f, 1, (word) rx_q_cont) ? rxr(f, i) : pull(f, i, 0); }
+  return push1(f, (word) rx_q_cont) ? rxr(f, i) : pull(f, i, 0); }
 
 static ob rx_two(state l, FILE* i) {
   int c = rx_char(i); switch (c) {
     case ')': case EOF: return pull(l, i, nil);
     default: return ungetc(c, i),
-      pushn(l, 1, (word) rx_two_cont) ? rxr(l, i) : pull(l, i, 0); } }
+      push1(l, (word) rx_two_cont) ? rxr(l, i) : pull(l, i, 0); } }
 
 static str buf_new(state f) {
   str s = cells(f, Width(struct str) + 1);

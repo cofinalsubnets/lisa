@@ -70,7 +70,7 @@ _Static_assert(-1 >> 1 == -1, "signed shift");
 bool eql(state, word, word), please(state, size_t);
 two pair(state, word, word),   two_ini(void*, ob, ob);
 str strof(state, const char*), str_ini(void*, size_t);
-ob pushn(state, size_t, ...);
+ob push1(state, word), push2(state, word, word);
 enum status
   eval(state, word),
   data(state, verb, word*, word*),
@@ -112,8 +112,8 @@ static Inline bool strp(word _) { return homp(_) && hstrp((mo) _); }
 static Inline bool twop(word _) { return homp(_) && htwop((mo) _); }
 // align bytes up to the nearest word
 static Inline size_t b2w(size_t b) {
-  ldiv_t _ = ldiv(b, sizeof(word));
-  return _.quot + (_.rem ? 1 : 0); }
+  size_t q = b / sizeof(word), r = b % sizeof(word);
+  return q + (r ? 1 : 0); }
 
 static Inline struct tag *mo_tag(verb k) {
   while (k->x) k++;

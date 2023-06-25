@@ -61,28 +61,24 @@ static Cata(cata_ap) {
   return pull_thread(f, c, k); }
 
 static Cata(cata_var) {
-  word sym = *f->sp++,
-       idx = getnum(*f->sp++) + lidx(f, (*c)->sb, sym);
-  return (--k)->x = putnum(idx),
-         (--k)->ap = var,
-         pull_thread(f, c, k); }
+  word sym = *f->sp++, idx = getnum(*f->sp++) + lidx(f, (*c)->sb, sym);
+  return k[-2].ap = var, k[-1].x = putnum(idx), pull_thread(f, c, k - 2); }
 
 static verb cata(state f, struct scope **c, size_t m) {
   verb k = mo_n(f, m); return !k ? k :
-    (memset(k, -1, m * sizeof(word)),
-     pull_thread(f, c, k + m)); }
+    (memset(k, -1, m * sizeof(word)), pull_thread(f, c, k + m)); }
 
 static ca ana, ana_list, ana_str, ana_ap;
 NoInline enum status eval(state f, word x) {
-  struct scope *c = pushn(f, 2, x, (word) yield_thread) ? scope(f, NULL) : NULL;
+  struct scope *c = push2(f, x, (word) yield_thread) ? scope(f, NULL) : NULL;
   size_t m; verb k = 0;
   if (c) avec(f, c,
     m = ana(f, &c, 1, pop1(f)),
-    m = m && pushn(f, 1, (word) cata_yield) ? m : 0,
+    m = m && push1(f, (word) cata_yield) ? m : 0,
     k = m ? cata(f, &c, m) : k);
   return !k ? OomError : k->ap(f, k, f->hp, f->sp); }
 
-static Ana(value) { return pushn(f, 2, (word) cata_val, x) ? m + 2 : 0; }
+static Ana(value) { return push2(f, (word) cata_val, x) ? m + 2 : 0; }
 static Ana(ana) { return twop(x) ? ana_list(f, c, m, x) :
                          strp(x) ? ana_str(f, c, m, x) :
                                    value(f, c, m, x); }
@@ -93,7 +89,7 @@ static Ana(ana_str) {
     x = (word) pair(f, x, (*c)->sb);
     if (x) (*c)->sb = x, x = (word) pair(f, A(x), (*c)->ib);
     if (x) (*c)->ib = x, x = A(x); }
-  return x && pushn(f, 3, (word) cata_var, x, (*c)->sn) ? m + 2 : 0; }
+  return x && push2(f, x, (*c)->sn) && push1(f, (word) cata_var) ? m + 2 : 0; }
 
 static Cata(cata_cond_pop_a) { return
   k[-2].ap = br,
@@ -119,33 +115,33 @@ static Cata(cata_cond_pop_c) {
   return (*c)->s2 = B((*c)->s2), pull_thread(f, c, k); }
 
 static Ana(ana_cond) {
-  if (!pushn(f, 2, x, (word) cata_cond_pop_c)) return 0;
+  if (!push2(f, x, (word) cata_cond_pop_c)) return 0;
   for (x = pop1(f), MM(f, &x); m; x = B(B(x))) {
     if (!twop(x) && !(x = (ob) pair(f, x, nil))) { m = 0; break; }
     if (!twop(B(x))) { m = ana(f, c, m, A(x)); break; }
     m = ana(f, c, m + 4, A(x));
-    m = m && pushn(f, 1, (word) cata_cond_pop_a) ? m : 0;
+    m = m && push1(f, (word) cata_cond_pop_a) ? m : 0;
     m = m ? ana(f, c, m, A(B(x))) : 0;
-    m = m && pushn(f, 1, (word) cata_cond_push_a) ? m : 0; }
-  return UM(f), m && pushn(f, 1, (word) cata_cond_push_c) ? m : 0; }
+    m = m && push1(f, (word) cata_cond_push_a) ? m : 0; }
+  return UM(f), m && push1(f, (word) cata_cond_push_c) ? m : 0; }
 
 // reverse decons: pushes last list item to stack, returns init of list.
 static word snoced(state f, word x) {
-  if (!twop(x)) return pushn(f, 1, nil) ? nil : 0;
-  if (!twop(B(x))) return pushn(f, 1, A(x)) ? nil : 0;
+  if (!twop(x)) return push1(f, nil) ? nil : 0;
+  if (!twop(B(x))) return push1(f, A(x)) ? nil : 0;
   ob y = A(x); return avec(f, y, x = snoced(f, B(x))),
                       x ? (word) pair(f, y, x) : x; }
 
 static Ana(ana_lambda) {
-  if (!(x = snoced(f, x)) || !pushn(f, 1, x)) return 0;
+  if (!(x = snoced(f, x)) || !push1(f, x)) return 0;
   struct scope *d = scope(f, c);
   if (!d) return 0;
   d->sb = pop1(f);
   MM(f, &d);
-  size_t m_in = pushn(f, 2, pop1(f), (word) yield_thread) ? ana(f, &d, 4, pop1(f)) : 0;
+  size_t m_in = push2(f, pop1(f), (word) yield_thread) ? ana(f, &d, 4, pop1(f)) : 0;
   if (m_in) {
     size_t sbn = llen(d->sb);
-    verb k = pushn(f, 2, (word) cata_ret, putnum(sbn)) ? cata(f, &d, m_in) : 0;
+    verb k = push2(f, (word) cata_ret, putnum(sbn)) ? cata(f, &d, m_in) : 0;
     if (k) {
       if (sbn > 1) k -= 2, k[0].ap = cur, k[1].x = putnum(sbn);
       mo_tag(k)->head = k; }
@@ -172,7 +168,7 @@ static Ana(ana_ap) {
   (*c)->sn += 2;
   while (m && twop(x = B(x)))
     m = ana(f, c, m + 1, A(x)),
-    m = m && pushn(f, 1, (word) cata_ap) ? m : 0;
+    m = m && push1(f, (word) cata_ap) ? m : 0;
   (*c)->sn -= 2;
   UM(f);
   return m; }
