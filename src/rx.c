@@ -1,10 +1,5 @@
 #include "i.h"
 
-void transmit(state v, FILE* o, word x) {
-  if (nump(x)) fprintf(o, "%ld", getnum(x));
-  else if (datp((verb) x)) gettyp(x)->emit(v, o, x);
-  else fprintf(o, "#%lx", x); }
-
 // internal parser functions
 static str
   rx_atom_cs(state, FILE*),

@@ -39,9 +39,10 @@ static verb mo_n(state f, size_t n) {
 static struct scope {
   word s1, s2, ib, sb, sn;
   struct scope *par;
-} *scope(state f, struct scope **par) {
+} *scope(state f, struct scope **par, ob sb) {
   struct scope *sc = (struct scope *) mo_n(f, Width(struct scope));
-  if (sc) sc->s1 = sc->s2 = sc->ib = sc->sb = sc->sn = nil,
+  if (sc) sc->sb = sb,
+          sc->s1 = sc->s2 = sc->ib = sc->sn = nil,
           sc->par = par ? *par : (struct scope*) nil;
   return sc; }
 
@@ -70,7 +71,7 @@ static verb cata(state f, struct scope **c, size_t m) {
 
 static ca ana, ana_list, ana_str, ana_ap;
 NoInline enum status eval(state f, word x) {
-  struct scope *c = push2(f, x, (word) yield_thread) ? scope(f, NULL) : NULL;
+  struct scope *c = push2(f, x, (word) yield_thread) ? scope(f, NULL, nil) : NULL;
   size_t m; verb k = 0;
   if (c) avec(f, c,
     m = ana(f, &c, 1, pop1(f)),
@@ -133,10 +134,9 @@ static word snoced(state f, word x) {
                       x ? (word) pair(f, y, x) : x; }
 
 static Ana(ana_lambda) {
-  if (!(x = snoced(f, x)) || !push1(f, x)) return 0;
-  struct scope *d = scope(f, c);
+  if (!(x = snoced(f, x))) return 0;
+  struct scope *d = scope(f, c, x);
   if (!d) return 0;
-  d->sb = pop1(f);
   MM(f, &d);
   size_t m_in = push2(f, pop1(f), (word) yield_thread) ? ana(f, &d, 4, pop1(f)) : 0;
   if (m_in) {

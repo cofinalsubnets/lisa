@@ -1,15 +1,14 @@
 Makefile=Makefile
 nom=lisa
-#build
-LC_COLLATE=C
-c=$(sort $(wildcard src/*.c))
-h=$(sort $(wildcard src/*.h))
-CPPFLAGS += -Dtesting
-o=$(c:.c=.o)
-CFLAGS ?=\
-	-std=gnu11 -g -Os -Wall\
- 	-Wstrict-prototypes -Wno-shift-negative-value\
-	-fno-stack-protector
+
+default: test
+
+$(nom): src/$(nom)
+	mv $^ $@
+src/$(nom):
+	make -C src $(nom)
+
+
 
 testcmd=./$(nom) --self-test
 test: $(nom)
@@ -17,11 +16,6 @@ test: $(nom)
 # run the tests a lot of times to try and catch GC bugs :(
 test-lots: $(nom)
 	for n in {1..2048}; do $(testcmd) || exit 1; done
-
-src/%.o: src/%.c $h $(Makefile)
-	$(CC) -c $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $< -o $@
-$(nom): $o $h
-	$(CC) -o $@ $o $(CPPFLAGS) $(CFLAGS) $(LDFLAGS)
 
 # install
 DESTDIR ?= $(HOME)
@@ -41,21 +35,10 @@ $(dest)share/%: %
 $(dest)lib/$(nom)/%: lib/%
 	install -D -m 644 $^ $@
 
-# for vim
-VIMPREFIX ?= $(HOME)/.vim
-vim_files=$(addprefix $(VIMPREFIX)/,syntax/$(nom).vim ftdetect/$(nom).vim)
-install-vim: $(vim_files)
-uninstall-vim:
-	rm -f $(vim_files)
-$(VIMPREFIX)/%: vim/%
-	install -D -m 644 $^ $@
-
 # other tasks
 #
 clean:
 	rm -r `git check-ignore * */*`
-repl: $(nom)
-	which rlwrap && rlwrap $(testcmd) -i || $(testcmd) -i
 
 # valgrind detects some memory errors
 valg: $(nom)
@@ -82,5 +65,6 @@ flamegraph.svg: perf.data
 flame: flamegraph.svg
 	xdg-open $<
 
-.PHONY: test test-lots repl clean sloc bits valg perf bench\
-	install uninstall install-vim uninstall-vim flame disasm
+.PHONY: default clean test test-lots\
+	install uninstall\
+ 	sloc bits valg perf bench flame disasm

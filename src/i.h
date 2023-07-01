@@ -17,12 +17,18 @@
 typedef intptr_t ob, word;
 typedef struct l_state {
   intptr_t *hp, *sp;
-  union mo *ip;
+  union X *ip;
+
   // memory state
   uintptr_t len;
   intptr_t *pool, *loop;
-  union { intptr_t *cp; uintptr_t t0; };
+
   struct mm { intptr_t *addr; struct mm *next; } *safe;
+#ifdef _l_mm_static
+  uintptr_t t0;
+#else
+  union { uintptr_t t0; intptr_t *cp; };
+#endif
 } *li, *state;
 
 typedef enum status {
@@ -31,54 +37,72 @@ typedef enum status {
   DomainError,
   OomError, } status;
 
-typedef union {
-  intptr_t num;
-  union mo *ptr; } obj;
-
-typedef union mo {
-  enum status (*ap)(state, union mo*, word*, word*);
+typedef union X {
+  enum status (*ap)(state, union X*, word*, word*);
   word x;
-  union mo *m;
-  obj ob;
-} *mo, *verb;
+  union X *m;
+} X, *mo, *verb;
+
+// plain threads have a tag at the end
 struct tag {
-  void **null;
-  mo head;
-  union mo end[]; };
+  void **null; // sentinel
+  X* head; // start of thread
+  union X end[]; }; // first address after thread
 
 struct methods {
-  ob (*evac)(state, ob, ob*, ob*);
-  void (*walk)(state, ob, ob*, ob*),
-       (*emit)(state, FILE*, ob);
-  bool (*equi)(state, ob, ob); };
+  word (*evac)(state, word, word*, word*);
+  void (*walk)(state, word, word*, word*),
+       (*emit)(state, FILE*, word);
+  bool (*equi)(state, word, word); };
 
 typedef struct two {
-  enum status (*act)(state, verb, word*, word*);
-  struct methods *typ;
+  enum status (*act)(state, X*, word*, word*);
+  struct methods *mtd;
   word _[2]; } *two;
 
 typedef struct str {
   enum status (*act)(state, verb, word*, word*);
-  struct methods *typ;
+  struct methods *mtd;
   uintptr_t len;
   char text[]; } *str;
 
-_Static_assert(sizeof(obj) == sizeof(word), "sizes");
-_Static_assert(sizeof(union mo) == sizeof(word), "union size");
-_Static_assert(-1 >> 1 == -1, "signed shift");
+_Static_assert(-1 >> 1 == -1,
+  "sign extended shift");
+_Static_assert(sizeof(union X*) == sizeof(union X),
+  "size");
 
-bool eql(state, word, word), please(state, size_t);
-two pair(state, word, word),   two_ini(void*, ob, ob);
-str strof(state, const char*), str_ini(void*, size_t);
-ob push1(state, word), push2(state, word, word);
+bool
+  eq_two(state, word, word),
+  eq_str(state, word, word),
+  eql(state, word, word),
+  please(state, size_t);
+
+two
+  pair(state, word, word),
+  two_ini(void*, word, word);
+
+str
+  strof(state, const char*),
+  str_ini(void*, size_t);
+
+word
+  push1(state, word),
+  push2(state, word, word);
+
+void
+  tx_str(state, FILE*, word),
+  tx_two(state, FILE*, word),
+  *cells(state, size_t),
+  transmit(state, FILE*, word);
+
 enum status
   eval(state, word),
-  data(state, verb, word*, word*),
+  data(state, X*, word*, word*),
   receive(state, FILE*),
   receive2(state, const char*);
-void
-  *cells(state, size_t),
-  transmit(state, FILE*, ob);
+#define Vm(n, ...) enum status n(state f, verb ip, word *hp, word *sp, ##__VA_ARGS__)
+typedef Vm(vm);
+Vm(gc, size_t);
 
 #define Width(_) b2w(sizeof(_))
 #define avail(f) (f->sp-f->hp)
@@ -95,11 +119,8 @@ void
 #define nump(_) ((word)(_)&1)
 #define homp(_) (!nump(_))
 #define Quote "`"
-#define Vm(n, ...) enum status n(state f, verb ip, word *hp, word *sp, ##__VA_ARGS__)
 #define Pack() (f->ip = ip, f->hp = hp, f->sp = sp)
 #define gettyp(x) ((struct methods*)(((word*)((x)))[1]))
-typedef Vm(vm);
-Vm(gc, size_t);
 
 
 #define Inline inline __attribute__((always_inline))
@@ -108,8 +129,8 @@ extern struct methods two_methods, str_methods;
 static Inline bool datp(verb h) { return h->ap == data; }
 static Inline bool hstrp(verb h) { return datp(h) && gettyp(h) == &str_methods; }
 static Inline bool htwop(verb h) { return datp(h) && gettyp(h) == &two_methods; }
-static Inline bool strp(word _) { return homp(_) && hstrp((mo) _); }
-static Inline bool twop(word _) { return homp(_) && htwop((mo) _); }
+static Inline bool strp(word _) { return homp(_) && hstrp((X*) _); }
+static Inline bool twop(word _) { return homp(_) && htwop((X*) _); }
 // align bytes up to the nearest word
 static Inline size_t b2w(size_t b) {
   size_t q = b / sizeof(word), r = b % sizeof(word);
