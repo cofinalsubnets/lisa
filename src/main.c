@@ -1,8 +1,10 @@
 #include "i.h"
+#include <stdarg.h>
+
 static enum status go(state), self_test(state);
 int main(int ac, char **av) {
   state f = &((struct l_state){});
-  status s = l_ini(f);
+  enum status s = l_ini(f);
   if (s == Ok) s = go(f), l_fin(f);
   return s; }
 
@@ -47,14 +49,14 @@ static void
 static void test_big_list(state f) {
   long n = 1 << 20;
   for (long i = 0; i < n; i++) assert(push1(f, nil));
-  for (ob l = nil; n--;)
-    assert((l = (ob) pair(f, pop1(f), l))),
-    assert((l = (ob) pair(f, l, l))); }
+  for (word l = nil; n--;)
+    assert((l = (word) pair(f, pop1(f), l))),
+    assert((l = (word) pair(f, l, l))); }
 
 static void test_quote(state f) {
-  ob x;
-  assert((x = (ob) strof(f, Quote)));
-  assert((x = (ob) pair(f, x, x)));
+  word x;
+  assert((x = (word) strof(f, Quote)));
+  assert((x = (word) pair(f, x, x)));
   assert(Ok == eval(f, x));
   x = pop1(f);
   assert(strp(x));

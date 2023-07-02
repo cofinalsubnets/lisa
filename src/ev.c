@@ -1,4 +1,5 @@
 #include "i.h"
+static vm ap, K, cur, ret, rec, yield, var, br, jump;
 
 enum status l_evals(struct l_state *f, const char *prog) {
   enum status s = receive2(f, prog);
@@ -46,7 +47,6 @@ static struct scope {
           sc->par = par ? *par : (struct scope*) nil;
   return sc; }
 
-static vm ap, K, cur, ret, rec, yield, var, br, jump;
 #define Ana(n) size_t n(state f, struct scope**c, size_t m, word x)
 #define Cata(n) verb n(state f, struct scope **c, verb k)
 typedef Ana(ca); typedef Cata(cc);
@@ -55,6 +55,7 @@ static Cata(yield_thread) { return k; }
 static Cata(pull_thread) { return ((cc*) (*f->sp++))(f, c, k); }
 static Cata(cata_ret) { return k[-2].ap = ret, k[-1].x = *f->sp++, pull_thread(f, c, k - 2); }
 static Cata(cata_val) { return k[-2].ap = K, k[-1].x = *f->sp++, pull_thread(f, c, k - 2); }
+
 static Cata(cata_yield) { return k[-1].ap = yield, pull_thread(f, c, k - 1); }
 static Cata(cata_ap) {
   if (k->ap == ret) k->ap = rec;
@@ -175,12 +176,18 @@ void l_fin(state f) { if (f)
 
 enum status l_ini(struct l_state *f) {
   memset(f, 0, sizeof(struct l_state));
-  const size_t len0 = 1; // a power of 2
-  ob *pool = malloc(len0 * 2 * sizeof(intptr_t));
+  ob *pool = malloc(2 * sizeof(intptr_t));
   if (!pool) return OomError;
-  f->loop = f->sp = (f->pool = f->hp = pool) + (f->len = len0);
+  f->loop = f->sp = (f->pool = f->hp = pool) + (f->len = 1);
   f->t0 = clock();
   return Ok; }
+
+#define Vm(n, ...)\
+  enum status n(struct l_state *f, union X *ip, intptr_t *hp, intptr_t *sp, ##__VA_ARGS__)
+
+static NoInline Vm(gc, size_t n) {
+  return Pack(), !please(f, n) ? OomError :
+    f->ip->ap(f, f->ip, f->hp, f->sp); }
 
 static Vm(rec) {
   word x = sp[0], j = sp[1];

@@ -2,14 +2,12 @@
 
 // internal parser functions
 static str
-  rx_atom_cs(state, FILE*),
   rx_lit_str(state, FILE*);
 static word
   rx_ret(state, FILE*, word),
   rxr(state, FILE*),
   rx_two(state, FILE*),
-  rx_a(state, FILE*),
-  rx_atom(state, str);
+  rx_a(state, FILE*);
 
 static Inline word pull(state v, FILE *i, word x) { return
   ((word (*)(state, FILE*, word)) pop1(v))(v, i, x); }
@@ -29,7 +27,7 @@ enum status NoInline receive2(state f, const char *_i) {
   i[len] = 0;
   FILE *in = fmemopen(i, len, "r");
   if (!in) return free(i), OomError;
-  status s = receive(f, in);
+  enum status s = receive(f, in);
   return fclose(in), free(i), s; }
 
 ////
@@ -87,7 +85,7 @@ static NoInline str buf_grow(state f, str s) {
     !t ? t : (memcpy(t->text, s->text, len), str_ini(t, 2 * len)); }
   
 // read the contents of a string literal into a string
-static NoInline str rx_lit_str(li v, FILE* p) {
+static NoInline str rx_lit_str(state v, FILE* p) {
   str o = buf_new(v);
   for (size_t n = 0, lim = sizeof(ob); o; o = buf_grow(v, o), lim *= 2)
     for (int x; n < lim;) switch (x = getc(p)) {

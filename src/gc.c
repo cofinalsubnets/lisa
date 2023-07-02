@@ -1,12 +1,12 @@
 #include "i.h"
 
-static ob
-  cp_two(state, ob, ob*, ob*),
-  cp_str(state, ob, ob*, ob*),
-  cp(state, ob, ob*, ob*);
+static word
+  cp_two(state, word, word*, word*),
+  cp_str(state, word, word*, word*),
+  cp(state, word, word*, word*);
 static void
-  wk_two(state, ob, ob*, ob*),
-  wk_str(state, ob, ob*, ob*);
+  wk_two(state, word, word*, word*),
+  wk_str(state, word, word*, word*);
 
 struct methods
   two_methods = { .evac = cp_two, .walk = wk_two, .emit = tx_two, .equi = eq_two, },
@@ -36,10 +36,6 @@ static void wk_two(state v, word x, word *p0, word *t0) {
 
 void *cells(state f, size_t n) { return
   n <= avail(f) || please(f, n) ? bump(f, n) : 0; }
-
-NoInline Vm(gc, size_t n) { return Pack(),
-  !please(f, n) ? OomError :
-    f->ip->ap(f, f->ip, f->hp, f->sp); }
 
 ////
 /// a simple copying garbage collector
@@ -101,8 +97,7 @@ NoInline bool please(state f, size_t req) {
   return true; }
 #endif
 
-static NoInline void
-copy_from(state f, word *p0, size_t len0) {
+static NoInline void copy_from(state f, word *p0, size_t len0) {
   size_t len1 = f->len, slen;
   word *p1 = f->hp = f->cp = f->pool,
        *t0 = p0 + len0,
@@ -117,20 +112,20 @@ copy_from(state f, word *p0, size_t len0) {
   for (struct mm *r = f->safe; r; r = r->next)
     *r->addr = cp(f, *r->addr, p0, t0);
   // cheney's algorithm
-  for (mo k; (k = (mo) f->cp) < (mo) f->hp;)
-    if (datp(k)) gettyp(k)->walk(f, (ob) k, p0, t0);
+  for (verb k; (k = (verb) f->cp) < (verb) f->hp;)
+    if (datp(k)) mtd(k)->walk(f, (word) k, p0, t0);
     else { for (; k->ap; k++) k->x = cp(f, k->x, p0, t0);
-           f->cp = (ob*) k + 2; } }
+           f->cp = (word*) k + 2; } }
 
 // this can give a false positive if x is a fixnum
-#define livep(l,x) ((ob*)x>=l->pool&&(ob*)x<l->pool+l->len)
+#define livep(l,x) ((word*)x>=l->pool&&(word*)x<l->pool+l->len)
 static NoInline word cp(state v, word x, word *p0, word *t0) {
-  if (nump(x) || (ob*) x < p0 || (ob*) x >= t0) return x;
+  if (nump(x) || (word*) x < p0 || (word*) x >= t0) return x;
   X *src = (X*) x;
   if (homp(src->x) && livep(v, src->x)) return src->x;
-  if (datp(src)) return gettyp(src)->evac(v, (word) src, p0, t0);
+  if (datp(src)) return mtd(src)->evac(v, (word) src, p0, t0);
   struct tag *t = mo_tag(src);
   X *ini = t->head, *d = bump(v, t->end - ini), *dst = d;
-  for (verb s = ini; (d->x = s->x); s++->x = (ob) d++);
+  for (verb s = ini; (d->x = s->x); s++->x = (word) d++);
   d[1].ap = (vm*) dst;
   return (word) (src - ini + dst); }

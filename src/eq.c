@@ -1,7 +1,7 @@
 #include "i.h"
 
 bool eql(state v, word a, word b) { return a == b ||
-  (!nump(a|b) && datp((verb) a) && gettyp((verb) a)->equi(v, a, b)); }
+  (!nump(a|b) && datp((verb) a) && mtd((verb) a)->equi(v, a, b)); }
 
 // FIXME can overflow the stack
 bool eq_two(state v, word x, word y) { return
