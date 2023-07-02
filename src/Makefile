@@ -11,7 +11,12 @@ CFLAGS ?=\
  	-Wstrict-prototypes -Wno-shift-negative-value\
 	-fno-stack-protector
 
+test: $(nom)
+	./$(nom) </dev/null
+
 %.o: %.c $h $(Makefile)
 	$(CC) -c $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $< -o $@
 $(nom): $o $h
 	$(CC) -o $@ $o $(CPPFLAGS) $(CFLAGS) $(LDFLAGS)
+
+.PHONY: test

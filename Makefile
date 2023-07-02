@@ -10,7 +10,7 @@ src/$(nom):
 
 
 
-testcmd=./$(nom) --self-test
+testcmd=./$(nom) </dev/null
 test: $(nom)
 	/usr/bin/env TIMEFORMAT="in %Rs" bash -c "time $(testcmd)"
 # run the tests a lot of times to try and catch GC bugs :(

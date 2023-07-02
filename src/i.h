@@ -31,6 +31,9 @@ typedef struct l_state {
 #endif
 } *li, *state;
 
+#define Vm(n, ...) enum status n(state f, union X*ip, word *hp, word *sp, ##__VA_ARGS__)
+typedef Vm(vm);
+
 typedef enum status {
   Eof = -1,
   Ok = 0,
@@ -38,16 +41,13 @@ typedef enum status {
   OomError, } status;
 
 typedef union X {
-  enum status (*ap)(state, union X*, word*, word*);
+  vm *ap;
   word x;
   union X *m;
-} X, *mo, *verb;
+} X, *mo, *verb, *ar;
 
 // plain threads have a tag at the end
-struct tag {
-  void **null; // sentinel
-  X* head; // start of thread
-  union X end[]; }; // first address after thread
+struct tag { X *null, *head, end[]; };
 
 struct methods {
   word (*evac)(state, word, word*, word*);
@@ -56,12 +56,12 @@ struct methods {
   bool (*equi)(state, word, word); };
 
 typedef struct two {
-  enum status (*act)(state, X*, word*, word*);
+  vm *ap;
   struct methods *mtd;
   word _[2]; } *two;
 
 typedef struct str {
-  enum status (*act)(state, verb, word*, word*);
+  vm *ap;
   struct methods *mtd;
   uintptr_t len;
   char text[]; } *str;
@@ -95,14 +95,14 @@ void
   *cells(state, size_t),
   transmit(state, FILE*, word);
 
+vm data;
 enum status
   eval(state, word),
-  data(state, X*, word*, word*),
   receive(state, FILE*),
+  gc(state, X*, word*, word*, size_t),
   receive2(state, const char*);
-#define Vm(n, ...) enum status n(state f, verb ip, word *hp, word *sp, ##__VA_ARGS__)
-typedef Vm(vm);
-Vm(gc, size_t);
+
+extern struct methods two_methods, str_methods;
 
 #define Width(_) b2w(sizeof(_))
 #define avail(f) (f->sp-f->hp)
@@ -125,7 +125,6 @@ Vm(gc, size_t);
 
 #define Inline inline __attribute__((always_inline))
 #define NoInline __attribute__((noinline))
-extern struct methods two_methods, str_methods;
 static Inline bool datp(verb h) { return h->ap == data; }
 static Inline bool hstrp(verb h) { return datp(h) && gettyp(h) == &str_methods; }
 static Inline bool htwop(verb h) { return datp(h) && gettyp(h) == &two_methods; }

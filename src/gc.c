@@ -1,66 +1,38 @@
 #include "i.h"
 
-static two pair_gc(state, ob, ob);
-static ob push1_gc(state, ob),
-          push2_gc(state, ob, ob);
+static ob
+  cp_two(state, ob, ob*, ob*),
+  cp_str(state, ob, ob*, ob*),
+  cp(state, ob, ob*, ob*);
+static void
+  wk_two(state, ob, ob*, ob*),
+  wk_str(state, ob, ob*, ob*);
 
-ob push1(state l, ob x) { return
-  avail(l) ? *--l->sp = x : push1_gc(l, x); }
-
-ob push2(state l, ob x, ob y) {
-  if (avail(l) < 2) return push2_gc(l, x, y);
-  word *sp = l->sp -= 2;
-  return sp[1] = y, sp[0] = x; }
-
-two pair(state f, ob a, ob b) { return
-  avail(f) < Width(struct two) ? pair_gc(f, a, b) :
-    two_ini(bump(f, Width(struct two)), a, b); }
-
-str strof(state f, const char* c) {
-  size_t bs = strlen(c);
-  str o = cells(f, Width(struct str) + b2w(bs));
-  if (o) memcpy(str_ini(o, bs)->text, c, bs);
-  return o; }
-
-str str_ini(void *_, size_t len) {
-  str s = _; return
-    s->act = data, s->mtd = &str_methods,
-    s->len = len, s; }
-
-two two_ini(void *_, word a, word b) {
-  two w = _; return
-    w->act = data, w->mtd = &two_methods,
-    w->_[0] = a, w->_[1] = b, w; }
-
-static NoInline ob push1_gc(state l, ob x) {
-  bool ok; avec(l, x, ok = please(l, 1));
-  return ok ? push1(l, x) : 0; }
-static NoInline ob push2_gc(state l, ob x, ob y) {
-  bool ok; avec(l, x, avec(l, y, ok = please(l, 2)));
-  return ok ? push2(l, x, y) : 0; }
-static NoInline two pair_gc(state f, word a, word b) {
-  bool ok; avec(f, a, avec(f, b, ok = please(f, Width(struct two))));
-  return ok ? pair(f, a, b) : 0; }
-
-static ob cp_two(state, ob, ob*, ob*), cp_str(state, ob, ob*, ob*), cp(state, ob, ob*, ob*);
-static void wk_two(state, ob, ob*, ob*), wk_str(state, ob, ob*, ob*);
 struct methods
   two_methods = { .evac = cp_two, .walk = wk_two, .emit = tx_two, .equi = eq_two, },
   str_methods = { .evac = cp_str, .walk = wk_str, .emit = tx_str, .equi = eq_str, };
 
 static word cp_str(state v, word x, word *p0, word *t0) {
-  str src = (str) x, dst = bump(v, Width(struct str) + b2w(src->len));
-  return (word) (src->act = memcpy(dst, src, sizeof(struct str) + src->len)); }
+  str src = (str) x;
+  size_t len = sizeof(struct str) + src->len;
+  str dst = bump(v, b2w(len));
+  src->ap = memcpy(dst, src, len);
+  return (word) dst; }
 
 static word cp_two(state v, word x, word *p0, word *t0) {
-  two src = (two) x, dst = bump(v, Width(struct two));
-  return (word) (src->act = (vm*) two_ini(dst, src->_[0], src->_[1])); }
+  two src = (two) x,
+      dst = bump(v, Width(struct two));
+  two_ini(dst, src->_[0], src->_[1]);
+  src->ap = (vm*) dst;
+  return (word) dst; }
 
 static void wk_str(state v, word x, word *p0, word *t0) {
-  v->cp += Width(struct str) + b2w(((str) x)->len); }
+  v->cp += b2w(sizeof(struct str) + ((str) x)->len); }
 
 static void wk_two(state v, word x, word *p0, word *t0) {
-  v->cp += Width(struct two), A(x) = cp(v, A(x), p0, t0), B(x) = cp(v, B(x), p0, t0); }
+  v->cp += Width(struct two);
+  A(x) = cp(v, A(x), p0, t0);
+  B(x) = cp(v, B(x), p0, t0); }
 
 void *cells(state f, size_t n) { return
   n <= avail(f) || please(f, n) ? bump(f, n) : 0; }
@@ -139,9 +111,11 @@ copy_from(state f, word *p0, size_t len0) {
        *sp1 = f->sp = t1 - (slen = t0 - sp0);
   f->ip = (verb) cp(f, (word) f->ip, p0, t0);
   // copy stack
-  for (size_t i = 0; i < slen; i++) sp1[i] = cp(f, sp0[i], p0, t0);
+  for (size_t i = 0; i < slen; i++)
+    sp1[i] = cp(f, sp0[i], p0, t0);
   // copy managed values
-  for (struct mm *r = f->safe; r; r = r->next) *r->addr = cp(f, *r->addr, p0, t0);
+  for (struct mm *r = f->safe; r; r = r->next)
+    *r->addr = cp(f, *r->addr, p0, t0);
   // cheney's algorithm
   for (mo k; (k = (mo) f->cp) < (mo) f->hp;)
     if (datp(k)) gettyp(k)->walk(f, (ob) k, p0, t0);
@@ -152,10 +126,11 @@ copy_from(state f, word *p0, size_t len0) {
 #define livep(l,x) ((ob*)x>=l->pool&&(ob*)x<l->pool+l->len)
 static NoInline word cp(state v, word x, word *p0, word *t0) {
   if (nump(x) || (ob*) x < p0 || (ob*) x >= t0) return x;
-  verb src = (verb) x;
+  X *src = (X*) x;
   if (homp(src->x) && livep(v, src->x)) return src->x;
   if (datp(src)) return gettyp(src)->evac(v, (word) src, p0, t0);
   struct tag *t = mo_tag(src);
-  verb ini = t->head, d = bump(v, t->end - ini), dst = d;
+  X *ini = t->head, *d = bump(v, t->end - ini), *dst = d;
   for (verb s = ini; (d->x = s->x); s++->x = (ob) d++);
-  return d[1].ap = (vm*) dst, (ob) (src - ini + dst); }
+  d[1].ap = (vm*) dst;
+  return (word) (src - ini + dst); }
