@@ -3,7 +3,7 @@
 
 static enum status go(state), self_test(state);
 int main(int ac, char **av) {
-  state f = &((struct l_state){});
+  state f = &((struct G){});
   enum status s = l_ini(f);
   if (s == Ok) s = go(f), l_fin(f);
   return s; }
@@ -55,14 +55,14 @@ static void test_big_list(state f) {
 
 static void test_quote(state f) {
   word x;
-  assert((x = (word) strof(f, Quote)));
+  assert((x = (word) strof(f, "`")));
   assert((x = (word) pair(f, x, x)));
   assert(Ok == eval(f, x));
   x = pop1(f);
   assert(strp(x));
   str s = (str) x;
   assert(s->len == 1);
-  assert(s->text[0] == Quote[0]); }
+  assert(s->text[0] == '`'); }
 
 static void test_cond(state f) {
   assert(Ok == receive2(f, "(? 0 1 2 3 4)"));

@@ -1,17 +1,17 @@
 #include "i.h"
 static vm ap, K, cur, ret, rec, yield, var, br, jump;
 
-enum status l_evals(struct l_state *f, const char *prog) {
+enum status l_evals(struct G *f, const char *prog) {
   enum status s = receive2(f, prog);
   return s != Ok ? s : eval(f, pop1(f)); }
 
 // list length
-static size_t llen(ob l) {
+static size_t llen(word l) {
   size_t n = 0;
   while (twop(l)) n++, l = B(l);
   return n; }
 
-static long lidx(state f, ob l, ob x) {
+static long lidx(state f, word l, word x) {
   for (long i = 0; twop(l); l = B(l), i++) if (eql(f, A(l), x)) return i;
   return -1; }
 
@@ -40,7 +40,7 @@ static verb mo_n(state f, size_t n) {
 static struct scope {
   word s1, s2, ib, sb, sn;
   struct scope *par;
-} *scope(state f, struct scope **par, ob sb) {
+} *scope(state f, struct scope **par, word sb) {
   struct scope *sc = (struct scope *) mo_n(f, Width(struct scope));
   if (sc) sc->sb = sb,
           sc->s1 = sc->s2 = sc->ib = sc->sn = nil,
@@ -119,7 +119,7 @@ static Cata(cata_cond_pop_c) {
 static Ana(ana_cond) {
   if (!push2(f, x, (word) cata_cond_pop_c)) return 0;
   for (x = pop1(f), MM(f, &x); m; x = B(B(x))) {
-    if (!twop(x) && !(x = (ob) pair(f, x, nil))) { m = 0; break; }
+    if (!twop(x) && !(x = (word) pair(f, x, nil))) { m = 0; break; }
     if (!twop(B(x))) { m = ana(f, c, m, A(x)); break; }
     m = ana(f, c, m + 4, A(x));
     m = m && push1(f, (word) cata_cond_pop_a) ? m : 0;
@@ -131,8 +131,8 @@ static Ana(ana_cond) {
 static word snoced(state f, word x) {
   if (!twop(x)) return push1(f, nil) ? nil : 0;
   if (!twop(B(x))) return push1(f, A(x)) ? nil : 0;
-  ob y = A(x); return avec(f, y, x = snoced(f, B(x))),
-                      x ? (word) pair(f, y, x) : x; }
+  word y = A(x); return avec(f, y, x = snoced(f, B(x))),
+                        x ? (word) pair(f, y, x) : x; }
 
 static Ana(ana_lambda) {
   if (!(x = snoced(f, x))) return 0;
@@ -174,16 +174,16 @@ void l_fin(state f) { if (f)
   free(f->pool < f->loop ? f->pool : f->loop),
   f->pool = f->loop = NULL; }
 
-enum status l_ini(struct l_state *f) {
-  memset(f, 0, sizeof(struct l_state));
-  ob *pool = malloc(2 * sizeof(intptr_t));
+enum status l_ini(struct G *f) {
+  memset(f, 0, sizeof(struct G));
+  word *pool = malloc(2 * sizeof(intptr_t));
   if (!pool) return OomError;
   f->loop = f->sp = (f->pool = f->hp = pool) + (f->len = 1);
   f->t0 = clock();
   return Ok; }
 
 #define Vm(n, ...)\
-  enum status n(struct l_state *f, union X *ip, intptr_t *hp, intptr_t *sp, ##__VA_ARGS__)
+  enum status n(struct G *f, union X *ip, intptr_t *hp, intptr_t *sp, ##__VA_ARGS__)
 
 static NoInline Vm(gc, size_t n) {
   return Pack(), !please(f, n) ? OomError :

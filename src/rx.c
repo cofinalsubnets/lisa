@@ -6,7 +6,7 @@ static str
 static word
   rx_ret(state, FILE*, word),
   rxr(state, FILE*),
-  rx_two(state, FILE*),
+  rx2(state, FILE*),
   rx_a(state, FILE*);
 
 static Inline word pull(state v, FILE *i, word x) { return
@@ -45,39 +45,39 @@ static NoInline int rx_char(FILE *i) {
 
 static word rx_ret(state v, FILE* i, word x) { return x; }
 
-static word rx_two_cons(state v, FILE* i, word x) {
+static word rx2x(state v, FILE* i, word x) {
   word y = pop1(v);
-  return pull(v, i, x ? (ob) pair(v, y, x) : x); }
+  return pull(v, i, x ? (word) pair(v, y, x) : x); }
 
-static word rx_two_cont(state v, FILE* i, word x) { return
-  !x || !push2(v, (word) rx_two_cons, x) ?
-    pull(v, i, 0) : rx_two(v, i); }
+static word rx2k(state v, FILE* i, word x) { return
+  !x || !push2(v, (word) rx2x, x) ?
+    pull(v, i, 0) : rx2(v, i); }
 
-static ob rx_q_cont(state f, FILE *i, word x) {
+static word rx_q_cont(state f, FILE *i, word x) {
   if (x && (x = (word) pair(f, x, nil)) && (x = (word) pair(f, nil, x)) && push1(f, x)) {
-    str s = strof(f, Quote);
+    str s = strof(f, "`");
     x = pop1(f);
     if (!s) x = 0;
-    else A(x) = (ob) s; }
+    else A(x) = (word) s; }
   return pull(f, i, x); }
 
 static NoInline word rxr(state l, FILE* i) {
   int c = rx_char(i); switch (c) {
     case ')': case EOF: return pull(l, i, 0);
-    case '(': return rx_two(l, i);
+    case '(': return rx2(l, i);
     case '"': return pull(l, i, (word) rx_lit_str(l, i));
     case '\'': return push1(l, (word) rx_q_cont) ? rxr(l, i) : pull(l, i, 0);
     default: return ungetc(c, i), rx_a(l, i); } }
 
-static ob rx_two(state l, FILE* i) {
+static word rx2(state l, FILE* i) {
   int c = rx_char(i); switch (c) {
     case ')': case EOF: return pull(l, i, nil);
     default: return ungetc(c, i),
-      push1(l, (word) rx_two_cont) ? rxr(l, i) : pull(l, i, 0); } }
+      push1(l, (word) rx2k) ? rxr(l, i) : pull(l, i, 0); } }
 
 static str buf_new(state f) {
   str s = cells(f, Width(struct str) + 1);
-  return s ? str_ini(s, sizeof(ob)) : s; }
+  return s ? str_ini(s, sizeof(word)) : s; }
 
 static NoInline str buf_grow(state f, str s) {
   str t; size_t len = s->len; return
@@ -87,7 +87,7 @@ static NoInline str buf_grow(state f, str s) {
 // read the contents of a string literal into a string
 static NoInline str rx_lit_str(state v, FILE* p) {
   str o = buf_new(v);
-  for (size_t n = 0, lim = sizeof(ob); o; o = buf_grow(v, o), lim *= 2)
+  for (size_t n = 0, lim = sizeof(word); o; o = buf_grow(v, o), lim *= 2)
     for (int x; n < lim;) switch (x = getc(p)) {
       // backslash causes the next character
       // to be read literally // TODO more escape sequences
