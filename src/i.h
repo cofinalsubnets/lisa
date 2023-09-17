@@ -77,10 +77,14 @@ bool
 enum status
   data(state, X*, word*, word*),
   eval(state, word),
-  receive(state, FILE*),
-  receive2(state, const char*);
+  receive2(state, const char*),
+  rx_cstr(state, const char*),
+  rx_file(state, FILE*);
+
+verb mo_n(state, size_t);
 
 word
+  list(state, ...),
   push1(state, word),
   push2(state, word, word);
 

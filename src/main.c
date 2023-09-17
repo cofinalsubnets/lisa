@@ -13,7 +13,7 @@ static enum status go(state f) {
   self_test(f);
   // echo loop
   intptr_t s, height = f->pool + f->len - f->sp;
-  while ((s = receive(f, stdin)) != Eof) {
+  while ((s = rx_file(f, stdin)) != Eof) {
     if (s == Ok && (s = eval(f, pop1(f))) == Ok)
       transmit(f, stdout, pop1(f)),
       fputc('\n', stdout);
@@ -24,17 +24,6 @@ static enum status go(state f) {
 #ifndef testing
 static enum status self_test(state f) { return Ok; }
 #else
-#define End ((intptr_t)0)
-static NoInline word listr(state f, va_list xs) {
-  word y, x = va_arg(xs, word);
-  if (!x) return nil;
-  avec(f, x, y = listr(f, xs));
-  return y ? (word) pair(f, x, y) : y; }
-
-NoInline word list(state f, ...) {
-  word x; va_list xs;
-  va_start(xs, f), x = listr(f, xs), va_end(xs);
-  return x; }
 
 static void
   test_big_list(state),

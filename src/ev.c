@@ -32,7 +32,7 @@ static verb mo_ini(void *_, size_t len) {
   return t->null = NULL, t->head = _; }
 
 // allocate a thread
-static verb mo_n(state f, size_t n) {
+verb mo_n(state f, size_t n) {
   verb k = cells(f, n + Width(struct tag));
   return !k ? k : mo_ini(k, n); }
 
