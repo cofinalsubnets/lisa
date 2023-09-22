@@ -5,38 +5,6 @@ enum status l_evals(struct G *f, const char *prog) {
   enum status s = receive2(f, prog);
   return s != Ok ? s : eval(f, pop1(f)); }
 
-// list length
-static size_t llen(word l) {
-  size_t n = 0;
-  while (twop(l)) n++, l = B(l);
-  return n; }
-
-static long lidx(state f, word l, word x) {
-  for (long i = 0; twop(l); l = B(l), i++) if (eql(f, A(l), x)) return i;
-  return -1; }
-
-//
-// functions are laid out in memory like this
-//
-// *|*|*|*|*|*|?|0|^
-// * = function pointer or inline value
-// ? = function name / metadata (optional)
-// 0 = null
-// ^ = pointer to head of function
-//
-// this way we can support internal pointers for branch
-// destinations, return addresses, etc, while letting
-// the garbage collector always find the head.
-static verb mo_ini(void *_, size_t len) {
-  struct tag *t = (struct tag*) ((verb) _ + len);
-  return t->null = NULL, t->head = _; }
-
-// allocate a thread
-verb mo_n(state f, size_t n) {
-  verb k = cells(f, n + Width(struct tag));
-  return !k ? k : mo_ini(k, n); }
-
-
 static struct scope {
   word s1, s2, ib, sb, sn;
   struct scope *par;
@@ -78,7 +46,7 @@ NoInline enum status eval(state f, word x) {
     m = ana(f, &c, 1, pop1(f)),
     m = m && push1(f, (word) cata_yield) ? m : 0,
     k = m ? cata(f, &c, m) : k);
-  return !k ? OomError : k->ap(f, k, f->hp, f->sp); }
+  return !k ? Oom : k->ap(f, k, f->hp, f->sp); }
 
 static Ana(value) { return push2(f, (word) cata_val, x) ? m + 2 : 0; }
 static Ana(ana) { return twop(x) ? ana_list(f, c, m, x) :
@@ -88,8 +56,8 @@ static Ana(ana) { return twop(x) ? ana_list(f, c, m, x) :
 static Ana(ana_str) {
   if (nilp((word) (*c)->par)) return value(f, c, m, x);
   if (lidx(f, (*c)->sb, x) < 0) {
-    x = (word) pair(f, x, (*c)->sb);
-    if (x) (*c)->sb = x, x = (word) pair(f, A(x), (*c)->ib);
+    x = (word) cons(f, x, (*c)->sb);
+    if (x) (*c)->sb = x, x = (word) cons(f, A(x), (*c)->ib);
     if (x) (*c)->ib = x, x = A(x); }
   return x && push2(f, x, (*c)->sn) && push1(f, (word) cata_var) ? m + 2 : 0; }
 
@@ -100,16 +68,18 @@ static Cata(cata_cond_pop_a) { return
   pull_thread(f, c, k - 2); }
 
 static Cata(cata_cond_push_c) {
-  two w = pair(f, (word) k, (*c)->s2);
+  two w = cons(f, (word) k, (*c)->s2);
   return !w ? (verb) w : pull_thread(f, c, (verb) A((*c)->s2 = (word) w)); }
 
 static Cata(cata_cond_push_a) {
-  two w = pair(f, (word) k, (*c)->s1);
+  two w = cons(f, (word) k, (*c)->s1);
   if (!w) return (verb) w;
   k = (verb) A((*c)->s1 = (word) w) - 2;
   verb kk = (verb) A((*c)->s2);
-  // if the destination is a return or tail call, then forward it instead of emitting a jump.
-  if (kk->ap == ret || kk->ap == rec) k[0].ap = kk->ap, k[1].x = kk[1].x;
+  // if the destination is a return or tail call,
+  // then forward it instead of emitting a jump.
+  if (kk->ap == ret || kk->ap == rec)
+    k[0].ap = kk->ap, k[1].x = kk[1].x;
   else k[0].ap = jump, k[1].m = kk;
   return pull_thread(f, c, k); }
 
@@ -119,7 +89,7 @@ static Cata(cata_cond_pop_c) {
 static Ana(ana_cond) {
   if (!push2(f, x, (word) cata_cond_pop_c)) return 0;
   for (x = pop1(f), MM(f, &x); m; x = B(B(x))) {
-    if (!twop(x) && !(x = (word) pair(f, x, nil))) { m = 0; break; }
+    if (!twop(x) && !(x = (word) cons(f, x, nil))) { m = 0; break; }
     if (!twop(B(x))) { m = ana(f, c, m, A(x)); break; }
     m = ana(f, c, m + 4, A(x));
     m = m && push1(f, (word) cata_cond_pop_a) ? m : 0;
@@ -132,7 +102,7 @@ static word snoced(state f, word x) {
   if (!twop(x)) return push1(f, nil) ? nil : 0;
   if (!twop(B(x))) return push1(f, A(x)) ? nil : 0;
   word y = A(x); return avec(f, y, x = snoced(f, B(x))),
-                        x ? (word) pair(f, y, x) : x; }
+                        x ? (word) cons(f, y, x) : x; }
 
 static Ana(ana_lambda) {
   if (!(x = snoced(f, x))) return 0;
@@ -146,11 +116,12 @@ static Ana(ana_lambda) {
     if (k) {
       if (sbn > 1) k -= 2, k[0].ap = cur, k[1].x = putnum(sbn);
       mo_tag(k)->head = k; }
-    x = k && twop(d->ib) ? (word) pair(f, (word) k, d->ib) : (word) k; }
+    x = k && twop(d->ib) ? (word) cons(f, (word) k, d->ib) : (word) k; }
   UM(f);
   return x ? ana(f, c, m, x) : x; }
 
 static Ana(ana_list) {
+  if (!twop(B(x))) return value(f, c, m, A(x)); // singletons quote
   if (strp(A(x))) {
     str s = (str) A(x);
     if (s->len == 1) switch (s->text[0]) {
@@ -177,16 +148,16 @@ void l_fin(state f) { if (f)
 enum status l_ini(struct G *f) {
   memset(f, 0, sizeof(struct G));
   word *pool = malloc(2 * sizeof(intptr_t));
-  if (!pool) return OomError;
+  if (!pool) return Oom;
   f->loop = f->sp = (f->pool = f->hp = pool) + (f->len = 1);
   f->t0 = clock();
   return Ok; }
 
 #define Vm(n, ...)\
-  enum status n(struct G *f, union X *ip, intptr_t *hp, intptr_t *sp, ##__VA_ARGS__)
+  enum status n(struct G *f, union cell *ip, intptr_t *hp, intptr_t *sp, ##__VA_ARGS__)
 
 static NoInline Vm(gc, size_t n) {
-  return Pack(), !please(f, n) ? OomError :
+  return Pack(), !please(f, n) ? Oom :
     f->ip->ap(f, f->ip, f->hp, f->sp); }
 
 static Vm(rec) {

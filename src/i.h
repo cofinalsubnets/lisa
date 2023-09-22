@@ -1,13 +1,5 @@
 // thanks !!
 #include <stdint.h>
-
-typedef intptr_t l_word;
-struct G;
-void l_fin(struct G*);
-enum status
-  l_evals(struct G*, const char*),
-  l_ini(struct G*);
-
 #include <stdlib.h>
 #include <time.h>
 #include <string.h>
@@ -15,85 +7,69 @@ enum status
 #include <assert.h>
 #include <stdio.h>
 
-typedef l_word word;
-typedef struct two *two;
-typedef struct str *str;
-
-typedef struct G {
-  union X *ip;
-  intptr_t *hp, *sp;
-
-  // memory state
-  uintptr_t len;
-  intptr_t *pool, *loop;
-
-  struct mm { intptr_t *addr; struct mm *next; } *safe;
-  union { uintptr_t t0; intptr_t *cp; };
-} *state;
-
+typedef struct G *state;
+typedef union cell *cell, *thread;
+typedef intptr_t word, *heap, *stack;
 typedef enum status {
-  Eof = -1,
-  Ok = 0,
-  DomainError,
-  OomError,
-} vm(state, union X*, word*, word*);
+  Eof = -1, Ok = 0, Dom, Oom,
+} vm(state, thread, heap, stack);
 
-typedef union X {
+struct G {
+  union cell *ip;
+  word *hp, *sp;
+  word len, *pool, *loop;
+  struct mm { intptr_t *addr; struct mm *next; } *safe;
+  union { uintptr_t t0; intptr_t *cp; }; };
+
+typedef union cell {
   vm *ap;
   word x;
-  union X *m;
+  union cell *m;
 } X, *verb;
 
+enum data { Pair, String, };
 // plain threads have a tag at the end
-struct tag { X *null, *head, end[]; } *mo_tag(X*);
-
-struct two {
+struct tag { union cell *null, *head, end[]; } *mo_tag(cell);
+typedef struct pair {
   vm *ap;
-  struct methods *mtd;
+  word typ;
   word _[2];
-} *pair(state, word, word),
-  *two_ini(void*, word, word);
+} *two, *pair;
 
-struct str {
+typedef struct string {
   vm *ap;
-  struct methods *mtd;
+  word typ;
   uintptr_t len;
   char text[];
-} *strof(state, const char*),
-  *str_ini(void*, size_t);
+} *str, *string;
+
+pair cons(state, word, word), two_ini(void*, word, word);
+string strof(state, const char*), str_ini(void*, size_t);
+
+size_t llen(word);
+long lidx(state, word, word);
+verb mo_ini(void*, size_t);
 
 void
-  tx_str(state, FILE*, word),
-  tx_two(state, FILE*, word),
+  l_fin(state),
   *cells(state, size_t),
   transmit(state, FILE*, word);
-
-bool
-  eq_two(state, word, word),
-  eq_str(state, word, word),
-  eql(state, word, word),
-  please(state, size_t);
-
+bool eql(state, word, word), please(state, size_t);
 enum status
-  data(state, X*, word*, word*),
+  l_evals(state, const char*),
+  l_ini(state),
+  data(state, cell, word*, word*),
   eval(state, word),
   receive2(state, const char*),
   rx_cstr(state, const char*),
   rx_file(state, FILE*);
 
-verb mo_n(state, size_t);
+thread mo_n(state, size_t);
 
 word
   list(state, ...),
   push1(state, word),
   push2(state, word, word);
-
-extern struct methods {
-  word (*evac)(state, word, word*, word*);
-  void (*walk)(state, word, word*, word*),
-       (*emit)(state, FILE*, word);
-  bool (*equi)(state, word, word);
-} two_methods, str_methods;
 
 #define Width(_) b2w(sizeof(_))
 #define avail(f) (f->sp-f->hp)
@@ -110,13 +86,13 @@ extern struct methods {
 #define nump(_) ((word)(_)&1)
 #define homp(_) (!nump(_))
 #define Pack() (f->ip = ip, f->hp = hp, f->sp = sp)
-#define mtd(x) ((struct methods*)(((word*)((x)))[1]))
 
 #define Inline inline __attribute__((always_inline))
 #define NoInline __attribute__((noinline))
-#define datp(_) (((verb)_)->ap==data)
-static Inline bool hstrp(verb h) { return datp(h) && mtd(h) == &str_methods; }
-static Inline bool htwop(verb h) { return datp(h) && mtd(h) == &two_methods; }
+#define ptr(x) ((cell)(x))
+#define datp(_) (ptr(_)->ap==data)
+static Inline bool hstrp(verb h) { return datp(h) && h[1].x == String; }
+static Inline bool htwop(verb h) { return datp(h) && h[1].x == Pair; }
 static Inline bool strp(word _) { return homp(_) && hstrp((X*) _); }
 static Inline bool twop(word _) { return homp(_) && htwop((X*) _); }
 // align bytes up to the nearest word
@@ -128,4 +104,4 @@ static Inline void *bump(state f, size_t n) {
   void *x = f->hp; return f->hp += n, x; }
 
 _Static_assert(-1 >> 1 == -1, "sign extended shift");
-_Static_assert(sizeof(union X*) == sizeof(union X), "size");
+_Static_assert(sizeof(union cell*) == sizeof(union cell), "size");

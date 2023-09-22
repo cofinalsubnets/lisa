@@ -1,45 +1,39 @@
 #include "i.h"
 
-static word
-  cp_two(state, word, word*, word*),
-  cp_str(state, word, word*, word*),
-  cp(state, word, word*, word*);
-static void
-  wk_two(state, word, word*, word*),
-  wk_str(state, word, word*, word*);
+void *cells(state f, size_t n) { return
+  n <= avail(f) || please(f, n) ? bump(f, n) : 0; }
 
-struct methods
-  two_methods = { .evac = cp_two, .walk = wk_two, .emit = tx_two, .equi = eq_two, },
-  str_methods = { .evac = cp_str, .walk = wk_str, .emit = tx_str, .equi = eq_str, };
+// garbage collector
+
+typedef word gc_copy(state, word, word*, word*);
+typedef void gc_evac(state, word, word*, word*);
+static gc_copy cp_two, cp_str, cp;
+static gc_evac wk_two, wk_str;
+static gc_copy *gc_copy_s[] = { [Pair] = cp_two, [String] = cp_str, };
+static gc_evac *gc_evac_s[] = { [Pair] = wk_two, [String] = wk_str, };
 
 static word cp_str(state v, word x, word *p0, word *t0) {
   str src = (str) x;
-  size_t len = sizeof(struct str) + src->len;
+  size_t len = sizeof(struct string) + src->len;
   str dst = bump(v, b2w(len));
   src->ap = memcpy(dst, src, len);
   return (word) dst; }
 
 static word cp_two(state v, word x, word *p0, word *t0) {
   two src = (two) x,
-      dst = bump(v, Width(struct two));
+      dst = bump(v, Width(struct pair));
   two_ini(dst, src->_[0], src->_[1]);
   src->ap = (vm*) dst;
   return (word) dst; }
 
 static void wk_str(state v, word x, word *p0, word *t0) {
-  v->cp += b2w(sizeof(struct str) + ((str) x)->len); }
+  v->cp += b2w(sizeof(struct string) + ((str) x)->len); }
 
 static void wk_two(state v, word x, word *p0, word *t0) {
-  v->cp += Width(struct two);
+  v->cp += Width(struct pair);
   A(x) = cp(v, A(x), p0, t0);
   B(x) = cp(v, B(x), p0, t0); }
 
-void *cells(state f, size_t n) { return
-  n <= avail(f) || please(f, n) ? bump(f, n) : 0; }
-
-////
-/// a simple copying garbage collector
-//
 // please : bool la size_t
 // try to return with at least req words of available memory.
 // return true on success, false otherwise. governs the heap size
@@ -57,18 +51,14 @@ void *cells(state f, size_t n) { return
 //   t0                  gc time (this cycle)
 static void copy_from(state, word*, size_t);
 NoInline bool please(state f, size_t req) {
-#ifdef _l_mm_static
-  word *pool = f->pool, *loop = f->loop;
-  f->pool = loop, f->loop = pool;
-  copy_from(f, pool, f->len);
-  return avail(f) >= req; }
-#else
   word *b0p0 = f->pool, *b0p1 = f->loop;
+  f->pool = b0p1, f->loop = b0p0;
+#ifdef _l_mm_static
+  return copy_from(f, b0p0, f->len), avail(f) >= req; }
+#else
   size_t t0 = f->t0, t1 = clock(),
          len0 = f->len;
 
-  f->pool = b0p1;
-  f->loop = b0p0;
   copy_from(f, b0p0, len0);
 
   req += len0 - avail(f);
@@ -98,12 +88,15 @@ NoInline bool please(state f, size_t req) {
 #endif
 
 static NoInline void copy_from(state f, word *p0, size_t len0) {
-  size_t len1 = f->len, slen;
-  word *p1 = f->hp = f->cp = f->pool,
+  word len1 = f->len,
+       *p1 = f->pool,
        *t0 = p0 + len0,
        *t1 = p1 + len1,
        *sp0 = f->sp,
-       *sp1 = f->sp = t1 - (slen = t0 - sp0);
+       slen = t0 - sp0,
+       *sp1 = t1 - slen;
+  f->sp = sp1;
+  f->hp = f->cp = p1;
   f->ip = (verb) cp(f, (word) f->ip, p0, t0);
   // copy stack
   for (size_t i = 0; i < slen; i++)
@@ -113,17 +106,20 @@ static NoInline void copy_from(state f, word *p0, size_t len0) {
     *r->addr = cp(f, *r->addr, p0, t0);
   // cheney's algorithm
   for (verb k; (k = (verb) f->cp) < (verb) f->hp;)
-    if (datp(k)) mtd(k)->walk(f, (word) k, p0, t0);
+    if (datp(k)) gc_evac_s[k[1].x](f, (word) k, p0, t0);
     else { for (; k->ap; k++) k->x = cp(f, k->x, p0, t0);
-           f->cp = (word*) k + 2; } }
+           f->cp = (word*) k + 2; }
+
+  assert(f->hp <= f->sp);
+  assert(f->sp <= f->pool + f->len); }
 
 // this can give a false positive if x is a fixnum
 #define livep(l,x) ((word*)x>=l->pool&&(word*)x<l->pool+l->len)
 static NoInline word cp(state v, word x, word *p0, word *t0) {
-  if (nump(x) || (word*) x < p0 || (word*) x >= t0) return x;
-  X *src = (X*) x;
+  if (nump(x) || x < (word) p0 || x >= (word) t0) return x;
+  cell src = (cell) x;
   if (homp(src->x) && livep(v, src->x)) return src->x;
-  if (datp(src)) return mtd(src)->evac(v, (word) src, p0, t0);
+  if (datp(src)) return gc_copy_s[src[1].x](v, (word) src, p0, t0);
   struct tag *t = mo_tag(src);
   X *ini = t->head, *d = bump(v, t->end - ini), *dst = d;
   for (verb s = ini; (d->x = s->x); s++->x = (word) d++);

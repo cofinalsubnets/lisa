@@ -39,13 +39,13 @@ static void test_big_list(state f) {
   long n = 1 << 20;
   for (long i = 0; i < n; i++) assert(push1(f, nil));
   for (word l = nil; n--;)
-    assert((l = (word) pair(f, pop1(f), l))),
-    assert((l = (word) pair(f, l, l))); }
+    assert((l = (word) cons(f, pop1(f), l))),
+    assert((l = (word) cons(f, l, l))); }
 
 static void test_quote(state f) {
   word x;
   assert((x = (word) strof(f, "`")));
-  assert((x = (word) pair(f, x, x)));
+  assert((x = (word) cons(f, x, x)));
   assert(Ok == eval(f, x));
   x = pop1(f);
   assert(strp(x));

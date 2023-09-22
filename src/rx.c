@@ -15,18 +15,18 @@ static Inline word pull(state v, FILE *i, word x) { return
 // FIXME should distinguish between OOM and parse error
 enum status rx_file(state v, FILE *i) {
   word x; return
-    !push1(v, (word) rx_ret) ? OomError :
-    !(x = rxr(v, i)) ? feof(i) ? Eof : DomainError :
-    push1(v, x) ? Ok : OomError; }
+    !push1(v, (word) rx_ret) ? Oom :
+    !(x = rxr(v, i)) ? feof(i) ? Eof : Dom :
+    push1(v, x) ? Ok : Oom; }
 
 enum status NoInline receive2(state f, const char *_i) {
   size_t len = strlen(_i);
   char *i = malloc(len + 1);
-  if (!i) return OomError;
+  if (!i) return Oom;
   memcpy(i, _i, len);
   i[len] = 0;
   FILE *in = fmemopen(i, len, "r");
-  if (!in) return free(i), OomError;
+  if (!in) return free(i), Oom;
   enum status s = rx_file(f, in);
   return fclose(in), free(i), s; }
 
@@ -47,14 +47,14 @@ static word rx_ret(state v, FILE* i, word x) { return x; }
 
 static word rx2x(state v, FILE* i, word x) {
   word y = pop1(v);
-  return pull(v, i, x ? (word) pair(v, y, x) : x); }
+  return pull(v, i, x ? (word) cons(v, y, x) : x); }
 
 static word rx2k(state v, FILE* i, word x) { return
   !x || !push2(v, (word) rx2x, x) ?
     pull(v, i, 0) : rx2(v, i); }
 
 static word rx_q_cont(state f, FILE *i, word x) {
-  if (x && (x = (word) pair(f, x, nil)) && (x = (word) pair(f, nil, x)) && push1(f, x)) {
+  if (x && (x = (word) cons(f, x, nil)) && (x = (word) cons(f, nil, x)) && push1(f, x)) {
     str s = strof(f, "`");
     x = pop1(f);
     if (!s) x = 0;
@@ -76,12 +76,12 @@ static word rx2(state l, FILE* i) {
       push1(l, (word) rx2k) ? rxr(l, i) : pull(l, i, 0); } }
 
 static str buf_new(state f) {
-  str s = cells(f, Width(struct str) + 1);
+  str s = cells(f, Width(struct string) + 1);
   return s ? str_ini(s, sizeof(word)) : s; }
 
 static NoInline str buf_grow(state f, str s) {
   str t; size_t len = s->len; return
-    avec(f, s, t = cells(f, Width(struct str) + 2 * b2w(len))),
+    avec(f, s, t = cells(f, Width(struct string) + 2 * b2w(len))),
     !t ? t : (memcpy(t->text, s->text, len), str_ini(t, 2 * len)); }
 
 // read the contents of a string literal into a string
@@ -154,7 +154,7 @@ static word p_rx_ret(state l, P **p, word x) {
 
 static word p_rx2x(state l, P **p, word x) {
   word y = pop1(l),
-       z = x ? (word) pair(l, y, x) : x;
+       z = x ? (word) cons(l, y, x) : x;
   return p_pull(l, p, z); }
 
 static str
@@ -179,7 +179,7 @@ static word p_rx_a(state l, P **p) {
   return p_pull(l, p, *e == 0 ? putnum(n) : (word) a); }
 
 static word p_rx_q_cont(state l, P **p, word x) {
-  if (x && (x = (word) pair(l, x, nil)) && (x = (word) pair(l, nil, x)) && push1(l, x)) {
+  if (x && (x = (word) cons(l, x, nil)) && (x = (word) cons(l, nil, x)) && push1(l, x)) {
     str s = strof(l, "`");
     x = pop1(l);
     if (!s) x = 0;
@@ -206,11 +206,11 @@ static word p_rxr(state l, P **p) {
 
 static enum status p_rx(state l, P **p) {
   word x = p_rxr(l, p);
-  return x && push1(l, x) ? Ok : OomError; }
+  return x && push1(l, x) ? Ok : Oom; }
 
 enum status rx_cstr(state l, const char *in) {
   P *p = p_cstr(l, in);
-  if (!p || !push1(l, (word) p)) return OomError;
+  if (!p || !push1(l, (word) p)) return Oom;
   p = (P*) l->sp[0], l->sp[0] = (word) p_rx_ret;
   word x; avec(l, p, x = p_rxr(l, &p));
-  return !x || !push1(l, x) ? OomError : Ok; }
+  return !x || !push1(l, x) ? Oom : Ok; }
