@@ -44,14 +44,11 @@ static void test_big_list(state f) {
 
 static void test_quote(state f) {
   word x;
-  assert((x = (word) strof(f, "`")));
-  assert((x = (word) cons(f, x, x)));
+  assert((x = (word) cons(f, nil, nil)));
+  A(x) = x;
   assert(Ok == eval(f, x));
   x = pop1(f);
-  assert(strp(x));
-  str s = (str) x;
-  assert(s->len == 1);
-  assert(s->text[0] == '`'); }
+  assert(x == A(x)); }
 
 static void test_cond(state f) {
   assert(Ok == receive2(f, "(? 0 1 2 3 4)"));

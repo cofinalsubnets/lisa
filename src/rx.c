@@ -54,11 +54,7 @@ static word rx2k(state v, FILE* i, word x) { return
     pull(v, i, 0) : rx2(v, i); }
 
 static word rx_q_cont(state f, FILE *i, word x) {
-  if (x && (x = (word) cons(f, x, nil)) && (x = (word) cons(f, nil, x)) && push1(f, x)) {
-    str s = strof(f, "`");
-    x = pop1(f);
-    if (!s) x = 0;
-    else A(x) = (word) s; }
+  x = x ? (word) cons(f, x, nil) : x;
   return pull(f, i, x); }
 
 static NoInline word rxr(state l, FILE* i) {
