@@ -19,4 +19,7 @@ test: $(nom)
 $(nom): $o $h
 	$(CC) -o $@ $o $(CPPFLAGS) $(CFLAGS) $(LDFLAGS)
 
-.PHONY: test
+clean:
+	rm -r `git check-ignore *`
+
+.PHONY: test clean

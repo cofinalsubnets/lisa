@@ -103,5 +103,7 @@ static Inline size_t b2w(size_t b) {
 static Inline void *bump(state f, size_t n) {
   void *x = f->hp; return f->hp += n, x; }
 
+vm ap, K, cur, ret, rec, yield, var, br, jump;
+
 _Static_assert(-1 >> 1 == -1, "sign extended shift");
 _Static_assert(sizeof(union cell*) == sizeof(union cell), "size");
