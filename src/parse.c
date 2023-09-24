@@ -1,7 +1,7 @@
 #include "i.h"
 
 // internal parser functions
-static str
+static string
   rx_lit_str(state, FILE*);
 static word
   rx_ret(state, FILE*, word),
@@ -71,18 +71,21 @@ static word rx2(state l, FILE* i) {
     default: return ungetc(c, i),
       push1(l, (word) rx2k) ? rxr(l, i) : pull(l, i, 0); } }
 
-static str buf_new(state f) {
-  str s = cells(f, Width(struct string) + 1);
-  return s ? str_ini(s, sizeof(word)) : s; }
+static string buf_new(state f) {
+  string s = cells(f, Width(struct string) + 1);
+  if (s) s->ap = data, s->typ = String, s->len = sizeof(word);
+  return s; }
 
-static NoInline str buf_grow(state f, str s) {
-  str t; size_t len = s->len; return
-    avec(f, s, t = cells(f, Width(struct string) + 2 * b2w(len))),
-    !t ? t : (memcpy(t->text, s->text, len), str_ini(t, 2 * len)); }
+static NoInline string buf_grow(state f, string s) {
+  string t; size_t len = s->len;
+  avec(f, s, t = cells(f, Width(struct string) + 2 * b2w(len)));
+  if (t) t->ap = data, t->typ = String, t->len = 2 * len,
+         memcpy(t->text, s->text, len);
+  return t; }
 
 // read the contents of a string literal into a string
-static NoInline str rx_lit_str(state v, FILE* p) {
-  str o = buf_new(v);
+static NoInline string rx_lit_str(state v, FILE* p) {
+  string o = buf_new(v);
   for (size_t n = 0, lim = sizeof(word); o; o = buf_grow(v, o), lim *= 2)
     for (int x; n < lim;) switch (x = getc(p)) {
       // backslash causes the next character
@@ -93,7 +96,7 @@ static NoInline str rx_lit_str(state v, FILE* p) {
   return 0; }
 
 static NoInline word rx_a(state l, FILE *in) {
-  str a = buf_new(l);
+  string a = buf_new(l);
   for (size_t n = 0, lim = sizeof(word); a; a = buf_grow(l, a), lim *= 2)
     for (int x; n < lim;) switch (x = getc(in)) {
       // these characters terminate an atom
@@ -106,14 +109,15 @@ static NoInline word rx_a(state l, FILE *in) {
   return pull(l, in, *e == 0 ? putnum(n) : (word) a); }
 
 typedef struct parsing {
-  str in;
+  string in;
   word out, cur;
 } P;
+
 static P *p_cstr(state l, const char *in) {
-  str s = strof(l, in);
+  string s = strof(l, in);
   if (!s || !push1(l, (word) s)) return 0;
   P *p = (P*) mo_n(l, Width(P));
-  if (p) p->in = (str) pop1(l), p->cur = nil;
+  if (p) p->in = (string) pop1(l), p->cur = nil;
   return p; }
 
 static int p_getc(P *p) {
@@ -130,8 +134,8 @@ static int p_rxc(P *p) {
     case '#': case ';': for (;;) switch (p_getc(p)) {
       case '\n': case EOF: return p_rxc(p); } } }
 
-static NoInline str p_rx_lit_str(state l, P **p) {
-  str o = buf_new(l);
+static NoInline string p_rx_lit_str(state l, P **p) {
+  string o = buf_new(l);
   for (size_t n = 0, lim = sizeof(word); o; o = buf_grow(l, o), lim *= 2)
     for (int x; n < lim;) switch (x = p_getc(*p)) {
       // backslash causes the next character
@@ -153,7 +157,7 @@ static word p_rx2x(state l, P **p, word x) {
        z = x ? (word) cons(l, y, x) : x;
   return p_pull(l, p, z); }
 
-static str
+static string
   p_rx_lit_str(state, P**);
 static word
   p_rx_q_cont(state, P**, word),
@@ -162,7 +166,7 @@ static word
   p_rxr(state, P**);
 
 static word p_rx_a(state l, P **p) {
-  str a = buf_new(l);
+  string a = buf_new(l);
   for (size_t n = 0, lim = sizeof(word); a; a = buf_grow(l, a), lim *= 2)
     for (int x; n < lim;) switch (x = p_getc(*p)) {
       // these characters terminate an atom
@@ -175,11 +179,7 @@ static word p_rx_a(state l, P **p) {
   return p_pull(l, p, *e == 0 ? putnum(n) : (word) a); }
 
 static word p_rx_q_cont(state l, P **p, word x) {
-  if (x && (x = (word) cons(l, x, nil)) && (x = (word) cons(l, nil, x)) && push1(l, x)) {
-    str s = strof(l, "`");
-    x = pop1(l);
-    if (!s) x = 0;
-    else A(x) = (word) s; }
+  x = x ? (word) cons(l, x, nil) : x;
   return p_pull(l, p, x); }
 
 static word p_rx2k(state l, P **p, word x) { return

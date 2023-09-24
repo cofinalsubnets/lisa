@@ -13,21 +13,22 @@ static gc_copy *gc_copy_s[] = { [Pair] = cp_two, [String] = cp_str, };
 static gc_evac *gc_evac_s[] = { [Pair] = wk_two, [String] = wk_str, };
 
 static word cp_str(state v, word x, word *p0, word *t0) {
-  str src = (str) x;
+  string src = (string) x;
   size_t len = sizeof(struct string) + src->len;
-  str dst = bump(v, b2w(len));
+  string dst = bump(v, b2w(len));
   src->ap = memcpy(dst, src, len);
   return (word) dst; }
 
 static word cp_two(state v, word x, word *p0, word *t0) {
-  two src = (two) x,
-      dst = bump(v, Width(struct pair));
-  two_ini(dst, src->_[0], src->_[1]);
+  pair src = (pair) x,
+       dst = bump(v, Width(struct pair));
+  dst->ap = data, dst->typ = Pair,
+  dst->a = src->a, dst->b = src->b;
   src->ap = (vm*) dst;
   return (word) dst; }
 
 static void wk_str(state v, word x, word *p0, word *t0) {
-  v->cp += b2w(sizeof(struct string) + ((str) x)->len); }
+  v->cp += b2w(sizeof(struct string) + ((string) x)->len); }
 
 static void wk_two(state v, word x, word *p0, word *t0) {
   v->cp += Width(struct pair);
@@ -98,6 +99,7 @@ static NoInline void copy_from(state f, word *p0, size_t len0) {
   f->sp = sp1;
   f->hp = f->cp = p1;
   f->ip = (verb) cp(f, (word) f->ip, p0, t0);
+  f->dict = cp(f, f->dict, p0, t0);
   // copy stack
   for (size_t i = 0; i < slen; i++)
     sp1[i] = cp(f, sp0[i], p0, t0);
@@ -121,7 +123,7 @@ static NoInline word cp(state v, word x, word *p0, word *t0) {
   if (homp(src->x) && livep(v, src->x)) return src->x;
   if (datp(src)) return gc_copy_s[src[1].x](v, (word) src, p0, t0);
   struct tag *t = mo_tag(src);
-  X *ini = t->head, *d = bump(v, t->end - ini), *dst = d;
+  thread ini = t->head, d = bump(v, t->end - ini), dst = d;
   for (verb s = ini; (d->x = s->x); s++->x = (word) d++);
   d[1].ap = (vm*) dst;
   return (word) (src - ini + dst); }

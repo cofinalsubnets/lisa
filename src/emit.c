@@ -10,7 +10,7 @@ void transmit(state v, FILE* o, word x) {
   else fprintf(o, "#%lx", x); }
 
 static void tx_str(state v, FILE *o, word _) {
-  str s = (str) _;
+  string s = (string) _;
   size_t len = s->len;
   const char *text = s->text;
   putc('"', o);

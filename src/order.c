@@ -12,6 +12,6 @@ static bool eq_two(state v, word x, word y) { return
   htwop((verb) y) && eql(v, A(x), A(y)) && eql(v, B(x), B(y)); }
 
 static bool eq_str(state v, word x, word y) {
-  if (!hstrp((verb) y)) return false;
-  str a = (str) x, b = (str) y;
+  if (!hstrp((thread) y)) return false;
+  string a = (string) x, b = (string) y;
   return a->len == b->len && !strncmp(a->text, b->text, a->len); }
