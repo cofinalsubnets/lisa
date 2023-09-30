@@ -39,7 +39,7 @@ static verb cata(state f, struct scope **c, size_t m) {
   memset(k, -1, m * sizeof(word));
   return pull_thread(f, c, k + m); }
 
-static ana_ ana, ana_list, ana_str, ana_ap, ana_ap_r, ana_ap_rr;
+static ana_ ana, ana_list, ana_str, ana_ap;
 NoInline enum status eval(state f, word x) {
   size_t m; verb k = 0;
   struct scope *c =
@@ -73,8 +73,9 @@ static bool outboundp(state f, struct scope *c, word y) {
 static Ana(ana_str) {
   if (!inboundp(f, *c, x)) {
     if (!outboundp(f, *c, x)) {
+      word y = dict_assoc(f, x);
       // self-quoting if undefined at top level
-      return value(f, c, m, x); }
+      return value(f, c, m, y ? y : x); }
     else {
       x = (word) cons(f, x, (*c)->sb);
       if (x) (*c)->sb = x, x = (word) cons(f, A(x), (*c)->ib);
@@ -130,16 +131,16 @@ static Ana(ana_cond) {
     m = m && push1(f, (word) cata_cond_pre_branch) ? m : 0; }
   return UM(f), m && push1(f, (word) cata_cond_pre_emit) ? m : 0; }
 
-// reverse decons: pushes last list item to stack, returns init of list.
-static word snoced(state f, word x) {
+// lambda decons: pushes last list item to stack, returns init of list.
+static word ldecons(state f, word x) {
   if (!twop(x)) return push1(f, nil) ? nil : 0;
   if (!twop(B(x))) return push1(f, A(x)) ? nil : 0;
   word y = A(x);
-  avec(f, y, x = snoced(f, B(x)));
+  avec(f, y, x = ldecons(f, B(x)));
   return x ? (word) cons(f, y, x) : x; }
 
 static Ana(ana_lambda) {
-  if (!(x = snoced(f, x))) return 0;
+  if (!(x = ldecons(f, x))) return 0;
   struct scope *d = scope(f, c, x);
   if (!d) return 0;
   MM(f, &d);

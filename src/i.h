@@ -1,34 +1,53 @@
-// thanks !!
-#include <stdint.h>
-#include <stdlib.h>
-#include <time.h>
-#include <string.h>
-#include <stdbool.h>
+#ifndef _lisa_i_h
+#define _lisa_i_h
+#include "lisa.h"
 #include <assert.h>
-#include <stdio.h>
+#include <time.h>
+// thanks !!
 
-typedef struct G *state;
+typedef struct lisa *lisa, *state;
 typedef union cell *cell, *thread, *verb;
-typedef intptr_t word, *heap, *stack, Z, point;
+typedef intptr_t word, *heap, *stack, point;
 typedef uintptr_t N, size;
 typedef enum status {
   Eof = -1, Ok = 0, Dom, Oom,
-} vm(state, thread, heap, stack);
+} status,
+  vm(state, thread, heap, stack);
 typedef vm code;
-union cell { code *ap; word x; cell m; };
-struct G {
-  thread ip; heap hp; stack sp;
-  word dict, len, *pool, *loop;
-  struct mm { intptr_t *addr; struct mm *next; } *safe;
-  union { uintptr_t t0; intptr_t *cp; }; };
+struct lisa {
+  // vm variables
+  thread ip; // instruction pointer
+  heap hp; // heap pointer
+  stack sp; // stack pointer
+  // environment
+  word dict; // 
+  // memory management
+  word len, // size of each pool
+       *pool, // on pool
+       *loop; // off pool
+  struct mm {
+    intptr_t *addr; // stack address of value
+    struct mm *next; // prior list
+  } *safe;
+  union {
+    uintptr_t t0; // timestamp
+    heap cp; }; }; // copy pointer
 
 enum data { Pair, String, };
 // plain threads have a tag at the end
-struct tag { union cell *null, *head, end[]; } *mo_tag(cell);
+union cell { code *ap; word x; cell m; };
+struct tag {
+  union cell *null, *head, end[];
+} *mo_tag(cell);
+
 typedef struct pair {
   code *ap;
   word typ, a, b;
 } *two, *pair;
+
+typedef enum order {
+  Lt = -1, Eq = 0, Gt = 1,
+} order(state, word, word);
 
 typedef struct string {
   code *ap;
@@ -36,6 +55,8 @@ typedef struct string {
   size len;
   char text[];
 } *string;
+
+typedef FILE *source, *sink;
 
 #define Width(_) b2w(sizeof(_))
 #define avail(f) (f->sp-f->hp)
@@ -61,6 +82,8 @@ typedef struct string {
 
 pair cons(state, word, word);
 string
+  buf_new(state),
+  buf_grow(state, string),
   strof(state, const char*),
   str_ini(void*, size_t);
 
@@ -70,36 +93,41 @@ long lidx(state, word, word);
 void
   l_fin(state),
   *cells(state, size_t),
-  transmit(state, FILE*, word);
+  transmit(state, sink, word);
 
 bool
   eql(state, word, word),
   please(state, size_t);
 
 enum status
-  self_test(state),
-  l_evals(state, const char*),
-  l_ini(state),
-  eval(state, word),
-  receive2(state, const char*),
-  rx_cstr(state, const char*),
-  rx_file(state, FILE*);
+  l_ini(lisa),
+  eval(lisa, word),
+  report(lisa, enum status),
+#ifdef testing
+  self_test(lisa),
+#endif
+  read_source(state, source);
 
 thread
   mo_n(state, size_t),
   mo_ini(void*, size_t);
 
 word
-  pushs(state, ...),
+  assoc(state, word, word),
+  assq(state, word, word),
+  dict_assoc(state, word),
   push1(state, word),
   push2(state, word, word);
+enum status
+  P1(state, enum status, word),
+  P2(state, enum status, word, word);
 
 vm data, ap, tap, K, ref, curry, ret, yield, cond, jump,
    print,
    add;
 
-static Inline bool hstrp(verb h) { return datp(h) && h[1].x == String; }
-static Inline bool htwop(verb h) { return datp(h) && h[1].x == Pair; }
+static Inline bool hstrp(cell h) { return datp(h) && h[1].x == String; }
+static Inline bool htwop(cell h) { return datp(h) && h[1].x == Pair; }
 static Inline bool strp(word _) { return homp(_) && hstrp((cell) _); }
 static Inline bool twop(word _) { return homp(_) && htwop((cell) _); }
 // align bytes up to the nearest word
@@ -112,3 +140,4 @@ static Inline void *bump(state f, size_t n) {
 
 _Static_assert(-1 >> 1 == -1, "sign extended shift");
 _Static_assert(sizeof(union cell*) == sizeof(union cell), "size");
+#endif

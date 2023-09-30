@@ -4,14 +4,18 @@ typedef bool equator(state, word, word);
 static equator eq_str, eq_two;
 static equator *eqs[] = { [Pair] = eq_two, [String] = eq_str, };
 
-bool eql(state v, word a, word b) { return a == b ||
-  (!nump(a|b) && datp((verb) a) && eqs[((verb) a)[1].x](v, a, b)); }
+bool eql(state f, word a, word b) {
+  if (a == b) return true;
+  if (nump(a | b) || ptr(a)->ap != data) return false;
+  return eqs[ptr(a)[1].x](f, a, b); }
 
 // FIXME can overflow the stack
-static bool eq_two(state v, word x, word y) { return
-  htwop((verb) y) && eql(v, A(x), A(y)) && eql(v, B(x), B(y)); }
+static bool eq_two(state f, word x, word y) {
+  if (!htwop(ptr(y))) return false;
+  return eql(f, A(x), A(y)) && eql(f, B(x), B(y)); }
 
-static bool eq_str(state v, word x, word y) {
+static bool eq_str(state f, word x, word y) {
   if (!hstrp((thread) y)) return false;
   string a = (string) x, b = (string) y;
-  return a->len == b->len && !strncmp(a->text, b->text, a->len); }
+  if (a->len != b->len) return false;
+  return 0 == strncmp(a->text, b->text, a->len); }

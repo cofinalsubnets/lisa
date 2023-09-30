@@ -1,22 +1,32 @@
 #include "i.h"
 #include <stdarg.h>
 
-static enum status go(state f) {
+status report(lisa f, status s) {
+  switch (s) {
+    default: return s;
+    case Dom:
+      fprintf(stderr, "# domain error at [0x%lx]", f->ip->x);
+      return s;
+    case Oom:
+      fprintf(stderr, "# out of memory at %ld words", f->len);
+      return s; } }
+
+static status go(state f) {
+#ifdef testing
   self_test(f);
-  // echo loop
-  intptr_t s, height = f->pool + f->len - f->sp;
-  while ((s = rx_file(f, stdin)) != Eof) {
+#endif
+  // repl
+  for (status s; (s = read_source(f, stdin)) != Eof;) {
     if (s == Ok && (s = eval(f, pop1(f))) == Ok)
       transmit(f, stdout, pop1(f)),
       fputc('\n', stdout);
     else // there was an error
-      fprintf(stderr, "# status %ld\n", s),
-      f->sp = f->pool + f->len - height; }
+      report(f, s),
+      f->sp = f->pool + f->len; }
   return Ok; }
 
 int main(int ac, char **av) {
-  state f = &((struct G){});
-  enum status s = l_ini(f);
+  state f = &((struct lisa){});
+  status s = l_ini(f);
   if (s == Ok) s = go(f), l_fin(f);
   return s; }
-

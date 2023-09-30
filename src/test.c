@@ -1,8 +1,20 @@
 #include "i.h"
 
-#ifndef testing
-enum status self_test(state f) { return Ok; }
-#else
+
+static enum status NoInline receive2(state f, const char *_i) {
+  size_t len = strlen(_i);
+  char *i = malloc(len + 1);
+  if (!i) return Oom;
+  memcpy(i, _i, len);
+  i[len] = 0;
+  FILE *in = fmemopen(i, len, "r");
+  if (!in) {
+    free(i);
+    return Oom; }
+  enum status s = read_source(f, in);
+  fclose(in);
+  free(i);
+  return s; }
 
 static void
   test_big_list(state),
@@ -91,4 +103,3 @@ enum status self_test(state f) {
   test_big_list(f);
   printf("%s:%d\n", __FILE__, __LINE__);
   return Ok; }
-#endif
