@@ -1,8 +1,10 @@
 #include "i.h"
-typedef word parser(state, source, word, status);
-#define Parse(n) word n(state f, source i, word x, status s)
-static Parse(rx_ret) { return x; }
-static Inline Parse(pull) { return ((parser*) pop1(f))(f, i, x, s); }
+typedef status parser(state, source, word, status);
+#define Parse(n) status n(state f, source i, word x, status s)
+static Parse(rx_ret) {
+  return s ? s : push1(f, x) ? Ok : Oom; }
+static Inline Parse(pull) { return
+  ((parser*) pop1(f))(f, i, x, s); }
 
 #define Getc getc
 #define Ungetc ungetc
@@ -10,9 +12,9 @@ static Inline Parse(pull) { return ((parser*) pop1(f))(f, i, x, s); }
 
 static int read_char(source);
 static parser p_xs_cont, p_xs_cons;
-
+static status
+  p_x(state, source);
 static word
-  p_x(state, source),
   p_xs(state, source),
   read_str_lit(state, source),
   read_atom(state, source);
@@ -23,26 +25,25 @@ static Inline word ppk(state f, parser *k) {
 static Inline word ppkx(state f, parser *k, word x) {
   return push2(f, (word) k, x); }
 
-// FIXME should distinguish between OOM and parse error
 enum status read_source(state f, source i) {
-  word x; return
-    !ppk(f, rx_ret) ? Oom :
-    !(x = p_x(f, i)) ? Feof(i) ? Eof : Dom :
-    push1(f, x) ? Ok : Oom; }
+  return ppk(f, rx_ret) ? p_x(f, i) : Oom; }
 
 ////
 /// " the parser "
 //
 // simple except it uses the managed stack for recursion.
 
-static NoInline word p_x(state f, source i) {
-  int c = read_char(i); switch (c) {
-    case ')': case EOF: return pull(f, i, 0, Ok);
+static NoInline status p_x(state f, source i) {
+  word x, c = read_char(i); switch (c) {
+    case ')': case EOF: return pull(f, i, 0, Eof);
     case '(': return p_xs(f, i);
-    case '"': return pull(f, i, read_str_lit(f, i), Ok);
+    case '"':
+      x = read_str_lit(f, i);
+      return pull(f, i, x, x ? Ok : Oom);
     default:
       Ungetc(c, i);
-      return pull(f, i, read_atom(f, i), Ok); } }
+      x = read_atom(f, i);
+      return pull(f, i, x, x ? Ok : Oom); } }
 
 static word p_xs(state f, source i) {
   int c = read_char(i); switch (c) {
@@ -50,19 +51,19 @@ static word p_xs(state f, source i) {
       return pull(f, i, nil, Ok);
     default:
       Ungetc(c, i);
-      return ppk(f, p_xs_cont) ?
-        p_x(f, i) :
-        pull(f, i, 0, Ok); } }
+      return ppk(f, p_xs_cont) ?  p_x(f, i) : pull(f, i, 0, Oom); } }
 
 static Parse(p_xs_cons) {
   word y = pop1(f);
+  if (s) return pull(f, i, x, s);
   x = x ? (word) cons(f, y, x) : x;
-  return pull(f, i, x, Ok); }
+  return pull(f, i, x, x ? Ok : Oom); }
 
-static Parse(p_xs_cont) { return
-  x && ppkx(f, p_xs_cons, x) ?
-    p_xs(f, i) :
-    pull(f, i, 0, Ok); }
+static Parse(p_xs_cont) {
+  return s ? pull(f, i, x, s) :
+    ppkx(f, p_xs_cons, x) ?
+      p_xs(f, i) :
+      pull(f, i, 0, Oom); }
 
 static NoInline word read_str_lit(state f, source i) {
   string o = buf_new(f);
