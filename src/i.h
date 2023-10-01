@@ -6,17 +6,21 @@
 // thanks !!
 
 typedef struct lisa *lisa, *state;
+typedef intptr_t word, *heap, *stack;
 typedef union cell *cell, *thread, *verb;
-typedef intptr_t word, *heap, *stack, point;
-typedef uintptr_t N, size;
 typedef enum status {
-  Eof = -1, Ok = 0, Dom, Oom,
+  Ok = 0,
+  Dom,
+  Oom,
+  Eof = -1,
 } status,
-  vm(state, thread, heap, stack);
-typedef vm code;
+  code(state, thread, heap, stack);
 struct lisa {
   // vm variables
-  thread ip; // instruction pointer
+  union cell { // instruction pointer
+    code *ap;
+    word x;
+    union cell *m; } *ip;
   heap hp; // heap pointer
   stack sp; // stack pointer
   // environment
@@ -33,16 +37,17 @@ struct lisa {
     uintptr_t t0; // timestamp
     heap cp; }; }; // copy pointer
 
-enum data { Pair, String, };
-// plain threads have a tag at the end
-union cell { code *ap; word x; cell m; };
-struct tag {
+typedef uintptr_t size;
+typedef code vm;
+struct loop {
   union cell *null, *head, end[];
 } *mo_tag(cell);
 
+enum data { Pair, String, };
 typedef struct pair {
   code *ap;
-  word typ, a, b;
+  word typ;
+  word a, b;
 } *two, *pair;
 
 typedef enum order {
@@ -106,6 +111,7 @@ enum status
 #ifdef testing
   self_test(lisa),
 #endif
+  parse_source(state, source),
   read_source(state, source);
 
 thread
@@ -118,9 +124,9 @@ word
   dict_assoc(state, word),
   push1(state, word),
   push2(state, word, word);
-enum status
-  P1(state, enum status, word),
-  P2(state, enum status, word, word);
+status
+  P1(state, word),
+  P2(state, word, word);
 
 vm data, ap, tap, K, ref, curry, ret, yield, cond, jump,
    print,

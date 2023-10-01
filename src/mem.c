@@ -122,7 +122,7 @@ static NoInline word cp(state v, word x, word *p0, word *t0) {
   cell src = (cell) x;
   if (homp(src->x) && livep(v, src->x)) return src->x;
   if (datp(src)) return gc_copy_s[src[1].x](v, (word) src, p0, t0);
-  struct tag *t = mo_tag(src);
+  struct loop *t = mo_tag(src);
   thread ini = t->head, d = bump(v, t->end - ini), dst = d;
   for (verb s = ini; (d->x = s->x); s++->x = (word) d++);
   d[1].ap = (vm*) dst;

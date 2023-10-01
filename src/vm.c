@@ -10,8 +10,8 @@ static NoInline Vm(gc, size_t n) {
 Vm(tap) {
   word x = sp[0], j = sp[1];
   sp += getnum(ip[1].x) + 1;
-  if (nump(j)) ip = (verb) *++sp, *sp = j;
-  else ip = (verb) j, *sp = x;
+  if (nump(j)) ip = (cell) *++sp, *sp = j;
+  else ip = (cell) j, *sp = x;
   return ip->ap(f, ip, hp, sp); }
 
 #define Have(n)\
@@ -42,14 +42,14 @@ static Vm(Kj) {
 Vm(ret) {
   word r = *sp;
   sp += getnum(ip[1].x) + 1,
-  ip = (verb) *sp,
+  ip = (cell) *sp,
   *sp = r;
   return ip->ap(f, ip, hp, sp); }
 
 Vm(ap) {
   if (nump(sp[1]))
     return ip[1].ap(f, ip + 1, hp, sp + 1);
-  thread k = (verb) sp[1];
+  thread k = (cell) sp[1];
   sp[1] = (word) (ip + 1);
   return k->ap(f, k, hp, sp); }
 
@@ -64,7 +64,7 @@ Vm(apply) {
 Vm(curry) {
   thread k;
   size_t n = getnum(ip[1].x),
-         S = 3 + Width(struct tag);
+         S = 3 + Width(struct loop);
   if (n < 3) {
     Have(S);
     k = (thread) hp;
@@ -77,12 +77,12 @@ Vm(curry) {
     k[0].ap = curry, k[1].x = putnum(n - 1);
     k[2].ap = Kj,    k[3].x = *sp++, k[4].m = ip + 2;
     k[5].x = 0,      k[6].m = k; }
-  ip = (verb) *sp, *sp = (word) k;
+  ip = (cell) *sp, *sp = (word) k;
   return ip->ap(f, ip, hp + S, sp); }
 
 Vm(data) {
   word r = (word) ip;
-  ip = (verb) *++sp;
+  ip = (cell) *++sp;
   *sp = r;
   return ip->ap(f, ip, hp, sp); }
 

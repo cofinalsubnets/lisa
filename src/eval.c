@@ -11,7 +11,7 @@ static struct scope {
   return sc; }
 
 #define Ana(n) size_t n(state f, struct scope**c, size_t m, word x)
-#define Cata(n) verb n(state f, struct scope **c, verb k)
+#define Cata(n) cell n(state f, struct scope **c, cell k)
 typedef Ana(ana_);
 typedef Cata(cata_);
 
@@ -33,15 +33,16 @@ static Cata(cata_var) {
   k[-1].x = putnum(idx);
   return pull_thread(f, c, k - 2); }
 
-static verb cata(state f, struct scope **c, size_t m) {
-  verb k = mo_n(f, m);
+static cell cata(state f, struct scope **c, size_t m) {
+  cell k = mo_n(f, m);
   if (!k) return k;
   memset(k, -1, m * sizeof(word));
   return pull_thread(f, c, k + m); }
 
 static ana_ ana, ana_list, ana_str, ana_ap;
 NoInline enum status eval(state f, word x) {
-  size_t m; verb k = 0;
+  size_t m;
+  cell k = 0;
   struct scope *c =
     push2(f, x, (word) yield_thread) ?
       scope(f, NULL, nil) :
@@ -101,7 +102,7 @@ static Cata(cata_cond_pre_branch) {
   if (!w) return (thread) w;
   (*c)->s1 = (word) w;
   k = (thread) A(w) - 2;
-  verb kk = (verb) A((*c)->s2);
+  cell kk = (cell) A((*c)->s2);
   // if the destination is a return or tail call,
   // then forward it instead of emitting a jump.
   if (kk->ap == ret || kk->ap == tap)

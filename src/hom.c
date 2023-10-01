@@ -14,13 +14,13 @@
 // destinations, return addresses, etc, while letting
 // the garbage collector always find the head.
 thread mo_ini(void *_, size_t len) {
-  struct tag *t = (struct tag*) ((verb) _ + len);
+  struct loop *t = (void*) ((cell) _ + len);
   return t->null = NULL, t->head = _; }
 
 // allocate a thread
 thread mo_n(state f, size_t n) {
-  thread k = cells(f, n + Width(struct tag));
+  thread k = cells(f, n + Width(struct loop));
   return !k ? k : mo_ini(k, n); }
 
-struct tag *mo_tag(thread k) {
+struct loop *mo_tag(thread k) {
   return k->x ? mo_tag(k + 1) : (void*) k; }

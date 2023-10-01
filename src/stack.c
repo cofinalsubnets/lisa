@@ -16,3 +16,8 @@ word push2(state l, word x, word y) {
   if (avail(l) < 2) return push2_gc(l, x, y);
   word *sp = l->sp -= 2;
   return sp[1] = y, sp[0] = x; }
+
+status P1(state f, word x) {
+  return push1(f, x) ? Ok : Oom; }
+status P2(state f, word x, word y) {
+  return push2(f, x, y) ? Ok : Oom; }
