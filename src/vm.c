@@ -102,3 +102,38 @@ Vm(add) {
 Vm(equal) {
   sp[1] = eql(f, sp[0], sp[1]) ? putnum(-1) : nil;
   return ip[1].ap(f, ip + 1, hp, sp + 1); }
+
+Vm(vm_read) {
+  Have(Width(struct pair) + 1);
+  pair w = (pair) hp;
+  w->ap = data;
+  w->typ = Pair;
+  w->a = w->b = nil;
+  hp += Width(struct pair);
+  *--sp = (word) w;
+  Pack();
+  status s = read_source(f, stdin);
+  Unpack();
+  if (s) *sp = nil;
+  else A(sp[1]) = sp[0], sp++;
+  return ip[1].ap(f, ip + 1, hp, sp); }
+
+Vm(vm_eval) {
+  Have(Width(struct pair) + 1);
+  pair w = (pair) hp;
+  w->ap = data;
+  w->typ = Pair;
+  w->a = w->b = nil;
+  hp += Width(struct pair);
+  word x = *sp;
+  *sp = (word) w;
+  *--sp = (word) ip;
+  Pack();
+  status s = eval(f, x);
+  Unpack();
+  if (s) ip = (cell) *sp++,
+         *sp = putnum(s);
+  else A(sp[2]) = sp[0],
+       ip = (cell) sp[1],
+       sp += 2;
+  return ip[1].ap(f, ip + 1, hp, sp); }

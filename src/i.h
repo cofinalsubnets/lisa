@@ -6,6 +6,7 @@
 // thanks !!
 
 typedef struct lisa *lisa, *state;
+typedef uintptr_t size;
 typedef intptr_t word, *heap, *stack;
 typedef union cell *cell, *thread, *verb;
 typedef enum status {
@@ -78,6 +79,7 @@ typedef FILE *source, *sink;
 #define nump(_) ((word)(_)&1)
 #define homp(_) (!nump(_))
 #define Pack() (f->ip = ip, f->hp = hp, f->sp = sp)
+#define Unpack() (ip = f->ip, hp = f->hp, sp = f->sp)
 
 #define Inline inline __attribute__((always_inline))
 #define NoInline __attribute__((noinline))

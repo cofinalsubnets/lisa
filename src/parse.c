@@ -11,11 +11,11 @@ static Inline Parse(pull) { return
 #define Feof feof
 
 static int read_char(source);
-static parser p_xs_cont, p_xs_cons;
+static parser pxs_cont, pxs_cons;
 static status
-  p_x(state, source);
+  px(state, source);
 static word
-  p_xs(state, source),
+  pxs(state, source),
   read_str_lit(state, source),
   read_atom(state, source);
 
@@ -25,18 +25,18 @@ static Inline word ppk(state f, parser *k) {
 static Inline word ppkx(state f, parser *k, word x) {
   return push2(f, (word) k, x); }
 
-enum status read_source(state f, source i) {
-  return ppk(f, rx_ret) ? p_x(f, i) : Oom; }
+status read_source(state f, source i) {
+  return ppk(f, rx_ret) ? px(f, i) : Oom; }
 
 ////
 /// " the parser "
 //
 // simple except it uses the managed stack for recursion.
 
-static NoInline status p_x(state f, source i) {
+static NoInline status px(state f, source i) {
   word x, c = read_char(i); switch (c) {
     case ')': case EOF: return pull(f, i, 0, Eof);
-    case '(': return p_xs(f, i);
+    case '(': return pxs(f, i);
     case '"':
       x = read_str_lit(f, i);
       return pull(f, i, x, x ? Ok : Oom);
@@ -45,25 +45,27 @@ static NoInline status p_x(state f, source i) {
       x = read_atom(f, i);
       return pull(f, i, x, x ? Ok : Oom); } }
 
-static word p_xs(state f, source i) {
+static word pxs(state f, source i) {
   int c = read_char(i); switch (c) {
     case ')': case EOF:
       return pull(f, i, nil, Ok);
     default:
       Ungetc(c, i);
-      return ppk(f, p_xs_cont) ?  p_x(f, i) : pull(f, i, 0, Oom); } }
+      return ppk(f, pxs_cont) ?
+        px(f, i) :
+        pull(f, i, 0, Oom); } }
 
-static Parse(p_xs_cons) {
+static Parse(pxs_cont) {
+  return s ? pull(f, i, x, s) :
+    ppkx(f, pxs_cons, x) ?
+      pxs(f, i) :
+      pull(f, i, 0, Oom); }
+
+static Parse(pxs_cons) {
   word y = pop1(f);
   if (s) return pull(f, i, x, s);
   x = x ? (word) cons(f, y, x) : x;
   return pull(f, i, x, x ? Ok : Oom); }
-
-static Parse(p_xs_cont) {
-  return s ? pull(f, i, x, s) :
-    ppkx(f, p_xs_cons, x) ?
-      p_xs(f, i) :
-      pull(f, i, 0, Oom); }
 
 static NoInline word read_str_lit(state f, source i) {
   string o = buf_new(f);

@@ -1,26 +1,45 @@
 #include "i.h"
 
+// tracks lexical scope
+typedef struct scope *scope;
+
+// the compiler works by analyzing expressions and
+// computing an upper bound on the thread length
+// while pushing CPS code-emitting "pullback" functions
+// onto the stack (ana phase)
+#define Ana(n, ...)\
+  size_t n(state f, scope *c, size_t m, word x, ##__VA_ARGS__)
+typedef Ana(ana_);
+// when the analysis is finished the
+// thread is allocated and code is emitted as pullbacks
+// are applied (cata phase)
+#define Cata(n, ...)\
+  cell n(state f, scope *c, cell k, ##__VA_ARGS__)
+typedef Cata(cata_);
+
 static struct scope {
-  word s1, s2, ib, sb, sn;
-  struct scope *par;
-} *scope(state f, struct scope **par, word sb) {
-  struct scope *sc = (struct scope *) mo_n(f, Width(struct scope));
+  word ib, // internal bindings
+       sb, // stack bindings
+       sn, // stack inset
+       s1, s2; // stacks used for branch addresses
+  scope par;
+} *enscope(state f, struct scope **par, word sb) {
+  scope sc = (scope) mo_n(f, Width(struct scope));
   if (sc) sc->sb = sb,
           sc->s1 = sc->s2 = sc->ib = sc->sn = nil,
-          sc->par = par ? *par : (struct scope*) nil;
+          sc->par = par ? *par : (scope) nil;
   return sc; }
-
-#define Ana(n) size_t n(state f, struct scope**c, size_t m, word x)
-#define Cata(n) cell n(state f, struct scope **c, cell k)
-typedef Ana(ana_);
-typedef Cata(cata_);
 
 static Cata(yield_thread) { return k; }
 static Cata(pull_thread) { return ((cata_*) (*f->sp++))(f, c, k); }
 static Cata(cata_ret) { return k[-2].ap = ret, k[-1].x = *f->sp++, pull_thread(f, c, k - 2); }
-static Cata(cata_val) { return k[-2].ap = K, k[-1].x = *f->sp++, pull_thread(f, c, k - 2); }
-
-static Cata(cata_yield) { return k[-1].ap = yield, pull_thread(f, c, k - 1); }
+static Cata(cata_val) { return
+  k[-2].ap = K,
+  k[-1].x = *f->sp++,
+  pull_thread(f, c, k - 2); }
+static Cata(cata_yield) { return
+  k[-1].ap = yield,
+  pull_thread(f, c, k - 1); }
 static Cata(cata_ap) {
   if (k->ap == ret) k->ap = tap;
   else (--k)->ap = ap;
@@ -33,29 +52,26 @@ static Cata(cata_var) {
   k[-1].x = putnum(idx);
   return pull_thread(f, c, k - 2); }
 
-static cell cata(state f, struct scope **c, size_t m) {
-  cell k = mo_n(f, m);
-  if (!k) return k;
-  memset(k, -1, m * sizeof(word));
-  return pull_thread(f, c, k + m); }
+static cell cata(state f, scope *c, size_t m) {
+  cell k = mo_n(f, m); return !k ? k :
+    (memset(k, -1, m * sizeof(word)),
+     pull_thread(f, c, k + m)); }
 
 static ana_ ana, ana_list, ana_str, ana_ap;
 NoInline enum status eval(state f, word x) {
   size_t m;
   cell k = 0;
-  struct scope *c =
-    push2(f, x, (word) yield_thread) ?
-      scope(f, NULL, nil) :
-      NULL;
+  scope c = push2(f, x, (word) yield_thread) ?
+    enscope(f, NULL, nil) : NULL;
   if (c) avec(f, c,
     m = ana(f, &c, 1, pop1(f)),
     m = m && push1(f, (word) cata_yield) ? m : 0,
     k = m ? cata(f, &c, m) : k);
-  return !k ? Oom :
-    k->ap(f, k, f->hp, f->sp); }
+  return !k ? Oom : k->ap(f, k, f->hp, f->sp); }
 
 static Ana(value) {
   return push2(f, (word) cata_val, x) ? m + 2 : 0; }
+
 static Ana(ana) {
   if (homp(x) && datp(x)) switch (ptr(x)[1].x) {
     case Pair: return ana_list(f, c, m, x);
@@ -63,10 +79,10 @@ static Ana(ana) {
   return value(f, c, m, x); }
 
 
-static bool inboundp(state f, struct scope *c, word y) {
+static bool inboundp(state f, scope c, word y) {
   return lidx(f, c->sb, y) >= 0; }
 
-static bool outboundp(state f, struct scope *c, word y) {
+static bool outboundp(state f, scope c, word y) {
   for (c = c->par; !nilp((word) c); c = c->par)
     if (lidx(f, c->sb, y) >= 0) return true;
   return false; }
@@ -97,20 +113,21 @@ static Cata(cata_cond_pre_emit) {
   (*c)->s2 = (word) w;
   return pull_thread(f, c, (thread) A(w)); }
 
+
+static void cata_cond_emit_jump(thread src, thread dst) {
+  // if the destination is a return or tail call,
+  // then forward it instead of emitting a jump.
+  if (dst->ap == ret || dst->ap == tap)
+    src[0].ap = dst[0].ap, src[1].x = dst[1].x;
+  else src[0].ap = jump, src[1].x = (word) dst; }
+
 static Cata(cata_cond_pre_branch) {
-  two w = cons(f, (word) k, (*c)->s1);
+  pair w = cons(f, (word) k, (*c)->s1);
   if (!w) return (thread) w;
   (*c)->s1 = (word) w;
   k = (thread) A(w) - 2;
-  cell kk = (cell) A((*c)->s2);
-  // if the destination is a return or tail call,
-  // then forward it instead of emitting a jump.
-  if (kk->ap == ret || kk->ap == tap)
-    k[0].ap = kk->ap,
-    k[1].x = kk[1].x;
-  else
-    k[0].ap = jump,
-    k[1].m = kk;
+  cell target = (cell) A((*c)->s2);
+  cata_cond_emit_jump(k, target);
   return pull_thread(f, c, k); }
 
 static Cata(cata_cond_post_emit) {
@@ -140,26 +157,29 @@ static word ldecons(state f, word x) {
   avec(f, y, x = ldecons(f, B(x)));
   return x ? (word) cons(f, y, x) : x; }
 
+
+static word wrap_lambda(state f, scope d, size sbn, thread k) {
+  if (!k) return (word) k;
+  if (sbn > 1) // curry if more than 1 argument
+    (--k)->x = putnum(sbn),
+    (--k)->ap = curry;
+  // trim thread
+  mo_tag(k)->head = k;
+  // apply to enclosed variables
+  return (word) cons(f, (word) k, d->ib); }
+
 static Ana(ana_lambda) {
-  if (!(x = ldecons(f, x))) return 0;
-  struct scope *d = scope(f, c, x);
-  if (!d) return 0;
-  MM(f, &d);
-  size_t m_in =
-    push2(f, pop1(f), (word) yield_thread) ?
-      ana(f, &d, 4, pop1(f)) : 0;
-  if (m_in) {
-    size_t sbn = llen(d->sb);
-    thread k =
-      push2(f, (word) cata_ret, putnum(sbn)) ?
-        cata(f, &d, m_in) : 0;
-    if (k) {
-      if (sbn > 1)
-        (--k)->x = putnum(sbn),
-        (--k)->ap = curry;
-      mo_tag(k)->head = k; }
-    x = k && twop(d->ib) ? (word) cons(f, (word) k, d->ib) : (word) k; }
-  UM(f);
+  scope d; size sbn;
+  if (!(x = ldecons(f, x)) ||
+      !(d = enscope(f, c, x))) return 0;
+  avec(f, d,
+    x = push2(f, pop1(f), (word) yield_thread) ?
+      ana(f, &d, 4, pop1(f)) : 0,
+    x = !x ? x :
+      (sbn = llen(d->sb),
+       wrap_lambda(f, d, sbn,
+         push2(f, (word) cata_ret, putnum(sbn)) ?
+           cata(f, &d, x) : 0)));
   return x ? ana(f, c, m, x) : x; }
 
 static Ana(ana_list) {

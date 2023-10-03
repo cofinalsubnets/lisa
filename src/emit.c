@@ -6,7 +6,7 @@ static emitter *ems[] = { [Pair] = tx_two, [String] = tx_str, };
 
 void transmit(state v, FILE* o, word x) {
   if (nump(x)) fprintf(o, "%ld", getnum(x));
-  else if (datp((verb) x)) ems[ptr(x)[1].x](v, o, x);
+  else if (ptr(x)->ap == data) ems[ptr(x)[1].x](v, o, x);
   else fprintf(o, "#%lx", x); }
 
 static void tx_str(state v, FILE *o, word _) {
