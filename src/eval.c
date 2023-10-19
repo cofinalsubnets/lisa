@@ -19,37 +19,33 @@ typedef struct scope {
 // computing an upper bound on the thread length
 // while pushing CPS code-emitting "pullback" functions
 // onto the stack (ana phase)
-#define Ana(n, ...)\
-  size_t n(state f, scope *c, size_t m, word x, ##__VA_ARGS__)
-typedef Ana(ana_);
+typedef size_t ana_(state, scope*, size_t, word);
 // when the analysis is finished the
 // thread is allocated and code is emitted as pullbacks
 // are applied (cata phase)
-#define Cata(n, ...)\
-  cell n(state f, scope *c, cell k, ##__VA_ARGS__)
-typedef Cata(cata_);
+typedef thread cata_(state, scope*, thread);
 
 static ana_ ana, ana_list, ana_variable, ana_ap;
 static cata_ yield_thread, pull_thread, cata_yield, cata_val, cata_ret, cata_variable;
+static thread yield_thread(state f, scope *c, thread k) { return k; }
+static thread pull_thread(state f, scope *c, thread k) {
+  return ((cata_*) (*f->sp++))(f, c, k); }
 
-static Cata(yield_thread) { return k; }
-static Cata(pull_thread) { return ((cata_*) (*f->sp++))(f, c, k); }
-
-static Cata(cata_yield) {
+static thread cata_yield(state f, scope *c, thread k) {
   k[-1].ap = yield;
   return pull_thread(f, c, k - 1); }
 
-static Cata(cata_ret) {
+static thread cata_ret(state f, scope *c, thread k) {
   k[-2].ap = ret;
   k[-1].x = *f->sp++;
   return pull_thread(f, c, k - 2); }
 
-static Cata(cata_val) {
+static thread cata_val(state f, scope *c, thread k) {
   k[-2].ap = K;
   k[-1].x = *f->sp++;
   return pull_thread(f, c, k - 2); }
 
-static Cata(cata_ap) {
+static thread cata_ap(state f, scope *c, thread k) {
   if (k->ap == ret) k->ap = tap;
   else (--k)->ap = ap;
   return pull_thread(f, c, k); }
@@ -61,8 +57,8 @@ static struct scope *enscope(state f, struct scope **par, word sb) {
           sc->par = par ? *par : (scope) nil;
   return sc; }
 
-static cell cata(state f, scope *c, size_t m) {
-  cell k = mo_n(f, m);
+static thread cata(state f, scope *c, size_t m) {
+  thread k = mo_n(f, m);
   if (k) memset(k, -1, m * sizeof(word)), k += m;
   return pull_thread(f, c, k); }
 
@@ -77,10 +73,10 @@ static thread compile(state f, word x) {
     k = m ? cata(f, &c, m) : k);
   return k; }
 
-static Ana(value) { return
+static size_t value(state f, scope *c, size_t m, word x) { return
   push2(f, (word) cata_val, x) ? m + 2 : 0; }
 
-static Ana(ana) {
+static size_t ana(state f, scope *c, size_t m, word x) {
   if (homp(x) && datp(x)) switch (ptr(x)[1].x) {
     case Pair: return ana_list(f, c, m, x);
     case String: return ana_variable(f, c, m, x); }
@@ -94,7 +90,7 @@ static bool outboundp(state f, scope c, word y) {
     if (lidx(f, c->sb, y) >= 0) return true;
   return false; }
 
-static Ana(ana_variable) {
+static size_t ana_variable(state f, scope *c, size_t m, word x) {
   if (!inboundp(f, *c, x)) {
     if (!outboundp(f, *c, x)) {
       word y = dict_lookup(f, x);
@@ -108,7 +104,7 @@ static Ana(ana_variable) {
     push2(f, x, (*c)->sn) &&
     push1(f, (word) cata_variable) ? m + 2 : 0; }
 
-static Cata(cata_variable) {
+static thread cata_variable(state f, scope *c, thread k) {
   word sym = *f->sp++,
        idx = getnum(*f->sp++) + lidx(f, (*c)->sb, sym);
   k[-2].ap = ref;
@@ -121,7 +117,7 @@ static cata_
   cata_cond_pre_branch,
   cata_cond_pre_emit;
 
-static Ana(ana_cond) {
+static size_t ana_cond(state f, scope *c, size_t m, word x) {
   if (!push2(f, x, (word) cata_cond_post_emit)) return 0;
   for (x = pop1(f), MM(f, &x); m; x = B(B(x))) {
     if (!twop(x) && !(x = (word) cons(f, x, nil))) {
@@ -136,13 +132,13 @@ static Ana(ana_cond) {
     m = m && push1(f, (word) cata_cond_pre_branch) ? m : 0; }
   return UM(f), m && push1(f, (word) cata_cond_pre_emit) ? m : 0; }
 
-static Cata(cata_cond_post_branch) {
+static thread cata_cond_post_branch(state f, scope *c, thread k) {
   k[-2].ap = cond;
   k[-1].x = A((*c)->s1);
   (*c)->s1 = B((*c)->s1);
   return pull_thread(f, c, k - 2); }
 
-static Cata(cata_cond_pre_emit) {
+static thread cata_cond_pre_emit(state f, scope *c, thread k) {
   two w = cons(f, (word) k, (*c)->s2);
   if (!w) return (thread) w;
   (*c)->s2 = (word) w;
@@ -156,7 +152,7 @@ static void cata_cond_emit_jump(thread src, thread dst) {
     src[0].ap = dst[0].ap, src[1].x = dst[1].x;
   else src[0].ap = jump, src[1].x = (word) dst; }
 
-static Cata(cata_cond_pre_branch) {
+static thread cata_cond_pre_branch(state f, scope *c, thread k) {
   pair w = cons(f, (word) k, (*c)->s1);
   if (!w) return (thread) w;
   (*c)->s1 = (word) w;
@@ -165,7 +161,7 @@ static Cata(cata_cond_pre_branch) {
   cata_cond_emit_jump(k, target);
   return pull_thread(f, c, k); }
 
-static Cata(cata_cond_post_emit) {
+static thread cata_cond_post_emit(state f, scope *c, thread k) {
   (*c)->s2 = B((*c)->s2);
   return pull_thread(f, c, k); }
 
@@ -188,7 +184,8 @@ static word wrap_lambda(state f, scope d, size sbn, thread k) {
   // apply to enclosed variables
   return (word) cons(f, (word) k, d->ib); }
 
-static Ana(ana_lambda) {
+
+static size_t ana_lambda(state f, scope *c, size_t m, word x) {
   scope d; size sbn;
   if (!(x = ldecons(f, x)) ||
       !(d = enscope(f, c, x))) return 0;
@@ -202,15 +199,7 @@ static Ana(ana_lambda) {
            cata(f, &d, x) : 0)));
   return x ? ana(f, c, m, x) : x; }
 
-static Ana(ana_list) {
-  // singleton list is quote
-  if (!twop(B(x))) return value(f, c, m, A(x));
-  // special form?
-  if (strp(A(x))) {
-    string s = (string) A(x);
-    if (s->len == 1) switch (s->text[0]) {
-      case '?': return ana_cond(f, c, m, B(x));
-      case '\\': return ana_lambda(f, c, m, B(x)); } }
+static size_t ana_apply(state f, scope *c, size_t m, word x) {
   // apply function to arguments
   MM(f, &x);
   m = ana(f, c, m, A(x));
@@ -221,3 +210,14 @@ static Ana(ana_list) {
   (*c)->sn -= 2;
   UM(f);
   return m; }
+
+static size_t ana_list(state f, scope *c, size_t m, word x) {
+  // singleton list is quote
+  if (!twop(B(x))) return value(f, c, m, A(x));
+  // special form?
+  if (strp(A(x))) {
+    string s = (string) A(x);
+    if (s->len == 1) switch (s->text[0]) {
+      case '?': return ana_cond(f, c, m, B(x));
+      case '\\': return ana_lambda(f, c, m, B(x)); } }
+  return ana_apply(f, c, m, x); }

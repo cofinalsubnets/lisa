@@ -92,17 +92,28 @@ Vm(K) {
   return ip[2].ap(f, ip + 2, hp, sp - 1); }
 
 Vm(print) {
+  ip = (void*) sp[1];
+  sp[1] = *sp;
   transmit(f, stdout, *sp), puts("");
-  return ip[1].ap(f, ip + 1, hp, sp); }
+  return ip->ap(f, ip, hp, sp + 1); }
 
-Vm(add) {
-  ip = (void*) sp[2];
-  sp[2] = (sp[0] | 1) + (sp[1] & ~1);
+#define binop(n, x) Vm(n) {\
+  ip = (void*) sp[2];\
+  sp[2] = x;\
   return ip->ap(f, ip, hp, sp + 2); }
 
-Vm(equal) {
-  sp[1] = eql(f, sp[0], sp[1]) ? putnum(-1) : nil;
-  return ip[1].ap(f, ip + 1, hp, sp + 1); }
+binop(add, (sp[0] | 1) + (sp[1] & ~1))
+binop(eqp, eql(f, sp[0], sp[1]) ? putnum(-1) : nil)
+binop(lt, sp[0] < sp[1] ? putnum(-1) : nil)
+binop(le, sp[0] <= sp[1] ? putnum(-1) : nil)
+binop(gt, sp[0] > sp[1] ? putnum(-1) : nil)
+binop(ge, sp[0] >= sp[1] ? putnum(-1) : nil)
+
+
+Vm(not) {
+  ip = (void*) sp[1];
+  sp[1] = (~sp[0])|1;
+  return ip->ap(f, ip, hp, sp + 1); }
 
 Vm(vm_read) {
   Have(Width(struct pair) + 1);

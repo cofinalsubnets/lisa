@@ -132,6 +132,8 @@ status
 
 vm data, ap, tap, K, ref, curry, ret, yield, cond, jump,
    print,
+   eqp, not,
+   lt, le, gt, ge,
    add;
 
 static Inline bool hstrp(cell h) { return datp(h) && h[1].x == String; }

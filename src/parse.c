@@ -85,7 +85,7 @@ static NoInline word read_atom(state f, source i) {
     for (int x; n < lim;) switch (x = Getc(i)) {
       // these characters terminate an atom
       case ' ': case '\n': case '\t': case ';': case '#':
-      case '(': case ')': case '\'': case '"': Ungetc(x, i);
+      case '(': case ')': case '"': Ungetc(x, i);
       case EOF: a->text[a->len = n] = 0; goto out;
       default: a->text[n++] = x; continue; } out:
   if (!a) return 0;

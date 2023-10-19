@@ -1,18 +1,35 @@
 #include "i.h"
 
-static union cell
-  p_add[] = { {curry}, {.x = putnum(2)}, {add}, };
-
 void l_fin(state f) { if (f)
   free(f->pool < f->loop ? f->pool : f->loop),
   f->pool = f->loop = NULL; }
 
+#define binop() {curry}, {.x = putnum(2)}
+static union cell
+  p_print[] = { {print} },
+  p_eql[] = { binop(), {eqp}, },
+  p_not[] = { {not} },
+  p_lt[] = { binop(), {lt}, },
+  p_le[] = { binop(), {le} },
+  p_gt[] = { binop(), {gt}, },
+  p_ge[] = { binop(), {ge} },
+  p_add[] = { binop(), {add}, };
 static status l_ini_dict(state f) {
-  string s = strof(f, "+");
-  pair w = s ? cons(f, (word) s, (word) p_add) : 0,
-       x = w ? cons(f, (word) w, f->dict) : 0;
-  if (!x) return Oom;
-  f->dict = (word) x;
+  static struct { const char *n; word x; } ini_dict[] = {
+    { "+", (word) p_add },
+    { "=", (word) p_eql },
+    { "<", (word) p_lt },
+    { "<=", (word) p_le },
+    { ">", (word) p_gt },
+    { ">=", (word) p_ge },
+    { ".", (word) p_print },
+  };
+  for (int i = 0; i < sizeof(ini_dict)/sizeof(*ini_dict); i++) {
+    string s = strof(f, ini_dict[i].n);
+    pair w = s ? cons(f, (word) s, ini_dict[i].x) : 0,
+         x = w ? cons(f, (word) w, f->dict) : 0;
+    if (!x) return Oom;
+    f->dict = (word) x; }
   return Ok; }
 
 status l_ini(state f) {
