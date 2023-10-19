@@ -24,6 +24,7 @@ static void
   test_receive2(state),
   test_lambda(state),
   test_lambda2(state),
+  test_add(state),
   test_closure(state);
 
 static void test_big_list(state f) {
@@ -73,6 +74,12 @@ static void test_lambda2(state f) {
   assert(Ok == eval(f, pop1(f)));
   assert(pop1(f) == putnum(3)); }
 
+static void test_add(state f) {
+  char prog[] = "((\\ f (f 9)) (+ 8))";
+  assert(Ok == receive2(f, prog));
+  assert(Ok == eval(f, pop1(f)));
+  assert(pop1(f) == putnum(17)); }
+
 static void test_closure(state f) {
   char prog[] = "((\\ f ((\\ a b (f a b)) 2 3)) (\\ a b a))";
   assert(Ok == receive2(f, prog));
@@ -83,23 +90,16 @@ static void test_number(state f) {
   assert(Ok == eval(f, putnum(9)));
   assert(pop1(f) == putnum(9)); }
 
+#define TEST(n) (printf("%s:%d "#n"\n", __FILE__, __LINE__), (test_##n)(f))
 enum status self_test(state f) {
   printf("# dim=%ld f@0x%lx[len=%ld]\n", sizeof(word), (word) f, f->len);
-  printf("%s:%d\n", __FILE__, __LINE__);
-  test_lambda2(f);
-  printf("%s:%d\n", __FILE__, __LINE__);
-  test_lambda(f);
-  printf("%s:%d\n", __FILE__, __LINE__);
-  test_cond(f);
-  printf("%s:%d\n", __FILE__, __LINE__);
-  test_receive2(f);
-  printf("%s:%d\n", __FILE__, __LINE__);
-  test_number(f);
-  printf("%s:%d\n", __FILE__, __LINE__);
-  test_closure(f);
-  printf("%s:%d\n", __FILE__, __LINE__);
-  test_quote(f);
-  printf("%s:%d\n", __FILE__, __LINE__);
-  test_big_list(f);
-  printf("%s:%d\n", __FILE__, __LINE__);
+  TEST(lambda2);
+  TEST(lambda);
+  TEST(cond);
+  TEST(receive2);
+  TEST(number);
+  TEST(closure);
+  TEST(quote);
+  TEST(big_list);
+  TEST(add);
   return Ok; }

@@ -3,13 +3,13 @@
 
 status report(lisa f, status s) {
   switch (s) {
-    default: return s;
     case Dom:
       fprintf(stderr, "# domain error at [0x%lx]", f->ip->x);
-      return s;
+      break;
     case Oom:
       fprintf(stderr, "# out of memory at %ld words", f->len);
-      return s; } }
+    default: }
+  return s; }
 
 static status go(state f) {
 #ifdef testing

@@ -96,8 +96,9 @@ Vm(print) {
   return ip[1].ap(f, ip + 1, hp, sp); }
 
 Vm(add) {
-  sp[1] = (sp[0] | 1) + (sp[1] & ~1);
-  return ip[1].ap(f, ip + 1, hp, sp + 1); }
+  ip = (void*) sp[2];
+  sp[2] = (sp[0] | 1) + (sp[1] & ~1);
+  return ip->ap(f, ip, hp, sp + 2); }
 
 Vm(equal) {
   sp[1] = eql(f, sp[0], sp[1]) ? putnum(-1) : nil;

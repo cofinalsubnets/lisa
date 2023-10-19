@@ -123,7 +123,7 @@ thread
 word
   assoc(state, word, word),
   assq(state, word, word),
-  dict_assoc(state, word),
+  dict_lookup(state, word),
   push1(state, word),
   push2(state, word, word);
 status
