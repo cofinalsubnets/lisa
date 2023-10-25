@@ -125,13 +125,14 @@ word
   assq(state, word, word),
   dict_lookup(state, word),
   push1(state, word),
-  push2(state, word, word);
+  push2(state, word, word),
+  push3(state, word, word, word);
 status
   P1(state, word),
   P2(state, word, word);
 
 vm data, ap, tap, K, ref, curry, ret, yield, cond, jump,
-   print,
+   print, tie,
    eqp, not,
    lt, le, gt, ge,
    add;

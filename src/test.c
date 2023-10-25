@@ -17,7 +17,7 @@ static enum status NoInline receive2(state f, const char *_i) {
   return s; }
 
 static void
-  test_big_list(state),
+  test_biglist(state),
   test_number(state),
   test_quote(state),
   test_cond(state),
@@ -27,7 +27,7 @@ static void
   test_add(state),
   test_closure(state);
 
-static void test_big_list(state f) {
+static void test_biglist(state f) {
   long n = 1 << 20;
   for (long i = 0; i < n; i++) assert(push1(f, nil));
   for (word l = nil; n--;)
@@ -124,7 +124,7 @@ enum status self_test(state f) {
   TEST(number);
   TEST(closure);
   TEST(quote);
-  TEST(big_list);
+  TEST(biglist);
   TEST(add);
 //  TEST(fib);
   return Ok; }
