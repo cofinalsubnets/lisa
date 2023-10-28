@@ -121,9 +121,8 @@ thread
   mo_ini(void*, size_t);
 
 word
-  assoc(state, word, word),
-  assq(state, word, word),
   dict_lookup(state, word),
+  lookup(state, word, word),
   push1(state, word),
   push2(state, word, word),
   push3(state, word, word, word);
