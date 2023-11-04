@@ -83,7 +83,7 @@ typedef FILE *source, *sink;
 
 #define Inline inline __attribute__((always_inline))
 #define NoInline __attribute__((noinline))
-#define ptr(x) ((cell)(x))
+#define ptr(x) ((thread)(x))
 #define datp(_) (ptr(_)->ap==data)
 #define End ((intptr_t)0) // vararg sentinel
 
@@ -131,7 +131,7 @@ status
   P2(state, word, word);
 
 vm data, ap, tap, K, ref, curry, ret, yield, cond, jump,
-   print, tie,
+   print,
    eqp, not,
    lt, le, gt, ge,
    add;
@@ -148,6 +148,12 @@ static Inline size_t b2w(size_t b) {
 static Inline void *bump(state f, size_t n) {
   void *x = f->hp; return f->hp += n, x; }
 
+static Inline void println(state f, word x, FILE *out) {
+  transmit(f, out, x);
+  fputc('\n', out); }
+
 _Static_assert(-1 >> 1 == -1, "sign extended shift");
 _Static_assert(sizeof(union cell*) == sizeof(union cell), "size");
+#define Vm(n, ...) enum status\
+  n(state f, thread ip, heap hp, stack sp, ##__VA_ARGS__)
 #endif

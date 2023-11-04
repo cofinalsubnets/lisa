@@ -1,8 +1,5 @@
 #include "i.h"
 
-#define Vm(n, ...) enum status\
-  n(state f, thread ip, heap hp, stack sp, ##__VA_ARGS__)
-
 static NoInline Vm(gc, size_t n) {
   return Pack(), !please(f, n) ? Oom :
     f->ip->ap(f, f->ip, f->hp, f->sp); }
