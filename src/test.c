@@ -26,7 +26,8 @@ static void
   test_lambda2(state),
   test_add(state),
   test_let_add(state),
-  test_let_fib(state),
+  test_fib(state),
+  test_even_odd(state),
   test_closure(state);
 
 static void test_biglist(state f) {
@@ -98,18 +99,26 @@ static void test_let_add(state f) {
   assert(Ok == eval(f, pop1(f)));
   assert(pop1(f) == putnum(13)); }
 
-static void test_let_fib(state f) {
+static void test_even_odd(state f) {
+  char prog[] =
+    "(: even? (\\ n (? (= n 0) -1 (odd? (+ n -1))))"
+    "   odd? (\\ n (? (= n 0) 0 (even? (+ n -1))))"
+    " (even? 99))";
+  assert(Ok == receive2(f, prog));
+  assert(Ok == eval(f, pop1(f)));
+  assert(pop1(f) == nil); }
+
+static void test_fib(state f) {
   char prog[] =
     "(: fib (\\ n"
     "        (? (< n 3) 1"
-    "         (+ ((. fib) (+ n -1))"
-    "            ((. fib) (+ n -2)))))"
+    "         (+ (fib (+ n -1))"
+    "            (fib (+ n -2)))))"
     " (fib 12))";
   assert(Ok == receive2(f, prog));
   assert(Ok == eval(f, pop1(f)));
-  word x = pop1(f);
-  transmit(f, stdout, x); puts("");
-  assert(x == putnum(144)); }
+  assert(pop1(f) == putnum(144)); }
+
 
 #define TEST(n) (printf("%s:%d "#n"\n", __FILE__, __LINE__), (test_##n)(f))
 enum status self_test(state f) {
@@ -124,5 +133,6 @@ enum status self_test(state f) {
   TEST(biglist);
   TEST(add);
   TEST(let_add);
-  TEST(let_fib);
+  TEST(fib);
+  TEST(even_odd);
   return Ok; }
