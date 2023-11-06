@@ -122,6 +122,7 @@ thread
 
 word
   dict_lookup(state, word),
+  assoc(state, word, word),
   lookup(state, word, word),
   push1(state, word),
   push2(state, word, word),
@@ -156,4 +157,6 @@ _Static_assert(-1 >> 1 == -1, "sign extended shift");
 _Static_assert(sizeof(union cell*) == sizeof(union cell), "size");
 #define Vm(n, ...) enum status\
   n(state f, thread ip, heap hp, stack sp, ##__VA_ARGS__)
+#define L() printf("# %s:%d\n", __FILE__, __LINE__)
+#define LL(f, x) (printf("# %s:%d ", __FILE__, __LINE__), println(f, x, stdout))
 #endif

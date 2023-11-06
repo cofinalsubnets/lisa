@@ -44,8 +44,8 @@ Vm(ret) {
   return ip->ap(f, ip, hp, sp); }
 
 Vm(ap) {
-  if (nump(sp[1]))
-    return ip[1].ap(f, ip + 1, hp, sp + 1);
+  if (nump(sp[1])) return
+    ip[1].ap(f, ip + 1, hp, sp + 1);
   thread k = (cell) sp[1];
   sp[1] = (word) (ip + 1);
   return k->ap(f, k, hp, sp); }
@@ -105,7 +105,6 @@ binop(lt, sp[0] < sp[1] ? putnum(-1) : nil)
 binop(le, sp[0] <= sp[1] ? putnum(-1) : nil)
 binop(gt, sp[0] > sp[1] ? putnum(-1) : nil)
 binop(ge, sp[0] >= sp[1] ? putnum(-1) : nil)
-
 
 Vm(not) {
   ip = (void*) sp[1];

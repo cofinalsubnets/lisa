@@ -12,10 +12,13 @@ long lidx(state f, word l, word x) {
     if (eql(f, A(l), x)) return i;
   return -1; }
 
-word lookup(state f, word l, word k) {
+word assoc(state f, word l, word k) {
   for (; twop(l); l = B(l))
-    if (eql(f, k, A(A(l)))) return B(A(l));
+    if (eql(f, k, A(A(l)))) return A(l);
   return 0; }
+
+word lookup(state f, word l, word k) {
+  return (l = assoc(f, l, k)) ? B(l) : l; }
 
 word dict_lookup(state f, word k) {
   return lookup(f, f->dict, k); }
