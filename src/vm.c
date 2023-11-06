@@ -50,14 +50,6 @@ Vm(ap) {
   sp[1] = (word) (ip + 1);
   return k->ap(f, k, hp, sp); }
 
-/*
-Vm(apply) {
-  if (nump(sp[0])) return
-    sp[1] = sp[0],
-    ip[1].ap(f, ip + 1, hp, sp + 1);
-}
-*/
-
 Vm(curry) {
   thread k;
   size_t n = getnum(ip[1].x),

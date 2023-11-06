@@ -109,9 +109,12 @@ static size_t c0laz(state f, scope *c, size_t m, word x, scope d) {
 
 static size_t seek(state f, scope *c, size_t m, word k, scope d) {
   word x;
-  if (nilp((word) d)) return 
-    x = dict_lookup(f, k),
-    c0ix(f, c, m, K, x ? x : k);
+  if (nilp((word) d)) {
+    x = dict_lookup(f, k);
+    if (x) return c0ix(f, c, m, K, x);
+    k = (word) cons(f, k, (*c)->imps),
+    k = k ? A((*c)->imps = k) : k;
+    return k ? c0var1(f, c, m, k) : 0; }
     
   // look in vals
   if ((x = assoc(f, d->lams, k)))
@@ -239,76 +242,13 @@ static thread c1postbranch(state f, scope *c, thread k) {
   (*c)->alts = B((*c)->alts);
   return pull(f, c, k - 2); }
 
-// DEFINE
-// let expressions
 static bool lambp(state f, word x) {
   if (!twop(x) || !strp(x = A(x))) return false;
   string s = (string) x;
   return s->len == 1 && s->text[0] == '\\'; }
 
-static word c0lrb(state f, scope *c, word exp, word *args, word *defs) {
-  // base case
-  MM(f, &exp);
-  // make lambda from args
-  // make list of expressions
-  // compile lambda definitions to jjj
-
-  UM(f);
-  return 0; }
-
-  /*
-  // XXX
-  // transitively close closures in ->defns
-  word var, d, e, import; MM(f, &d); MM(f, &e);
-  do for (import = 0, d = *lams; twop(d); d = B(d)) // for each bound function variable
-    for (e = *lams; twop(e); e = B(e)) // for each bound function variable
-      if ((var = A(A(d))) != A(A(e)) && // skip self
-          lidx(f, var, B(A(e))) >= 0) { // if you import this variable
-        word u, vars = B(A(d)); // then also the ones that it uses
-        for (MM(f, &vars); twop(vars); vars = B(vars))
-          if ((u = uinsert(f, B(A(e)), A(vars))) && u != B(A(e)))
-            B(A(e)) = u, import++;
-        UM(f); }
-  while (import); UM(f); UM(f);
-
-  // recompile
-  (*c)->vals = *lams;
-
-  // solve XXX
-  /// construct lambda expression
-  string l = strof(f, "\\");
-  if (!l) return UM(f), 0;
-  // reverse arg list
-  for (word i, h = *args, t; twop(h);
-    i = B(h), B(h) = exp, exp = h, h = i);
-  exp = (word) cons(f, (word) l, exp); // lambda expression
-  // apply to arguments
-  exp = exp ? (word) cons(f, exp, nil) : exp;
-  if (exp) LL(f, exp);
-  return UM(f), exp; }
-  */
-
-static word c0lr(state f, scope *c, word exp, word *args, word *defs) {
-  if (!twop(exp) && !(exp = (word) cons(f, nil, nil))) return exp;
-  if (!twop(B(exp))) return c0lrb(f, c, exp, args, defs); // base case
-  MM(f, &exp);
-
-  // insert nom into args
-  word n = (word) cons(f, A(exp), *args);
-  if (!n) return UM(f), 0; // oom
-  *args = n;
-
-  n = (word) cons(f, A(B(exp)), *defs);
-  if (!n) return UM(f), 0; // oom
-  *defs = n;
-
-  // recur
-  if ((n = c0lr(f, c, B(B(exp)), args, defs)) &&
-      (n = (word) cons(f, A(n), n)))
-    A(B(n)) = A(B(exp));
-
-  if (n) println(f, n, stdout);
-  return UM(f), n; }
+// DEFINE
+// let expressions
 
 static word ldels(state f, word lam, word l) {
   if (!twop(l)) return nil;
@@ -339,19 +279,20 @@ static word c0l(state f, scope *c, word exp) {
       else goto fail; }
 
   // if there's no body use nil
-  if (!twop(exp)) if (!(exp = (word) cons(f, nil, nil))) goto fail;
+  if (!twop(exp))
+    if (!(exp = (word) cons(f, nil, nil)))
+      goto fail;
 
   // solve closures
   // for each function f with closure C(f)
   // for each function g with closure C(g)
   // if f in C(g) then C(g) include C(f)
-  //
   long imports;
   do for (imports = 0, d = lam; twop(d); d = B(d)) // for each bound function variable
     for (e = lam; twop(e); e = B(e)) // for each bound function variable
       if ((var = A(A(d))) != A(A(e)) && // skip self
-          lidx(f, var, B(A(e))) >= 0) { // if you import this variable
-        word u, vars = B(A(d)); // then also the ones that it uses
+          lidx(f, var, B(A(e))) >= 0) { // if you need this variable
+        word u, vars = B(A(d)); // then also the ones it needs
         for (; twop(vars); vars = B(vars)) {
           if (!(u = uinsert(f, B(A(e)), A(vars)))) { // oom
             UM(f), UM(f), UM(f); goto fail; }
