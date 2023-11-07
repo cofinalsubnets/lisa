@@ -119,10 +119,9 @@ static void test_fib(state f) {
   assert(Ok == eval(f, pop1(f)));
   assert(pop1(f) == putnum(144)); }
 
-
 #define TEST(n) (printf("%s:%d "#n"\n", __FILE__, __LINE__), (test_##n)(f))
 enum status self_test(state f) {
-  printf("# dim=%ld f@0x%lx[len=%ld]\n", sizeof(word), (word) f, f->len);
+  printf("# testing dim=%ld f@%lx[len=%ld]\n", sizeof(word), (word) f, f->len);
   TEST(lambda2);
   TEST(lambda);
   TEST(cond);

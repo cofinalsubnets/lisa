@@ -85,7 +85,7 @@ typedef FILE *source, *sink;
 #define NoInline __attribute__((noinline))
 #define ptr(x) ((thread)(x))
 #define datp(_) (ptr(_)->ap==data)
-#define End ((intptr_t)0) // vararg sentinel
+#define End ((word)0) // vararg sentinel
 
 pair cons(state, word, word);
 string
@@ -106,10 +106,10 @@ bool
   eql(state, word, word),
   please(state, size_t);
 
-enum status
+status
   l_ini(lisa),
   eval(lisa, word),
-  report(lisa, enum status),
+  report(lisa, status),
 #ifdef testing
   self_test(lisa),
 #endif
@@ -127,15 +127,12 @@ word
   push1(state, word),
   push2(state, word, word),
   push3(state, word, word, word);
-status
-  P1(state, word),
-  P2(state, word, word);
 
 vm data, ap, tap, K, ref, curry, ret, yield, cond, jump,
    print,
-   eqp, not,
-   lt, le, gt, ge,
-   add;
+   not,
+   lt, le, eq, gt, ge,
+   add, sub, mul, quot, rem;
 
 static Inline bool hstrp(cell h) { return datp(h) && h[1].x == String; }
 static Inline bool htwop(cell h) { return datp(h) && h[1].x == Pair; }
