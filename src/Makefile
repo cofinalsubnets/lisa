@@ -22,4 +22,7 @@ $(nom): $o $h
 clean:
 	rm -r `git check-ignore *`
 
-.PHONY: test clean
+repl: $(nom)
+	rlwrap ./$(nom)
+
+.PHONY: test clean repl

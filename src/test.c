@@ -28,6 +28,7 @@ static void
   test_let_add(state),
   test_fib(state),
   test_even_odd(state),
+  test_mutual_closure(state),
   test_closure(state);
 
 static void test_biglist(state f) {
@@ -119,6 +120,16 @@ static void test_fib(state f) {
   assert(Ok == eval(f, pop1(f)));
   assert(pop1(f) == putnum(144)); }
 
+static void test_mutual_closure(state f) {
+  char prog[] =
+    "((\\ m n (: f (\\ a (? (< a 0) a (g (+ a n))))"
+    "            g (\\ a (? (< a 0) a (f (+ a m))))"
+    "          (f 99)))"
+    " -3 -7)";
+  assert(Ok == receive2(f, prog));
+  assert(Ok == eval(f, pop1(f)));
+  assert(pop1(f) == putnum(-1)); }
+
 #define TEST(n) (printf("%s:%d "#n"\n", __FILE__, __LINE__), (test_##n)(f))
 enum status self_test(state f) {
   printf("# testing dim=%ld f@%lx[len=%ld]\n", sizeof(word), (word) f, f->len);
@@ -134,4 +145,5 @@ enum status self_test(state f) {
   TEST(let_add);
   TEST(fib);
   TEST(even_odd);
+  TEST(mutual_closure);
   return Ok; }

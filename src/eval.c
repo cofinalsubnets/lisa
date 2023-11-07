@@ -130,7 +130,8 @@ static size_t c0laz(state f, scope *c, size_t m, word x, scope d) {
   if (!x) return 0;
   m = c0ix(f, c, m, tie, x); // deferred resolve instruction
   if (!m) return m;
-  return c0args(f, c, m, B(B(A(f->sp[2])))); }
+  x = f->sp[2];
+  return c0args(f, c, m, B(B(A(x)))); }
 
 static size_t seek(state f, scope *c, size_t m, word k, scope d) {
   word x;
@@ -285,8 +286,7 @@ static word c0l(state f, scope *c, word exp) {
   if (!twop(exp)) return nil;
   // lots of variables :(
   word nom = nil, def = nil, lam = nil,
-       var = nil, vars = nil,
-       d = nil, e = nil;
+       vars = nil, d = nil, e = nil;
   MM(f, &nom), MM(f, &def), MM(f, &exp), MM(f, &lam);
   MM(f, &d); MM(f, &e); MM(f, &vars);
 
@@ -313,18 +313,16 @@ static word c0l(state f, scope *c, word exp) {
   // for each function g with closure C(g)
   // if f in C(g) then C(g) include C(f)
   long imports;
-  do for (imports = 0, d = lam; twop(d); d = B(d)) // for each bound function variable
-    for (e = lam; twop(e); e = B(e)) // for each bound function variable
-      if ((var = A(A(d))) != A(A(e)) && // skip self
-          lidx(f, var, B(A(e))) >= 0) { // if you need this variable
-        word u, vars = B(A(d)); // then also the ones it needs
-        for (; twop(vars); vars = B(vars)) {
-          if (!(u = uinsert(f, B(A(e)), A(vars)))) { // oom
-            UM(f), UM(f), UM(f); goto fail; }
-          if (u != B(A(e))) // if list is updated then record change
-            B(A(e)) = u, imports++; }
-        UM(f); }
-  while (imports);
+  do for (imports = 0, d = lam; twop(d); d = B(d)) {// for each bound function variable
+    for (e = lam; twop(e); e = B(e)) { // for each bound function variable
+      if (A(A(d)) != A(A(e)) && // skip self
+          lidx(f, B(A(e)), A(A(d))) >= 0) // if you need this variable
+        for (word u, vars = B(A(d)); twop(vars); vars = B(vars)) { // then also the ones it needs
+          if (!(u = uinsert(f, B(A(e)), A(vars)))) goto fail; // oom
+          else if (u != B(A(e))) B(A(e)) = u, imports++;
+        } // if list is updated then record change
+    }
+  } while (imports);
 
   // now delete defined functions from the closure variable lists
   for (e = lam; twop(e); e = B(e))
@@ -372,10 +370,9 @@ static Vm(tie) {
   word ref = ip[1].x, var = A(A(ref));
   scope env = (scope) B(ref);
   var = A(lookup(f, env->lams, var));
-  return
-    ip[0].ap = K,
-    ip[1].x = var,
-    K(f, ip, hp, sp); }
+  ip[0].ap = K;
+  ip[1].x = var;
+  return K(f, ip, hp, sp); }
 
 static size_t c0list(state f, scope *c, size_t m, word x) {
   word a = A(x), b = B(x);

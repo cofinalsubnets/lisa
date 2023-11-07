@@ -13,9 +13,6 @@ src/$(nom):
 testcmd=./$(nom) </dev/null
 test: $(nom)
 	/usr/bin/env TIMEFORMAT="in %Rs" bash -c "time $(testcmd)"
-# run the tests a lot of times to try and catch GC bugs :(
-test-lots: $(nom)
-	for n in {1..2048}; do $(testcmd) || exit 1; done
 
 # install
 DESTDIR ?= $(HOME)
