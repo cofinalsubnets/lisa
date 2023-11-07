@@ -24,7 +24,7 @@ thread mo_n(state f, size_t n) {
 struct loop *mo_tag(thread k) {
   return k->x ? mo_tag(k + 1) : (void*) k; }
 
-static vm tie;
+static vm tie, drop;
 
 typedef struct scope { // track lexical scope
   word args, // stack bindings // all variables on stack
@@ -313,21 +313,18 @@ static word c0l(state f, scope *c, word exp) {
   // for each function g with closure C(g)
   // if f in C(g) then C(g) include C(f)
   long imports;
-  do for (imports = 0, d = lam; twop(d); d = B(d)) {// for each bound function variable
-    for (e = lam; twop(e); e = B(e)) { // for each bound function variable
-      if (A(A(d)) != A(A(e)) && // skip self
-          lidx(f, B(A(e)), A(A(d))) >= 0) // if you need this variable
-        for (word u, vars = B(A(d)); twop(vars); vars = B(vars)) { // then also the ones it needs
-          if (!(u = uinsert(f, B(A(e)), A(vars)))) goto fail; // oom
-          else if (u != B(A(e))) B(A(e)) = u, imports++;
-        } // if list is updated then record change
-    }
-  } while (imports);
+  do for (imports = 0, d = lam; twop(d); d = B(d)) // for each bound function variable
+    for (e = lam; twop(e); e = B(e)) // for each bound function variable
+      if (A(A(d)) != A(A(e)) && // skip yourself
+          lidx(f, B(B(A(e))), A(A(d))) >= 0) // if you need this function
+        for (word u, vars = B(A(d)); twop(vars); vars = B(vars)) { // then you need its variables
+          if (!(u = uinsert(f, B(B(A(e))), A(vars)))) goto fail; // oom
+          else if (u != B(B(A(e)))) B(B(A(e))) = u, imports++; } // if list is updated then record change
+  while (imports);
 
   // now delete defined functions from the closure variable lists
   for (e = lam; twop(e); e = B(e))
     B(B(A(e))) = ldels(f, lam, B(B(A(e))));
-
   // store lambdas on scope for lazy binding
   (*c)->lams = lam;
 
@@ -374,6 +371,14 @@ static Vm(tie) {
   ip[1].x = var;
   return K(f, ip, hp, sp); }
 
+static size_t c0do(state f, scope *c, size_t m, word x) {
+  if (!twop(x)) return c0ix(f, c, m, K, nil);
+  for (MM(f, &x); twop(B(x)); x = B(x))
+    if (!(m = ana(f, c, m, A(x))) ||
+        !(m = c0i(f, c, m, drop)))
+      break;
+  return UM(f), m ? ana(f, c, m, A(x)) : m; }
+
 static size_t c0list(state f, scope *c, size_t m, word x) {
   word a = A(x), b = B(x);
   if (!twop(b)) // singleton list is quote
@@ -381,6 +386,7 @@ static size_t c0list(state f, scope *c, size_t m, word x) {
   if (strp(a)) { // special forms
     string s = (string) a;
     if (s->len == 1) switch (s->text[0]) {
+      case ',': return c0do(f, c, m, b);
       case ':': return c0let(f, c, m, b);
       case '\\': return
         x = c0lambw(f, c, nil, b),
@@ -508,6 +514,9 @@ Vm(vm_read) {
   if (s) *sp = nil;
   else A(sp[1]) = sp[0], sp++;
   return ip[1].ap(f, ip + 1, hp, sp); }
+
+static Vm(drop) {
+  return ip[1].ap(f, ip + 1, hp, sp + 1); }
 
 Vm(vm_eval) {
   Have(Width(struct pair) + 1);
