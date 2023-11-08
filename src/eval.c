@@ -93,7 +93,7 @@ static thread analyze(state f, word x) {
     k = m ? cata(f, &c, m) : k);
   return k; }
 
-static size_t seek(state, scope*, size_t, word, scope);
+static NoInline size_t seek(state, scope*, size_t, word, scope);
 static c0 c0list;
 static size_t ana(state f, scope *c, size_t m, word x) {
   if (homp(x) && datp(x)) switch (ptr(x)[1].x) {
@@ -312,15 +312,15 @@ static word c0l(state f, scope *c, word exp) {
   // for each function f with closure C(f)
   // for each function g with closure C(g)
   // if f in C(g) then C(g) include C(f)
-  long imports;
-  do for (imports = 0, d = lam; twop(d); d = B(d)) // for each bound function variable
+  long ins;
+  do for (ins = 0, d = lam; twop(d); d = B(d)) // for each bound function variable
     for (e = lam; twop(e); e = B(e)) // for each bound function variable
       if (A(A(d)) != A(A(e)) && // skip yourself
           lidx(f, B(B(A(e))), A(A(d))) >= 0) // if you need this function
         for (word u, vars = B(A(d)); twop(vars); vars = B(vars)) { // then you need its variables
           if (!(u = uinsert(f, B(B(A(e))), A(vars)))) goto fail; // oom
-          else if (u != B(B(A(e)))) B(B(A(e))) = u, imports++; } // if list is updated then record change
-  while (imports);
+          else if (u != B(B(A(e)))) B(B(A(e))) = u, ins++; } // if list is updated then record change
+  while (ins);
 
   // now delete defined functions from the closure variable lists
   for (e = lam; twop(e); e = B(e))
@@ -338,10 +338,10 @@ static word c0l(state f, scope *c, word exp) {
     if (lambp(f, A(def))) {
       d = assoc(f, lam, A(exp));
       // recompile with the solved variables
-      word x = c0lambw(f, c, B(B(d)), B(A(def)));
-      if (!x) goto fail;
+      _ = c0lambw(f, c, B(B(d)), B(A(def)));
+      if (!_) goto fail;
       // put in def list and lam list (latter is used for lazy binding)
-      A(def) = B(d) = x; }
+      A(def) = B(d) = _; }
     // rotate onto e
     _ = B(def), B(def) = e, e = def, def = _; }
 

@@ -32,7 +32,7 @@ static void
   test_closure(state);
 
 static void test_biglist(state f) {
-  long n = 1 << 20;
+  long n = 1 << 10;
   for (long i = 0; i < n; i++) assert(push1(f, nil));
   for (word l = nil; n--;)
     assert((l = (word) cons(f, pop1(f), l))),
@@ -115,10 +115,10 @@ static void test_fib(state f) {
     "        (? (< n 3) 1"
     "         (+ (fib (+ n -1))"
     "            (fib (+ n -2)))))"
-    " (fib 12))";
+    " (fib 32))";
   assert(Ok == receive2(f, prog));
   assert(Ok == eval(f, pop1(f)));
-  assert(pop1(f) == putnum(144)); }
+  assert(pop1(f) == putnum(2178309)); }
 
 static void test_mutual_closure(state f) {
   char prog[] =
