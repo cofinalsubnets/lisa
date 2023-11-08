@@ -1,11 +1,11 @@
-#ifndef _lisa_i_h
-#define _lisa_i_h
-#include "lisa.h"
+#ifndef _gwen_i_h
+#define _gwen_i_h
+#include "gwen.h"
 #include <assert.h>
 #include <time.h>
 // thanks !!
 
-typedef struct lisa *lisa, *state;
+typedef struct gwen *gwen, *state;
 typedef uintptr_t size;
 typedef intptr_t word, *heap, *stack;
 typedef union cell *cell, *thread, *verb;
@@ -16,7 +16,7 @@ typedef enum status {
   Eof = -1,
 } status,
   code(state, thread, heap, stack);
-struct lisa {
+struct gwen {
   // vm variables
   union cell { // instruction pointer
     code *ap;
@@ -107,11 +107,11 @@ bool
   please(state, size_t);
 
 status
-  l_ini(lisa),
-  eval(lisa, word),
-  report(lisa, status),
+  l_ini(gwen),
+  eval(gwen, word),
+  report(gwen, status),
 #ifdef testing
-  self_test(lisa),
+  self_test(gwen),
 #endif
   parse_source(state, source),
   read_source(state, source);

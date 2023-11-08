@@ -161,7 +161,7 @@ static status l_ini_dict(state f) {
   return Ok; }
 
 status l_ini(state f) {
-  memset(f, 0, sizeof(struct lisa));
+  memset(f, 0, sizeof(struct gwen));
   const size_t len = 1;
   word *pool = malloc(2 * len * sizeof(word));
   if (!pool) return Oom;

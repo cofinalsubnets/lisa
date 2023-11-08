@@ -1,5 +1,5 @@
 Makefile=Makefile
-nom=lisa
+nom=gwen
 #build
 LC_COLLATE=C
 c=$(sort $(wildcard *.c))

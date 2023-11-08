@@ -1,7 +1,7 @@
 #include "i.h"
 #include <stdarg.h>
 
-status report(lisa f, status s) {
+status report(state f, status s) {
   switch (s) {
     case Dom:
       fprintf(stderr, "# domain error at [0x%lx]", f->ip->x);
@@ -26,7 +26,7 @@ static status go(state f) {
   return Ok; }
 
 int main(int ac, char **av) {
-  state f = &((struct lisa){});
+  state f = &((struct gwen){});
   status s = l_ini(f);
   if (s == Ok) s = go(f), l_fin(f);
   return s; }

@@ -1,5 +1,5 @@
 Makefile=Makefile
-nom=lisa
+nom=gwen
 
 default: test
 
