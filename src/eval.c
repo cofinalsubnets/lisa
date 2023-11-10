@@ -394,8 +394,7 @@ static size_t c0do(state f, scope *c, size_t m, word x) {
 
 static size_t c0list(state f, scope *c, size_t m, word x) {
   word a = A(x), b = B(x);
-  if (!twop(b)) // singleton list is quote
-    return c0ix(f, c, m, K, a);
+  if (!twop(b)) return c0ix(f, c, m, K, a); // singleton list quote
   if (strp(a) && ((string) a)->len == 1)
     switch (((string) a)->text[0]) { // special forms
       case ',': return c0do(f, c, m, b);
@@ -405,7 +404,6 @@ static size_t c0list(state f, scope *c, size_t m, word x) {
                         x ? ana(f, c, m, x) : x; }
   return avec(f, b, m = ana(f, c, m, a)), // evaluate function expression
          c0args(f, c, m, b); } // apply to arguments
-
 
 static NoInline Vm(gc, size_t n) {
   return Pack(), !please(f, n) ? Oom :
@@ -418,25 +416,20 @@ Vm(tap) {
   else ip = (thread) *++sp, *sp = j;
   return ip->ap(f, ip, hp, sp); }
 
-#define Have(n)\
-  if (sp - hp < n) return gc(f, ip, hp, sp, n)
-#define Have1()\
-  if (sp == hp) return gc(f, ip, hp, sp, 1)
+#define Have(n) if (sp - hp < n) return gc(f, ip, hp, sp, n)
+#define Have1() if (sp == hp) return gc(f, ip, hp, sp, 1)
 
-Vm(ref) {
-  Have1();
-  sp[-1] = sp[getnum(ip[1].x)];
-  return ip[2].ap(f, ip + 2, hp, sp - 1); }
+Vm(ref) { Have1(); return
+  sp[-1] = sp[getnum(ip[1].x)],
+  ip[2].ap(f, ip + 2, hp, sp - 1); }
 
-Vm(cond) {
-  ip = nilp(*sp) ? ip[1].m : ip + 2;
-  return ip->ap(f, ip, hp, sp + 1); }
+Vm(cond) { return
+  ip = nilp(*sp) ? ip[1].m : ip + 2,
+  ip->ap(f, ip, hp, sp + 1); }
 
-Vm(jump) {
-  return ip[1].m->ap(f, ip[1].m, hp, sp); }
+Vm(jump) { return ip[1].m->ap(f, ip[1].m, hp, sp); }
 
-Vm(yield) {
-  return Pack(), Ok; }
+Vm(yield) { return Pack(), Ok; }
 
 static Vm(Kj) {
   Have1();
@@ -482,21 +475,38 @@ Vm(data) {
   *sp = r;
   return ip->ap(f, ip, hp, sp); }
 
-Vm(K) {
-  Have1();
-  sp[-1] = ip[1].x;
-  return ip[2].ap(f, ip + 2, hp, sp - 1); }
+Vm(K) { Have1(); return
+  sp[-1] = ip[1].x,
+  ip[2].ap(f, ip + 2, hp, sp - 1); }
 
-Vm(print) {
-  ip = (void*) sp[1];
-  sp[1] = *sp;
-  transmit(f, stdout, *sp), puts("");
-  return ip->ap(f, ip, hp, sp + 1); }
+Vm(print) { return
+  ip = (void*) sp[1],
+  sp[1] = *sp,
+  transmit(f, stdout, *sp),
+  puts(""),
+  ip->ap(f, ip, hp, sp + 1); }
 
-#define binop(n, x) Vm(n) {\
-  ip = (void*) sp[2];\
-  sp[2] = x;\
-  return ip->ap(f, ip, hp, sp + 2); }
+Vm(xons) {
+  Have(Width(struct two));
+  word a = sp[0], b = sp[1];
+  two w = ini_two((two) hp, sp[0], sp[1]);
+  return ip = (thread) sp[2],
+         sp[2] = (word) w,
+         ip->ap(f, ip, hp + Width(struct two), sp + 2); }
+
+Vm(car) { return
+  ip = (thread) sp[1],
+  sp[1] = twop(sp[0]) ? A(sp[0]) : sp[0],
+  ip->ap(f, ip, hp, sp + 1); }
+Vm(cdr) { return
+  ip = (thread) sp[1],
+  sp[1] = twop(sp[0]) ? B(sp[0]) : nil,
+  ip->ap(f, ip, hp, sp + 1); }
+
+#define binop(n, x) Vm(n) { return\
+  ip = (void*) sp[2],\
+  sp[2] = x,\
+  ip->ap(f, ip, hp, sp + 2); }
 
 binop(add, (sp[0] | 1) + (sp[1] & ~1))
 binop(eq, eql(f, sp[0], sp[1]) ? putnum(-1) : nil)
@@ -505,35 +515,28 @@ binop(le, sp[0] <= sp[1] ? putnum(-1) : nil)
 binop(gt, sp[0] > sp[1] ? putnum(-1) : nil)
 binop(ge, sp[0] >= sp[1] ? putnum(-1) : nil)
 
-Vm(not) {
-  ip = (void*) sp[1];
-  sp[1] = (~sp[0])|1;
-  return ip->ap(f, ip, hp, sp + 1); }
+Vm(not) { return
+  ip = (void*) sp[1],
+  sp[1] = ~sp[0] | 1,
+  ip->ap(f, ip, hp, sp + 1); }
 
 Vm(vm_read) {
   Have(Width(struct two) + 1);
-  pair w = (pair) hp;
-  w->ap = data;
-  w->typ = Pair;
-  w->a = w->b = nil;
+  two w = ini_two((two) hp, nil, nil);
   hp += Width(struct two);
   *--sp = (word) w;
   Pack();
-  status s = read_source(f, stdin);
+  status s = read1(f, stdin);
   Unpack();
   if (s) *sp = nil;
   else A(sp[1]) = sp[0], sp++;
   return ip[1].ap(f, ip + 1, hp, sp); }
 
-static Vm(drop) {
-  return ip[1].ap(f, ip + 1, hp, sp + 1); }
+static Vm(drop) { return ip[1].ap(f, ip + 1, hp, sp + 1); }
 
 Vm(vm_eval) {
   Have(Width(struct two) + 1);
-  pair w = (pair) hp;
-  w->ap = data;
-  w->typ = Pair;
-  w->a = w->b = nil;
+  two w = ini_two((two) hp, nil, nil);
   hp += Width(struct two);
   word x = *sp;
   *sp = (word) w;

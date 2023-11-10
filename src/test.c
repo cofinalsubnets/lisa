@@ -1,6 +1,5 @@
 #include "i.h"
 
-
 static enum status NoInline receive2(state f, const char *_i) {
   size_t len = strlen(_i);
   char *i = malloc(len + 1);
@@ -11,7 +10,7 @@ static enum status NoInline receive2(state f, const char *_i) {
   if (!in) {
     free(i);
     return Oom; }
-  enum status s = read_source(f, in);
+  enum status s = read1(f, in);
   fclose(in);
   free(i);
   return s; }

@@ -2,6 +2,7 @@
 #include <stdarg.h>
 #include <getopt.h>
 #include <unistd.h>
+#include <errno.h>
 
 static status go(state, char**, bool);
 static const char *help =
@@ -28,8 +29,21 @@ static status go(state f, char **av, bool repl) {
 #ifdef testing
   self_test(f);
 #endif
+  for (word x; *av; av++) {
+    FILE *i = fopen(*av, "r");
+    if (!i) {
+      fprintf(stderr, "# error opening %s: %s\n", *av, strerror(errno));
+      return Dom; }
+    word s = reads(f, i);
+    if (s == Ok)
+      s = ((x = (word) strof(f, ",")) &&
+           (x = (word) cons(f, x, pop1(f)))) ?
+        eval(f, x) : Oom;
+    fclose(i);
+    if (s != Ok) return report(f, s); }
+
   // repl
-  if (repl) for (status s; (s = read_source(f, stdin)) != Eof;) {
+  if (repl) for (status s; (s = read1(f, stdin)) != Eof;) {
     if (s == Ok && (s = eval(f, pop1(f))) == Ok)
       transmit(f, stdout, pop1(f)),
       fputc('\n', stdout);

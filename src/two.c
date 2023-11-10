@@ -24,26 +24,19 @@ word lookup(state f, word l, word k) {
 word dict_lookup(state f, word k) {
   return lookup(f, f->dict, k); }
 
-two ini_pair(two w, word a, word b) {
+two ini_two(two w, word a, word b) {
   w->ap = data, w->typ = Pair;
   w->a = a, w->b = b;
   return w; }
 
 static NoInline pair cons_(state f, word a, word b) {
-  pair w = bump(f, Width(struct two));
-  w->ap = data;
-  w->typ = Pair;
-  w->a = a;
-  w->b = b;
-  return w; }
+  return ini_two(bump(f, Width(struct two)), a, b); }
 
 static NoInline pair cons_gc(state f, word a, word b) {
   bool _;
   avec(f, a, avec(f, b, _ = please(f, Width(struct two))));
-  return _ ? cons_(f, a, b) : 0; }
+  return !_ ? 0 : cons_(f, a, b); }
 
 pair cons(state f, word a, word b) { return
-  avail(f) >= Width(struct two) ?
-    cons_(f, a, b) :
-    cons_gc(f, a, b); }
+  avail(f) >= Width(struct two) ? cons_(f, a, b) : cons_gc(f, a, b); }
 

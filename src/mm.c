@@ -100,6 +100,7 @@ static NoInline void copy_from(state f, word *p0, size_t len0) {
   f->hp = f->cp = p1;
   f->ip = (verb) cp(f, (word) f->ip, p0, t0);
   f->dict = cp(f, f->dict, p0, t0);
+  f->macro = cp(f, f->macro, p0, t0);
   // copy stack
   for (size_t i = 0; i < slen; i++)
     sp1[i] = cp(f, sp0[i], p0, t0);

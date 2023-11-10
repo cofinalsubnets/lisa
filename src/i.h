@@ -20,7 +20,7 @@ struct gwen {
   heap hp; // heap pointer
   stack sp; // stack pointer
   // environment
-  word dict; // 
+  word dict, macro; // 
   // memory management
   word len, // size of each pool
        *pool, // on pool
@@ -108,8 +108,8 @@ status
 #ifdef testing
   self_test(gwen),
 #endif
-  parse_source(gwen, source),
-  read_source(gwen, source);
+  read1(gwen, source),
+  reads(gwen, source);
 
 thread
   mo_n(gwen, size_t),
@@ -126,6 +126,7 @@ word
 vm data, ap, tap, K, ref, curry, ret, yield, cond, jump,
    print,
    not,
+   xons, car, cdr,
    lt, le, eq, gt, ge,
    add, sub, mul, quot, rem;
 
