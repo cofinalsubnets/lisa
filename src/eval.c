@@ -44,12 +44,12 @@ NoInline status eval(state f, word x) {
   thread k = analyze(f, x);
   return k ? k->ap(f, k, f->hp, f->sp) : Oom; }
 
-static scope enscope(state f, scope *par, word args, word imps) {
+static scope enscope(state f, scope par, word args, word imps) {
   scope s;
-  avec(f, args, avec(f, imps, s = (scope) mo_n(f, Width(struct scope))));
+  avec(f, par, avec(f, args, avec(f, imps, s = (scope) mo_n(f, Width(struct scope)))));
   if (s) s->args = args, s->imps = imps,
          s->alts = s->ends = s->pals = s->lams = nil,
-         s->par = par ? *par : (scope) nil;
+         s->par = par;
   return s; }
 
 // compiler operates in two phases
@@ -81,7 +81,7 @@ static c0 ana;
 static thread analyze(state f, word x) {
   size_t m;
   thread k = 0;
-  scope c = push2(f, x, (word) yieldk) ? enscope(f, NULL, nil, nil) : NULL;
+  scope c = push2(f, x, (word) yieldk) ? enscope(f, (scope) nil, nil, nil) : NULL;
   if (c) avec(f, c,
     m = ana(f, &c, 1, pop1(f)),
     m = m ? c0i(f, &c, m, yield) : m,
@@ -201,7 +201,7 @@ static word ldecons(state f, word x) {
 // lambda wrapper parses expression and manages inner scope
 static word c0lambw(state f, scope *c, word imps, word exp) {
   avec(f, imps, exp = ldecons(f, exp));
-  scope d = exp ? enscope(f, c, exp, imps) : 0;
+  scope d = exp ? enscope(f, *c, exp, imps) : 0;
   avec(f, d, exp = d ? (word) c0lambi(f, &d, pop1(f)) : 0);
   return exp; }
 
@@ -359,6 +359,17 @@ static word c0l(state f, scope *c, word exp) {
       if (!_) goto fail;
       // put in def list and lam list (latter is used for lazy binding)
       A(def) = B(d) = _; }
+    // if toplevel then bind
+    if (nilp((*c)->args)) {
+      thread t = cells(f, 2 * Width(struct two) + 2 + Width(struct loop));
+      if (!t) goto fail;
+      two w = (two) t,
+          x = w + 1;
+      t += 2 * Width(struct two);
+      t[0].ap = bind, t[1].x = A(exp), t[2].x = 0, t[3].m = t;
+      ini_two(w, A(def), nil);
+      ini_two(x, (word) t, (word) w);
+      A(def) = (word) x; }
     // rotate onto e
     _ = B(def), B(def) = e, e = def, def = _; }
 
@@ -374,10 +385,9 @@ done: return UM(f), UM(f), UM(f), UM(f), UM(f), UM(f), UM(f), exp;
 fail: exp = 0; goto done; }
 
 static size_t c0let(state f, scope *c, size_t m, word x) {
-  scope d;
-  avec(f, x, d = enscope(f, c, (*c)->args, (*c)->imps));
-  if (!d) return 0;
-  avec(f, d, x = c0l(f, &d, x));
+  scope d = *c;
+  avec(f, x, d = enscope(f, d, d->args, d->imps));
+  avec(f, d, x = d ? c0l(f, &d, x) : (word) d);
   return x ? ana(f, c, m, x) : x; }
 
 static Vm(tie) {
@@ -560,9 +570,9 @@ Vm(vm_eval) {
 
 static Vm(bind) {
   Have(2 * Width(struct two));
-  word nom = ip[1].x;
-  two w = ini_two((two) hp, ip[1].x, sp[0]);
-  hp += Width(struct two);
-  two x = ini_two((two) hp, (word) w, f->dict);
+  two w = ini_two((two) hp, ip[1].x, sp[0]),
+      x = ini_two(w + 1, (word) w, f->dict);
   f->dict = (word) x;
-  return ip[2].ap(f, ip + 2, hp + 2 * Width(struct two), sp); }
+  ip = (thread) sp[1];
+  sp[1] = sp[0];
+  return ip->ap(f, ip, hp + 2 * Width(struct two), sp + 1); }
