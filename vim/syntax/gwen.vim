@@ -17,10 +17,10 @@ syn region GwenAtomList contained matchgroup=Special start="(" matchgroup=Specia
 
 syn iskeyword @,!,37-38,42-47,:,60-63,\,`,|,~,^
 syn keyword GwenFunc < <= = > >= + - ~ ! * / % ? ` : \\ , . A B AA AB BA BB X L Q && \|\| \| & ^ << >>
-syn keyword GwenFunc ::: >>= case
-syn keyword GwenFunc twop nump symp tblp strp nilp homp ev ap
-syn keyword GwenFunc str slen schr scat ssub ystr sym nope
-syn keyword GwenFunc tbl tget tset tlen thas tkeys tdel
+"syn keyword GwenFunc ::: >>= case
+"syn keyword GwenFunc twop nump symp tblp strp nilp homp ev ap
+"syn keyword GwenFunc str slen schr scat ssub ystr sym nope
+"syn keyword GwenFunc tbl tget tset tlen thas tkeys tdel
 
 syn region GwenString start=+"+ skip=+\\\\\|\\"+ end=+"+
 
@@ -55,4 +55,4 @@ hi def link GwenTodo           Todo
 syn region GwenList matchgroup=GwenParen start="(" matchgroup=GwenParen end=")" contains=@GwenListCluster
 hi def link GwenParen Delimiter
 
-let b:current_syntax = "ll"
+let b:current_syntax = "gwen"

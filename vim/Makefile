@@ -1,3 +1,4 @@
+nom=gwen
 VIMPREFIX ?= $(HOME)/.vim
 vim_files=$(addprefix $(VIMPREFIX)/,syntax/$(nom).vim ftdetect/$(nom).vim)
 

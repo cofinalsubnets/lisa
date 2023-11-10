@@ -15,6 +15,14 @@ static union cell
   p_le[] = { binop(), {le} },
   p_gt[] = { binop(), {gt}, },
   p_ge[] = { binop(), {ge} },
+  p_slen[] = { {slen} },
+  p_sget[] = { binop(), {sget} },
+  p_ssub[] = { {curry}, {.x = putnum(3)}, {ssub}},
+//  p_p[] = { {pr}},
+//  p_pp[] = { {ppr} },
+//  p_sp[] = { {spr} },
+//  p_psp[] = { {pspr} },
+  p_pc[] = { {prc} },
   p_add[] = { binop(), {add}, };
 
 static status l_ini_dict(state f) {
@@ -30,6 +38,14 @@ static status l_ini_dict(state f) {
     { "X", (word) p_cons },
     { "A", (word) p_car },
     { "B", (word) p_cdr },
+    { "sget", (word) p_sget},
+    {"ssub", (word) p_ssub},
+    {"slen", (word) p_slen},
+//    { "p", (word) p_p },
+    { "pc", (word) p_pc },
+ //   { "pp", (word) p_pp },
+  //  { "sp", (word) p_sp },
+   // { "psp", (word) p_psp },
   };
   for (int i = 0; i < sizeof(ini_dict)/sizeof(*ini_dict); i++) {
     string s = strof(f, ini_dict[i].n);

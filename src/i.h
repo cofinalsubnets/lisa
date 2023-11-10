@@ -84,6 +84,7 @@ two
   ini_two(two, word, word),
   cons(gwen, word, word);
 string
+  ini_str(string, size_t),
   buf_new(gwen),
   buf_grow(gwen, string),
   strof(gwen, const char*),
@@ -123,9 +124,12 @@ word
   push2(gwen, word, word),
   push3(gwen, word, word, word);
 
+status gc(gwen, thread, heap, stack, size_t);
 vm data, ap, tap, K, ref, curry, ret, yield, cond, jump,
    print,
    not,
+   ssub, sget, slen,
+   pr, ppr, spr, pspr, prc,
    xons, car, cdr,
    lt, le, eq, gt, ge,
    add, sub, mul, quot, rem;
@@ -150,6 +154,9 @@ _Static_assert(-1 >> 1 == -1, "sign extended shift");
 _Static_assert(sizeof(union cell*) == sizeof(union cell), "size");
 #define Vm(n, ...) enum status\
   n(state f, thread ip, heap hp, stack sp, ##__VA_ARGS__)
+
+#define Have(n) if (sp - hp < n) return gc(f, ip, hp, sp, n)
+#define Have1() if (sp == hp) return gc(f, ip, hp, sp, 1)
 #define L() printf("# %s:%d\n", __FILE__, __LINE__)
 #define LL(f, x) (printf("# %s:%d ", __FILE__, __LINE__), println(f, x, stdout))
 #endif

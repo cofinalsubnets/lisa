@@ -26,9 +26,7 @@ static void tx_two(state v, FILE *o, word x) {
 status report(state f, status s) {
   switch (s) {
     case Dom:
-      fprintf(stderr, "# domain error at [0x%lx]", f->ip->x);
-      break;
+      fprintf(stderr, "# domain error at [0x%lx]", f->ip->x); return s;
     case Oom:
       fprintf(stderr, "# out of memory at %ld words", f->len);
-    default: }
-  return s; }
+    default: return s; } }

@@ -1,0 +1,8 @@
+(: (zero a b) b (one a) a
+   (add a b f x) (a f (b f x))
+   (mul a b f x) (a (b f) x)
+   (C n) (? (= n 0) zero (add one (C (+ n -1))))
+   (N c) (c (\ x (+ x 1)) 0)
+    (: four (mul (add one one) (add one one))
+     (: five (add one four)
+      (. (N (mul five (four four)))))))

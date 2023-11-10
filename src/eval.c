@@ -17,14 +17,14 @@ thread mo_ini(void *_, size_t len) {
   return t->null = NULL, t->head = _; }
 
 // allocate a thread
-thread mo_n(state f, size_t n) {
+thread mo_n(gwen f, size_t n) {
   thread k = cells(f, n + Width(struct loop));
   return !k ? k : mo_ini(k, n); }
 
 struct loop *mo_tag(thread k) {
   return k->x ? mo_tag(k + 1) : (void*) k; }
 
-static vm tie, drop;
+static vm tie, drop, bind;
 
 typedef struct scope { // track lexical scope
   word args, // stack bindings // all variables on stack
@@ -98,7 +98,8 @@ static size_t ana(state f, scope *c, size_t m, word x) {
 
 static c1 c1var;
 static size_t c0var1(state f, scope *c, size_t m, word x) {
-  return push3(f, (word) c1var, x, (*c)->pals) ? m + 2 : 0; }
+  return nilp((word) (*c)->par) ?
+    c0ix(f, c, m, K, nil) : push3(f, (word) c1var, x, (*c)->pals) ? m + 2 : 0; }
 
 static long stkidxof(state f, scope c, word var) {
   size_t i = 0;
@@ -168,14 +169,6 @@ static size_t c0args(state f, scope *c, size_t m, word b) {
     m = m && push1(f, (word) c1ap) ? m : 0;
   return (*c)->pals -= 2, UM(f), m; }
 
-// lambda decons: pushes last list item to stack, returns init of list.
-static word ldecons(state f, word x) {
-  if (!twop(x)) return push1(f, nil) ? nil : 0;
-  if (!twop(B(x))) return push1(f, A(x)) ? nil : 0;
-  word y = A(x);
-  avec(f, y, x = ldecons(f, B(x)));
-  return x ? (word) cons(f, y, x) : x; }
-
 // whole innerlambda thread whateverer
 // returns pair of thread and closure variable symbols
 static pair c0lambi(state f, scope *c, word x) {
@@ -196,6 +189,14 @@ static pair c0lambi(state f, scope *c, word x) {
   mo_tag(k)->head = k;
   // apply to enclosed variables (if none then quoting has no effect)
   return cons(f, (word) k, (*c)->imps); }
+
+// lambda decons: pushes last list item to stack, returns init of list.
+static word ldecons(state f, word x) {
+  if (!twop(x)) return push1(f, nil) ? nil : 0;
+  if (!twop(B(x))) return push1(f, A(x)) ? nil : 0;
+  word y = A(x);
+  avec(f, y, x = ldecons(f, B(x)));
+  return x ? (word) cons(f, y, x) : x; }
 
 // lambda wrapper parses expression and manages inner scope
 static word c0lambw(state f, scope *c, word imps, word exp) {
@@ -318,7 +319,10 @@ static word c0l(state f, scope *c, word exp) {
       else goto fail; } }
 
   // if there's no body then use the last definition
-  if (!twop(exp) && !(exp = (word) cons(f, A(nom), nil))) goto fail;
+  if (!twop(exp)) {
+    word x = (word) cons(f, A(nom), nil);
+    if (!x) goto fail;
+    exp = x; }
 
   // solve closures
   // for each function f with closure C(f)
@@ -405,7 +409,7 @@ static size_t c0list(state f, scope *c, size_t m, word x) {
   return avec(f, b, m = ana(f, c, m, a)), // evaluate function expression
          c0args(f, c, m, b); } // apply to arguments
 
-static NoInline Vm(gc, size_t n) {
+NoInline Vm(gc, size_t n) {
   return Pack(), !please(f, n) ? Oom :
     f->ip->ap(f, f->ip, f->hp, f->sp); }
 
@@ -415,9 +419,6 @@ Vm(tap) {
   if (homp(j)) ip = (thread) j, *sp = x;
   else ip = (thread) *++sp, *sp = j;
   return ip->ap(f, ip, hp, sp); }
-
-#define Have(n) if (sp - hp < n) return gc(f, ip, hp, sp, n)
-#define Have1() if (sp == hp) return gc(f, ip, hp, sp, 1)
 
 Vm(ref) { Have1(); return
   sp[-1] = sp[getnum(ip[1].x)],
@@ -479,6 +480,11 @@ Vm(K) { Have1(); return
   sp[-1] = ip[1].x,
   ip[2].ap(f, ip + 2, hp, sp - 1); }
 
+Vm(prc) {
+  ip = (thread) sp[1];
+  fputc(getnum(sp[1] = sp[0]), stdout);
+  return ip->ap(f, ip, hp, sp + 1); }
+
 Vm(print) { return
   ip = (void*) sp[1],
   sp[1] = *sp,
@@ -498,6 +504,7 @@ Vm(car) { return
   ip = (thread) sp[1],
   sp[1] = twop(sp[0]) ? A(sp[0]) : sp[0],
   ip->ap(f, ip, hp, sp + 1); }
+
 Vm(cdr) { return
   ip = (thread) sp[1],
   sp[1] = twop(sp[0]) ? B(sp[0]) : nil,
@@ -550,3 +557,12 @@ Vm(vm_eval) {
        ip = (cell) sp[1],
        sp += 2;
   return ip[1].ap(f, ip + 1, hp, sp); }
+
+static Vm(bind) {
+  Have(2 * Width(struct two));
+  word nom = ip[1].x;
+  two w = ini_two((two) hp, ip[1].x, sp[0]);
+  hp += Width(struct two);
+  two x = ini_two((two) hp, (word) w, f->dict);
+  f->dict = (word) x;
+  return ip[2].ap(f, ip + 2, hp + 2 * Width(struct two), sp); }
