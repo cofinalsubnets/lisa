@@ -405,3 +405,13 @@ static bool eq_str(state f, word x, word y) {
   string a = (string) x, b = (string) y;
   if (a->len != b->len) return false;
   return 0 == strncmp(a->text, b->text, a->len); }
+
+status report(state f, status s) {
+  switch (s) {
+    case Dom:
+      fprintf(stderr, "# domain error at [0x%lx]", f->ip->x);
+      break;
+    case Oom:
+      fprintf(stderr, "# out of memory at %ld words", f->len);
+    default: }
+  return s; }

@@ -69,13 +69,8 @@ static thread cata(state f, scope *c, size_t m) {
   thread k = mo_n(f, m);
   if (k) memset(k, -1, m * sizeof(word)), k += m;
   return pull(f, c, k); }
-static C1(c1i) { return
-  k[-1].x = *f->sp++,
-  pull(f, c, k - 1); }
-static C1(c1ix) { return
-  k[-2].x = *f->sp++,
-  k[-1].x = *f->sp++,
-  pull(f, c, k - 2); }
+static C1(c1i) { return k[-1].x = *f->sp++, pull(f, c, k - 1); }
+static C1(c1ix) { return k[-2].x = *f->sp++, k[-1].x = *f->sp++, pull(f, c, k - 2); }
 // generic instruction c0 handlers
 static size_t c0i(state f, scope *c, size_t m, vm *i) {
   return push2(f, (word) c1i, (word) i) ? m + 1 : 0; }
@@ -383,18 +378,15 @@ static size_t c0list(state f, scope *c, size_t m, word x) {
   word a = A(x), b = B(x);
   if (!twop(b)) // singleton list is quote
     return c0ix(f, c, m, K, a);
-  if (strp(a)) { // special forms
-    string s = (string) a;
-    if (s->len == 1) switch (s->text[0]) {
+  if (strp(a) && ((string) a)->len == 1)
+    switch (((string) a)->text[0]) { // special forms
       case ',': return c0do(f, c, m, b);
       case ':': return c0let(f, c, m, b);
-      case '\\': return
-        x = c0lambw(f, c, nil, b),
-        x ? ana(f, c, m, x) : x;
-      case '?': return c0cond(f, c, m, b); } }
-  return
-    avec(f, b, m = ana(f, c, m, a)), // evaluate function expression
-    c0args(f, c, m, b); } // apply to arguments
+      case '?': return c0cond(f, c, m, b);
+      case '\\': return x = c0lambw(f, c, nil, b),
+                        x ? ana(f, c, m, x) : x; }
+  return avec(f, b, m = ana(f, c, m, a)), // evaluate function expression
+         c0args(f, c, m, b); } // apply to arguments
 
 
 static NoInline Vm(gc, size_t n) {
@@ -404,8 +396,8 @@ static NoInline Vm(gc, size_t n) {
 Vm(tap) {
   word x = sp[0], j = sp[1];
   sp += getnum(ip[1].x) + 1;
-  if (nump(j)) ip = (cell) *++sp, *sp = j;
-  else ip = (cell) j, *sp = x;
+  if (homp(j)) ip = (thread) j, *sp = x;
+  else ip = (thread) *++sp, *sp = j;
   return ip->ap(f, ip, hp, sp); }
 
 #define Have(n)\

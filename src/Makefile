@@ -1,11 +1,12 @@
 Makefile=Makefile
 nom=gwen
+
 #build
 LC_COLLATE=C
 c=$(sort $(wildcard *.c))
 h=$(sort $(wildcard *.h))
-CPPFLAGS += -Dtesting
 o=$(c:.c=.o)
+CPPFLAGS += -Dtesting
 CFLAGS ?=\
 	-std=gnu11 -g -Os -Wall\
  	-Wstrict-prototypes -Wno-shift-negative-value\

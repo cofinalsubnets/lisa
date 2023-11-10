@@ -8,8 +8,6 @@ $(nom): src/$(nom)
 src/$(nom):
 	make -C src $(nom)
 
-
-
 testcmd=./$(nom) </dev/null
 test: $(nom)
 	/usr/bin/env TIMEFORMAT="in %Rs" bash -c "time $(testcmd)"
