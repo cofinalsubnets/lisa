@@ -216,7 +216,8 @@ static size_t c0cond(state f, scope *c, size_t m, word x) {
   // FIXME probably a nicer way to write this loop ...
   for (x = pop1(f), MM(f, &x); m; x = B(B(x))) {
     if (!twop(x)) { // at end, no default branch
-      m = ana(f, c, m, nil); break; }
+      m = ana(f, c, m, nil);
+      break; }
     if (!twop(B(x))) { // at end, default branch
       m = ana(f, c, m + 2, A(x));
       m = m && push1(f, (word) c1prebranch) ? m : 0;
@@ -225,8 +226,7 @@ static size_t c0cond(state f, scope *c, size_t m, word x) {
     m = m && push1(f, (word) c1postbranch) ? m : 0;
     m = m ? ana(f, c, m, A(B(x))) : 0;
     m = m && push1(f, (word) c1prebranch) ? m : 0; }
-  return UM(f),
-    m && push1(f, (word) c1precond) ? m : 0; }
+  return UM(f), m && push1(f, (word) c1precond) ? m : 0; }
 
 // first emitter called for cond expression
 // pushes cond expression exit address onto scope stack ends
@@ -237,8 +237,8 @@ static thread c1precond(state f, scope *c, thread k) {
 // last emitter called for cond expression
 // pops cond expression exit address off scope stack ends
 static thread c1postcond(state f, scope *c, thread k) {
-  (*c)->ends = B((*c)->ends);
-  return pull(f, c, k); }
+  return (*c)->ends = B((*c)->ends),
+         pull(f, c, k); }
 
 // first emitter called for a branch
 // pushes next branch address onto scope stack alts
@@ -277,18 +277,37 @@ static word ldels(state f, word lam, word l) {
   if (!assoc(f, lam, A(l))) B(l) = m, m = l;
   return m; }
 
+static word desugar_append(state f, word *d, word *e, word a) {
+  if (!twop(a)) return (word) cons(f, *e, nil);
+  word b; avec(f, a, b = desugar_append(f, d, e, B(a)));
+  return !b ? b : (word) cons(f, A(a), b); }
+
+static status desugar(state f, word *d, word *e) {
+  if (!twop(*d)) return Ok;
+  word x, l = (word) strof(f, "\\");
+  if (!l) return Oom;
+  MM(f, &l);
+  do if (!(x = (word) desugar_append(f, d, e, B(*d))) ||
+         !(x = (word) cons(f, l, x)))
+    return UM(f), Oom;
+  else *d = A(*d), *e = x;
+  while (twop(*d));
+  return UM(f), Ok; }
+
 static word c0l(state f, scope *c, word exp) {
   if (!twop(exp)) return nil;
   // lots of variables :(
   word nom = nil, def = nil, lam = nil,
-       vars = nil, d = nil, e = nil;
+       v = nil, d = nil, e = nil;
   MM(f, &nom), MM(f, &def), MM(f, &exp), MM(f, &lam);
-  MM(f, &d); MM(f, &e); MM(f, &vars);
+  MM(f, &d); MM(f, &e); MM(f, &v);
 
   // collect vars and defs into two lists
-  for (; twop(exp) && twop(B(exp)); exp = B(B(exp)))
-    if (!(nom = (word) cons(f, A(exp), nom)) ||
-        !(def = (word) cons(f, A(B(exp)), def)))
+  for (; twop(exp) && twop(B(exp)); exp = B(B(exp))) {
+    d = A(exp), e = A(B(exp));
+    desugar(f, &d, &e);
+    if (!(nom = (word) cons(f, d, nom)) ||
+        !(def = (word) cons(f, e, def)))
       goto fail;
     else if (lambp(f, A(def))) {
       // if it's a lambda compile it and record in lam list
@@ -296,12 +315,10 @@ static word c0l(state f, scope *c, word exp) {
       x = x ? (word) cons(f, A(nom), x) : x;
       x = x ? (word) cons(f, x, lam) : x;
       if (x) lam = x;
-      else goto fail; }
+      else goto fail; } }
 
-  // if there's no body use nil
-  if (!twop(exp))
-    if (!(exp = (word) cons(f, nil, nil)))
-      goto fail;
+  // if there's no body then use the last definition
+  if (!twop(exp) && !(exp = (word) cons(f, A(nom), nil))) goto fail;
 
   // solve closures
   // for each function f with closure C(f)
@@ -312,12 +329,13 @@ static word c0l(state f, scope *c, word exp) {
     for (e = lam; twop(e); e = B(e)) // for each bound function variable
       if (A(A(d)) != A(A(e)) && // skip yourself
           lidx(f, B(B(A(e))), A(A(d))) >= 0) // if you need this function
-        for (word u, vars = B(A(d)); twop(vars); vars = B(vars)) { // then you need its variables
-          if (!(u = uinsert(f, B(B(A(e))), A(vars)))) goto fail; // oom
-          else if (u != B(B(A(e)))) B(B(A(e))) = u, ins++; } // if list is updated then record change
+        for (word u, v = B(A(d)); twop(v); v = B(v)) { // then you need its variables
+          if (!(u = uinsert(f, B(B(A(e))), A(v)))) goto fail; // oom
+          else if (u != B(B(A(e)))) B(B(A(e))) = u, ins++; } // if list is updated then record the change
   while (ins);
 
   // now delete defined functions from the closure variable lists
+  // they will be bound lazily when the function runs
   for (e = lam; twop(e); e = B(e))
     B(B(A(e))) = ldels(f, lam, B(B(A(e))));
   // store lambdas on scope for lazy binding
@@ -493,12 +511,12 @@ Vm(not) {
   return ip->ap(f, ip, hp, sp + 1); }
 
 Vm(vm_read) {
-  Have(Width(struct pair) + 1);
+  Have(Width(struct two) + 1);
   pair w = (pair) hp;
   w->ap = data;
   w->typ = Pair;
   w->a = w->b = nil;
-  hp += Width(struct pair);
+  hp += Width(struct two);
   *--sp = (word) w;
   Pack();
   status s = read_source(f, stdin);
@@ -511,12 +529,12 @@ static Vm(drop) {
   return ip[1].ap(f, ip + 1, hp, sp + 1); }
 
 Vm(vm_eval) {
-  Have(Width(struct pair) + 1);
+  Have(Width(struct two) + 1);
   pair w = (pair) hp;
   w->ap = data;
   w->typ = Pair;
   w->a = w->b = nil;
-  hp += Width(struct pair);
+  hp += Width(struct two);
   word x = *sp;
   *sp = (word) w;
   *--sp = (word) ip;

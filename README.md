@@ -1,17 +1,13 @@
 # gwen
 another list processing style programming language
 
-## how to build
-are you on linux? `make` will probably work. otherwise, see
-`Makefile` for the suggested compiler flags.
-
-## how to use
-- false = nil = 0
-- evaluation is applicative order
-- functions are curried
+- there is no false or nil, just 0
+- there are no dotted lists, the last cdr just is not shown
+- functions are curried, there are no variadic functions (but there are macros)
+- application is left to right one argument at a time
 - data are own constant functions
-- singleton list is `quote`
-- `(\ arg1 arg2 arg3 exp)` is like `lambda`
-- `(? test1 exp1 test2 exp2 test3 exp3)` is like `cond`
-- `(: a x b y c z (a b c))` is like `letrec`
+- singleton list is `quote`, there are no nullary functions (just ignore it :)
 - `(, a b c d)` is like `begin`
+- `(\ a b c x)` is `lambda` (`a b c` are arguments and `x` is body, use `,` for multiple expressions)
+- `(? a b c d e f g)` is `cond` (g is default branch)
+- `(: a x b y c z (a b c))` is like `letrec` (if no expression then return last definition)

@@ -9,12 +9,7 @@ typedef struct gwen *gwen, *state;
 typedef uintptr_t size;
 typedef intptr_t word, *heap, *stack;
 typedef union cell *cell, *thread, *verb;
-typedef enum status {
-  Ok = 0,
-  Dom,
-  Oom,
-  Eof = -1,
-} status,
+typedef enum status { Ok = 0, Dom, Oom, Eof = -1, } status,
   code(state, thread, heap, stack);
 struct gwen {
   // vm variables
@@ -45,15 +40,13 @@ struct loop {
 } *mo_tag(cell);
 
 enum data { Pair, String, };
-typedef struct pair {
+typedef struct two {
   code *ap;
   word typ;
   word a, b;
 } *two, *pair;
 
-typedef enum order {
-  Lt = -1, Eq = 0, Gt = 1,
-} order(state, word, word);
+typedef enum ord { Lt = -1, Eq = 0, Gt = 1, } ord(gwen, word, word);
 
 typedef struct string {
   code *ap;
@@ -87,20 +80,22 @@ typedef FILE *source, *sink;
 #define datp(_) (ptr(_)->ap==data)
 #define End ((word)0) // vararg sentinel
 
-pair cons(state, word, word);
+two
+  ini_two(two, word, word),
+  cons(gwen, word, word);
 string
-  buf_new(state),
-  buf_grow(state, string),
-  strof(state, const char*),
+  buf_new(gwen),
+  buf_grow(gwen, string),
+  strof(gwen, const char*),
   str_ini(void*, size_t);
 
 size_t llen(word);
-long lidx(state, word, word);
+long lidx(gwen, word, word);
 
 void
-  l_fin(state),
-  *cells(state, size_t),
-  transmit(state, sink, word);
+  l_fin(gwen),
+  *cells(gwen, size_t),
+  transmit(gwen, sink, word);
 
 bool
   eql(state, word, word),
@@ -113,20 +108,20 @@ status
 #ifdef testing
   self_test(gwen),
 #endif
-  parse_source(state, source),
-  read_source(state, source);
+  parse_source(gwen, source),
+  read_source(gwen, source);
 
 thread
-  mo_n(state, size_t),
+  mo_n(gwen, size_t),
   mo_ini(void*, size_t);
 
 word
-  dict_lookup(state, word),
-  assoc(state, word, word),
-  lookup(state, word, word),
-  push1(state, word),
-  push2(state, word, word),
-  push3(state, word, word, word);
+  dict_lookup(gwen, word),
+  assoc(gwen, word, word),
+  lookup(gwen, word, word),
+  push1(gwen, word),
+  push2(gwen, word, word),
+  push3(gwen, word, word, word);
 
 vm data, ap, tap, K, ref, curry, ret, yield, cond, jump,
    print,
