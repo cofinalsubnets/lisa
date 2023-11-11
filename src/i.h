@@ -128,6 +128,8 @@ status gc(gwen, thread, heap, stack, size_t);
 vm data, ap, tap, K, ref, curry, ret, yield, cond, jump,
    print,
    not,
+   p2,
+   Xp, Np, Sp, mbind,
    ssub, sget, slen,
    pr, ppr, spr, pspr, prc,
    xons, car, cdr,

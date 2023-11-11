@@ -1,5 +1,20 @@
 #include "i.h"
 
+Vm(Xp) {
+  ip = (thread) sp[1];
+  sp[1] = twop(sp[0]) ? putnum(-1) : nil;
+  return ip->ap(f, ip, hp, sp + 1); }
+
+Vm(Np) {
+  ip = (thread) sp[1];
+  sp[1] = nump(sp[0]) ? putnum(-1) : nil;
+  return ip->ap(f, ip, hp, sp + 1); }
+
+Vm(Sp) {
+  ip = (thread) sp[1];
+  sp[1] = strp(sp[0]) ? putnum(-1) : nil;
+  return ip->ap(f, ip, hp, sp + 1); }
+
 typedef bool eqr(state, word, word);
 static eqr eq_str, eq_two;
 static eqr *eqs[] = { [Pair] = eq_two, [String] = eq_str, };

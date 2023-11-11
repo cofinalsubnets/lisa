@@ -1,0 +1,8 @@
+(: (id x) x
+   (const x y) x
+   (flip f x y) (f y x)
+   (map f l) (? (2? l) (X (f (A l)) (map f (B l)))))
+(: (foldl f z l) (? (2? l) (foldl f (f z (A l)) (B l)) z)
+   (foldr f z l) (? (2? l) (f (A l) (foldr (f z (B l)))) z))
+(: (f l) (? (2? l) (X (X) (X (A l) (X (f (B l)) ()))))
+ (:: (list) f))

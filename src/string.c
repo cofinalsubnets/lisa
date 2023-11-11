@@ -28,7 +28,7 @@ Vm(sget) {
     string s = (string) sp[0];
     size_t i = min(s->len - 1, getnum(sp[1]));
     i = max(i, 0);
-    sp[2] = putnum(i); }
+    sp[2] = putnum(s->text[i]); }
   return r->ap(f, r, hp, sp + 2); }
 Vm(scat) { }
 Vm(sput) { }

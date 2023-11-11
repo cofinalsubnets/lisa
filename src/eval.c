@@ -41,8 +41,11 @@ static thread analyze(state, word);
 
 // compile and execute expression
 NoInline status eval(state f, word x) {
-  thread k = analyze(f, x);
-  return k ? k->ap(f, k, f->hp, f->sp) : Oom; }
+  status s; thread i = f->ip, k;
+  avec(f, i,
+    k = analyze(f, x),
+    s = !k ? Oom : k->ap(f, k, f->hp, f->sp));
+  return f->ip = i, s; }
 
 static scope enscope(state f, scope par, word args, word imps) {
   scope s;
@@ -319,7 +322,8 @@ static word c0l(state f, scope *c, word exp) {
       else goto fail; } }
 
   // if there's no body then use the last definition
-  if (!twop(exp)) {
+  bool even = !twop(exp);
+  if (even) {
     word x = (word) cons(f, A(nom), nil);
     if (!x) goto fail;
     exp = x; }
@@ -360,7 +364,7 @@ static word c0l(state f, scope *c, word exp) {
       // put in def list and lam list (latter is used for lazy binding)
       A(def) = B(d) = _; }
     // if toplevel then bind
-    if (nilp((*c)->args)) {
+    if (even && nilp((*c)->args)) {
       thread t = cells(f, 2 * Width(struct two) + 2 + Width(struct loop));
       if (!t) goto fail;
       two w = (two) t,
@@ -409,13 +413,26 @@ static size_t c0do(state f, scope *c, size_t m, word x) {
 static size_t c0list(state f, scope *c, size_t m, word x) {
   word a = A(x), b = B(x);
   if (!twop(b)) return c0ix(f, c, m, K, a); // singleton list quote
-  if (strp(a) && ((string) a)->len == 1)
-    switch (((string) a)->text[0]) { // special forms
-      case ',': return c0do(f, c, m, b);
-      case ':': return c0let(f, c, m, b);
-      case '?': return c0cond(f, c, m, b);
-      case '\\': return x = c0lambw(f, c, nil, b),
-                        x ? ana(f, c, m, x) : x; }
+  if (strp(a)) {
+    if (((string) a)->len == 1)
+      switch (((string) a)->text[0]) { // special forms
+        case ',': return c0do(f, c, m, b);
+        case ':': return c0let(f, c, m, b);
+        case '?': return c0cond(f, c, m, b);
+        case '\\': return x = c0lambw(f, c, nil, b),
+                          x ? ana(f, c, m, x) : x; }
+    x = lookup(f, f->macro, a);
+    if (x) {
+      x = (word) cons(f, b, x);
+      if (x) b = x, x = B(b), B(b) = nil;
+      x = x ? (word) cons(f, b, x) : x;
+      if (x) b = x, x = B(b), B(b) = nil;
+      x = x ? (word) cons(f, x, b) : x;
+      if (!x) return 0;
+      status s = eval(f, x);
+      if (s != Ok) return 0; // XXX ignores errors
+      x = pop1(f);
+      return ana(f, c, m, x); } }
   return avec(f, b, m = ana(f, c, m, a)), // evaluate function expression
          c0args(f, c, m, b); } // apply to arguments
 
@@ -537,36 +554,7 @@ Vm(not) { return
   sp[1] = ~sp[0] | 1,
   ip->ap(f, ip, hp, sp + 1); }
 
-Vm(vm_read) {
-  Have(Width(struct two) + 1);
-  two w = ini_two((two) hp, nil, nil);
-  hp += Width(struct two);
-  *--sp = (word) w;
-  Pack();
-  status s = read1(f, stdin);
-  Unpack();
-  if (s) *sp = nil;
-  else A(sp[1]) = sp[0], sp++;
-  return ip[1].ap(f, ip + 1, hp, sp); }
-
 static Vm(drop) { return ip[1].ap(f, ip + 1, hp, sp + 1); }
-
-Vm(vm_eval) {
-  Have(Width(struct two) + 1);
-  two w = ini_two((two) hp, nil, nil);
-  hp += Width(struct two);
-  word x = *sp;
-  *sp = (word) w;
-  *--sp = (word) ip;
-  Pack();
-  status s = eval(f, x);
-  Unpack();
-  if (s) ip = (cell) *sp++,
-         *sp = putnum(s);
-  else A(sp[2]) = sp[0],
-       ip = (cell) sp[1],
-       sp += 2;
-  return ip[1].ap(f, ip + 1, hp, sp); }
 
 static Vm(bind) {
   Have(2 * Width(struct two));
@@ -576,3 +564,12 @@ static Vm(bind) {
   ip = (thread) sp[1];
   sp[1] = sp[0];
   return ip->ap(f, ip, hp + 2 * Width(struct two), sp + 1); }
+
+Vm(mbind) {
+  Have(2 * Width(struct two));
+  two w = ini_two((two) hp, sp[0], sp[1]),
+      x = ini_two(w + 1, (word) w, f->macro);
+  f->macro = (word) x;
+  ip = (thread) sp[2];
+  sp[2] = sp[1];
+  return ip->ap(f, ip, hp + 2 * Width(struct two), sp + 2); }

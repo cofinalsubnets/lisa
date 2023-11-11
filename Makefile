@@ -59,7 +59,9 @@ flamegraph.svg: perf.data
 	flamegraph --perfdata $<
 flame: flamegraph.svg
 	xdg-open $<
+repl: $(nom)
+	rlwrap ./$(nom)
 
 .PHONY: default clean test test-lots\
 	install uninstall\
- 	sloc bits valg perf bench flame disasm
+ 	sloc bits valg perf bench flame disasm repl
