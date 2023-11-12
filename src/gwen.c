@@ -43,12 +43,12 @@ static status l_ini_dict(state f) {
     { "A", (word) p_car },
     { "B", (word) p_cdr },
     { "sget", (word) p_sget},
-    {"ssub", (word) p_ssub},
-    {"slen", (word) p_slen},
-    {"s?", (word) p_sp},
-    {"n?", (word) p_np},
-    {"2?", (word) p_2p},
-    {"::", (word) p_mbind},
+    { "ssub", (word) p_ssub},
+    { "slen", (word) p_slen},
+    { "s?", (word) p_sp},
+    { "n?", (word) p_np},
+    { "X?", (word) p_2p},
+    { "::", (word) p_mbind},
 //    { "p", (word) p_p },
     { "pc", (word) p_pc },
  //   { "pp", (word) p_pp },
@@ -75,4 +75,3 @@ status l_ini(state f) {
   status s = l_ini_dict(f);
   if (s != Ok) l_fin(f);
   return s; }
-

@@ -8,7 +8,7 @@ endif
 syn cluster GwenAtomCluster contains=GwenAtomList,GwenComment,GwenTodo,GwenFunc
 syn cluster GwenBaseListCluster contains=GwenAtom,GwenAtomMark,GwenComment,GwenTodo,GwenFunc,GwenList,GwenNumber,GwenSymbol
 
-syn match GwenSymbol contained ![^()'`,"; \t]\+!
+syn match GwenSymbol contained ![^()"; \t]\+!
 
 syn match GwenAtomMark "'"
 syn match GwenAtom "'[^ \t()]\+" contains=GwenAtomMark
@@ -16,7 +16,11 @@ syn region GwenAtom start=+'"+ skip=+\\"+ end=+"+
 syn region GwenAtomList contained matchgroup=Special start="(" matchgroup=Special end=")" contains=@GwenAtomCluster,GwenString
 
 syn iskeyword @,!,37-38,42-47,:,60-63,\,`,|,~,^
-syn keyword GwenFunc < <= = > >= + - ~ ! * / % ? ` : \\ , . A B AA AB BA BB X L Q && \|\| \| & ^ << >>
+syn keyword GwenFunc < <= = >= >
+syn keyword GwenFunc + - ~ ! * / %
+syn keyword GwenFunc ? : \\ , .
+syn keyword GwenFunc X L A B
+syn keyword GwenFunc && \|\| \| & ^ << >>
 "syn keyword GwenFunc ::: >>= case
 "syn keyword GwenFunc twop nump symp tblp strp nilp homp ev ap
 "syn keyword GwenFunc str slen schr scat ssub ystr sym nope
@@ -28,9 +32,9 @@ syn cluster GwenListCluster contains=@GwenBaseListCluster,GwenString
 
 " FIXME highlight signs right
 syn match GwenNumber "\(+\|-\)*\(0d\|0D\)\?\(\.\d\+\|\d\+\(\.\d*\)\=\)"
-syn match GwenNumber "\(+\|-\)*\(0b\|0B\)\(\.[01]\+\|[01]\+\(\.[01]*\)\=\)"
-syn match GwenNumber "\(+\|-\)*\(0o\|0O\)\(\.\o\+\|\o\+\(\.\o*\)\=\)"
-syn match GwenNumber "\(+\|-\)*\(0z\|0Z\)\(\.[0-9abAB]\+\|[0-9abAB]\+\(\.[0-9abAB]*\)\=\)"
+"syn match GwenNumber "\(+\|-\)*\(0b\|0B\)\(\.[01]\+\|[01]\+\(\.[01]*\)\=\)"
+"syn match GwenNumber "\(+\|-\)*\(0o\|0O\)\(\.\o\+\|\o\+\(\.\o*\)\=\)"
+"syn match GwenNumber "\(+\|-\)*\(0z\|0Z\)\(\.[0-9abAB]\+\|[0-9abAB]\+\(\.[0-9abAB]*\)\=\)"
 syn match GwenNumber "\(+\|-\)*\(0x\|0X\)\(\.\x\+\|\x\+\(\.\x*\)\=\)"
 
 syn match GwenParenError ")"

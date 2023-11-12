@@ -404,35 +404,35 @@ static Vm(tie) {
 
 static size_t c0do(state f, scope *c, size_t m, word x) {
   if (!twop(x)) return c0ix(f, c, m, K, nil);
-  for (MM(f, &x); twop(B(x)); x = B(x))
-    if (!(m = ana(f, c, m, A(x))) ||
-        !(m = c0i(f, c, m, drop)))
-      break;
+  for (MM(f, &x); m && twop(B(x)); x = B(x))
+    m = ana(f, c, m, A(x)),
+    m = m ? c0i(f, c, m, drop) : m;
   return UM(f), m ? ana(f, c, m, A(x)) : m; }
+
+static size_t c0mac(state f, scope *c, size_t m, word x, word b) {
+  x = (word) cons(f, b, x);
+  if (x) b = x, x = B(b), B(b) = nil;
+  x = x ? (word) cons(f, b, x) : x;
+  if (x) b = x, x = B(b), B(b) = nil;
+  x = x ? (word) cons(f, x, b) : x;
+  if (!x) return 0;
+  status s = eval(f, x);
+  if (s != Ok) return 0; // XXX ignores errors
+  x = pop1(f);
+  return ana(f, c, m, x); }
 
 static size_t c0list(state f, scope *c, size_t m, word x) {
   word a = A(x), b = B(x);
   if (!twop(b)) return c0ix(f, c, m, K, a); // singleton list quote
   if (strp(a)) {
     if (((string) a)->len == 1)
-      switch (((string) a)->text[0]) { // special forms
+      switch (((string) a)->text[0]) { // special form?
         case ',': return c0do(f, c, m, b);
         case ':': return c0let(f, c, m, b);
         case '?': return c0cond(f, c, m, b);
-        case '\\': return x = c0lambw(f, c, nil, b),
-                          x ? ana(f, c, m, x) : x; }
-    x = lookup(f, f->macro, a);
-    if (x) {
-      x = (word) cons(f, b, x);
-      if (x) b = x, x = B(b), B(b) = nil;
-      x = x ? (word) cons(f, b, x) : x;
-      if (x) b = x, x = B(b), B(b) = nil;
-      x = x ? (word) cons(f, x, b) : x;
-      if (!x) return 0;
-      status s = eval(f, x);
-      if (s != Ok) return 0; // XXX ignores errors
-      x = pop1(f);
-      return ana(f, c, m, x); } }
+        case '\\': return (x = c0lambw(f, c, nil, b)) ? ana(f, c, m, x) : x; }
+    if ((x = lookup(f, f->macro, a))) // macro?
+      return c0mac(f, c, m, x, b); }
   return avec(f, b, m = ana(f, c, m, a)), // evaluate function expression
          c0args(f, c, m, b); } // apply to arguments
 
@@ -485,8 +485,8 @@ Vm(curry) {
   if (n < 3) {
     Have(S);
     k = (thread) hp;
-    k[0].ap = Kj,    k[1].x = *sp++, k[2].m = ip + 2;
-    k[3].x = 0,      k[4].m = k; }
+    k[0].ap = Kj, k[1].x = *sp++, k[2].m = ip + 2;
+    k[3].x = 0,   k[4].m = k; }
   else {
     S += 2;
     Have(S);
@@ -521,7 +521,6 @@ Vm(print) { return
 
 Vm(xons) {
   Have(Width(struct two));
-  word a = sp[0], b = sp[1];
   two w = ini_two((two) hp, sp[0], sp[1]);
   return ip = (thread) sp[2],
          sp[2] = (word) w,

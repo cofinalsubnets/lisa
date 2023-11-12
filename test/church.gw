@@ -5,4 +5,4 @@
    (N c) (c (\ x (+ x 1)) 0)
     (: four (mul (add one one) (add one one))
      (: five (add one four)
-      (. (N (mul five (four four)))))))
+      (assert (= 1280 (N (mul five (four four))))))))

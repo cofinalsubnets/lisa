@@ -29,17 +29,15 @@ static status go(state f, char **av, bool repl) {
 #ifdef testing
   self_test(f);
 #endif
-  for (word x; *av; av++) {
+  for (status s; *av; av++) {
     FILE *i = fopen(*av, "r");
-    if (!i) {
-      fprintf(stderr, "# error opening %s: %s\n", *av, strerror(errno));
-      return Dom; }
-    word s = reads(f, i);
-    if (s == Ok)
-      s = ((x = (word) strof(f, ",")) &&
-           (x = (word) cons(f, x, pop1(f)))) ?
-        eval(f, x) : Oom;
+    if (!i) return
+      fprintf(stderr, "# error opening %s: %s\n", *av, strerror(errno)),
+      Dom;
+    while ((s = read1(f, i)) != Eof &&
+           (s = eval(f, pop1(f))) == Ok) pop1(f);
     fclose(i);
+    if (s == Eof) s = Ok;
     if (s != Ok) return report(f, s); }
 
   // repl

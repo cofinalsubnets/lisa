@@ -1,16 +1,28 @@
 Makefile=Makefile
 nom=gwen
 
+#build
+LC_COLLATE=C
+c=$(sort $(wildcard src/*.c))
+h=$(sort $(wildcard src/*.h))
+o=$(c:.c=.o)
+#CPPFLAGS += -Dtesting
+CFLAGS ?=\
+	-std=gnu11 -g -Os -Wall\
+ 	-Wstrict-prototypes -Wno-shift-negative-value\
+	-fno-stack-protector
+
 default: test
+$(nom): $o $h
+	$(CC) -o $@ $o $(CPPFLAGS) $(CFLAGS) $(LDFLAGS)
+%.o: %.c $h $(Makefile)
+	$(CC) -c $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $< -o $@
 
-$(nom): src/$(nom)
-	mv $^ $@
-src/$(nom):
-	make -C src $(nom)
-
-testcmd=./$(nom) </dev/null
+boot=lib/pre.gw
+test=test/*.gw
+runtests=./$(nom) $(boot) $(test)
 test: $(nom)
-	/usr/bin/env TIMEFORMAT="in %Rs" bash -c "time $(testcmd)"
+	/usr/bin/env TIMEFORMAT="in %Rs" bash -c "time $(runtests)"
 
 # install
 DESTDIR ?= $(HOME)
@@ -37,7 +49,7 @@ clean:
 
 # valgrind detects some memory errors
 valg: $(nom)
-	valgrind --error-exitcode=1 $(testcmd)
+	valgrind --error-exitcode=1 $(runtests)
 
 # approximate lines of code
 sloc:
@@ -52,7 +64,7 @@ disasm: $(nom)
 
 # profiling on linux
 perf.data: $(nom) $(boot)
-	perf record $(testcmd)
+	perf record $(runtests)
 perf: perf.data
 	perf report
 flamegraph.svg: perf.data
@@ -60,7 +72,7 @@ flamegraph.svg: perf.data
 flame: flamegraph.svg
 	xdg-open $<
 repl: $(nom)
-	rlwrap ./$(nom)
+	rlwrap ./$(nom) -i lib/pre.gw
 
 .PHONY: default clean test test-lots\
 	install uninstall\

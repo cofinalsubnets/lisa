@@ -1,9 +1,9 @@
 # gwen
 another list processing style programming language
 
-- there is no false or nil, just 0
-- there are no dotted lists, the last cdr just is not shown
-- functions are curried, there are no variadic functions (but there are macros)
+- no false or nil, just 0
+- no dotted lists, the last cdr just is not shown
+- functions are curried, there are macros but no variadic functions
 - application is left to right one argument at a time
 - data are own constant functions
 - singleton list is `quote`, there are no nullary functions (just ignore it :)

@@ -1,8 +1,15 @@
-(: (id x) x
-   (const x y) x
-   (flip f x y) (f y x)
-   (map f l) (? (2? l) (X (f (A l)) (map f (B l)))))
-(: (foldl f z l) (? (2? l) (foldl f (f z (A l)) (B l)) z)
-   (foldr f z l) (? (2? l) (f (A l) (foldr (f z (B l)))) z))
-(: (f l) (? (2? l) (X (X) (X (A l) (X (f (B l)) ()))))
- (:: (list) f))
+(:
+ (id x) x
+ (const x y) x
+ (flip f x y) (f y x)
+ (map f l) (? (X? l) (X (f (A l)) (map f (B l))))
+ (foldl f z l) (? (X? l) (foldl f (f z (A l)) (B l)) z)
+ (foldr f z l) (? (X? l) (f (A l) (foldr (f z (B l)))) z)
+ (diag f x) (f x x))
+(: reverse (foldl (flip X) 0))
+(: (puts s) (: (f n l) (? (= n l) s (, (pc (sget s n)) (f (+ n 1) l))) (f 0 (slen s))))
+(:: (L) (: (f l) (? (X? l) (X X (X (A l) (X (f (B l)) ())))) f))
+(:: (let) (X (:)))
+(:: (if) (X (?)))
+(:: (do) (X (,)))
+(: (each f l) (? (X? l) (, (f (A l)) (each f (B l)))))
