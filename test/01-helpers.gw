@@ -14,6 +14,5 @@
           (L green-text ((.)))
           (L (,) (L red-text ((". ")))
                  (L . (L (A l)))))
-   (f (B l)))
-  (L pc 10))
+   (f (B l))))
  (f l))))
