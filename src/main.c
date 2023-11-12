@@ -19,16 +19,13 @@ int main(int ac, char **av) {
     case 'h': fprintf(stdout, help, *av); continue;
     case 'i': repl = true; continue;
     case -1: goto out; } out:
-//  if (ac == optind && !repl) return EXIT_SUCCESS;
+  if (ac == optind && !repl) return EXIT_SUCCESS;
   state f = &((struct gwen){});
   status s = l_ini(f);
   if (s == Ok) s = go(f, av + optind, repl), l_fin(f);
   return s; }
 
 static status go(state f, char **av, bool repl) {
-#ifdef testing
-  self_test(f);
-#endif
   for (status s; *av; av++) {
     FILE *i = fopen(*av, "r");
     if (!i) return

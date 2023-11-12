@@ -106,9 +106,6 @@ status
   l_ini(gwen),
   eval(gwen, word),
   report(gwen, status),
-#ifdef testing
-  self_test(gwen),
-#endif
   read1(gwen, source),
   reads(gwen, source);
 
