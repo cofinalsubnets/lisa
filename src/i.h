@@ -122,7 +122,7 @@ word
   push3(gwen, word, word, word);
 
 status gc(gwen, thread, heap, stack, size_t);
-vm data, ap, tap, K, ref, curry, ret, yield, cond, jump,
+vm data, ap, tap, K, ref, cur, ret, yield, cond, jump,
    print,
    not,
    p2,

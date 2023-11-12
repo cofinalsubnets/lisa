@@ -34,4 +34,3 @@ static bool eq_str(state f, word x, word y) {
   string a = (string) x, b = (string) y;
   if (a->len != b->len) return false;
   return 0 == strncmp(a->text, b->text, a->len); }
-

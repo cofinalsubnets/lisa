@@ -123,6 +123,11 @@ static thread c1var(state f, scope *c, thread k) {
     k[-1].x = putnum(idx + ins),
     pull(f, c, k - 2); }
 
+static word immval(state f, scope *c, word x) {
+  if (nump(x) || !datp(x)) return x;
+  if (htwop((thread) x) && !twop(B(x))) return A(x);
+  return 0; }
+
 // c0 lazy reference
 static size_t c0laz(state f, scope *c, size_t m, word x, scope d) {
   x = (word) cons(f, x, (word) d);
@@ -187,7 +192,7 @@ static pair c0lambi(state f, scope *c, word x) {
   if (!k) return 0;
   if (arity > 1) // curry if more than 1 argument
     (--k)->x = putnum(arity),
-    (--k)->ap = curry;
+    (--k)->ap = cur;
   // all the code has been emitted so now trim the thread
   mo_tag(k)->head = k;
   // apply to enclosed variables (if none then quoting has no effect)
@@ -281,25 +286,26 @@ static word ldels(state f, word lam, word l) {
   if (!assoc(f, lam, A(l))) B(l) = m, m = l;
   return m; }
 
-static word desugar_append(state f, word *d, word *e, word a) {
+static word desugr(state f, word *d, word *e, word a) {
   if (!twop(a)) return (word) cons(f, *e, nil);
-  word b; avec(f, a, b = desugar_append(f, d, e, B(a)));
+  word b; avec(f, a, b = desugr(f, d, e, B(a)));
   return !b ? b : (word) cons(f, A(a), b); }
 
-static status desugar(state f, word *d, word *e) {
+static status desug(state f, word *d, word *e) {
   if (!twop(*d)) return Ok;
   word x, l = (word) strof(f, "\\");
-  if (!l) return Oom;
-  MM(f, &l);
-  do if (!(x = (word) desugar_append(f, d, e, B(*d))) ||
-         !(x = (word) cons(f, l, x)))
-    return UM(f), Oom;
+  if (!l || !push1(f, l)) return Oom;
+  do if (!(x = (word) desugr(f, d, e, B(*d))) ||
+         !(x = (word) cons(f, f->sp[0], x)))
+    return Oom;
   else *d = A(*d), *e = x;
   while (twop(*d));
-  return UM(f), Ok; }
+  return f->sp++, Ok; }
 
+// this function is loooong
 static word c0l(state f, scope *c, word exp) {
   if (!twop(exp)) return nil;
+  if (!twop(B(exp))) return A(exp);
   // lots of variables :(
   word nom = nil, def = nil, lam = nil,
        v = nil, d = nil, e = nil;
@@ -308,8 +314,7 @@ static word c0l(state f, scope *c, word exp) {
 
   // collect vars and defs into two lists
   for (; twop(exp) && twop(B(exp)); exp = B(B(exp))) {
-    d = A(exp), e = A(B(exp));
-    desugar(f, &d, &e);
+    d = A(exp), e = A(B(exp)), desug(f, &d, &e);
     if (!(nom = (word) cons(f, d, nom)) ||
         !(def = (word) cons(f, e, def)))
       goto fail;
@@ -344,25 +349,19 @@ static word c0l(state f, scope *c, word exp) {
 
   // now delete defined functions from the closure variable lists
   // they will be bound lazily when the function runs
-  for (e = lam; twop(e); e = B(e))
-    B(B(A(e))) = ldels(f, lam, B(B(A(e))));
-  // store lambdas on scope for lazy binding
-  (*c)->lams = lam;
-
-  // construct new lambda application expression
+  for (e = lam; twop(e); e = B(e)) B(B(A(e))) = ldels(f, lam, B(B(A(e))));
+  // store lambdas on scope for lazy binding and construct new lambda application expression
   // - reverse noms onto exp
   // - reverse expressions onto e = nil and recompile lambdas
-  for (e = nil; twop(nom);) {
+  for ((*c)->lams = lam, e = nil; twop(nom);) {
     word _ = B(nom);
     B(nom) = exp, exp = nom, nom = _;
-    // if lambda then recompile
+    // if lambda then recompile with the solved variables
+    // and put in def list and lam list (latter is used for lazy binding)
     if (lambp(f, A(def))) {
       d = assoc(f, lam, A(exp));
-      // recompile with the solved variables
-      _ = c0lambw(f, c, B(B(d)), B(A(def)));
-      if (!_) goto fail;
-      // put in def list and lam list (latter is used for lazy binding)
-      A(def) = B(d) = _; }
+      if (!(_ = c0lambw(f, c, B(B(d)), B(A(def))))) goto fail;
+      else A(def) = B(d) = _; }
     // if toplevel then bind
     if (even && nilp((*c)->args)) {
       thread t = cells(f, 2 * Width(struct two) + 2 + Width(struct loop));
@@ -377,14 +376,10 @@ static word c0l(state f, scope *c, word exp) {
     // rotate onto e
     _ = B(def), B(def) = e, e = def, def = _; }
 
-  if (!twop(e)) exp = A(exp);
-  else {
-    // - put lambda symbol
-    string l = strof(f, "\\");
-    if (!l || !(exp = (word) cons(f, (word) l, exp))) goto fail;
-    // - cons them together
-    exp = (word) cons(f, exp, e); }
-  
+  // - put lambda symbol
+  string l = strof(f, "\\");
+  exp = l ? (word) cons(f, (word) l, exp) : 0;
+  exp = exp ? (word) cons(f, exp, e) : 0;
 done: return UM(f), UM(f), UM(f), UM(f), UM(f), UM(f), UM(f), exp;
 fail: exp = 0; goto done; }
 
@@ -411,16 +406,12 @@ static size_t c0do(state f, scope *c, size_t m, word x) {
 
 static size_t c0mac(state f, scope *c, size_t m, word x, word b) {
   x = (word) cons(f, b, x);
-  if (x) b = x, x = B(b), B(b) = nil;
-  x = x ? (word) cons(f, b, x) : x;
-  if (x) b = x, x = B(b), B(b) = nil;
-  x = x ? (word) cons(f, x, b) : x;
-  if (!x) return 0;
-  status s = eval(f, x);
-  if (s != Ok) return 0; // XXX ignores errors
-  x = pop1(f);
-  return ana(f, c, m, x); }
+  if (x) b = x, x = B(b), B(b) = nil, x = (word) cons(f, b, x);
+  if (x) b = x, x = B(b), B(b) = nil, x = (word) cons(f, x, b);
+  // XXX ignores errors
+  return !x || eval(f, x) != Ok ? 0 : ana(f, c, m, pop1(f)); }
 
+static size_t c0ap(state f, scope *c, size_t m, word a, word b);
 static size_t c0list(state f, scope *c, size_t m, word x) {
   word a = A(x), b = B(x);
   if (!twop(b)) return c0ix(f, c, m, K, a); // singleton list quote
@@ -433,8 +424,23 @@ static size_t c0list(state f, scope *c, size_t m, word x) {
         case '\\': return (x = c0lambw(f, c, nil, b)) ? ana(f, c, m, x) : x; }
     if ((x = lookup(f, f->macro, a))) // macro?
       return c0mac(f, c, m, x, b); }
-  return avec(f, b, m = ana(f, c, m, a)), // evaluate function expression
-         c0args(f, c, m, b); } // apply to arguments
+  return c0ap(f, c, m, a, b); }
+
+static size_t c0apc(state f, scope *c, size_t m, word v, word q, word b) {
+  thread ip = f->ip;
+  union cell y[] = {{K}, {.x=v}, {K}, {.x=q}, {ap}, {yield}};
+  status s;
+  avec(f, ip, avec(f, b, s = y->ap(f, y, f->hp, f->sp)));
+  f->ip = ip;
+  return s == Ok ? c0ap(f, c, m, pop1(f), B(b)) : 0; }
+
+static size_t c0ap(state f, scope *c, size_t m, word a, word b) {
+  if (!twop(b)) return c0ix(f, c, m, K, a); // can be reached recursively
+  // apply to immediate value now if all it does is curry
+  word v = immval(f, c, a), q = immval(f, c, A(b));
+  if (q && v && (nump(v) || datp(v) || ptr(v)->ap == cur)) return c0apc(f, c, m, v, q, b);
+  avec(f, b, m = ana(f, c, m, a)); // evaluate function expression
+  return c0args(f, c, m, b); } // apply to arguments
 
 NoInline Vm(gc, size_t n) {
   return Pack(), !please(f, n) ? Oom :
@@ -478,11 +484,11 @@ Vm(ap) {
   sp[1] = (word) (ip + 1);
   return k->ap(f, k, hp, sp); }
 
-Vm(curry) {
+Vm(cur) {
   thread k;
   size_t n = getnum(ip[1].x),
          S = 3 + Width(struct loop);
-  if (n < 3) {
+  if (n == 2) {
     Have(S);
     k = (thread) hp;
     k[0].ap = Kj, k[1].x = *sp++, k[2].m = ip + 2;
@@ -491,9 +497,9 @@ Vm(curry) {
     S += 2;
     Have(S);
     k = (thread) hp;
-    k[0].ap = curry, k[1].x = putnum(n - 1);
-    k[2].ap = Kj,    k[3].x = *sp++, k[4].m = ip + 2;
-    k[5].x = 0,      k[6].m = k; }
+    k[0].ap = cur, k[1].x = putnum(n - 1);
+    k[2].ap = Kj,  k[3].x = *sp++, k[4].m = ip + 2;
+    k[5].x = 0,    k[6].m = k; }
   ip = (cell) *sp, *sp = (word) k;
   return ip->ap(f, ip, hp + S, sp); }
 

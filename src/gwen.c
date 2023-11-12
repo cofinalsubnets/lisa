@@ -3,7 +3,7 @@ void l_fin(state f) { if (f)
   free(f->pool < f->loop ? f->pool : f->loop),
   f->pool = f->loop = NULL; }
 
-#define binop() {curry}, {.x = putnum(2)}
+#define binop() {cur}, {.x = putnum(2)}
 static union cell
   p_print[] = { {print} },
   p_eql[] = { binop(), {eq}, },
@@ -17,7 +17,7 @@ static union cell
   p_ge[] = { binop(), {ge} },
   p_slen[] = { {slen} },
   p_sget[] = { binop(), {sget} },
-  p_ssub[] = { {curry}, {.x = putnum(3)}, {ssub}},
+  p_ssub[] = { {cur}, {.x = putnum(3)}, {ssub}},
   p_2p[] = { {Xp}},
   p_np[] = { {Np}},
   p_sp[] = { {Sp}},
