@@ -3,7 +3,7 @@
 //
 // functions are laid out in memory like this
 //
-// *|*|*|*|*|*|?|0|^
+// *|*|*|*|*|*|0|^
 // * = function pointer or inline value
 // ? = function name / metadata (optional)
 // 0 = null
@@ -116,7 +116,7 @@ static long stkidxof(state f, scope c, word var) {
 // emit stack reference instruction
 static thread c1var(state f, scope *c, thread k) {
   word var = *f->sp++, // variable name
-       ins = getnum(*f->sp++), // stack inset
+       ins = llen(*f->sp++), // stack inset
        idx = stkidxof(f, *c, var);
   return
     k[-2].ap = ref,
@@ -172,10 +172,14 @@ static word uinsert(state f, word l, word x) {
 
 // codegen apply function argument
 static size_t c0args(state f, scope *c, size_t m, word b) {
-  for (MM(f, &b), (*c)->pals += 2; m && twop(b); b = B(b))
-    m = ana(f, c, m + 1, A(b)),
-    m = m && push1(f, (word) c1ap) ? m : 0;
-  return (*c)->pals -= 2, UM(f), m; }
+  MM(f, &b);
+  if ((*c)->pals = (word) cons(f, nil, (*c)->pals)) {
+    for (; m && twop(b); b = B(b))
+      m = ana(f, c, m + 1, A(b)),
+      m = m && push1(f, (word) c1ap) ? m : 0;
+    (*c)->pals = B((*c)->pals); }
+  else m = 0;
+  return UM(f), m; }
 
 // whole innerlambda thread whateverer
 // returns pair of thread and closure variable symbols
@@ -202,9 +206,9 @@ static pair c0lambi(state f, scope *c, word x) {
 static word ldecons(state f, word x) {
   if (!twop(x)) return push1(f, nil) ? nil : 0;
   if (!twop(B(x))) return push1(f, A(x)) ? nil : 0;
-  word y = A(x);
-  avec(f, y, x = ldecons(f, B(x)));
-  return x ? (word) cons(f, y, x) : x; }
+  word y = A(x); return
+  avec(f, y, x = ldecons(f, B(x))),
+  x ? (word) cons(f, y, x) : x; }
 
 // lambda wrapper parses expression and manages inner scope
 static word c0lambw(state f, scope *c, word imps, word exp) {
@@ -439,6 +443,7 @@ static size_t c0ap(state f, scope *c, size_t m, word a, word b) {
   // apply to immediate value now if all it does is curry
   word v = immval(f, c, a), q = immval(f, c, A(b));
   if (q && v && (nump(v) || datp(v) || ptr(v)->ap == cur)) return c0apc(f, c, m, v, q, b);
+//  if (v && homp(v) && ptr(v)->ap == cur && getnum(ptr(v)[1].x) == llen(b))
   avec(f, b, m = ana(f, c, m, a)); // evaluate function expression
   return c0args(f, c, m, b); } // apply to arguments
 
