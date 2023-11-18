@@ -117,11 +117,8 @@ static long stkidxof(state f, scope c, word var) {
   return -1; }
 
 static thread c2var(state f, scope *c, thread k) {
-  //puts("QQQ");
   word var = *f->sp++,
        pals = *f->sp++;
-  LL(f, var);
-  LL(f, pals);
   size_t i = lidx(f, pals, var);
   return
     k[-2].ap = ref,
@@ -424,13 +421,13 @@ static size_t c0l(state f, scope *b, scope *c, size_t m, word exp) {
       if (!(_ = c0lambw(f, c, B(B(d)), B(A(def))))) goto fail;
       else A(def) = B(d) = _; }
     // if toplevel then bind
-    if (even && nilp((*c)->args)) {
+    if (even && nilp((*b)->args)) {
       thread t = cells(f, 2 * Width(struct two) + 2 + Width(struct loop));
       if (!t) goto fail;
       two w = (two) t,
           x = w + 1;
       t += 2 * Width(struct two);
-      t[0].ap = bind, t[1].x = A(exp), t[2].x = 0, t[3].m = t;
+      t[0].ap = bind, t[1].x = A(nom), t[2].x = 0, t[3].m = t;
       ini_two(w, A(def), nil);
       ini_two(x, (word) t, (word) w);
       A(def) = (word) x; }
@@ -525,7 +522,6 @@ static Vm(Kj) {
   return ip[2].m->ap(f, ip[2].m, hp, sp - 1); }
 
 Vm(ret) {
-  //puts("ret");
   word r = *sp;
   sp += getnum(ip[1].x) + 1,
   ip = (cell) *sp,
@@ -533,7 +529,6 @@ Vm(ret) {
   return ip->ap(f, ip, hp, sp); }
 
 Vm(ap) {
-  //puts("ap");
   if (nump(sp[1])) return
     ip[1].ap(f, ip + 1, hp, sp + 1);
   thread k = (thread) sp[1];
@@ -542,7 +537,6 @@ Vm(ap) {
 
 Vm(apn) {
   size_t n = getnum(ip[1].x);
-//  printf("apn %ld\n", n);
   word r = (word) (ip + 2); // return address
   ip = (thread) sp[n]; // only used by let form so will not be num
   sp[n] = r; // store return address
@@ -563,7 +557,6 @@ Vm(tap) {
 Vm(tapn) {
   size_t n = getnum(ip[1].x),
          r = getnum(ip[2].x);
-//  printf("tapn %ld %ld\n", n, r);
   // won't be num since is only emitted for let
   ip = (thread) sp[n];
   // do this at compile time
