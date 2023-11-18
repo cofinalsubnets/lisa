@@ -1,8 +1,17 @@
+(: a 1
+   b 2
+ (, 
+ (assert (= (. 3) (. (+ a b))))
+  
+ ))
+(. 1234)
+(: 0? (= 0))
 (: (zero a b) b (one a) a
    (add a b f x) (a f (b f x))
    (mul a b f x) (a (b f) x)
-   (C n) (? (= n 0) zero (add one (C (+ n -1))))
+   (C n) (? (0? n) zero (add one (C (+ n -1))))
    (N c) (c (\ x (+ x 1)) 0)
     (: four (mul (add one one) (add one one))
      (: five (add one four)
-      (assert (= 1280 (N (mul five (four four))))))))
+      (assert (= 1280 (N (mul five (four four)))))))
+    )

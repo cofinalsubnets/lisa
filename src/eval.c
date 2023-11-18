@@ -64,6 +64,8 @@ typedef C0(c0);
 #define C1(n, ...) thread n(state f, scope *c, thread k, ##__VA_ARGS__)
 typedef C1(c1);
 
+static thread c1apn(state, scope*, thread);
+
 static c0 c0cond, c0let, c0args;
 // basic functions
 static C1(yieldk) { return k; }
@@ -99,10 +101,11 @@ static size_t ana(state f, scope *c, size_t m, word x) {
     case String: return seek(f, c, m, x, *c); }
   return c0ix(f, c, m, K, x); }
 
-static c1 c1var;
+static c1 c1var, c2var;
 static size_t c0var1(state f, scope *c, size_t m, word x) {
-  return nilp((word) (*c)->par) ?
-    c0ix(f, c, m, K, nil) : push3(f, (word) c1var, x, (*c)->pals) ? m + 2 : 0; }
+  if (nilp((word) (*c)->par)) return
+    c0ix(f, c, m, K, nil);
+  return push3(f, (word) c1var, x, (*c)->pals) ? m + 2 : 0; }
 
 static long stkidxof(state f, scope c, word var) {
   size_t i = 0;
@@ -112,6 +115,18 @@ static long stkidxof(state f, scope c, word var) {
   for (word l = c->args; twop(l); l = B(l), i++)
     if (eql(f, var, A(l))) return i;
   return -1; }
+
+static thread c2var(state f, scope *c, thread k) {
+  //puts("QQQ");
+  word var = *f->sp++,
+       pals = *f->sp++;
+  LL(f, var);
+  LL(f, pals);
+  size_t i = lidx(f, pals, var);
+  return
+    k[-2].ap = ref,
+    k[-1].x = putnum(i),
+    pull(f, c, k - 2); }
 
 // emit stack reference instruction
 static thread c1var(state f, scope *c, thread k) {
@@ -149,6 +164,11 @@ static size_t seek(state f, scope *c, size_t m, word k, scope d) {
   // look in vals
   if ((x = assoc(f, d->lams, k)))
     return c0laz(f, c, m, x, d);
+
+  // look in pals
+  if ((x = lidx(f, d->pals, k)) >= 0)
+    return push3(f, (word) c2var, k, d->pals) ? m + 2 : 0;
+
   // look in imps args
   x = stkidxof(f, d, k);
   if (x >= 0) {
@@ -165,6 +185,14 @@ static thread c1ap(state f, scope *c, thread k) {
   if (k->ap == ret) k->ap = tap; // tail call
   else (--k)->ap = ap; // regular call
   return pull(f, c, k); } // ok
+                          //
+
+
+static thread c1apn(state f, scope *c, thread k) {
+  word n = *f->sp++;
+  if (k->ap == ret) k->x = n, (--k)->ap = tapn;
+  else (--k)->x = n, (--k)->ap = apn;
+  return pull(f, c, k); }
 
 // cons on list unless already there
 static word uinsert(state f, word l, word x) {
@@ -172,8 +200,8 @@ static word uinsert(state f, word l, word x) {
 
 // codegen apply function argument
 static size_t c0args(state f, scope *c, size_t m, word b) {
-  MM(f, &b);
-  if ((*c)->pals = (word) cons(f, nil, (*c)->pals)) {
+  MM(f, &b); // handle oom here ..
+  if (((*c)->pals = (word) cons(f, nil, (*c)->pals))) {
     for (; m && twop(b); b = B(b))
       m = ana(f, c, m + 1, A(b)),
       m = m && push1(f, (word) c1ap) ? m : 0;
@@ -306,8 +334,20 @@ static status desug(state f, word *d, word *e) {
   while (twop(*d));
   return f->sp++, Ok; }
 
+static word revn(state f, word l, word n) {
+  if (!twop(l)) return n;
+  avec(f, l, n = revn(f, B(l), n));
+  if (n) n = (word) cons(f, A(l), n);
+  return n; }
+static word revr(state f, word l) {
+  if (!twop(l)) return l;
+  word m, n = nil;
+  do m = l, l = B(l), B(m) = n, n = m;
+  while (twop(l));
+  return n; }
+
 // this function is loooong
-static word c0l(state f, scope *c, word exp) {
+static size_t c0l(state f, scope *b, scope *c, size_t m, word exp) {
   if (!twop(exp)) return nil;
   if (!twop(B(exp))) return A(exp);
   // lots of variables :(
@@ -337,7 +377,7 @@ static word c0l(state f, scope *c, word exp) {
     if (!x) goto fail;
     exp = x; }
 
-  // solve closures
+  // find closures
   // for each function f with closure C(f)
   // for each function g with closure C(g)
   // if f in C(g) then C(g) include C(f)
@@ -354,16 +394,33 @@ static word c0l(state f, scope *c, word exp) {
   // now delete defined functions from the closure variable lists
   // they will be bound lazily when the function runs
   for (e = lam; twop(e); e = B(e)) B(B(A(e))) = ldels(f, lam, B(B(A(e))));
+
+  string l;
+
+  (*c)->lams = lam, e = nil;
+  // change of plan
+  // construct lambda with reversed argument list
+  exp = revn(f, nom, exp);
+  l = strof(f, "\\");
+  exp = exp && l ? (word) cons(f, (word) l, exp) : 0;
+  if (!exp) goto fail;
+  // exp is now the required lambda expression, analyze it
+  m = ana(f, b, m, exp);
+  if (!m) goto fail;
+  if (!((*b)->pals = (word) cons(f, nil, (*b)->pals))) goto fail;
+  // now evaluate definitions in order tracking var names on pals list
+  // first reverse the nom and def lists
+  nom = revr(f, nom), def = revr(f, def);
+  size_t nn = 0;
   // store lambdas on scope for lazy binding and construct new lambda application expression
   // - reverse noms onto exp
   // - reverse expressions onto e = nil and recompile lambdas
-  for ((*c)->lams = lam, e = nil; twop(nom);) {
-    word _ = B(nom);
-    B(nom) = exp, exp = nom, nom = _;
-    // if lambda then recompile with the solved variables
-    // and put in def list and lam list (latter is used for lazy binding)
+  for (; twop(nom); nom = B(nom), def = B(def), nn++) {
+    // if lambda then recompile with the explicit closure
+    // and put in arg list and lam list (latter is used for lazy binding)
     if (lambp(f, A(def))) {
-      d = assoc(f, lam, A(exp));
+      d = assoc(f, lam, A(nom));
+      word _;
       if (!(_ = c0lambw(f, c, B(B(d)), B(A(def))))) goto fail;
       else A(def) = B(d) = _; }
     // if toplevel then bind
@@ -377,21 +434,19 @@ static word c0l(state f, scope *c, word exp) {
       ini_two(w, A(def), nil);
       ini_two(x, (word) t, (word) w);
       A(def) = (word) x; }
-    // rotate onto e
-    _ = B(def), B(def) = e, e = def, def = _; }
-
-  // - put lambda symbol
-  string l = strof(f, "\\");
-  exp = l ? (word) cons(f, (word) l, exp) : 0;
-  exp = exp ? (word) cons(f, exp, e) : 0;
-done: return UM(f), UM(f), UM(f), UM(f), UM(f), UM(f), UM(f), exp;
-fail: exp = 0; goto done; }
+    if (!(m = ana(f, b, m, A(def))) ||
+        !((*b)->pals = (word) cons(f, A(nom), (*b)->pals)))
+      goto fail; }
+  m = push2(f, (word) c1apn, putnum(nn)) ? m + 2 : 0;
+  if (m) for (nn++; nn--; (*b)->pals = B((*b)->pals));
+done: return UM(f), UM(f), UM(f), UM(f), UM(f), UM(f), UM(f), m;
+fail: m = 0; goto done; }
 
 static size_t c0let(state f, scope *c, size_t m, word x) {
   scope d = *c;
   avec(f, x, d = enscope(f, d, d->args, d->imps));
-  avec(f, d, x = d ? c0l(f, &d, x) : (word) d);
-  return x ? ana(f, c, m, x) : x; }
+  avec(f, d, m = c0l(f, c, &d, m, x));
+  return m; }
 
 static Vm(tie) {
   word ref = ip[1].x, var = A(A(ref));
@@ -451,16 +506,10 @@ NoInline Vm(gc, size_t n) {
   return Pack(), !please(f, n) ? Oom :
     f->ip->ap(f, f->ip, f->hp, f->sp); }
 
-Vm(tap) {
-  word x = sp[0], j = sp[1];
-  sp += getnum(ip[1].x) + 1;
-  if (homp(j)) ip = (thread) j, *sp = x;
-  else ip = (thread) *++sp, *sp = j;
-  return ip->ap(f, ip, hp, sp); }
-
-Vm(ref) { Have1(); return
-  sp[-1] = sp[getnum(ip[1].x)],
-  ip[2].ap(f, ip + 2, hp, sp - 1); }
+Vm(ref) {
+  Have1();
+  sp[-1] = sp[getnum(ip[1].x)];
+  return ip[2].ap(f, ip + 2, hp, sp - 1); }
 
 Vm(cond) { return
   ip = nilp(*sp) ? ip[1].m : ip + 2,
@@ -476,6 +525,7 @@ static Vm(Kj) {
   return ip[2].m->ap(f, ip[2].m, hp, sp - 1); }
 
 Vm(ret) {
+  //puts("ret");
   word r = *sp;
   sp += getnum(ip[1].x) + 1,
   ip = (cell) *sp,
@@ -483,11 +533,45 @@ Vm(ret) {
   return ip->ap(f, ip, hp, sp); }
 
 Vm(ap) {
+  //puts("ap");
   if (nump(sp[1])) return
     ip[1].ap(f, ip + 1, hp, sp + 1);
-  thread k = (cell) sp[1];
+  thread k = (thread) sp[1];
   sp[1] = (word) (ip + 1);
   return k->ap(f, k, hp, sp); }
+
+Vm(apn) {
+  size_t n = getnum(ip[1].x);
+//  printf("apn %ld\n", n);
+  word r = (word) (ip + 2); // return address
+  ip = (thread) sp[n]; // only used by let form so will not be num
+  sp[n] = r; // store return address
+  // do this at compile time
+  if (ip->ap == cur && getnum(ip[1].x) == n) ip += 2;
+  return ip->ap(f, ip, hp, sp); }
+
+Vm(tap) {
+  //puts("tap");
+  word x = sp[0], j = sp[1];
+  sp += getnum(ip[1].x) + 1;
+  if (nump(j))
+    ip = (thread) *++sp, *sp = j;
+  else
+    ip = (thread) j, *sp = x;
+  return ip->ap(f, ip, hp, sp); }
+
+Vm(tapn) {
+  size_t n = getnum(ip[1].x),
+         r = getnum(ip[2].x);
+//  printf("tapn %ld %ld\n", n, r);
+  // won't be num since is only emitted for let
+  ip = (thread) sp[n];
+  // do this at compile time
+  if (ip->ap == cur && getnum(ip[1].x) == n) ip += 2;
+  // generalize to other cases ...
+  stack arg = sp;
+  for (sp += r + 1; n--; sp[n] = arg[n]);
+  return ip->ap(f, ip, hp, sp); }
 
 Vm(cur) {
   thread k;
