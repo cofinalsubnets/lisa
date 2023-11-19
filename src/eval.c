@@ -246,11 +246,11 @@ static word c0lambw(state f, scope *c, word imps, word exp) {
 // conditionals
 
 // pullback instructions to emit targeted jumps etc
-static c1 c1precond, c1postcond, c1prebranch, c1postbranch;
+static c1 c1endpush, c1endpop, c1prebranch, c1postbranch, c1altpush, c1endpeek;
 
 // conditional expression analyzer
 static size_t c0cond(state f, scope *c, size_t m, word x) {
-  if (!push2(f, x, (word) c1postcond)) return 0;
+  if (!push2(f, x, (word) c1endpop)) return 0;
   // FIXME probably a nicer way to write this loop ...
   for (x = pop1(f), MM(f, &x); m; x = B(B(x))) {
     if (!twop(x)) { // at end, no default branch
@@ -258,25 +258,32 @@ static size_t c0cond(state f, scope *c, size_t m, word x) {
       break; }
     if (!twop(B(x))) { // at end, default branch
       m = ana(f, c, m + 2, A(x));
-      m = m && push1(f, (word) c1prebranch) ? m : 0;
+      m = m && push1(f, (word) c1endpeek) ? m : 0;
       break; }
     m = ana(f, c, m + 4, A(x));
     m = m && push1(f, (word) c1postbranch) ? m : 0;
     m = m ? ana(f, c, m, A(B(x))) : 0;
     m = m && push1(f, (word) c1prebranch) ? m : 0; }
-  return UM(f), m && push1(f, (word) c1precond) ? m : 0; }
+  return UM(f), m && push1(f, (word) c1endpush) ? m : 0; }
 
 // first emitter called for cond expression
 // pushes cond expression exit address onto scope stack ends
-static thread c1precond(state f, scope *c, thread k) {
+static thread c1endpush(state f, scope *c, thread k) {
   pair w = cons(f, (word) k, (*c)->ends);
   return !w ? 0 : pull(f, c, (thread) A((*c)->ends = (word) w)); }
 
 // last emitter called for cond expression
 // pops cond expression exit address off scope stack ends
-static thread c1postcond(state f, scope *c, thread k) {
+static thread c1endpop(state f, scope *c, thread k) {
   return (*c)->ends = B((*c)->ends),
          pull(f, c, k); }
+
+static thread c1altpush(state f, scope *c, thread k) {
+  pair w = cons(f, (word) k, (*c)->alts);
+  if (!w) return (thread) w;
+  (*c)->alts = (word) w;
+  k = (thread) w->a;
+  return pull(f, c, k); }
 
 // first emitter called for a branch
 // pushes next branch address onto scope stack alts
@@ -285,6 +292,15 @@ static thread c1prebranch(state f, scope *c, thread k) {
   if (!w) return (thread) w;
   (*c)->alts = (word) w;
   k = (thread) A(w) - 2;
+  thread addr = (cell) A((*c)->ends);
+  // if the destination is a return or tail call,
+  // then forward it instead of emitting a jump.
+  if (addr->ap == ret || addr->ap == tap)
+    k[0].ap = addr[0].ap, k[1].x = addr[1].x;
+  else k[0].ap = jump, k[1].x = (word) addr;
+  return pull(f, c, k); }
+static thread c1endpeek(state f, scope *c, thread k) {
+  k -= 2;
   thread addr = (cell) A((*c)->ends);
   // if the destination is a return or tail call,
   // then forward it instead of emitting a jump.
@@ -395,7 +411,6 @@ static size_t c0l(state f, scope *b, scope *c, size_t m, word exp) {
   string l;
 
   (*c)->lams = lam, e = nil;
-  // change of plan
   // construct lambda with reversed argument list
   exp = revn(f, nom, exp);
   l = strof(f, "\\");
