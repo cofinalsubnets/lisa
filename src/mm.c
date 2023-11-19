@@ -54,7 +54,7 @@ static void copy_from(state, word*, size_t);
 NoInline bool please(state f, size_t req) {
   word *b0p0 = f->pool, *b0p1 = f->loop;
   f->pool = b0p1, f->loop = b0p0;
-#ifdef _l_mm_static
+#ifdef _gwen_mem_static
   return copy_from(f, b0p0, f->len), avail(f) >= req; }
 #else
   size_t t0 = f->t0, t1 = clock(),

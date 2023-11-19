@@ -1,7 +1,10 @@
 #include "i.h"
-void l_fin(state f) { if (f)
-  free(f->pool < f->loop ? f->pool : f->loop),
-  f->pool = f->loop = NULL; }
+void l_fin(state f) {
+#ifndef _gwen_mem_static
+  if (f) free(f->pool < f->loop ? f->pool : f->loop),
+         f->pool = f->loop = NULL;
+#endif
+}
 
 #define binop() {cur}, {.x = putnum(2)}
 static union cell
@@ -64,10 +67,16 @@ static status l_ini_dict(state f) {
 
 status l_ini(state f) {
   memset(f, 0, sizeof(struct gwen));
+#ifdef _gwen_mem_static
+  const size_t len = _gwen_mem_static;
+  static word _pool[2 * _gwen_mem_static];
+  word *pool = _pool;
+#else
   const size_t len = 1;
   word *pool = malloc(2 * len * sizeof(word));
   if (!pool) return Oom;
   f->t0 = clock();
+#endif
   f->len = len;
   f->pool = f->hp = pool;
   f->loop = f->sp = pool + len;

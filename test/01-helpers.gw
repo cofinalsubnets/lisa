@@ -8,11 +8,14 @@
 (: green-text (color-text green-seq)
    red-text (color-text red-seq))
 
-(:: (assert) (\ l (:
+(: (ttt l) (:
  (f l) (? (X? l)
   (L (,) (L (?) (A l)
           (L green-text ((.)))
           (L (,) (L red-text ((". ")))
                  (L . (L (A l)))))
    (f (B l))))
- (f l))))
+ (f l)))
+
+(:: 'assert ttt)
+(:: 'T ttt)

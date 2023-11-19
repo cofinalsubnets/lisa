@@ -251,19 +251,17 @@ static c1 c1endpush, c1endpop, c1prebranch, c1postbranch, c1altpush, c1endpeek;
 // conditional expression analyzer
 static size_t c0cond(state f, scope *c, size_t m, word x) {
   if (!push2(f, x, (word) c1endpop)) return 0;
-  // FIXME probably a nicer way to write this loop ...
-  for (x = pop1(f), MM(f, &x); m; x = B(B(x))) {
-    if (!twop(x)) { // at end, no default branch
-      m = ana(f, c, m, nil);
-      break; }
+  struct two p = { data, Pair, nil, nil };
+  x = pop1(f), MM(f, &x);
+  for (; m; x = B(B(x))) {
+    if (!twop(x)) x = (word) &p;
+    m = ana(f, c, m + 2, A(x));
     if (!twop(B(x))) { // at end, default branch
-      m = ana(f, c, m + 2, A(x));
-      m = m && push1(f, (word) c1endpeek) ? m : 0;
+      m = push1(f, (word) c1endpeek) ? m : 0;
       break; }
-    m = ana(f, c, m + 4, A(x));
-    m = m && push1(f, (word) c1postbranch) ? m : 0;
-    m = m ? ana(f, c, m, A(B(x))) : 0;
-    m = m && push1(f, (word) c1prebranch) ? m : 0; }
+    m = push1(f, (word) c1postbranch) ? m : 0;
+    m = m ? ana(f, c, m + 2, A(B(x))) : m;
+    m = push2(f, (word) c1altpush, (word) c1endpeek) ? m : 0; }
   return UM(f), m && push1(f, (word) c1endpush) ? m : 0; }
 
 // first emitter called for cond expression
