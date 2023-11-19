@@ -34,6 +34,11 @@ static word read_str_lit(state, source),
 status read1(gwen f, source i) {
   word x, c = read_char(i); switch (c) {
     case EOF: return Eof;
+    case '\'':
+      if ((c = read1(f, i)) != Ok) return c;
+      x = (word) cons(f, pop1(f), nil);
+      if (!x || !push1(f, x)) return Oom;
+      return Ok;
     case '(': return reads(f, i);
     case ')': x = nil; break;
     case '"': x = read_str_lit(f, i); break;
@@ -41,20 +46,21 @@ status read1(gwen f, source i) {
   return x && push1(f, x) ? Ok : Oom; }
 
 status reads(gwen f, source i) {
-  for (word m, c, n = 0, d = 0;;) switch ((c = read_char(i))) {
-    case '(': // nest
-      if (!push1(f, putnum(n + 1))) return Oom;
-      else n = 0, d++; continue;
-    default: // read one
-      Ungetc(c, i), c = read1(f, i);
+  word c = read_char(i);
+  switch (c) {
+    case ')': case EOF: unnest:
+      return push1(f, nil) ? Ok : Oom;
+    default:
+      Ungetc(c, i);
+      c = read1(f, i);
       if (c == Eof) goto unnest;
       if (c != Ok) return c;
-      n++; continue;
-    case ')': case EOF: unnest:
-      for (c = nil; n--; m = pop1(f), c = c ? (word) cons(f, m, c) : c);
+      c = reads(f, i);
+      if (c != Ok) return c;
+      c = (word) cons(f, f->sp[1], f->sp[0]);
       if (!c) return Oom;
-      else if (d == 0) return push1(f, c) ? Ok : Oom;
-      else n = getnum(f->sp[0]), f->sp[0] = c, d--; } }
+      *++f->sp = (word) c;
+      return Ok; } }
 
 static NoInline word read_str_lit(state f, source i) {
   string o = buf_new(f);
@@ -72,7 +78,7 @@ static NoInline word read_atom(state f, source i) {
     for (int x; n < lim;) switch (x = Getc(i)) {
       // these characters terminate an atom
       case ' ': case '\n': case '\t': case ';': case '#':
-      case '(': case ')': case '"': Ungetc(x, i);
+      case '(': case ')': case '"': case '\'': Ungetc(x, i);
       case EOF: a->text[a->len = n] = 0; goto out;
       default: a->text[n++] = x; continue; } out:
   if (!a) return 0;

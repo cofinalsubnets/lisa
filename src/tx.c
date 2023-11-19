@@ -19,7 +19,8 @@ static void tx_str(state v, FILE *o, word _) {
   putc('"', o); }
 
 static void tx_two(state v, FILE *o, word x) {
-  for (putc('(', o);; putc(' ', o)) {
+  if (!twop(B(x))) putc('\'', o), transmit(v, o, A(x));
+  else for (putc('(', o);; putc(' ', o)) {
     transmit(v, o, A(x));
     if (!twop(x = B(x))) { putc(')', o); break; } } }
 
