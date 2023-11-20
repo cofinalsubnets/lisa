@@ -642,7 +642,11 @@ Vm(cdr) { return
   sp[2] = x,\
   ip->ap(f, ip, hp, sp + 2); }
 
-binop(add, (sp[0] | 1) + (sp[1] & ~1))
+binop(add, putnum(getnum(sp[0])+getnum(sp[1])))
+binop(sub, putnum(getnum(sp[0])-getnum(sp[1])))
+binop(mul, putnum(getnum(sp[0])*getnum(sp[1])))
+binop(quot, nilp(sp[1]) ? nil : putnum(getnum(sp[0])/getnum(sp[1])))
+binop(rem, nilp(sp[1]) ? nil : putnum(getnum(sp[0])%getnum(sp[1])))
 binop(eq, eql(f, sp[0], sp[1]) ? putnum(-1) : nil)
 binop(lt, sp[0] < sp[1] ? putnum(-1) : nil)
 binop(le, sp[0] <= sp[1] ? putnum(-1) : nil)

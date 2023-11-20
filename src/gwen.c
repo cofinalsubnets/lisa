@@ -30,11 +30,19 @@ static union cell
 //  p_sp[] = { {spr} },
 //  p_psp[] = { {pspr} },
   p_pc[] = { {prc} },
+  p_quot[] = { binop(), {quot}, },
+  p_rem[] = { binop(), {rem}, },
+  p_mul[] = { binop(), {mul}, },
+  p_sub[] = { binop(), {sub}, },
   p_add[] = { binop(), {add}, };
 
 static status l_ini_dict(state f) {
   static struct { const char *n; word x; } ini_dict[] = {
     { "+", (word) p_add },
+    { "-", (word) p_sub },
+    { "*", (word) p_mul },
+    { "/", (word) p_quot },
+    { "%", (word) p_rem },
     { "=", (word) p_eql },
     { "<", (word) p_lt },
     { "<=", (word) p_le },
