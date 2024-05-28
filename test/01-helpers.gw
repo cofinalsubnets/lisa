@@ -1,10 +1,10 @@
 (:
- (term-esc string) (, (pc 27) (puts string))
+ (term-esc string) (, (putc 27) (puts string))
  green-seq ([32m)
  red-seq ([31m)
  reset ([0m))
 (:
- (color-text col s) (, (pc 27) (puts col) (puts s) (pc 27) (puts reset)))
+ (color-text col s) (, (putc 27) (puts col) (puts s) (putc 27) (puts reset)))
 (: green-text (color-text green-seq)
    red-text (color-text red-seq))
 
