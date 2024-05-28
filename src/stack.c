@@ -1,28 +1,38 @@
 #include "i.h"
+#include <stdarg.h>
 
-static NoInline word push1_gc(state l, word x) {
-  bool ok; avec(l, x, ok = please(l, 1));
-  return ok ? push1(l, x) : 0; }
+static NoInline word pushsr(state l, size_t m, size_t n, va_list xs) {
+  if (!n) return please(l, m) ? m : n;
+  word x = va_arg(xs, word), y;
+  avec(l, x, y = pushsr(l, m, n - 1, xs));
+  return y ? *--l->sp = x : y; }
 
-word push1(state l, word x) { return
-  avail(l) ? *--l->sp = x : push1_gc(l, x); }
+word pushs(state l, size_t m, ...) {
+  va_list xs;
+  va_start(xs, m);
+  word r = 0;
+  if (avail(l) < m) r = pushsr(l, m, m, xs);
+  else {
+    l->sp -= m;
+    for (size_t n = 0; n < m; l->sp[n++] = r = va_arg(xs, word)); }
+  va_end(xs);
+  return r; }
 
-static NoInline word push2_gc(state l, word x, word y) {
-  bool ok; avec(l, x, avec(l, y, ok = please(l, 2)));
-  return ok ? push2(l, x, y) : 0; }
+static NoInline thread thdr(state l, size_t m, size_t n, va_list xs) {
+  thread r;
+  if (!n) return (r = mo_n(l, m)) ? r + m : r;
+  word x = va_arg(xs, word);
+  avec(l, x, r = thdr(l, m, n - 1, xs));
+  if (r) (--r)->x = x;
+  return r; }
 
-word push2(state l, word x, word y) {
-  if (avail(l) < 2) return push2_gc(l, x, y);
-  word *sp = l->sp -= 2;
-  return sp[1] = y, sp[0] = x; }
-
-static NoInline word push3_gc(state f, word x, word y, word z) {
-  bool ok;
-  avec(f, x, avec(f, y, avec(f, z, ok = please(f, 3))));
-  return ok ? push3(f, x, y, z) : 0; }
-
-word push3(state f, word x, word y, word z) {
-  if (avail(f) < 3) return push3_gc(f, x, y, z);
-  word *sp = f->sp -= 3;
-  return sp[2] = z, sp[1] = y, sp[0] = x; }
-
+thread thd(state l, size_t m, ...) {
+  va_list xs;
+  va_start(xs, m);
+  thread r = 0;
+  if (avail(l) < m + Width(struct loop)) r = thdr(l, m, m, xs);
+  else {
+    r = mo_n(l, m);
+    for (size_t n = 0; n < m; (r + n++)->x = va_arg(xs, word)); }
+  va_end(xs);
+  return r; }

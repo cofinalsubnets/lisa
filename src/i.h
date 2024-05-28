@@ -5,34 +5,57 @@
 #include <time.h>
 // thanks !!
 
-typedef struct gwen *gwen, *state;
+typedef struct core *state, *core;
 typedef uintptr_t size;
 typedef intptr_t word, *heap, *stack;
 typedef union cell *cell, *thread, *verb;
 typedef enum status { Ok = 0, Dom, Oom, Eof = -1, } status,
   code(state, thread, heap, stack);
-struct gwen {
+typedef void free_t(void*);
+typedef void *malloc_t(size_t);
+typedef struct input *input;
+typedef struct output *output;
+struct core {
   // vm variables
-  union cell { // instruction pointer
-    code *ap;
-    word x;
-    union cell *m; } *ip;
+  thread ip; // instruction pointer
   heap hp; // heap pointer
   stack sp; // stack pointer
   // environment
-  word dict, macro; // 
+  word dict, macro; //
+  word count, rand;
+
+  input in;
+  output out;
+
   // memory management
+  void (*free)(void*),
+       *(*malloc)(size_t);
   word len, // size of each pool
        *pool, // on pool
        *loop; // off pool
-  struct mm {
+  struct mm { // gc save list
     intptr_t *addr; // stack address of value
     struct mm *next; // prior list
   } *safe;
-  union {
-    uintptr_t t0; // timestamp
-    heap cp; }; }; // copy pointer
+  union { // gc state
+    uintptr_t t0; // end time of last gc
+    heap cp; }; }; // gc copy pointer
 
+union cell {
+  code *ap;
+  word x;
+  union cell *m; };
+
+struct input {
+  int (*getc)(input),
+      (*ungetc)(input, int),
+      (*feof)(input);
+  word data[];
+};
+struct output {
+  int (*putc)(output, int);
+  word data[];
+};
 typedef uintptr_t size;
 typedef code vm;
 struct loop {
@@ -46,7 +69,7 @@ typedef struct two {
   word a, b;
 } *two, *pair;
 
-typedef enum ord { Lt = -1, Eq = 0, Gt = 1, } ord(gwen, word, word);
+typedef enum ord { Lt = -1, Eq = 0, Gt = 1, } ord(core, word, word);
 
 typedef struct string {
   code *ap;
@@ -82,55 +105,55 @@ typedef FILE *source, *sink;
 
 two
   ini_two(two, word, word),
-  cons(gwen, word, word);
+  cons(state, word, word);
 string
   ini_str(string, size_t),
-  buf_new(gwen),
-  buf_grow(gwen, string),
-  strof(gwen, const char*),
+  buf_new(state),
+  buf_grow(state, string),
+  strof(state, const char*),
   str_ini(void*, size_t);
 
 size_t llen(word);
-long lidx(gwen, word, word);
+long lidx(state, word, word);
 
 void
-  l_fin(gwen),
-  *cells(gwen, size_t),
-  transmit(gwen, sink, word);
+  l_fin(state),
+  *cells(state, size_t),
+  transmit(state, sink, word);
 
 bool
   eql(state, word, word),
   please(state, size_t);
 
+
 status
-  l_ini(gwen),
-  eval(gwen, word),
-  report(gwen, status),
-  read1(gwen, source),
-  reads(gwen, source);
+  l_ini(state, const size_t, malloc_t*, free_t*),
+  eval(state, word),
+  report(state, status),
+  read1(state, source),
+  reads(state, source);
 
 thread
-  mo_n(gwen, size_t),
+  thd(state, size_t, ...),
+  mo_n(core, size_t),
   mo_ini(void*, size_t);
 
 word
-  dict_lookup(gwen, word),
-  assoc(gwen, word, word),
-  lookup(gwen, word, word),
-  push1(gwen, word),
-  push2(gwen, word, word),
-  push3(gwen, word, word, word);
+  dict_lookup(core, word),
+  assoc(core, word, word),
+  lookup(core, word, word),
+  pushs(core, size_t, ...);
 
-status gc(gwen, thread, heap, stack, size_t);
+status gc(core, thread, heap, stack, size_t);
 vm data, ap, tap, K, ref, cur, ret, yield, cond, jump,
-   print,
-   not,
+   print, not,
    p2, apn, tapn,
    Xp, Np, Sp, mbind,
    ssub, sget, slen,
    pr, ppr, spr, pspr, prc,
    xons, car, cdr,
    lt, le, eq, gt, ge,
+   seek, peek, poke, trim, thda,
    add, sub, mul, quot, rem;
 
 static Inline bool hstrp(cell h) { return datp(h) && h[1].x == String; }
@@ -153,7 +176,6 @@ _Static_assert(-1 >> 1 == -1, "sign extended shift");
 _Static_assert(sizeof(union cell*) == sizeof(union cell), "size");
 #define Vm(n, ...) enum status\
   n(state f, thread ip, heap hp, stack sp, ##__VA_ARGS__)
-
 #define Have(n) if (sp - hp < n) return gc(f, ip, hp, sp, n)
 #define Have1() if (sp == hp) return gc(f, ip, hp, sp, 1)
 #define L() printf("# %s:%d\n", __FILE__, __LINE__)

@@ -1,13 +1,12 @@
 #include "i.h"
 
-
-
 // list length
 size_t llen(word l) {
   size_t n = 0;
   while (twop(l)) n++, l = B(l);
   return n; }
 
+// index of item in list
 long lidx(state f, word l, word x) {
   for (long i = 0; twop(l); l = B(l), i++)
     if (eql(f, A(l), x)) return i;
@@ -29,14 +28,9 @@ two ini_two(two w, word a, word b) {
   w->a = a, w->b = b;
   return w; }
 
-static NoInline pair cons_(state f, word a, word b) {
+pair cons(state f, word a, word b) {
+  if (avail(f) < Width(struct two)) {
+    bool ok;
+    avec(f, a, avec(f, b, ok = please(f, Width(struct two))));
+    if (!ok) return 0; }
   return ini_two(bump(f, Width(struct two)), a, b); }
-
-static NoInline pair cons_gc(state f, word a, word b) {
-  bool _;
-  avec(f, a, avec(f, b, _ = please(f, Width(struct two))));
-  return !_ ? 0 : cons_(f, a, b); }
-
-pair cons(state f, word a, word b) { return
-  avail(f) >= Width(struct two) ? cons_(f, a, b) : cons_gc(f, a, b); }
-

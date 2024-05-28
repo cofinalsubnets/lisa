@@ -75,7 +75,7 @@ NoInline bool please(state f, size_t req) {
   else return true;
 
   // try to adjust
-  word *b1p0 = malloc(len1 * 2 * sizeof(word));
+  word *b1p0 = f->malloc(len1 * 2 * sizeof(word));
   if (!b1p0) return req <= len0;
 
   f->len = len1;
@@ -83,7 +83,7 @@ NoInline bool please(state f, size_t req) {
   f->loop = b1p0 + len1;
   copy_from(f, b0p1, len0),
 
-  free(b0p0 < b0p1 ? b0p0 : b0p1),
+  f->free(b0p0 < b0p1 ? b0p0 : b0p1),
   f->t0 = clock();
   return true; }
 #endif
@@ -101,6 +101,8 @@ static NoInline void copy_from(state f, word *p0, size_t len0) {
   f->ip = (verb) cp(f, (word) f->ip, p0, t0);
   f->dict = cp(f, f->dict, p0, t0);
   f->macro = cp(f, f->macro, p0, t0);
+  f->in = (input) cp(f, (word) f->in, p0, t0);
+  f->out = (output) cp(f, (word) f->out, p0, t0);
   // copy stack
   for (size_t i = 0; i < slen; i++)
     sp1[i] = cp(f, sp0[i], p0, t0);
@@ -116,12 +118,12 @@ static NoInline void copy_from(state f, word *p0, size_t len0) {
   assert(f->hp <= f->sp);
   assert(f->sp <= f->pool + f->len); }
 
-// this can give a false positive if x is a fixnum
-#define livep(l,x) ((word*)x>=l->pool&&(word*)x<l->pool+l->len)
 static NoInline word cp(state v, word x, word *p0, word *t0) {
   if (nump(x) || x < (word) p0 || x >= (word) t0) return x;
   cell src = (cell) x;
-  if (homp(src->x) && livep(v, src->x)) return src->x;
+  if (homp(src->x) && // if first item is a pointer
+      v->pool <= (word*) src->x && (word*) src->x < v->pool + v->len) // into new space
+    return src->x; // then return the pointer
   if (datp(src)) return gc_copy_s[src[1].x](v, (word) src, p0, t0);
   struct loop *t = mo_tag(src);
   thread ini = t->head, d = bump(v, t->end - ini), dst = d;

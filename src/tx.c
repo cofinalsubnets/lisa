@@ -38,5 +38,5 @@ status report(state f, status s) {
     case Dom:
       fprintf(stderr, "# domain error at [0x%lx]\n", f->ip->x); return s;
     case Oom:
-      fprintf(stderr, "# out of memory at %ld words\n", f->len);
+      fprintf(stderr, "# oom@2*%ldB\n", f->len * sizeof(word));
     default: return s; } }

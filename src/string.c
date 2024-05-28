@@ -30,8 +30,6 @@ Vm(sget) {
     i = max(i, 0);
     sp[2] = putnum(s->text[i]); }
   return r->ap(f, r, hp, sp + 2); }
-Vm(scat) { }
-Vm(sput) { }
 
 string ini_str(string s, size_t len) {
   s->ap = data, s->typ = String, s->len = len;
