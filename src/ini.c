@@ -1,30 +1,26 @@
 #include "i.h"
-void l_fin(state f) {
-  f->free(f->pool < f->loop ? f->pool : f->loop);
-  f->pool = f->loop = NULL; }
-
-#define binop() {cur}, {.x = putnum(2)}
+#define cur2 {cur}, {.x = putnum(2)}
 static union cell
   p_print[] = {{print}},
   p_not[] = {{not}},
-  p_cons[] = {binop(), {xons}},
+  p_cons[] = {cur2, {xons}},
   p_car[] = {{car}},
   p_cdr[] = {{cdr}},
-  p_le[] = {binop(), {le}},
-  p_lt[] = {binop(), {lt}},
-  p_eq[] = {binop(), {eq}},
-  p_ge[] = {binop(), {ge}},
-  p_gt[] = {binop(), {gt}},
+  p_le[] = {cur2, {le}},
+  p_lt[] = {cur2, {lt}},
+  p_eq[] = {cur2, {eq}},
+  p_ge[] = {cur2, {ge}},
+  p_gt[] = {cur2, {gt}},
   p_slen[] = {{slen}},
-  p_sget[] = {binop(), {sget}},
+  p_sget[] = {cur2, {sget}},
   p_ssub[] = {{cur}, {.x = putnum(3)}, {ssub}},
   p_2p[] = {{Xp}},
   p_np[] = {{Np}},
   p_sp[] = {{Sp}},
-  p_mbind[] = {binop(), {mbind}},
-  p_seek[] = {binop(), {seek}},
+  p_mbind[] = {cur2, {mbind}},
+  p_seek[] = {cur2, {seek}},
   p_peek[] = {{peek}},
-  p_poke[] = {binop(), {poke}},
+  p_poke[] = {cur2, {poke}},
   p_trim[] = {{trim}},
   p_thd[] = {{thda}},
 //  p_p[] = { {pr}},
@@ -32,41 +28,45 @@ static union cell
 //  p_sp[] = { {spr} },
 //  p_psp[] = { {pspr} },
   p_pc[] = {{prc}},
-  p_quot[] = {binop(), {quot}},
-  p_rem[] = {binop(), {rem}},
-  p_mul[] = {binop(), {mul}},
-  p_sub[] = {binop(), {sub}},
-  p_add[] = {binop(), {add}};
+  p_quot[] = {cur2, {quot}},
+  p_rem[] = {cur2, {rem}},
+  p_mul[] = {cur2, {mul}},
+  p_sub[] = {cur2, {sub}},
+  p_add[] = {cur2, {add}};
+#undef cur2
 
-status l_ini(state f, const size_t len, malloc_t *_malloc, free_t *_free) {
+static struct { const char *n; union cell *x; } ini_dict[] = {
+  { "+",  p_add }, { "-",  p_sub },
+  { "*",  p_mul }, { "/",  p_quot },
+  { "%",  p_rem }, { "=",  p_eq },
+  { "<",  p_lt }, { "<=",  p_le },
+  { ">=",  p_ge }, { ">",  p_gt },
+  { ".",  p_print },
+  { "putc",  p_pc },
+  { "~",  p_not },
+  { "X",  p_cons }, { "A",  p_car }, { "B",  p_cdr },
+  { "sget",  p_sget}, { "ssub",  p_ssub}, { "slen",  p_slen},
+  { "s?",  p_sp}, { "n?",  p_np}, { "X?",  p_2p},
+  { "::",  p_mbind}, // defmacro
+  { "peek",  p_peek}, { "poke",  p_poke},
+  { "trim",  p_trim}, { "seek",  p_seek},
+  { "thd",  p_thd}, };
+
+status l_ini(state f, const size_t len) {
   memset(f, 0, sizeof(struct core));
-  word *pool = _malloc(2 * len * sizeof(word));
+  word *pool = l_malloc(2 * len * sizeof(word));
   if (!pool) return Oom;
   f->rand = f->t0 = clock();
   f->hp = f->pool = pool;
-  f->malloc = _malloc, f->free = _free;
   f->loop = f->sp = pool + (f->len = len);
   f->dict = f->macro = nil;
-  static struct { const char *n; word x; } ini_dict[] = {
-    { "+", (word) p_add }, { "-", (word) p_sub },
-    { "*", (word) p_mul }, { "/", (word) p_quot },
-    { "%", (word) p_rem }, { "=", (word) p_eq },
-    { "<", (word) p_lt }, { "<=", (word) p_le },
-    { ">=", (word) p_ge }, { ">", (word) p_gt },
-    { ".", (word) p_print },
-    { "putc", (word) p_pc },
-    { "~", (word) p_not },
-    { "X", (word) p_cons }, { "A", (word) p_car }, { "B", (word) p_cdr },
-    { "sget", (word) p_sget}, { "ssub", (word) p_ssub}, { "slen", (word) p_slen},
-    { "s?", (word) p_sp}, { "n?", (word) p_np}, { "X?", (word) p_2p},
-    { "::", (word) p_mbind}, // defmacro
-    { "peek", (word) p_peek}, { "poke", (word) p_poke},
-    { "trim", (word) p_trim}, { "seek", (word) p_seek},
-    { "thd", (word) p_thd},
-  };
   for (int i = 0; i < sizeof(ini_dict)/sizeof(*ini_dict); i++) {
     string s = strof(f, ini_dict[i].n);
-    pair w = s ? cons(f, (word) s, ini_dict[i].x) : 0,
+    pair w = s ? cons(f, (word) s, (word) ini_dict[i].x) : 0,
          x = w ? cons(f, (word) w, f->dict) : 0;
     if (!(f->dict = (word) x)) return l_fin(f), Oom; }
   return Ok; }
+
+void l_fin(state f) {
+  l_free(f->pool < f->loop ? f->pool : f->loop);
+  f->pool = f->loop = NULL; }

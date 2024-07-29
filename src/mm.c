@@ -1,5 +1,8 @@
 #include "i.h"
 
+void *l_malloc(size_t n) { return malloc(n); }
+void l_free(void *n) { return free(n); }
+
 void *cells(state f, size_t n) { return
   n <= avail(f) || please(f, n) ? bump(f, n) : 0; }
 
@@ -75,7 +78,7 @@ NoInline bool please(state f, size_t req) {
   else return true;
 
   // try to adjust
-  word *b1p0 = f->malloc(len1 * 2 * sizeof(word));
+  word *b1p0 = l_malloc(len1 * 2 * sizeof(word));
   if (!b1p0) return req <= len0;
 
   f->len = len1;
@@ -83,7 +86,7 @@ NoInline bool please(state f, size_t req) {
   f->loop = b1p0 + len1;
   copy_from(f, b0p1, len0),
 
-  f->free(b0p0 < b0p1 ? b0p0 : b0p1),
+  l_free(b0p0 < b0p1 ? b0p0 : b0p1),
   f->t0 = clock();
   return true; }
 #endif

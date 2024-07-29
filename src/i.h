@@ -1,6 +1,6 @@
-#ifndef _gwen_i_h
-#define _gwen_i_h
-#include "gwen.h"
+#ifndef _l_i_h
+#define _l_i_h
+#include "l.h"
 #include <assert.h>
 #include <time.h>
 // thanks !!
@@ -11,8 +11,6 @@ typedef intptr_t word, *heap, *stack;
 typedef union cell *cell, *thread, *verb;
 typedef enum status { Ok = 0, Dom, Oom, Eof = -1, } status,
   code(state, thread, heap, stack);
-typedef void free_t(void*);
-typedef void *malloc_t(size_t);
 typedef struct input *input;
 typedef struct output *output;
 struct core {
@@ -28,8 +26,6 @@ struct core {
   output out;
 
   // memory management
-  void (*free)(void*),
-       *(*malloc)(size_t);
   word len, // size of each pool
        *pool, // on pool
        *loop; // off pool
@@ -56,7 +52,6 @@ struct output {
   int (*putc)(output, int);
   word data[];
 };
-typedef uintptr_t size;
 typedef code vm;
 struct loop {
   union cell *null, *head, end[];
@@ -117,6 +112,8 @@ size_t llen(word);
 long lidx(state, word, word);
 
 void
+  *l_malloc(size_t),
+  l_free(void*),
   l_fin(state),
   *cells(state, size_t),
   transmit(state, sink, word);
@@ -127,7 +124,7 @@ bool
 
 
 status
-  l_ini(state, const size_t, malloc_t*, free_t*),
+  l_ini(state, const size_t),
   eval(state, word),
   report(state, status),
   read1(state, source),

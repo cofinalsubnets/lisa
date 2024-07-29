@@ -1,5 +1,5 @@
-#ifndef _gwen_h
-#define _gwen_h
+#ifndef _l_h
+#define _l_h
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
