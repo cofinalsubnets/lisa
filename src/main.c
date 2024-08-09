@@ -27,7 +27,7 @@ int main(int ac, char **av) {
 
   // initialize
   state f = &((struct core){});
-  status s = l_ini(f, 2);
+  status s = l_ini(f);
   if (s != Ok) return s;
 
   // run files from command line

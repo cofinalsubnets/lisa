@@ -1,59 +1,30 @@
 #include "i.h"
-#define cur2 {cur}, {.x = putnum(2)}
-static union cell
-  p_print[] = {{print}},
-  p_not[] = {{not}},
-  p_cons[] = {cur2, {xons}},
-  p_car[] = {{car}},
-  p_cdr[] = {{cdr}},
-  p_le[] = {cur2, {le}},
-  p_lt[] = {cur2, {lt}},
-  p_eq[] = {cur2, {eq}},
-  p_ge[] = {cur2, {ge}},
-  p_gt[] = {cur2, {gt}},
-  p_slen[] = {{slen}},
-  p_sget[] = {cur2, {sget}},
-  p_ssub[] = {{cur}, {.x = putnum(3)}, {ssub}},
-  p_2p[] = {{Xp}},
-  p_np[] = {{Np}},
-  p_sp[] = {{Sp}},
-  p_mbind[] = {cur2, {mbind}},
-  p_seek[] = {cur2, {seek}},
-  p_peek[] = {{peek}},
-  p_poke[] = {cur2, {poke}},
-  p_trim[] = {{trim}},
-  p_thd[] = {{thda}},
-//  p_p[] = { {pr}},
-//  p_pp[] = { {ppr} },
-//  p_sp[] = { {spr} },
-//  p_psp[] = { {pspr} },
-  p_pc[] = {{prc}},
-  p_quot[] = {cur2, {quot}},
-  p_rem[] = {cur2, {rem}},
-  p_mul[] = {cur2, {mul}},
-  p_sub[] = {cur2, {sub}},
-  p_add[] = {cur2, {add}};
-#undef cur2
+#define P(n,...) { n, ((union cell[]){__VA_ARGS__})}
+#define P2(n,...) { n, ((union cell[]){{cur}, {.x=putnum(2)},__VA_ARGS__})}
+#define P3(n,...) { n, ((union cell[]){{cur}, {.x=putnum(3)},__VA_ARGS__})}
 
 static struct { const char *n; union cell *x; } ini_dict[] = {
-  { "+",  p_add }, { "-",  p_sub },
-  { "*",  p_mul }, { "/",  p_quot },
-  { "%",  p_rem }, { "=",  p_eq },
-  { "<",  p_lt }, { "<=",  p_le },
-  { ">=",  p_ge }, { ">",  p_gt },
-  { ".",  p_print },
-  { "putc",  p_pc },
-  { "~",  p_not },
-  { "X",  p_cons }, { "A",  p_car }, { "B",  p_cdr },
-  { "sget",  p_sget}, { "ssub",  p_ssub}, { "slen",  p_slen},
-  { "s?",  p_sp}, { "n?",  p_np}, { "X?",  p_2p},
-  { "::",  p_mbind}, // defmacro
-  { "peek",  p_peek}, { "poke",  p_poke},
-  { "trim",  p_trim}, { "seek",  p_seek},
-  { "thd",  p_thd}, };
+  P2("+",  {add }), P2("-",  {sub}),
+  P2("*",  {mul }), P2("/",  {quot}),
+  P2("%",  {rem}), P2("=",  {eq }),
+  P2("<",  {lt}), P2("<=",  {le}),
+  P2(">=",  {ge}), P2(">",  {gt}),
+  P(".", {print}),
+  P("putc",  {prc}),
+  P("~",  {not}),
+  P2("X",  {xons}),
+  P("A",  {car}), P("B",  {cdr}),
+  P2("sget",  {sget}), P3("ssub",  {ssub}), P("slen",  {slen}),
+  P("s?",  {Sp}), P("n?", {Np}), P("X?",  {Xp}),
+  P2("::", {mbind}),
+  P("peek", {peek}),
+  P2("poke", {poke}),
+  P("trim",  {trim}), P2("seek",  {seek}),
+  P("thd", {thda}), };
 
-status l_ini(state f, const size_t len) {
+status l_ini(core f) {
   memset(f, 0, sizeof(struct core));
+  const size_t len = 1;
   word *pool = l_malloc(2 * len * sizeof(word));
   if (!pool) return Oom;
   f->rand = f->t0 = clock();

@@ -21,6 +21,7 @@ Vm(ssub) {
     memcpy(t->text, s->text + i, j);
     sp[3] = (word) t; }
   return r->ap(f, r, hp, sp + 3); }
+
 Vm(sget) {
   thread r = (thread) sp[2];
   if (!strp(sp[0])) sp[2] = nil;

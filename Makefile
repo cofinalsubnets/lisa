@@ -1,12 +1,11 @@
 Makefile=Makefile
 nom=gwen
+sys=linux
 
 #build
-LC_COLLATE=C
-c=$(sort $(wildcard src/*.c))
-h=$(sort $(wildcard src/*.h))
+c=$(sort $(wildcard src/*.c)) src/sys/$(sys).c
+h=$(sort $(wildcard src/*.h)) src/sys/$(sys).h
 o=$(c:.c=.o)
-#CPPFLAGS += -D_gwen_mem_static=8192
 CFLAGS ?=\
 	-std=gnu11 -g -Os -Wall\
  	-Wstrict-prototypes -Wno-shift-negative-value\

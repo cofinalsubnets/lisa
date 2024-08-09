@@ -6,13 +6,14 @@
 // thanks !!
 
 typedef struct core *state, *core;
-typedef uintptr_t size;
 typedef intptr_t word, *heap, *stack;
 typedef union cell *cell, *thread, *verb;
-typedef enum status { Ok = 0, Dom, Oom, Eof = -1, } status,
-  code(state, thread, heap, stack);
+typedef enum status { Eof = -1, Ok = 0, Dom, Oom, } status,
+  code(core, thread, heap, stack);
 typedef struct input *input;
 typedef struct output *output;
+
+typedef uintptr_t size;
 struct core {
   // vm variables
   thread ip; // instruction pointer
@@ -22,8 +23,6 @@ struct core {
   word dict, macro; //
   word count, rand;
 
-  input in;
-  output out;
 
   // memory management
   word len, // size of each pool
@@ -42,16 +41,6 @@ union cell {
   word x;
   union cell *m; };
 
-struct input {
-  int (*getc)(input),
-      (*ungetc)(input, int),
-      (*feof)(input);
-  word data[];
-};
-struct output {
-  int (*putc)(output, int);
-  word data[];
-};
 typedef code vm;
 struct loop {
   union cell *null, *head, end[];
@@ -64,7 +53,8 @@ typedef struct two {
   word a, b;
 } *two, *pair;
 
-typedef enum ord { Lt = -1, Eq = 0, Gt = 1, } ord(core, word, word);
+typedef enum ord { Lt = -1, Eq = 0, Gt = 1, }
+  ord(core, word, word);
 
 typedef struct string {
   code *ap;
@@ -74,6 +64,17 @@ typedef struct string {
 } *string;
 
 typedef FILE *source, *sink;
+
+typedef struct typ {
+  word (*copy)(core, word, word*, word*);
+  void (*evac)(core, word, word*, word*);
+  bool (*equal)(core, word, word);
+  void (*emit)(core, FILE*, word);
+//  string (*show)(core, word);
+//  intptr_t (*hash)(core, word);
+} *typ;
+
+extern struct typ typ_two, typ_str;
 
 #define Width(_) b2w(sizeof(_))
 #define avail(f) (f->sp-f->hp)
@@ -100,38 +101,38 @@ typedef FILE *source, *sink;
 
 two
   ini_two(two, word, word),
-  cons(state, word, word);
+  cons(core, word, word);
 string
   ini_str(string, size_t),
-  buf_new(state),
-  buf_grow(state, string),
-  strof(state, const char*),
+  buf_new(core),
+  buf_grow(core, string),
+  strof(core, const char*),
   str_ini(void*, size_t);
 
 size_t llen(word);
-long lidx(state, word, word);
+long lidx(core, word, word);
 
 void
   *l_malloc(size_t),
   l_free(void*),
-  l_fin(state),
-  *cells(state, size_t),
-  transmit(state, sink, word);
+  l_fin(core),
+  *cells(core, size_t),
+  transmit(core, sink, word);
 
 bool
-  eql(state, word, word),
-  please(state, size_t);
+  eql(core, word, word),
+  please(core, size_t);
 
 
 status
-  l_ini(state, const size_t),
-  eval(state, word),
-  report(state, status),
-  read1(state, source),
-  reads(state, source);
+  l_ini(core),
+  eval(core, word),
+  report(core, status),
+  read1(core, FILE*),
+  reads(core, FILE*);
 
 thread
-  thd(state, size_t, ...),
+  thd(core, size_t, ...),
   mo_n(core, size_t),
   mo_ini(void*, size_t);
 
@@ -162,17 +163,17 @@ static Inline size_t b2w(size_t b) {
   size_t q = b / sizeof(word), r = b % sizeof(word);
   return q + (r ? 1 : 0); }
 
-static Inline void *bump(state f, size_t n) {
+static Inline void *bump(core f, size_t n) {
   void *x = f->hp; return f->hp += n, x; }
 
-static Inline void println(state f, word x, FILE *out) {
+static Inline void println(core f, word x, FILE *out) {
   transmit(f, out, x);
   fputc('\n', out); }
 
 _Static_assert(-1 >> 1 == -1, "sign extended shift");
 _Static_assert(sizeof(union cell*) == sizeof(union cell), "size");
 #define Vm(n, ...) enum status\
-  n(state f, thread ip, heap hp, stack sp, ##__VA_ARGS__)
+  n(core f, thread ip, heap hp, stack sp, ##__VA_ARGS__)
 #define Have(n) if (sp - hp < n) return gc(f, ip, hp, sp, n)
 #define Have1() if (sp == hp) return gc(f, ip, hp, sp, 1)
 #define L() printf("# %s:%d\n", __FILE__, __LINE__)

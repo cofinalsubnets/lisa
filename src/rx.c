@@ -1,11 +1,11 @@
 #include "i.h"
 
-string new_buffer(state f) {
+string new_buffer(core f) {
   string s = cells(f, Width(struct string) + 1);
   if (s) s->ap = data, s->typ = String, s->len = sizeof(word);
   return s; }
 
-NoInline string grow_buffer(state f, string s) {
+NoInline string grow_buffer(core f, string s) {
   string t; size_t len = s->len;
   avec(f, s, t = cells(f, Width(struct string) + 2 * b2w(len)));
   if (t) t->ap = data, t->typ = String, t->len = 2 * len,
@@ -15,10 +15,6 @@ NoInline string grow_buffer(state f, string s) {
 #define Getc getc
 #define Ungetc ungetc
 #define Feof feof
-
-static Inline int igetc(input i) { return i->getc(i); }
-static Inline int iungetc(input i, int c) { return i->ungetc(i, c); }
-static Inline int ieof(input i) { return i->feof(i); }
 
 // get the next significant character from the stream
 static NoInline int read_char(source i) {
@@ -88,14 +84,3 @@ static NoInline word read_atom(state f, source i) {
   if (!a) return 0;
   char *e; long n = strtol(a->text, &e, 0);
   return *e == 0 ? putnum(n) : (word) a; }
-
-#define ff(i) ((FILE*)i->data[0])
-static int std_getc(input i) { return fgetc(ff(i)); }
-static int std_ungetc(input i, int c) { return ungetc(c, ff(i)); }
-static int std_feof(input i) { return feof(ff(i)); }
-static int std_putc(output o, int c) { return fputc(c, ff(o)); }
-
-input std_input(state f, FILE *s) { return
-  (input) thd(f, 4, std_getc, std_ungetc, std_feof, s); }
-output std_output(state f, FILE *s) { return
-  (output) thd(f, 2, std_putc, s); }

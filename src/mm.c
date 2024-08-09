@@ -1,8 +1,5 @@
 #include "i.h"
 
-void *l_malloc(size_t n) { return malloc(n); }
-void l_free(void *n) { return free(n); }
-
 void *cells(state f, size_t n) { return
   n <= avail(f) || please(f, n) ? bump(f, n) : 0; }
 
@@ -101,11 +98,9 @@ static NoInline void copy_from(state f, word *p0, size_t len0) {
        *sp1 = t1 - slen;
   f->sp = sp1;
   f->hp = f->cp = p1;
-  f->ip = (verb) cp(f, (word) f->ip, p0, t0);
+  f->ip = (thread) cp(f, (word) f->ip, p0, t0);
   f->dict = cp(f, f->dict, p0, t0);
   f->macro = cp(f, f->macro, p0, t0);
-  f->in = (input) cp(f, (word) f->in, p0, t0);
-  f->out = (output) cp(f, (word) f->out, p0, t0);
   // copy stack
   for (size_t i = 0; i < slen; i++)
     sp1[i] = cp(f, sp0[i], p0, t0);
@@ -113,7 +108,7 @@ static NoInline void copy_from(state f, word *p0, size_t len0) {
   for (struct mm *r = f->safe; r; r = r->next)
     *r->addr = cp(f, *r->addr, p0, t0);
   // cheney's algorithm
-  for (verb k; (k = (verb) f->cp) < (verb) f->hp;)
+  for (thread k; (k = (thread) f->cp) < (thread) f->hp;)
     if (datp(k)) gc_evac_s[k[1].x](f, (word) k, p0, t0);
     else { for (; k->ap; k++) k->x = cp(f, k->x, p0, t0);
            f->cp = (word*) k + 2; }
