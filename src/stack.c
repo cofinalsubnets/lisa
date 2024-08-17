@@ -30,7 +30,7 @@ thread thd(state l, size_t m, ...) {
   va_list xs;
   va_start(xs, m);
   thread r = 0;
-  if (avail(l) < m + Width(struct loop)) r = thdr(l, m, m, xs);
+  if (avail(l) < m + Width(struct tag)) r = thdr(l, m, m, xs);
   else {
     r = mo_n(l, m);
     for (size_t n = 0; n < m; (r + n++)->x = va_arg(xs, word)); }

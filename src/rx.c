@@ -2,14 +2,12 @@
 
 string new_buffer(core f) {
   string s = cells(f, Width(struct string) + 1);
-  if (s) s->ap = data, s->typ = String, s->len = sizeof(word);
-  return s; }
+  return s ? ini_str(s, sizeof(word)) : s; }
 
 NoInline string grow_buffer(core f, string s) {
   string t; size_t len = s->len;
   avec(f, s, t = cells(f, Width(struct string) + 2 * b2w(len)));
-  if (t) t->ap = data, t->typ = String, t->len = 2 * len,
-         memcpy(t->text, s->text, len);
+  if (t) memcpy(ini_str(t, 2 * len)->text, s->text, len);
   return t; }
 
 #define Getc getc
@@ -31,12 +29,12 @@ static word read_str_lit(state, source),
 /// " the parser "
 //
 
-status read1(state f, source i) {
+status read1(core f, source i) {
   word x, c = read_char(i); switch (c) {
     case EOF: return Eof;
     case '\'':
       if ((c = read1(f, i)) != Ok) return c;
-      x = (word) cons(f, pop1(f), nil);
+      x = (word) pairof(f, pop1(f), nil);
       if (!x || !pushs(f, 1, x)) return Oom;
       return Ok;
     case '(': return reads(f, i);
@@ -45,7 +43,7 @@ status read1(state f, source i) {
     default: Ungetc(c, i), x = read_atom(f, i); }
   return x && pushs(f, 1, x) ? Ok : Oom; }
 
-status reads(state f, source i) {
+status reads(core f, source i) {
   word c = read_char(i);
   switch (c) {
     case ')': case EOF: unnest:
@@ -57,12 +55,12 @@ status reads(state f, source i) {
       if (c != Ok) return c;
       c = reads(f, i);
       if (c != Ok) return c;
-      c = (word) cons(f, f->sp[1], f->sp[0]);
+      c = (word) pairof(f, f->sp[1], f->sp[0]);
       if (!c) return Oom;
       *++f->sp = (word) c;
       return Ok; } }
 
-static NoInline word read_str_lit(state f, source i) {
+static NoInline word read_str_lit(core f, source i) {
   string o = new_buffer(f);
   for (size_t n = 0, lim = sizeof(word); o; o = grow_buffer(f, o), lim *= 2)
     for (int x; n < lim;) switch (x = Getc(i)) {
@@ -72,7 +70,7 @@ static NoInline word read_str_lit(state f, source i) {
       case '"': case EOF: fin: return o->len = n, (word) o; }
   return 0; }
 
-static NoInline word read_atom(state f, source i) {
+static NoInline word read_atom(core f, source i) {
   string a = new_buffer(f);
   for (size_t n = 0, lim = sizeof(word); a; a = grow_buffer(f, a), lim *= 2)
     for (int x; n < lim;) switch (x = Getc(i)) {

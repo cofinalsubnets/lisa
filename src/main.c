@@ -4,6 +4,8 @@
 #include <unistd.h>
 #include <errno.h>
 
+static status report(core, status);
+
 int main(int ac, char **av) {
   const char *help = // help message
     "usage: %s [options] [scripts]\n"
@@ -53,3 +55,12 @@ int main(int ac, char **av) {
 
   // finalize and exit
   return l_fin(f), s; }
+
+static status report(core f, status s) {
+  switch (s) {
+    case Dom:
+      fprintf(stderr, "# domain error at [0x%lx]\n", f->ip->x); break;
+    case Oom:
+      fprintf(stderr, "# oom@2*%ldB\n", f->len * sizeof(word));
+    default: }
+  return s; }

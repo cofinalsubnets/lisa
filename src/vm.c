@@ -1,5 +1,6 @@
 #include "i.h"
 
+#define Have1() if (sp == hp) return gc(f, ip, hp, sp, 1)
 Vm(mbind) {
   Have(2 * Width(struct two));
   two w = ini_two((two) hp, sp[0], sp[1]),
@@ -60,7 +61,7 @@ static Vm(Kj) {
 Vm(cur) {
   thread k;
   size_t n = getnum(ip[1].x),
-         S = 3 + Width(struct loop);
+         S = 3 + Width(struct tag);
   if (n == 2) {
     Have(S);
     k = (thread) hp;
@@ -98,7 +99,7 @@ Vm(print) { return
   puts(""),
   ip->ap(f, ip, hp, sp + 1); }
 
-Vm(xons) {
+Vm(cons) {
   Have(Width(struct two));
   two w = ini_two((two) hp, sp[0], sp[1]);
   return ip = (thread) sp[2],
@@ -138,7 +139,7 @@ Vm(not) { return
 
 Vm(trim) {
   thread k = (thread) sp[0];
-  mo_tag(k)->head = k;
+  ttag(k)->head = k;
   ip = (thread) sp[1];
   sp[1] = (word) k;
   return ip->ap(f, ip, hp, sp + 1); }
@@ -164,13 +165,14 @@ Vm(poke) {
 
 Vm(thda) {
   size_t n = getnum(sp[0]);
-  Have(n + Width(struct loop));
+  Have(n + Width(struct tag));
   thread k = mo_ini(memset(hp, -1, n * sizeof(word)), n);
-  hp += n + Width(struct loop);
+  hp += n + Width(struct tag);
   ip = (thread) sp[1];
   sp[1] = (word) k;
   return ip->ap(f, ip, hp, sp + 1); }
 
+#define Pack() (f->ip = ip, f->hp = hp, f->sp = sp)
 NoInline Vm(gc, size_t n) {
   return Pack(), !please(f, n) ? Oom :
     f->ip->ap(f, f->ip, f->hp, f->sp); }
