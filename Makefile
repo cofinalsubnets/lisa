@@ -1,14 +1,12 @@
 Makefile=Makefile
 nom=gwen
-sys=linux
 
 #build
-c=$(sort $(wildcard src/*.c)) src/sys/$(sys).c
-h=$(sort $(wildcard src/*.h)) src/sys/$(sys).h
+c=$(sort $(wildcard src/*.c))
+h=$(sort $(wildcard src/*.h))
 o=$(c:.c=.o)
 CFLAGS ?=\
 	-std=gnu11 -g -Os -Wall\
-	-Dl_sys=$(sys)\
  	-Wstrict-prototypes -Wno-shift-negative-value\
 	-fno-stack-protector
 

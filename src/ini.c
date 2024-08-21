@@ -23,7 +23,7 @@ static struct { const char *n; union cell *x; } ini_dict[] = {
 status l_ini(core f) {
   memset(f, 0, sizeof(struct core));
   const size_t len = 1;
-  word *pool = l_malloc(2 * len * sizeof(word));
+  word *pool = malloc(2 * len * sizeof(word));
   if (!pool) return Oom;
   f->rand = f->t0 = clock();
   f->hp = f->pool = pool;
@@ -37,5 +37,5 @@ status l_ini(core f) {
   return Ok; }
 
 void l_fin(state f) {
-  l_free(f->pool < f->loop ? f->pool : f->loop);
+  free(f->pool < f->loop ? f->pool : f->loop);
   f->pool = f->loop = NULL; }

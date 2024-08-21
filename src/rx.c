@@ -22,8 +22,8 @@ static NoInline int read_char(source i) {
     case '#': case ';': for (;;) switch (Getc(i)) {
       case '\n': case EOF: goto loop; } } }
 
-static word read_str_lit(state, source),
-            read_atom(state, source);
+static word read_str_lit(core, source),
+            read_atom(core, source);
 
 ////
 /// " the parser "

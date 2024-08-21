@@ -49,7 +49,7 @@ NoInline bool please(core f, size_t req) {
   else return true;
 
   // too big or too small so try and adjust
-  word *b1p0 = l_malloc(len1 * 2 * sizeof(word));
+  word *b1p0 = malloc(len1 * 2 * sizeof(word));
   if (!b1p0) return req <= len0;
 
   f->len = len1;
@@ -57,7 +57,7 @@ NoInline bool please(core f, size_t req) {
   f->loop = b1p0 + len1;
   copy_from(f, b0p1, len0),
 
-  l_free(b0p0 < b0p1 ? b0p0 : b0p1),
+  free(b0p0 < b0p1 ? b0p0 : b0p1),
   f->t0 = clock();
   return true; }
 
@@ -74,12 +74,11 @@ static NoInline void copy_from(core f, word *p0, size_t len0) {
   f->ip = (thread) cp(f, (word) f->ip, p0, t0);
   f->dict = cp(f, f->dict, p0, t0);
   f->macro = cp(f, f->macro, p0, t0);
+  f->symbols = (symbol) cp(f, (word) f->symbols, p0, t0);
   // copy stack
-  for (size_t i = 0; i < slen; i++)
-    sp1[i] = cp(f, sp0[i], p0, t0);
+  for (size_t i = 0; i < slen; i++) sp1[i] = cp(f, sp0[i], p0, t0);
   // copy managed values
-  for (struct mm *r = f->safe; r; r = r->next)
-    *r->addr = cp(f, *r->addr, p0, t0);
+  for (struct mm *r = f->safe; r; r = r->next) *r->addr = cp(f, *r->addr, p0, t0);
   // cheney's algorithm
   for (thread k; (k = (thread) f->cp) < (thread) f->hp;)
     if (datp(k)) k[1].typ->evac(f, (word) k, p0, t0); // is data
@@ -88,10 +87,11 @@ static NoInline void copy_from(core f, word *p0, size_t len0) {
 
 NoInline word cp(state v, word x, word *p0, word *t0) {
   // if it's a number or out of managed memory then return it
-  if (nump(x) || x < (word) p0 || x >= (word) t0) return x;
+  if (!bounded(p0, x, t0)) return x;
   cell src = (cell) x;
+  x = src->x;
   // if the cell holds a pointer to the new space then return the pointer
-  if (homp(src->x) && v->pool <= (word*) src->x && (word*) src->x < v->pool + v->len) return src->x; // then return the pointer
+  if (homp(x) && bounded(v->pool, x, v->pool + v->len)) return x;
   // if it's data then call the given copy function
   if (datp(src)) return src[1].typ->copy(v, (word) src, p0, t0);
   // it's a thread, find the end

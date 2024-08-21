@@ -11,29 +11,30 @@ typedef struct core *state, *core;
 typedef intptr_t word, *heap, *stack;
 // also represented as a union for structured access
 typedef union cell *cell, *thread;
+typedef struct symbol *symbol;
 
 // return type of outer C interface functions
 typedef enum status {
-  Eof = -1, Ok = 0, Dom, Oom, } status,
+  Eof = -1, Ok = 0, Oom, } status,
   // vm function type
-  code(core, thread, heap, stack);
+  vm(core, thread, heap, stack);
 
 struct core {
-  // vm variables
+  // vm registers
   thread ip; // instruction pointer
   heap hp; // heap pointer
   stack sp; // stack pointer
   // environment
   word dict, macro; //
   word count, rand;
-
+  symbol symbols;
 
   // memory management
   word len, // size of each pool
        *pool, // on pool
        *loop; // off pool
   struct mm { // gc save list
-    intptr_t *addr; // stack address of value
+    word *addr; // stack address of value
     struct mm *next; // prior list
   } *safe;
   union { // gc state
@@ -41,13 +42,13 @@ struct core {
     heap cp; }; }; // gc copy pointer
 
 typedef struct typ *typ;
+typedef vm code;
 union cell {
-  code *ap;
+  vm *ap;
   word x;
   union cell *m;
   typ typ; };
 
-typedef code vm;
 struct tag {
   union cell *null, *head, end[];
 } *ttag(cell);
@@ -56,6 +57,7 @@ typedef word l_mtd_copy(core, word, word*, word*);
 typedef void l_mtd_evac(core, word, word*, word*);
 typedef bool l_mtd_equal(core, word, word);
 typedef void l_mtd_emit(core, FILE*, word);
+typedef word l_mtd_hash(core, word);
 l_mtd_copy cp;
 //typedef string l_mtd_show(core, word);
 //typedef intptr_t l_mtd_hash(core, word);
@@ -65,11 +67,11 @@ typedef struct typ {
   l_mtd_equal *equal;
   l_mtd_emit *emit;
   //l_mtd_show *show;
-  //l_mtd_hash *hash;
+  l_mtd_hash *hash;
 } *typ;
 
-typedef struct two {
-  code *ap;
+typedef struct pair {
+  vm *ap;
   typ typ;
   word a, b;
 } *two, *pair;
@@ -92,9 +94,27 @@ typedef struct symbol {
   struct symbol *l, *r;
 } *symbol;
 
-typedef FILE *source, *sink;
+typedef struct table {
+  vm *ap;
+  typ typ;
+  uintptr_t len, cap;
+  struct table_entry {
+    word key, val;
+    struct table_entry *next;
+  } **tab;
+} *table;
 
-extern struct typ typ_two, typ_str;
+typedef FILE *source, *sink;
+typedef struct char_in {
+  int (*getc)(core, struct char_in*);
+  void (*ungetc)(core, struct char_in*, char);
+  bool (*eof)(core, struct char_in*);
+} *input;
+typedef struct char_out {
+  void (*putc)(core, struct char_out*, char);
+} *output;
+
+extern struct typ typ_two, typ_str, sym_typ;
 
 #define Width(_) b2w(sizeof(_))
 #define avail(f) (f->sp-f->hp)
@@ -118,13 +138,27 @@ extern struct typ typ_two, typ_str;
 #define datp(_) (ptr(_)->ap==data)
 #define End ((word)0) // vararg sentinel
 
-two
+pair
   ini_two(two, word, word),
   pairof(core, word, word);
 string
   ini_str(string, size_t),
   strof(core, const char*);
+table
+  new_table(core),
+  table_set(core, table, word, word);
+word
+  table_get(core, table, word, word),
+  table_del(core, table, word, word);
+symbol
+  symof(core, const char*),
+  intern(core, string),
+  gensym(core);
 
+thread
+  thd(core, size_t, ...),
+  mo_n(core, size_t),
+  mo_ini(void*, size_t);
 
 void
   *l_malloc(size_t),
@@ -140,25 +174,16 @@ bool
   eql(core, word, word),
   please(core, size_t);
 
-symbol
-  symof(core, const char*),
-  intern(core, symbol*, string),
-  gensym(core);
-
 status
   l_ini(core),
   eval(core, word),
   read1(core, FILE*),
   reads(core, FILE*);
 
-thread
-  thd(core, size_t, ...),
-  mo_n(core, size_t),
-  mo_ini(void*, size_t);
-
 intptr_t liprng(core);
 
 word pushs(core, size_t, ...);
+word hash(core, word);
 
 status gc(core, thread, heap, stack, size_t);
 vm data, ap, tap, K, ref, cur, ret, yield, cond, jump,
@@ -180,6 +205,8 @@ static Inline bool twop(word _) { return homp(_) && htwop((cell) _); }
 static Inline size_t b2w(size_t b) {
   size_t q = b / sizeof(word), r = b % sizeof(word);
   return q + (r ? 1 : 0); }
+static Inline word ror(word x, word n) {
+  return (x << ((8 * sizeof(word)) - n)) | (x >> n); }
 
 _Static_assert(-1 >> 1 == -1, "sign extended shift");
 _Static_assert(sizeof(union cell*) == sizeof(union cell), "size");
@@ -189,4 +216,6 @@ _Static_assert(sizeof(union cell*) == sizeof(union cell), "size");
 #define L() printf("# %s:%d\n", __FILE__, __LINE__)
 #define mix ((uintptr_t)2708237354241864315)
 #define bind(n, x) if (!(n = (x))) return 0
+#define bounded(a, b, c) ((word)(a)<=(word)(b)&&(word)(b)<(word)(c))
+#define gettyp(x) R(x)[1].typ
 #endif

@@ -2,13 +2,13 @@
 
 static word cp_two(state v, word x, word *p0, word *t0) {
   pair src = (pair) x,
-       dst = bump(v, Width(struct two));
+       dst = bump(v, Width(struct pair));
   dst->ap = data, dst->typ = &typ_two,
   dst->a = src->a, dst->b = src->b;
   return (word) (src->ap = (vm*) dst); }
 
 static void wk_two(state v, word x, word *p0, word *t0) {
-  v->cp += Width(struct two);
+  v->cp += Width(struct pair);
   A(x) = cp(v, A(x), p0, t0);
   B(x) = cp(v, B(x), p0, t0); }
 
@@ -23,9 +23,13 @@ static bool eq_two(state f, word x, word y) {
   if (!htwop(ptr(y))) return false;
   return eql(f, A(x), A(y)) && eql(f, B(x), B(y)); }
 
-struct typ typ_two = {
-  .copy = cp_two, .evac = wk_two, .emit = tx_two, .equal = eq_two, };
+static word hash_two(core v, word x) {
+  word hc = hash(v, A(x)) * hash(v, B(x));
+  return ror(hc, 4 * sizeof(word)); }
 
+struct typ typ_two = {
+  .hash = hash_two,
+  .copy = cp_two, .evac = wk_two, .emit = tx_two, .equal = eq_two, };
 
 two ini_two(two w, word a, word b) {
   w->ap = data, w->typ = &typ_two;
@@ -33,10 +37,10 @@ two ini_two(two w, word a, word b) {
   return w; }
 
 pair pairof(core f, word a, word b) {
-  if (avail(f) < Width(struct two)) {
+  if (avail(f) < Width(struct pair)) {
     bool ok;
-    avec(f, a, avec(f, b, ok = please(f, Width(struct two))));
+    avec(f, a, avec(f, b, ok = please(f, Width(struct pair))));
     if (!ok) return 0; }
   two w = (two) f->hp;
-  f->hp += Width(struct two);
+  f->hp += Width(struct pair);
   return ini_two(w, a, b); }

@@ -1,28 +1,31 @@
 #include "i.h"
 
+#define op(n,x) (ip = (thread) sp[n], sp[n] = (x), ip->ap(f, ip, hp, sp + n))
+#define O op
 #define Have1() if (sp == hp) return gc(f, ip, hp, sp, 1)
+#define Do(...) ((__VA_ARGS__), ip->ap(f, ip, hp, sp))
 Vm(mbind) {
-  Have(2 * Width(struct two));
+  Have(2 * Width(struct pair));
   two w = ini_two((two) hp, sp[0], sp[1]),
       x = ini_two(w + 1, (word) w, f->macro);
+  hp += 2 * Width(struct pair);
   f->macro = (word) x;
-  ip = (thread) sp[2];
-  sp[2] = sp[1];
-  return ip->ap(f, ip, hp + 2 * Width(struct two), sp + 2); }
+  return O(2, sp[1]); }
 
 Vm(ret) {
-  word r = *sp;
-  sp += getnum(ip[1].x) + 1,
-  ip = (cell) *sp,
-  *sp = r;
-  return ip->ap(f, ip, hp, sp); }
+  word r = getnum(ip[1].x) + 1;
+  return O(r, *sp); }
 
 Vm(ap) {
-  if (nump(sp[1])) return
-    ip[1].ap(f, ip + 1, hp, sp + 1);
+  if (nump(sp[1])) return Do(sp++, ip++);
   thread k = (thread) sp[1];
-  sp[1] = (word) (ip + 1);
-  return k->ap(f, k, hp, sp); }
+  return Do(sp[1] = (word) (ip + 1), ip = k); }
+
+Vm(tap) {
+  word x = sp[0], j = sp[1];
+  sp += getnum(ip[1].x) + 1;
+  return nump(j) ? O(1, j) :
+    Do(ip = (thread) j, *sp = x); }
 
 Vm(apn) {
   size_t n = getnum(ip[1].x);
@@ -33,14 +36,6 @@ Vm(apn) {
   if (ip->ap == cur && getnum(ip[1].x) == n) ip += 2;
   return ip->ap(f, ip, hp, sp); }
 
-Vm(tap) {
-  //puts("tap");
-  word x = sp[0], j = sp[1];
-  sp += getnum(ip[1].x) + 1;
-  if (nump(j)) ip = (thread) *++sp, *sp = j;
-  else ip = (thread) j, *sp = x;
-  return ip->ap(f, ip, hp, sp); }
-
 Vm(tapn) {
   size_t n = getnum(ip[1].x),
          r = getnum(ip[2].x);
@@ -49,14 +44,15 @@ Vm(tapn) {
   // do this at compile time
   if (ip->ap == cur && getnum(ip[1].x) == n) ip += 2;
   // generalize to other cases ...
-  stack arg = sp;
-  for (sp += r + 1; n--; sp[n] = arg[n]);
+  stack osp = sp;
+  sp += r + 1;
+  while (n--) sp[n] = osp[n];
   return ip->ap(f, ip, hp, sp); }
 
-static Vm(Kj) {
-  Have1();
-  sp[-1] = ip[1].x;
-  return ip[2].m->ap(f, ip[2].m, hp, sp - 1); }
+static Vm(Kj) { Have1(); return
+  *--sp = ip[1].x,
+  ip += 2,
+  ip->m->ap(f, ip->m, hp, sp); }
 
 Vm(cur) {
   thread k;
@@ -74,118 +70,75 @@ Vm(cur) {
     k[0].ap = cur, k[1].x = putnum(n - 1);
     k[2].ap = Kj,  k[3].x = *sp++, k[4].m = ip + 2;
     k[5].x = 0,    k[6].m = k; }
-  ip = (cell) *sp, *sp = (word) k;
-  return ip->ap(f, ip, hp + S, sp); }
+  return Do(hp += S, ip = (cell) *sp, *sp = (word) k); }
 
 Vm(data) {
   word r = (word) ip;
-  ip = (cell) *++sp;
-  *sp = r;
-  return ip->ap(f, ip, hp, sp); }
+  return O(1, r); }
 
-Vm(K) { Have1(); return
-  sp[-1] = ip[1].x,
-  ip[2].ap(f, ip + 2, hp, sp - 1); }
+Vm(K) {
+  Have1();
+  return Do(*--sp = ip[1].x, ip += 2); }
 
 Vm(prc) {
-  ip = (thread) sp[1];
-  fputc(getnum(sp[1] = sp[0]), stdout);
-  return ip->ap(f, ip, hp, sp + 1); }
+  return Do(ip = (thread) sp[1], fputc(getnum(sp[1] = sp[0]), stdout), sp++); }
 
-Vm(print) { return
-  ip = (void*) sp[1],
-  sp[1] = *sp,
-  transmit(f, stdout, *sp),
-  puts(""),
-  ip->ap(f, ip, hp, sp + 1); }
+Vm(print) {
+  transmit(f, stdout, *sp), puts("");
+  return op(1, *sp); }
 
 Vm(cons) {
-  Have(Width(struct two));
+  Have(Width(struct pair));
   two w = ini_two((two) hp, sp[0], sp[1]);
-  return ip = (thread) sp[2],
-         sp[2] = (word) w,
-         ip->ap(f, ip, hp + Width(struct two), sp + 2); }
+  hp += Width(struct pair);
+  return op(2, (word) w); }
 
-Vm(car) { return
-  ip = (thread) sp[1],
-  sp[1] = twop(sp[0]) ? A(sp[0]) : sp[0],
-  ip->ap(f, ip, hp, sp + 1); }
+Vm(car) { return op(1, twop(sp[0]) ? A(sp[0]) : sp[0]); }
+Vm(cdr) { return op(1, twop(sp[0]) ? B(sp[0]) : sp[0]); }
+Vm(add) { return op(2, putnum(getnum(sp[0])+getnum(sp[1]))); }
+Vm(sub) { return op(2, putnum(getnum(sp[0])-getnum(sp[1]))); }
+Vm(mul) { return op(2, putnum(getnum(sp[0])*getnum(sp[1]))); }
+Vm(quot) { return op(2, nilp(sp[1]) ? nil : putnum(getnum(sp[0])/getnum(sp[1]))); }
+Vm(rem) { return op(2, nilp(sp[1]) ? nil : putnum(getnum(sp[0])%getnum(sp[1]))); }
+Vm(eq) { return op(2, eql(f, sp[0], sp[1]) ? putnum(-1) : nil); }
+Vm(lt) { return op(2, sp[0] < sp[1] ? putnum(-1) : nil); }
+Vm(le) { return op(2, sp[0] <= sp[1] ? putnum(-1) : nil); }
+Vm(gt) { return op(2, sp[0] > sp[1] ? putnum(-1) : nil); }
+Vm(ge) { return op(2, sp[0] >= sp[1] ? putnum(-1) : nil);}
 
-Vm(cdr) { return
-  ip = (thread) sp[1],
-  sp[1] = twop(sp[0]) ? B(sp[0]) : nil,
-  ip->ap(f, ip, hp, sp + 1); }
-
-#define binop(n, x) Vm(n) { return\
-  ip = (void*) sp[2],\
-  sp[2] = x,\
-  ip->ap(f, ip, hp, sp + 2); }
-
-binop(add, putnum(getnum(sp[0])+getnum(sp[1])))
-binop(sub, putnum(getnum(sp[0])-getnum(sp[1])))
-binop(mul, putnum(getnum(sp[0])*getnum(sp[1])))
-binop(quot, nilp(sp[1]) ? nil : putnum(getnum(sp[0])/getnum(sp[1])))
-binop(rem, nilp(sp[1]) ? nil : putnum(getnum(sp[0])%getnum(sp[1])))
-binop(eq, eql(f, sp[0], sp[1]) ? putnum(-1) : nil)
-binop(lt, sp[0] < sp[1] ? putnum(-1) : nil)
-binop(le, sp[0] <= sp[1] ? putnum(-1) : nil)
-binop(gt, sp[0] > sp[1] ? putnum(-1) : nil)
-binop(ge, sp[0] >= sp[1] ? putnum(-1) : nil)
-
-Vm(not) { return
-  ip = (thread) sp[1],
-  sp[1] = ~sp[0] | 1,
-  ip->ap(f, ip, hp, sp + 1); }
+Vm(not) { return op(1, ~sp[0] | 1); }
 
 Vm(trim) {
   thread k = (thread) sp[0];
   ttag(k)->head = k;
-  ip = (thread) sp[1];
-  sp[1] = (word) k;
-  return ip->ap(f, ip, hp, sp + 1); }
+  return op(1, (word) k); }
 
 Vm(seek) {
   thread k = (thread) sp[1];
-  ip = (thread) sp[2];
-  sp[2] = (word) (k + getnum(sp[0]));
-  return ip->ap(f, ip, hp, sp + 2); }
+  return op(2, (word) (k + getnum(sp[0]))); }
 
 Vm(peek) {
   thread k = (thread) sp[0];
-  ip = (thread) sp[1];
-  sp[1] = k[0].x;
-  return ip->ap(f, ip, hp, sp + 1); }
+  return op(1, k[0].x); }
 
 Vm(poke) {
   thread k = (thread) sp[1];
   k->x = sp[0];
-  ip = (thread) sp[2];
-  sp[2] = (word) k;
-  return ip->ap(f, ip, hp, sp + 2); }
+  return op(2, (word) k); }
 
 Vm(thda) {
   size_t n = getnum(sp[0]);
   Have(n + Width(struct tag));
   thread k = mo_ini(memset(hp, -1, n * sizeof(word)), n);
   hp += n + Width(struct tag);
-  ip = (thread) sp[1];
-  sp[1] = (word) k;
-  return ip->ap(f, ip, hp, sp + 1); }
+  return op(1, (word) k); }
 
 #define Pack() (f->ip = ip, f->hp = hp, f->sp = sp)
 NoInline Vm(gc, size_t n) {
   return Pack(), !please(f, n) ? Oom :
     f->ip->ap(f, f->ip, f->hp, f->sp); }
 
-Vm(ref) {
-  Have1();
-  sp[-1] = sp[getnum(ip[1].x)];
-  return ip[2].ap(f, ip + 2, hp, sp - 1); }
-
-Vm(cond) { return
-  ip = nilp(*sp) ? ip[1].m : ip + 2,
-  ip->ap(f, ip, hp, sp + 1); }
-
-Vm(jump) { return ip[1].m->ap(f, ip[1].m, hp, sp); }
-
+Vm(ref) { Have1(); return Do(sp[-1] = sp[getnum(ip[1].x)], sp--, ip += 2); }
+Vm(cond) { return Do(ip = nilp(*sp) ? ip[1].m : ip + 2, sp++); }
+Vm(jump) { return Do(ip = ip[1].m); }
 Vm(yield) { return Pack(), Ok; }

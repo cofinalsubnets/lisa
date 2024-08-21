@@ -251,7 +251,7 @@ static c1 c1endpush, c1endpop, c1postbranch, c1altpush, c1endpeek;
 // conditional expression analyzer
 static size_t c0cond(core f, scope *c, size_t m, word x) {
   if (!pushs(f, 2, x, c1endpop)) return 0;
-  struct two p = { data, &typ_two, nil, nil };
+  struct pair p = { data, &typ_two, nil, nil };
   for (x = pop1(f), MM(f, &x); m; x = B(B(x))) {
     if (!twop(x)) x = (word) &p;
     m = ana(f, c, m + 2, A(x));
@@ -419,11 +419,11 @@ static size_t c0l(core f, scope *b, scope *c, size_t m, word exp) {
       else A(def) = B(d) = _; }
     // if toplevel then bind
     if (even && nilp((*b)->args)) {
-      thread t = cells(f, 2 * Width(struct two) + 2 + Width(struct tag));
+      thread t = cells(f, 2 * Width(struct pair) + 2 + Width(struct tag));
       if (!t) goto fail;
       two w = (two) t,
           x = w + 1;
-      t += 2 * Width(struct two);
+      t += 2 * Width(struct pair);
       t[0].ap = define, t[1].x = A(nom), t[2].x = 0, t[3].m = t;
       ini_two(w, A(def), nil);
       ini_two(x, (word) t, (word) w);
@@ -498,10 +498,10 @@ static size_t c0ap(core f, scope *c, size_t m, word a, word b) {
 
 static Vm(drop) { return ip[1].ap(f, ip + 1, hp, sp + 1); }
 static Vm(define) {
-  Have(2 * Width(struct two));
+  Have(2 * Width(struct pair));
   two w = ini_two((two) hp, ip[1].x, sp[0]),
       x = ini_two(w + 1, (word) w, f->dict);
   f->dict = (word) x;
   ip = (thread) sp[1];
   sp[1] = sp[0];
-  return ip->ap(f, ip, hp + 2 * Width(struct two), sp + 1); }
+  return ip->ap(f, ip, hp + 2 * Width(struct pair), sp + 1); }

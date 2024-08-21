@@ -38,7 +38,7 @@ int main(int ac, char **av) {
     if (!i) return
       fprintf(stderr, "# error opening %s: %s\n", *av, strerror(errno)),
       l_fin(f),
-      Dom;
+      Eof;
     while ((s = read1(f, i)) != Eof &&
            (s = eval(f, pop1(f))) == Ok) f->sp++;
     if (s == Eof) s = Ok;
@@ -58,8 +58,6 @@ int main(int ac, char **av) {
 
 static status report(core f, status s) {
   switch (s) {
-    case Dom:
-      fprintf(stderr, "# domain error at [0x%lx]\n", f->ip->x); break;
     case Oom:
       fprintf(stderr, "# oom@2*%ldB\n", f->len * sizeof(word));
     default: }
