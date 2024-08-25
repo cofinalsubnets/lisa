@@ -5,15 +5,14 @@
 #include <errno.h>
 
 static status report(core, status);
+static const char *help = // help message
+  "usage: %s [options] [scripts]\n"
+  "with no arguments, interact\n"
+  "options:\n"
+  "  -h show this message\n"
+  "  -i interact\n";
 
 int main(int ac, char **av) {
-  const char *help = // help message
-    "usage: %s [options] [scripts]\n"
-    "with no arguments, interact\n"
-    "options:\n"
-    "  -h show this message\n"
-    "  -i interact\n";
-
   // by default start a repl if in a terminal and no arguments
   bool repl = ac == 1 && isatty(STDIN_FILENO);
 
@@ -42,11 +41,11 @@ int main(int ac, char **av) {
     while ((s = read1(f, i)) != Eof &&
            (s = eval(f, pop1(f))) == Ok) f->sp++;
     if (s == Eof) s = Ok;
-    report(f, s);
+    if (s != Ok) report(f, s);
     fclose(i); }
 
   // interact if needed
-  if (repl) while ((s = read1(f, stdin)) != Eof) {
+  if (s == Ok && repl) while ((s = read1(f, stdin)) != Eof) {
     if (s == Ok && (s = eval(f, pop1(f)) == Ok))
       transmit(f, stdout, pop1(f)),
       fputc('\n', stdout);

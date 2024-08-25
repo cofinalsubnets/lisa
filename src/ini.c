@@ -30,7 +30,7 @@ status l_ini(core f) {
   f->loop = f->sp = pool + (f->len = len);
   f->dict = f->macro = nil;
   for (int i = 0; i < sizeof(ini_dict)/sizeof(*ini_dict); i++) {
-    string s = strof(f, ini_dict[i].n);
+    string s = literal_string(f, ini_dict[i].n);
     pair w = s ? pairof(f, (word) s, (word) ini_dict[i].x) : 0,
          x = w ? pairof(f, (word) w, f->dict) : 0;
     if (!(f->dict = (word) x)) return l_fin(f), Oom; }

@@ -62,3 +62,7 @@ static symbol intern_r(core v, string b, symbol *y) {
 
 symbol intern(core f, string b) {
   return intern_r(f, b, &f->symbols); }
+
+symbol gensym(core f) {
+  symbol y = cells(f, Width(struct symbol) - 2);
+  return y ? ini_anon(y, f->rand = liprng(f)) : y; }

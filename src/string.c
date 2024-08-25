@@ -77,7 +77,7 @@ string ini_str(string s, size_t len) {
   s->ap = data, s->typ = &typ_str, s->len = len;
   return s; }
 
-string strof(core f, const char *c) {
+string literal_string(core f, const char *c) {
   size_t len = strlen(c);
   string o = cells(f, Width(struct string) + b2w(len));
   if (o) memcpy(ini_str(o, len)->text, c, len);

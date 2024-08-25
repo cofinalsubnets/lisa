@@ -320,7 +320,7 @@ static word desugr(core f, word *d, word *e, word a) {
 
 static status desug(core f, word *d, word *e) {
   if (!twop(*d)) return Ok;
-  word x, l = (word) strof(f, "\\");
+  word x, l = (word) literal_string(f, "\\");
   if (!l || !pushs(f, 1, l)) return Oom;
   do if (!(x = (word) desugr(f, d, e, B(*d))) ||
          !(x = (word) pairof(f, f->sp[0], x)))
@@ -395,7 +395,7 @@ static size_t c0l(core f, scope *b, scope *c, size_t m, word exp) {
   (*c)->lams = lam, e = nil;
   // construct lambda with reversed argument list
   exp = revn(f, nom, exp);
-  l = strof(f, "\\");
+  l = literal_string(f, "\\");
   exp = exp && l ? (word) pairof(f, (word) l, exp) : 0;
   if (!exp) goto fail;
   // exp is now the required lambda expression, analyze it

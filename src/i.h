@@ -53,21 +53,22 @@ struct tag {
   union cell *null, *head, end[];
 } *ttag(cell);
 
-typedef word l_mtd_copy(core, word, word*, word*);
-typedef void l_mtd_evac(core, word, word*, word*);
-typedef bool l_mtd_equal(core, word, word);
-typedef void l_mtd_emit(core, FILE*, word);
-typedef word l_mtd_hash(core, word);
-l_mtd_copy cp;
+typedef word copy_method(core, word, word*, word*);
+typedef void evac_method(core, word, word*, word*);
+typedef bool equal_method(core, word, word);
+typedef void print_method(core, FILE*, word);
+typedef word hash_method(core, word);
+copy_method cp;
+equal_method literal_equal;
 //typedef string l_mtd_show(core, word);
 //typedef intptr_t l_mtd_hash(core, word);
 typedef struct typ {
-  l_mtd_copy *copy;
-  l_mtd_evac *evac;
-  l_mtd_equal *equal;
-  l_mtd_emit *emit;
+  copy_method *copy;
+  evac_method *evac;
+  equal_method *equal;
+  print_method *emit;
   //l_mtd_show *show;
-  l_mtd_hash *hash;
+  hash_method *hash;
 } *typ;
 
 typedef struct pair {
@@ -114,7 +115,7 @@ typedef struct char_out {
   void (*putc)(core, struct char_out*, char);
 } *output;
 
-extern struct typ typ_two, typ_str, sym_typ;
+extern struct typ typ_two, typ_str, sym_typ, table_type;
 
 #define Width(_) b2w(sizeof(_))
 #define avail(f) (f->sp-f->hp)
@@ -143,7 +144,7 @@ pair
   pairof(core, word, word);
 string
   ini_str(string, size_t),
-  strof(core, const char*);
+  literal_string(core, const char*);
 table
   new_table(core),
   table_set(core, table, word, word);
@@ -151,7 +152,7 @@ word
   table_get(core, table, word, word),
   table_del(core, table, word, word);
 symbol
-  symof(core, const char*),
+  literal_symbol(core, const char*),
   intern(core, string),
   gensym(core);
 
