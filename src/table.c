@@ -41,6 +41,7 @@ struct typ table_type = {
   .copy = copy_table,
   .evac = walk_table,
   .equal = literal_equal,
+  .emit = generic_print,
 };
 
 // this is a totally ad hoc, unproven hashing method.
@@ -138,15 +139,19 @@ NoInline word table_delete(core f, table t, word k) {
       coll = x; }
   return v; }
 
-static NoInline word tdel_wrap(core f, word zero, table t, word k) {
-  word v = table_delete(f, t, k);
-  return v ? v : zero; }
-
+Vm(tnew) {
+  Have(Width(struct table) + 1);
+  table t = (void*) hp;
+  struct table_entry **tab = (void*) (t + 1);
+  hp += Width(struct table) + 1;
+  t->ap = data, t->typ = &table_type;
+  t->len = 0, t->cap = 1, t->tab = tab;
+  return op(1, (word) t); }
 
 Vm(tget) {
-  if (!tblp(sp[1])) return op(3, sp[0]);
-  table t = (table) sp[1];
-  word zero = sp[0], k = sp[2];
+  if (!tblp(sp[0])) return op(3, sp[2]);
+  table t = (table) sp[0];
+  word zero = sp[2], k = sp[1];
   struct table_entry *entry = t->tab[index_of_key(f, t, k)];
   while (entry && !eql(f, k, entry->key)) entry = entry->next;
   return op(3, entry ? entry->val : zero); }
@@ -154,7 +159,7 @@ Vm(tget) {
 Vm(tset) {
   if (!tblp(sp[0])) return op(3, sp[0]);
   table t = (table) sp[0];
-  word k = sp[1], v = sp[v], idx = index_of_key(f, t, k);
+  word k = sp[1], v = sp[2], idx = index_of_key(f, t, k);
 
   struct table_entry *entry = t->tab[idx];
   while (entry && !eql(f, k, entry->key)) entry = entry->next;
@@ -174,15 +179,32 @@ Vm(tset) {
     struct table_entry **tab0 = t->tab, **tab1 = (void*) hp;
     memset(tab1, 0, cap1 * sizeof(word));
     hp += cap1;
-    while (cap0--) for (struct table_entry *e = tab0[cap0], *q; e; e = q) {
+    while (cap0--) for (struct table_entry *e = tab0[cap0]; e;) {
       word hc = hash(f, e->key),
            idx = (cap1 - 1) & hc;
       struct table_entry *q = e->next;
-      e->next = tab1[idx], tab1[idx] = e; }
+      e->next = tab1[idx], tab1[idx] = e;
+      e = q; }
     t->cap = cap1, t->tab = tab1; }
 
   return op(3, v); }
 
 Vm(tdel) {
-  word v = tblp(sp[1]) ? table_delete(f, (table) sp[1], sp[2]) : 0;
-  return op(3, v ? v : sp[0]); }
+  word v = tblp(sp[0]) ? table_delete(f, (table) sp[0], sp[1]) : 0;
+  return op(3, v ? v : sp[2]); }
+
+Vm(tlen) {
+  return op(1, tblp(sp[0]) ? putnum(((table)sp[0])->len) : nil); }
+Vm(tkeys) {
+  if (!tblp(sp[0])) return op(1, nil);
+  table t = (table) sp[0];
+  word len = t->len, list = nil;
+  Have(len * Width(struct pair));
+  pair pairs = (void*) hp;
+  hp += len * Width(struct pair);
+  for (int i = t->cap; i;)
+    for (struct table_entry *e = t->tab[--i]; e;)
+      pairs->ap = data, pairs->typ = &typ_two,
+      pairs->a = e->key, pairs->b = list,
+      list = (word) pairs, pairs++;
+  return op(1, list); }

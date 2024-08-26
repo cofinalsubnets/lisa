@@ -1,9 +1,13 @@
 #include "i.h"
 
-void transmit(core v, FILE* o, word x) {
+
+void generic_print(core f, FILE *o, word x) {
+  fprintf(o, "#%lx", x); }
+
+void transmit(core f, FILE* o, word x) {
   if (nump(x)) fprintf(o, "%ld", getnum(x));
-  else if (R(x)->ap == data) R(x)[1].typ->emit(v, o, x);
-  else fprintf(o, "#%lx", x); }
+  else if (R(x)->ap == data) R(x)[1].typ->emit(f, o, x);
+  else generic_print(f, o, x); }
 
 static const char digits[] = "0123456789abcdefghijklmnopqrstuvwxyz";
 #define DEFAULT_NUMBER_OUTPUT_BASE 10

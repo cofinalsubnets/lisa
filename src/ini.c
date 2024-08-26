@@ -18,6 +18,8 @@ static struct { const char *n; union cell *x; } ini_dict[] = {
   P("peek", peek),
   P2("poke", poke),
   P("trim",  trim), P2("seek",  seek),
+  P("tnew", tnew), P("tkeys", tkeys), P("tlen", tlen),
+  P3("tset", tset), P3("tget", tget), P3("tdel", tdel),
   P("thd", thda), };
 
 status l_ini(core f) {

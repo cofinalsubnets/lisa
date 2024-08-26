@@ -60,6 +60,7 @@ typedef void print_method(core, FILE*, word);
 typedef word hash_method(core, word);
 copy_method cp;
 equal_method literal_equal;
+print_method generic_print;
 //typedef string l_mtd_show(core, word);
 //typedef intptr_t l_mtd_hash(core, word);
 typedef struct typ {
@@ -195,6 +196,7 @@ vm data, ap, tap, K, ref, cur, ret, yield, cond, jump,
    pr, ppr, spr, pspr, prc,
    cons, car, cdr,
    lt, le, eq, gt, ge,
+   tset, tget, tdel, tnew, tkeys, tlen,
    seek, peek, poke, trim, thda,
    add, sub, mul, quot, rem;
 
