@@ -101,21 +101,25 @@ static NoInline table table_insert(core f, table t, word k, word v, word i) {
   t->cap = cap1, t->tab = tab1;
   return t; }
 
-table table_set(core f, table t, word k, word v) {
-  word hash_code = hash(f, k),
-       bucket_index = (t->cap - 1) & hash_code;
-  struct table_entry **bucket = t->tab + bucket_index,
-                     *entry = *bucket;
+static Inline word index_of_key(core f, table t, word k) {
+  // relies on table capacity being a power of 2
+  return (t->cap - 1) & hash(f, k); }
+
+NoInline table table_set(core f, table t, word k, word v) {
+  word index = index_of_key(f, t, k);
+  struct table_entry *entry = t->tab[index];
   while (entry && !eql(f, k, entry->key)) entry = entry->next;
   if (entry) return entry->val = v, t;
-  return table_insert(f, t, k, v, bucket_index); }
+  return table_insert(f, t, k, v, index); }
 
 static struct table_entry *table_delete_r(core f, word k, word *v, struct table_entry *e) {
   if (!e) return e;
   if (eql(f, e->key, k)) return *v = e->val, e->next;
   return e->next = table_delete_r(f, k, v, e->next); }
 
-word table_delete(core f, table t, word k) {
+static Inline word table_load_factor(table t) { return t->len / t->cap; }
+
+NoInline word table_delete(core f, table t, word k) {
   word cap = t->cap, // power of 2
        idx = (cap - 1) & hash(f, k),
        v = 0;
@@ -133,3 +137,52 @@ word table_delete(core f, table t, word k) {
       t->tab[i] = coll,
       coll = x; }
   return v; }
+
+static NoInline word tdel_wrap(core f, word zero, table t, word k) {
+  word v = table_delete(f, t, k);
+  return v ? v : zero; }
+
+
+Vm(tget) {
+  if (!tblp(sp[1])) return op(3, sp[0]);
+  table t = (table) sp[1];
+  word zero = sp[0], k = sp[2];
+  struct table_entry *entry = t->tab[index_of_key(f, t, k)];
+  while (entry && !eql(f, k, entry->key)) entry = entry->next;
+  return op(3, entry ? entry->val : zero); }
+
+Vm(tset) {
+  if (!tblp(sp[0])) return op(3, sp[0]);
+  table t = (table) sp[0];
+  word k = sp[1], v = sp[v], idx = index_of_key(f, t, k);
+
+  struct table_entry *entry = t->tab[idx];
+  while (entry && !eql(f, k, entry->key)) entry = entry->next;
+
+  if (entry) entry->val = v;
+  else {
+    Have(Width(struct table_entry));
+    entry = (void*) hp;
+    hp += Width(struct table_entry);
+    entry->key = k, entry->val = v;
+    entry->next = t->tab[idx], t->tab[idx] = entry;
+    t->len++; }
+
+  if (table_load_factor(t) > 1) {
+    word cap0 = t->cap, cap1 = 2 * cap0;
+    Have(cap1); // there may have been a side effect at this point but it's idempotent
+    struct table_entry **tab0 = t->tab, **tab1 = (void*) hp;
+    memset(tab1, 0, cap1 * sizeof(word));
+    hp += cap1;
+    while (cap0--) for (struct table_entry *e = tab0[cap0], *q; e; e = q) {
+      word hc = hash(f, e->key),
+           idx = (cap1 - 1) & hc;
+      struct table_entry *q = e->next;
+      e->next = tab1[idx], tab1[idx] = e; }
+    t->cap = cap1, t->tab = tab1; }
+
+  return op(3, v); }
+
+Vm(tdel) {
+  word v = tblp(sp[1]) ? table_delete(f, (table) sp[1], sp[2]) : 0;
+  return op(3, v ? v : sp[0]); }

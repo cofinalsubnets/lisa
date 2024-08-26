@@ -198,10 +198,14 @@ vm data, ap, tap, K, ref, cur, ret, yield, cond, jump,
    seek, peek, poke, trim, thda,
    add, sub, mul, quot, rem;
 
-static Inline bool hstrp(cell h) { return datp(h) && (typ) h[1].x == &typ_str; }
-static Inline bool htwop(cell h) { return datp(h) && (typ) h[1].x == &typ_two; }
+#define dtyp(x) R(x)[1].typ
+#define gettyp dtyp
+static Inline bool hstrp(cell h) { return datp(h) && dtyp(h) == &typ_str; }
+static Inline bool htwop(cell h) { return datp(h) && dtyp(h) == &typ_two; }
+static Inline bool htblp(cell h) { return datp(h) && dtyp(h) == &table_type; }
 static Inline bool strp(word _) { return homp(_) && hstrp((cell) _); }
 static Inline bool twop(word _) { return homp(_) && htwop((cell) _); }
+static Inline bool tblp(word _) { return homp(_) && htblp((cell) _); }
 // align bytes up to the nearest word
 static Inline size_t b2w(size_t b) {
   size_t q = b / sizeof(word), r = b % sizeof(word);
@@ -218,5 +222,6 @@ _Static_assert(sizeof(union cell*) == sizeof(union cell), "size");
 #define mix ((uintptr_t)2708237354241864315)
 #define bind(n, x) if (!(n = (x))) return 0
 #define bounded(a, b, c) ((word)(a)<=(word)(b)&&(word)(b)<(word)(c))
-#define gettyp(x) R(x)[1].typ
+#define op(n,x) (ip = (thread) sp[n], sp[n] = (x), ip->ap(f, ip, hp, sp + n))
+#define Do(...) ((__VA_ARGS__), ip->ap(f, ip, hp, sp))
 #endif

@@ -1,9 +1,7 @@
 #include "i.h"
 
-#define op(n,x) (ip = (thread) sp[n], sp[n] = (x), ip->ap(f, ip, hp, sp + n))
 #define O op
 #define Have1() if (sp == hp) return gc(f, ip, hp, sp, 1)
-#define Do(...) ((__VA_ARGS__), ip->ap(f, ip, hp, sp))
 Vm(mbind) {
   Have(2 * Width(struct pair));
   two w = ini_two((two) hp, sp[0], sp[1]),
