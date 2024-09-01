@@ -27,7 +27,7 @@ int main(int ac, char **av) {
   if (ac == optind && !repl) return EXIT_SUCCESS;
 
   // initialize
-  state f = &((struct core){});
+  state f = &((struct l_core){});
   status s = l_ini(f);
   if (s != Ok) return s;
 

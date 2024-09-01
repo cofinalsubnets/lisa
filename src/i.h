@@ -1,14 +1,17 @@
 #ifndef _l_i_h
 #define _l_i_h
 #include "l.h"
+#include <stdlib.h>
+#include <string.h>
 #include <assert.h>
 #include <time.h>
+#include <stdio.h>
 // thanks !!
 
 // one thread of execution
-typedef struct core *state, *core;
+typedef l_core state, core;
 // basic data type
-typedef intptr_t word, *heap, *stack;
+typedef l_word word, *heap, *stack;
 // also represented as a union for structured access
 typedef union cell *cell, *thread;
 typedef struct symbol *symbol;
@@ -19,7 +22,7 @@ typedef enum status {
   // vm function type
   vm(core, thread, heap, stack);
 
-struct core {
+struct l_core {
   // vm registers
   thread ip; // instruction pointer
   heap hp; // heap pointer
@@ -141,7 +144,7 @@ extern struct typ typ_two, typ_str, sym_typ, table_type;
 #define End ((word)0) // vararg sentinel
 
 pair
-  ini_two(two, word, word),
+  ini_pair(pair, word, word),
   pairof(core, word, word);
 string
   ini_str(string, size_t),
@@ -154,8 +157,7 @@ word
   table_del(core, table, word, word);
 symbol
   literal_symbol(core, const char*),
-  intern(core, string),
-  gensym(core);
+  intern(core, string);
 
 thread
   thd(core, size_t, ...),
@@ -190,7 +192,7 @@ word hash(core, word);
 status gc(core, thread, heap, stack, size_t);
 vm data, ap, tap, K, ref, cur, ret, yield, cond, jump,
    print, not,
-   p2, apn, tapn,
+   p2, apn, tapn, nop, gensym,
    Xp, Np, Sp, mbind,
    ssub, sget, slen,
    pr, ppr, spr, pspr, prc,
@@ -212,18 +214,17 @@ static Inline bool tblp(word _) { return homp(_) && htblp((cell) _); }
 static Inline size_t b2w(size_t b) {
   size_t q = b / sizeof(word), r = b % sizeof(word);
   return q + (r ? 1 : 0); }
-static Inline word ror(word x, word n) {
-  return (x << ((8 * sizeof(word)) - n)) | (x >> n); }
-
 _Static_assert(-1 >> 1 == -1, "sign extended shift");
 _Static_assert(sizeof(union cell*) == sizeof(union cell), "size");
 #define Vm(n, ...) enum status\
   n(core f, thread ip, heap hp, stack sp, ##__VA_ARGS__)
 #define Have(n) if (sp - hp < n) return gc(f, ip, hp, sp, n)
 #define L() printf("# %s:%d\n", __FILE__, __LINE__)
-#define mix ((uintptr_t)2708237354241864315)
+#define HashK ((uintptr_t)2708237354241864315)
+#define mix HashK
 #define bind(n, x) if (!(n = (x))) return 0
 #define bounded(a, b, c) ((word)(a)<=(word)(b)&&(word)(b)<(word)(c))
-#define op(n,x) (ip = (thread) sp[n], sp[n] = (x), ip->ap(f, ip, hp, sp + n))
+#define RetN(n, x) (ip = (thread) sp[n], sp[n] = (x), ip->ap(f, ip, hp, sp + n))
+#define op RetN
 #define Do(...) ((__VA_ARGS__), ip->ap(f, ip, hp, sp))
 #endif

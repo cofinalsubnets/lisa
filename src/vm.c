@@ -4,8 +4,8 @@
 #define Have1() if (sp == hp) return gc(f, ip, hp, sp, 1)
 Vm(mbind) {
   Have(2 * Width(struct pair));
-  two w = ini_two((two) hp, sp[0], sp[1]),
-      x = ini_two(w + 1, (word) w, f->macro);
+  two w = ini_pair((two) hp, sp[0], sp[1]),
+      x = ini_pair(w + 1, (word) w, f->macro); // dict add
   hp += 2 * Width(struct pair);
   f->macro = (word) x;
   return O(2, sp[1]); }
@@ -87,7 +87,7 @@ Vm(print) {
 
 Vm(cons) {
   Have(Width(struct pair));
-  two w = ini_two((two) hp, sp[0], sp[1]);
+  pair w = ini_pair((pair) hp, sp[0], sp[1]);
   hp += Width(struct pair);
   return op(2, (word) w); }
 
@@ -139,4 +139,5 @@ NoInline Vm(gc, size_t n) {
 Vm(ref) { Have1(); return Do(sp[-1] = sp[getnum(ip[1].x)], sp--, ip += 2); }
 Vm(cond) { return Do(ip = nilp(*sp) ? ip[1].m : ip + 2, sp++); }
 Vm(jump) { return Do(ip = ip[1].m); }
+Vm(nop) { return op(1, *sp); }
 Vm(yield) { return Pack(), Ok; }

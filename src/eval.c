@@ -114,7 +114,7 @@ static size_t c0var1(core f, scope *c, size_t m, word x) {
          pushs(f, 3, c1var, x, (*c)->pals) ? m + 2 :
          0; }
 
-static long indexof(core f, scope c, word var) {
+static long index_of(core f, scope c, word var) {
   size_t i = 0;
   // is it a closure variable?
   for (word l = c->imps; twop(l); l = B(l), i++)
@@ -136,7 +136,7 @@ static thread c2var(core f, scope *c, thread k) {
 static thread c1var(core f, scope *c, thread k) {
   word var = *f->sp++, // variable name
        ins = llen(*f->sp++), // stack inset
-       idx = indexof(f, *c, var);
+       idx = index_of(f, *c, var);
   return
     k[-2].ap = ref,
     k[-1].x = putnum(idx + ins),
@@ -175,7 +175,7 @@ static size_t look(core f, scope *c, size_t m, word k, scope d) {
     return pushs(f, 3, c2var, k, d->pals) ? m + 2 : 0;
 
   // look in imps args
-  x = indexof(f, d, k);
+  x = index_of(f, d, k);
   if (x >= 0) {
     if (*c != d)
       k = (word) pairof(f, k, (*c)->imps),
@@ -425,8 +425,8 @@ static size_t c0l(core f, scope *b, scope *c, size_t m, word exp) {
           x = w + 1;
       t += 2 * Width(struct pair);
       t[0].ap = define, t[1].x = A(nom), t[2].x = 0, t[3].m = t;
-      ini_two(w, A(def), nil);
-      ini_two(x, (word) t, (word) w);
+      ini_pair(w, A(def), nil); // dict add
+      ini_pair(x, (word) t, (word) w);
       A(def) = (word) x; }
     if (!(m = ana(f, b, m, A(def))) ||
         !((*b)->pals = (word) pairof(f, A(nom), (*b)->pals)))
@@ -492,15 +492,17 @@ static size_t c0ap(core f, scope *c, size_t m, word a, word b) {
   // apply to immediate value now if all it does is curry
   word v = immval(f, c, a), q = immval(f, c, A(b));
   if (q && v && (nump(v) || datp(v) || ptr(v)->ap == cur)) return c0apc(f, c, m, v, q, b);
-//  if (v && homp(v) && ptr(v)->ap == cur && getnum(ptr(v)[1].x) == llen(b))
+  // TODO if the called function is known and the arity matches then skip currying and
+  // pass them all at once
+  //  if (v && homp(v) && ptr(v)->ap == cur && getnum(ptr(v)[1].x) == llen(b))
   avec(f, b, m = ana(f, c, m, a)); // evaluate function expression
   return c0args(f, c, m, b); } // apply to arguments
 
 static Vm(drop) { return ip[1].ap(f, ip + 1, hp, sp + 1); }
 static Vm(define) {
   Have(2 * Width(struct pair));
-  two w = ini_two((two) hp, ip[1].x, sp[0]),
-      x = ini_two(w + 1, (word) w, f->dict);
+  two w = ini_pair((two) hp, ip[1].x, sp[0]),
+      x = ini_pair(w + 1, (word) w, f->dict); // dict add
   f->dict = (word) x;
   ip = (thread) sp[1];
   sp[1] = sp[0];

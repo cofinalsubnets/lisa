@@ -59,7 +59,12 @@ struct typ table_type = {
 // or use the address but rehash as part of garbage collection.
 
 word hash(core v, word x) {
-  if (nump(x)) return ror(mix * x, sizeof(word) * 2) ;
+  if (nump(x)) {
+    const int half_word_bits = sizeof(word) * 4;
+    x *= mix;
+    x = (x << half_word_bits) | (x >> half_word_bits);
+    return x; }
+
   if (datp(x)) return gettyp(x)->hash(v, x);
   if (!bounded(v->pool, x, v->pool+v->len)) return mix ^ (mix * x);
   // it's a function, hash by length

@@ -25,13 +25,16 @@ static bool eq_two(state f, word x, word y) {
 
 static word hash_two(core v, word x) {
   word hc = hash(v, A(x)) * hash(v, B(x));
-  return ror(hc, 4 * sizeof(word)); }
+  return hc ^ mix; }
 
 struct typ typ_two = {
   .hash = hash_two,
-  .copy = cp_two, .evac = wk_two, .emit = tx_two, .equal = eq_two, };
+  .copy = cp_two,
+  .evac = wk_two,
+  .emit = tx_two,
+  .equal = eq_two, };
 
-two ini_two(two w, word a, word b) {
+pair ini_pair(two w, word a, word b) {
   w->ap = data, w->typ = &typ_two;
   w->a = a, w->b = b;
   return w; }
@@ -43,4 +46,4 @@ pair pairof(core f, word a, word b) {
     if (!ok) return 0; }
   two w = (two) f->hp;
   f->hp += Width(struct pair);
-  return ini_two(w, a, b); }
+  return ini_pair(w, a, b); }
