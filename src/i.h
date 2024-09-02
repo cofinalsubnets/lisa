@@ -33,6 +33,7 @@ struct l_core {
   symbol symbols;
 
   // memory management
+  bool (*please)(struct l_core*, size_t); // gc function
   word len, // size of each pool
        *pool, // on pool
        *loop; // off pool
@@ -85,7 +86,7 @@ typedef enum ord { Lt = -1, Eq = 0, Gt = 1, }
   ord(core, word, word);
 
 typedef struct string {
-  code *ap;
+  vm *ap;
   typ typ;
   size_t len;
   char text[];
@@ -119,7 +120,7 @@ typedef struct char_out {
   void (*putc)(core, struct char_out*, char);
 } *output;
 
-extern struct typ typ_two, typ_str, sym_typ, table_type;
+extern struct typ typ_two, typ_str, symbol_type, table_type;
 
 #define Width(_) b2w(sizeof(_))
 #define avail(f) (f->sp-f->hp)
@@ -142,6 +143,8 @@ extern struct typ typ_two, typ_str, sym_typ, table_type;
 #define ptr R
 #define datp(_) (ptr(_)->ap==data)
 #define End ((word)0) // vararg sentinel
+#define Pack(f) (f->ip = ip, f->hp = hp, f->sp = sp)
+#define Unpack(f) (ip = f->ip, hp = f->hp, sp = f->sp)
 
 pair
   ini_pair(pair, word, word),
@@ -155,6 +158,7 @@ table
 word
   table_get(core, table, word, word),
   table_del(core, table, word, word);
+
 symbol
   literal_symbol(core, const char*),
   intern(core, string);
@@ -172,13 +176,15 @@ void
   l_fin(core),
   *bump(core, size_t),
   *cells(core, size_t),
+  copy_from(core, word*, size_t),
   transmit(core, sink, word);
 
 bool
   eql(core, word, word),
-  please(core, size_t);
+  libc_please(core, size_t);
 
 status
+  initialize(core, bool (*)(core, size_t), size_t, word*, word*),
   l_ini(core),
   eval(core, word),
   read1(core, FILE*),
@@ -190,26 +196,30 @@ word pushs(core, size_t, ...);
 word hash(core, word);
 
 status gc(core, thread, heap, stack, size_t);
-vm data, ap, tap, K, ref, cur, ret, yield, cond, jump,
+vm
    print, not,
    p2, apn, tapn, nop, gensym,
    Xp, Np, Sp, mbind,
    ssub, sget, slen,
+   symbol_of_string, string_of_symbol,
    pr, ppr, spr, pspr, prc,
    cons, car, cdr,
    lt, le, eq, gt, ge,
    tset, tget, tdel, tnew, tkeys, tlen,
    seek, peek, poke, trim, thda,
-   add, sub, mul, quot, rem;
+   add, sub, mul, quot, rem,
+   data, ap, tap, K, ref, cur, ret, yield, cond, jump;
 
 #define dtyp(x) R(x)[1].typ
 #define gettyp dtyp
 static Inline bool hstrp(cell h) { return datp(h) && dtyp(h) == &typ_str; }
 static Inline bool htwop(cell h) { return datp(h) && dtyp(h) == &typ_two; }
 static Inline bool htblp(cell h) { return datp(h) && dtyp(h) == &table_type; }
+static Inline bool hsymp(cell h) { return datp(h) && dtyp(h) == &symbol_type; }
 static Inline bool strp(word _) { return homp(_) && hstrp((cell) _); }
 static Inline bool twop(word _) { return homp(_) && htwop((cell) _); }
 static Inline bool tblp(word _) { return homp(_) && htblp((cell) _); }
+static Inline bool symp(word _) { return homp(_) && hsymp((cell) _); }
 // align bytes up to the nearest word
 static Inline size_t b2w(size_t b) {
   size_t q = b / sizeof(word), r = b % sizeof(word);
@@ -227,4 +237,6 @@ _Static_assert(sizeof(union cell*) == sizeof(union cell), "size");
 #define RetN(n, x) (ip = (thread) sp[n], sp[n] = (x), ip->ap(f, ip, hp, sp + n))
 #define op RetN
 #define Do(...) ((__VA_ARGS__), ip->ap(f, ip, hp, sp))
+#define max(a, b) ((a)>(b)?(a):(b))
+#define min(a, b) ((a)<(b)?(a):(b))
 #endif

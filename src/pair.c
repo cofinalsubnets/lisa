@@ -42,7 +42,7 @@ pair ini_pair(two w, word a, word b) {
 pair pairof(core f, word a, word b) {
   if (avail(f) < Width(struct pair)) {
     bool ok;
-    avec(f, a, avec(f, b, ok = please(f, Width(struct pair))));
+    avec(f, a, avec(f, b, ok = f->please(f, Width(struct pair))));
     if (!ok) return 0; }
   two w = (two) f->hp;
   f->hp += Width(struct pair);

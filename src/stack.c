@@ -2,7 +2,7 @@
 #include <stdarg.h>
 
 static NoInline word pushsr(core f, size_t m, size_t n, va_list xs) {
-  if (!n) return please(f, m) ? m : n;
+  if (!n) return f->please(f, m) ? m : n;
   word x = va_arg(xs, word), y;
   avec(f, x, y = pushsr(f, m, n - 1, xs));
   return y ? *--f->sp = x : y; }

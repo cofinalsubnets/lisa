@@ -47,8 +47,6 @@ Vm(slen) {
   sp[1] = strp(x) ? putnum(((string)x)->len) : nil;
   return ip->ap(f, ip, hp, sp + 1); }
 
-#define max(a, b) ((a)>(b)?(a):(b))
-#define min(a, b) ((a)<(b)?(a):(b))
 Vm(ssub) {
   thread r = (thread) sp[3];
   if (!strp(sp[0])) sp[3] = nil;

@@ -118,30 +118,31 @@ NoInline table table_set(core f, table t, word k, word v) {
   if (entry) return entry->val = v, t;
   return table_insert(f, t, k, v, index); }
 
-static struct table_entry *table_delete_r(core f, word k, word *v, struct table_entry *e) {
+static struct table_entry *table_delete_r(core f, table t, word k, word *v, struct table_entry *e) {
   if (!e) return e;
   if (eql(f, e->key, k)) return *v = e->val, e->next;
-  return e->next = table_delete_r(f, k, v, e->next); }
+  return e->next = table_delete_r(f, t, k, v, e->next); }
 
 static Inline word table_load_factor(table t) { return t->len / t->cap; }
 
-NoInline word table_delete(core f, table t, word k) {
-  word cap = t->cap, // power of 2
-       idx = (cap - 1) & hash(f, k),
-       v = 0;
-  t->tab[idx] = table_delete_r(f, k, &v, t->tab[idx]);
-  if (v && --t->len / cap > 1) { // shrink
-    struct table_entry *coll = 0, *x, *y; // collect all entries in one list
-    for (word i = 0; i < cap; i++)
-      for (x = t->tab[i], t->tab[i] = 0; x;)
-        y = x, x = x->next, y->next = coll, coll = y;
-    t->cap = cap >>= 2;
-    for (word i; coll;)
-      i = (cap - 1) & hash(f, coll->key),
-      x = coll->next,
-      coll->next = t->tab[i],
-      t->tab[i] = coll,
-      coll = x; }
+static void table_shrink(core f, table t) {
+  word cap = t->cap;
+  struct table_entry *coll = 0, *x, *y; // collect all entries in one list
+  for (word i = 0; i < cap; i++)
+    for (x = t->tab[i], t->tab[i] = 0; x;)
+      y = x, x = x->next, y->next = coll, coll = y;
+  t->cap = cap >>= 2;
+  for (word i; coll;)
+    i = (cap - 1) & hash(f, coll->key),
+    x = coll->next,
+    coll->next = t->tab[i],
+    t->tab[i] = coll,
+    coll = x; }
+
+NoInline word table_delete(core f, table t, word k, word v) {
+  word idx = index_of_key(f, t, k);
+  t->tab[idx] = table_delete_r(f, t, k, &v, t->tab[idx]);
+  if (t->len / t->cap > 1) table_shrink(f, t);
   return v; }
 
 Vm(tnew) {
@@ -153,53 +154,34 @@ Vm(tnew) {
   t->len = 0, t->cap = 1, t->tab = tab;
   return op(1, (word) t); }
 
-Vm(tget) {
-  if (!tblp(sp[0])) return op(3, sp[2]);
-  table t = (table) sp[0];
-  word zero = sp[2], k = sp[1];
+word table_get(core f, table t, word k, word zero) {
   struct table_entry *entry = t->tab[index_of_key(f, t, k)];
   while (entry && !eql(f, k, entry->key)) entry = entry->next;
-  return op(3, entry ? entry->val : zero); }
+  return entry ? entry->val : zero; }
+
+Vm(tget) {
+  return op(3, !tblp(sp[0]) ? sp[2] :
+    table_get(f, (table) sp[0], sp[1], sp[2])); }
 
 Vm(tset) {
-  if (!tblp(sp[0])) return op(3, sp[0]);
-  table t = (table) sp[0];
-  word k = sp[1], v = sp[2], idx = index_of_key(f, t, k);
-
-  struct table_entry *entry = t->tab[idx];
-  while (entry && !eql(f, k, entry->key)) entry = entry->next;
-
-  if (entry) entry->val = v;
-  else {
-    Have(Width(struct table_entry));
-    entry = (void*) hp;
-    hp += Width(struct table_entry);
-    entry->key = k, entry->val = v;
-    entry->next = t->tab[idx], t->tab[idx] = entry;
-    t->len++; }
-
-  if (table_load_factor(t) > 1) {
-    word cap0 = t->cap, cap1 = 2 * cap0;
-    Have(cap1); // there may have been a side effect at this point but it's idempotent
-    struct table_entry **tab0 = t->tab, **tab1 = (void*) hp;
-    memset(tab1, 0, cap1 * sizeof(word));
-    hp += cap1;
-    while (cap0--) for (struct table_entry *e = tab0[cap0]; e;) {
-      word hc = hash(f, e->key),
-           idx = (cap1 - 1) & hc;
-      struct table_entry *q = e->next;
-      e->next = tab1[idx], tab1[idx] = e;
-      e = q; }
-    t->cap = cap1, t->tab = tab1; }
-
-  return op(3, v); }
+  word x = sp[0];
+  if (!tblp(x)) return op(3, nil);
+  Pack(f);
+  table t = table_set(f, (table) sp[0], sp[1], sp[2]);
+  Unpack(f);
+  return !t ? Oom : op(3, sp[2]); }
 
 Vm(tdel) {
-  word v = tblp(sp[0]) ? table_delete(f, (table) sp[0], sp[1]) : 0;
-  return op(3, v ? v : sp[2]); }
+  word x = sp[0];
+  return op(3, !tblp(x) ? nil :
+    table_delete(f, (table) x, sp[1], sp[2])); }
 
 Vm(tlen) {
-  return op(1, tblp(sp[0]) ? putnum(((table)sp[0])->len) : nil); }
+  word x = sp[0];
+  if (!tblp(x)) return op(1, nil);
+  table t = (table) x;
+  return op(1, putnum(t->len)); }
+
 Vm(tkeys) {
   if (!tblp(sp[0])) return op(1, nil);
   table t = (table) sp[0];

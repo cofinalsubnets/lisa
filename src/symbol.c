@@ -2,15 +2,16 @@
 
 static Inline symbol ini_sym(void *_, string nom, uintptr_t code) {
   symbol y = _; return
-    y->ap = data, y->typ = &sym_typ,
+    y->ap = data, y->typ = &symbol_type,
     y->nom = nom, y->code = code,
     y->l = y->r = 0, y; }
 
 static Inline symbol ini_anon(void *_, word code) {
   symbol y = _;
-  y->ap = data, y->typ = &sym_typ;
+  y->ap = data, y->typ = &symbol_type;
   y->nom = 0, y->code = code;
   return y;  }
+
 static word hash_symbol(core v, word _) { return ((symbol) _)->code; }
 static word copy_symbol(core f, word x, word *p0, word *t0) {
   symbol src = (symbol) x,
@@ -38,7 +39,7 @@ bool literal_equal(core f, word a, word b) {
   return a == b;
 }
 
-struct typ sym_typ = {
+struct typ symbol_type = {
   .hash = hash_symbol,
   .copy = copy_symbol,
   .evac = walk_symbol,
@@ -69,3 +70,17 @@ Vm(gensym) {
   symbol y = (symbol) hp;
   hp += req;
   return op(1, (word) ini_anon(y, f->rand = liprng(f))); }
+
+Vm(string_of_symbol) {
+  word x = sp[0];
+  if (!symp(x)) return op(1, nil);
+  string y = ((symbol) x)->nom;
+  return op(1, y ? (word) y : nil); }
+
+Vm(symbol_of_string) {
+  word x = sp[0];
+  if (!strp(x)) return op(1, nil);
+  Pack(f);
+  symbol y = intern(f, (string) x);
+  Unpack(f);
+  return !y ? Oom : op(1, (word) y); }

@@ -131,13 +131,12 @@ Vm(thda) {
   hp += n + Width(struct tag);
   return op(1, (word) k); }
 
-#define Pack() (f->ip = ip, f->hp = hp, f->sp = sp)
 NoInline Vm(gc, size_t n) {
-  return Pack(), !please(f, n) ? Oom :
+  return Pack(f), !f->please(f, n) ? Oom :
     f->ip->ap(f, f->ip, f->hp, f->sp); }
 
 Vm(ref) { Have1(); return Do(sp[-1] = sp[getnum(ip[1].x)], sp--, ip += 2); }
 Vm(cond) { return Do(ip = nilp(*sp) ? ip[1].m : ip + 2, sp++); }
 Vm(jump) { return Do(ip = ip[1].m); }
 Vm(nop) { return op(1, *sp); }
-Vm(yield) { return Pack(), Ok; }
+Vm(yield) { return Pack(f), Ok; }

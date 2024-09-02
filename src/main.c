@@ -27,8 +27,12 @@ int main(int ac, char **av) {
   if (ac == optind && !repl) return EXIT_SUCCESS;
 
   // initialize
+  const size_t len0 = 1;
+  word *pool = malloc(2 * len0 * sizeof(word)),
+       *loop = pool + len0;
+  if (!pool) return Oom;
   state f = &((struct l_core){});
-  status s = l_ini(f);
+  status s = initialize(f, libc_please, 1, pool, loop);
   if (s != Ok) return s;
 
   // run files from command line
@@ -36,7 +40,6 @@ int main(int ac, char **av) {
     FILE *i = fopen(*av, "r");
     if (!i) return
       fprintf(stderr, "# error opening %s: %s\n", *av, strerror(errno)),
-      l_fin(f),
       Eof;
     while ((s = read1(f, i)) != Eof &&
            (s = eval(f, pop1(f))) == Ok) f->sp++;
