@@ -474,6 +474,7 @@ static size_t c0list(core f, scope *c, size_t m, word x) {
         case ',': return c0do(f, c, m, b);
         case ':': return c0let(f, c, m, b);
         case '?': return c0cond(f, c, m, b);
+        case '`': return c0ix(f, c, m, K, twop(b) ? A(b) : nil);
         case '\\': return (x = c0lambw(f, c, nil, b)) ? ana(f, c, m, x) : x; }
     if ((x = assoc(f, f->macro, a))) // macro?
       return c0mac(f, c, m, B(x), b); }
