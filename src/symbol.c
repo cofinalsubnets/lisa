@@ -62,7 +62,10 @@ static symbol intern_r(core v, string b, symbol *y) {
     hash(v, putnum(hash(v, (word) b)))); }
 
 symbol intern(core f, string b) {
-  return intern_r(f, b, &f->symbols); }
+  // make sure there's enough memory now because we need stable
+  // pointers if and when we allocate the new symbol
+  return avail(f) >= Width(struct symbol) || f->please(f, Width(struct symbol)) ?
+    intern_r(f, b, &f->symbols): 0; }
 
 Vm(gensym) {
   const int req = Width(struct symbol) - 2;

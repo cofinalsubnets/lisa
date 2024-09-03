@@ -1,17 +1,6 @@
 #include "i.h"
 
 
-// index of item in list
-static long lidx(core f, word l, word x) {
-  for (long i = 0; twop(l); l = B(l), i++)
-    if (eql(f, A(l), x)) return i;
-  return -1; }
-// list length
-static size_t llen(word l) {
-  size_t n = 0;
-  while (twop(l)) n++, l = B(l);
-  return n; }
-
 //
 // functions are laid out in memory like this
 //
@@ -37,6 +26,18 @@ struct tag *ttag(thread k) {
   return k->x ? ttag(k + 1) : (void*) k; }
 
 static vm tie, drop, define;
+// index of item in list
+static long lidx(core f, word l, word x) {
+  for (long i = 0; twop(l); l = B(l), i++)
+    if (eql(f, A(l), x)) return i;
+  return -1; }
+
+// list length
+static size_t llen(word l) {
+  size_t n = 0;
+  while (twop(l)) n++, l = B(l);
+  return n; }
+
 
 typedef struct scope { // track lexical scope
   word args, // stack bindings // all variables on stack

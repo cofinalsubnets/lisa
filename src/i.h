@@ -169,11 +169,6 @@ thread
   mo_ini(void*, size_t);
 
 void
-  *l_malloc(size_t),
-  l_free(void*);
-
-void
-  l_fin(core),
   *bump(core, size_t),
   *cells(core, size_t),
   copy_from(core, word*, size_t),

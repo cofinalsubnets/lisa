@@ -34,13 +34,10 @@ status initialize(core f, bool (*please)(core, size_t), size_t len, word *pool, 
   f->len = len, f->pool = pool, f->loop = loop;
   f->hp = pool, f->sp = pool + len;
   f->dict = f->macro = nil;
+
   for (int i = 0; i < sizeof(ini_dict)/sizeof(*ini_dict); i++) {
     string s = literal_string(f, ini_dict[i].nom);
     pair w = s ? pairof(f, (word) s, (word) ini_dict[i].val) : 0,
          x = w ? pairof(f, (word) w, f->dict) : 0;
     if (!(f->dict = (word) x)) return Oom; }
   return Ok; }
-
-void l_fin(state f) {
-  free(f->pool < f->loop ? f->pool : f->loop);
-  f->pool = f->loop = NULL; }

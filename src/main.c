@@ -22,43 +22,42 @@ static status repl(core f, FILE *in, FILE *out, FILE *err) {
   return Ok; }
 
 static status run_files(core f, char **av) {
-  for (status s; s == Ok && *av; av++) {
+  for (status s; *av; av++) {
     FILE *i = fopen(*av, "r");
     if (!i) return
       fprintf(stderr, "# error opening %s: %s\n", *av, strerror(errno)),
       Eof;
     while ((s = read1(f, i)) != Eof &&
            (s = eval(f, pop1(f))) == Ok) f->sp++;
+    fclose(i);
     if (s == Eof) s = Ok;
-    if (s != Ok) report(f, s, stderr);
-    fclose(i); } }
+    if (s != Ok) return report(f, s, stderr); }
+  return Ok; }
+
+static status main_thread(char **files, bool interact) {
+  // exit now if nothing to do
+  if (!*files && !interact) return EXIT_SUCCESS;
+  // initialize core
+  const size_t len0 = 1;
+  state f = &((struct l_core){});
+  word *pool = malloc(2 * len0 * sizeof(word)),
+       *loop = pool + len0;
+  if (!pool) return Oom;
+  status s = initialize(f, libc_please, len0, pool, loop);
+  s = s != Ok ? s : run_files(f, files);
+  s = s != Ok || !interact ? s : repl(f, stdin, stdout, stderr);
+  free(min(f->pool, f->loop));
+  return s; }
 
 int main(int ac, char **av) {
   // by default start a repl if in a terminal and no arguments
   bool interact = ac == 1 && isatty(STDIN_FILENO);
-
   // read command line flags
   for (;;) switch (getopt(ac, av, "hi")) {
     default: return EXIT_FAILURE;
     case 'h': fprintf(stdout, help, *av); continue;
     case 'i': interact = true; continue;
-    case -1: goto out; } out:
-
-  // exit if nothing to do
-  if (ac == optind && !interact) return EXIT_SUCCESS;
-
-  // initialize
-  const size_t len0 = 1;
-  word *pool = malloc(2 * len0 * sizeof(word)),
-       *loop = pool + len0;
-  if (!pool) return Oom;
-  state f = &((struct l_core){});
-  status s = initialize(f, libc_please, 1, pool, loop);
-  s = s != Ok ? s : run_files(f, av + optind);
-  s = s != Ok || !interact ? s : repl(f, stdin, stdout, stderr);
-  l_fin(f);
-  return s; }
-
+    case -1: return main_thread(av + optind, interact); } }
 
 static status report(core f, status s, FILE *err) {
   switch (s) {
