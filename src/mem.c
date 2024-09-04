@@ -70,7 +70,7 @@ NoInline void copy_from(core f, word *p0, size_t len0) {
   f->sp = sp1;
   f->hp = f->cp = p1;
   f->ip = (thread) cp(f, (word) f->ip, p0, t0);
-  f->dict = cp(f, f->dict, p0, t0);
+  f->dict = (table) cp(f, (word) f->dict, p0, t0);
   f->macro = (table) cp(f, (word) f->macro, p0, t0);
   f->symbols = (symbol) cp(f, (word) f->symbols, p0, t0);
   // copy stack

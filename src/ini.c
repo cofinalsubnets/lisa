@@ -32,11 +32,10 @@ status initialize(core f, size_t len, word *pool, word *loop) {
   f->rand = f->t0 = clock();
   f->len = len, f->pool = pool, f->loop = loop;
   f->hp = pool, f->sp = pool + len;
-  f->dict = nil;
+  if (!(f->dict = new_table(f))) return Oom;
   if (!(f->macro = new_table(f))) return Oom;
   for (int i = 0; i < sizeof(ini_dict)/sizeof(*ini_dict); i++) {
-    string s = literal_string(f, ini_dict[i].nom);
-    pair w = s ? pairof(f, (word) s, (word) ini_dict[i].val) : 0,
-         x = w ? pairof(f, (word) w, f->dict) : 0;
-    if (!(f->dict = (word) x)) return Oom; }
+    word k = (word) literal_string(f, ini_dict[i].nom),
+         v = (word) ini_dict[i].val;
+    if (!k || !table_set(f, f->dict, k, v)) return Oom; }
   return Ok; }

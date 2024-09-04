@@ -119,8 +119,8 @@ static word assoc(core f, word l, word k) {
 static size_t analyze_symbol(core f, scope *c, size_t m, word k, scope d) {
   word x;
   if (nilp((word) d)) {
-    x = assoc(f, f->dict, k);
-    if (x) return em2(f, c, m, K, B(x));
+    x = table_get(f, f->dict, k, 0);
+    if (x) return em2(f, c, m, K, x);
     k = (word) pairof(f, k, (*c)->imps),
     k = k ? A((*c)->imps = k) : k;
     return k ? c0var1(f, c, m, k) : 0; }
@@ -435,13 +435,10 @@ static size_t analyze_list(core f, scope *c, size_t m, word x) {
 
 static Vm(drop) { return ip[1].ap(f, ip + 1, hp, sp + 1); }
 static Vm(define) {
-  Have(2 * Width(struct pair));
-  two w = ini_pair((two) hp, ip[1].x, sp[0]),
-      x = ini_pair(w + 1, (word) w, f->dict); // dict add
-  f->dict = (word) x;
-  ip = (thread) sp[1];
-  sp[1] = sp[0];
-  return ip->ap(f, ip, hp + 2 * Width(struct pair), sp + 1); }
+  Pack(f);
+  if (!table_set(f, f->dict, ip[1].x, sp[0])) return Oom;
+  Unpack(f);
+  return op(1, sp[0]); }
 
 // compile and execute expression
 NoInline status eval(core f) {

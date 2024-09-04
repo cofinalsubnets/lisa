@@ -29,7 +29,7 @@ struct l_core {
   heap hp; // heap pointer
   stack sp; // stack pointer
   // environment
-  word dict;
+  table dict;
   table macro;
   word count, rand;
   symbol symbols;
