@@ -26,15 +26,14 @@ struct function_entry {
   P("gensym", gensym),
   P("thd", thda), };
 
-status initialize(core f, bool (*please)(core, size_t), size_t len, word *pool, word *loop) {
+status initialize(core f, size_t len, word *pool, word *loop) {
   memset(f, 0, sizeof(struct l_core));
   f->pool = pool, f->loop = loop;
-  f->please = please;
   f->rand = f->t0 = clock();
   f->len = len, f->pool = pool, f->loop = loop;
   f->hp = pool, f->sp = pool + len;
-  f->dict = f->macro = nil;
-
+  f->dict = nil;
+  if (!(f->macro = new_table(f))) return Oom;
   for (int i = 0; i < sizeof(ini_dict)/sizeof(*ini_dict); i++) {
     string s = literal_string(f, ini_dict[i].nom);
     pair w = s ? pairof(f, (word) s, (word) ini_dict[i].val) : 0,

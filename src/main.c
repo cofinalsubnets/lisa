@@ -43,7 +43,7 @@ static status main_thread(char **files, bool interact) {
   word *pool = malloc(2 * len0 * sizeof(word)),
        *loop = pool + len0;
   if (!pool) return Oom;
-  status s = initialize(f, libc_please, len0, pool, loop);
+  status s = initialize(f, len0, pool, loop);
   s = s != Ok ? s : run_files(f, files);
   s = s != Ok || !interact ? s : repl(f, stdin, stdout, stderr);
   free(min(f->pool, f->loop));

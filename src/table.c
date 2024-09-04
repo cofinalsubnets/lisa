@@ -101,7 +101,7 @@ static NoInline table table_insert(core f, table t, word k, word v, word i) {
       e = es,
       es = es->next,
       i = (cap1-1) & hash(f, e->key),
-      es->next = tab1[i],
+      e->next = tab1[i],
       tab1[i] = e);
 
   t->cap = cap1, t->tab = tab1;

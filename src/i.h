@@ -21,6 +21,7 @@ typedef enum status {
   Eof = -1, Ok = 0, Oom, } status,
   // vm function type
   vm(core, thread, heap, stack);
+typedef struct table *table;
 
 struct l_core {
   // vm registers
@@ -28,12 +29,12 @@ struct l_core {
   heap hp; // heap pointer
   stack sp; // stack pointer
   // environment
-  word dict, macro; //
+  word dict;
+  table macro;
   word count, rand;
   symbol symbols;
 
   // memory management
-  bool (*please)(struct l_core*, size_t); // gc function
   word len, // size of each pool
        *pool, // on pool
        *loop; // off pool
@@ -129,6 +130,8 @@ extern struct typ typ_two, typ_str, symbol_type, table_type;
 #define nil putnum(0)
 #define MM(f,r) ((f->safe=&((struct mm){(word*)(r),f->safe})))
 #define UM(f) (f->safe=f->safe->next)
+#define Protect MM
+#define Unprotect UM
 #define avec(f, y, ...) (MM(f,&(y)),(__VA_ARGS__),UM(f))
 #define A(o) ((two)(o))->a
 #define B(o) ((two)(o))->b
@@ -176,10 +179,10 @@ void
 
 bool
   eql(core, word, word),
-  libc_please(core, size_t);
+  please(core, size_t);
 
 status
-  initialize(core, bool (*)(core, size_t), size_t, word*, word*),
+  initialize(core, size_t, word*, word*),
   l_ini(core),
   eval(core),
   read1(core, FILE*);

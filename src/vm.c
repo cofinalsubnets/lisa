@@ -3,12 +3,10 @@
 #define O op
 #define Have1() if (sp == hp) return gc(f, ip, hp, sp, 1)
 Vm(mbind) {
-  Have(2 * Width(struct pair));
-  two w = ini_pair((two) hp, sp[0], sp[1]),
-      x = ini_pair(w + 1, (word) w, f->macro); // dict add
-  hp += 2 * Width(struct pair);
-  f->macro = (word) x;
-  return O(2, sp[1]); }
+  Pack(f);
+  if (!table_set(f, f->macro, sp[0], sp[1])) return Oom;
+  Unpack(f);
+  return op(2, sp[1]); }
 
 Vm(ret) {
   word r = getnum(ip[1].x) + 1;
@@ -132,7 +130,7 @@ Vm(thda) {
   return op(1, (word) k); }
 
 NoInline Vm(gc, size_t n) {
-  return Pack(f), !f->please(f, n) ? Oom :
+  return Pack(f), !please(f, n) ? Oom :
     f->ip->ap(f, f->ip, f->hp, f->sp); }
 
 Vm(ref) { Have1(); return Do(sp[-1] = sp[getnum(ip[1].x)], sp--, ip += 2); }
