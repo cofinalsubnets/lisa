@@ -53,12 +53,17 @@ typedef struct scope { // track lexical scope
 static thread analyze(core, word);
 
 // compile and execute expression
-NoInline status eval(core f, word x) {
-  status s; thread i = f->ip, k;
-  avec(f, i,
-    k = analyze(f, x),
-    s = !k ? Oom : k->ap(f, k, f->hp, f->sp));
-  return f->ip = i, s; }
+NoInline status eval(core f) {
+  word x = f->sp[0];
+  f->sp[0] = (word) f->ip;
+  thread k = analyze(f, x);
+  if (!k) return Oom;
+  status s = k->ap(f, k, f->hp, f->sp);
+  if (s == Ok)
+    x = f->sp[0],
+    f->ip = (thread) *++f->sp,
+    f->sp[0] = x;
+  return s; }
 
 static scope enscope(core f, scope par, word args, word imps) {
   return (scope) thd(f, 7, args, imps, nil, nil, nil, nil, par); }
@@ -463,7 +468,7 @@ static size_t c0mac(core f, scope *c, size_t m, word x, word b) {
   if (x) b = x, x = B(b), B(b) = nil, x = (word) pairof(f, b, x);
   if (x) b = x, x = B(b), B(b) = nil, x = (word) pairof(f, x, b);
   // XXX ignores errors
-  return !x || eval(f, x) != Ok ? 0 : ana(f, c, m, pop1(f)); }
+  return !x || !pushs(f, 1, x) || eval(f) != Ok ? 0 : ana(f, c, m, pop1(f)); }
 
 static size_t c0ap(core f, scope *c, size_t m, word a, word b);
 static size_t c0list(core f, scope *c, size_t m, word x) {

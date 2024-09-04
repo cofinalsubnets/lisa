@@ -25,6 +25,7 @@ static NoInline int read_char(source i) {
 static word read_str_lit(core, source),
             read_atom(core, source);
 
+static status reads(core, source);
 ////
 /// " the parser "
 //
@@ -43,7 +44,7 @@ status read1(core f, source i) {
     default: Ungetc(c, i), x = read_atom(f, i); }
   return x && pushs(f, 1, x) ? Ok : Oom; }
 
-status reads(core f, source i) {
+static status reads(core f, source i) {
   word c = read_char(i);
   switch (c) {
     case ')': case EOF: unnest:

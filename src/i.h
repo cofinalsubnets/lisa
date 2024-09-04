@@ -181,9 +181,8 @@ bool
 status
   initialize(core, bool (*)(core, size_t), size_t, word*, word*),
   l_ini(core),
-  eval(core, word),
-  read1(core, FILE*),
-  reads(core, FILE*);
+  eval(core),
+  read1(core, FILE*);
 
 intptr_t liprng(core);
 

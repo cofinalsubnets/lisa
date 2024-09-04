@@ -14,7 +14,7 @@ static const char *help = // help message
 
 static status repl(core f, FILE *in, FILE *out, FILE *err) {
   for (status s; (s = read1(f, in)) != Eof; ) {
-    if (s == Ok && (s = eval(f, pop1(f)) == Ok))
+    if (s == Ok && (s = eval(f) == Ok))
       transmit(f, out, pop1(f)),
       fputc('\n', out);
     else report(f, s, err),
@@ -28,7 +28,7 @@ static status run_files(core f, char **av) {
       fprintf(stderr, "# error opening %s: %s\n", *av, strerror(errno)),
       Eof;
     while ((s = read1(f, i)) != Eof &&
-           (s = eval(f, pop1(f))) == Ok) f->sp++;
+           (s = eval(f)) == Ok) f->sp++;
     fclose(i);
     if (s == Eof) s = Ok;
     if (s != Ok) return report(f, s, stderr); }
