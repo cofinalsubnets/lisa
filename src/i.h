@@ -29,12 +29,12 @@ struct l_core {
   heap hp; // heap pointer
   stack sp; // stack pointer
   // environment
-  table dict;
-  table macro;
+  table dict, macro;
   word count, rand;
   symbol symbols;
 
   // memory management
+  bool (*please)(core, size_t);
   word len, // size of each pool
        *pool, // on pool
        *loop; // off pool
@@ -179,10 +179,11 @@ void
 
 bool
   eql(core, word, word),
-  please(core, size_t);
+  static_please(core, size_t),
+  libc_please(core, size_t);
 
 status
-  initialize(core, size_t, word*, word*),
+  initialize(core, bool (*)(core, size_t), size_t, word*, word*),
   l_ini(core),
   eval(core),
   read1(core, FILE*);

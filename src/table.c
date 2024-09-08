@@ -41,8 +41,7 @@ struct typ table_type = {
   .copy = copy_table,
   .evac = walk_table,
   .equal = literal_equal,
-  .emit = generic_print,
-};
+  .emit = generic_print, };
 
 // this is a totally ad hoc, unproven hashing method.
 //

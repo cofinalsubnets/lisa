@@ -6,7 +6,13 @@ void *bump(core f, size_t n) {
   return x; }
 
 void *cells(state f, size_t n) { return
-  n <= avail(f) || please(f, n) ? bump(f, n) : 0; }
+  n <= avail(f) || f->please(f, n) ? bump(f, n) : 0; }
+
+bool static_please(core f, size_t req) {
+  word *p0 = f->pool, *p1 = f->loop;
+  f->pool = p1, f->loop = p0;
+  copy_from(f, p0, f->len);
+  return avail(f) >= req; }
 
 // garbage collector
 // please : bool la size_t
@@ -24,7 +30,7 @@ void *cells(state f, size_t n) { return
 //   -----------------------------------
 //   |                          `------'
 //   t0                  gc time (this cycle)
-bool please(core f, size_t req) {
+bool libc_please(core f, size_t req) {
   word *b0p0 = f->pool, *b0p1 = f->loop;
   f->pool = b0p1, f->loop = b0p0;
   size_t t0 = f->t0, t1 = clock(),
@@ -72,7 +78,7 @@ NoInline void copy_from(core f, word *p0, size_t len0) {
   f->ip = (thread) cp(f, (word) f->ip, p0, t0);
   f->dict = (table) cp(f, (word) f->dict, p0, t0);
   f->macro = (table) cp(f, (word) f->macro, p0, t0);
-  f->symbols = (symbol) cp(f, (word) f->symbols, p0, t0);
+  f->symbols = 0;
   // copy stack
   for (size_t i = 0; i < slen; i++) sp1[i] = cp(f, sp0[i], p0, t0);
   // copy managed values

@@ -1,24 +1,32 @@
 #include "i.h"
 
 
-typedef struct scope { // track lexical scope
-  word args, // stack bindings // all variables on stack
-       imps, // internal bindings // closure variables // prefix of sb
-       pals, // stack inset // number of arguments on stack
-       lams,
-       alts,
-       ends; // stacks used for branch addresses
+// at all times vm is running a function. thread compiler tracks
+// function state using this type
+typedef struct scope {
+  // these parameters represent stack state at a point in compile process
+  word args, // list // positional stack bindings of function
+       imps, // list // enclosed stack bindings of function
+       pals; // list // expression level stack bindings
+  // these are values of variables known at compile time
+  word lams; // dict // known function definitions
+  // these are two stacks of jump target addresses for conditional expressions
+  word alts, // list // alternate branch address stack
+       ends; // list // exit branch address stack
+  // this is the enclosing function scope if any
   struct scope *par;
 } *scope;
 
 
+// scope constructor
 static scope enscope(core f, scope par, word args, word imps) {
   if (!pushs(f, 3, args, imps, par)) return 0;
   scope c = (scope) mo_n(f, 7);
   if (c)
     c->args = pop1(f), c->imps = pop1(f),
     c->par = (scope) pop1(f),
-    c->pals = c->lams = c->alts = c->ends = nil;
+    c->pals = c->alts = c->ends = nil,
+    c->lams = nil;
   return c; }
 
 
@@ -33,7 +41,7 @@ typedef C1(c1);
 
 static thread c1apn(core, scope*, thread);
 
-static c0 c0cond, c0let, c0args;
+static c0 analyze_if, analyze_let, analyze_arguments;
 // basic functions
 static C1(yieldk) { return k; }
 static C1(pull) { return ((c1*) (*f->sp++))(f, c, k); }
@@ -110,7 +118,7 @@ static thread c1var(core f, scope *c, thread k) {
 static C0(c0laz, scope d) {
   bind(x, (word) pairof(f, x, (word) d));
   bind(m, em2(f, c, m, lazy_bind, x)); // deferred resolve instruction
-  return c0args(f, c, m, B(B(A(f->sp[2])))); }
+  return analyze_arguments(f, c, m, B(B(A(f->sp[2])))); }
 
 static word assoc(core f, word l, word k) {
   for (; twop(l); l = B(l)) if (eql(f, k, A(A(l)))) return A(l);
@@ -158,54 +166,54 @@ static thread c1apn(core f, scope *c, thread k) {
 
 
 // codegen apply function argument
-static size_t c0args(core f, scope *c, size_t m, word b) {
+static size_t analyze_arguments(core f, scope *c, size_t m, word b) {
   MM(f, &b); // handle oom here ..
-  if (((*c)->pals = (word) pairof(f, nil, (*c)->pals))) {
+  if (!((*c)->pals = (word) pairof(f, nil, (*c)->pals))) m = 0;
+  else {
     for (; m && twop(b); b = B(b))
       m = analyze(f, c, m + 1, A(b)),
       m = m && pushs(f, 1, c1ap) ? m : 0;
     (*c)->pals = B((*c)->pals); }
-  else m = 0;
-  return UM(f), m; }
-
-// whole innerlambda thread whateverer
-// returns pair of thread and closure variable symbols
-static pair c0lambi(core f, scope *c, word x) {
-  if (!pushs(f, 2, x, yieldk)) return 0;
-  size_t m; bind(m, analyze(f, c, 4, pop1(f))); // include 4 for ret(n) and curry(n)
-  size_t arity = // including closure args
-    llen((*c)->args) + llen((*c)->imps);
-  thread k; bind(k, // return from appropriate height
-    pushs(f, 3, c1ix, ret, putnum(arity)) ? construct(f, c, m) : 0); // allocate & emit
-  if (arity > 1) // curry if more than 1 argument
-    (--k)->x = putnum(arity),
-    (--k)->ap = cur;
-  // all the code has been emitted so now trim the thread
-  ttag(k)->head = k;
-  // apply to enclosed variables (if none then quoting has no effect)
-  return pairof(f, (word) k, (*c)->imps); }
+  UM(f);
+  return m; }
 
 // lambda decons pushes last list item to stack returns init of list
-static word ldepairof(core f, word x) {
+static word linit(core f, word x) {
   if (!twop(x)) return pushs(f, 1, nil) ? nil : 0;
   if (!twop(B(x))) return pushs(f, 1, A(x)) ? nil : 0;
   word y = A(x);
-  return avec(f, y, x = ldepairof(f, B(x))),
+  return avec(f, y, x = linit(f, B(x))),
          x ? (word) pairof(f, y, x) : x; }
 
 // lambda wrapper parses expression and manages inner scope
-static word c0lambw(core f, scope *c, word imps, word exp) {
-  avec(f, imps, exp = ldepairof(f, exp));
-  scope d = exp ? enscope(f, *c, exp, imps) : 0;
-  avec(f, d, exp = d ? (word) c0lambi(f, &d, pop1(f)) : 0);
-  return exp; }
+static word analyze_lambda(core f, scope *c, word imps, word exp) {
+  // storing exp in scope->args for the moment is expedient
+  scope d = enscope(f, *c, exp, imps);
+  if (!d) return 0;
+  MM(f, &d);
+  // get the real args
+  word args = linit(f, d->args);
+  if (!(d->args = args)) goto fail;
+  exp = f->sp[0], f->sp[0] = (word) yieldk;
+  size_t m = analyze(f, &d, 4, exp);
+  if (!m) goto fail;
+  size_t arity = llen(d->args) + llen(d->imps);
+  thread k = pushs(f, 3, c1ix, ret, putnum(arity)) ? construct(f, &d, m) : 0;
+  if (!k) goto fail;
+  if (arity > 1) (--k)->x = putnum(arity), (--k)->ap = cur;
+  ttag(k)->head = k;
+  UM(f);
+  return (word) pairof(f, (word) k, d->imps);
+fail:
+  UM(f);
+  return 0; }
 
 // conditionals
 // to emit targeted jumps etc
 static c1 c1endpush, c1endpop, c1postbranch, c1altpush, c1endpeek;
 
 // conditional expression analyzer
-static size_t c0cond(core f, scope *c, size_t m, word x) {
+static size_t analyze_if(core f, scope *c, size_t m, word x) {
   if (!pushs(f, 2, x, c1endpop)) return 0;
   struct pair p = { data, &typ_two, nil, nil };
   for (x = pop1(f), MM(f, &x); m; x = B(B(x))) {
@@ -315,7 +323,7 @@ static size_t c0l(core f, scope *b, scope *c, size_t m, word exp) {
       goto fail;
     else if (lambp(f, A(def))) {
       // if it's a lambda compile it and record in lam list
-      word x = c0lambw(f, c, nil, B(A(def)));
+      word x = analyze_lambda(f, c, nil, B(A(def)));
       x = x ? (word) pairof(f, A(nom), x) : x;
       x = x ? (word) pairof(f, x, lam) : x;
       if (x) lam = x;
@@ -372,7 +380,7 @@ static size_t c0l(core f, scope *b, scope *c, size_t m, word exp) {
     if (lambp(f, A(def))) {
       d = assoc(f, lam, A(nom));
       word _;
-      if (!(_ = c0lambw(f, c, B(B(d)), B(A(def))))) goto fail;
+      if (!(_ = analyze_lambda(f, c, B(B(d)), B(A(def))))) goto fail;
       else A(def) = B(d) = _; }
     // if toplevel then bind
     if (even && nilp((*b)->args)) {
@@ -393,7 +401,7 @@ static size_t c0l(core f, scope *b, scope *c, size_t m, word exp) {
 done: return UM(f), UM(f), UM(f), UM(f), UM(f), UM(f), UM(f), m;
 fail: m = 0; goto done; }
 
-static size_t c0let(core f, scope *c, size_t m, word x) {
+static size_t analyze_let(core f, scope *c, size_t m, word x) {
   scope d = *c;
   avec(f, x, d = enscope(f, d, d->args, d->imps));
   avec(f, d, m = c0l(f, c, &d, m, x));
@@ -407,7 +415,7 @@ static Vm(lazy_bind) {
   ip[1].x = var;
   return K(f, ip, hp, sp); }
 
-static size_t c0do(core f, scope *c, size_t m, word x) {
+static size_t analyze_sequence(core f, scope *c, size_t m, word x) {
   if (!twop(x)) return em2(f, c, m, K, nil);
   for (MM(f, &x); m && twop(B(x)); x = B(x))
     m = analyze(f, c, m, A(x)),
@@ -421,17 +429,17 @@ static size_t analyze_list(core f, scope *c, size_t m, word x) {
     if (((string) a)->len == 1)
       switch (((string) a)->text[0]) { // special form?
         case '`': return em2(f, c, m, K, twop(b) ? A(b) : nil); // quote
-        case ',': return c0do(f, c, m, b); // sequence
-        case ':': return c0let(f, c, m, b);
-        case '?': return c0cond(f, c, m, b);
-        case '\\': return (x = c0lambw(f, c, nil, b)) ? analyze(f, c, m, x) : x; }
+        case ',': return analyze_sequence(f, c, m, b); // sequence
+        case ':': return analyze_let(f, c, m, b);
+        case '?': return analyze_if(f, c, m, b);
+        case '\\': return (x = analyze_lambda(f, c, nil, b)) ? analyze(f, c, m, x) : x; }
     if ((x = table_get(f, f->macro, a, 0))) { // macro?
       x = (word) pairof(f, b, x);
       if (x) b = x, x = B(b), B(b) = nil, x = (word) pairof(f, b, x);
       if (x) b = x, x = B(b), B(b) = nil, x = (word) pairof(f, x, b);
       return !x || !pushs(f, 1, x) || eval(f) != Ok ? 0 : analyze(f, c, m, pop1(f)); } }
   avec(f, b, m = analyze(f, c, m, a));
-  return m ? c0args(f, c, m, b) : m; }
+  return m ? analyze_arguments(f, c, m, b) : m; }
 
 static Vm(drop) { return ip[1].ap(f, ip + 1, hp, sp + 1); }
 static Vm(define) {

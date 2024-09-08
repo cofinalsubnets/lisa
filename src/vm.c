@@ -130,7 +130,7 @@ Vm(thda) {
   return op(1, (word) k); }
 
 NoInline Vm(gc, size_t n) {
-  return Pack(f), !please(f, n) ? Oom :
+  return Pack(f), !f->please(f, n) ? Oom :
     f->ip->ap(f, f->ip, f->hp, f->sp); }
 
 Vm(ref) { Have1(); return Do(sp[-1] = sp[getnum(ip[1].x)], sp--, ip += 2); }

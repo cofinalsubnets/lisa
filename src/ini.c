@@ -26,10 +26,11 @@ struct function_entry {
   P("gensym", gensym),
   P("thd", thda), };
 
-status initialize(core f, size_t len, word *pool, word *loop) {
+status initialize(core f, bool (*please)(core, size_t), size_t len, word *pool, word *loop) {
   memset(f, 0, sizeof(struct l_core));
   f->pool = pool, f->loop = loop;
   f->rand = f->t0 = clock();
+  f->please = please;
   f->len = len, f->pool = pool, f->loop = loop;
   f->hp = pool, f->sp = pool + len;
   if (!(f->dict = new_table(f))) return Oom;

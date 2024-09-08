@@ -38,15 +38,13 @@ static status main_thread(char **files, bool interact) {
   // exit now if nothing to do
   if (!*files && !interact) return EXIT_SUCCESS;
   // initialize core
-  const size_t len0 = 1;
+  const size_t len = 1 << 13;
   state f = &((struct l_core){});
-  word *pool = malloc(2 * len0 * sizeof(word)),
-       *loop = pool + len0;
-  if (!pool) return Oom;
-  status s = initialize(f, len0, pool, loop);
+  word pool[len * 2], *loop = pool + len;
+  status s = initialize(f, static_please, len, pool, loop);
   s = s != Ok ? s : run_files(f, files);
   s = s != Ok || !interact ? s : repl(f, stdin, stdout, stderr);
-  free(min(f->pool, f->loop));
+//  free(min(f->pool, f->loop));
   return s; }
 
 int main(int ac, char **av) {
