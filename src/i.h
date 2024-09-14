@@ -177,6 +177,13 @@ void
   copy_from(core, word*, size_t),
   transmit(core, sink, word);
 
+size_t llen(word);
+long lidx(core, word, word);
+word
+  lassoc(core, word, word),
+  lconcat(core, word, word),
+  rlconcat(core, word, word);
+
 bool
   eql(core, word, word),
   static_please(core, size_t),

@@ -35,8 +35,6 @@ static status run_files(core f, char **av) {
   return Ok; }
 
 static status main_thread(char **files, bool interact) {
-  // exit now if nothing to do
-  if (!*files && !interact) return EXIT_SUCCESS;
   // initialize core
   const size_t len = 1 << 13;
   state f = &((struct l_core){});
@@ -55,7 +53,8 @@ int main(int ac, char **av) {
     default: return EXIT_FAILURE;
     case 'h': fprintf(stdout, help, *av); continue;
     case 'i': interact = true; continue;
-    case -1: return main_thread(av + optind, interact); } }
+    case -1: return !*av && !interact ? EXIT_SUCCESS :
+      main_thread(av + optind, interact); } }
 
 static status report(core f, status s, FILE *err) {
   switch (s) {

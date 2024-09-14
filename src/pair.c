@@ -13,8 +13,7 @@ static void wk_two(state v, word x, word *p0, word *t0) {
   B(x) = cp(v, B(x), p0, t0); }
 
 static void tx_two(core v, FILE *o, word x) {
-  if (!twop(B(x))) putc('\'', o), transmit(v, o, A(x));
-  else for (putc('(', o);; putc(' ', o)) {
+  for (putc('(', o);; putc(' ', o)) {
     transmit(v, o, A(x));
     if (!twop(x = B(x))) { putc(')', o); break; } } }
 
@@ -47,3 +46,31 @@ pair pairof(core f, word a, word b) {
   two w = (two) f->hp;
   f->hp += Width(struct pair);
   return ini_pair(w, a, b); }
+
+// index of item in list
+long lidx(core f, word l, word x) {
+  for (long i = 0; twop(l); l = B(l), i++)
+    if (eql(f, A(l), x)) return i;
+  return -1; }
+
+// list concat
+word lconcat(core f, word l, word n) {
+  if (!twop(l)) return n;
+  avec(f, l, n = lconcat(f, B(l), n));
+  return n ? (word) pairof(f, A(l), n) : n; }
+  
+// reverse list concat
+word rlconcat(core f, word l, word n) {
+  for (word m; twop(l);)
+    m = l, l = B(l), B(m) = n, n = m;
+  return n; }
+
+// list length
+size_t llen(word l) {
+  size_t n = 0;
+  while (twop(l)) n++, l = B(l);
+  return n; }
+
+word lassoc(core f, word l, word k) {
+  for (; twop(l); l = B(l)) if (eql(f, k, A(A(l)))) return A(l);
+  return 0; }

@@ -1,0 +1,22 @@
+(:
+ (term-esc string) (, (putc 27) (puts string))
+ green-dot '"[32m."
+ red-dot '"[31m."
+ reset '"[0m"
+ (term-text s)
+  (, (putc 27)
+     (puts s)
+     (putc 27)
+     (puts reset)))
+
+(: (ttt l) (:
+ (f l) (? (X? l)
+  (L ', (L '? (A l)
+          (L term-text 'green-dot)
+          (L ', (L term-text 'red-dot)
+                (L . (L (A l)))))
+   (f (B l))))
+ (f l)))
+
+(:: 'assert ttt)
+(:: 'T ttt)

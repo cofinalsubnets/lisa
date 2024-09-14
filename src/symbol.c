@@ -67,6 +67,10 @@ symbol intern(core f, string b) {
   return avail(f) >= Width(struct symbol) || f->please(f, Width(struct symbol)) ?
     intern_r(f, b, &f->symbols): 0; }
 
+symbol literal_symbol(core f, const char *nom) {
+  string s = literal_string(f, nom);
+  return s ? intern(f, s) : 0; }
+
 Vm(gensym) {
   const int req = Width(struct symbol) - 2;
   Have(req);

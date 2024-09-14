@@ -29,7 +29,6 @@ static scope enscope(core f, scope par, word args, word imps) {
     c->lams = nil;
   return c; }
 
-
 // compiler operates in two phases
 // - analyze expression; put continuation on stack; compute code size bound
 #define C0(n, ...) size_t n(core f, scope *c, size_t m, word x, ##__VA_ARGS__)
@@ -69,7 +68,7 @@ static C0(analyze) {
 
 static c1 c1var, c2var;
 static C0(c0var1) {
-  return nilp((word) (*c)->par) ? em2(f, c, m, K, nil) :
+  return nilp((word) (*c)->par) ? em2(f, c, m, K, nil) : // XXX undefined case
          pushs(f, 3, c1var, x, (*c)->pals) ? m + 2 :
          0; }
 
@@ -83,17 +82,6 @@ static long index_of(core f, scope c, word var) {
   return -1; }
 
 static vm lazy_bind, drop, define;
-// index of item in list
-static long lidx(core f, word l, word x) {
-  for (long i = 0; twop(l); l = B(l), i++)
-    if (eql(f, A(l), x)) return i;
-  return -1; }
-
-// list length
-static size_t llen(word l) {
-  size_t n = 0;
-  while (twop(l)) n++, l = B(l);
-  return n; }
 
 static thread c2var(core f, scope *c, thread k) {
   word var = *f->sp++,
@@ -114,16 +102,6 @@ static thread c1var(core f, scope *c, thread k) {
     k[-1].x = putnum(idx + ins),
     pull(f, c, k - 2); }
 
-// c0 lazy reference
-static C0(c0laz, scope d) {
-  bind(x, (word) pairof(f, x, (word) d));
-  bind(m, em2(f, c, m, lazy_bind, x)); // deferred resolve instruction
-  return analyze_arguments(f, c, m, B(B(A(f->sp[2])))); }
-
-static word assoc(core f, word l, word k) {
-  for (; twop(l); l = B(l)) if (eql(f, k, A(A(l)))) return A(l);
-  return 0; }
-
 static size_t analyze_symbol(core f, scope *c, size_t m, word k, scope d) {
   word x;
   if (nilp((word) d)) {
@@ -134,8 +112,11 @@ static size_t analyze_symbol(core f, scope *c, size_t m, word k, scope d) {
     return k ? c0var1(f, c, m, k) : 0; }
 
   // look in vals
-  if ((x = assoc(f, d->lams, k)))
-    return c0laz(f, c, m, x, d);
+  if ((x = lassoc(f, d->lams, k))) {
+    // lazy bind
+    bind(x, (word) pairof(f, x, (word) d));
+    bind(m, em2(f, c, m, lazy_bind, x));
+    return analyze_arguments(f, c, m, B(B(A(f->sp[2])))); } // XXX ???
 
   // look in pals
   if ((x = lidx(f, d->pals, k)) >= 0)
@@ -164,7 +145,6 @@ static thread c1apn(core f, scope *c, thread k) {
   else (--k)->x = n, (--k)->ap = apn;
   return pull(f, c, k); }
 
-
 // codegen apply function argument
 static size_t analyze_arguments(core f, scope *c, size_t m, word b) {
   MM(f, &b); // handle oom here ..
@@ -185,7 +165,6 @@ static word linit(core f, word x) {
   return avec(f, y, x = linit(f, B(x))),
          x ? (word) pairof(f, y, x) : x; }
 
-// lambda wrapper parses expression and manages inner scope
 static word analyze_lambda(core f, scope *c, word imps, word exp) {
   // storing exp in scope->args for the moment is expedient
   scope d = enscope(f, *c, exp, imps);
@@ -274,7 +253,7 @@ static bool lambp(core f, word x) {
 static word ldels(core f, word lam, word l) {
   if (!twop(l)) return nil;
   word m = ldels(f, lam, B(l));
-  if (!assoc(f, lam, A(l))) B(l) = m, m = l;
+  if (!lassoc(f, lam, A(l))) B(l) = m, m = l;
   return m; }
 
 static word desugr(core f, word *d, word *e, word a) {
@@ -292,18 +271,6 @@ static status desug(core f, word *d, word *e) {
   else *d = A(*d), *e = x;
   while (twop(*d));
   return f->sp++, Ok; }
-
-static word revn(core f, word l, word n) {
-  if (!twop(l)) return n;
-  avec(f, l, n = revn(f, B(l), n));
-  if (n) n = (word) pairof(f, A(l), n);
-  return n; }
-
-static word revr(core f, word l, word n) {
-  if (!twop(l)) return n;
-  word m = l;
-  l = B(l), B(m) = n, n = m;
-  return revr(f, l, n); }
 
 // this function is loooong
 static size_t c0l(core f, scope *b, scope *c, size_t m, word exp) {
@@ -359,7 +326,7 @@ static size_t c0l(core f, scope *b, scope *c, size_t m, word exp) {
 
   (*c)->lams = lam, e = nil;
   // construct lambda with reversed argument list
-  exp = revn(f, nom, exp);
+  exp = lconcat(f, nom, exp);
   l = literal_string(f, "\\");
   exp = exp && l ? (word) pairof(f, (word) l, exp) : 0;
   if (!exp) goto fail;
@@ -369,7 +336,7 @@ static size_t c0l(core f, scope *b, scope *c, size_t m, word exp) {
   if (!((*b)->pals = (word) pairof(f, nil, (*b)->pals))) goto fail;
   // now evaluate definitions in order tracking var names on pals list
   // first reverse the nom and def lists
-  nom = revr(f, nom, nil), def = revr(f, def, nil);
+  nom = rlconcat(f, nom, nil), def = rlconcat(f, def, nil);
   size_t nn = 0;
   // store lambdas on scope for lazy binding and construct new lambda application expression
   // - reverse noms onto exp
@@ -378,7 +345,7 @@ static size_t c0l(core f, scope *b, scope *c, size_t m, word exp) {
     // if lambda then recompile with the explicit closure
     // and put in arg list and lam list (latter is used for lazy binding)
     if (lambp(f, A(def))) {
-      d = assoc(f, lam, A(nom));
+      d = lassoc(f, lam, A(nom));
       word _;
       if (!(_ = analyze_lambda(f, c, B(B(d)), B(A(def))))) goto fail;
       else A(def) = B(d) = _; }
@@ -410,7 +377,7 @@ static size_t analyze_let(core f, scope *c, size_t m, word x) {
 static Vm(lazy_bind) {
   word ref = ip[1].x, var = A(A(ref));
   scope env = (scope) B(ref);
-  var = A(B(assoc(f, env->lams, var)));
+  var = A(B(lassoc(f, env->lams, var)));
   ip[0].ap = K;
   ip[1].x = var;
   return K(f, ip, hp, sp); }

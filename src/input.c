@@ -29,15 +29,23 @@ static status reads(core, source);
 ////
 /// " the parser "
 //
+static status enquote(core f) {
+  pair w = pairof(f, f->sp[0], nil);
+  if (!w) return Oom;
+  f->sp[0] = (word) w;
+  string y = literal_string(f, "`");
+  if (!y) return Oom;
+  w = pairof(f, (word) y, f->sp[0]);
+  if (!w) return Oom;
+  f->sp[0] = (word) w;
+  return Ok; }
 
 status read1(core f, source i) {
   word x, c = read_char(i); switch (c) {
     case EOF: return Eof;
     case '\'':
-      if ((c = read1(f, i)) != Ok) return c;
-      x = (word) pairof(f, pop1(f), nil);
-      if (!x || !pushs(f, 1, x)) return Oom;
-      return Ok;
+      c = read1(f, i);
+      return c == Ok ? enquote(f) : c;
     case '(': return reads(f, i);
     case ')': x = nil; break;
     case '"': x = read_str_lit(f, i); break;
