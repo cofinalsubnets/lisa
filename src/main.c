@@ -12,12 +12,12 @@ static const char *help = // help message
   "  -h show this message\n"
   "  -i interact\n";
 
-static status repl(core f, FILE *in, FILE *out, FILE *err) {
-  for (status s; (s = read1(f, in)) != Eof; ) {
+static status repl(core f) {
+  for (status s; (s = read1(f, stdin)) != Eof; ) {
     if (s == Ok && (s = eval(f) == Ok))
-      transmit(f, out, pop1(f)),
-      fputc('\n', out);
-    else report(f, s, err),
+      transmit(f, stdout, pop1(f)),
+      fputc('\n', stdout);
+    else report(f, s, stderr),
       f->sp = f->pool + f->len; }
   return Ok; }
 
@@ -34,17 +34,6 @@ static status run_files(core f, char **av) {
     if (s != Ok) return report(f, s, stderr); }
   return Ok; }
 
-static status main_thread(char **files, bool interact) {
-  // initialize core
-  const size_t len = 1 << 13;
-  state f = &((struct l_core){});
-  word pool[len * 2], *loop = pool + len;
-  status s = initialize(f, static_please, len, pool, loop);
-  s = s != Ok ? s : run_files(f, files);
-  s = s != Ok || !interact ? s : repl(f, stdin, stdout, stderr);
-//  free(min(f->pool, f->loop));
-  return s; }
-
 int main(int ac, char **av) {
   // by default start a repl if in a terminal and no arguments
   bool interact = ac == 1 && isatty(STDIN_FILENO);
@@ -53,8 +42,17 @@ int main(int ac, char **av) {
     default: return EXIT_FAILURE;
     case 'h': fprintf(stdout, help, *av); continue;
     case 'i': interact = true; continue;
-    case -1: return !*av && !interact ? EXIT_SUCCESS :
-      main_thread(av + optind, interact); } }
+    case -1: goto out; } out:
+  if (!*av && !interact) return EXIT_SUCCESS;
+  struct l_core F;
+  state f = &F;
+  word *pool = malloc(sizeof(word) * 2), *loop = pool + 1;
+  if (!pool) return Oom;
+  status s = initialize(f, libc_please, 1, pool, loop);
+  s = s != Ok ? s : run_files(f, av + optind);
+  s = s != Ok || !interact ? s : repl(f);
+  free(min(f->pool, f->loop));
+  return s; }
 
 static status report(core f, status s, FILE *err) {
   switch (s) {

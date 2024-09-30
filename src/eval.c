@@ -116,7 +116,8 @@ static size_t analyze_symbol(core f, scope *c, size_t m, word k, scope d) {
     // lazy bind
     bind(x, (word) pairof(f, x, (word) d));
     bind(m, em2(f, c, m, lazy_bind, x));
-    return analyze_arguments(f, c, m, B(B(A(f->sp[2])))); } // XXX ???
+    x = B(B(A(f->sp[2]))); // get the closure args to pass in
+    return analyze_arguments(f, c, m, x); } // XXX
 
   // look in pals
   if ((x = lidx(f, d->pals, k)) >= 0)
@@ -208,23 +209,23 @@ static size_t analyze_if(core f, scope *c, size_t m, word x) {
 
 // first emitter called for cond expression
 // pushes cond expression exit address onto scope stack ends
-static thread c1endpush(core f, scope *c, thread k) {
+static C1(c1endpush) {
   pair w = pairof(f, (word) k, (*c)->ends);
   return !w ? 0 : pull(f, c, (thread) A((*c)->ends = (word) w)); }
 
 // last emitter called for cond expression
 // pops cond expression exit address off scope stack ends
-static thread c1endpop(core f, scope *c, thread k) {
+static C1(c1endpop) {
   return (*c)->ends = B((*c)->ends), pull(f, c, k); }
 
-static thread c1altpush(core f, scope *c, thread k) {
+static C1(c1altpush) {
   pair w = pairof(f, (word) k, (*c)->alts);
   if (!w) return (thread) w;
   (*c)->alts = (word) w;
   k = (thread) w->a;
   return pull(f, c, k); }
 
-static thread c1endpeek(core f, scope *c, thread k) {
+static C1(c1endpeek) {
   k -= 2;
   thread addr = (cell) A((*c)->ends);
   // if the destination is a return or tail call,
@@ -236,7 +237,7 @@ static thread c1endpeek(core f, scope *c, thread k) {
 
 // last emitter called for a branch
 // pops next branch address off scope stack alts
-static thread c1postbranch(core f, scope *c, thread k) {
+static C1(c1postbranch) {
   return k[-2].ap = cond,
          k[-1].x = A((*c)->alts),
          (*c)->alts = B((*c)->alts),
