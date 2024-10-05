@@ -90,7 +90,7 @@ Vm(cons) {
   return op(2, (word) w); }
 
 Vm(car) { return op(1, twop(sp[0]) ? A(sp[0]) : sp[0]); }
-Vm(cdr) { return op(1, twop(sp[0]) ? B(sp[0]) : sp[0]); }
+Vm(cdr) { return op(1, twop(sp[0]) ? B(sp[0]) : nil); }
 Vm(add) { return op(2, putnum(getnum(sp[0])+getnum(sp[1]))); }
 Vm(sub) { return op(2, putnum(getnum(sp[0])-getnum(sp[1]))); }
 Vm(mul) { return op(2, putnum(getnum(sp[0])*getnum(sp[1]))); }

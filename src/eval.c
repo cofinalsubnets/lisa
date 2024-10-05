@@ -392,7 +392,7 @@ static size_t analyze_sequence(core f, scope *c, size_t m, word x) {
 
 static size_t analyze_list(core f, scope *c, size_t m, word x) {
   word a = A(x), b = B(x);
-  if (!twop(b)) return em2(f, c, m, K, a); // singleton list quote
+  if (!twop(b)) return analyze(f, c, m, a); // singleton list -- identity
   if (strp(a)) {
     if (((string) a)->len == 1)
       switch (((string) a)->text[0]) { // special form?
@@ -401,11 +401,16 @@ static size_t analyze_list(core f, scope *c, size_t m, word x) {
         case ':': return analyze_let(f, c, m, b);
         case '?': return analyze_if(f, c, m, b);
         case '\\': return (x = analyze_lambda(f, c, nil, b)) ? analyze(f, c, m, x) : x; }
-    if ((x = table_get(f, f->macro, a, 0))) { // macro?
-      x = (word) pairof(f, b, x);
-      if (x) b = x, x = B(b), B(b) = nil, x = (word) pairof(f, b, x);
-      if (x) b = x, x = B(b), B(b) = nil, x = (word) pairof(f, x, b);
-      return !x || !pushs(f, 1, x) || eval(f) != Ok ? 0 : analyze(f, c, m, pop1(f)); } }
+    word macro = table_get(f, f->macro, a, 0);
+    if (macro) { // macro?
+      if (!pushs(f, 2, macro, b)) return 0;
+      x = (word) literal_string(f, "`"); // XXX change to symbol
+      if (!x || !pushs(f, 1, x)) return 0;
+      pair mxp = (pair) cells(f, 4 * Width(struct pair));
+      if (!mxp) return 0;
+      x = (word) ini_pair(mxp, f->sp[1], (word) ini_pair(mxp+1, (word) ini_pair(mxp+2, f->sp[0], (word) ini_pair(mxp+3, f->sp[2], nil)), nil));
+      f->sp += 2, *f->sp = x;
+      return eval(f) != Ok ? 0 : analyze(f, c, m, pop1(f)); } }
   avec(f, b, m = analyze(f, c, m, a));
   return m ? analyze_arguments(f, c, m, b) : m; }
 

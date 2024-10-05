@@ -9,13 +9,11 @@
      (putc 27)
      (puts reset)))
 
-(: (ttt l) (:
+(:
+ (ttt l) (:
+ (report x v) (? v (term-text green-dot) (, (term-text red-dot) (. x)))
  (f l) (? (X? l)
-  (L ', (L '? (A l)
-          (L term-text 'green-dot)
-          (L ', (L term-text 'red-dot)
-                (L . (L (A l)))))
-   (f (B l))))
+  (L ', (L report (L '` (A l)) (A l)) (f (B l))))
  (f l)))
 
 (:: 'assert ttt)
