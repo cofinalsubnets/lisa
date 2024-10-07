@@ -1,13 +1,12 @@
 #include "i.h"
 
-
 // at all times vm is running a function. thread compiler tracks
 // function state using this type
 typedef struct scope {
   // these parameters represent stack state at a point in compile process
-  word args, // list // positional stack bindings of function
-       imps, // list // enclosed stack bindings of function
-       pals; // list // expression level stack bindings
+  word args, // list // function positional arguments (never empty)
+       imps, // list // closure variables
+       pals; // list // current state of stack
   // these are values of variables known at compile time
   word lams; // dict // known function definitions
   // these are two stacks of jump target addresses for conditional expressions
@@ -16,6 +15,16 @@ typedef struct scope {
   // this is the enclosing function scope if any
   struct scope *par;
 } *scope;
+
+// thread compiler operates in two phases
+//
+// 1. analyze phase: analyze expression; assemble constructor on stack; compute code size bound
+#define C0(n, ...) size_t n(core f, scope *c, size_t m, word x, ##__VA_ARGS__)
+typedef C0(c0);
+// and
+// - generate phase: allocate thread; call constructor; trim thread
+#define C1(n, ...) thread n(core f, scope *c, thread k, ##__VA_ARGS__)
+typedef C1(c1);
 
 
 // scope constructor
@@ -29,18 +38,8 @@ static scope enscope(core f, scope par, word args, word imps) {
     c->lams = nil;
   return c; }
 
-// compiler operates in two phases
-// - analyze expression; put continuation on stack; compute code size bound
-#define C0(n, ...) size_t n(core f, scope *c, size_t m, word x, ##__VA_ARGS__)
-typedef C0(c0);
-// and
-// - allocate thread; pass to continuation; emit code and trim extra length
-#define C1(n, ...) thread n(core f, scope *c, thread k, ##__VA_ARGS__)
-typedef C1(c1);
-
-static thread c1apn(core, scope*, thread);
-
-static c0 analyze_if, analyze_let, analyze_arguments;
+static c0 analyze_if, analyze_let, analyze_arguments, analyze_list;
+static c1 c1apn, c1var, c2var;
 // basic functions
 static C1(yieldk) { return k; }
 static C1(pull) { return ((c1*) (*f->sp++))(f, c, k); }
@@ -59,15 +58,13 @@ static size_t em2(core f, scope *c, size_t m, vm *i, word x) {
 // analyzer
 
 static NoInline size_t analyze_symbol(core, scope*, size_t, word, scope);
-static c0 analyze_list;
 static C0(analyze) {
   if (homp(x) && datp(x)) {
     if (htwop(ptr(x))) return analyze_list(f, c, m, x);
     if (hstrp(ptr(x))) return analyze_symbol(f, c, m, x, *c); }
   return em2(f, c, m, K, x); }
 
-static c1 c1var, c2var;
-static C0(c0var1) {
+static C0(analyze_variable_reference) {
   return nilp((word) (*c)->par) ? em2(f, c, m, K, nil) : // XXX undefined case
          pushs(f, 3, c1var, x, (*c)->pals) ? m + 2 :
          0; }
@@ -83,7 +80,7 @@ static long index_of(core f, scope c, word var) {
 
 static vm lazy_bind, drop, define;
 
-static thread c2var(core f, scope *c, thread k) {
+static C1(c2var) {
   word var = *f->sp++,
        pals = *f->sp++;
   size_t i = lidx(f, pals, var);
@@ -93,7 +90,7 @@ static thread c2var(core f, scope *c, thread k) {
     pull(f, c, k - 2); }
 
 // emit stack reference instruction
-static thread c1var(core f, scope *c, thread k) {
+static C1(c1var) {
   word var = *f->sp++, // variable name
        ins = llen(*f->sp++), // stack inset
        idx = index_of(f, *c, var);
@@ -102,57 +99,57 @@ static thread c1var(core f, scope *c, thread k) {
     k[-1].x = putnum(idx + ins),
     pull(f, c, k - 2); }
 
-static size_t analyze_symbol(core f, scope *c, size_t m, word k, scope d) {
-  word x;
+static C0(analyze_symbol, scope d) {
+  word y;
   if (nilp((word) d)) {
-    x = table_get(f, f->dict, k, 0);
-    if (x) return em2(f, c, m, K, x);
-    k = (word) pairof(f, k, (*c)->imps),
-    k = k ? A((*c)->imps = k) : k;
-    return k ? c0var1(f, c, m, k) : 0; }
+    y = table_get(f, f->dict, x, 0);
+    if (y) return em2(f, c, m, K, y);
+    x = (word) pairof(f, x, (*c)->imps),
+    x = x ? A((*c)->imps = x) : x;
+    return x ? analyze_variable_reference(f, c, m, x) : 0; }
 
   // look in vals
-  if ((x = lassoc(f, d->lams, k))) {
+  if ((y = lassoc(f, d->lams, x))) {
     // lazy bind
-    bind(x, (word) pairof(f, x, (word) d));
-    bind(m, em2(f, c, m, lazy_bind, x));
-    x = B(B(A(f->sp[2]))); // get the closure args to pass in
-    return analyze_arguments(f, c, m, x); } // XXX
+    bind(y, (word) pairof(f, y, (word) d));
+    bind(m, em2(f, c, m, lazy_bind, y));
+    y = B(B(A(f->sp[2]))); // get the closure args to pass in
+    return analyze_arguments(f, c, m, y); } // XXX
 
   // look in pals
-  if ((x = lidx(f, d->pals, k)) >= 0)
-    return pushs(f, 3, c2var, k, d->pals) ? m + 2 : 0;
+  if ((y = lidx(f, d->pals, x)) >= 0)
+    return pushs(f, 3, c2var, x, d->pals) ? m + 2 : 0;
 
   // look in imps args
-  x = index_of(f, d, k);
-  if (x >= 0) {
+  y = index_of(f, d, x);
+  if (y >= 0) {
     if (*c != d)
-      k = (word) pairof(f, k, (*c)->imps),
-      k = k ? A((*c)->imps = k) : k;
-    return k ? c0var1(f, c, m, k) : 0; }
+      x = (word) pairof(f, x, (*c)->imps),
+      x = x ? A((*c)->imps = x) : x;
+    return x ? analyze_variable_reference(f, c, m, x) : 0; }
   // recur on outer scope
-  return analyze_symbol(f, c, m, k, d->par); }
+  return analyze_symbol(f, c, m, x, d->par); }
 
 // emits call instruction and modifies to tail call
 // if next operation is return
-static thread c1ap(core f, scope *c, thread k) {
+static C1(c1ap) {
   if (k->ap == ret) k->ap = tap; // tail call
   else (--k)->ap = ap; // regular call
   return pull(f, c, k); } // ok
 
-static thread c1apn(core f, scope *c, thread k) {
+static C1(c1apn) {
   word n = *f->sp++;
   if (k->ap == ret) k->x = n, (--k)->ap = tapn;
   else (--k)->x = n, (--k)->ap = apn;
   return pull(f, c, k); }
 
-// codegen apply function argument
-static size_t analyze_arguments(core f, scope *c, size_t m, word b) {
-  MM(f, &b); // handle oom here ..
+// evaluate function call arguments and apply
+static size_t analyze_arguments(core f, scope *c, size_t m, word x) {
+  MM(f, &x); // handle oom here ..
   if (!((*c)->pals = (word) pairof(f, nil, (*c)->pals))) m = 0;
   else {
-    for (; m && twop(b); b = B(b))
-      m = analyze(f, c, m + 1, A(b)),
+    for (; m && twop(x); x = B(x))
+      m = analyze(f, c, m + 1, A(x)),
       m = m && pushs(f, 1, c1ap) ? m : 0;
     (*c)->pals = B((*c)->pals); }
   UM(f);
@@ -190,42 +187,47 @@ fail:
 
 // conditionals
 // to emit targeted jumps etc
-static c1 c1endpush, c1endpop, c1postbranch, c1altpush, c1endpeek;
+static c1
+  generate_cond_push_branch,
+  generate_cond_pop_branch,
+  generate_cond_push_exit,
+  generate_cond_pop_exit,
+  generate_cond_peek_exit;
 
 // conditional expression analyzer
-static size_t analyze_if(core f, scope *c, size_t m, word x) {
-  if (!pushs(f, 2, x, c1endpop)) return 0;
+static C0(analyze_if) {
+  if (!pushs(f, 2, x, generate_cond_pop_exit)) return 0;
   struct pair p = { data, &typ_two, nil, nil };
   for (x = pop1(f), MM(f, &x); m; x = B(B(x))) {
     if (!twop(x)) x = (word) &p;
     m = analyze(f, c, m + 2, A(x));
     if (!twop(B(x))) { // at end, default branch
-      m = pushs(f, 1, c1endpeek) ? m : 0;
+      m = pushs(f, 1, generate_cond_peek_exit) ? m : 0;
       break; }
-    m = pushs(f, 1, c1postbranch) ? m : 0;
+    m = pushs(f, 1, generate_cond_pop_branch) ? m : 0;
     m = m ? analyze(f, c, m + 2, A(B(x))) : m;
-    m = pushs(f, 2, c1altpush, c1endpeek) ? m : 0; }
-  return UM(f), m && pushs(f, 1, c1endpush) ? m : 0; }
+    m = pushs(f, 2, generate_cond_push_branch, generate_cond_peek_exit) ? m : 0; }
+  return UM(f), m && pushs(f, 1, generate_cond_push_exit) ? m : 0; }
 
 // first emitter called for cond expression
 // pushes cond expression exit address onto scope stack ends
-static C1(c1endpush) {
+static C1(generate_cond_push_exit) {
   pair w = pairof(f, (word) k, (*c)->ends);
   return !w ? 0 : pull(f, c, (thread) A((*c)->ends = (word) w)); }
 
 // last emitter called for cond expression
 // pops cond expression exit address off scope stack ends
-static C1(c1endpop) {
+static C1(generate_cond_pop_exit) {
   return (*c)->ends = B((*c)->ends), pull(f, c, k); }
 
-static C1(c1altpush) {
+static C1(generate_cond_push_branch) {
   pair w = pairof(f, (word) k, (*c)->alts);
   if (!w) return (thread) w;
   (*c)->alts = (word) w;
   k = (thread) w->a;
   return pull(f, c, k); }
 
-static C1(c1endpeek) {
+static C1(generate_cond_peek_exit) {
   k -= 2;
   thread addr = (cell) A((*c)->ends);
   // if the destination is a return or tail call,
@@ -237,7 +239,7 @@ static C1(c1endpeek) {
 
 // last emitter called for a branch
 // pops next branch address off scope stack alts
-static C1(c1postbranch) {
+static C1(generate_cond_pop_branch) {
   return k[-2].ap = cond,
          k[-1].x = A((*c)->alts),
          (*c)->alts = B((*c)->alts),
@@ -274,7 +276,7 @@ static status desug(core f, word *d, word *e) {
   return f->sp++, Ok; }
 
 // this function is loooong
-static size_t c0l(core f, scope *b, scope *c, size_t m, word exp) {
+static size_t analyze_let_l(core f, scope *b, scope *c, size_t m, word exp) {
   if (!twop(exp)) return nil;
   if (!twop(B(exp))) return A(exp);
   // lots of variables :(
@@ -328,7 +330,7 @@ static size_t c0l(core f, scope *b, scope *c, size_t m, word exp) {
   (*c)->lams = lam, e = nil;
   // construct lambda with reversed argument list
   exp = lconcat(f, nom, exp);
-  l = literal_string(f, "\\");
+  l = literal_string(f, "\\"); // XXX change to symbol
   exp = exp && l ? (word) pairof(f, (word) l, exp) : 0;
   if (!exp) goto fail;
   // exp is now the required lambda expression, analyze it
@@ -372,7 +374,7 @@ fail: m = 0; goto done; }
 static size_t analyze_let(core f, scope *c, size_t m, word x) {
   scope d = *c;
   avec(f, x, d = enscope(f, d, d->args, d->imps));
-  avec(f, d, m = c0l(f, c, &d, m, x));
+  avec(f, d, m = analyze_let_l(f, c, &d, m, x));
   return m; }
 
 static Vm(lazy_bind) {
@@ -390,27 +392,29 @@ static size_t analyze_sequence(core f, scope *c, size_t m, word x) {
     m = m ? em1(f, c, m, drop) : m;
   return UM(f), m ? analyze(f, c, m, A(x)) : m; }
 
-static size_t analyze_list(core f, scope *c, size_t m, word x) {
+static C0(analyze_macro, word b) {
+  if (!pushs(f, 2, x, b)) return 0;
+  x = (word) literal_string(f, "`"); // XXX change to symbol
+  if (!x || !pushs(f, 1, x)) return 0;
+  pair mxp = (pair) cells(f, 4 * Width(struct pair));
+  if (!mxp) return 0;
+  x = (word) ini_pair(mxp, f->sp[1], (word) ini_pair(mxp+1, (word) ini_pair(mxp+2, f->sp[0], (word) ini_pair(mxp+3, f->sp[2], nil)), nil));
+  f->sp += 2, *f->sp = x;
+  return eval(f) != Ok ? 0 : analyze(f, c, m, pop1(f)); }
+
+static C0(analyze_list) {
   word a = A(x), b = B(x);
-  if (!twop(b)) return analyze(f, c, m, a); // singleton list -- identity
+  if (!twop(b)) return analyze(f, c, m, a); // singleton list has value of first element
   if (strp(a)) {
+    word macro = table_get(f, f->macro, a, 0);
+    if (macro) return analyze_macro(f, c, m, macro, b);
     if (((string) a)->len == 1)
       switch (((string) a)->text[0]) { // special form?
         case '`': return em2(f, c, m, K, twop(b) ? A(b) : nil); // quote
         case ',': return analyze_sequence(f, c, m, b); // sequence
         case ':': return analyze_let(f, c, m, b);
         case '?': return analyze_if(f, c, m, b);
-        case '\\': return (x = analyze_lambda(f, c, nil, b)) ? analyze(f, c, m, x) : x; }
-    word macro = table_get(f, f->macro, a, 0);
-    if (macro) { // macro?
-      if (!pushs(f, 2, macro, b)) return 0;
-      x = (word) literal_string(f, "`"); // XXX change to symbol
-      if (!x || !pushs(f, 1, x)) return 0;
-      pair mxp = (pair) cells(f, 4 * Width(struct pair));
-      if (!mxp) return 0;
-      x = (word) ini_pair(mxp, f->sp[1], (word) ini_pair(mxp+1, (word) ini_pair(mxp+2, f->sp[0], (word) ini_pair(mxp+3, f->sp[2], nil)), nil));
-      f->sp += 2, *f->sp = x;
-      return eval(f) != Ok ? 0 : analyze(f, c, m, pop1(f)); } }
+        case '\\': return (x = analyze_lambda(f, c, nil, b)) ? analyze(f, c, m, x) : x; } }
   avec(f, b, m = analyze(f, c, m, a));
   return m ? analyze_arguments(f, c, m, b) : m; }
 
