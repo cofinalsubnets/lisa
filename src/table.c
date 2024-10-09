@@ -119,8 +119,8 @@ NoInline table table_set(core f, table t, word k, word v) {
 
 static struct table_entry *table_delete_r(core f, table t, word k, word *v, struct table_entry *e) {
   if (!e) return e;
-  if (eql(f, e->key, k)) return *v = e->val, e->next;
-  return e->next = table_delete_r(f, t, k, v, e->next); }
+  if (eql(f, e->key, k)) return t->len--, *v = e->val, e->next;
+  return e->next = table_delete_r(f, t, k, v, e->next), e; }
 
 static Inline word table_load_factor(table t) { return t->len / t->cap; }
 
@@ -150,7 +150,7 @@ Vm(tnew) {
   struct table_entry **tab = (void*) (t + 1);
   hp += Width(struct table) + 1;
   t->ap = data, t->typ = &table_type;
-  t->len = 0, t->cap = 1, t->tab = tab;
+  t->len = 0, t->cap = 1, t->tab = tab, tab[0] = 0;
   return op(1, (word) t); }
 
 word table_get(core f, table t, word k, word zero) {
@@ -166,14 +166,14 @@ Vm(tset) {
   word x = sp[0];
   if (!tblp(x)) return op(3, nil);
   Pack(f);
-  table t = table_set(f, (table) sp[0], sp[1], sp[2]);
+  table t = table_set(f, (table) x, sp[1], sp[2]);
   Unpack(f);
   return !t ? Oom : op(3, sp[2]); }
 
 Vm(tdel) {
-  word x = sp[0];
+  word x = sp[1];
   return op(3, !tblp(x) ? nil :
-    table_delete(f, (table) x, sp[1], sp[2])); }
+    table_delete(f, (table) x, sp[2], sp[0])); }
 
 Vm(tlen) {
   word x = sp[0];
@@ -186,11 +186,11 @@ Vm(tkeys) {
   table t = (table) sp[0];
   word len = t->len, list = nil;
   Have(len * Width(struct pair));
-  pair pairs = (void*) hp;
+  pair pairs = (pair) hp;
   hp += len * Width(struct pair);
   for (int i = t->cap; i;)
-    for (struct table_entry *e = t->tab[--i]; e;)
-      pairs->ap = data, pairs->typ = &typ_two,
+    for (struct table_entry *e = t->tab[--i]; e; e = e->next)
+      pairs->ap = data, pairs->typ = &pair_type,
       pairs->a = e->key, pairs->b = list,
       list = (word) pairs, pairs++;
   return op(1, list); }

@@ -7,7 +7,7 @@ static word copy_string(state v, word x, word *p0, word *t0) {
 
 static void walk_string(state v, word x, word *p0, word *t0) {
   v->cp += b2w(sizeof(struct string) + ((string) x)->len); }
-  
+
 static void print_string(core v, FILE *o, word _) {
   string s = (string) _;
   size_t len = s->len;
@@ -34,7 +34,7 @@ static bool string_equal(state f, word x, word y) {
   if (a->len != b->len) return false;
   return 0 == strncmp(a->text, b->text, a->len); }
 
-struct typ typ_str = {
+struct typ string_type = {
   .hash = hash_string,
   .copy = copy_string,
   .evac = walk_string,
@@ -72,7 +72,7 @@ Vm(sget) {
   return r->ap(f, r, hp, sp + 2); }
 
 string ini_str(string s, size_t len) {
-  s->ap = data, s->typ = &typ_str, s->len = len;
+  s->ap = data, s->typ = &string_type, s->len = len;
   return s; }
 
 string literal_string(core f, const char *c) {

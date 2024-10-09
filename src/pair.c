@@ -3,7 +3,7 @@
 static word cp_two(state v, word x, word *p0, word *t0) {
   pair src = (pair) x,
        dst = bump(v, Width(struct pair));
-  dst->ap = data, dst->typ = &typ_two,
+  dst->ap = data, dst->typ = &pair_type;
   dst->a = src->a, dst->b = src->b;
   return (word) (src->ap = (vm*) dst); }
 
@@ -26,7 +26,7 @@ static word hash_two(core v, word x) {
   word hc = hash(v, A(x)) * hash(v, B(x));
   return hc ^ mix; }
 
-struct typ typ_two = {
+struct typ pair_type = {
   .hash = hash_two,
   .copy = cp_two,
   .evac = wk_two,
@@ -34,7 +34,7 @@ struct typ typ_two = {
   .equal = eq_two, };
 
 pair ini_pair(two w, word a, word b) {
-  w->ap = data, w->typ = &typ_two;
+  w->ap = data, w->typ = &pair_type;
   w->a = a, w->b = b;
   return w; }
 

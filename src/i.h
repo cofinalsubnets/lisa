@@ -121,7 +121,7 @@ typedef struct char_out {
   void (*putc)(core, struct char_out*, char);
 } *output;
 
-extern struct typ typ_two, typ_str, symbol_type, table_type;
+extern struct typ pair_type, string_type, symbol_type, table_type;
 
 #define Width(_) b2w(sizeof(_))
 #define avail(f) (f->sp-f->hp)
@@ -217,8 +217,8 @@ vm
 
 #define dtyp(x) R(x)[1].typ
 #define gettyp dtyp
-static Inline bool hstrp(cell h) { return datp(h) && dtyp(h) == &typ_str; }
-static Inline bool htwop(cell h) { return datp(h) && dtyp(h) == &typ_two; }
+static Inline bool hstrp(cell h) { return datp(h) && dtyp(h) == &string_type; }
+static Inline bool htwop(cell h) { return datp(h) && dtyp(h) == &pair_type; }
 static Inline bool htblp(cell h) { return datp(h) && dtyp(h) == &table_type; }
 static Inline bool hsymp(cell h) { return datp(h) && dtyp(h) == &symbol_type; }
 static Inline bool strp(word _) { return homp(_) && hstrp((cell) _); }

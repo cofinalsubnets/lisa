@@ -59,9 +59,11 @@ static size_t em2(core f, scope *c, size_t m, vm *i, word x) {
 
 static NoInline size_t analyze_symbol(core, scope*, size_t, word, scope);
 static C0(analyze) {
-  if (homp(x) && datp(x)) {
-    if (htwop(ptr(x))) return analyze_list(f, c, m, x);
-    if (hstrp(ptr(x))) return analyze_symbol(f, c, m, x, *c); }
+  if (homp(x) && ptr(x)->ap == data) {
+    typ y = ptr(x)[1].typ;
+    if (y == &pair_type) return analyze_list(f, c, m, x);
+    if (y == &symbol_type) return analyze_symbol(f, c, m, x, *c);
+    if (y == &string_type) return analyze_symbol(f, c, m, x, *c); }
   return em2(f, c, m, K, x); }
 
 static C0(analyze_variable_reference) {
@@ -197,7 +199,7 @@ static c1
 // conditional expression analyzer
 static C0(analyze_if) {
   if (!pushs(f, 2, x, generate_cond_pop_exit)) return 0;
-  struct pair p = { data, &typ_two, nil, nil };
+  struct pair p = { data, &pair_type, nil, nil };
   for (x = pop1(f), MM(f, &x); m; x = B(B(x))) {
     if (!twop(x)) x = (word) &p;
     m = analyze(f, c, m + 2, A(x));
