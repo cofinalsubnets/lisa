@@ -23,7 +23,7 @@ static NoInline int read_char(source i) {
       case '\n': case EOF: goto loop; } } }
 
 static word read_str_lit(core, source),
-            read_atom(core, source);
+            read_atom(core, source, int);
 
 static status reads(core, source);
 ////
@@ -40,8 +40,8 @@ static status enquote(core f) {
   f->sp[0] = (word) w;
   return Ok; }
 
-status read1(core f, source i) {
-  word x, c = read_char(i); switch (c) {
+static status read1c(core f, source i, int c) {
+  word x; switch (c) {
     case EOF: return Eof;
     case '\'':
       c = read1(f, i);
@@ -49,8 +49,11 @@ status read1(core f, source i) {
     case '(': return reads(f, i);
     case ')': x = nil; break;
     case '"': x = read_str_lit(f, i); break;
-    default: Ungetc(c, i), x = read_atom(f, i); }
+    default: x = read_atom(f, i, c); }
   return x && pushs(f, 1, x) ? Ok : Oom; }
+
+status read1(core f, source i) {
+  return read1c(f, i, read_char(i)); }
 
 static status reads(core f, source i) {
   word c = read_char(i);
@@ -58,8 +61,7 @@ static status reads(core f, source i) {
     case ')': case EOF: unnest:
       return pushs(f, 1, nil) ? Ok : Oom;
     default:
-      Ungetc(c, i);
-      c = read1(f, i);
+      c = read1c(f, i, c);
       if (c == Eof) goto unnest;
       if (c != Ok) return c;
       c = reads(f, i);
@@ -79,15 +81,16 @@ static NoInline word read_str_lit(core f, source i) {
       case '"': case EOF: fin: return o->len = n, (word) o; }
   return 0; }
 
-static NoInline word read_atom(core f, source i) {
+static NoInline word read_atom(core f, source i, int c) {
   string a = new_buffer(f);
-  for (size_t n = 0, lim = sizeof(word); a; a = grow_buffer(f, a), lim *= 2)
-    for (int x; n < lim;) switch (x = Getc(i)) {
+  if (a) a->text[0] = c;
+  for (size_t n = 1, lim = sizeof(word); a; a = grow_buffer(f, a), lim *= 2)
+    while (n < lim) switch (c = Getc(i)) {
       // these characters terminate an atom
       case ' ': case '\n': case '\t': case ';': case '#':
-      case '(': case ')': case '"': case '\'': Ungetc(x, i);
+      case '(': case ')': case '"': case '\'': Ungetc(c, i);
       case EOF: a->text[a->len = n] = 0; goto out;
-      default: a->text[n++] = x; continue; } out:
+      default: a->text[n++] = c; continue; } out:
   if (!a) return 0;
   char *e; long n = strtol(a->text, &e, 0);
   return *e == 0 ? putnum(n) : (word) a; }
