@@ -1,0 +1,7 @@
+(: s0 (gensym .)
+   s1 (gensym .)
+   s2 (gensym .)
+   (!= a b) (~ (= a b))
+ (assert (!= s0 s1)
+         (!= s0 s2)
+         (!= s1 s2)))

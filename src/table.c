@@ -159,8 +159,8 @@ word table_get(core f, table t, word k, word zero) {
   return entry ? entry->val : zero; }
 
 Vm(tget) {
-  return op(3, !tblp(sp[0]) ? sp[2] :
-    table_get(f, (table) sp[0], sp[1], sp[2])); }
+  return op(3, !tblp(sp[1]) ? sp[2] :
+    table_get(f, (table) sp[1], sp[2], sp[0])); }
 
 Vm(tset) {
   word x = sp[0];
