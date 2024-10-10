@@ -27,6 +27,15 @@ struct function_entry {
   P1("gensym", gensym),
   P1("thd", thda), };
 
+static int stdin_getc(core f, input i) { return getc(stdin); }
+static void stdin_ungetc(core f, input i, char c) { ungetc(c, stdin); }
+static bool stdin_eof(core f, input i) { return feof(stdin); }
+static void stdout_putc(core f, output o, char c) { putc(c, stdout); }
+static void stderr_putc(core f, output o, char c) { putc(c, stderr); }
+struct char_in std_input = { .getc = stdin_getc, .ungetc = stdin_ungetc, .eof = stdin_eof };
+struct char_out std_output = { .putc = stdout_putc }, std_error = { .putc = stderr_putc };
+
+
 status l_ini(core f, bool (*please)(core, size_t), size_t len, word *pool) {
   word *loop = pool + len;
   memset(f, 0, sizeof(struct l_core));

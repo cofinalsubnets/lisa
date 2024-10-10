@@ -23,6 +23,8 @@ typedef enum status {
   vm(core, thread, heap, stack);
 
 typedef struct table *table;
+typedef struct char_in *input;
+typedef struct char_out *output;
 
 struct l_core {
   // vm registers
@@ -33,6 +35,9 @@ struct l_core {
   table dict, macro;
   word count, rand;
   symbol symbols;
+
+  input in;
+  output out;
 
   // memory management
   bool (*please)(core, size_t);
@@ -59,18 +64,6 @@ struct tag {
   union cell *null, *head, end[];
 } *ttag(cell);
 
-//typedef string l_mtd_show(core, word);
-//typedef intptr_t l_mtd_hash(core, word);
-typedef struct typ {
-  word (*copy)(core, word, word*, word*);
-  void (*evac)(core, word, word*, word*);
-  bool (*equal)(core, word, word);
-  void (*emit)(core, FILE*, word);
-  //l_mtd_show *show;
-  intptr_t (*hash)(core, word);
-} *typ;
-word cp(core, word, word*, word*); // for recursive use by evac functions
-bool literal_equal(core, word, word);
 
 typedef struct pair {
   vm *ap;
@@ -119,7 +112,23 @@ typedef struct char_out {
   word data[];
 } *output;
 
+//typedef string l_mtd_show(core, word);
+//typedef intptr_t l_mtd_hash(core, word);
+typedef struct typ {
+  word (*copy)(core, word, word*, word*);
+  void (*evac)(core, word, word*, word*);
+  bool (*equal)(core, word, word);
+  void (*emit)(core, output, word);
+  //l_mtd_show *show;
+  intptr_t (*hash)(core, word);
+} *typ;
+word cp(core, word, word*, word*); // for recursive use by evac functions
+bool literal_equal(core, word, word);
+void print_num(core, output, intptr_t, int), outputs(core, output, char*);
+
 extern struct typ pair_type, string_type, symbol_type, table_type;
+extern struct char_in std_input;
+extern struct char_out std_output, std_error;
 
 #define Width(_) b2w(sizeof(_))
 #define avail(f) (f->sp-f->hp)
@@ -173,7 +182,7 @@ void
   *bump(core, size_t),
   *cells(core, size_t),
   copy_from(core, word*, size_t),
-  transmit(core, sink, word);
+  transmit(core, output, word);
 
 size_t llen(word);
 long lidx(core, word, word);

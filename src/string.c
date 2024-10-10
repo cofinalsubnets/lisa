@@ -8,14 +8,14 @@ static word copy_string(state v, word x, word *p0, word *t0) {
 static void walk_string(state v, word x, word *p0, word *t0) {
   v->cp += b2w(sizeof(struct string) + ((string) x)->len); }
 
-static void print_string(core v, FILE *o, word _) {
+static void print_string(core v, output o, word _) {
   string s = (string) _;
   size_t len = s->len;
   const char *text = s->text;
-  putc('"', o);
-  for (char c; len--; putc(c, o))
-    if ((c = *text++) == '\\' || c == '"') putc('\\', o);
-  putc('"', o); }
+  o->putc(v, o, '"');
+  for (char c; len--; o->putc(v, o, c))
+    if ((c = *text++) == '\\' || c == '"') o->putc(v, o, '\\');
+  o->putc(v, o, '"'); }
 
 static word hash_string(core v, word _) {
   string s = (string) _;

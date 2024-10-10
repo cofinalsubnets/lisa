@@ -31,10 +31,10 @@ static bool atomp(string s) {
   return true; }
   */
 
-static void print_symbol(core f, FILE *o, word _) {
-  string s = ((symbol) _)->nom;
-  if (s) fputs(s->text, o);
-  else fprintf(o, "#gensym@%lx", _); }
+static void print_symbol(core f, output o, word x) {
+  string s = ((symbol) x)->nom;
+  if (s) outputs(f, o, s->text);
+  else outputs(f, o, "#gensym@"), print_num(f, o, x, 16); }
 
 bool literal_equal(core f, word a, word b) {
   return a == b;

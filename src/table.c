@@ -36,9 +36,14 @@ static void walk_table(core f, word x, word *p0, word *t0) {
       e->val = cp(f, e->val, p0, t0),
       e = e->next); }
 
-static void print_table(core f, FILE *o, word x) {
+static void print_table(core f, output o, word x) {
   table t = (table) x;
-  fprintf(o, "#table:%ld/%ld@%lx", t->len, t->cap, x); }
+  outputs(f, o, "#table:");
+  print_num(f, o, t->len, 10);
+  o->putc(f, o, '/');
+  print_num(f, o, t->cap, 10);
+  o->putc(f, o, '@');
+  print_num(f, o, x, 16); }
 
 struct typ table_type = {
   .hash = hash_table,

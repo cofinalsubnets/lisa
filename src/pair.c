@@ -12,10 +12,10 @@ static void wk_two(state v, word x, word *p0, word *t0) {
   A(x) = cp(v, A(x), p0, t0);
   B(x) = cp(v, B(x), p0, t0); }
 
-static void tx_two(core v, FILE *o, word x) {
-  for (putc('(', o);; putc(' ', o)) {
+static void print_two(core v, output o, word x) {
+  for (o->putc(v, o, '(');; o->putc(v, o, ' ')) {
     transmit(v, o, A(x));
-    if (!twop(x = B(x))) { putc(')', o); break; } } }
+    if (!twop(x = B(x))) { o->putc(v, o, ')'); break; } } }
 
 // FIXME can overflow the stack
 static bool eq_two(state f, word x, word y) {
@@ -30,7 +30,7 @@ struct typ pair_type = {
   .hash = hash_two,
   .copy = cp_two,
   .evac = wk_two,
-  .emit = tx_two,
+  .emit = print_two,
   .equal = eq_two, };
 
 pair ini_pair(two w, word a, word b) {

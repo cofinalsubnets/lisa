@@ -4,7 +4,7 @@
 #include <unistd.h>
 #include <errno.h>
 
-static status report(core, status, FILE*);
+static status report(core, output, status);
 static const char *help = // help message
   "usage: %s [options] [scripts]\n"
   "with no arguments, interact\n"
@@ -15,9 +15,9 @@ static const char *help = // help message
 static status repl(core f) {
   for (status s; (s = read1(f, stdin)) != Eof; ) {
     if (s == Ok && (s = eval(f) == Ok))
-      transmit(f, stdout, pop1(f)),
-      fputc('\n', stdout);
-    else report(f, s, stderr),
+      transmit(f, &std_output, pop1(f)),
+      std_output.putc(f, &std_output, '\n');
+    else report(f, &std_error, s),
       f->sp = f->pool + f->len; }
   return Ok; }
 
@@ -31,7 +31,7 @@ static status run_files(core f, char **av) {
            (s = eval(f)) == Ok) f->sp++;
     fclose(i);
     if (s == Eof) s = Ok;
-    if (s != Ok) return report(f, s, stderr); }
+    if (s != Ok) return report(f, &std_error, s); }
   return Ok; }
 
 int main(int ac, char **av) {
@@ -51,9 +51,11 @@ int main(int ac, char **av) {
   l_close(f);
   return s; }
 
-static status report(core f, status s, FILE *err) {
+static status report(core f, output o, status s) {
   switch (s) {
     case Oom:
-      fprintf(err, "# oom@2*%ldB\n", f->len * sizeof(word));
+      outputs(f, o, "# oom@2*");
+      print_num(f, o, f->len * sizeof(word), 10);
+      outputs(f, o, "B\n");
     default: }
   return s; }
