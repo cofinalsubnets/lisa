@@ -1,5 +1,12 @@
 #include "i.h"
 
+
+static intptr_t liprng(intptr_t seed) {
+  const word steele_vigna_2021 = 0xaf251af3b0f025b5;
+  return (steele_vigna_2021 * seed + 1) >> 8; }
+
+word l_rand(core f) {
+  return f->rand = liprng(f->rand); }
 Vm(add) { return op(2, putnum(getnum(sp[0])+getnum(sp[1]))); }
 Vm(sub) { return op(2, putnum(getnum(sp[0])-getnum(sp[1]))); }
 Vm(mul) { return op(2, putnum(getnum(sp[0])*getnum(sp[1]))); }

@@ -9,4 +9,6 @@ typedef enum l_status {
   l_status_ok = 0,
   l_status_oom = 1,
 } l_status;
+l_core l_open(void);
+void l_close(l_core);
 #endif

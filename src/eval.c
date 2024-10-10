@@ -199,37 +199,37 @@ Vm(data) {
   word r = (word) ip;
   return op(1, r); }
 
-Vm(K) {
+static Vm(K) {
   Have1();
   return Do(*--sp = ip[1].x, ip += 2); }
 
-Vm(jump) { return Do(ip = ip[1].m); }
-Vm(cond) { return Do(ip = nilp(*sp) ? ip[1].m : ip + 2, sp++); }
-Vm(ref) { Have1(); return Do(sp[-1] = sp[getnum(ip[1].x)], sp--, ip += 2); }
-Vm(ret) {
+static Vm(jump) { return Do(ip = ip[1].m); }
+static Vm(cond) { return Do(ip = nilp(*sp) ? ip[1].m : ip + 2, sp++); }
+static Vm(ref) { Have1(); return Do(sp[-1] = sp[getnum(ip[1].x)], sp--, ip += 2); }
+static Vm(ret) {
   word r = getnum(ip[1].x) + 1;
   return op(r, *sp); }
-Vm(yield) { return Pack(f), Ok; }
+static Vm(yield) { return Pack(f), Ok; }
 
-Vm(ap) {
+static Vm(ap) {
   if (nump(sp[1])) return Do(sp++, ip++);
   thread k = (thread) sp[1];
   return Do(sp[1] = (word) (ip + 1), ip = k); }
 
-Vm(apn) {
+static Vm(apn) {
   size_t n = getnum(ip[1].x);
   thread ra = ip + 2; // return address
   ip = ((thread) sp[n]) + 2; // only used by let form so will not be num
   sp[n] = (word) ra; // store return address
   return ip->ap(f, ip, hp, sp); }
 
-Vm(tap) {
+static Vm(tap) {
   word x = sp[0], j = sp[1];
   sp += getnum(ip[1].x) + 1;
   return nump(j) ? op(1, j) :
     Do(ip = (thread) j, *sp = x); }
 
-Vm(tapn) {
+static Vm(tapn) {
   size_t n = getnum(ip[1].x),
          r = getnum(ip[2].x);
   ip = ((thread) sp[n]) + 2;

@@ -44,14 +44,11 @@ int main(int ac, char **av) {
     case 'i': interact = true; continue;
     case -1: goto out; } out:
   if (!*av && !interact) return EXIT_SUCCESS;
-  struct l_core F;
-  state f = &F;
-  word *pool = malloc(sizeof(word) * 2), *loop = pool + 1;
-  if (!pool) return Oom;
-  status s = initialize(f, libc_please, 1, pool, loop);
-  s = s != Ok ? s : run_files(f, av + optind);
-  s = s != Ok || !interact ? s : repl(f);
-  free(min(f->pool, f->loop));
+  state f = l_open();
+  if (!f) return Oom;
+  status s = run_files(f, av + optind);
+  if (s == Ok && interact) repl(f);
+  l_close(f);
   return s; }
 
 static status report(core f, status s, FILE *err) {

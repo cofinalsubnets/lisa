@@ -186,12 +186,11 @@ bool
   libc_please(core, size_t);
 
 status
-  initialize(core, bool (*)(core, size_t), size_t, word*, word*),
-  l_ini(core),
+  l_ini(core, bool (*)(core, size_t), size_t, word*),
   eval(core),
   read1(core, FILE*);
 
-intptr_t liprng(intptr_t), l_rand(core);
+intptr_t l_rand(core);
 
 word pushs(core, size_t, ...);
 word hash(core, word);

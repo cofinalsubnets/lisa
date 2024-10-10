@@ -27,7 +27,8 @@ struct function_entry {
   P1("gensym", gensym),
   P1("thd", thda), };
 
-status initialize(core f, bool (*please)(core, size_t), size_t len, word *pool, word *loop) {
+status l_ini(core f, bool (*please)(core, size_t), size_t len, word *pool) {
+  word *loop = pool + len;
   memset(f, 0, sizeof(struct l_core));
   f->pool = pool, f->loop = loop;
   f->rand = f->t0 = clock();
@@ -41,3 +42,15 @@ status initialize(core f, bool (*please)(core, size_t), size_t len, word *pool, 
          v = (word) ini_dict[i].val;
     if (!k || !table_set(f, f->dict, k, v)) return Oom; }
   return Ok; }
+
+void l_close(core f) {
+  if (f) free(f->pool < f->loop ? f->pool : f->loop), free(f); }
+
+l_core l_open(void) {
+  core f = malloc(sizeof(struct l_core));
+  if (!f) return NULL;
+  const size_t len0 = 1;
+  word *pool = malloc(2 * len0 * sizeof(word));
+  if (!pool) return free(f), NULL;
+  status s = l_ini(f, libc_please, len0, pool);
+  return s == Ok ? f : (l_close(f), NULL); }

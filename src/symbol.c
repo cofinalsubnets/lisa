@@ -31,9 +31,10 @@ static bool atomp(string s) {
   return true; }
   */
 
-static void tx_symbol(core f, FILE *o, word _) {
-  symbol s = (symbol) _;
-  fputs(s->nom ? s->nom->text : "#anon", o); }
+static void print_symbol(core f, FILE *o, word _) {
+  string s = ((symbol) _)->nom;
+  if (s) fputs(s->text, o);
+  else fprintf(o, "#gensym@%lx", _); }
 
 bool literal_equal(core f, word a, word b) {
   return a == b;
@@ -44,7 +45,7 @@ struct typ symbol_type = {
   .copy = copy_symbol,
   .evac = walk_symbol,
   .equal = literal_equal,
-  .emit = tx_symbol,
+  .emit = print_symbol,
 };
 
 
