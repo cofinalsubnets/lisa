@@ -74,7 +74,7 @@ Vm(gensym) {
   Have(req);
   symbol y = (symbol) hp;
   hp += req;
-  return op(1, (word) ini_anon(y, f->rand = liprng(f))); }
+  return op(1, (word) ini_anon(y, l_rand(f))); }
 
 Vm(string_of_symbol) {
   word x = sp[0];

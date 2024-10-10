@@ -1,7 +1,7 @@
 #include "i.h"
-#define P(n,i) { n, ((union cell[]){{i}})}
-#define P2(n,i) { n, ((union cell[]){{cur}, {.x=putnum(2)},{i}})}
-#define P3(n,i) { n, ((union cell[]){{cur}, {.x=putnum(3)},{i}})}
+#define P1(n,i) { n, ((union cell[]){{i}})}
+#define P2(n,i) { n, ((union cell[]){{curry}, {.x=putnum(2)},{i}})}
+#define P3(n,i) { n, ((union cell[]){{curry}, {.x=putnum(3)},{i}})}
 
 struct function_entry {
   const char *nom;
@@ -12,19 +12,20 @@ struct function_entry {
   P2("%",  rem), P2("=",  eq),
   P2("<",  lt), P2("<=",  le),
   P2(">=",  ge), P2(">",  gt),
-  P(".", print), P("putc",  prc),
-  P("~",  not),
-  P2("X",  cons), P("A",  car), P("B",  cdr),
-  P2("sget",  sget), P3("ssub",  ssub), P("slen",  slen),
-  P("s?",  Sp), P("n?", Np), P("X?",  Xp),
-  P2("::", mbind),
-  P("peek", peek),
+  P1(".", print), P1("putc",  prc),
+  P1("~",  not),
+  P1("rand", rng),
+  P2("X",  cons), P1("A",  car), P1("B",  cdr),
+  P2("sget",  sget), P3("ssub",  ssub), P1("slen",  slen),
+  P1("s?",  Sp), P1("n?", Np), P1("X?",  Xp),
+  P2("::", defmacro),
+  P1("peek", peek),
   P2("poke", poke),
-  P("trim",  trim), P2("seek",  seek),
-  P("tnew", tnew), P("tkeys", tkeys), P("tlen", tlen),
+  P1("trim",  trim), P2("seek",  seek),
+  P1("tnew", tnew), P1("tkeys", tkeys), P1("tlen", tlen),
   P3("tset", tset), P3("tget", tget), P3("tdel", tdel),
-  P("gensym", gensym),
-  P("thd", thda), };
+  P1("gensym", gensym),
+  P1("thd", thda), };
 
 status initialize(core f, bool (*please)(core, size_t), size_t len, word *pool, word *loop) {
   memset(f, 0, sizeof(struct l_core));

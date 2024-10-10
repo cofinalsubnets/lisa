@@ -16,6 +16,7 @@ typedef struct scope {
   struct scope *par;
 } *scope;
 
+static vm ref, cond, jump, K, yield, ret, ap, apn, tap, tapn;
 // thread compiler operates in two phases
 //
 // 1. analyze phase: analyze expression; assemble constructor on stack; compute code size bound
@@ -179,7 +180,7 @@ static word analyze_lambda(core f, scope *c, word imps, word exp) {
   size_t arity = llen(d->args) + llen(d->imps);
   thread k = pushs(f, 3, c1ix, ret, putnum(arity)) ? construct(f, &d, m) : 0;
   if (!k) goto fail;
-  if (arity > 1) (--k)->x = putnum(arity), (--k)->ap = cur;
+  if (arity > 1) (--k)->x = putnum(arity), (--k)->ap = curry;
   ttag(k)->head = k;
   UM(f);
   return (word) pairof(f, (word) k, d->imps);
@@ -187,6 +188,78 @@ fail:
   UM(f);
   return 0; }
 
+
+Vm(defmacro) {
+  Pack(f);
+  if (!table_set(f, f->macro, sp[0], sp[1])) return Oom;
+  Unpack(f);
+  return op(2, sp[1]); }
+
+Vm(data) {
+  word r = (word) ip;
+  return op(1, r); }
+
+Vm(K) {
+  Have1();
+  return Do(*--sp = ip[1].x, ip += 2); }
+
+Vm(jump) { return Do(ip = ip[1].m); }
+Vm(cond) { return Do(ip = nilp(*sp) ? ip[1].m : ip + 2, sp++); }
+Vm(ref) { Have1(); return Do(sp[-1] = sp[getnum(ip[1].x)], sp--, ip += 2); }
+Vm(ret) {
+  word r = getnum(ip[1].x) + 1;
+  return op(r, *sp); }
+Vm(yield) { return Pack(f), Ok; }
+
+Vm(ap) {
+  if (nump(sp[1])) return Do(sp++, ip++);
+  thread k = (thread) sp[1];
+  return Do(sp[1] = (word) (ip + 1), ip = k); }
+
+Vm(apn) {
+  size_t n = getnum(ip[1].x);
+  thread ra = ip + 2; // return address
+  ip = ((thread) sp[n]) + 2; // only used by let form so will not be num
+  sp[n] = (word) ra; // store return address
+  return ip->ap(f, ip, hp, sp); }
+
+Vm(tap) {
+  word x = sp[0], j = sp[1];
+  sp += getnum(ip[1].x) + 1;
+  return nump(j) ? op(1, j) :
+    Do(ip = (thread) j, *sp = x); }
+
+Vm(tapn) {
+  size_t n = getnum(ip[1].x),
+         r = getnum(ip[2].x);
+  ip = ((thread) sp[n]) + 2;
+  stack osp = sp;
+  sp += r + 1;
+  while (n--) sp[n] = osp[n];
+  return ip->ap(f, ip, hp, sp); }
+
+static Vm(Kj) { Have1(); return
+  *--sp = ip[1].x,
+  ip += 2,
+  ip->m->ap(f, ip->m, hp, sp); }
+
+Vm(curry) {
+  thread k;
+  size_t n = getnum(ip[1].x),
+         S = 3 + Width(struct tag);
+  if (n == 2) {
+    Have(S);
+    k = (thread) hp;
+    k[0].ap = Kj, k[1].x = *sp++, k[2].m = ip + 2;
+    k[3].x = 0,   k[4].m = k; }
+  else {
+    S += 2;
+    Have(S);
+    k = (thread) hp;
+    k[0].ap = curry, k[1].x = putnum(n - 1);
+    k[2].ap = Kj,  k[3].x = *sp++, k[4].m = ip + 2;
+    k[5].x = 0,    k[6].m = k; }
+  return Do(hp += S, ip = (cell) *sp, *sp = (word) k); }
 // conditionals
 // to emit targeted jumps etc
 static c1
@@ -368,7 +441,8 @@ static size_t analyze_let_l(core f, scope *b, scope *c, size_t m, word exp) {
     if (!(m = analyze(f, b, m, A(def))) ||
         !((*b)->pals = (word) pairof(f, A(nom), (*b)->pals)))
       goto fail; }
-  m = pushs(f, 2, c1apn, putnum(nn)) ? m + 2 : 0;
+  if (nn > 1) m = pushs(f, 2, c1apn, putnum(nn)) ? m + 2 : 0;
+  else m = pushs(f, 1, c1ap) ? m + 1 : 0;
   if (m) for (nn++; nn--; (*b)->pals = B((*b)->pals));
 done: return UM(f), UM(f), UM(f), UM(f), UM(f), UM(f), UM(f), m;
 fail: m = 0; goto done; }

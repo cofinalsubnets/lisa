@@ -1,5 +1,9 @@
 #include "i.h"
 
+
+NoInline Vm(gc, size_t n) {
+  return Pack(f), !f->please(f, n) ? Oom :
+    f->ip->ap(f, f->ip, f->hp, f->sp); }
 void *bump(core f, size_t n) {
   void *x = f->hp;
   f->hp += n;

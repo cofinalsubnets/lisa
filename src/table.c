@@ -36,12 +36,16 @@ static void walk_table(core f, word x, word *p0, word *t0) {
       e->val = cp(f, e->val, p0, t0),
       e = e->next); }
 
+static void print_table(core f, FILE *o, word x) {
+  table t = (table) x;
+  fprintf(o, "#table:%ld/%ld@%lx", t->len, t->cap, x); }
+
 struct typ table_type = {
   .hash = hash_table,
   .copy = copy_table,
   .evac = walk_table,
   .equal = literal_equal,
-  .emit = generic_print, };
+  .emit = print_table, };
 
 // this is a totally ad hoc, unproven hashing method.
 //

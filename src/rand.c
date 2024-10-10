@@ -1,5 +1,8 @@
 #include "i.h"
 
-word liprng(core v) {
+intptr_t liprng(intptr_t seed) {
   const word steele_vigna_2021 = 0xaf251af3b0f025b5;
-  return v->rand = (steele_vigna_2021 * v->rand + 1) >> 8; }
+  return (steele_vigna_2021 * seed + 1) >> 8; }
+
+word l_rand(core f) {
+  return f->rand = liprng(f->rand); }

@@ -21,6 +21,7 @@ typedef enum status {
   Eof = -1, Ok = 0, Oom, } status,
   // vm function type
   vm(core, thread, heap, stack);
+
 typedef struct table *table;
 
 struct l_core {
@@ -58,24 +59,18 @@ struct tag {
   union cell *null, *head, end[];
 } *ttag(cell);
 
-typedef word copy_method(core, word, word*, word*);
-typedef void evac_method(core, word, word*, word*);
-typedef bool equal_method(core, word, word);
-typedef void print_method(core, FILE*, word);
-typedef word hash_method(core, word);
-copy_method cp;
-equal_method literal_equal;
-print_method generic_print;
 //typedef string l_mtd_show(core, word);
 //typedef intptr_t l_mtd_hash(core, word);
 typedef struct typ {
-  copy_method *copy;
-  evac_method *evac;
-  equal_method *equal;
-  print_method *emit;
+  word (*copy)(core, word, word*, word*);
+  void (*evac)(core, word, word*, word*);
+  bool (*equal)(core, word, word);
+  void (*emit)(core, FILE*, word);
   //l_mtd_show *show;
-  hash_method *hash;
+  intptr_t (*hash)(core, word);
 } *typ;
+word cp(core, word, word*, word*); // for recursive use by evac functions
+bool literal_equal(core, word, word);
 
 typedef struct pair {
   vm *ap;
@@ -112,6 +107,7 @@ typedef struct table {
 } *table;
 
 typedef FILE *source, *sink;
+
 typedef struct char_in {
   int (*getc)(core, struct char_in*);
   void (*ungetc)(core, struct char_in*, char);
@@ -195,16 +191,15 @@ status
   eval(core),
   read1(core, FILE*);
 
-intptr_t liprng(core);
+intptr_t liprng(intptr_t), l_rand(core);
 
 word pushs(core, size_t, ...);
 word hash(core, word);
 
 status gc(core, thread, heap, stack, size_t);
-vm
-   print, not,
-   p2, apn, tapn, nop, gensym,
-   Xp, Np, Sp, mbind,
+vm print, not, rng,
+   p2, gensym,
+   Xp, Np, Sp, defmacro,
    ssub, sget, slen,
    symbol_of_string, string_of_symbol,
    pr, ppr, spr, pspr, prc,
@@ -213,7 +208,7 @@ vm
    tset, tget, tdel, tnew, tkeys, tlen,
    seek, peek, poke, trim, thda,
    add, sub, mul, quot, rem,
-   data, ap, tap, K, ref, cur, ret, yield, cond, jump;
+   data, curry;
 
 #define dtyp(x) R(x)[1].typ
 #define gettyp dtyp
@@ -234,6 +229,7 @@ _Static_assert(sizeof(union cell*) == sizeof(union cell), "size");
 #define Vm(n, ...) enum status\
   n(core f, thread ip, heap hp, stack sp, ##__VA_ARGS__)
 #define Have(n) if (sp - hp < n) return gc(f, ip, hp, sp, n)
+#define Have1() if (sp == hp) return gc(f, ip, hp, sp, 1)
 #define L() printf("# %s:%d\n", __FILE__, __LINE__)
 #define HashK ((uintptr_t)2708237354241864315)
 #define mix HashK

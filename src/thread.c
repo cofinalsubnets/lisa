@@ -24,3 +24,28 @@ thread mo_n(core f, size_t n) {
 
 struct tag *ttag(thread k) {
   return k->x ? ttag(k + 1) : (void*) k; }
+
+Vm(trim) {
+  thread k = (thread) sp[0];
+  ttag(k)->head = k;
+  return op(1, (word) k); }
+
+Vm(seek) {
+  thread k = (thread) sp[1];
+  return op(2, (word) (k + getnum(sp[0]))); }
+
+Vm(peek) {
+  thread k = (thread) sp[0];
+  return op(1, k[0].x); }
+
+Vm(poke) {
+  thread k = (thread) sp[1];
+  k->x = sp[0];
+  return op(2, (word) k); }
+
+Vm(thda) {
+  size_t n = getnum(sp[0]);
+  Have(n + Width(struct tag));
+  thread k = mo_ini(memset(hp, -1, n * sizeof(word)), n);
+  hp += n + Width(struct tag);
+  return op(1, (word) k); }

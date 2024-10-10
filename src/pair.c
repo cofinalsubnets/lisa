@@ -74,3 +74,12 @@ size_t llen(word l) {
 word lassoc(core f, word l, word k) {
   for (; twop(l); l = B(l)) if (eql(f, k, A(A(l)))) return A(l);
   return 0; }
+
+Vm(car) { return op(1, twop(sp[0]) ? A(sp[0]) : sp[0]); }
+Vm(cdr) { return op(1, twop(sp[0]) ? B(sp[0]) : nil); }
+Vm(cons) {
+  Have(Width(struct pair));
+  pair w = ini_pair((pair) hp, sp[0], sp[1]);
+  hp += Width(struct pair);
+  return op(2, (word) w); }
+
