@@ -199,6 +199,7 @@ bool
 status
   l_ini(core, bool (*)(core, size_t), size_t, word*),
   eval(core),
+  read1i(core, input),
   read1(core, FILE*);
 
 intptr_t l_rand(core);

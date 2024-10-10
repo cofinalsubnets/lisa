@@ -25,7 +25,7 @@ static NoInline int read_char(core f, input i) {
 static word read_str_lit(core, input),
             read_atom(core, input, int);
 
-static status reads(core, input), read1i(core, input);
+static status reads(core, input);
 ////
 /// " the parser "
 //
@@ -52,7 +52,7 @@ static status read1c(core f, input i, int c) {
     default: x = read_atom(f, i, c); }
   return x && pushs(f, 1, x) ? Ok : Oom; }
 
-static status read1i(core f, input i) {
+status read1i(core f, input i) {
   return read1c(f, i, read_char(f, i)); }
 
 static int file_getc(core f, input i) {

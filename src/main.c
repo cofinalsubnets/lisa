@@ -13,7 +13,7 @@ static const char *help = // help message
   "  -i interact\n";
 
 static status repl(core f) {
-  for (status s; (s = read1(f, stdin)) != Eof; ) {
+  for (status s; (s = read1i(f, &std_input)) != Eof; ) {
     if (s == Ok && (s = eval(f) == Ok))
       transmit(f, &std_output, pop1(f)),
       std_output.putc(f, &std_output, '\n');
