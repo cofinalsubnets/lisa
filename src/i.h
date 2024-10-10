@@ -112,9 +112,11 @@ typedef struct char_in {
   int (*getc)(core, struct char_in*);
   void (*ungetc)(core, struct char_in*, char);
   bool (*eof)(core, struct char_in*);
+  word data[];
 } *input;
 typedef struct char_out {
   void (*putc)(core, struct char_out*, char);
+  word data[];
 } *output;
 
 extern struct typ pair_type, string_type, symbol_type, table_type;

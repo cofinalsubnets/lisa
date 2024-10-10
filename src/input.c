@@ -15,17 +15,17 @@ NoInline string grow_buffer(core f, string s) {
 #define Feof feof
 
 // get the next significant character from the stream
-static NoInline int read_char(source i) {
-  for (int c;;) loop: switch (c = Getc(i)) {
+static NoInline int read_char(core f, input i) {
+  for (int c;;) loop: switch (c = i->getc(f, i)) {
     default: return c;
     case ' ': case '\t': case '\n': goto loop;
-    case '#': case ';': for (;;) switch (Getc(i)) {
+    case '#': case ';': for (;;) switch (i->getc(f, i)) {
       case '\n': case EOF: goto loop; } } }
 
-static word read_str_lit(core, source),
-            read_atom(core, source, int);
+static word read_str_lit(core, input),
+            read_atom(core, input, int);
 
-static status reads(core, source);
+static status reads(core, input), read1i(core, input);
 ////
 /// " the parser "
 //
@@ -40,11 +40,11 @@ static status enquote(core f) {
   f->sp[0] = (word) w;
   return Ok; }
 
-static status read1c(core f, source i, int c) {
+static status read1c(core f, input i, int c) {
   word x; switch (c) {
     case EOF: return Eof;
     case '\'':
-      c = read1(f, i);
+      c = read1i(f, i);
       return c == Ok ? enquote(f) : c;
     case '(': return reads(f, i);
     case ')': x = nil; break;
@@ -52,11 +52,22 @@ static status read1c(core f, source i, int c) {
     default: x = read_atom(f, i, c); }
   return x && pushs(f, 1, x) ? Ok : Oom; }
 
-status read1(core f, source i) {
-  return read1c(f, i, read_char(i)); }
+static status read1i(core f, input i) {
+  return read1c(f, i, read_char(f, i)); }
 
-static status reads(core f, source i) {
-  word c = read_char(i);
+static int file_getc(core f, input i) {
+  return getc((FILE*) i->data[0]); }
+static void file_ungetc(core f, input i, char c) {
+  ungetc(c, (FILE*) i->data[0]); }
+static bool file_eof(core f, input i) {
+  return feof((FILE*) i->data[0]); }
+
+status read1(core f, FILE *file) {
+  void *in[] = { file_getc, file_ungetc, file_eof, file };
+  return read1i(f, (input) in); }
+
+static status reads(core f, input i) {
+  word c = read_char(f, i);
   switch (c) {
     case ')': case EOF: unnest:
       return pushs(f, 1, nil) ? Ok : Oom;
@@ -71,24 +82,24 @@ static status reads(core f, source i) {
       *++f->sp = (word) c;
       return Ok; } }
 
-static NoInline word read_str_lit(core f, source i) {
+static NoInline word read_str_lit(core f, input i) {
   string o = new_buffer(f);
   for (size_t n = 0, lim = sizeof(word); o; o = grow_buffer(f, o), lim *= 2)
-    for (int x; n < lim;) switch (x = Getc(i)) {
+    for (int x; n < lim;) switch (x = i->getc(f, i)) {
       // backslash escapes next character
-      case '\\': if ((x = Getc(i)) == EOF) goto fin;
+      case '\\': if ((x = i->getc(f, i)) == EOF) goto fin;
       default: o->text[n++] = x; continue;
       case '"': case EOF: fin: return o->len = n, (word) o; }
   return 0; }
 
-static NoInline word read_atom(core f, source i, int c) {
+static NoInline word read_atom(core f, input i, int c) {
   string a = new_buffer(f);
   if (a) a->text[0] = c;
   for (size_t n = 1, lim = sizeof(word); a; a = grow_buffer(f, a), lim *= 2)
-    while (n < lim) switch (c = Getc(i)) {
+    while (n < lim) switch (c = i->getc(f, i)) {
       // these characters terminate an atom
       case ' ': case '\n': case '\t': case ';': case '#':
-      case '(': case ')': case '"': case '\'': Ungetc(c, i);
+      case '(': case ')': case '"': case '\'': i->ungetc(f, i, c);
       case EOF: a->text[a->len = n] = 0; goto out;
       default: a->text[n++] = c; continue; } out:
   if (!a) return 0;
