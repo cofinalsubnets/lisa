@@ -17,9 +17,8 @@ static void print_two(core v, output o, word x) {
     transmit(v, o, A(x));
     if (!twop(x = B(x))) { o->putc(v, o, ')'); break; } } }
 
-// FIXME can overflow the stack
+// FIXME could overflow the stack -- use off pool for this
 static bool eq_two(state f, word x, word y) {
-  if (!htwop(ptr(y))) return false;
   return eql(f, A(x), A(y)) && eql(f, B(x), B(y)); }
 
 static word hash_two(core v, word x) {

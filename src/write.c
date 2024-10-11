@@ -25,6 +25,6 @@ void outputs(core f, output o, char *s) {
   while (*s) o->putc(f, o, *s++); }
 
 void transmit(core f, output out, word x) {
-  if (nump(x)) print_num(f, out, 10, getnum(x));
+  if (nump(x)) print_num(f, out, getnum(x), 10);
   else if (R(x)->ap == data) R(x)[1].typ->emit(f, out, x);
-  else out->putc(f, out, '#'), print_num(f, out, 16, x); }
+  else out->putc(f, out, '#'), print_num(f, out, x, 16); }

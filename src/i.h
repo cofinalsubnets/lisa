@@ -99,8 +99,6 @@ typedef struct table {
   } **tab;
 } *table;
 
-typedef FILE *source, *sink;
-
 typedef struct char_in {
   int (*getc)(core, struct char_in*);
   void (*ungetc)(core, struct char_in*, char);

@@ -17,5 +17,10 @@ Vm(Sp) { return
 
 bool eql(core f, word a, word b) {
   if (a == b) return true;
-  if (nump(a | b) || ptr(a)->ap != data) return false;
+  if (nump(a | b) ||
+      ptr(a)->ap != data ||
+      ptr(b)->ap != data ||
+      ptr(a)[1].typ != ptr(b)[1].typ) return false;
   return ptr(a)[1].typ->equal(f, a, b); }
+
+bool literal_equal(core f, word a, word b) { return a == b; }

@@ -36,10 +36,6 @@ static void print_symbol(core f, output o, word x) {
   if (s) outputs(f, o, s->text);
   else outputs(f, o, "#gensym@"), print_num(f, o, x, 16); }
 
-bool literal_equal(core f, word a, word b) {
-  return a == b;
-}
-
 struct typ symbol_type = {
   .hash = hash_symbol,
   .copy = copy_symbol,
@@ -65,6 +61,12 @@ static symbol intern_r(core v, string b, symbol *y) {
 symbol intern(core f, string b) {
   if (avail(f) < Width(struct symbol) && !f->please(f, Width(struct symbol))) return 0; // oom
   return intern_r(f, b, &f->symbols); }
+
+string literal_string(core f, const char *c) {
+  size_t len = strlen(c);
+  string o = cells(f, Width(struct string) + b2w(len));
+  if (o) memcpy(ini_str(o, len)->text, c, len);
+  return o; }
 
 symbol literal_symbol(core f, const char *nom) {
   string s = literal_string(f, nom);
