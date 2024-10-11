@@ -46,20 +46,22 @@ struct typ symbol_type = {
 
 
 static symbol intern_r(core v, string b, symbol *y) {
-  if (*y) {
-    symbol z = *y;
-    string a = z->nom;
-    int i = strncmp(a->text, b->text,
-      a->len < b->len ? a->len : b->len);
-    if (i == 0) {
-      if (a->len == b->len) return z;
-      i = a->len < b->len ? -1 : 1; }
-    return intern_r(v, b, i < 0 ? &z->l : &z->r); }
-  return *y = ini_sym(bump(v, Width(struct symbol)), b,
-    hash(v, putnum(hash(v, (word) b)))); }
+  symbol z = *y;
+  if (!z) return *y =
+    ini_sym(bump(v, Width(struct symbol)), b, hash(v, putnum(hash(v, (word) b))));
+  string a = z->nom;
+  int i = strncmp(a->text, b->text,
+    a->len < b->len ? a->len : b->len);
+  if (i == 0) {
+    if (a->len == b->len) return z;
+    i = a->len < b->len ? -1 : 1; }
+  return intern_r(v, b, i < 0 ? &z->l : &z->r); }
 
 symbol intern(core f, string b) {
-  if (avail(f) < Width(struct symbol) && !f->please(f, Width(struct symbol))) return 0; // oom
+  if (avail(f) < Width(struct symbol)) {
+    bool ok;
+    avec(f, b, ok = f->please(f, Width(struct symbol)));
+    if (!ok) return 0; }
   return intern_r(f, b, &f->symbols); }
 
 string literal_string(core f, const char *c) {
