@@ -68,7 +68,7 @@ static C0(analyze) {
   return em2(f, c, m, K, x); }
 
 static C0(analyze_variable_reference) {
-  return nilp((word) (*c)->par) ? em2(f, c, m, K, nil) : // XXX undefined case
+  return nilp((word) (*c)->par) ? em2(f, c, m, K, x) : // XXX undefined case
          pushs(f, 3, c1var, x, (*c)->pals) ? m + 2 :
          0; }
 

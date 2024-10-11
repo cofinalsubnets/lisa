@@ -79,10 +79,10 @@ NoInline void copy_from(core f, word *p0, size_t len0) {
        *sp1 = t1 - slen;
   f->sp = sp1;
   f->hp = f->cp = p1;
+  f->symbols = 0;
   f->ip = (thread) cp(f, (word) f->ip, p0, t0);
   f->dict = (table) cp(f, (word) f->dict, p0, t0);
   f->macro = (table) cp(f, (word) f->macro, p0, t0);
-  f->symbols = 0;
   // copy stack
   for (size_t i = 0; i < slen; i++) sp1[i] = cp(f, sp0[i], p0, t0);
   // copy managed values
