@@ -33,7 +33,7 @@ static bool atomp(string s) {
 
 static void print_symbol(core f, output o, word x) {
   string s = ((symbol) x)->nom;
-  if (s) outputs(f, o, s->text);
+  if (s) for (int i = 0; i < s->len; o->putc(f, o, s->text[i++]));
   else outputs(f, o, "#gensym@"), print_num(f, o, x, 16); }
 
 struct typ symbol_type = {

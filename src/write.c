@@ -21,7 +21,7 @@ Vm(prc) {
 Vm(print) {
   transmit(f, &std_output, *sp), puts("");
   return op(1, *sp); }
-void outputs(core f, output o, char *s) {
+void outputs(core f, output o, const char *s) {
   while (*s) o->putc(f, o, *s++); }
 
 void transmit(core f, output out, word x) {

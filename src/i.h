@@ -122,7 +122,7 @@ typedef struct typ {
 } *typ;
 word cp(core, word, word*, word*); // for recursive use by evac functions
 bool literal_equal(core, word, word);
-void print_num(core, output, intptr_t, int), outputs(core, output, char*);
+void print_num(core, output, intptr_t, int), outputs(core, output, const char*);
 
 extern struct typ pair_type, string_type, symbol_type, table_type;
 extern struct char_in std_input;
