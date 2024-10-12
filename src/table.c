@@ -99,9 +99,10 @@ static NoInline table table_insert(core f, table t, word k, word v, word i) {
   word cap0 = t->cap, load = ++t->len / cap0;
   if (load <= 1) return t;
   // grow the table
-  struct table_entry **tab0 = t->tab, **tab1;
+  struct table_entry **tab0, **tab1;
   word cap1 = 2 * cap0;
   avec(f, t, tab1 = cells(f, cap1));
+  tab0 = t->tab;
   if (!tab1) return 0;
   memset(tab1, 0, cap1 * sizeof(word));
   for (word i; cap0--;)

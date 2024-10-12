@@ -33,7 +33,7 @@ static status enquote(core f) {
   pair w = pairof(f, f->sp[0], nil);
   if (!w) return Oom;
   f->sp[0] = (word) w;
-  string y = literal_string(f, "`");
+  symbol y = literal_symbol(f, "`");
   if (!y) return Oom;
   w = pairof(f, (word) y, f->sp[0]);
   if (!w) return Oom;
@@ -104,4 +104,4 @@ static NoInline word read_atom(core f, input i, int c) {
       default: a->text[n++] = c; continue; } out:
   if (!a) return 0;
   char *e; long n = strtol(a->text, &e, 0);
-  return *e == 0 ? putnum(n) : (word) a; }
+  return *e == 0 ? putnum(n) : (word) intern(f, a); }

@@ -6,7 +6,7 @@ static word copy_string(state v, word x, word *p0, word *t0) {
   return (word) (src->ap = memcpy(bump(v, b2w(len)), src, len)); }
 
 static void walk_string(state v, word x, word *p0, word *t0) {
-  v->cp += b2w(sizeof(struct string) + ((string) x)->len); }
+  v->cp += Width(struct string) + b2w(((string) x)->len); }
 
 static void print_string(core v, output o, word _) {
   string s = (string) _;

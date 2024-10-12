@@ -1,4 +1,5 @@
 #include "i.h"
+static symbol intern_r(core, string, symbol*);
 
 static Inline symbol ini_sym(void *_, string nom, uintptr_t code) {
   symbol y = _; return
@@ -16,7 +17,7 @@ static word hash_symbol(core v, word _) { return ((symbol) _)->code; }
 static word copy_symbol(core f, word x, word *p0, word *t0) {
   symbol src = (symbol) x,
          dst = src->nom ?
-           intern(f, (string) cp(f, (word) src->nom, p0, t0)) :
+           intern_r(f, (string) cp(f, (word) src->nom, p0, t0), &f->symbols) :
            ini_anon(bump(f, Width(struct symbol) - 2), src->code);
   return (word) (src->ap = (vm*) dst); }
 static void walk_symbol(core f, word x, word *p0, word *t0) {
@@ -50,12 +51,10 @@ static symbol intern_r(core v, string b, symbol *y) {
   if (!z) return *y =
     ini_sym(bump(v, Width(struct symbol)), b, hash(v, putnum(hash(v, (word) b))));
   string a = z->nom;
-  int i = strncmp(a->text, b->text,
-    a->len < b->len ? a->len : b->len);
-  if (i == 0) {
-    if (a->len == b->len) return z;
-    i = a->len < b->len ? -1 : 1; }
-  return intern_r(v, b, i < 0 ? &z->l : &z->r); }
+  int i = a->len < b->len ? -1 :
+          a->len > b->len ? 1 :
+          strncmp(a->text, b->text, a->len);
+  return i == 0 ? z : intern_r(v, b, i < 0 ? &z->l : &z->r); }
 
 symbol intern(core f, string b) {
   if (avail(f) < Width(struct symbol)) {

@@ -63,8 +63,7 @@ static C0(analyze) {
   if (homp(x) && ptr(x)->ap == data) {
     typ y = ptr(x)[1].typ;
     if (y == &pair_type) return analyze_list(f, c, m, x);
-    if (y == &symbol_type) return analyze_symbol(f, c, m, x, *c);
-    if (y == &string_type) return analyze_symbol(f, c, m, x, *c); }
+    if (y == &symbol_type) return analyze_symbol(f, c, m, x, *c); }
   return em2(f, c, m, K, x); }
 
 static C0(analyze_variable_reference) {
@@ -321,9 +320,9 @@ static C1(generate_cond_pop_branch) {
          pull(f, c, k - 2); }
 
 static bool lambp(core f, word x) {
-  if (!twop(x) || !strp(x = A(x))) return false;
-  string s = (string) x;
-  return s->len == 1 && s->text[0] == '\\'; }
+  if (!twop(x) || !symp(x = A(x))) return false;
+  string s = ((symbol) x)->nom;
+  return s && s->len == 1 && s->text[0] == '\\'; }
 
 // DEFINE
 // let expressions
@@ -341,7 +340,7 @@ static word desugr(core f, word *d, word *e, word a) {
 
 static status desug(core f, word *d, word *e) {
   if (!twop(*d)) return Ok;
-  word x, l = (word) literal_string(f, "\\");
+  word x, l = (word) literal_symbol(f, "\\");
   if (!l || !pushs(f, 1, l)) return Oom;
   do if (!(x = (word) desugr(f, d, e, B(*d))) ||
          !(x = (word) pairof(f, f->sp[0], x)))
@@ -400,12 +399,10 @@ static size_t analyze_let_l(core f, scope *b, scope *c, size_t m, word exp) {
   // they will be bound lazily when the function runs
   for (e = lam; twop(e); e = B(e)) B(B(A(e))) = ldels(f, lam, B(B(A(e))));
 
-  string l;
-
   (*c)->lams = lam, e = nil;
   // construct lambda with reversed argument list
   exp = lconcat(f, nom, exp);
-  l = literal_string(f, "\\"); // XXX change to symbol
+  symbol l = literal_symbol(f, "\\"); // XXX change to symbol
   exp = exp && l ? (word) pairof(f, (word) l, exp) : 0;
   if (!exp) goto fail;
   // exp is now the required lambda expression, analyze it
@@ -470,7 +467,7 @@ static size_t analyze_sequence(core f, scope *c, size_t m, word x) {
 
 static C0(analyze_macro, word b) {
   if (!pushs(f, 2, x, b)) return 0;
-  x = (word) literal_string(f, "`"); // XXX change to symbol
+  x = (word) literal_symbol(f, "`"); // XXX change to symbol
   if (!x || !pushs(f, 1, x)) return 0;
   pair mxp = (pair) cells(f, 4 * Width(struct pair));
   if (!mxp) return 0;
@@ -481,11 +478,12 @@ static C0(analyze_macro, word b) {
 static C0(analyze_list) {
   word a = A(x), b = B(x);
   if (!twop(b)) return analyze(f, c, m, a); // singleton list has value of first element
-  if (strp(a)) {
+  if (symp(a)) {
     word macro = table_get(f, f->macro, a, 0);
     if (macro) return analyze_macro(f, c, m, macro, b);
-    if (((string) a)->len == 1)
-      switch (((string) a)->text[0]) { // special form?
+    string n = ((symbol) a)->nom;
+    if (n && n->len == 1)
+      switch (n->text[0]) { // special form?
         case '`': return em2(f, c, m, K, twop(b) ? A(b) : nil); // quote
         case ',': return analyze_sequence(f, c, m, b); // sequence
         case ':': return analyze_let(f, c, m, b);

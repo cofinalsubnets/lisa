@@ -13,7 +13,4 @@
 (: reverse (foldl (flip X) 0))
 (: (puts s) (: (f n l) (? (= n l) s (, (putc (sget s n)) (f (+ n 1) l))) (f 0 (slen s))))
 (:: 'L (foldr (\ a l (X X (X a (X l 0)))) 0))
-(:: 'let (X ':))
-(:: 'if (X '?))
-(:: 'do (X ',))
 (: (each f l) (? (X? l) (, (f (A l)) (each f (B l)))))

@@ -47,7 +47,7 @@ status l_ini(core f, bool (*please)(core, size_t), size_t len, word *pool) {
   if (!(f->dict = new_table(f))) return Oom;
   if (!(f->macro = new_table(f))) return Oom;
   for (int i = 0; i < sizeof(ini_dict)/sizeof(*ini_dict); i++) {
-    word k = (word) literal_string(f, ini_dict[i].nom),
+    word k = (word) literal_symbol(f, ini_dict[i].nom),
          v = (word) ini_dict[i].val;
     if (!k || !table_set(f, f->dict, k, v)) return Oom; }
   return Ok; }
