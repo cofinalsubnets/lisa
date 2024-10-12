@@ -24,7 +24,7 @@ struct function_entry {
   P1("trim",  trim), P2("seek",  seek),
   P1("tnew", tnew), P1("tkeys", tkeys), P1("tlen", tlen),
   P3("tset", tset), P3("tget", tget), P3("tdel", tdel),
-  P1("gensym", gensym),
+  P1("gensym", gensym), P1("ev", ev0),
   P1("thd", thda), };
 
 static int stdin_getc(core f, input i) { return getc(stdin); }
@@ -50,6 +50,9 @@ status l_ini(core f, bool (*please)(core, size_t), size_t len, word *pool) {
     word k = (word) literal_symbol(f, ini_dict[i].nom),
          v = (word) ini_dict[i].val;
     if (!k || !table_set(f, f->dict, k, v)) return Oom; }
+  symbol y = literal_symbol(f, "global-namespace");
+  if (!y || !table_set(f, f->dict, (word) y, (word) f->dict))
+    return Oom;
   return Ok; }
 
 void l_close(core f) {

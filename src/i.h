@@ -197,8 +197,7 @@ bool
 status
   l_ini(core, bool (*)(core, size_t), size_t, word*),
   eval(core),
-  read1i(core, input),
-  read1(core, FILE*);
+  read1i(core, input);
 
 intptr_t l_rand(core);
 
@@ -207,7 +206,7 @@ word hash(core, word);
 
 status gc(core, thread, heap, stack, size_t);
 vm print, not, rng,
-   p2, gensym,
+   p2, gensym, ev0,
    Xp, Np, Sp, defmacro,
    ssub, sget, slen,
    symbol_of_string, string_of_symbol,

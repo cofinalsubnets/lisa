@@ -21,15 +21,20 @@ static status repl(core f) {
       f->sp = f->pool + f->len; }
   return Ok; }
 
+static int file_getc(core f, input i) { return getc((FILE*) i->data[0]); }
+static void file_ungetc(core f, input i, char c) { ungetc(c, (FILE*) i->data[0]); }
+static bool file_eof(core f, input i) { return feof((FILE*) i->data[0]); }
 static status run_files(core f, char **av) {
   for (status s; *av; av++) {
-    FILE *i = fopen(*av, "r");
-    if (!i) return
+    FILE *file = fopen(*av, "r");
+    if (!file) return
       fprintf(stderr, "# error opening %s: %s\n", *av, strerror(errno)),
       Eof;
-    while ((s = read1(f, i)) != Eof &&
-           (s = eval(f)) == Ok) f->sp++;
-    fclose(i);
+    void *_i[] = { file_getc, file_ungetc, file_eof, file };
+    input i = (input) _i;
+    // evaluate expressions for side effects
+    while ((s = read1i(f, i)) != Eof && (s = eval(f)) == Ok) f->sp++;
+    fclose(file);
     if (s == Eof) s = Ok;
     if (s != Ok) return report(f, &std_error, s); }
   return Ok; }

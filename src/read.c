@@ -1,10 +1,10 @@
 #include "i.h"
 
-string new_buffer(core f) {
+static string new_buffer(core f) {
   string s = cells(f, Width(struct string) + 1);
   return s ? ini_str(s, sizeof(word)) : s; }
 
-NoInline string grow_buffer(core f, string s) {
+static NoInline string grow_buffer(core f, string s) {
   string t; size_t len = s->len;
   avec(f, s, t = cells(f, Width(struct string) + 2 * b2w(len)));
   if (t) memcpy(ini_str(t, 2 * len)->text, s->text, len);
@@ -55,16 +55,6 @@ static status read1c(core f, input i, int c) {
 status read1i(core f, input i) {
   return read1c(f, i, read_char(f, i)); }
 
-static int file_getc(core f, input i) {
-  return getc((FILE*) i->data[0]); }
-static void file_ungetc(core f, input i, char c) {
-  ungetc(c, (FILE*) i->data[0]); }
-static bool file_eof(core f, input i) {
-  return feof((FILE*) i->data[0]); }
-
-status read1(core f, FILE *file) {
-  void *in[] = { file_getc, file_ungetc, file_eof, file };
-  return read1i(f, (input) in); }
 
 static status reads(core f, input i) {
   word c = read_char(f, i);

@@ -499,6 +499,13 @@ static Vm(define) {
   Unpack(f);
   return op(1, sp[0]); }
 
+Vm(ev0) {
+  Pack(f);
+  status s = eval(f);
+  if (s != Ok) return s;
+  Unpack(f);
+  return op(1, *sp); }
+
 // compile and execute expression
 NoInline status eval(core f) {
   size_t m = 1;
