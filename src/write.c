@@ -9,9 +9,8 @@ static void print_num_r(core f, output o, intptr_t n, int base) {
 
 void print_num(core v, output o, intptr_t n, int base) {
   if (!n) return o->putc(v, o, '0');
-  intptr_t abs_n = n < 0 ? -n : n;
-  print_num_r(v, o, abs_n, base);
-  if (n < 0) o->putc(v, o, '-'); }
+  if (n < 0) o->putc(v, o, '-'), n = -n;
+  print_num_r(v, o, n, base); }
 
 Vm(prc) {
   return Do(ip = (thread) sp[1],
