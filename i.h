@@ -1,6 +1,6 @@
 #ifndef _l_i_h
 #define _l_i_h
-#include "include/l.h"
+#include "l.h"
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>

@@ -1,14 +1,14 @@
 Makefile=Makefile
-nom=gwen
-suff=gw
-bin=bin/$(nom)
-boot=lib/pre.gw
-test=test/*.gw
+nom=lem
+suff=l
+bin=./$(nom)
+boot=lib/pre.$(suff)
+test=test/*.$(suff)
 bbt=$(bin) $(boot) $(test)
 
 #build
 c=$(sort $(wildcard *.c))
-h=$(sort $(wildcard *.h include/*.h))
+h=$(sort $(wildcard *.h))
 o=$(c:.c=.o)
 CFLAGS ?=\
 	-std=gnu11 -g -Os -Wall\
@@ -56,10 +56,10 @@ sloc:
 	cloc --force-lang=Lisp,$(suff) * test/* lib/*
 
 # size of binaries
-bits: $(nom)
+bits: $(bin)
 	du -h $^
 
-disasm: $(nom)
+disasm: $(bin)
 	rizin -A $^
 
 # profiling on linux
@@ -72,7 +72,7 @@ flamegraph.svg: perf.data
 flame: flamegraph.svg
 	xdg-open $<
 repl: $(nom)
-	rlwrap ./$(nom) -i lib/pre.gw
+	rlwrap $(bin) -i $(boot)
 
 .PHONY: default clean test test-lots\
 	install uninstall\

@@ -1,6 +1,9 @@
 perf.data*
 vgcore.*
 *.o
+*.a
+*.so
 .gdb_history
 flamegraph.svg
 gwen
+lem
