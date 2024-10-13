@@ -1,5 +1,12 @@
 #include "i.h"
 
+static long lidx(core, word, word);
+static size_t llen(word);
+static word
+  lassoc(core, word, word),
+  lconcat(core, word, word),
+  rlconcat(core, word, word);
+
 // at all times vm is running a function. thread compiler tracks
 // function state using this type
 typedef struct scope {
@@ -534,3 +541,30 @@ NoInline status eval(core f) {
     f->ip = (thread) *++f->sp,
     f->sp[0] = x;
   return s; }
+
+
+word lassoc(core f, word l, word k) {
+  for (; twop(l); l = B(l)) if (eql(f, k, A(A(l)))) return A(l);
+  return 0; }
+// list concat
+static word lconcat(core f, word l, word n) {
+  if (!twop(l)) return n;
+  avec(f, l, n = lconcat(f, B(l), n));
+  return n ? (word) pairof(f, A(l), n) : n; }
+  
+// reverse list concat
+static word rlconcat(core f, word l, word n) {
+  for (word m; twop(l);) m = l, l = B(l), B(m) = n, n = m;
+  return n; }
+
+// index of item in list
+static long lidx(core f, word l, word x) {
+  for (long i = 0; twop(l); l = B(l), i++)
+    if (eql(f, A(l), x)) return i;
+  return -1; }
+
+// list length
+static size_t llen(word l) {
+  size_t n = 0;
+  while (twop(l)) n++, l = B(l);
+  return n; }

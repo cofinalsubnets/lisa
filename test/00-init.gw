@@ -20,9 +20,7 @@
     (, (test-set 'fail (X x (test-get 'fail)))
        (term-text red-dot)
        (. x))))
- (f l) (? (X? l)
-  (L ', (L report (L '` (A l)) (A l)) (f (B l))))
- (f l)))
+ (X ', (map (\ l (L report (L '` l) l)) l))))
 
 (:: 'assert ttt)
 (:: 'T ttt)

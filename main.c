@@ -3,6 +3,8 @@
 #include <getopt.h>
 #include <unistd.h>
 #include <errno.h>
+#include <stdlib.h>
+#include <stdio.h>
 
 static status report(core, output, status);
 static const char *help = // help message

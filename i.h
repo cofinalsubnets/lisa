@@ -1,11 +1,8 @@
 #ifndef _l_i_h
 #define _l_i_h
 #include "l.h"
-#include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-#include <time.h>
-#include <stdio.h>
 // thanks !!
 
 // one thread of execution
@@ -17,15 +14,72 @@ typedef union cell *cell, *thread;
 typedef struct symbol *symbol;
 
 // return type of outer C interface functions
-typedef enum status {
-  Eof = -1, Ok = 0, Oom, } status,
-  // vm function type
-  vm(core, thread, heap, stack);
+typedef enum l_status status, vm(core, thread, heap, stack);
+#define Ok l_status_ok
+#define Oom l_status_oom
+#define Eof l_status_eof
+typedef vm code;
 
-typedef struct table *table;
-typedef struct char_in *input;
-typedef struct char_out *output;
+// character input/output interfaces
+typedef struct char_in {
+  int (*getc)(core, struct char_in*);
+  void (*ungetc)(core, struct char_in*, char);
+  bool (*eof)(core, struct char_in*);
+  word data[];
+} *input;
+typedef struct char_out {
+  void (*putc)(core, struct char_out*, char);
+  word data[];
+} *output;
 
+// fixed method table structure for basic data types
+typedef struct typ {
+  word (*copy)(core, word, word*, word*);
+  void (*evac)(core, word, word*, word*);
+  bool (*equal)(core, word, word);
+  void (*emit)(core, output, word);
+  //l_mtd_show *show;
+  intptr_t (*hash)(core, word);
+} *typ;
+
+// basic data types
+
+// pairs
+typedef struct pair {
+  vm *ap;
+  typ typ;
+  word a, b;
+} *two, *pair;
+
+// strings
+typedef struct string {
+  vm *ap;
+  typ typ;
+  size_t len;
+  char text[];
+} *string;
+
+// symbols
+typedef struct symbol {
+  vm *ap;
+  typ typ;
+  string nom;
+  word code;
+  struct symbol *l, *r;
+} *symbol;
+
+// hash tables
+typedef struct table {
+  vm *ap;
+  typ typ;
+  uintptr_t len, cap;
+  struct table_entry {
+    word key, val;
+    struct table_entry *next;
+  } **tab;
+} *table;
+
+// runtime core data structure -- 1 core = 1 thread of execution
 struct l_core {
   // vm registers
   thread ip; // instruction pointer
@@ -49,8 +103,6 @@ struct l_core {
     uintptr_t t0; // end time of last gc
     heap cp; }; }; // gc copy pointer
 
-typedef struct typ *typ;
-typedef vm code;
 union cell {
   vm *ap;
   word x;
@@ -61,63 +113,6 @@ struct tag {
   union cell *null, *head, end[];
 } *ttag(cell);
 
-
-typedef struct pair {
-  vm *ap;
-  typ typ;
-  word a, b;
-} *two, *pair;
-
-typedef enum ord { Lt = -1, Eq = 0, Gt = 1, }
-  ord(core, word, word);
-
-typedef struct string {
-  vm *ap;
-  typ typ;
-  size_t len;
-  char text[];
-} *string;
-
-typedef struct symbol {
-  vm *ap;
-  typ typ;
-  string nom;
-  word code;
-  struct symbol *l, *r;
-} *symbol;
-
-typedef struct table {
-  vm *ap;
-  typ typ;
-  uintptr_t len, cap;
-  struct table_entry {
-    word key, val;
-    struct table_entry *next;
-  } **tab;
-} *table;
-
-typedef struct char_in {
-  int (*getc)(core, struct char_in*);
-  void (*ungetc)(core, struct char_in*, char);
-  bool (*eof)(core, struct char_in*);
-  word data[];
-} *input;
-typedef struct char_out {
-  void (*putc)(core, struct char_out*, char);
-  word data[];
-} *output;
-
-//typedef string l_mtd_show(core, word);
-//typedef intptr_t l_mtd_hash(core, word);
-typedef struct typ {
-  word (*copy)(core, word, word*, word*);
-  void (*evac)(core, word, word*, word*);
-  bool (*equal)(core, word, word);
-  void (*emit)(core, output, word);
-  //l_mtd_show *show;
-  intptr_t (*hash)(core, word);
-} *typ;
-
 extern struct typ pair_type, string_type, symbol_type, table_type;
 extern struct char_in std_input;
 extern struct char_out std_output, std_error;
@@ -125,9 +120,7 @@ extern struct char_out std_output, std_error;
 pair
   ini_pair(pair, word, word),
   pairof(core, word, word);
-string
-  ini_str(string, size_t),
-  literal_string(core, const char*);
+string ini_str(string, size_t);
 table
   new_table(core),
   table_set(core, table, word, word);
@@ -147,17 +140,12 @@ void
   transmit(core, output, word),
   print_num(core, output, intptr_t, int),
   outputs(core, output, const char*);
-size_t llen(word);
 word
   table_get(core, table, word, word),
   table_del(core, table, word, word),
-  lassoc(core, word, word),
-  lconcat(core, word, word),
-  rlconcat(core, word, word),
   pushs(core, size_t, ...),
   hash(core, word),
   cp(core, word, word*, word*); // for recursive use by evac functions
-long lidx(core, word, word);
 intptr_t l_rand(core);
 
 bool
@@ -176,7 +164,7 @@ vm print, not, rng,
    Xp, Np, Sp, defmacro,
    ssub, sget, slen, scat,
    symbol_of_string, string_of_symbol,
-   pr, ppr, spr, pspr, prc,
+   prc,
    cons, car, cdr,
    lt, le, eq, gt, ge,
    tset, tget, tdel, tnew, tkeys, tlen,
@@ -184,8 +172,7 @@ vm print, not, rng,
    add, sub, mul, quot, rem,
    data, curry;
 
-#define dtyp(x) R(x)[1].typ
-#define gettyp dtyp
+#define dtyp(x) ptr(x)[1].typ
 #define Width(_) b2w(sizeof(_))
 #define avail(f) (f->sp-f->hp)
 #define getnum(_) ((word)(_)>>1)
@@ -205,8 +192,7 @@ vm print, not, rng,
 
 #define Inline inline __attribute__((always_inline))
 #define NoInline __attribute__((noinline))
-#define R(o) ((cell)(o))
-#define ptr R
+#define ptr(o) ((cell)(o))
 #define datp(_) (ptr(_)->ap==data)
 #define End ((word)0) // vararg sentinel
 #define Pack(f) (f->ip = ip, f->hp = hp, f->sp = sp)
@@ -225,10 +211,9 @@ static Inline size_t b2w(size_t b) {
   return q + (r ? 1 : 0); }
 _Static_assert(-1 >> 1 == -1, "sign extended shift");
 _Static_assert(sizeof(union cell*) == sizeof(union cell), "size");
-#define Vm(n, ...) enum status n(core f, thread ip, heap hp, stack sp, ##__VA_ARGS__)
+#define Vm(n, ...) enum l_status n(core f, thread ip, heap hp, stack sp, ##__VA_ARGS__)
 #define Have(n) if (sp - hp < n) return gc(f, ip, hp, sp, n)
 #define Have1() if (sp == hp) return gc(f, ip, hp, sp, 1)
-#define L() printf("# %s:%d\n", __FILE__, __LINE__)
 #define mix ((uintptr_t)2708237354241864315)
 #define bind(n, x) if (!(n = (x))) return 0
 #define bounded(a, b, c) ((word)(a)<=(word)(b)&&(word)(b)<(word)(c))

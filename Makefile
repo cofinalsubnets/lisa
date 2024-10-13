@@ -1,6 +1,6 @@
 Makefile=Makefile
-nom=lem
-suff=l
+nom=gwen
+suff=gw
 bin=./$(nom)
 boot=lib/pre.$(suff)
 test=test/*.$(suff)
