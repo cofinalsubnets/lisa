@@ -66,8 +66,9 @@ static C0(analyze) {
     if (y == &symbol_type) return analyze_symbol(f, c, m, x, *c); }
   return em2(f, c, m, K, x); }
 
+static vm lazy_bind, drop, define, top_bind;
 static C0(analyze_variable_reference) {
-  return nilp((word) (*c)->par) ? em2(f, c, m, K, x) : // XXX undefined case
+  return nilp((word) (*c)->par) ? em2(f, c, m, top_bind, x) : // XXX undefined case
          pushs(f, 3, c1var, x, (*c)->pals) ? m + 2 :
          0; }
 
@@ -80,7 +81,6 @@ static long index_of(core f, scope c, word var) {
     if (eql(f, var, A(l))) return i;
   return -1; }
 
-static vm lazy_bind, drop, define;
 
 static C1(c2var) {
   word var = *f->sp++,
@@ -450,6 +450,12 @@ static size_t analyze_let(core f, scope *c, size_t m, word x) {
   avec(f, d, m = analyze_let_l(f, c, &d, m, x));
   return m; }
 
+static Vm(top_bind) {
+  word var = ip[1].x;
+  var = table_get(f, f->dict, var, var);
+  ip[0].ap = K;
+  ip[1].x = var;
+  return K(f, ip, hp, sp); }
 static Vm(lazy_bind) {
   word ref = ip[1].x, var = A(A(ref));
   scope env = (scope) B(ref);

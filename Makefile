@@ -1,9 +1,14 @@
 Makefile=Makefile
 nom=gwen
+suff=gw
+bin=bin/$(nom)
+boot=lib/pre.gw
+test=test/*.gw
+bbt=$(bin) $(boot) $(test)
 
 #build
-c=$(sort $(wildcard src/*.c))
-h=$(sort $(wildcard src/*.h))
+c=$(sort $(wildcard *.c))
+h=$(sort $(wildcard *.h include/*.h))
 o=$(c:.c=.o)
 CFLAGS ?=\
 	-std=gnu11 -g -Os -Wall\
@@ -11,16 +16,13 @@ CFLAGS ?=\
 	-fno-stack-protector
 
 default: test
-$(nom): $o $h
+$(bin): $o $h
 	$(CC) -o $@ $o $(CPPFLAGS) $(CFLAGS) $(LDFLAGS)
 %.o: %.c $h $(Makefile)
 	$(CC) -c $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $< -o $@
 
-boot=lib/pre.gw
-test=test/*.gw
-runtests=./$(nom) $(boot) $(test)
-test: $(nom)
-	/usr/bin/env TIMEFORMAT="in %Rs" bash -c "time $(runtests)"
+test: $(bin)
+	/usr/bin/env TIMEFORMAT="in %Rs" bash -c "time $(bbt)"
 
 # install
 DESTDIR ?= $(HOME)
@@ -46,12 +48,12 @@ clean:
 	rm -r `git check-ignore * */*`
 
 # valgrind detects some memory errors
-valg: $(nom)
-	valgrind --error-exitcode=1 $(runtests)
+valg: $(bin)
+	valgrind --error-exitcode=1 $(bbt)
 
 # approximate lines of code
 sloc:
-	cloc --force-lang=Lisp,$(suff) src/* test/* lib/*
+	cloc --force-lang=Lisp,$(suff) * test/* lib/*
 
 # size of binaries
 bits: $(nom)
@@ -61,8 +63,8 @@ disasm: $(nom)
 	rizin -A $^
 
 # profiling on linux
-perf.data: $(nom) $(boot)
-	perf record $(runtests)
+perf.data: $(bin)
+	perf record $(bbt)
 perf: perf.data
 	perf report
 flamegraph.svg: perf.data

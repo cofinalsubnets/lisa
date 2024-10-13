@@ -1,6 +1,6 @@
 #ifndef _l_i_h
 #define _l_i_h
-#include "l.h"
+#include "include/l.h"
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
@@ -33,11 +33,8 @@ struct l_core {
   stack sp; // stack pointer
   // environment
   table dict, macro;
-  word count, rand;
+  word rand;
   symbol symbols;
-
-  input in;
-  output out;
 
   // memory management
   bool (*please)(core, size_t);
@@ -120,14 +117,75 @@ typedef struct typ {
   //l_mtd_show *show;
   intptr_t (*hash)(core, word);
 } *typ;
-word cp(core, word, word*, word*); // for recursive use by evac functions
-bool literal_equal(core, word, word);
-void print_num(core, output, intptr_t, int), outputs(core, output, const char*);
 
 extern struct typ pair_type, string_type, symbol_type, table_type;
 extern struct char_in std_input;
 extern struct char_out std_output, std_error;
 
+pair
+  ini_pair(pair, word, word),
+  pairof(core, word, word);
+string
+  ini_str(string, size_t),
+  literal_string(core, const char*);
+table
+  new_table(core),
+  table_set(core, table, word, word);
+symbol
+  literal_symbol(core, const char*),
+  intern(core, string);
+
+thread
+  thd(core, size_t, ...),
+  mo_n(core, size_t),
+  mo_ini(void*, size_t);
+
+void
+  *bump(core, size_t),
+  *cells(core, size_t),
+  copy_from(core, word*, size_t),
+  transmit(core, output, word),
+  print_num(core, output, intptr_t, int),
+  outputs(core, output, const char*);
+size_t llen(word);
+word
+  table_get(core, table, word, word),
+  table_del(core, table, word, word),
+  lassoc(core, word, word),
+  lconcat(core, word, word),
+  rlconcat(core, word, word),
+  pushs(core, size_t, ...),
+  hash(core, word),
+  cp(core, word, word*, word*); // for recursive use by evac functions
+long lidx(core, word, word);
+intptr_t l_rand(core);
+
+bool
+  eql(core, word, word),
+  static_please(core, size_t),
+  libc_please(core, size_t),
+  literal_equal(core, word, word);
+
+status
+  eval(core),
+  read1i(core, input),
+  gc(core, thread, heap, stack, size_t);
+
+vm print, not, rng,
+   p2, gensym, ev0,
+   Xp, Np, Sp, defmacro,
+   ssub, sget, slen, scat,
+   symbol_of_string, string_of_symbol,
+   pr, ppr, spr, pspr, prc,
+   cons, car, cdr,
+   lt, le, eq, gt, ge,
+   tset, tget, tdel, tnew, tkeys, tlen,
+   seek, peek, poke, trim, thda,
+   add, sub, mul, quot, rem,
+   data, curry;
+
+#define dtyp(x) R(x)[1].typ
+#define gettyp dtyp
 #define Width(_) b2w(sizeof(_))
 #define avail(f) (f->sp-f->hp)
 #define getnum(_) ((word)(_)>>1)
@@ -153,73 +211,6 @@ extern struct char_out std_output, std_error;
 #define End ((word)0) // vararg sentinel
 #define Pack(f) (f->ip = ip, f->hp = hp, f->sp = sp)
 #define Unpack(f) (ip = f->ip, hp = f->hp, sp = f->sp)
-
-pair
-  ini_pair(pair, word, word),
-  pairof(core, word, word);
-string
-  ini_str(string, size_t),
-  literal_string(core, const char*);
-table
-  new_table(core),
-  table_set(core, table, word, word);
-word
-  table_get(core, table, word, word),
-  table_del(core, table, word, word);
-
-symbol
-  literal_symbol(core, const char*),
-  intern(core, string);
-
-thread
-  thd(core, size_t, ...),
-  mo_n(core, size_t),
-  mo_ini(void*, size_t);
-
-void
-  *bump(core, size_t),
-  *cells(core, size_t),
-  copy_from(core, word*, size_t),
-  transmit(core, output, word);
-
-size_t llen(word);
-long lidx(core, word, word);
-word
-  lassoc(core, word, word),
-  lconcat(core, word, word),
-  rlconcat(core, word, word);
-
-bool
-  eql(core, word, word),
-  static_please(core, size_t),
-  libc_please(core, size_t);
-
-status
-  l_ini(core, bool (*)(core, size_t), size_t, word*),
-  eval(core),
-  read1i(core, input);
-
-intptr_t l_rand(core);
-
-word pushs(core, size_t, ...);
-word hash(core, word);
-
-status gc(core, thread, heap, stack, size_t);
-vm print, not, rng,
-   p2, gensym, ev0,
-   Xp, Np, Sp, defmacro,
-   ssub, sget, slen,
-   symbol_of_string, string_of_symbol,
-   pr, ppr, spr, pspr, prc,
-   cons, car, cdr,
-   lt, le, eq, gt, ge,
-   tset, tget, tdel, tnew, tkeys, tlen,
-   seek, peek, poke, trim, thda,
-   add, sub, mul, quot, rem,
-   data, curry;
-
-#define dtyp(x) R(x)[1].typ
-#define gettyp dtyp
 static Inline bool hstrp(cell h) { return datp(h) && dtyp(h) == &string_type; }
 static Inline bool htwop(cell h) { return datp(h) && dtyp(h) == &pair_type; }
 static Inline bool htblp(cell h) { return datp(h) && dtyp(h) == &table_type; }
@@ -234,18 +225,13 @@ static Inline size_t b2w(size_t b) {
   return q + (r ? 1 : 0); }
 _Static_assert(-1 >> 1 == -1, "sign extended shift");
 _Static_assert(sizeof(union cell*) == sizeof(union cell), "size");
-#define Vm(n, ...) enum status\
-  n(core f, thread ip, heap hp, stack sp, ##__VA_ARGS__)
+#define Vm(n, ...) enum status n(core f, thread ip, heap hp, stack sp, ##__VA_ARGS__)
 #define Have(n) if (sp - hp < n) return gc(f, ip, hp, sp, n)
 #define Have1() if (sp == hp) return gc(f, ip, hp, sp, 1)
 #define L() printf("# %s:%d\n", __FILE__, __LINE__)
-#define HashK ((uintptr_t)2708237354241864315)
-#define mix HashK
+#define mix ((uintptr_t)2708237354241864315)
 #define bind(n, x) if (!(n = (x))) return 0
 #define bounded(a, b, c) ((word)(a)<=(word)(b)&&(word)(b)<(word)(c))
-#define RetN(n, x) (ip = (thread) sp[n], sp[n] = (x), ip->ap(f, ip, hp, sp + n))
-#define op RetN
+#define op(n, x) (ip = (thread) sp[n], sp[n] = (x), ip->ap(f, ip, hp, sp + n))
 #define Do(...) ((__VA_ARGS__), ip->ap(f, ip, hp, sp))
-#define max(a, b) ((a)>(b)?(a):(b))
-#define min(a, b) ((a)<(b)?(a):(b))
 #endif

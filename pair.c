@@ -60,8 +60,7 @@ word lconcat(core f, word l, word n) {
   
 // reverse list concat
 word rlconcat(core f, word l, word n) {
-  for (word m; twop(l);)
-    m = l, l = B(l), B(m) = n, n = m;
+  for (word m; twop(l);) m = l, l = B(l), B(m) = n, n = m;
   return n; }
 
 // list length
@@ -81,4 +80,3 @@ Vm(cons) {
   pair w = ini_pair((pair) hp, sp[0], sp[1]);
   hp += Width(struct pair);
   return op(2, (word) w); }
-

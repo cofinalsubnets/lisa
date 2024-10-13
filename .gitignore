@@ -1,4 +1,4 @@
-perf.*
+perf.data*
 vgcore.*
 *.o
 .gdb_history

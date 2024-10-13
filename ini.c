@@ -16,7 +16,7 @@ struct function_entry {
   P1("~",  not),
   P1("rand", rng),
   P2("X",  cons), P1("A",  car), P1("B",  cdr),
-  P2("sget",  sget), P3("ssub",  ssub), P1("slen",  slen),
+  P2("sget",  sget), P3("ssub",  ssub), P1("slen",  slen), P2("scat", scat),
   P1("s?",  Sp), P1("n?", Np), P1("X?",  Xp),
   P2("::", defmacro),
   P1("peek", peek),
@@ -36,7 +36,7 @@ struct char_in std_input = { .getc = stdin_getc, .ungetc = stdin_ungetc, .eof = 
 struct char_out std_output = { .putc = stdout_putc }, std_error = { .putc = stderr_putc };
 
 
-status l_ini(core f, bool (*please)(core, size_t), size_t len, word *pool) {
+static status l_ini(core f, bool (*please)(core, size_t), size_t len, word *pool) {
   word *loop = pool + len;
   memset(f, 0, sizeof(struct l_core));
   f->pool = pool, f->loop = loop;

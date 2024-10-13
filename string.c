@@ -46,6 +46,8 @@ Vm(slen) {
   sp[1] = strp(x) ? putnum(((string)x)->len) : nil;
   return ip->ap(f, ip, hp, sp + 1); }
 
+#define max(a, b) ((a)>(b)?(a):(b))
+#define min(a, b) ((a)<(b)?(a):(b))
 Vm(ssub) {
   thread r = (thread) sp[3];
   if (!strp(sp[0])) sp[3] = nil;
@@ -73,4 +75,18 @@ Vm(sget) {
 string ini_str(string s, size_t len) {
   s->ap = data, s->typ = &string_type, s->len = len;
   return s; }
-
+Vm(scat) {
+  word a = sp[0], b = sp[1];
+  a = strp(a) ? a : nil;
+  b = strp(b) ? b : nil;
+  if (nilp(a)) return op(2, b);
+  if (nilp(b)) return op(2, a);
+  string x = (string) a, y = (string) b;
+  size_t len = x->len + y->len,
+         req = Width(struct string) + b2w(len);
+  Have(req);
+  string z = ini_str((string) hp, len);
+  hp += req;
+  memcpy(z->text, x->text, x->len);
+  memcpy(z->text + x->len, y->text, y->len);
+  return op(2, (word) z); }
