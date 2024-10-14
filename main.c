@@ -1,15 +1,19 @@
-#include "i.h"
+#include "gwen.h"
 #include <stdarg.h>
 #include <getopt.h>
 #include <unistd.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 // input methods to read from source files
-static int file_getc(core f, input i) { return getc((FILE*) i->data[0]); }
-static void file_ungetc(core f, input i, char c) { ungetc(c, (FILE*) i->data[0]); }
-static bool file_eof(core f, input i) { return feof((FILE*) i->data[0]); }
+static int file_getc(gwen_core f, struct gwen_char_in *i) {
+  return getc((FILE*) i->data[0]); }
+static void file_ungetc(gwen_core f, struct gwen_char_in *i, char c) {
+  ungetc(c, (FILE*) i->data[0]); }
+static bool file_eof(gwen_core f, struct gwen_char_in *i) {
+  return feof((FILE*) i->data[0]); }
 
 static const char *help = // help message
   "usage: %s [options] [scripts]\n"
@@ -30,8 +34,8 @@ int main(int ac, char **av) {
 
   if (!*av && !interact) return EXIT_SUCCESS;
 
-  state f = l_open();
-  status s = f ? Ok : Oom;
+  gwen_core f = gwen_open();
+  gwen_status s = f ? Ok : Oom;
 
   for (av += optind; s == Ok && *av; av++) {
     FILE *file = fopen(*av, "r");
@@ -49,10 +53,10 @@ int main(int ac, char **av) {
 
   // repl
   if (s == Ok && interact)
-    for (status t; (t = read1i(f, &std_input)) != Eof;) {
+    for (gwen_status t; (t = read1i(f, &std_input)) != Eof;) {
       if (t == Ok && (t = eval(f)) == Ok)
         transmit(f, &std_output, pop1(f)),
         std_output.putc(f, &std_output, '\n');
       else report(f, &std_error, t), reset_stack(f); }
 
-  return l_close(f), s; }
+  return gwen_close(f), s; }

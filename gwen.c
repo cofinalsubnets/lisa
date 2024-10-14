@@ -1,30 +1,32 @@
 #include "gwen.h"
-#include "i.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
 #include <stdarg.h>
+#include <string.h>
 
-
+// thanks !!
+typedef gwen_word word, *heap, *stack;
+typedef struct gwen_core *core;
+typedef union cell *cell, *thread;
 // basic data type method table
 typedef struct typ {
   word (*copy)(core, word, word*, word*);
   void (*evac)(core, word, word*, word*);
   bool (*equal)(core, word, word);
   void (*emit)(core, output, word);
-  //l_mtd_show *show;
   intptr_t (*hash)(core, word);
 } *typ;
-
+typedef gwen_status status, vm(core, thread, heap, stack);
+typedef struct symbol *symbol;
 union cell {
   vm *ap;
   word x;
   union cell *m;
   void *cast; };
 
-
 _Static_assert(-1 >> 1 == -1, "sign extended shift");
-_Static_assert(sizeof(union cell*) == sizeof(union cell), "size");
+_Static_assert(sizeof(word) == sizeof(union cell), "size");
 
 // basic data types
 
@@ -60,7 +62,7 @@ typedef struct table {
 } *table;
 
 // runtime core data structure -- 1 core = 1 thread of execution
-struct l_core {
+struct gwen_core {
   // vm registers
   thread ip; // instruction pointer
   heap hp; // heap pointer
@@ -81,7 +83,8 @@ struct l_core {
   } *safe;
   union { // gc state
     uintptr_t t0; // end time of last gc
-    heap cp; }; }; // gc copy pointer
+    heap cp; }; };
+
 struct typ pair_type, string_type, symbol_type, table_type;
 static pair
   ini_pair(pair, word, word),
@@ -144,7 +147,7 @@ void reset_stack(core f) { f->sp = f->pool + f->len; }
 #define datp(_) (ptr(_)->ap==data)
 #define Pack(f) (f->ip = ip, f->hp = hp, f->sp = sp)
 #define Unpack(f) (ip = f->ip, hp = f->hp, sp = f->sp)
-#define Vm(n, ...) enum l_status n(core f, thread ip, heap hp, stack sp, ##__VA_ARGS__)
+#define Vm(n, ...) enum gwen_status n(core f, thread ip, heap hp, stack sp, ##__VA_ARGS__)
 #define Have(n) if (sp - hp < n) return gc(f, ip, hp, sp, n)
 #define Have1() if (sp == hp) return gc(f, ip, hp, sp, 1)
 #define mix ((uintptr_t)2708237354241864315)
@@ -228,8 +231,8 @@ static void stdin_ungetc(core f, input i, char c) { ungetc(c, stdin); }
 static bool stdin_eof(core f, input i) { return feof(stdin); }
 static void stdout_putc(core f, output o, char c) { putc(c, stdout); }
 static void stderr_putc(core f, output o, char c) { putc(c, stderr); }
-struct char_in std_input = { .getc = stdin_getc, .ungetc = stdin_ungetc, .eof = stdin_eof };
-struct char_out std_output = { .putc = stdout_putc }, std_error = { .putc = stderr_putc };
+struct gwen_char_in std_input = { .getc = stdin_getc, .ungetc = stdin_ungetc, .eof = stdin_eof };
+struct gwen_char_out std_output = { .putc = stdout_putc }, std_error = { .putc = stderr_putc };
 
 static bool l_define(core f, const char *k, word v) {
   if (!pushs(f, 1, v)) return Oom;
@@ -238,7 +241,7 @@ static bool l_define(core f, const char *k, word v) {
   return y && table_set(f, f->dict, (word) y, v); }
 
 static status l_ini(core f, bool (*please)(core, size_t), size_t len, word *pool) {
-  memset(f, 0, sizeof(struct l_core));
+  memset(f, 0, sizeof(struct gwen_core));
   f->rand = f->t0 = clock();
   f->sp = f->loop = (f->hp = f->pool = pool) + (f->len = len);
   f->please = please;
@@ -249,17 +252,17 @@ static status l_ini(core f, bool (*please)(core, size_t), size_t len, word *pool
       return Oom;
   return l_define(f, "global-namespace", (word) f->dict) ? Ok : Oom; }
 
-void l_close(core f) {
+void gwen_close(core f) {
   if (f) free(f->pool < f->loop ? f->pool : f->loop), free(f); }
 
-l_core l_open(void) {
-  core f = malloc(sizeof(struct l_core));
+core gwen_open(void) {
+  core f = malloc(sizeof(struct gwen_core));
   if (!f) return NULL;
   const size_t len0 = 1;
   word *pool = malloc(2 * len0 * sizeof(word));
   if (!pool) return free(f), NULL;
   status s = l_ini(f, libc_please, len0, pool);
-  return s == Ok ? f : (l_close(f), NULL); }
+  return s == Ok ? f : (gwen_close(f), NULL); }
 
 
 static NoInline word pushsr(core f, size_t m, size_t n, va_list xs) {
@@ -412,7 +415,7 @@ void *bump(core f, size_t n) {
   f->hp += n;
   return x; }
 
-void *cells(state f, size_t n) { return
+void *cells(core f, size_t n) { return
   n <= avail(f) || f->please(f, n) ? bump(f, n) : 0; }
 
   /*
@@ -498,7 +501,7 @@ NoInline void copy_from(core f, word *p0, size_t len0) {
     else { for (; k->ap; k++) k->x = cp(f, k->x, p0, t0); // is thread
            f->cp = (word*) k + 2; } }
 
-NoInline word cp(state v, word x, word *p0, word *t0) {
+NoInline word cp(core v, word x, word *p0, word *t0) {
   // if it's a number or out of managed memory then return it
   if (!bounded(p0, x, t0)) return x;
   cell src = (cell) x;
@@ -585,14 +588,14 @@ static Vm(thda) {
   hp += n + Width(struct tag);
   return op(1, (word) k); }
 
-static word cp_two(state v, word x, word *p0, word *t0) {
+static word cp_two(core v, word x, word *p0, word *t0) {
   pair src = (pair) x,
        dst = bump(v, Width(struct pair));
   dst->ap = data, dst->typ = &pair_type;
   dst->a = src->a, dst->b = src->b;
   return (word) (src->ap = (vm*) dst); }
 
-static void wk_two(state v, word x, word *p0, word *t0) {
+static void wk_two(core v, word x, word *p0, word *t0) {
   v->cp += Width(struct pair);
   A(x) = cp(v, A(x), p0, t0);
   B(x) = cp(v, B(x), p0, t0); }
@@ -603,7 +606,7 @@ static void print_two(core v, output o, word x) {
     if (!twop(x = B(x))) { o->putc(v, o, ')'); break; } } }
 
 // FIXME could overflow the stack -- use off pool for this
-static bool eq_two(state f, word x, word y) {
+static bool eq_two(core f, word x, word y) {
   return eql(f, A(x), A(y)) && eql(f, B(x), B(y)); }
 
 static word hash_two(core v, word x) {
@@ -635,12 +638,12 @@ Vm(cons) {
   return op(2, (word) w); }
 
 
-static word copy_string(state v, word x, word *p0, word *t0) {
+static word copy_string(core v, word x, word *p0, word *t0) {
   string src = (string) x;
   size_t len = sizeof(struct string) + src->len;
   return (word) (src->ap = memcpy(bump(v, b2w(len)), src, len)); }
 
-static void walk_string(state v, word x, word *p0, word *t0) {
+static void walk_string(core v, word x, word *p0, word *t0) {
   v->cp += Width(struct string) + b2w(((string) x)->len); }
 
 static void print_string(core v, output o, word _) {
@@ -663,7 +666,7 @@ static word hash_string(core v, word _) {
   while (words--) h = mix * (h ^ (mix * ws[words]));
   return h; }
 
-static bool string_equal(state f, word x, word y) {
+static bool string_equal(core f, word x, word y) {
   string a = (string) x, b = (string) y;
   if (a->len != b->len) return false;
   return 0 == strncmp(a->text, b->text, a->len); }
