@@ -42,7 +42,7 @@ int main(int ac, char **av) {
     void *_i[] = { file_getc, file_ungetc, file_eof, file };
     input i = (input) _i;
     // evaluate expressions for side effects
-    while ((s = read1i(f, i)) != Eof && (s = eval(f)) == Ok) f->sp++;
+    while ((s = read1i(f, i)) != Eof && (s = eval(f)) == Ok) pop1(f);
     fclose(file);
     if (s == Eof) s = Ok;
     if (s != Ok) report(f, &std_error, s); }
@@ -53,6 +53,6 @@ int main(int ac, char **av) {
       if (t == Ok && (t = eval(f)) == Ok)
         transmit(f, &std_output, pop1(f)),
         std_output.putc(f, &std_output, '\n');
-      else report(f, &std_error, t), f->sp = f->pool + f->len; }
+      else report(f, &std_error, t), reset_stack(f); }
 
   return l_close(f), s; }

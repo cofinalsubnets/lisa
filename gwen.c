@@ -4,6 +4,197 @@
 #include <stdio.h>
 #include <time.h>
 #include <stdarg.h>
+
+
+// basic data type method table
+typedef struct typ {
+  word (*copy)(core, word, word*, word*);
+  void (*evac)(core, word, word*, word*);
+  bool (*equal)(core, word, word);
+  void (*emit)(core, output, word);
+  //l_mtd_show *show;
+  intptr_t (*hash)(core, word);
+} *typ;
+
+union cell {
+  vm *ap;
+  word x;
+  union cell *m;
+  void *cast; };
+
+
+_Static_assert(-1 >> 1 == -1, "sign extended shift");
+_Static_assert(sizeof(union cell*) == sizeof(union cell), "size");
+
+// basic data types
+
+// pairs
+typedef struct pair {
+  vm *ap; typ typ;
+  word a, b;
+} *two, *pair;
+
+// strings
+typedef struct string {
+  vm *ap; typ typ;
+  size_t len;
+  char text[];
+} *string;
+
+// symbols
+typedef struct symbol {
+  vm *ap; typ typ;
+  string nom;
+  word code;
+  struct symbol *l, *r;
+} *symbol;
+
+// hash tables
+typedef struct table {
+  vm *ap; typ typ;
+  uintptr_t len, cap;
+  struct table_entry {
+    word key, val;
+    struct table_entry *next;
+  } **tab;
+} *table;
+
+// runtime core data structure -- 1 core = 1 thread of execution
+struct l_core {
+  // vm registers
+  thread ip; // instruction pointer
+  heap hp; // heap pointer
+  stack sp; // stack pointer
+  // environment
+  table dict, macro; // global environment and macros
+  word rand; // random seed
+  symbol symbols; // internal symbols
+
+  // memory management
+  bool (*please)(core, size_t); // gc routine
+  word len, // size of each pool
+       *pool, // on pool
+       *loop; // off pool
+  struct mm { // gc save list
+    word *addr; // stack address of value
+    struct mm *next; // prior list
+  } *safe;
+  union { // gc state
+    uintptr_t t0; // end time of last gc
+    heap cp; }; }; // gc copy pointer
+struct typ pair_type, string_type, symbol_type, table_type;
+static pair
+  ini_pair(pair, word, word),
+  pairof(core, word, word);
+static table
+  new_table(core),
+  table_set(core, table, word, word);
+static symbol
+  literal_symbol(core, const char*),
+  intern(core, string);
+static vm print, not, rng, data,
+   gensym, ev0,
+   Xp, Np, Sp, defmacro,
+   ssub, sget, slen, scat,
+   prc,
+   cons, car, cdr,
+   lt, le, eq, gt, ge,
+   tset, tget, tdel, tnew, tkeys, tlen,
+   seek, peek, poke, trim, thda,
+   add, sub, mul, quot, rem,
+   curry;
+static void
+  *bump(core, size_t),
+  *cells(core, size_t),
+  copy_from(core, word*, size_t),
+  print_num(core, output, intptr_t, int);
+static status
+  gc(core, thread, heap, stack, size_t);
+static bool
+//  static_please(core, size_t),
+  eql(core, word, word),
+  libc_please(core, size_t),
+  literal_equal(core, word, word);
+
+static word
+  table_get(core, table, word, word),
+  pushs(core, size_t, ...),
+  hash(core, word),
+  cp(core, word, word*, word*); // for recursive use by evac functions
+#define dtyp(x) ((typ)ptr(x)[1].m)
+#define Width(_) b2w(sizeof(_))
+#define avail(f) (f->sp-f->hp)
+#define getnum(_) ((word)(_)>>1)
+#define putnum(_) (((word)(_)<<1)|1)
+#define nil putnum(0)
+#define MM(f,r) ((f->safe=&((struct mm){(word*)(r),f->safe})))
+#define UM(f) (f->safe=f->safe->next)
+#define avec(f, y, ...) (MM(f,&(y)),(__VA_ARGS__),UM(f))
+#define A(o) ((two)(o))->a
+#define B(o) ((two)(o))->b
+word pop1(core f) { return *f->sp++; }
+void reset_stack(core f) { f->sp = f->pool + f->len; }
+#define pop1(f) (*((f)->sp++))
+#define nilp(_) ((_)==nil)
+#define nump(_) ((word)(_)&1)
+#define homp(_) (!nump(_))
+#define Inline inline __attribute__((always_inline))
+#define NoInline __attribute__((noinline))
+#define ptr(o) ((cell)(o))
+#define datp(_) (ptr(_)->ap==data)
+#define Pack(f) (f->ip = ip, f->hp = hp, f->sp = sp)
+#define Unpack(f) (ip = f->ip, hp = f->hp, sp = f->sp)
+#define Vm(n, ...) enum l_status n(core f, thread ip, heap hp, stack sp, ##__VA_ARGS__)
+#define Have(n) if (sp - hp < n) return gc(f, ip, hp, sp, n)
+#define Have1() if (sp == hp) return gc(f, ip, hp, sp, 1)
+#define mix ((uintptr_t)2708237354241864315)
+#define bind(n, x) if (!(n = (x))) return 0
+#define bounded(a, b, c) ((word)(a)<=(word)(b)&&(word)(b)<(word)(c))
+#define op(n, x) (ip = (thread) sp[n], sp[n] = (x), ip->ap(f, ip, hp, sp + n))
+#define Do(...) ((__VA_ARGS__), ip->ap(f, ip, hp, sp))
+
+static Inline bool hstrp(cell h) { return datp(h) && dtyp(h) == &string_type; }
+static Inline bool htwop(cell h) { return datp(h) && dtyp(h) == &pair_type; }
+static Inline bool htblp(cell h) { return datp(h) && dtyp(h) == &table_type; }
+static Inline bool hsymp(cell h) { return datp(h) && dtyp(h) == &symbol_type; }
+static Inline bool strp(word _) { return homp(_) && hstrp((cell) _); }
+static Inline bool twop(word _) { return homp(_) && htwop((cell) _); }
+static Inline bool tblp(word _) { return homp(_) && htblp((cell) _); }
+static Inline bool symp(word _) { return homp(_) && hsymp((cell) _); }
+static Inline void outputs(core f, output o, const char *s) {
+  while (*s) o->putc(f, o, *s++); }
+static Inline struct tag {
+  union cell *null, *head, end[];
+} *ttag(thread k) {
+  while (k->ap) k++;
+  return (struct tag*) k; }
+
+//
+// functions are laid out in memory like this
+//
+// *|*|*|*|*|*|0|^
+// * = function pointer or inline value
+// ? = function name / metadata (optional)
+// 0 = null
+// ^ = pointer to head of function
+//
+// this way we can support internal pointers for branch
+// destinations, return addresses, etc, while letting
+// the garbage collector always find the head.
+static Inline thread mo_ini(void *_, size_t len) {
+  struct tag *t = (struct tag*) ((cell)_ + len);
+  return t->null = NULL, t->head = _; }
+
+static Inline string ini_str(string s, size_t len) {
+  s->ap = data, s->typ = &string_type, s->len = len;
+  return s; }
+
+
+// align bytes up to the nearest word
+static Inline size_t b2w(size_t b) {
+  size_t q = b / sizeof(word), r = b % sizeof(word);
+  return q + (r ? 1 : 0); }
+
 #define P1(n,i) { n, ((union cell[]){{i}})}
 #define P2(n,i) { n, ((union cell[]){{curry}, {.x=putnum(2)},{i}})}
 #define P3(n,i) { n, ((union cell[]){{curry}, {.x=putnum(3)},{i}})}
@@ -189,12 +380,12 @@ void print_num(core v, output o, intptr_t n, int base) {
   if (n < 0) o->putc(v, o, '-'), n = -n;
   print_num_r(v, o, n, base); }
 
-Vm(prc) {
+static Vm(prc) {
   return Do(ip = (thread) sp[1],
             std_output.putc(f, &std_output, getnum(sp[1] = sp[0])),
             sp++); }
 
-Vm(print) {
+static Vm(print) {
   transmit(f, &std_output, *sp);
   std_output.putc(f, &std_output, '\n');
   return op(1, *sp); }
@@ -212,7 +403,7 @@ void report(core f, output o, status s) {
       print_num(f, o, f->len * sizeof(word), 10);
       outputs(f, o, "B\n"); } }
 
-NoInline Vm(gc, size_t n) {
+static NoInline Vm(gc, size_t n) {
   return Pack(f), !f->please(f, n) ? Oom :
     f->ip->ap(f, f->ip, f->hp, f->sp); }
 
@@ -224,11 +415,13 @@ void *bump(core f, size_t n) {
 void *cells(state f, size_t n) { return
   n <= avail(f) || f->please(f, n) ? bump(f, n) : 0; }
 
+  /*
 bool static_please(core f, size_t req) {
   word *p0 = f->pool, *p1 = f->loop;
   f->pool = p1, f->loop = p0;
   copy_from(f, p0, f->len);
   return avail(f) >= req; }
+  */
 
 // garbage collector
 // please : bool la size_t
@@ -329,35 +522,35 @@ static word l_rand(core f) {
   return f->rand = liprng(f->rand); }
 
 
-Vm(add) { return op(2, putnum(getnum(sp[0])+getnum(sp[1]))); }
-Vm(sub) { return op(2, putnum(getnum(sp[0])-getnum(sp[1]))); }
-Vm(mul) { return op(2, putnum(getnum(sp[0])*getnum(sp[1]))); }
-Vm(quot) { return op(2, nilp(sp[1]) ? nil : putnum(getnum(sp[0])/getnum(sp[1]))); }
-Vm(rem) { return op(2, nilp(sp[1]) ? nil : putnum(getnum(sp[0])%getnum(sp[1]))); }
-Vm(eq) { return op(2, eql(f, sp[0], sp[1]) ? putnum(-1) : nil); }
-Vm(lt) { return op(2, sp[0] < sp[1] ? putnum(-1) : nil); }
-Vm(le) { return op(2, sp[0] <= sp[1] ? putnum(-1) : nil); }
-Vm(gt) { return op(2, sp[0] > sp[1] ? putnum(-1) : nil); }
-Vm(ge) { return op(2, sp[0] >= sp[1] ? putnum(-1) : nil);}
-Vm(not) { return op(1, ~sp[0] | 1); }
-Vm(rng) { return op(1, putnum(l_rand(f))); }
+static Vm(add) { return op(2, putnum(getnum(sp[0])+getnum(sp[1]))); }
+static Vm(sub) { return op(2, putnum(getnum(sp[0])-getnum(sp[1]))); }
+static Vm(mul) { return op(2, putnum(getnum(sp[0])*getnum(sp[1]))); }
+static Vm(quot) { return op(2, nilp(sp[1]) ? nil : putnum(getnum(sp[0])/getnum(sp[1]))); }
+static Vm(rem) { return op(2, nilp(sp[1]) ? nil : putnum(getnum(sp[0])%getnum(sp[1]))); }
+static Vm(eq) { return op(2, eql(f, sp[0], sp[1]) ? putnum(-1) : nil); }
+static Vm(lt) { return op(2, sp[0] < sp[1] ? putnum(-1) : nil); }
+static Vm(le) { return op(2, sp[0] <= sp[1] ? putnum(-1) : nil); }
+static Vm(gt) { return op(2, sp[0] > sp[1] ? putnum(-1) : nil); }
+static Vm(ge) { return op(2, sp[0] >= sp[1] ? putnum(-1) : nil);}
+static Vm(not) { return op(1, ~sp[0] | 1); }
+static Vm(rng) { return op(1, putnum(l_rand(f))); }
 
-Vm(Xp) { return
+static Vm(Xp) { return
   ip = (thread) sp[1],
   sp[1] = twop(sp[0]) ? putnum(-1) : nil,
   ip->ap(f, ip, hp, sp + 1); }
 
-Vm(Np) { return
+static Vm(Np) { return
   ip = (thread) sp[1],
   sp[1] = nump(sp[0]) ? putnum(-1) : nil,
   ip->ap(f, ip, hp, sp + 1); }
 
-Vm(Sp) { return
+static Vm(Sp) { return
   ip = (thread) sp[1],
   sp[1] = strp(sp[0]) ? putnum(-1) : nil,
   ip->ap(f, ip, hp, sp + 1); }
 
-bool eql(core f, word a, word b) {
+static bool eql(core f, word a, word b) {
   if (a == b) return true;
   if (nump(a | b) ||
       ptr(a)->ap != data ||
@@ -365,28 +558,27 @@ bool eql(core f, word a, word b) {
       dtyp(a) != dtyp(b)) return false;
   return dtyp(a)->equal(f, a, b); }
 
-bool literal_equal(core f, word a, word b) { return a == b; }
+static bool literal_equal(core f, word a, word b) { return a == b; }
 
-
-Vm(trim) {
+static Vm(trim) {
   thread k = (thread) sp[0];
   ttag(k)->head = k;
   return op(1, (word) k); }
 
-Vm(seek) {
+static Vm(seek) {
   thread k = (thread) sp[1];
   return op(2, (word) (k + getnum(sp[0]))); }
 
-Vm(peek) {
+static Vm(peek) {
   thread k = (thread) sp[0];
   return op(1, k[0].x); }
 
-Vm(poke) {
+static Vm(poke) {
   thread k = (thread) sp[1];
   k->x = sp[0];
   return op(2, (word) k); }
 
-Vm(thda) {
+static Vm(thda) {
   size_t n = getnum(sp[0]);
   Have(n + Width(struct tag));
   thread k = mo_ini(memset(hp, -1, n * sizeof(word)), n);
@@ -418,12 +610,6 @@ static word hash_two(core v, word x) {
   word hc = hash(v, A(x)) * hash(v, B(x));
   return hc ^ mix; }
 
-struct typ pair_type = {
-  .hash = hash_two,
-  .copy = cp_two,
-  .evac = wk_two,
-  .emit = print_two,
-  .equal = eq_two, };
 
 pair ini_pair(two w, word a, word b) {
   w->ap = data, w->typ = &pair_type;
@@ -481,13 +667,6 @@ static bool string_equal(state f, word x, word y) {
   string a = (string) x, b = (string) y;
   if (a->len != b->len) return false;
   return 0 == strncmp(a->text, b->text, a->len); }
-
-struct typ string_type = {
-  .hash = hash_string,
-  .copy = copy_string,
-  .evac = walk_string,
-  .emit = print_string,
-  .equal = string_equal, };
 
 Vm(slen) {
   word x = sp[0];
@@ -573,14 +752,6 @@ static void print_symbol(core f, output o, word x) {
   if (s) for (int i = 0; i < s->len; o->putc(f, o, s->text[i++]));
   else outputs(f, o, "#gensym@"), print_num(f, o, x, 16); }
 
-struct typ symbol_type = {
-  .hash = hash_symbol,
-  .copy = copy_symbol,
-  .evac = walk_symbol,
-  .equal = literal_equal,
-  .emit = print_symbol,
-};
-
 
 static symbol intern_r(core v, string b, symbol *y) {
   symbol z = *y;
@@ -613,20 +784,6 @@ Vm(gensym) {
   symbol y = (symbol) hp;
   hp += req;
   return op(1, (word) ini_anon(y, l_rand(f))); }
-
-Vm(string_of_symbol) {
-  word x = sp[0];
-  if (!symp(x)) return op(1, nil);
-  string y = ((symbol) x)->nom;
-  return op(1, y ? (word) y : nil); }
-
-Vm(symbol_of_string) {
-  word x = sp[0];
-  if (!strp(x)) return op(1, nil);
-  Pack(f);
-  symbol y = intern(f, (string) x);
-  Unpack(f);
-  return !y ? Oom : op(1, (word) y); }
 
 
 static Inline word table_load(table t) {
@@ -673,13 +830,6 @@ static void print_table(core f, output o, word x) {
   print_num(f, o, t->cap, 10);
   o->putc(f, o, '@');
   print_num(f, o, x, 16); }
-
-struct typ table_type = {
-  .hash = hash_table,
-  .copy = copy_table,
-  .evac = walk_table,
-  .equal = literal_equal,
-  .emit = print_table, };
 
 // this is a totally ad hoc, unproven hashing method.
 //
@@ -1409,3 +1559,8 @@ static size_t llen(word l) {
 static thread mo_n(core f, size_t n) {
   thread k = cells(f, n + Width(struct tag));
   return !k ? k : mo_ini(k, n); }
+
+struct typ pair_type = { .hash = hash_two, .copy = cp_two, .evac = wk_two, .emit = print_two, .equal = eq_two, };
+struct typ string_type = { .hash = hash_string, .copy = copy_string, .evac = walk_string, .emit = print_string, .equal = string_equal, };
+struct typ symbol_type = { .hash = hash_symbol, .copy = copy_symbol, .evac = walk_symbol, .equal = literal_equal, .emit = print_symbol, };
+struct typ table_type = { .hash = hash_table, .copy = copy_table, .evac = walk_table, .equal = literal_equal, .emit = print_table, };
