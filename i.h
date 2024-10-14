@@ -111,7 +111,7 @@ union cell {
 
 struct tag {
   union cell *null, *head, end[];
-} *ttag(cell);
+};
 
 extern struct typ pair_type, string_type, symbol_type, table_type;
 extern struct char_in std_input;
@@ -138,8 +138,7 @@ void
   *cells(core, size_t),
   copy_from(core, word*, size_t),
   transmit(core, output, word),
-  print_num(core, output, intptr_t, int),
-  outputs(core, output, const char*);
+  print_num(core, output, intptr_t, int);
 word
   table_get(core, table, word, word),
   table_del(core, table, word, word),
@@ -205,6 +204,11 @@ static Inline bool strp(word _) { return homp(_) && hstrp((cell) _); }
 static Inline bool twop(word _) { return homp(_) && htwop((cell) _); }
 static Inline bool tblp(word _) { return homp(_) && htblp((cell) _); }
 static Inline bool symp(word _) { return homp(_) && hsymp((cell) _); }
+static Inline void outputs(core f, output o, const char *s) {
+  while (*s) o->putc(f, o, *s++); }
+static Inline struct tag *ttag(thread k) {
+  while (k->ap) k++;
+  return (struct tag*) k; }
 // align bytes up to the nearest word
 static Inline size_t b2w(size_t b) {
   size_t q = b / sizeof(word), r = b % sizeof(word);

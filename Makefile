@@ -11,9 +11,10 @@ c=$(sort $(wildcard *.c))
 h=$(sort $(wildcard *.h))
 o=$(c:.c=.o)
 CFLAGS ?=\
-	-std=gnu11 -g -Os -Wall\
+	-std=gnu11 -g -O2 -Wall\
  	-Wstrict-prototypes -Wno-shift-negative-value\
-	-fno-stack-protector
+	-fno-asynchronous-unwind-tables\
+	-fpic -fno-stack-protector
 
 default: test
 $(bin): $o $h

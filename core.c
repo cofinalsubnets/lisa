@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
+#include <stdarg.h>
 #define P1(n,i) { n, ((union cell[]){{i}})}
 #define P2(n,i) { n, ((union cell[]){{curry}, {.x=putnum(2)},{i}})}
 #define P3(n,i) { n, ((union cell[]){{curry}, {.x=putnum(3)},{i}})}
@@ -38,6 +39,11 @@ static void stderr_putc(core f, output o, char c) { putc(c, stderr); }
 struct char_in std_input = { .getc = stdin_getc, .ungetc = stdin_ungetc, .eof = stdin_eof };
 struct char_out std_output = { .putc = stdout_putc }, std_error = { .putc = stderr_putc };
 
+static bool l_define(core f, const char *k, word v) {
+  if (!pushs(f, 1, v)) return Oom;
+  symbol y = literal_symbol(f, k);
+  v = pop1(f);
+  return y && table_set(f, f->dict, (word) y, v); }
 
 static status l_ini(core f, bool (*please)(core, size_t), size_t len, word *pool) {
   word *loop = pool + len;
@@ -49,14 +55,10 @@ static status l_ini(core f, bool (*please)(core, size_t), size_t len, word *pool
   f->hp = pool, f->sp = pool + len;
   if (!(f->dict = new_table(f))) return Oom;
   if (!(f->macro = new_table(f))) return Oom;
-  for (int i = 0; i < sizeof(ini_dict)/sizeof(*ini_dict); i++) {
-    word k = (word) literal_symbol(f, ini_dict[i].nom),
-         v = (word) ini_dict[i].val;
-    if (!k || !table_set(f, f->dict, k, v)) return Oom; }
-  symbol y = literal_symbol(f, "global-namespace");
-  if (!y || !table_set(f, f->dict, (word) y, (word) f->dict))
-    return Oom;
-  return Ok; }
+  for (int i = 0; i < sizeof(ini_dict)/sizeof(*ini_dict); i++)
+    if (!l_define(f, ini_dict[i].nom, (word) ini_dict[i].val))
+      return Oom;
+  return l_define(f, "global-namespace", (word) f->dict) ? Ok : Oom; }
 
 void l_close(core f) {
   if (f) free(f->pool < f->loop ? f->pool : f->loop), free(f); }
@@ -70,7 +72,6 @@ l_core l_open(void) {
   status s = l_ini(f, libc_please, len0, pool);
   return s == Ok ? f : (l_close(f), NULL); }
 
-#include <stdarg.h>
 
 static NoInline word pushsr(core f, size_t m, size_t n, va_list xs) {
   if (!n) return f->please(f, m) ? m : n;
@@ -86,8 +87,6 @@ word pushs(core f, size_t m, ...) {
   va_end(xs);
   return r; }
   
-#include <stdlib.h>
-#include <stdio.h>
 
 static string new_buffer(core f) {
   string s = cells(f, Width(struct string) + 1);
@@ -208,16 +207,11 @@ Vm(print) {
   std_output.putc(f, &std_output, '\n');
   return op(1, *sp); }
 
-void outputs(core f, output o, const char *s) {
-  while (*s) o->putc(f, o, *s++); }
 
 void transmit(core f, output out, word x) {
   if (nump(x)) print_num(f, out, getnum(x), 10);
   else if (ptr(x)->ap == data) ptr(x)[1].typ->emit(f, out, x);
   else out->putc(f, out, '#'), print_num(f, out, x, 16); }
-
-#include <time.h>
-
 
 NoInline Vm(gc, size_t n) {
   return Pack(f), !f->please(f, n) ? Oom :
