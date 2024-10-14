@@ -3,9 +3,10 @@
 static intptr_t liprng(intptr_t seed) {
   const word steele_vigna_2021 = 0xaf251af3b0f025b5;
   return (steele_vigna_2021 * seed + 1) >> 8; }
-
-word l_rand(core f) {
+static word l_rand(core f) {
   return f->rand = liprng(f->rand); }
+
+
 Vm(add) { return op(2, putnum(getnum(sp[0])+getnum(sp[1]))); }
 Vm(sub) { return op(2, putnum(getnum(sp[0])-getnum(sp[1]))); }
 Vm(mul) { return op(2, putnum(getnum(sp[0])*getnum(sp[1]))); }
@@ -39,31 +40,11 @@ bool eql(core f, word a, word b) {
   if (nump(a | b) ||
       ptr(a)->ap != data ||
       ptr(b)->ap != data ||
-      ptr(a)[1].typ != ptr(b)[1].typ) return false;
-  return ptr(a)[1].typ->equal(f, a, b); }
+      dtyp(a) != dtyp(b)) return false;
+  return dtyp(a)->equal(f, a, b); }
 
 bool literal_equal(core f, word a, word b) { return a == b; }
 
-//
-// functions are laid out in memory like this
-//
-// *|*|*|*|*|*|0|^
-// * = function pointer or inline value
-// ? = function name / metadata (optional)
-// 0 = null
-// ^ = pointer to head of function
-//
-// this way we can support internal pointers for branch
-// destinations, return addresses, etc, while letting
-// the garbage collector always find the head.
-thread mo_ini(void *_, size_t len) {
-  struct tag *t = (void*) ((cell) _ + len);
-  return t->null = NULL, t->head = _; }
-
-// allocate a thread
-thread mo_n(core f, size_t n) {
-  thread k = cells(f, n + Width(struct tag));
-  return !k ? k : mo_ini(k, n); }
 
 Vm(trim) {
   thread k = (thread) sp[0];
@@ -217,10 +198,6 @@ Vm(sget) {
     i = max(i, 0);
     sp[2] = putnum(s->text[i]); }
   return r->ap(f, r, hp, sp + 2); }
-
-string ini_str(string s, size_t len) {
-  s->ap = data, s->typ = &string_type, s->len = len;
-  return s; }
 
 Vm(scat) {
   word a = sp[0], b = sp[1];

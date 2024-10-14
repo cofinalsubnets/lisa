@@ -7,7 +7,7 @@
 #define P2(n,i) { n, ((union cell[]){{curry}, {.x=putnum(2)},{i}})}
 #define P3(n,i) { n, ((union cell[]){{curry}, {.x=putnum(3)},{i}})}
 
-struct function_entry {
+static struct function_entry {
   const char *nom;
   union cell *val;
 } ini_dict[] = {
@@ -46,15 +46,12 @@ static bool l_define(core f, const char *k, word v) {
   return y && table_set(f, f->dict, (word) y, v); }
 
 static status l_ini(core f, bool (*please)(core, size_t), size_t len, word *pool) {
-  word *loop = pool + len;
   memset(f, 0, sizeof(struct l_core));
-  f->pool = pool, f->loop = loop;
   f->rand = f->t0 = clock();
+  f->sp = f->loop = (f->hp = f->pool = pool) + (f->len = len);
   f->please = please;
-  f->len = len, f->pool = pool, f->loop = loop;
-  f->hp = pool, f->sp = pool + len;
-  if (!(f->dict = new_table(f))) return Oom;
-  if (!(f->macro = new_table(f))) return Oom;
+  if (!(f->dict = new_table(f)) ||
+      !(f->macro = new_table(f))) return Oom;
   for (int i = 0; i < sizeof(ini_dict)/sizeof(*ini_dict); i++)
     if (!l_define(f, ini_dict[i].nom, (word) ini_dict[i].val))
       return Oom;
@@ -86,7 +83,6 @@ word pushs(core f, size_t m, ...) {
   else for (n = 0, f->sp -= m; n < m; f->sp[n++] = r = va_arg(xs, word));
   va_end(xs);
   return r; }
-  
 
 static string new_buffer(core f) {
   string s = cells(f, Width(struct string) + 1);
@@ -97,10 +93,6 @@ static NoInline string grow_buffer(core f, string s) {
   avec(f, s, t = cells(f, Width(struct string) + 2 * b2w(len)));
   if (t) memcpy(ini_str(t, 2 * len)->text, s->text, len);
   return t; }
-
-#define Getc getc
-#define Ungetc ungetc
-#define Feof feof
 
 // get the next significant character from the stream
 static NoInline int read_char(core f, input i) {
@@ -185,9 +177,8 @@ static NoInline word read_atom(core f, input i, int c) {
   return *e == 0 ? putnum(n) : (word) intern(f, a); }
 
 
-static const char digits[] = "0123456789abcdefghijklmnopqrstuvwxyz";
-#define DEFAULT_NUMBER_OUTPUT_BASE 10
 static void print_num_r(core f, output o, intptr_t n, int base) {
+  const char digits[] = "0123456789abcdefghijklmnopqrstuvwxyz";
   ldiv_t qr = ldiv(n, base);
   if (qr.quot) print_num_r(f, o, qr.quot, base);
   o->putc(f, o, digits[qr.rem]); }
@@ -207,15 +198,23 @@ Vm(print) {
   std_output.putc(f, &std_output, '\n');
   return op(1, *sp); }
 
-
 void transmit(core f, output out, word x) {
   if (nump(x)) print_num(f, out, getnum(x), 10);
-  else if (ptr(x)->ap == data) ptr(x)[1].typ->emit(f, out, x);
+  else if (ptr(x)->ap == data) dtyp(x)->emit(f, out, x);
   else out->putc(f, out, '#'), print_num(f, out, x, 16); }
+
+void report(core f, output o, status s) {
+  switch (s) {
+    case Ok: case Eof: return;
+    case Oom:
+      outputs(f, o, "# oom@2*");
+      print_num(f, o, f->len * sizeof(word), 10);
+      outputs(f, o, "B\n"); } }
 
 NoInline Vm(gc, size_t n) {
   return Pack(f), !f->please(f, n) ? Oom :
     f->ip->ap(f, f->ip, f->hp, f->sp); }
+
 void *bump(core f, size_t n) {
   void *x = f->hp;
   f->hp += n;
@@ -301,7 +300,7 @@ NoInline void copy_from(core f, word *p0, size_t len0) {
   for (struct mm *r = f->safe; r; r = r->next) *r->addr = cp(f, *r->addr, p0, t0);
   // cheney's algorithm
   for (thread k; (k = (thread) f->cp) < (thread) f->hp;)
-    if (datp(k)) k[1].typ->evac(f, (word) k, p0, t0); // is data
+    if (datp(k)) dtyp(k)->evac(f, (word) k, p0, t0); // is data
     else { for (; k->ap; k++) k->x = cp(f, k->x, p0, t0); // is thread
            f->cp = (word*) k + 2; } }
 
@@ -313,7 +312,7 @@ NoInline word cp(state v, word x, word *p0, word *t0) {
   // if the cell holds a pointer to the new space then return the pointer
   if (homp(x) && bounded(v->pool, x, v->pool + v->len)) return x;
   // if it's data then call the given copy function
-  if (datp(src)) return src[1].typ->copy(v, (word) src, p0, t0);
+  if (datp(src)) return dtyp(src)->copy(v, (word) src, p0, t0);
   // it's a thread, find the end
   struct tag *t = ttag(src);
   thread ini = t->head, d = bump(v, t->end - ini), dst = d;

@@ -1,5 +1,6 @@
 #include "i.h"
 
+static thread mo_n(core, size_t);
 static long lidx(core, word, word);
 static size_t llen(word);
 static word
@@ -68,7 +69,7 @@ static size_t em2(core f, scope *c, size_t m, vm *i, word x) {
 static NoInline size_t analyze_symbol(core, scope*, size_t, word, scope);
 static C0(analyze) {
   if (homp(x) && ptr(x)->ap == data) {
-    typ y = ptr(x)[1].typ;
+    typ y = dtyp(x);
     if (y == &pair_type) return analyze_list(f, c, m, x);
     if (y == &symbol_type) return analyze_symbol(f, c, m, x, *c); }
   return em2(f, c, m, K, x); }
@@ -568,3 +569,8 @@ static size_t llen(word l) {
   size_t n = 0;
   while (twop(l)) n++, l = B(l);
   return n; }
+
+// allocate a thread
+static thread mo_n(core f, size_t n) {
+  thread k = cells(f, n + Width(struct tag));
+  return !k ? k : mo_ini(k, n); }
