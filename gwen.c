@@ -1,6 +1,5 @@
 #include "gwen.h"
 #include <stdlib.h>
-#include <stdio.h>
 #include <time.h>
 #include <stdarg.h>
 #include <string.h>
@@ -25,8 +24,8 @@ union cell {
   union cell *m;
   void *cast; };
 
-_Static_assert(-1 >> 1 == -1, "sign extended shift");
-_Static_assert(sizeof(word) == sizeof(union cell), "size");
+_Static_assert(-1 >> 1 == -1, "support sign extended shift");
+_Static_assert(sizeof(word) == sizeof(union cell), "cell is 1 word wide");
 
 // basic data types
 
@@ -226,14 +225,6 @@ static struct function_entry {
   P1("gensym", gensym), P1("ev", ev0),
   P1("thd", thda), };
 
-static int stdin_getc(core f, input i) { return getc(stdin); }
-static void stdin_ungetc(core f, input i, char c) { ungetc(c, stdin); }
-static bool stdin_eof(core f, input i) { return feof(stdin); }
-static void stdout_putc(core f, output o, char c) { putc(c, stdout); }
-static void stderr_putc(core f, output o, char c) { putc(c, stderr); }
-struct gwen_char_in std_input = { .getc = stdin_getc, .ungetc = stdin_ungetc, .eof = stdin_eof };
-struct gwen_char_out std_output = { .putc = stdout_putc }, std_error = { .putc = stderr_putc };
-
 static bool l_define(core f, const char *k, word v) {
   if (!pushs(f, 1, v)) return Oom;
   symbol y = literal_symbol(f, k);
@@ -291,11 +282,10 @@ static NoInline string grow_buffer(core f, string s) {
 
 // get the next significant character from the stream
 static NoInline int read_char(core f, input i) {
-  for (int c;;) loop: switch (c = i->getc(f, i)) {
+  for (int c;;) switch (c = i->getc(f, i)) {
     default: return c;
-    case ' ': case '\t': case '\n': goto loop;
-    case '#': case ';': for (;;) switch (i->getc(f, i)) {
-      case '\n': case EOF: goto loop; } } }
+    case '#': case ';': while (!i->eof(f, i) && i->getc(f, i) != '\n');
+    case ' ': case '\t': case '\n': } }
 
 static word read_str_lit(core, input),
             read_atom(core, input, int);
@@ -316,8 +306,8 @@ static status enquote(core f) {
   return Ok; }
 
 static status read1c(core f, input i, int c) {
+  if (i->eof(f, i)) return Eof;
   word x; switch (c) {
-    case EOF: return Eof;
     case '\'':
       c = read1i(f, i);
       return c == Ok ? enquote(f) : c;
@@ -332,48 +322,54 @@ status read1i(core f, input i) {
 
 
 static status reads(core f, input i) {
-  word c = read_char(f, i);
-  switch (c) {
-    case ')': case EOF: unnest:
-      return pushs(f, 1, nil) ? Ok : Oom;
-    default:
-      c = read1c(f, i, c);
-      if (c == Eof) goto unnest;
-      if (c != Ok) return c;
-      c = reads(f, i);
-      if (c != Ok) return c;
-      c = (word) pairof(f, f->sp[1], f->sp[0]);
-      if (!c) return Oom;
-      *++f->sp = (word) c;
-      return Ok; } }
+  word c;
+  if (i->eof(f, i) || (c = read_char(f, i)) == ')') unnest:
+    return pushs(f, 1, nil) ? Ok : Oom;
+  c = read1c(f, i, c);
+  if (c == Eof) goto unnest;
+  if (c != Ok) return c;
+  c = reads(f, i);
+  if (c != Ok) return c;
+  c = (word) pairof(f, f->sp[1], f->sp[0]);
+  if (!c) return Oom;
+  *++f->sp = (word) c;
+  return Ok; }
 
 static NoInline word read_str_lit(core f, input i) {
   string o = new_buffer(f);
   for (size_t n = 0, lim = sizeof(word); o; o = grow_buffer(f, o), lim *= 2)
-    for (int x; n < lim;) switch (x = i->getc(f, i)) {
-      // backslash escapes next character
-      case '\\': if ((x = i->getc(f, i)) == EOF) goto fin;
-      default: o->text[n++] = x; continue;
-      case '"': case EOF: fin: return o->len = n, (word) o; }
+    for (int x; n < lim;) {
+      if (i->eof(f, i) ||
+          (x = i->getc(f, i)) == '"')
+        fin: return o->len = n, (word) o;
+      if (x == '\\') { // escapes next character
+        if (i->eof(f, i)) goto fin;
+        else x = i->getc(f, i); }
+      o->text[n++] = x; }
   return 0; }
 
 static NoInline word read_atom(core f, input i, int c) {
   string a = new_buffer(f);
   if (a) a->text[0] = c;
   for (size_t n = 1, lim = sizeof(word); a; a = grow_buffer(f, a), lim *= 2)
-    while (n < lim) switch (c = i->getc(f, i)) {
-      // these characters terminate an atom
-      case ' ': case '\n': case '\t': case ';': case '#':
-      case '(': case ')': case '"': case '\'': i->ungetc(f, i, c);
-      case EOF: a->text[a->len = n] = 0; goto out;
-      default: a->text[n++] = c; continue; } out:
+    while (n < lim) {
+      if (i->eof(f, i)) { terminate:
+        a->text[a->len = n] = 0; // final 0 for strtol()
+        goto out; }
+      switch (c = i->getc(f, i)) {
+        // these characters terminate an atom
+        case ' ': case '\n': case '\t': case ';': case '#':
+        case '(': case ')': case '"': case '\'':
+          i->ungetc(f, i, c);
+          goto terminate;
+        default: a->text[n++] = c; } } out:
   if (!a) return 0;
   char *e; long n = strtol(a->text, &e, 0);
   return *e == 0 ? putnum(n) : (word) intern(f, a); }
 
 
 static void print_num_r(core f, output o, intptr_t n, int base) {
-  const char digits[] = "0123456789abcdefghijklmnopqrstuvwxyz";
+  static const char digits[] = "0123456789abcdefghijklmnopqrstuvwxyz";
   ldiv_t qr = ldiv(n, base);
   if (qr.quot) print_num_r(f, o, qr.quot, base);
   o->putc(f, o, digits[qr.rem]); }
@@ -1540,7 +1536,7 @@ static word lconcat(core f, word l, word n) {
   if (!twop(l)) return n;
   avec(f, l, n = lconcat(f, B(l), n));
   return n ? (word) pairof(f, A(l), n) : n; }
-  
+
 // reverse list concat
 static word rlconcat(core f, word l, word n) {
   for (word m; twop(l);) m = l, l = B(l), B(m) = n, n = m;
