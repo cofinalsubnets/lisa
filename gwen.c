@@ -1,21 +1,39 @@
 #include "gwen.h"
+#include <stdarg.h>
 #include <stdlib.h>
 #include <time.h>
-#include <stdarg.h>
 #include <string.h>
 
 // thanks !!
 typedef gwen_word word, *heap, *stack;
 typedef struct gwen_core *core;
 typedef union cell *cell, *thread;
+
+typedef word copy_method(core, word, word*, word*);
+typedef void evac_method(core, word, word*, word*);
+typedef bool equal_method(core, word, word);
+typedef void print_method(core, output, word);
+typedef intptr_t hash_method(core, word);
 // basic data type method table
 typedef struct typ {
-  word (*copy)(core, word, word*, word*);
-  void (*evac)(core, word, word*, word*);
-  bool (*equal)(core, word, word);
-  void (*emit)(core, output, word);
-  intptr_t (*hash)(core, word);
+  copy_method *copy;
+  evac_method *evac;
+  equal_method *equal;
+  print_method *emit;
+  hash_method *hash;
 } *typ;
+
+static hash_method hash_two, hash_string, hash_symbol, hash_table;
+static copy_method cp_two, copy_string, copy_symbol, copy_table;
+static evac_method wk_two, walk_string, walk_symbol, walk_table;
+static equal_method eq_two, string_equal, literal_equal;
+static print_method print_string, print_two, print_table, print_symbol;
+static struct typ
+  pair_type = { .hash = hash_two, .copy = cp_two, .evac = wk_two, .emit = print_two, .equal = eq_two, },
+  string_type = { .hash = hash_string, .copy = copy_string, .evac = walk_string, .emit = print_string, .equal = string_equal, },
+  symbol_type = { .hash = hash_symbol, .copy = copy_symbol, .evac = walk_symbol, .equal = literal_equal, .emit = print_symbol, },
+  table_type = { .hash = hash_table, .copy = copy_table, .evac = walk_table, .equal = literal_equal, .emit = print_table, };
+
 typedef gwen_status status, vm(core, thread, heap, stack);
 typedef struct symbol *symbol;
 union cell {
@@ -84,7 +102,6 @@ struct gwen_core {
     uintptr_t t0; // end time of last gc
     heap cp; }; };
 
-struct typ pair_type, string_type, symbol_type, table_type;
 static pair
   ini_pair(pair, word, word),
   pairof(core, word, word);
@@ -262,7 +279,7 @@ static NoInline word pushsr(core f, size_t m, size_t n, va_list xs) {
   avec(f, x, y = pushsr(f, m, n - 1, xs));
   return y ? *--f->sp = x : y; }
 
-word pushs(core f, size_t m, ...) {
+static word pushs(core f, size_t m, ...) {
   va_list xs; va_start(xs, m);
   word n, r = 0;
   if (avail(f) < m) r = pushsr(f, m, m, xs);
@@ -1528,7 +1545,7 @@ NoInline status eval(core f) {
   return s; }
 
 
-word lassoc(core f, word l, word k) {
+static word lassoc(core f, word l, word k) {
   for (; twop(l); l = B(l)) if (eql(f, k, A(A(l)))) return A(l);
   return 0; }
 // list concat
@@ -1558,8 +1575,3 @@ static size_t llen(word l) {
 static thread mo_n(core f, size_t n) {
   thread k = cells(f, n + Width(struct tag));
   return !k ? k : mo_ini(k, n); }
-
-struct typ pair_type = { .hash = hash_two, .copy = cp_two, .evac = wk_two, .emit = print_two, .equal = eq_two, };
-struct typ string_type = { .hash = hash_string, .copy = copy_string, .evac = walk_string, .emit = print_string, .equal = string_equal, };
-struct typ symbol_type = { .hash = hash_symbol, .copy = copy_symbol, .evac = walk_symbol, .equal = literal_equal, .emit = print_symbol, };
-struct typ table_type = { .hash = hash_table, .copy = copy_table, .evac = walk_table, .equal = literal_equal, .emit = print_table, };

@@ -1,3 +1,5 @@
+#ifndef _gwen_h
+#define _gwen_h
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -41,3 +43,4 @@ gwen_status
   read1i(gwen_core, gwen_input);
 gwen_word
   pop1(gwen_core);
+#endif
