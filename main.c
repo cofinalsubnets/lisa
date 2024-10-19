@@ -7,24 +7,6 @@
 #include <stdio.h>
 #include <string.h>
 
-// input methods to read from source files
-static int file_getc(gwen_core f, gwen_input i) {
-  return getc((FILE*) i->data[0]); }
-static void file_ungetc(gwen_core f, gwen_input i, char c) {
-  ungetc(c, (FILE*) i->data[0]); }
-static bool file_eof(gwen_core f, gwen_input i) {
-  return feof((FILE*) i->data[0]); }
-
-static int stdin_getc(gwen_core f, gwen_input i) { return getc(stdin); }
-static void stdin_ungetc(gwen_core f, gwen_input i, char c) { ungetc(c, stdin); }
-static bool stdin_eof(gwen_core f, gwen_input i) { return feof(stdin); }
-static void stdout_putc(gwen_core f, gwen_output o, char c) { putc(c, stdout); }
-static void stderr_putc(gwen_core f, gwen_output o, char c) { putc(c, stderr); }
-struct gwen_char_in
-  std_input = { .getc = stdin_getc, .ungetc = stdin_ungetc, .eof = stdin_eof };
-struct gwen_char_out
-  std_output = { .putc = stdout_putc },
-  std_error = { .putc = stderr_putc };
 
 static const char *help = // help message
   "usage: %s [options] [scripts]\n"
@@ -54,10 +36,8 @@ int main(int ac, char **av) {
       fprintf(stderr, "# error opening %s: %s\n", *av, strerror(errno));
       s = Eof;
       break; }
-    void *_i[] = { file_getc, file_ungetc, file_eof, file };
-    input i = (input) _i;
     // evaluate expressions for side effects
-    while ((s = read1i(f, i)) != Eof && (s = eval(f)) == Ok) pop1(f);
+    while ((s = read1f(f, file)) != Eof && (s = eval(f)) == Ok) pop1(f);
     fclose(file);
     if (s == Eof) s = Ok;
     if (s != Ok) report(f, &std_error, s); }

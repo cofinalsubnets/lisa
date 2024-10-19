@@ -11,8 +11,15 @@
        (llen l) (? (X? l) (+ 1 (llen (B l))))
        (diag f x) (f x x)
        (each f l) (? (X? l) (, (f (A l)) (each f (B l))))
+       (all f l) (? l (? (f (A l)) (all f (B l))) -1)
+       (any f l) (? l (? (f (A l)) -1 (any f (B l))))
+       inc (+ 1)
+       dec (+ -1)
+       (iota n) (: (k m) (? (< m n) (X m (k (inc m)))) (k 0))
        reverse (foldl (flip X) 0)
        (puts s) (: (f n l) (? (= n l) s (, (putc (sget s n)) (f (+ n 1) l))) (f 0 (slen s))))
 
     (:: 'L (foldr (\ a l (X X (X a (X l 0)))) 0)))
- (, (ev prelude)))
+ (,
+  (ev prelude)
+ ))
