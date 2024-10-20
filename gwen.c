@@ -67,13 +67,13 @@ static gwen_status
 static gwen_hash_function hash_two, hash_string, hash_symbol, hash_table;
 static gwen_copy_function cp_two, copy_string, copy_symbol, copy_table;
 static gwen_evac_function wk_two, walk_string, walk_symbol, walk_table;
-static gwen_equal_function eq_two, string_equal, literal_equal;
+static gwen_equal_function eq_two, string_equal, not_equal;
 static gwen_print_function print_string, print_two, print_table, print_symbol;
 static struct gwen_type
   pair_type = { .hash = hash_two, .copy = cp_two, .evac = wk_two, .emit = print_two, .equal = eq_two, },
   string_type = { .hash = hash_string, .copy = copy_string, .evac = walk_string, .emit = print_string, .equal = string_equal, },
-  symbol_type = { .hash = hash_symbol, .copy = copy_symbol, .evac = walk_symbol, .equal = literal_equal, .emit = print_symbol, },
-  table_type = { .hash = hash_table, .copy = copy_table, .evac = walk_table, .equal = literal_equal, .emit = print_table, };
+  symbol_type = { .hash = hash_symbol, .copy = copy_symbol, .evac = walk_symbol, .equal = not_equal, .emit = print_symbol, },
+  table_type = { .hash = hash_table, .copy = copy_table, .evac = walk_table, .equal = not_equal, .emit = print_table, };
 
 typedef gwen_status status,
   vm(gwen_core, gwen_thread, gwen_heap, gwen_stack);
@@ -150,8 +150,7 @@ static void
 static gwen_status
   gc(gwen_core, gwen_thread, gwen_heap, gwen_stack, gwen_size);
 static bool
-  eql(gwen_core, gwen_word, gwen_word),
-  literal_equal(gwen_core, gwen_word, gwen_word);
+  eql(gwen_core, gwen_word, gwen_word);
 static gwen_word
   table_get(gwen_core, gwen_table, gwen_word, gwen_word),
   pushs(gwen_core, gwen_size, ...),
@@ -184,14 +183,10 @@ static gwen_word
 #define bounded(a, b, c) ((word)(a)<=(word)(b)&&(word)(b)<(word)(c))
 #define op(n, x) (ip = (thread) sp[n], sp[n] = (x), ip->ap(f, ip, hp, sp + n))
 
-static bool hstrp(cell h) { return datp(h) && dtyp(h) == &string_type; }
-static bool htwop(cell h) { return datp(h) && dtyp(h) == &pair_type; }
-static bool htblp(cell h) { return datp(h) && dtyp(h) == &table_type; }
-static bool hsymp(cell h) { return datp(h) && dtyp(h) == &symbol_type; }
-static bool strp(word _) { return homp(_) && hstrp((cell) _); }
-static bool twop(word _) { return homp(_) && htwop((cell) _); }
-static bool tblp(word _) { return homp(_) && htblp((cell) _); }
-static bool symp(word _) { return homp(_) && hsymp((cell) _); }
+static bool strp(word _) { return homp(_) && dtyp(_) == &string_type; }
+static bool twop(word _) { return homp(_) && dtyp(_) == &pair_type; }
+static bool tblp(word _) { return homp(_) && dtyp(_) == &table_type; }
+static bool symp(word _) { return homp(_) && dtyp(_) == &symbol_type; }
 static struct tag {
   union gwen_cell *null, *head, end[];
 } *ttag(thread k) {
@@ -251,7 +246,7 @@ static struct function_entry {
   P3("tset", tset), P3("tget", tget), P3("tdel", tdel),
   P1("gensym", gensym), P1("ev", ev0), P1("thd", thda), };
 
-static bool gwen_define(gwen_core f, const char *k, word v) {
+static bool gwen_define(gwen_core f, const char *k, gwen_word v) {
   if (!pushs(f, 1, v)) return Oom;
   symbol y = literal_symbol(f, k);
   v = pop1(f);
@@ -471,22 +466,10 @@ static Vm(ge) { return op(2, sp[0] >= sp[1] ? putnum(-1) : nil);}
 static Vm(not) { return op(1, ~sp[0] | 1); }
 static Vm(rng) { return op(1, putnum(random())); }
 
-static Vm(Xp) {
-  ip = (thread) sp[1];
-  sp[1] = twop(sp[0]) ? putnum(-1) : nil;
-  return ip->ap(f, ip, hp, sp + 1); }
-
-static Vm(Np) {
-  ip = (thread) sp[1];
-  sp[1] = nump(sp[0]) ? putnum(-1) : nil;
-  return ip->ap(f, ip, hp, sp + 1); }
-
-static Vm(Sp) {
-  ip = (thread) sp[1];
-  sp[1] = strp(sp[0]) ? putnum(-1) : nil;
-  return ip->ap(f, ip, hp, sp + 1); }
-
-static bool eql(core f, word a, word b) {
+static Vm(Xp) { return op(1, twop(sp[0]) ? putnum(-1) : nil); }
+static Vm(Np) { return op(1, nump(sp[0]) ? putnum(-1) : nil); }
+static Vm(Sp) { return op(1, strp(sp[0]) ? putnum(-1) : nil); }
+static bool eql(gwen_core f, gwen_word a, gwen_word b) {
   if (a == b) return true;
   if (nump(a | b) ||
       ptr(a)->ap != data ||
@@ -494,7 +477,7 @@ static bool eql(core f, word a, word b) {
       dtyp(a) != dtyp(b)) return false;
   return dtyp(a)->equal(f, a, b); }
 
-static bool literal_equal(core f, word a, word b) { return a == b; }
+static bool not_equal(gwen_core f, gwen_word a, gwen_word b) { return false; }
 
 static Vm(trim) {
   thread k = (thread) sp[0];
