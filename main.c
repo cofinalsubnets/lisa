@@ -1,12 +1,13 @@
 #include "gwen.h"
-#include <stdarg.h>
 #include <getopt.h>
 #include <unistd.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-
+#define Ok GwenStatusOk
+#define Eof GwenStatusEof
+#define Oom GwenStatusOom
 
 static const char *help = // help message
   "usage: %s [options] [scripts]\n"
@@ -47,7 +48,7 @@ int main(int ac, char **av) {
     for (gwen_status t; (t = read1i(f, &std_input)) != Eof;) {
       if (t == Ok && (t = eval(f)) == Ok)
         transmit(f, &std_output, pop1(f)),
-        std_output.putc(f, &std_output, '\n');
+        puts("");
       else report(f, &std_error, t), reset_stack(f); }
 
   return gwen_close(f), s; }
