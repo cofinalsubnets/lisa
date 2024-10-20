@@ -13,6 +13,7 @@ o=$(c:.c=.o)
 CFLAGS ?=\
 	-std=gnu11 -g -Os -Wall\
  	-Wstrict-prototypes -Wno-shift-negative-value\
+	-DGwenCanUseTco\
 	-fno-asynchronous-unwind-tables\
 	-fpic -fno-stack-protector
 
