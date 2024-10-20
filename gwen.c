@@ -4,11 +4,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdbool.h>
-// character i/o interfaces interface
-typedef struct gwen_input *gwen_input;
-typedef struct gwen_output  *gwen_output;
-extern struct gwen_input std_input;
-extern struct gwen_output std_output, std_error;
 
 
 typedef gwen_word word, *gwen_stack, *gwen_heap;
@@ -22,17 +17,6 @@ typedef struct gwen_table *gwen_table;
 #define Ok GwenStatusOk
 #define Eof GwenStatusEof
 typedef bool gwen_gc_method(gwen_core, size_t);
-
-struct gwen_input {
-  int (*getc)(struct gwen_core*, struct gwen_input*);
-  void (*ungetc)(struct gwen_core*, struct gwen_input*, char);
-  bool (*eof)(struct gwen_core*, struct gwen_input*);
-  intptr_t data[];
-};
-struct gwen_output {
-  void (*putc)(struct gwen_core*, struct gwen_output*, char);
-  intptr_t data[];
-};
 // runtime core data structure -- 1 core = 1 thread of execution
 struct gwen_core {
   // vm registers
@@ -57,14 +41,14 @@ struct gwen_core {
 // thanks !!
 typedef struct gwen_core *core;
 typedef union gwen_cell *cell, *thread, *gwen_thread;
-typedef gwen_input input;
-typedef gwen_output output;
+typedef FILE *gwen_file;
+typedef gwen_file input, output, gwen_input, gwen_output;
 typedef uintptr_t gwen_size;
 
 typedef gwen_word gwen_copy_function(gwen_core, gwen_word, gwen_word*, gwen_word*);
 typedef void gwen_evac_function(gwen_core, gwen_word, gwen_word*, gwen_word*);
 typedef bool gwen_equal_function(gwen_core, gwen_word, gwen_word);
-typedef void gwen_print_function(gwen_core, gwen_output, gwen_word);
+typedef void gwen_print_function(gwen_core, FILE*, gwen_word);
 typedef intptr_t gwen_hash_function(gwen_core, gwen_word);
 // basic data type method table
 typedef struct gwen_type {
@@ -75,10 +59,10 @@ typedef struct gwen_type {
   gwen_hash_function *hash;
 } *typ;
 
-static void transmit(gwen_core, gwen_output, gwen_word);
+static void transmit(gwen_core, FILE*, gwen_word);
 static gwen_gc_method gwen_dynamic_gc;
 static gwen_status
-  read1i(gwen_core, gwen_input),
+  read1i(gwen_core, FILE*),
   gwen_vm_return_status(gwen_core, gwen_thread, gwen_heap, gwen_stack, gwen_status);
 static gwen_hash_function hash_two, hash_string, hash_symbol, hash_table;
 static gwen_copy_function cp_two, copy_string, copy_symbol, copy_table;
@@ -162,8 +146,7 @@ static vm print, not, rng, data,
 static void
   *bump(gwen_core, gwen_size),
   *cells(gwen_core, gwen_size),
-  copy_from(gwen_core, gwen_word*, gwen_size),
-  print_num(gwen_core, gwen_output, intptr_t, int);
+  copy_from(gwen_core, gwen_word*, gwen_size);
 static gwen_status
   gc(gwen_core, gwen_thread, gwen_heap, gwen_stack, gwen_size);
 static bool
@@ -185,10 +168,6 @@ static gwen_word
 #define avec(f, y, ...) (MM(f,&(y)),(__VA_ARGS__),UM(f))
 #define A(o) ((pair)(o))->a
 #define B(o) ((pair)(o))->b
-void reset_stack(gwen_core f) { f->sp = f->pool + f->len; }
-gwen_word pop1(core f) { return *f->sp++; }
-// in this file use a macro
-#define pop1(f) (*((f)->sp++))
 #define nilp(_) ((_)==nil)
 #define nump(_) ((word)(_)&1)
 #define homp(_) (!nump(_))
@@ -213,13 +192,15 @@ static bool strp(word _) { return homp(_) && hstrp((cell) _); }
 static bool twop(word _) { return homp(_) && htwop((cell) _); }
 static bool tblp(word _) { return homp(_) && htblp((cell) _); }
 static bool symp(word _) { return homp(_) && hsymp((cell) _); }
-static void outputs(core f, output o, const char *s) {
-  while (*s) o->putc(f, o, *s++); }
 static struct tag {
   union gwen_cell *null, *head, end[];
 } *ttag(thread k) {
   while (k->ap) k++;
   return (struct tag*) k; }
+
+gwen_word pop1(core f) { return *f->sp++; }
+// in this file use a macro
+#define pop1(f) (*((f)->sp++))
 
 //
 // functions are laid out in memory like this
@@ -240,7 +221,6 @@ static gwen_thread mo_ini(void *_, gwen_size len) {
 static gwen_string ini_str(gwen_string s, gwen_size len) {
   s->ap = data, s->typ = &string_type, s->len = len;
   return s; }
-
 
 // align bytes up to the nearest word
 static size_t b2w(size_t b) {
@@ -320,16 +300,16 @@ static NoInline gwen_string grow_buffer(core f, string s) {
   return t; }
 
 // get the next significant character from the stream
-static NoInline int read_char(core f, input i) {
-  for (int c;;) switch (c = i->getc(f, i)) {
+static NoInline int read_char(core f, FILE *i) {
+  for (int c;;) switch (c = getc(i)) {
     default: return c;
-    case '#': case ';': while (!i->eof(f, i) && i->getc(f, i) != '\n');
+    case '#': case ';': while (!feof(i) && getc(i) != '\n');
     case ' ': case '\t': case '\n': } }
 
-static word read_str_lit(core, input),
-            read_atom(core, input, int);
+static word read_str_lit(core, FILE*),
+            read_atom(core, FILE*, int);
 
-static status reads(core, input);
+static status reads(core, FILE*);
 ////
 /// " the parser "
 //
@@ -344,8 +324,8 @@ static status enquote(core f) {
   f->sp[0] = (word) w;
   return Ok; }
 
-static status read1c(core f, input i, int c) {
-  if (i->eof(f, i)) return Eof;
+static status read1c(core f, FILE *i, int c) {
+  if (feof(i)) return Eof;
   word x; switch (c) {
     case '\'':
       c = read1i(f, i);
@@ -356,13 +336,13 @@ static status read1c(core f, input i, int c) {
     default: x = read_atom(f, i, c); }
   return x && pushs(f, 1, x) ? Ok : Oom; }
 
-static gwen_status read1i(core f, input i) {
+static gwen_status read1i(core f, FILE *i) {
   return read1c(f, i, read_char(f, i)); }
 
 
-static status reads(core f, input i) {
+static status reads(core f, FILE* i) {
   word c;
-  if (i->eof(f, i) || (c = read_char(f, i)) == ')') unnest:
+  if (feof(i) || (c = read_char(f, i)) == ')') unnest:
     return pushs(f, 1, nil) ? Ok : Oom;
   c = read1c(f, i, c);
   if (c == Eof) goto unnest;
@@ -374,64 +354,53 @@ static status reads(core f, input i) {
   *++f->sp = (word) c;
   return Ok; }
 
-static NoInline word read_str_lit(core f, input i) {
+static NoInline word read_str_lit(core f, FILE*i) {
   string o = new_buffer(f);
   for (size_t n = 0, lim = sizeof(word); o; o = grow_buffer(f, o), lim *= 2)
     for (int x; n < lim;) {
-      if (i->eof(f, i) ||
-          (x = i->getc(f, i)) == '"')
+      if (feof(i) ||
+          (x = fgetc(i)) == '"')
         fin: return o->len = n, (word) o;
       if (x == '\\') { // escapes next character
-        if (i->eof(f, i)) goto fin;
-        else x = i->getc(f, i); }
+        if (feof(i)) goto fin;
+        else x = fgetc(i); }
       o->text[n++] = x; }
   return 0; }
 
-static NoInline word read_atom(core f, input i, int c) {
+static NoInline word read_atom(core f, FILE *i, int c) {
   string a = new_buffer(f);
   if (a) a->text[0] = c;
   for (size_t n = 1, lim = sizeof(word); a; a = grow_buffer(f, a), lim *= 2)
     while (n < lim) {
-      if (i->eof(f, i)) { terminate:
+      if (feof(i)) { terminate:
         a->text[a->len = n] = 0; // final 0 for strtol()
         goto out; }
-      switch (c = i->getc(f, i)) {
+      switch (c = getc(i)) {
         // these characters terminate an atom
         case ' ': case '\n': case '\t': case ';': case '#':
         case '(': case ')': case '"': case '\'':
-          i->ungetc(f, i, c);
+          ungetc(c, i);
           goto terminate;
         default: a->text[n++] = c; } } out:
   if (!a) return 0;
   char *e; long n = strtol(a->text, &e, 0);
   return *e == 0 ? putnum(n) : (word) intern(f, a); }
 
-
-static void print_num_r(core f, output o, intptr_t n, int base) {
-  static const char digits[] = "0123456789abcdefghijklmnopqrstuvwxyz";
-  ldiv_t qr = ldiv(n, base);
-  if (qr.quot) print_num_r(f, o, qr.quot, base);
-  o->putc(f, o, digits[qr.rem]); }
-
-void print_num(core v, output o, intptr_t n, int base) {
-  if (!n) return o->putc(v, o, '0');
-  if (n < 0) o->putc(v, o, '-'), n = -n;
-  print_num_r(v, o, n, base); }
-
 static Vm(prc) {
   ip = (thread) sp[1];
-  std_output.putc(f, &std_output, getnum(sp[1] = sp[0]));
+  int c = getnum(sp[1] = sp[0]);
+  putc(c, stdout);
   return ip->ap(f, ip, hp, ++sp); }
 
 static Vm(print) {
-  transmit(f, &std_output, *sp);
-  std_output.putc(f, &std_output, '\n');
+  gwen_write1f(f, stdout);
+  putc('\n', stdout);
   return op(1, *sp); }
 
-void transmit(core f, output out, word x) {
-  if (nump(x)) print_num(f, out, getnum(x), 10);
+static void transmit(core f, FILE* out, word x) {
+  if (nump(x)) fprintf(out, "%ld", (long) getnum(x));
   else if (ptr(x)->ap == data) dtyp(x)->emit(f, out, x);
-  else out->putc(f, out, '#'), print_num(f, out, x, 16); }
+  else fprintf(out, "#%lx", (long) x); }
 
 static NoInline Vm(gc, size_t n) {
   Pack(f);
@@ -565,9 +534,9 @@ static void wk_two(core v, word x, word *p0, word *t0) {
   B(x) = cp(v, B(x), p0, t0); }
 
 static void print_two(core v, output o, word x) {
-  for (o->putc(v, o, '(');; o->putc(v, o, ' ')) {
+  for (putc('(', o);; putc(' ', o)) {
     transmit(v, o, A(x));
-    if (!twop(x = B(x))) { o->putc(v, o, ')'); break; } } }
+    if (!twop(x = B(x))) { putc(')', o); break; } } }
 
 // FIXME could overflow the stack -- use off pool for this
 static bool eq_two(core f, word x, word y) {
@@ -613,10 +582,10 @@ static void print_string(core v, output o, word _) {
   string s = (string) _;
   size_t len = s->len;
   const char *text = s->text;
-  o->putc(v, o, '"');
-  for (char c; len--; o->putc(v, o, c))
-    if ((c = *text++) == '\\' || c == '"') o->putc(v, o, '\\');
-  o->putc(v, o, '"'); }
+  putc('"', o);
+  for (char c; len--; putc(c, o))
+    if ((c = *text++) == '\\' || c == '"') putc('\\', o);
+  putc('"', o); }
 
 static word hash_string(core v, word _) {
   string s = (string) _;
@@ -715,8 +684,8 @@ static bool atomp(string s) {
 
 static void print_symbol(core f, output o, word x) {
   string s = ((symbol) x)->nom;
-  if (s) for (int i = 0; i < s->len; o->putc(f, o, s->text[i++]));
-  else outputs(f, o, "#gensym@"), print_num(f, o, x, 16); }
+  if (s) for (int i = 0; i < s->len; putc(s->text[i++], o));
+  else fprintf(o, "#sym@%lx", (long) x); }
 
 
 static symbol intern_r(core v, string b, symbol *y) {
@@ -790,12 +759,7 @@ static void walk_table(core f, word x, word *p0, word *t0) {
 
 static void print_table(core f, output o, word x) {
   table t = (table) x;
-  outputs(f, o, "#table:");
-  print_num(f, o, t->len, 10);
-  o->putc(f, o, '/');
-  print_num(f, o, t->cap, 10);
-  o->putc(f, o, '@');
-  print_num(f, o, x, 16); }
+  fprintf(o, "#table:%ld/%ld@%lx", (long) t->len, (long) t->cap, (long) x); }
 
 // this is a totally ad hoc, unproven hashing method.
 //
@@ -1543,30 +1507,8 @@ static thread mo_n(core f, size_t n) {
   return !k ? k : mo_ini(k, n); }
 
 // input methods to read from source files
-static int file_getc(gwen_core f, gwen_input i) {
-  return getc((FILE*) i->data[0]); }
-static void file_ungetc(gwen_core f, gwen_input i, char c) {
-  ungetc(c, (FILE*) i->data[0]); }
-static bool file_eof(gwen_core f, gwen_input i) {
-  return feof((FILE*) i->data[0]); }
-static void file_putc(gwen_core f, gwen_output o, char c) {
-  putc(c, (FILE*) o->data[0]); }
-
 gwen_status gwen_read1f(gwen_core f, FILE *file) {
-  void *_i[] = { file_getc, file_ungetc, file_eof, file };
-  gwen_input i = (gwen_input) _i;
-  return read1i(f, i); }
-
-static int stdin_getc(gwen_core f, gwen_input i) { return getc(stdin); }
-static void stdin_ungetc(gwen_core f, gwen_input i, char c) { ungetc(c, stdin); }
-static bool stdin_eof(gwen_core f, gwen_input i) { return feof(stdin); }
-static void stdout_putc(gwen_core f, gwen_output o, char c) { putc(c, stdout); }
-static void stderr_putc(gwen_core f, gwen_output o, char c) { putc(c, stderr); }
-struct gwen_input
-  std_input = { .getc = stdin_getc, .ungetc = stdin_ungetc, .eof = stdin_eof };
-struct gwen_output
-  std_output = { .putc = stdout_putc },
-  std_error = { .putc = stderr_putc };
+  return read1i(f, file); }
 
 gwen_core gwen_close(gwen_core f) {
   if (f)
@@ -1633,5 +1575,4 @@ static Vm(gwen_vm_return_status, gwen_status s) {
   return s; }
 
 void gwen_write1f(gwen_core f, FILE *out) {
-  gwen_word o[2] = {(gwen_word) file_putc, (gwen_word) out};
-  transmit(f, (gwen_output) o, f->sp[0]); }
+  transmit(f, out, f->sp[0]); }
