@@ -12,7 +12,7 @@ typedef struct gwen_string *gwen_string;
 typedef struct gwen_symbol *gwen_symbol;
 typedef struct gwen_table *gwen_table;
 #define Vm(n, ...)\
-  gwen_status n(gwen_core f, gwen_thread _ip, gwen_heap _hp, gwen_stack _sp, ##__VA_ARGS__)
+  gwen_status n(gwen_core f, ##__VA_ARGS__)
 typedef Vm(gwen_vm);
 typedef gwen_vm vm;
 // runtime core data structure -- 1 core = 1 thread of execution
@@ -80,9 +80,9 @@ _Static_assert(sizeof(word) == sizeof(union gwen_cell), "cell is 1 word wide");
 #define Oom GwenStatusOom
 #define Ok GwenStatusOk
 #define Eof GwenStatusEof
-#define Hp _hp
-#define Sp _sp
-#define Ip _ip
+#define Hp f->hp
+#define Sp f->sp
+#define Ip f->ip
 
 // basic data types
 #define GwenDataHeader() gwen_vm *ap; struct gwen_type *typ
@@ -129,10 +129,10 @@ static void
   *cells(gwen_core, gwen_size),
   copy_from(gwen_core, gwen_word*, gwen_size),
   transmit(gwen_core, FILE*, gwen_word);
+static Vm(gc, gwen_size s);
 static gwen_status
   read1i(gwen_core, FILE*),
-  gc(gwen_core, gwen_thread, gwen_heap, gwen_stack, gwen_size),
-  gwen_vm_return_status(gwen_core, gwen_thread, gwen_heap, gwen_stack, gwen_status);
+  gwen_vm_return_status(gwen_core, gwen_status);
 static bool
   gwen_please(gwen_core, gwen_size),
   eql(gwen_core, gwen_word, gwen_word);
@@ -143,7 +143,7 @@ static gwen_word
   cp(gwen_core, gwen_word, gwen_word*, gwen_word*); // for recursive use by evac functions
 static vm print, not, rng, data,
    gensym, ev0,
-   Xp, Np, Sp, defmacro,
+   Xp, Np, stringp, defmacro,
    ssub, sget, slen, scat,
    prc,
    cons, car, cdr,
@@ -198,10 +198,8 @@ static gwen_thread mo_ini(gwen_cell _, gwen_size len) {
 #define Inline inline __attribute__((always_inline))
 #define NoInline __attribute__((noinline))
 #define datp(_) (ptr(_)->ap==data)
-#define Pack(f) (f->ip = Ip, f->hp = Hp, f->sp = Sp)
-#define Unpack(f) (Ip = f->ip, Hp = f->hp, Sp = f->sp)
-#define Have(n) if (Sp - Hp < n) return gc(f, Ip, Hp, Sp, n)
-#define Have1() if (Sp == Hp) return gc(f, Ip, Hp, Sp, 1)
+#define Have(n) if (Sp - Hp < n) return gc(f, n)
+#define Have1() if (Sp == Hp) return gc(f, 1)
 #define mix ((uintptr_t)2708237354241864315)
 #define bind(n, x) if (!(n = (x))) return 0
 #define ptr(o) ((cell)(o))
@@ -229,7 +227,7 @@ gwen_word pop1(gwen_core f) { return *f->sp++; }
   _(".", S1(print)) _("putc", S1(prc))\
   _("X", S2(cons)) _("A", S1(car)) _("B", S1(cdr))\
   _("sget", S2(sget)) _("ssub", S3(ssub)) _("slen", S1(slen)) _("scat", S2(scat))\
-  _("s?", S1(Sp)) _("n?", S1(Np)) _("X?", S1(Xp))\
+  _("s?", S1(stringp)) _("n?", S1(Np)) _("X?", S1(Xp))\
   _("rand", S1(rng)) _("~", S1(not))\
   _("thd", S1(thda)) _("peek", S1(peek)) _("poke", S2(poke)) _("trim", S1(trim)) _("seek", S2(seek))\
   _("tnew", S1(tnew)) _("tkeys", S1(tkeys)) _("tlen", S1(tlen)) _("tset", S3(tset)) _("tget", S3(tget)) _("tdel", S3(tdel))\
@@ -368,9 +366,10 @@ static Vm(prc) {
   Ip = (thread) Sp[1];
   int c = getnum(Sp[1] = Sp[0]);
   putc(c, stdout);
-  return Ip->ap(f, Ip, Hp, ++Sp); }
+  Sp++;
+  return Ip->ap(f); }
 
-#define op(n, x) (Ip = (thread) Sp[n], Sp[n] = (x), Ip->ap(f, Ip, Hp, Sp + n))
+#define op(n, x) (Ip = (thread) Sp[n], Sp[n] = (x), Sp += n, Ip->ap(f))
 static Vm(print) {
   gwen_write1f(f, stdout);
   putc('\n', stdout);
@@ -382,9 +381,7 @@ static void transmit(gwen_core f, FILE* out, word x) {
   else fprintf(out, "#%lx", (long) x); }
 
 static NoInline Vm(gc, size_t n) {
-  bool ok;
-  Pack(f), ok = gwen_please(f, n), Unpack(f);
-  return ok ? Ip->ap(f, Ip, Hp, Sp) : gwen_vm_return_status(f, Ip, Hp, Sp, Oom); }
+  return gwen_please(f, n) ? Ip->ap(f) : gwen_vm_return_status(f, Oom); }
 
 static void *bump(gwen_core f, size_t n) {
   void *x = f->hp; return f->hp += n, x; }
@@ -448,7 +445,7 @@ static Vm(not) { return op(1, ~Sp[0] | 1); }
 static Vm(rng) { return op(1, putnum(random())); }
 static Vm(Xp) { return op(1, twop(Sp[0]) ? putnum(-1) : nil); }
 static Vm(Np) { return op(1, nump(Sp[0]) ? putnum(-1) : nil); }
-static Vm(Sp) { return op(1, strp(Sp[0]) ? putnum(-1) : nil); }
+static Vm(stringp) { return op(1, strp(Sp[0]) ? putnum(-1) : nil); }
 static bool eql(gwen_core f, gwen_word a, gwen_word b) {
   if (a == b) return true;
   if (nump(a | b) ||
@@ -561,7 +558,8 @@ static Vm(slen) {
   gwen_word x = Sp[0];
   Ip = (thread) Sp[1];
   Sp[1] = strp(x) ? putnum(((string)x)->len) : nil;
-  return Ip->ap(f, Ip, Hp, Sp + 1); }
+  Sp++;
+  return Ip->ap(f); }
 
 #define max(a, b) ((a)>(b)?(a):(b))
 #define min(a, b) ((a)<(b)?(a):(b))
@@ -577,7 +575,8 @@ Vm(ssub) {
     gwen_string t = ini_str((string) Hp, j - i);
     memcpy(t->text, s->text + i, j);
     Sp[3] = (word) t; }
-  return r->ap(f, r, Hp, Sp + 3); }
+  Ip = r, Sp += 3;
+  return Ip->ap(f); }
 
 Vm(sget) {
   thread r = (thread) Sp[2];
@@ -587,7 +586,8 @@ Vm(sget) {
     size_t i = min(s->len - 1, getnum(Sp[1]));
     i = max(i, 0);
     Sp[2] = putnum(s->text[i]); }
-  return r->ap(f, r, Hp, Sp + 2); }
+  Ip = r, Sp += 2;
+  return Ip->ap(f); }
 
 Vm(scat) {
   word a = Sp[0], b = Sp[1];
@@ -820,10 +820,8 @@ Vm(tget) {
 Vm(tset) {
   word x = Sp[0];
   if (!tblp(x)) return op(3, nil);
-  Pack(f);
   table t = table_set(f, (table) x, Sp[1], Sp[2]);
-  Unpack(f);
-  return !t ? gwen_vm_return_status(f, Ip, Hp, Sp, Oom)  : op(3, Sp[2]); }
+  return !t ? gwen_vm_return_status(f, Oom)  : op(3, Sp[2]); }
 
 Vm(tdel) {
   word x = Sp[1];
@@ -1048,48 +1046,50 @@ fail:
 
 
 Vm(defmacro) {
-  Pack(f);
-  if (!table_set(f, f->macro, Sp[0], Sp[1])) return gwen_vm_return_status(f, Ip, Hp, Sp, Oom);
-  Unpack(f);
+  if (!table_set(f, f->macro, Sp[0], Sp[1])) return gwen_vm_return_status(f, Oom);
   return op(2, Sp[1]); }
 
 Vm(data) {
   gwen_word r = (word) Ip;
   return op(1, r); }
 
-static Vm(K) { Have1(); return
-  *--Sp = Ip[1].x,
-  Ip += 2,
-  Ip->ap(f, Ip, Hp, Sp); }
+static Vm(K) { Have1();
+  *--Sp = Ip[1].x;
+  Ip += 2;
+  return Ip->ap(f); }
 
-static Vm(jump) { return
-  Ip = Ip[1].m,
-  Ip->ap(f, Ip, Hp, Sp); }
+static Vm(jump) {
+  Ip = Ip[1].m;
+  return Ip->ap(f); }
 static Vm(cond) { return
   Ip = nilp(*Sp) ? Ip[1].m : Ip + 2,
-  Ip->ap(f, Ip, Hp, Sp + 1); }
+  Sp++,
+  Ip->ap(f); }
 static Vm(ref) { Have1(); return
   Sp[-1] = Sp[getnum(Ip[1].x)],
   Sp--,
   Ip += 2,
-  Ip->ap(f, Ip, Hp, Sp); }
+  Ip->ap(f); }
 static Vm(ret) {
   word r = getnum(Ip[1].x) + 1;
   return op(r, *Sp); }
-static Vm(yield) { return Pack(f), Ok; }
+static Vm(yield) { return gwen_vm_return_status(f, Ok); }
 
 static Vm(ap) {
-  if (nump(Sp[1])) return Ip[1].ap(f, Ip + 1, Hp, Sp + 1);
+  if (nump(Sp[1])) return
+    Ip++, Sp++,
+    Ip->ap(f);
   thread k = (thread) Sp[1];
   Sp[1] = (gwen_word) (Ip + 1);
-  return k->ap(f, k, Hp, Sp); }
+  Ip = k;
+  return Ip->ap(f); }
 
 static Vm(apn) {
   size_t n = getnum(Ip[1].x);
   thread ra = Ip + 2; // return address
   Ip = ((thread) Sp[n]) + 2; // only used by let form so will not be num
   Sp[n] = (word) ra; // store return address
-  return Ip->ap(f, Ip, Hp, Sp); }
+  return Ip->ap(f); }
 
 static Vm(tap) {
   word x = Sp[0], j = Sp[1];
@@ -1097,7 +1097,7 @@ static Vm(tap) {
   if (nump(j)) return op(1, j);
   Ip = (thread) j;
   *Sp = x;
-  return Ip->ap(f, Ip, Hp, Sp); }
+  return Ip->ap(f); }
 
 static Vm(tapn) {
   size_t n = getnum(Ip[1].x),
@@ -1106,13 +1106,13 @@ static Vm(tapn) {
   gwen_stack osp = Sp;
   Sp += r + 1;
   while (n--) Sp[n] = osp[n];
-  return Ip->ap(f, Ip, Hp, Sp); }
+  return Ip->ap(f); }
 
 static Vm(Kj) {
   Have1();
   *--Sp = Ip[1].x;
-  Ip += 2;
-  return Ip->m->ap(f, Ip->m, Hp, Sp); }
+  Ip = Ip[2].m;
+  return Ip->ap(f); }
 
 Vm(curry) {
   thread k;
@@ -1133,7 +1133,7 @@ Vm(curry) {
   Hp += S;
   Ip = (thread) *Sp;
   *Sp = (word) k;
-  return Ip->ap(f, Ip, Hp, Sp); }
+  return Ip->ap(f); }
 // conditionals
 // to emit targeted jumps etc
 static c1
@@ -1330,14 +1330,14 @@ static Vm(top_bind) {
   var = table_get(f, f->dict, var, var);
   Ip[0].ap = K;
   Ip[1].x = var;
-  return K(f, Ip, Hp, Sp); }
+  return K(f); }
 static Vm(lazy_bind) {
   gwen_word ref = Ip[1].x, var = A(A(ref));
   scope env = (scope) B(ref);
   var = A(B(lassoc(f, env->lams, var)));
   Ip[0].ap = K;
   Ip[1].x = var;
-  return K(f, Ip, Hp, Sp); }
+  return K(f); }
 
 static size_t analyze_sequence(gwen_core f, scope *c, size_t m, word x) {
   if (!twop(x)) return em2(f, c, m, K, nil);
@@ -1373,19 +1373,16 @@ static C0(analyze_list) {
   avec(f, b, m = analyze(f, c, m, a));
   return m ? analyze_arguments(f, c, m, b) : m; }
 
-static Vm(drop) { return Ip[1].ap(f, Ip + 1, Hp, Sp + 1); }
+static Vm(drop) {
+  return Ip++, Sp++, Ip->ap(f); }
 static Vm(define) {
-  Pack(f);
-  if (!table_set(f, f->dict, Ip[1].x, Sp[0])) return gwen_vm_return_status(f, Ip, Hp, Sp, Oom);
-  Unpack(f);
+  if (!table_set(f, f->dict, Ip[1].x, Sp[0])) return gwen_vm_return_status(f, Oom);
   return op(1, Sp[0]); }
 
 static Vm(ev0) {
-  Pack(f);
   gwen_status s = gwen_eval(f);
-  if (s != Ok) return s;
-  Unpack(f);
-  return op(1, *Sp); }
+  return s != Ok ? gwen_vm_return_status(f, s) :
+    op(1, *Sp); }
 
 // compile and execute expression
 NoInline gwen_status gwen_eval(gwen_core f) {
@@ -1403,7 +1400,7 @@ NoInline gwen_status gwen_eval(gwen_core f) {
   if (!k) return Oom;
   f->sp[0] = (word) f->ip;
   f->ip = k;
-  gwen_status s = k->ap(f, k, f->hp, f->sp);
+  gwen_status s = Ip->ap(f);
   if (s == Ok)
     x = f->sp[0],
     f->ip = (thread) *++f->sp,
@@ -1504,7 +1501,7 @@ static NoInline bool gwen_please(gwen_core f, gwen_size req) {
 
 static Vm(gwen_vm_return_status, gwen_status s) {
   switch (s) {
-    case Ok: case Eof: return Pack(f), s;
+    case Ok: case Eof: return s;
     case Oom:
       fprintf(stderr, "# oom@2*%ldB\n", (long) sizeof(gwen_word) * f->len); }
   f->hp = Hp, f->ip = 0, f->sp = f->pool + f->len;
