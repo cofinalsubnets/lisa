@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdbool.h>
 #define Ok GwenStatusOk
 #define Eof GwenStatusEof
 #define Oom GwenStatusOom
@@ -38,17 +39,17 @@ int main(int ac, char **av) {
       s = Eof;
       break; }
     // evaluate expressions for side effects
-    while ((s = read1f(f, file)) != Eof && (s = eval(f)) == Ok) pop1(f);
+    while ((s = gwen_read1f(f, file)) != Eof && (s = gwen_eval(f)) == Ok)
+      pop1(f);
     fclose(file);
-    if (s == Eof) s = Ok;
-    if (s != Ok) report(f, &std_error, s); }
+    if (s == Eof) s = Ok; }
 
   // repl
   if (s == Ok && interact)
-    for (gwen_status t; (t = read1i(f, &std_input)) != Eof;) {
-      if (t == Ok && (t = eval(f)) == Ok)
-        transmit(f, &std_output, pop1(f)),
-        puts("");
-      else report(f, &std_error, t), reset_stack(f); }
+    for (gwen_status t; (t = gwen_read1f(f, stdin)) != Eof;)
+      if (t == Ok && (t = gwen_eval(f)) == Ok)
+        gwen_write1f(f, stdout),
+        puts(""),
+        pop1(f);
 
   return gwen_close(f), s; }

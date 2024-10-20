@@ -2,6 +2,14 @@
 #include <stdarg.h>
 #include <time.h>
 #include <string.h>
+#include <stdlib.h>
+#include <stdbool.h>
+// character i/o interfaces interface
+typedef struct gwen_input *gwen_input;
+typedef struct gwen_output  *gwen_output;
+extern struct gwen_input std_input;
+extern struct gwen_output std_output, std_error;
+
 
 typedef gwen_word word, *gwen_stack, *gwen_heap;
 typedef union gwen_cell *gwen_cell;
@@ -67,8 +75,11 @@ typedef struct gwen_type {
   gwen_hash_function *hash;
 } *typ;
 
+static void transmit(gwen_core, gwen_output, gwen_word);
 static gwen_gc_method gwen_dynamic_gc;
-static gwen_status gwen_ini(gwen_core, gwen_input, gwen_output, gwen_output);
+static gwen_status
+  read1i(gwen_core, gwen_input),
+  gwen_vm_return_status(gwen_core, gwen_thread, gwen_heap, gwen_stack, gwen_status);
 static gwen_hash_function hash_two, hash_string, hash_symbol, hash_table;
 static gwen_copy_function cp_two, copy_string, copy_symbol, copy_table;
 static gwen_evac_function wk_two, walk_string, walk_symbol, walk_table;
@@ -266,20 +277,23 @@ static bool gwen_define(gwen_core f, const char *k, word v) {
   v = pop1(f);
   return y && table_set(f, f->dict, (word) y, v); }
 
-status gwen_ini(core f,
-    gwen_input in, gwen_output out, gwen_output err) {
-  const gwen_size len = 1;
-  gwen_word *pool = malloc(2 * len * sizeof(gwen_word));
-  if (!pool) return Oom;
+gwen_core gwen_open(void) {
+  gwen_core f = malloc(sizeof(struct gwen_core));
+  if (!f) return NULL;
   memset(f, 0, sizeof(struct gwen_core));
+  const gwen_size len0 = 1;
+  gwen_word *pool = malloc(2 * len0 * sizeof(gwen_word));
+  if (!pool) return gwen_close(f);
   f->t0 = clock();
-  f->sp = f->loop = (f->hp = f->pool = pool) + (f->len = len);
+  f->sp = f->loop = (f->hp = f->pool = pool) + (f->len = len0);
   if (!(f->dict = new_table(f)) ||
-      !(f->macro = new_table(f))) return Oom;
+      !(f->macro = new_table(f))) return gwen_close(f);
   for (int i = 0; i < sizeof(ini_dict)/sizeof(*ini_dict); i++)
     if (!gwen_define(f, ini_dict[i].nom, (word) ini_dict[i].val))
-      return Oom;
-  return gwen_define(f, "global-namespace", (word) f->dict) ? Ok : Oom; }
+      return gwen_close(f);
+  if (!gwen_define(f, "global-namespace", (gwen_word) f->dict))
+    return gwen_close(f);
+  return f; }
 
 static NoInline gwen_word pushsr(gwen_core f, gwen_size m, gwen_size n, va_list xs) {
   if (!n) return gwen_please(f, m) ? m : n;
@@ -342,7 +356,7 @@ static status read1c(core f, input i, int c) {
     default: x = read_atom(f, i, c); }
   return x && pushs(f, 1, x) ? Ok : Oom; }
 
-status read1i(core f, input i) {
+static gwen_status read1i(core f, input i) {
   return read1c(f, i, read_char(f, i)); }
 
 
@@ -419,17 +433,11 @@ void transmit(core f, output out, word x) {
   else if (ptr(x)->ap == data) dtyp(x)->emit(f, out, x);
   else out->putc(f, out, '#'), print_num(f, out, x, 16); }
 
-void report(core f, output o, status s) {
-  switch (s) {
-    case Ok: case Eof: return;
-    case Oom:
-      outputs(f, o, "# oom@2*");
-      print_num(f, o, f->len * sizeof(word), 10);
-      outputs(f, o, "B\n"); } }
-
 static NoInline Vm(gc, size_t n) {
-  return Pack(f), !gwen_please(f, n) ? Oom :
-    f->ip->ap(f, f->ip, f->hp, f->sp); }
+  Pack(f);
+  bool ok = gwen_please(f, n);
+  Unpack(f);
+  return ok ? ip->ap(f, ip, hp, sp) : gwen_vm_return_status(f, ip, hp, sp, Oom); }
 
 static void *bump(core f, size_t n) {
   void *x = f->hp;
@@ -915,7 +923,7 @@ Vm(tset) {
   Pack(f);
   table t = table_set(f, (table) x, sp[1], sp[2]);
   Unpack(f);
-  return !t ? Oom : op(3, sp[2]); }
+  return !t ? gwen_vm_return_status(f, ip, hp, sp, Oom)  : op(3, sp[2]); }
 
 Vm(tdel) {
   word x = sp[1];
@@ -1141,7 +1149,7 @@ fail:
 
 Vm(defmacro) {
   Pack(f);
-  if (!table_set(f, f->macro, sp[0], sp[1])) return Oom;
+  if (!table_set(f, f->macro, sp[0], sp[1])) return gwen_vm_return_status(f, ip, hp, sp, Oom);
   Unpack(f);
   return op(2, sp[1]); }
 
@@ -1446,7 +1454,7 @@ static C0(analyze_macro, word b) {
   if (!mxp) return 0;
   x = (word) ini_pair(mxp, f->sp[1], (word) ini_pair(mxp+1, (word) ini_pair(mxp+2, f->sp[0], (word) ini_pair(mxp+3, f->sp[2], nil)), nil));
   f->sp += 2, *f->sp = x;
-  return eval(f) != Ok ? 0 : analyze(f, c, m, pop1(f)); }
+  return gwen_eval(f) != Ok ? 0 : analyze(f, c, m, pop1(f)); }
 
 static C0(analyze_list) {
   word a = A(x), b = B(x);
@@ -1468,25 +1476,25 @@ static C0(analyze_list) {
 static Vm(drop) { return ip[1].ap(f, ip + 1, hp, sp + 1); }
 static Vm(define) {
   Pack(f);
-  if (!table_set(f, f->dict, ip[1].x, sp[0])) return Oom;
+  if (!table_set(f, f->dict, ip[1].x, sp[0])) return gwen_vm_return_status(f, ip, hp, sp, Oom);
   Unpack(f);
   return op(1, sp[0]); }
 
-Vm(ev0) {
+static Vm(ev0) {
   Pack(f);
-  status s = eval(f);
+  gwen_status s = gwen_eval(f);
   if (s != Ok) return s;
   Unpack(f);
   return op(1, *sp); }
 
 // compile and execute expression
-NoInline status eval(core f) {
-  size_t m = 1;
+NoInline status gwen_eval(gwen_core f) {
   scope c = enscope(f, (scope) nil, nil, nil);
   if (!c) return Oom;
   word x = f->sp[0];
   f->sp[0] = (word) yieldk;
   thread k = 0;
+  size_t m = 1;
   avec(f, c,
     m = analyze(f, &c, m, x),
     m = m ? em1(f, &c, m, yield) : m,
@@ -1541,8 +1549,10 @@ static void file_ungetc(gwen_core f, gwen_input i, char c) {
   ungetc(c, (FILE*) i->data[0]); }
 static bool file_eof(gwen_core f, gwen_input i) {
   return feof((FILE*) i->data[0]); }
+static void file_putc(gwen_core f, gwen_output o, char c) {
+  putc(c, (FILE*) o->data[0]); }
 
-gwen_status read1f(gwen_core f, FILE *file) {
+gwen_status gwen_read1f(gwen_core f, FILE *file) {
   void *_i[] = { file_getc, file_ungetc, file_eof, file };
   gwen_input i = (gwen_input) _i;
   return read1i(f, i); }
@@ -1558,16 +1568,12 @@ struct gwen_output
   std_output = { .putc = stdout_putc },
   std_error = { .putc = stderr_putc };
 
-void gwen_close(core f) {
+gwen_core gwen_close(gwen_core f) {
   if (f)
     free(f->pool < f->loop ? f->pool : f->loop),
-    free(f); }
+    free(f);
+  return NULL; }
 
-gwen_core gwen_open(void) {
-  core f = malloc(sizeof(struct gwen_core));
-  if (!f) return NULL;
-  status s = gwen_ini(f, &std_input, &std_output, &std_error);
-  return s == Ok ? f : (gwen_close(f), NULL); }
 // garbage collector
 // please : bool la size_t
 // try to return with at least req words of available memory.
@@ -1617,3 +1623,15 @@ bool gwen_dynamic_gc(core f, size_t req) {
   free(b0p0 < b0p1 ? b0p0 : b0p1);
   f->t0 = clock();
   return true; }
+
+static Vm(gwen_vm_return_status, gwen_status s) {
+  switch (s) {
+    case Ok: case Eof: return Pack(f), s;
+    case Oom:
+      fprintf(stderr, "# oom@2*%ldB\n", (long) sizeof(gwen_word) * f->len); }
+  f->hp = hp, f->ip = 0, f->sp = f->pool + f->len;
+  return s; }
+
+void gwen_write1f(gwen_core f, FILE *out) {
+  gwen_word o[2] = {(gwen_word) file_putc, (gwen_word) out};
+  transmit(f, (gwen_output) o, f->sp[0]); }
