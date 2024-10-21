@@ -13,7 +13,8 @@ c=$(sort $(wildcard *.c))
 h=$(sort $(wildcard *.h))
 o=$(c:.c=.tco.o)
 o2=$(c:.c=.tcn.o)
-CFLAGS ?=\
+CC=clang
+CFLAGS=\
 	-std=gnu11 -g -O2 -Wall\
  	-Wstrict-prototypes -Wno-shift-negative-value\
 	-fno-asynchronous-unwind-tables -fno-stack-protector
@@ -34,10 +35,10 @@ $(bin2): main.tcn.o libgwen.tcn.a
 	$(CC) -c $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $< -o $@
 
 test: $(bin)
-	@echo 'testing (tco)'
+	@echo '[tail call optimized]'
 	@/usr/bin/env TIMEFORMAT="in %Rs" bash -c "time $(bbt)"
 test2: $(bin2)
-	@echo 'testing (trampoline)'
+	@echo '[trampolining]'
 	@/usr/bin/env TIMEFORMAT="in %Rs" bash -c "time $(b2bt)"
 
 # install
@@ -45,17 +46,23 @@ DESTDIR ?= $(HOME)
 PREFIX ?= .local
 dest=$(DESTDIR)/$(PREFIX)/
 bins=$(dest)bin/$(nom)
-#libs=$(addprefix $(dest)lib/$(nom)/,$(notdir $(boot)))
+slib=$(dest)lib/lib$(nom).a
+libs=$(addprefix $(dest)lib/$(nom)/,$(notdir $(wildcard lib/*)))
+header=$(dest)include/$(nom).h
 #docs=$(dest)share/man/man1/$(nom).1
-files=$(bins) $(libs) $(docs)
+files=$(bins) $(libs) $(slib) $(docs) $(header)
 install: $(files)
 uninstall:
 	rm -f $(files)
-$(dest)bin/%: %
+$(dest)bin/$(nom): $(bin)
 	install -D -m 755 $^ $@
 $(dest)share/%: %
 	install -D -m 644 $^ $@
 $(dest)lib/$(nom)/%: lib/%
+	install -D -m 644 $^ $@
+$(dest)lib/lib$(nom).a: lib$(nom).tco.a
+	install -D -m 644 $^ $@
+$(header): $(nom).h
 	install -D -m 644 $^ $@
 
 # other tasks
@@ -69,7 +76,7 @@ valg: $(bin)
 sloc:
 	cloc --force-lang=Lisp,$(suff) * test/* lib/*
 # size of binaries
-bits: $(bin)
+bits: $(bin) $(bin2)
 	du -h $^
 disasm: $(bin)
 	rizin -A $^
@@ -82,7 +89,7 @@ flamegraph.svg: perf.data
 	flamegraph --perfdata $<
 flame: flamegraph.svg
 	xdg-open $<
-repl: $(nom)
+repl: $(bin)
 	rlwrap $(bin) -i $(boot)
 
 .PHONY: default clean test test-lots\

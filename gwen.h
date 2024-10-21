@@ -11,6 +11,7 @@ typedef struct gwen_file *gwen_file;
 
 // thanks !!
 typedef intptr_t gwen_word;
+typedef uintptr_t gwen_size;
 typedef struct gwen_core *gwen_core;
 typedef enum gwen_status {
   GwenStatusEof = -1,

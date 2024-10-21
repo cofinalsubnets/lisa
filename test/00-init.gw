@@ -1,8 +1,8 @@
 (:
  (term-esc string) (, (putc 27) (puts string))
- green-dot '"[32m."
- red-dot '"[31m."
- reset '"[0m"
+ green-dot "[32m."
+ red-dot "[31m."
+ reset "[0m"
  (term-text s)
   (, (putc 27)
      (puts s)
