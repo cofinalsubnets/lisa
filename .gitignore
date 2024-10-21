@@ -6,3 +6,4 @@ vgcore.*
 .gdb_history
 flamegraph.svg
 gwen
+*.bin

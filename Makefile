@@ -1,30 +1,44 @@
 Makefile=Makefile
 nom=gwen
 suff=gw
-bin=./$(nom)
+bin=./$(nom).tco.bin
+bin2=./$(nom).tcn.bin
 boot=lib/pre.$(suff)
-test=test/*.$(suff)
+test=$(sort $(wildcard test/*.$(suff)))
 bbt=$(bin) $(boot) $(test)
+b2bt=$(bin2) $(boot) $(test)
 
 #build
 c=$(sort $(wildcard *.c))
 h=$(sort $(wildcard *.h))
-o=$(c:.c=.o)
+o=$(c:.c=.tco.o)
+o2=$(c:.c=.tcn.o)
 CFLAGS ?=\
 	-std=gnu11 -g -O2 -Wall\
  	-Wstrict-prototypes -Wno-shift-negative-value\
-	-DGwenCanUseTco\
-	-fno-asynchronous-unwind-tables\
-	-fpic -fno-stack-protector
+	-fno-asynchronous-unwind-tables -fno-stack-protector
 
-default: test
-$(bin): $o $h
-	$(CC) -o $@ $o $(CPPFLAGS) $(CFLAGS) $(LDFLAGS)
-%.o: %.c $h $(Makefile)
+default: test_all
+test_all: $(bin) $(bin2) test test2
+libgwen.tco.a: gwen.tco.o
+	ar rcs libgwen.tco.a gwen.tco.o
+libgwen.tcn.a: gwen.tcn.o
+	ar rcs libgwen.tcn.a gwen.tcn.o
+$(bin): main.tco.o libgwen.tco.a
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) main.tco.o -L. -lgwen.tco -o $@
+$(bin2): main.tcn.o libgwen.tcn.a
+	$(CC) $(CPPFLAGS) $(CFLAGS) -DGwenCanUseTco=0 $(LDFLAGS) main.tcn.o -L. -lgwen.tcn -o $@
+%.tcn.o: %.c $h $(Makefile)
+	$(CC) -c $(CPPFLAGS) $(CFLAGS) -DGwenCanUseTco=0 $(LDFLAGS) $< -o $@
+%.tco.o: %.c $h $(Makefile)
 	$(CC) -c $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $< -o $@
 
 test: $(bin)
-	/usr/bin/env TIMEFORMAT="in %Rs" bash -c "time $(bbt)"
+	@echo 'testing (tco)'
+	@/usr/bin/env TIMEFORMAT="in %Rs" bash -c "time $(bbt)"
+test2: $(bin2)
+	@echo 'testing (trampoline)'
+	@/usr/bin/env TIMEFORMAT="in %Rs" bash -c "time $(b2bt)"
 
 # install
 DESTDIR ?= $(HOME)
@@ -48,22 +62,17 @@ $(dest)lib/$(nom)/%: lib/%
 #
 clean:
 	rm -r `git check-ignore * */*`
-
 # valgrind detects some memory errors
 valg: $(bin)
 	valgrind --error-exitcode=1 $(bbt)
-
 # approximate lines of code
 sloc:
 	cloc --force-lang=Lisp,$(suff) * test/* lib/*
-
 # size of binaries
 bits: $(bin)
 	du -h $^
-
 disasm: $(bin)
 	rizin -A $^
-
 # profiling on linux
 perf.data: $(bin)
 	perf record $(bbt)
