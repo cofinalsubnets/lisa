@@ -10,46 +10,77 @@
 #define Eof GwenStatusEof
 #define Oom GwenStatusOom
 
+static gwen_status catf(gwen_core f, gwen_file in, gwen_file out, bool *y) {
+  for (;;) {
+    gwen_status s = gwen_read1f(f, in);
+    if (s == Eof) return Ok;
+    if (s != Ok) return s;
+    if (*y) putchar(' ');
+    else *y = true;
+    gwen_write1f(f, out); } }
+
+static gwen_status expcat(gwen_core f, char **av, bool usestdin) {
+  gwen_status s = Ok;
+  bool y = false;
+  while (s == Ok && *av) {
+    gwen_file in = fopen(*av++, "r");
+    if (!in) s = Oom;
+    else s = catf(f, in, stdout, &y), fclose(in); }
+  if (s == Ok && usestdin)
+    s = catf(f, stdin, stdout, &y);
+  return s; }
+
 static const char *help = // help message
-  "usage: %s [options] [scripts]\n"
-  "with no arguments, interact\n"
+  "usage: %s [options] [files]\n"
   "options:\n"
-  "  -h show this message\n"
-  "  -i interact\n";
+  "  -h show this message and exit\n"
+  "  -i read from stdin (default if no files given)\n"
+  "  -c cat s-expressions from files and/or stdin\n"
+  ;
+
+static FILE *try_open(char *nom) {
+  FILE *file = fopen(nom, "r");
+  if (!file) fprintf(stderr, "# error opening %s: %s\n", nom, strerror(errno));
+  return file; }
+
+static gwen_status gwen_run_file(gwen_core f, gwen_file in) {
+  gwen_status s;
+  // evaluate expressions for side effects
+  while ((s = gwen_read1f(f, in)) == Ok && (s = gwen_eval(f)) == Ok)
+    gwen_pop1(f);
+  return s == Eof ? Ok : s; }
+
+static gwen_status gwen_repl(gwen_core f, gwen_file in, gwen_file out) {
+  for (gwen_status t; (t = gwen_read1f(f, in)) != Eof;)
+    if (t == Ok && (t = gwen_eval(f)) == Ok)
+      gwen_write1f(f, out),
+      puts(""),
+      gwen_pop1(f);
+  return Ok; }
+
+static gwen_status gwen_run(gwen_core f, char **av, bool usestdin) {
+  gwen_status s = Ok;
+  for (; s == Ok && *av; av++) {
+    FILE *file = try_open(*av);
+    if (!file) return Eof;
+    s = gwen_run_file(f, file);
+    fclose(file); }
+  if (s != Ok || !usestdin) return s;
+  if (isatty(STDIN_FILENO)) return gwen_repl(f, stdin, stdout);
+  return gwen_run_file(f, stdin); }
 
 int main(int ac, char **av) {
-  // by default start a repl if in a terminal and no arguments
-  bool interact = ac == 1 && isatty(STDIN_FILENO);
+  bool usestdin = false, cat = false;
   // read command line flags
-  for (;;) switch (getopt(ac, av, "hi")) {
+  for (;;) switch (getopt(ac, av, "chi")) {
     default: return EXIT_FAILURE;
-    case 'h': fprintf(stdout, help, *av); continue;
-    case 'i': interact = true; continue;
+    case 'c': cat = true; continue;
+    case 'h': fprintf(stdout, help, *av); return EXIT_SUCCESS;
+    case 'i': usestdin = true; continue;
     case -1: goto out; } out:
-
-  if (!*av && !interact) return EXIT_SUCCESS;
-
+  av += optind;
+  usestdin = usestdin || ac == optind;
   gwen_core f = gwen_open();
-  gwen_status s = f ? Ok : Oom;
-
-  for (av += optind; s == Ok && *av; av++) {
-    FILE *file = fopen(*av, "r");
-    if (!file) {
-      fprintf(stderr, "# error opening %s: %s\n", *av, strerror(errno));
-      s = Eof;
-      break; }
-    // evaluate expressions for side effects
-    while ((s = gwen_read1f(f, file)) != Eof && (s = gwen_eval(f)) == Ok)
-      pop1(f);
-    fclose(file);
-    if (s == Eof) s = Ok; }
-
-  // repl
-  if (s == Ok && interact)
-    for (gwen_status t; (t = gwen_read1f(f, stdin)) != Eof;)
-      if (t == Ok && (t = gwen_eval(f)) == Ok)
-        gwen_write1f(f, stdout),
-        puts(""),
-        pop1(f);
-
-  return gwen_close(f), s; }
+  gwen_status s = f ? (cat ? expcat : gwen_run)(f, av, usestdin) : Oom;
+  gwen_close(f);
+  return s; }

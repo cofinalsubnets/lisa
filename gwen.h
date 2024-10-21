@@ -1,6 +1,7 @@
 #ifndef _gwen_h
 #define _gwen_h
 #include <stdint.h>
+#include <stdbool.h>
 
 #ifdef __STDC_HOSTED__
 #include <stdio.h>
@@ -25,7 +26,8 @@ void
   gwen_write1f(gwen_core, gwen_file);
 gwen_status
   gwen_read1f(gwen_core, gwen_file),
+  gwen_reads(gwen_core, char*),
   gwen_eval(gwen_core);
 gwen_word
-  pop1(gwen_core);
+  gwen_pop1(gwen_core);
 #endif

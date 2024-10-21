@@ -5,5 +5,4 @@ vgcore.*
 *.so
 .gdb_history
 flamegraph.svg
-gwen
 *.bin
