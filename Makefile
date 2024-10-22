@@ -36,8 +36,11 @@ source_static_library=libgwen.a
 source_prelude=prelude.gw
 source_c_header=gwen.h
 source_manpage=gwen.1
+source_vim_ftdetect=gwen.ftdetect.vim
+source_vim_syntax=gwen.syntax.vim
 source_files=$(source_binary) $(source_static_library)\
 						 $(source_prelude) $(source_c_header)\
+						 $(source_vim_ftdetect) $(source_vim_syntax)\
 						 $(source_manpage)
 
 all: $(source_files)
@@ -47,8 +50,11 @@ $(source_manpage): gwen.1.md
 	pandoc -s -t man -o $@ $<
 
 # default install to the user's home directory under ~/.local/
-DESTDIR ?= $(HOME)/.local
-dest=$(DESTDIR)
+DESTDIR ?= $(HOME)/
+PREFIX ?= .local/
+VIMPREFIX ?= .vim/
+dest=$(DESTDIR)$(PREFIX)
+vimdir=$(DESTDIR)$(VIMPREFIX)
 
 # all the target files
 target_binary=$(dest)/bin/gwen
@@ -56,10 +62,17 @@ target_static_library=$(dest)/lib/libgwen.a
 target_prelude=$(dest)/lib/gwen/prelude.gw
 target_c_header=$(dest)/include/gwen.h
 target_manpage=$(dest)/share/man/man1/gwen.1
+target_vim_ftdetect=$(vimdir)/ftdetect/gwen.vim
+target_vim_syntax=$(vimdir)/syntax/gwen.vim
 target_files=$(target_binary) $(target_static_library)\
 						 $(target_prelude) $(target_c_header)\
+						 $(target_vim_ftdetect) $(target_vim_syntax)\
 						 $(target_manpage)
 
+$(target_vim_ftdetect): $(source_vim_ftdetect)
+	install -D -m 644 $< $@
+$(target_vim_syntax): $(source_vim_syntax)
+	install -D -m 644 $< $@
 $(target_binary): $(source_binary)
 	install -D -m 755 -s $< $@
 $(target_static_library): $(source_static_library)
