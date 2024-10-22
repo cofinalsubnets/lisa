@@ -4,8 +4,8 @@ trampoline_binary=gwen.notco.bin
 prelude=prelude.gw
 tests=$(sort $(wildcard test/*.gw))
 
-test_all: test_optimized test_trampoline
-test_optimized: $(optimized_binary)
+test_all: test test_trampoline
+test: $(optimized_binary)
 	@echo '[optimized]'
 	@/usr/bin/env TIMEFORMAT="in %Rs" bash -c "time ./$< $(prelude) $(tests)"
 test_trampoline: $(trampoline_binary)
@@ -40,15 +40,15 @@ source_files=$(source_binary) $(source_static_library)\
 						 $(source_prelude) $(source_c_header)\
 						 $(source_manpage)
 
+all: $(source_files)
 $(source_static_library): gwen.o
 	ar rcs $@ $<
 $(source_manpage): gwen.1.md
 	pandoc -f markdown -t man $< > $@
 
 # default install to the user's home directory under ~/.local/
-DESTDIR ?= $(HOME)
-PREFIX ?= .local
-dest=$(DESTDIR)/$(PREFIX)
+DESTDIR ?= $(HOME)/.local
+dest=$(DESTDIR)
 
 # all the target files
 target_binary=$(dest)/bin/gwen
@@ -103,6 +103,6 @@ flame: flamegraph.svg
 repl: $(optimized_binary) $(prelude)
 	rlwrap ./$(optimized_binary) -i $(prelude)
 
-.PHONY: default clean test test-lots\
+.PHONY: test_all test_optimized test_trampoline\
 	install uninstall\
- 	sloc bits valg perf bench flame disasm repl
+ 	sloc bits valg perf bench flame disasm repl all
