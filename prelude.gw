@@ -1,5 +1,8 @@
 (: prelude '(,
-    (: (id x) x
+    (: (Q x) (X '` (X x 0))
+       (AA x) (A (A x)) (AB x) (A (B x))
+       (BA x) (B (A x)) (BB x) (B (B x))
+       (id x) x
        (const x y) x
        (flip f x y) (f y x)
        (map f l) (? l (X (f (A l)) (map f (B l))))
@@ -13,6 +16,10 @@
        (each f l) (? (X? l) (, (f (A l)) (each f (B l))))
        (all f l) (? l (? (f (A l)) (all f (B l))) -1)
        (any f l) (? l (? (f (A l)) -1 (any f (B l))))
+       (append a b) (? a (X (A a) (append (B a) b)) b)
+       (partition p) (foldr (\ a m
+        (? (p a) (X (X a (A m)) (B m))
+                 (X (A m) (X a (B m))))) '(()))
        inc (+ 1)
        dec (+ -1)
        (iota n) (: (k m) (? (< m n) (X m (k (inc m)))) (k 0))

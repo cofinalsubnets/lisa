@@ -179,7 +179,7 @@ static gwen_word
   pushs(gwen_core, gwen_size, ...),
   hash(gwen_core, gwen_word),
   cp(gwen_core, gwen_word, gwen_word*, gwen_word*); // for recursive use by evac functions
-static vm print, not, rng, data,
+static vm display, not, rng, data,
    gensym, ev0,
    Xp, Np, stringp, defmacro,
    ssub, sget, slen, scat,
@@ -260,7 +260,7 @@ gwen_word gwen_pop1(gwen_core f) { return pop1(f); }
 #define basic_functions(_)\
   _("+", S2(add)) _("-", S2(sub)) _("*", S2(mul)) _("/", S2(quot)) _("%", S2(rem))\
   _("<", S2(lt)) _("<=", S2(le)) _("=", S2(eq)) _(">=", S2(ge)) _(">", S2(gt))\
-  _(".", S1(print)) _("putc", S1(prc))\
+  _(".", S1(display)) _("putc", S1(prc))\
   _("X", S2(cons)) _("A", S1(car)) _("B", S1(cdr))\
   _("sget", S2(sget)) _("ssub", S3(ssub)) _("slen", S1(slen)) _("scat", S2(scat))\
   _("s?", S1(stringp)) _("n?", S1(Np)) _("X?", S1(Xp))\
@@ -417,12 +417,7 @@ static Vm(prc) {
 
 
 #define op(n, x) (Ip = (thread) Sp[n], Sp[n] = (x), Sp += n, GwenContinue())
-static Vm(print) {
-  Pack(f);
-  gwen_write1f(f, stdout);
-  putc('\n', stdout);
-  Unpack(f);
-  return op(1, *Sp); }
+static Vm(display) { return transmit(f, stdout, *Sp), op(1, *Sp); }
 
 static void transmit(gwen_core f, gwen_file out, gwen_word x) {
   if (nump(x)) fprintf(out, "%ld", (long) getnum(x));
@@ -1534,8 +1529,6 @@ static word rlconcat(gwen_core f, word l, word n) {
   for (word m; twop(l);) m = l, l = B(l), B(m) = n, n = m;
   return n; }
 
-
-
 // allocate a thread
 static gwen_thread mo_n(gwen_core f, gwen_size n) {
   gwen_thread k = cells(f, n + Width(struct tag));
@@ -1546,9 +1539,7 @@ gwen_status gwen_read1f(gwen_core f, gwen_file file) {
   return read1i(f, file); }
 
 gwen_core gwen_close(gwen_core f) {
-  if (f)
-    free(f->pool < f->loop ? f->pool : f->loop),
-    free(f);
+  if (f) free(f->pool < f->loop ? f->pool : f->loop), free(f);
   return NULL; }
 
 void gwen_write1f(gwen_core f, gwen_file out) {
