@@ -1,15 +1,15 @@
 nom=gwen
 optimized_binary=gwen.bin
-trampoline_binary=gwen.notco.bin
+bounce_binary=gwen.b.bin
 prelude=prelude.gw
 tests=$(sort $(wildcard test/*.gw))
 
-test_all: test test_trampoline
+test_all: test test_bounce
 test: $(optimized_binary)
 	@echo '[optimized]'
 	@/usr/bin/env TIMEFORMAT="in %Rs" bash -c "time ./$< $(prelude) $(tests)"
-test_trampoline: $(trampoline_binary)
-	@echo '[trampolining]'
+test_bounce: $(bounce_binary)
+	@echo '[bouncing]'
 	@/usr/bin/env TIMEFORMAT="in %Rs" bash -c "time ./$< $(prelude) $(tests)"
 
 #build
@@ -23,9 +23,9 @@ gwen.bin: main.c gwen.o
 	$(cc) $^ -o $@
 gwen.o: gwen.c gwen.h
 	$(cc) -c $< -o $@
-gwen.notco.bin: main.c gwen.notco.o
+gwen.b.bin: main.c gwen.b.o
 	$(cc) -DGwenCanUseTco=0 $^ -o $@
-gwen.notco.o: gwen.c gwen.h
+gwen.b.o: gwen.c gwen.h
 	$(cc) -c -DGwenCanUseTco=0 $< -o $@
 
 # installlation
@@ -44,7 +44,7 @@ all: $(source_files)
 $(source_static_library): gwen.o
 	ar rcs $@ $<
 $(source_manpage): gwen.1.md
-	pandoc -f markdown -t man $< > $@
+	pandoc -s -t man -o $@ $<
 
 # default install to the user's home directory under ~/.local/
 DESTDIR ?= $(HOME)/.local
@@ -87,7 +87,7 @@ valg: $(optimized_binary)
 sloc:
 	cloc --force-lang=Lisp,gw * test/* lib/*
 # size of binaries
-bits: $(optimized_binary) $(trampoline_binary)
+bits: $(optimized_binary) $(bounce_binary)
 	du -h $^
 disasm: $(optimized_binary)
 	rizin -A $<
@@ -103,6 +103,6 @@ flame: flamegraph.svg
 repl: $(optimized_binary) $(prelude)
 	rlwrap ./$(optimized_binary) -i $(prelude)
 
-.PHONY: test_all test_optimized test_trampoline\
+.PHONY: test_all test_optimized test_bounce\
 	install uninstall\
  	sloc bits valg perf bench flame disasm repl all

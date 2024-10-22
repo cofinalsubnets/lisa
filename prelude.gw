@@ -44,9 +44,10 @@
                         (p 0 l)))
     ; end of prelude definitions
     )
-   gwenc '(:
-   ; thread compiler goes here
-   )
+   boot '(:
+    (ev x) x ;thread compiler goes here
+    ; redefine eval
+    (tset global-namespace 'ev ev))
  (,
    ;; can't use fold yet heheh
    (: (f v x) (? x (f (ev (A x)) (B x)) v) (f 0 prelude))
