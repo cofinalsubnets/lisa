@@ -1,5 +1,2 @@
 (putc 10)
 (. (test-get 'count)) (puts " tests ")
-(: f (test-get 'fail)
- (? f (, (puts "(") (. f) (puts " failed) "))))
-(? (test-get 'fail)

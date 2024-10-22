@@ -37,6 +37,7 @@
 typedef gwen_word word, *gwen_stack, *gwen_heap;
 typedef union gwen_cell *gwen_cell, *gwen_thread;
 typedef Vm(gwen_vm);
+typedef gwen_vm vm;
 
 // basic data types
 typedef struct gwen_pair *gwen_pair;
@@ -69,24 +70,20 @@ struct gwen_core {
     uintptr_t t0; // end time of last gc
     gwen_heap cp; }; };
 
-typedef gwen_vm vm;
 
 #define Oom GwenStatusOom
 #define Ok GwenStatusOk
 #define Eof GwenStatusEof
+static gwen_status gwen_run(gwen_core f) {
+  gwen_status s;
 #if GwenCanUseTco
-static gwen_status gwen_run(gwen_core f) {
-  gwen_status s = f->ip->ap(f, f->ip, f->hp, f->sp);
-  if (s != Ok) f->ip = 0, f->sp = f->pool + f->len;
-  return s; }
+  s = f->ip->ap(f, f->ip, f->hp, f->sp);
 #else
-static gwen_status gwen_run(gwen_core f) {
-  gwen_status s = f->ip->ap(f);
-  while (s == Ok) s = f->ip->ap(f);
+  for (s = Ok; s == Ok; s = f->ip->ap(f));
   s = s == Eof ? Ok : s;
+#endif
   if (s != Ok) f->ip = 0, f->sp = f->pool + f->len;
   return s; }
-#endif
 
 // thanks !!
 typedef union gwen_cell *cell, *thread;
@@ -179,7 +176,7 @@ static gwen_word
   pushs(gwen_core, gwen_size, ...),
   hash(gwen_core, gwen_word),
   cp(gwen_core, gwen_word, gwen_word*, gwen_word*); // for recursive use by evac functions
-static vm display, not, rng, data,
+static gwen_vm display, bnot, rng, data,
    gensym, ev0,
    Xp, Np, stringp, defmacro,
    ssub, sget, slen, scat,
@@ -263,8 +260,8 @@ gwen_word gwen_pop1(gwen_core f) { return pop1(f); }
   _(".", S1(display)) _("putc", S1(prc))\
   _("X", S2(cons)) _("A", S1(car)) _("B", S1(cdr))\
   _("sget", S2(sget)) _("ssub", S3(ssub)) _("slen", S1(slen)) _("scat", S2(scat))\
-  _("s?", S1(stringp)) _("n?", S1(Np)) _("X?", S1(Xp))\
-  _("rand", S1(rng)) _("~", S1(not))\
+  _("strp", S1(stringp)) _("nump", S1(Np)) _("twop", S1(Xp))\
+  _("rand", S1(rng)) _("~", S1(bnot))\
   _("thd", S1(thda)) _("peek", S1(peek)) _("poke", S2(poke)) _("trim", S1(trim)) _("seek", S2(seek))\
   _("tnew", S1(tnew)) _("tkeys", S1(tkeys)) _("tlen", S1(tlen)) _("tset", S3(tset)) _("tget", S3(tget)) _("tdel", S3(tdel))\
   _("gensym", S1(gensym)) _("ev", S1(ev0)) _("::", S2(defmacro))
@@ -284,11 +281,12 @@ static struct {
 };
 
 gwen_core gwen_open(void) {
-  const gwen_size len0 = 1;
   gwen_core f = malloc(sizeof(struct gwen_core));
-  gwen_word *pool = malloc(2 * len0 * sizeof(gwen_word));
-  if (!f || !pool) return gwen_close(f);
+  if (!f) return f;
   memset(f, 0, sizeof(struct gwen_core));
+  const gwen_size len0 = 1;
+  gwen_word *pool = malloc(2 * len0 * sizeof(gwen_word));
+  if (!pool) return gwen_close(f);
   f->t0 = clock();
   f->sp = f->loop = (f->hp = f->pool = pool) + (f->len = len0);
 #define Definition(a, b) gwen_define(f, a, (gwen_word) b) &&
@@ -329,7 +327,7 @@ static NoInline gwen_string grow_buffer(gwen_core f, gwen_string s) {
 static NoInline int read_char(gwen_core f, gwen_file i) {
   for (int c;;) switch (c = getc(i)) {
     default: return c;
-    case '#': case ';': while (!feof(i) && getc(i) != '\n' && getc(i) != '\r');
+    case '#': case ';': while (!feof(i) && (c = getc(i)) != '\n' && c != '\r');
     case ' ': case '\t': case '\n': case '\r': case '\f': continue; } }
 
 static gwen_word read_str_lit(gwen_core, gwen_file), read_atom(gwen_core, gwen_file, int);
@@ -539,7 +537,7 @@ static Vm(lt) { return op(2, Sp[0] < Sp[1] ? putnum(-1) : nil); }
 static Vm(le) { return op(2, Sp[0] <= Sp[1] ? putnum(-1) : nil); }
 static Vm(gt) { return op(2, Sp[0] > Sp[1] ? putnum(-1) : nil); }
 static Vm(ge) { return op(2, Sp[0] >= Sp[1] ? putnum(-1) : nil);}
-static Vm(not) { return op(1, ~Sp[0] | 1); }
+static Vm(bnot) { return op(1, ~Sp[0] | 1); }
 static Vm(rng) { return op(1, putnum(random())); }
 static Vm(Xp) { return op(1, twop(Sp[0]) ? putnum(-1) : nil); }
 static Vm(Np) { return op(1, nump(Sp[0]) ? putnum(-1) : nil); }
@@ -1159,23 +1157,26 @@ static Vm(K) { Have1();
 static Vm(jump) {
   Ip = Ip[1].m;
   return GwenContinue(); }
-static Vm(cond) { return
+
+static Vm(cond) {
   Ip = nilp(*Sp) ? Ip[1].m : Ip + 2,
-  Sp++,
-  GwenContinue(); }
-static Vm(ref) { Have1(); return
-  Sp[-1] = Sp[getnum(Ip[1].x)],
-  Sp--,
-  Ip += 2,
-  GwenContinue(); }
+  Sp++;
+  return GwenContinue(); }
+
+static Vm(ref) { Have1();
+  Sp[-1] = Sp[getnum(Ip[1].x)];
+  Sp--;
+  Ip += 2;
+  return GwenContinue(); }
+
 static Vm(ret) {
-  word r = getnum(Ip[1].x) + 1;
-  return op(r, *Sp); }
+  word n = getnum(Ip[1].x) + 1;
+  return op(n, *Sp); }
+
 static Vm(yield) { Pack(f); return YieldStatus; }
 
 static Vm(ap) {
-  if (nump(Sp[1])) return
-    Ip++, Sp++, GwenContinue();
+  if (nump(Sp[1])) return Ip++, Sp++, GwenContinue();
   thread k = (thread) Sp[1];
   Sp[1] = (gwen_word) (Ip + 1);
   Ip = k;
@@ -1458,6 +1459,7 @@ static C0(analyze_list) {
 
 static Vm(drop) {
   return Ip++, Sp++, GwenContinue(); }
+
 static Vm(define) {
   Pack(f);
   if (!table_set(f, f->dict, Ip[1].x, Sp[0])) return Oom;

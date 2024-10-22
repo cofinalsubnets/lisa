@@ -21,8 +21,8 @@ syn keyword GwenFunc + - ~ ! * / %
 syn keyword GwenFunc ? : \\ , .
 syn keyword GwenFunc X L A B
 syn keyword GwenFunc && \|\| \| & ^ << >>
-"syn keyword GwenFunc ::: >>= case
-"syn keyword GwenFunc twop nump symp tblp strp nilp homp ev ap
+syn keyword GwenFunc ::
+syn keyword GwenFunc twop nump symp tblp strp nilp homp ev ap
 "syn keyword GwenFunc str slen schr scat ssub ystr sym nope
 "syn keyword GwenFunc tbl tget tset tlen thas tkeys tdel
 
