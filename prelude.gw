@@ -1,13 +1,13 @@
 (: prelude '(,
     (: (Q x) (X '` (X x 0))
        (AA x) (A (A x)) (AB x) (A (B x))
-       (BA x) (B (A x)) (BB x) (B (B x))
-       (id x) x
+       (BA x) (B (A x)) (BB x) (B (B x)))
+    (: (foldl f z l) (? l (foldl f (f z (A l)) (B l)) z)
+       (foldr f z l) (? l (f (A l) (foldr f z (B l))) z))
+    (: (id x) x
        (const x y) x
        (flip f x y) (f y x)
        (map f l) (? l (X (f (A l)) (map f (B l))))
-       (foldl f z l) (? l (foldl f (f z (A l)) (B l)) z)
-       (foldr f z l) (? l (f (A l) (foldr f z (B l))) z)
        (filter f l) (? l (: m (filter f (B l)) (? (f (A l)) (X (A l) m) m)))
        (init l) (? (B l) (X (A l) (init (B l))))
        (last l) (? (B l) (last (B l)) (A l))
@@ -26,7 +26,11 @@
        reverse (foldl (flip X) 0)
        (puts s) (: (f n l) (? (= n l) s (, (putc (sget s n)) (f (+ n 1) l))) (f 0 (slen s))))
 
-    (:: 'L (foldr (\ a l (X X (X a (X l 0)))) 0)))
+    (:: 'L (foldr (\ a l (X X (X a (X l 0)))) 0))
+    ; end of prelude definitions
+
+    )
  (,
   (ev prelude)
+  ;  end of prelude
  ))
